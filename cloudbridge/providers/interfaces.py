@@ -29,7 +29,7 @@ class CloudProviderFactory():
                         return None
                 else:
                     # Return latest available version
-                    return sorted((for item in provider["implementation"]), key=lambda x: x["version"])[-1]
+                    return sorted((item for item in provider["implementation"]), key=lambda x: x["version"])[-1]
         return None
 
     def get_interface_V1(self, name, config):
