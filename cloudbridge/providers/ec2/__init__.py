@@ -14,7 +14,6 @@ from cloudbridge.providers.interfaces import KeyPair
 class EC2CloudProviderV1(CloudProvider):
 
     def __init__(self, config):
-        print "EC2CloudProviderV1; for config: '%s'" % config
         self.config = config
         self.a_key = config.access_key
         self.s_key = config.secret_key
