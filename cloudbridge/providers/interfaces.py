@@ -1,35 +1,60 @@
+import importlib
+
+
 class CloudProviderFactory():
     """
+    Get info and handle on the available cloud provider implementations.
     """
+
     def get_providers(self):
         """
-        Returns a list of available providers and their interface versions.
-        This function could eventually be implemented as a registry file
+        Get a list of available providers.
+
+        (This function could eventually be implemented as a registry file
         containing all available implementations, or alternatively, using
-        automatic discovery.
+        automatic discovery.)
+
+        :rtype: list
+        :return: A list of available providers and their interface versions.
         """
-        return [{"name": "OPENSTACK",
-                 "implementation": [{"class": "cloudbridge.impl.OpenstackCloudProviderV1", "version": 1}]},
-                {"name": "EC2",
-                 "implementation": [{"class": "cloudbridge.impl.EC2CloudProviderV1", "version": 1}]}]
+        return [{"name": "openstack",
+                 "implementation":
+                 [{"class": "cloudbridge.providers.openstack.OpenstackCloudProviderV1",
+                   "version": 1}]},
+                {"name": "ec2",
+                 "implementation":
+                 [{"class": "cloudbridge.providers.ec2.EC2CloudProviderV1",
+                   "version": 1}]}]
 
     def find_provider_impl(self, name, version=None):
         """
-        Finds a provider implementation class given its name. If a version is
-        specified, the exact corresponding implementation is returned. Otherwise,
-        the latest available implementation is returned.
+        Finds a provider implementation class given its name.
+
+        :type name: str
+        :param name: A name of the provider whose implementation to look for.
+
+        :type version: inst
+        :param version: A specific version of the provider to look for. If the
+                        version is not specified, return the latest available
+                        version.
+
+        :rtype: ``None`` or str
+        :return: If found, return a module (including class name) of the
+                 provider or ``None`` if the provider was not found.
         """
         for provider in self.get_providers():
             if provider["name"] == name:
                 if version:
-                    match = [item for item in provider["implementation"] if item["version"] == version]
+                    match = [item for item in provider["implementation"]
+                             if item["version"] == version]
                     if match:
-                        return match["class"]
+                        return match[0]["class"]
                     else:
                         return None
                 else:
                     # Return latest available version
-                    return sorted((item for item in provider["implementation"]), key=lambda x: x["version"])[-1]
+                    return sorted((item for item in provider["implementation"]),
+                                  key=lambda x: x["version"])[-1]
         return None
 
     def get_interface_V1(self, name, config):
@@ -39,39 +64,55 @@ class CloudProviderFactory():
         where the config dictionary is a dictionary understood by that
         cloud provider.
 
+        :type name: str
+        :param name: Cloud provider name: one of ``ec2``, ``openstack``.
+
+        :type config: an object with required fields
+        :param config: This can be a Bunch or any other object whose fields can
+                       be accessed using dot notation. See specific provider
+                       implementation for the required fields.
+
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProviderV1`
         """
-        provider = self.find_provider(name, version=1)
+        provider = self.find_provider_impl(name, version=1)
         if provider is None:
             raise NotImplementedError(
-                'A provider by that name implementing interface v1 could not be found')
+                'A provider by name {0} implementing interface v1 could not be '
+                'found'.format(name))
         else:
-            return provider["class"].from_config(config)
+            module_name, class_name = provider.rsplit(".", 1)
+            provider_class = getattr(importlib.import_module(module_name),
+                                     class_name)
+            return provider_class(config)
 
 
 class CloudProvider():
     """
     Base interface for a cloud provider
     """
-    @staticmethod
-    def from_config(config):
+    def __init__(self, config):
         """
         Create a new provider implementation given a dictionary of configuration
         attributes.
 
-        :return:  a concrete provider instance
+        :type config: an object with required fields
+        :param config: This can be a Bunch or any other object whose fields can
+                       be accessed using dot notation. See specific provider
+                       implementation for the required fields.
+
         :rtype: ``object`` of :class:`.CloudProvider`
+        :return:  a concrete provider instance
         """
         raise NotImplementedError(
-            'list_regions not implemented by this provider')
+            '__init__ not implemented by this provider')
 
     def Compute(self):
         """
         Provides access to all compute related services in this provider.
 
-        :return:  a ComputeManager object
         :rtype: ``object`` of :class:`.ComputeManager`
+        :return:  a ComputeManager object
         """
         raise NotImplementedError(
             'CloudProvider.Compute not implemented by this provider')
@@ -226,7 +267,7 @@ class VolumeManager():
         :return: an Instance object or ``None`` if not found
         """
         raise NotImplementedError(
-            'find_instance not implemented by this provider')
+            'find_volume not implemented by this provider')
 
     def list_volumes(self):
         """
@@ -266,8 +307,9 @@ class ImageManager():
     def Provider(self):
         """
         Returns the provider instance associated with this manager
-        :return:   a  provider instance
+
         :rtype: ``object`` of :class:`.CloudProvider`
+        :return:   a  provider instance
         """
         raise NotImplementedError(
             'ComputeManager.Provider not implemented by this provider')
@@ -275,17 +317,19 @@ class ImageManager():
     def get_image(self, id):
         """
         Returns an Image given its id
-        :return:  an Image instance
+
         :rtype: ``object`` of :class:`.Image`
+        :return:  an Image instance
         """
         raise NotImplementedError(
-            'get_volume get_image implemented by this provider')
+            'get_image implemented by this provider')
 
     def find_image(self, name):
         """
         Searches for an image by a given list of attributes
-        :return:  an Image instance
+
         :rtype: ``object`` of :class:`.Image`
+        :return:  an Image instance
         """
         raise NotImplementedError(
             'find_image not implemented by this provider')
@@ -293,8 +337,9 @@ class ImageManager():
     def list_images(self):
         """
         List all images.
-        :return:  list of image objects
+
         :rtype: ``list`` of :class:`.Image`
+        :return:  list of image objects
         """
         raise NotImplementedError(
             'list_images not implemented by this provider')
@@ -316,8 +361,9 @@ class SecurityManager():
     def Provider(self):
         """
         Returns the provider instance associated with this manager
-        :return:   a  provider instance
+
         :rtype: ``object`` of :class:`.CloudProvider`
+        :return:   a  provider instance
         """
         raise NotImplementedError(
             'ComputeManager.Provider not implemented by this provider')
@@ -325,8 +371,9 @@ class SecurityManager():
     def list_key_pairs(self):
         """
         List all key pairs.
-        :return:  list of KeyPair objects
+
         :rtype: ``list`` of :class:`.KeyPair`
+        :return:  list of KeyPair objects
         """
         raise NotImplementedError(
             'list_key_pairs not implemented by this provider')
@@ -334,8 +381,9 @@ class SecurityManager():
     def create_key_pair(self):
         """
         Create a new keypair.
-        :return:  A keypair instance
+
         :rtype: ``object`` of :class:`.KeyPair`
+        :return:  A keypair instance
         """
         raise NotImplementedError(
             'create_key_pair not implemented by this provider')
@@ -346,8 +394,8 @@ class Instance():
         """
         Get the instance identifier.
 
-        :return: str
-        :rtype: ID for this instance as returned by the cloud middleware.
+        :rtype: str
+        :return: ID for this instance as returned by the cloud middleware.
         """
         raise NotImplementedError(
             'instance_id not implemented by this provider')
@@ -356,8 +404,8 @@ class Instance():
         """
         Get the instance name.
 
-        :return: str
-        :rtype: Name for this instance as returned by the cloud middleware.
+        :rtype: str
+        :return: Name for this instance as returned by the cloud middleware.
         """
         raise NotImplementedError(
             'name not implemented by this provider')
@@ -386,8 +434,8 @@ class Instance():
         """
         Get the instance type.
 
-        :return: str
-        :rtype: API type of this instance (e.g., ``m1.large``)
+        :rtype: str
+        :return: API type of this instance (e.g., ``m1.large``)
         """
         raise NotImplementedError(
             'type not implemented by this provider')
@@ -417,8 +465,8 @@ class Instance():
         """
         Get the image ID for this insance.
 
-        :return: str
-        :rtype: Image ID (i.e., AMI) this instance is using.
+        :rtype: str
+        :return: Image ID (i.e., AMI) this instance is using.
         """
         raise NotImplementedError(
             'image_id not implemented by this provider')
@@ -465,31 +513,171 @@ class Instance():
 
 
 class Volume():
-    def attach(self):
-        raise NotImplementedError(
-            'list_instances not implemented by this provider')
+    def attach(self, instance_id, device):
+        """
+        Attach this volume to an instance.
 
-    def detach(self):
-        raise NotImplementedError(
-            'list_instances not implemented by this provider')
+        :type instance_id: str
+        :param instance_id: The ID of the instance to which it will
+                            be attached.
 
-    def snapshot(self):
+        :type device: str
+        :param device: The device on the instance through which the
+                       volume will be exposed (e.g. /dev/sdh)
+
+        :rtype: bool
+        :return: True if successful
+        """
         raise NotImplementedError(
-            'list_instances not implemented by this provider')
+            'attach not implemented by this provider')
+
+    def detach(self, force=False):
+        """
+        Detach this volume from an instance.
+
+        :type force: bool
+        :param force: Forces detachment if the previous detachment
+            attempt did not occur cleanly. This option is supported on select
+            clouds only. This option can lead to data loss or a corrupted file
+            system. Use this option only as a last resort to detach a volume
+            from a failed instance. The instance will not have an opportunity
+            to flush file system caches nor file system meta data. If you
+            use this option, you must perform file system check and
+            repair procedures.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        raise NotImplementedError(
+            'detach not implemented by this provider')
+
+    def snapshot(self, description=None):
+        """
+        Create a snapshot of this Volume.
+
+        :type description: str
+        :param description: A description of the snapshot.
+                            Limited to 256 characters.
+
+        :rtype: :class:`.Snapshot`
+        :return: The created Snapshot object
+        """
+        raise NotImplementedError(
+            'snapshot not implemented by this provider')
 
     def delete(self):
+        """
+        Delete this volume.
+
+        :rtype: bool
+        :return: True if successful
+        """
         raise NotImplementedError(
-            'list_instances not implemented by this provider')
+            'delete not implemented by this provider')
+
+
+class Snapshot():
+    def create_volume(self, placement, size=None, volume_type=None, iops=None):
+        """
+        Create a new Volume from this Snapshot.
+
+        :type zone: str
+        :param zone: The availability zone in which the Volume will be created.
+
+        :type size: int
+        :param size: The size of the new volume, in GiB (optional). Defaults to
+                     the size of the snapshot.
+
+        :type volume_type: str
+        :param volume_type: The type of the volume (optional). Availability and
+                            valid values depend on the provider.
+
+        :type iops: int
+        :param iops: The provisioned IOPs you want to associate with
+                     this volume (optional). Availability depends on the
+                     provider.
+
+        :rtype: :class:`.Volume`
+        :return: An instance of the created Volume
+        """
+        raise NotImplementedError(
+            'create_volume not implemented by this provider')
+
+    def share(self, user_ids=None):
+        """
+        Share this Snapshot.
+
+        :type user_ids: list of strings
+        :param user_ids: A list of cloud provider compatible user IDs. If no
+                         IDs are specified, the snapshot is made public.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        raise NotImplementedError('share not implemented by this provider')
+
+    def unshare(self, user_ids=None):
+        """
+        Unshare this Snapshot.
+
+        :type user_ids: list of strings
+        :param user_ids: A list of cloud provider compatible user IDs. If no
+                         IDs are specified, the snapshot is made private.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        raise NotImplementedError('unshare not implemented by this provider')
+
+    def delete(self):
+        """
+        Delete this snapshot.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        raise NotImplementedError('delete not implemented by this provider')
 
 
 class Region():
     def name(self):
         raise NotImplementedError(
-            'list_instances not implemented by this provider')
+            'name not implemented by this provider')
 
     def list_zones(self):
         raise NotImplementedError(
-            'list_instances not implemented by this provider')
+            'list_zones not implemented by this provider')
+
+
+class KeyPair():
+    def __init__(self, name, material=None):
+        self.name = name
+        self.material = material
+
+    def __repr__(self):
+        return "CloudBridge KeyPair:{0}".format(self.name)
+
+    # def name(self):
+    #     """
+    #     Return the name of this key pair.
+
+    #     :rtype: str
+    #     :return: A name of this ssh key pair
+    #     """
+    #     raise NotImplementedError(
+    #         'name not implemented by this provider')
+
+
+class SecurityGroup():
+    def name(self):
+        """
+        Return the name of this security group.
+
+        :rtype: str
+        :return: A name of this security group
+        """
+        raise NotImplementedError(
+            'name not implemented by this provider')
 
 
 class ContainerProvider():
@@ -498,11 +686,11 @@ class ContainerProvider():
     """
     def create_container(self):
         raise NotImplementedError(
-            'list_instances not implemented by this provider')
+            'create_container not implemented by this provider')
 
     def delete_container(self):
         raise NotImplementedError(
-            'list_instances not implemented by this provider')
+            'delete_container not implemented by this provider')
 
 
 class DeploymentProvider():
@@ -514,4 +702,4 @@ class DeploymentProvider():
         Deploys on given target, where target is an Instance or Container
         """
         raise NotImplementedError(
-            'list_instances not implemented by this provider')
+            'deploy not implemented by this provider')
