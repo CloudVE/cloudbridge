@@ -10,6 +10,6 @@ from cloudbridge.util import Bunch
 config = Bunch(access_key='a_key',
                secret_key='s_key')
 
-ec2 = CloudProviderFactory().get_interface_V1("ec2", config)
-print ec2.Security.list_key_pairs()
+provider = CloudProviderFactory().create_provider(ProviderList.EC2, config)
+print provider.Security.list_key_pairs()
 ```

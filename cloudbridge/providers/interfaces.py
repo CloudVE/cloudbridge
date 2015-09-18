@@ -1,90 +1,17 @@
-import importlib
-
-
-class CloudProviderFactory():
+class CloudProviderServiceType():
     """
-    Get info and handle on the available cloud provider implementations.
+    Defines possible service types that
+    are offered by providers. Providers can implement the
+    has_service method and clients can check for the availability
+    of a service with
+    if (provider.has_service(CloudProviderServiceTypes.OBJECTSTORE))
+        provider.ObjectStore.
     """
-
-    def get_providers(self):
-        """
-        Get a list of available providers.
-
-        (This function could eventually be implemented as a registry file
-        containing all available implementations, or alternatively, using
-        automatic discovery.)
-
-        :rtype: list
-        :return: A list of available providers and their interface versions.
-        """
-        return [{"name": "openstack",
-                 "implementation":
-                 [{"class": "cloudbridge.providers.openstack.OpenstackCloudProviderV1",
-                   "version": 1}]},
-                {"name": "ec2",
-                 "implementation":
-                 [{"class": "cloudbridge.providers.ec2.EC2CloudProviderV1",
-                   "version": 1}]}]
-
-    def find_provider_impl(self, name, version=None):
-        """
-        Finds a provider implementation class given its name.
-
-        :type name: str
-        :param name: A name of the provider whose implementation to look for.
-
-        :type version: inst
-        :param version: A specific version of the provider to look for. If the
-                        version is not specified, return the latest available
-                        version.
-
-        :rtype: ``None`` or str
-        :return: If found, return a module (including class name) of the
-                 provider or ``None`` if the provider was not found.
-        """
-        for provider in self.get_providers():
-            if provider["name"] == name:
-                if version:
-                    match = [item for item in provider["implementation"]
-                             if item["version"] == version]
-                    if match:
-                        return match[0]["class"]
-                    else:
-                        return None
-                else:
-                    # Return latest available version
-                    return sorted((item for item in provider["implementation"]),
-                                  key=lambda x: x["version"])[-1]
-        return None
-
-    def get_interface_V1(self, name, config):
-        """
-        Searches all available providers for a CloudProvider interface with the
-        given name, and instantiates it based on the given config dictionary,
-        where the config dictionary is a dictionary understood by that
-        cloud provider.
-
-        :type name: str
-        :param name: Cloud provider name: one of ``ec2``, ``openstack``.
-
-        :type config: an object with required fields
-        :param config: This can be a Bunch or any other object whose fields can
-                       be accessed using dot notation. See specific provider
-                       implementation for the required fields.
-
-        :return:  a concrete provider instance
-        :rtype: ``object`` of :class:`.CloudProviderV1`
-        """
-        provider = self.find_provider_impl(name, version=1)
-        if provider is None:
-            raise NotImplementedError(
-                'A provider by name {0} implementing interface v1 could not be '
-                'found'.format(name))
-        else:
-            module_name, class_name = provider.rsplit(".", 1)
-            provider_class = getattr(importlib.import_module(module_name),
-                                     class_name)
-            return provider_class(config)
+    COMPUTE = 'compute'
+    IMAGE = 'image'
+    SECURITY =  'security'
+    VOLUME =  'volume'
+    OBJECTSTORE =  'objectstore'
 
 
 class CloudProvider():
@@ -107,23 +34,39 @@ class CloudProvider():
         raise NotImplementedError(
             '__init__ not implemented by this provider')
 
+    def has_service(self, service):
+        """
+        Checks whether this provider supports a given service"
+
+        :type config: an object with required fields
+        :param config: This can be a Bunch or any other object whose fields can
+                       be accessed using dot notation. See specific provider
+                       implementation for the required fields.
+
+        :rtype: ``object`` of :class:`.CloudProvider`
+        :return:  a concrete provider instance
+        """
+        raise NotImplementedError(
+            'has_service not implemented by this provider')
+
+
     def Compute(self):
         """
         Provides access to all compute related services in this provider.
 
-        :rtype: ``object`` of :class:`.ComputeManager`
-        :return:  a ComputeManager object
+        :rtype: ``object`` of :class:`.ComputeService`
+        :return:  a ComputeService object
         """
         raise NotImplementedError(
             'CloudProvider.Compute not implemented by this provider')
 
-    def Images(self):
+    def Image(self):
         """
         Provides access to all Image related services in this provider.
         (e.g. Glance in Openstack)
 
-        :rtype: ``object`` of :class:`.ImageManager`
-        :return: an ImageManager object
+        :rtype: ``object`` of :class:`.ImageService`
+        :return: an ImageService object
         """
         raise NotImplementedError(
             'CloudProvider.Images not implemented by this provider')
@@ -132,47 +75,47 @@ class CloudProvider():
         """
         Provides access to keypair management and firewall control
 
-        :rtype: ``object`` of :class:`.SecurityManager`
-        :return: a SecurityManager object
+        :rtype: ``object`` of :class:`.SecurityService`
+        :return: a SecurityService object
         """
         raise NotImplementedError(
             'CloudProvider.Security not implemented by this provider')
 
-    def BlockStore(self):
+    def Volume(self):
         """
         Provides access to the volume/elastic block store services in this
         provider.
 
-        :rtype: ``object`` of :class:`.BlockStoreManager`
-        :return: a BlockStoreManager object
+        :rtype: ``object`` of :class:`.VolumeService`
+        :return: a VolumeService object
         """
         raise NotImplementedError(
-            'CloudProvider.BlockStore not implemented by this provider')
+            'CloudProvider.VolumeService not implemented by this provider')
 
     def ObjectStore(self):
         """
         Provides access to object storage services in this provider.
 
-        :rtype: ``object`` of :class:`.ObjectStoreManager`
-        :return: an ObjectStoreManager object
+        :rtype: ``object`` of :class:`.ObjectStoreService`
+        :return: an ObjectStoreService object
         """
         raise NotImplementedError(
             'CloudProvider.ObjectStore not implemented by this provider')
 
 
-class ComputeManager():
+class ComputeService():
     """
     Base interface for compute service supported by a provider
     """
     def Provider(self):
         """
-        Returns the provider instance associated with this manager.
+        Returns the provider instance associated with this service.
 
         :rtype: ``object`` of :class:`.CloudProvider`
         :return: a Provider object
         """
         raise NotImplementedError(
-            'ComputeManager.Provider not implemented by this provider')
+            'ComputeService.Provider not implemented by this provider')
 
     def get_instance(self, id):
         """
@@ -235,19 +178,19 @@ class ComputeManager():
             'create_instance not implemented by this provider')
 
 
-class VolumeManager():
+class VolumeService():
     """
-    Base interface for a Volume Manager
+    Base interface for a Volume Service
     """
     def Provider(self):
         """
-        Returns the provider instance associated with this manager
+        Returns the provider instance associated with this Service
 
         :rtype: ``object`` of :class:`.CloudProvider`
         :return: a CloudProvider object
         """
         raise NotImplementedError(
-            'ComputeManager.Provider not implemented by this provider')
+            'VolumeService.Provider not implemented by this provider')
 
     def get_volume(self, id):
         """
@@ -300,19 +243,19 @@ class VolumeManager():
             'create_volume not implemented by this provider')
 
 
-class ImageManager():
+class ImageService():
     """
-    Base interface for an Image Manager
+    Base interface for an Image Service
     """
     def Provider(self):
         """
-        Returns the provider instance associated with this manager
+        Returns the provider instance associated with this service
 
         :rtype: ``object`` of :class:`.CloudProvider`
         :return:   a  provider instance
         """
         raise NotImplementedError(
-            'ComputeManager.Provider not implemented by this provider')
+            'ImageService.Provider not implemented by this provider')
 
     def get_image(self, id):
         """
@@ -354,19 +297,73 @@ class ImageManager():
             'create_image not implemented by this provider')
 
 
-class SecurityManager():
+class ObjectStoreService():
     """
-    Base interface for an Image Manager
+    Base interface for an Object Storage Service
     """
     def Provider(self):
         """
-        Returns the provider instance associated with this manager
+        Returns the provider instance associated with this service
 
         :rtype: ``object`` of :class:`.CloudProvider`
         :return:   a  provider instance
         """
         raise NotImplementedError(
-            'ComputeManager.Provider not implemented by this provider')
+            'ObjectStoreService.Provider not implemented by this provider')
+
+    def get_container(self, id):
+        """
+        Returns a container given its id
+
+        :rtype: ``object`` of :class:`.Container`
+        :return:  a Container instance
+        """
+        raise NotImplementedError(
+            'get_container implemented by this provider')
+
+    def find_container(self, name):
+        """
+        Searches for a container by a given list of attributes
+
+        :rtype: ``object`` of :class:`.Container`
+        :return:  a Container instance
+        """
+        raise NotImplementedError(
+            'find_container not implemented by this provider')
+
+    def list_containers(self):
+        """
+        List all containers.
+
+        :rtype: ``list`` of :class:`.Container`
+        :return:  list of container objects
+        """
+        raise NotImplementedError(
+            'list_containers not implemented by this provider')
+
+    def create_container(self):
+        """
+        Create a new container.
+        :return:  a Container object
+        :rtype: ``object`` of :class:`.Container`
+        """
+        raise NotImplementedError(
+            'create_container not implemented by this provider')
+
+
+class SecurityService():
+    """
+    Base interface for an Image Service
+    """
+    def Provider(self):
+        """
+        Returns the provider instance associated with this service
+
+        :rtype: ``object`` of :class:`.CloudProvider`
+        :return:   a  provider instance
+        """
+        raise NotImplementedError(
+            'ComputeService.Provider not implemented by this provider')
 
     def list_key_pairs(self):
         """
