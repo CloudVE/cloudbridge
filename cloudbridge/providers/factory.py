@@ -77,7 +77,7 @@ class CloudProviderFactory():
                        implementation for the required fields.
 
         :return:  a concrete provider instance
-        :rtype: ``object`` of :class:`.CloudProviderV1`
+        :rtype: ``object`` of :class:`.CloudProvider`
         """
         provider = self.find_provider_impl(name, version=version)
         if provider is None:
