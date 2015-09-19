@@ -1,4 +1,5 @@
 class CloudProviderServiceType():
+
     """
     Defines possible service types that
     are offered by providers. Providers can implement the
@@ -9,15 +10,17 @@ class CloudProviderServiceType():
     """
     COMPUTE = 'compute'
     IMAGE = 'image'
-    SECURITY =  'security'
-    VOLUME =  'volume'
-    OBJECTSTORE =  'objectstore'
+    SECURITY = 'security'
+    VOLUME = 'volume'
+    OBJECTSTORE = 'objectstore'
 
 
 class CloudProvider():
+
     """
     Base interface for a cloud provider
     """
+
     def __init__(self, config):
         """
         Create a new provider implementation given a dictionary of configuration
@@ -49,8 +52,7 @@ class CloudProvider():
         raise NotImplementedError(
             'has_service not implemented by this provider')
 
-
-    def Compute(self):
+    def compute(self):
         """
         Provides access to all compute related services in this provider.
 
@@ -60,7 +62,7 @@ class CloudProvider():
         raise NotImplementedError(
             'CloudProvider.Compute not implemented by this provider')
 
-    def Image(self):
+    def image(self):
         """
         Provides access to all Image related services in this provider.
         (e.g. Glance in Openstack)
@@ -71,7 +73,7 @@ class CloudProvider():
         raise NotImplementedError(
             'CloudProvider.Images not implemented by this provider')
 
-    def Security(self):
+    def security(self):
         """
         Provides access to keypair management and firewall control
 
@@ -81,7 +83,7 @@ class CloudProvider():
         raise NotImplementedError(
             'CloudProvider.Security not implemented by this provider')
 
-    def Volume(self):
+    def volume(self):
         """
         Provides access to the volume/elastic block store services in this
         provider.
@@ -92,7 +94,7 @@ class CloudProvider():
         raise NotImplementedError(
             'CloudProvider.VolumeService not implemented by this provider')
 
-    def ObjectStore(self):
+    def object_store(self):
         """
         Provides access to object storage services in this provider.
 
@@ -104,10 +106,12 @@ class CloudProvider():
 
 
 class ComputeService():
+
     """
     Base interface for compute service supported by a provider
     """
-    def Provider(self):
+
+    def provider(self):
         """
         Returns the provider instance associated with this service.
 
@@ -179,10 +183,12 @@ class ComputeService():
 
 
 class VolumeService():
+
     """
     Base interface for a Volume Service
     """
-    def Provider(self):
+
+    def provider(self):
         """
         Returns the provider instance associated with this Service
 
@@ -244,10 +250,12 @@ class VolumeService():
 
 
 class ImageService():
+
     """
     Base interface for an Image Service
     """
-    def Provider(self):
+
+    def provider(self):
         """
         Returns the provider instance associated with this service
 
@@ -298,10 +306,12 @@ class ImageService():
 
 
 class ObjectStoreService():
+
     """
     Base interface for an Object Storage Service
     """
-    def Provider(self):
+
+    def provider(self):
         """
         Returns the provider instance associated with this service
 
@@ -352,10 +362,12 @@ class ObjectStoreService():
 
 
 class SecurityService():
+
     """
     Base interface for an Image Service
     """
-    def Provider(self):
+
+    def provider(self):
         """
         Returns the provider instance associated with this service
 
@@ -387,6 +399,7 @@ class SecurityService():
 
 
 class Instance():
+
     def instance_id(self):
         """
         Get the instance identifier.
@@ -510,6 +523,7 @@ class Instance():
 
 
 class Volume():
+
     def attach(self, instance_id, device):
         """
         Attach this volume to an instance.
@@ -574,6 +588,7 @@ class Volume():
 
 
 class Snapshot():
+
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.
@@ -637,6 +652,7 @@ class Snapshot():
 
 
 class Region():
+
     def name(self):
         raise NotImplementedError(
             'name not implemented by this provider')
@@ -647,6 +663,7 @@ class Region():
 
 
 class KeyPair():
+
     def __init__(self, name, material=None):
         self.name = name
         self.material = material
@@ -666,6 +683,7 @@ class KeyPair():
 
 
 class SecurityGroup():
+
     def name(self):
         """
         Return the name of this security group.
@@ -678,9 +696,11 @@ class SecurityGroup():
 
 
 class ContainerProvider():
+
     """
     Represents a container instance, such as Docker or LXC
     """
+
     def create_container(self):
         raise NotImplementedError(
             'create_container not implemented by this provider')
@@ -691,9 +711,11 @@ class ContainerProvider():
 
 
 class DeploymentProvider():
+
     """
     Represents a deployment provider, such as Ansible or Shell script provider
     """
+
     def deploy(self, target):
         """
         Deploys on given target, where target is an Instance or Container
