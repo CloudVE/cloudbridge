@@ -1,11 +1,14 @@
 import importlib
 
+
 class ProviderList():
     EC2 = 'ec2'
     OPENSTACK = 'openstack'
     AZURE = 'azure'
 
+
 class CloudProviderFactory():
+
     """
     Get info and handle on the available cloud provider implementations.
     """
@@ -23,7 +26,7 @@ class CloudProviderFactory():
         """
         return [{"name": "openstack",
                  "implementation":
-                 [{"class": "cloudbridge.providers.openstack.OpenstackCloudProviderV1",
+                 [{"class": "cloudbridge.providers.openstack.OpenStackCloudProviderV1",
                    "version": 1}]},
                 {"name": "ec2",
                  "implementation":
