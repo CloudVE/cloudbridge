@@ -1,9 +1,7 @@
 from cloudbridge.providers.factory import CloudProviderFactory
 from cloudbridge.providers.factory import ProviderList
-from bunch import Bunch
 
-config = Bunch(access_key='<ak>',
-               secret_key='<sk>')
-
-provider = CloudProviderFactory().create_provider(ProviderList.EC2, config)
-print provider.security.list_key_pairs()
+config = {}
+provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK, config)
+# print provider.security.list_key_pairs()
+print provider.security.list_security_groups()
