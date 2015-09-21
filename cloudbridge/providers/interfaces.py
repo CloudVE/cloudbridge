@@ -50,12 +50,8 @@ class CloudProvider():
         :rtype: bool
         :return: ``True`` if the service type is supported.
         """
-        try:
-            if getattr(self, service_type):
-                return True
-        except AttributeError:
-            pass  # Undefined service type
-        return False
+        raise NotImplementedError(
+            'CloudProvider.has_service not implemented by this provider')
 
     def account(self):
         """
