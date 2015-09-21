@@ -3,13 +3,18 @@ Provider implementation based on boto library for EC2-compatible clouds.
 """
 
 import os
-from novaclient import client
-from cloudbridge.providers.interfaces import CloudProvider
+from novaclient import client as nova_client
+from keystoneclient import client as keystone_client
+from keystoneclient import session
+from keystoneclient.auth.identity import Password
+
+from cloudbridge.providers.base import BaseCloudProvider
 from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import KeyPair
+from cloudbridge.providers.common import BaseSecurityGroup
 
 
-class OpenStackCloudProviderV1(CloudProvider):
+class OpenStackCloudProviderV1(BaseCloudProvider):
 
     def __init__(self, config):
         self.config = config
@@ -34,7 +39,8 @@ class OpenStackCloudProviderV1(CloudProvider):
             self.auth_url = config.auth_url if hasattr(
                 config, 'auth_url') and config.auth_url else os.environ.get('OS_AUTH_URL', None)
 
-        self.nova = self._connect_nova()
+        self._nova = self._connect_nova()
+        self._keystone = self._connect_keystone()
 
         # self.Compute = EC2ComputeService(self)
         # self.Images = EC2ImageService(self)
@@ -46,7 +52,21 @@ class OpenStackCloudProviderV1(CloudProvider):
         """
         Get an openstack client object for the given cloud.
         """
-        return client.Client(self.api_version, self.username, self.password, self.tenant_name, self.auth_url)
+        return nova_client.Client(self.api_version, self.username, self.password, self.tenant_name, self.auth_url)
+
+    def _connect_keystone(self):
+        """
+        Get an openstack client object for the given cloud.
+        """
+        auth = Password(self.auth_url, username=self.username, password=self.password,
+                        tenant_name=self.tenant_name)
+        # Wow, the internal keystoneV2 implementation is terribly buggy. It needs both a separate Session object
+        # and the username, password again for things to work correctly. Plus, a manual call to authenticate() is
+        # also required if the service  catalogue needs to be queried
+        keystone = keystone_client.Client(session=session.Session(auth=auth), auth_url=self.auth_url, username=self.username,
+                                          password=self.password, tenant_name=self.tenant_name)
+        keystone.authenticate()
+        return keystone
 
 
 class OpenStackSecurityService(SecurityService):
@@ -61,5 +81,15 @@ class OpenStackSecurityService(SecurityService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        key_pairs = self.provider.nova.keypairs.list()
+        key_pairs = self.provider._nova.keypairs.list()
         return [KeyPair(kp.id) for kp in key_pairs]
+
+    def list_security_groups(self):
+        """
+        Create a new security group
+
+        :rtype: ``list`` of :class:`.KeyPair`
+        :return:  list of KeyPair objects
+        """
+        groups = self.provider._nova.security_groups.list()
+        return [BaseSecurityGroup(group.name) for group in groups]
