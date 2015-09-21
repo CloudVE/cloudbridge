@@ -52,6 +52,17 @@ class CloudProvider():
         raise NotImplementedError(
             'has_service not implemented by this provider')
 
+    def account(self):
+        """
+        Provides access to all user account related services in this provider.
+        This includes listing available tenancies.
+
+        :rtype: ``object`` of :class:`.ComputeService`
+        :return:  a ComputeService object
+        """
+        raise NotImplementedError(
+            'CloudProvider.Compute not implemented by this provider')
+
     def compute(self):
         """
         Provides access to all compute related services in this provider.
@@ -105,10 +116,10 @@ class CloudProvider():
             'CloudProvider.ObjectStore not implemented by this provider')
 
 
-class ComputeService():
+class ProviderService():
 
     """
-    Base interface for compute service supported by a provider
+    Base interface for any service supported by a provider
     """
 
     def provider(self):
@@ -120,6 +131,13 @@ class ComputeService():
         """
         raise NotImplementedError(
             'ComputeService.Provider not implemented by this provider')
+
+
+class ComputeService(ProviderService):
+
+    """
+    Base interface for compute service supported by a provider
+    """
 
     def get_instance(self, id):
         """
@@ -182,21 +200,11 @@ class ComputeService():
             'create_instance not implemented by this provider')
 
 
-class VolumeService():
+class VolumeService(ProviderService):
 
     """
     Base interface for a Volume Service
     """
-
-    def provider(self):
-        """
-        Returns the provider instance associated with this Service
-
-        :rtype: ``object`` of :class:`.CloudProvider`
-        :return: a CloudProvider object
-        """
-        raise NotImplementedError(
-            'VolumeService.Provider not implemented by this provider')
 
     def get_volume(self, id):
         """
@@ -249,21 +257,11 @@ class VolumeService():
             'create_volume not implemented by this provider')
 
 
-class ImageService():
+class ImageService(ProviderService):
 
     """
     Base interface for an Image Service
     """
-
-    def provider(self):
-        """
-        Returns the provider instance associated with this service
-
-        :rtype: ``object`` of :class:`.CloudProvider`
-        :return:   a  provider instance
-        """
-        raise NotImplementedError(
-            'ImageService.Provider not implemented by this provider')
 
     def get_image(self, id):
         """
@@ -305,21 +303,11 @@ class ImageService():
             'create_image not implemented by this provider')
 
 
-class ObjectStoreService():
+class ObjectStoreService(ProviderService):
 
     """
     Base interface for an Object Storage Service
     """
-
-    def provider(self):
-        """
-        Returns the provider instance associated with this service
-
-        :rtype: ``object`` of :class:`.CloudProvider`
-        :return:   a  provider instance
-        """
-        raise NotImplementedError(
-            'ObjectStoreService.Provider not implemented by this provider')
 
     def get_container(self, id):
         """
@@ -361,21 +349,11 @@ class ObjectStoreService():
             'create_container not implemented by this provider')
 
 
-class SecurityService():
+class SecurityService(ProviderService):
 
     """
     Base interface for an Image Service
     """
-
-    def provider(self):
-        """
-        Returns the provider instance associated with this service
-
-        :rtype: ``object`` of :class:`.CloudProvider`
-        :return:   a  provider instance
-        """
-        raise NotImplementedError(
-            'ComputeService.Provider not implemented by this provider')
 
     def list_key_pairs(self):
         """
@@ -396,6 +374,36 @@ class SecurityService():
         """
         raise NotImplementedError(
             'create_key_pair not implemented by this provider')
+
+    def list_security_groups(self):
+        """
+        Create a new SecurityGroup.
+
+        :rtype: ``object`` of :class:`.SecurityGroup`
+        :return:  A SecurityGroup instance
+        """
+        raise NotImplementedError(
+            'list_security_groups not implemented by this provider')
+
+    def create_security_group(self):
+        """
+        Create a new SecurityGroup.
+
+        :rtype: ``object`` of :class:`.KeyPair`
+        :return:  A keypair instance
+        """
+        raise NotImplementedError(
+            'create_security_group not implemented by this provider')
+
+    def delete_security_group(self):
+        """
+        Delete an existing SecurityGroup.
+
+        :rtype: ``bool``
+        :return:  True if successful, false otherwise
+        """
+        raise NotImplementedError(
+            'delete_security_group not implemented by this provider')
 
 
 class Instance():

@@ -6,12 +6,12 @@ import boto
 import os
 from boto.ec2.regioninfo import RegionInfo
 
-from cloudbridge.providers.interfaces import CloudProvider
+from cloudbridge.providers.base import BaseCloudProvider
 from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import KeyPair
 
 
-class EC2CloudProviderV1(CloudProvider):
+class EC2CloudProviderV1(BaseCloudProvider):
 
     def __init__(self, config):
         self.config = config
@@ -75,8 +75,5 @@ class EC2SecurityService(SecurityService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        kps = self.provider.ec2_conn.get_all_key_pairs()
-        kpl = []
-        for kp in kps:
-            kpl.append(KeyPair(kp.name))
-        return kpl
+        key_pairs = self.provider.ec2_conn.get_all_key_pairs()
+        return [KeyPair(kp.name) for kp in key_pairs]

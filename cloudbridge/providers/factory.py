@@ -24,12 +24,12 @@ class CloudProviderFactory():
         :rtype: list
         :return: A list of available providers and their interface versions.
         """
-        return [{"name": "openstack",
-                 "implementation":
+        return [{"name": ProviderList.OPENSTACK,
+                 "implementations":
                  [{"class": "cloudbridge.providers.openstack.OpenStackCloudProviderV1",
                    "version": 1}]},
-                {"name": "ec2",
-                 "implementation":
+                {"name": ProviderList.EC2,
+                 "implementations":
                  [{"class": "cloudbridge.providers.ec2.EC2CloudProviderV1",
                    "version": 1}]}]
 
@@ -52,7 +52,7 @@ class CloudProviderFactory():
         for provider in self.list_providers():
             if provider['name'] == name:
                 if version:
-                    match = [item for item in provider["implementation"]
+                    match = [item for item in provider["implementations"]
                              if item["version"] == version]
                     if match:
                         return match[0]["class"]
@@ -60,7 +60,7 @@ class CloudProviderFactory():
                         return None
                 else:
                     # Return latest available version
-                    return sorted((item for item in provider["implementation"]),
+                    return sorted((item for item in provider["implementations"]),
                                   key=lambda x: x["version"])[-1]["class"]
         return None
 
@@ -82,13 +82,26 @@ class CloudProviderFactory():
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
         """
-        provider = self.find_provider_impl(name, version=version)
-        if provider is None:
+        impl = self.find_provider_impl(name, version=version)
+        if impl is None:
             raise NotImplementedError(
                 'A provider by name {0} implementing interface v1 could not be '
                 'found'.format(name))
-        else:
-            module_name, class_name = provider.rsplit(".", 1)
-            provider_class = getattr(importlib.import_module(module_name),
-                                     class_name)
-            return provider_class(config)
+        provider_class = self._get_provider_class(impl)
+        return provider_class(config)
+
+    def _get_provider_class(self, impl):
+        module_name, class_name = impl.rsplit(".", 1)
+        provider_class = getattr(importlib.import_module(module_name),
+                                 class_name)
+        return provider_class
+
+    def get_all_provider_classes(self):
+        """
+        Returns a list of classes for all available provider implementations
+        """
+        all_providers = []
+        for provider in self.list_providers():
+            for impl in provider["implementations"]:
+                all_providers.append(self._get_provider_class(impl["class"]))
+        return all_providers
