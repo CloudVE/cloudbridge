@@ -5,7 +5,7 @@ the bridge pattern.
 Usage example
 ```python
 from cloudbridge.providers.interfaces import CloudProviderFactory
-from cloudbridge.util import Bunch
+from bunch import Bunch
 
 config = Bunch(access_key='a_key',
                secret_key='s_key')
