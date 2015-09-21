@@ -14,7 +14,7 @@ class OpenStackCloudProviderV1(CloudProvider):
     def __init__(self, config):
         self.config = config
 
-        # Initialize optional fields
+        # Initialize cloud connection fields
         if isinstance(config, dict):
             self.api_version = config.get(
                 'api_version', os.environ.get('OS_COMPUTE_API_VERSION', 2))
@@ -23,24 +23,26 @@ class OpenStackCloudProviderV1(CloudProvider):
             self.tenant_name = config.get('tenant_name', os.environ.get('OS_TENANT_NAME', None))
             self.auth_url = config.get('auth_url', os.environ.get('OS_AUTH_URL', None))
         else:
-            self.api_version = config.api_version if hasattr(
-                config, 'api_version') and config.api_version else os.environ.get('OS_COMPUTE_API_VERSION', None)
-            self.username = config.username if hasattr(
-                config, 'username') and config.username else os.environ.get('OS_USERNAME', None)
-            self.password = config.password if hasattr(
-                config, 'password') and config.password else os.environ.get('OS_PASSWORD', None)
-            self.tenant_name = config.tenant_name if hasattr(
-                config, 'tenant_name') and config.tenant_name else os.environ.get('OS_TENANT_NAME', None)
-            self.auth_url = config.auth_url if hasattr(
-                config, 'auth_url') and config.auth_url else os.environ.get('OS_AUTH_URL', None)
+            self.username = config.username if hasattr(config, 'username') and \
+                config.username else os.environ.get('OS_USERNAME')
+            self.password = config.password if hasattr(config, 'password') and \
+                config.password else os.environ.get('OS_PASSWORD')
+            self.tenant_name = config.tenant_name if hasattr(config, 'tenant_name') \
+                and config.tenant_name else os.environ.get('OS_TENANT_NAME')
+            self.auth_url = config.auth_url if hasattr(config, 'auth_url') and \
+                config.auth_url else os.environ.get('OS_AUTH_URL')
+            self.region_name = config.region_name if hasattr(config, 'region_name') \
+                and config.region_name else os.environ.get('OS_REGION_NAME')
 
+        # Create a connection object
         self.nova = self._connect_nova()
 
-        # self.Compute = EC2ComputeService(self)
-        # self.Images = EC2ImageService(self)
+        # Initialize provider services
+        self.compute = None  # OpenStackComputeService(self)
+        self.images = None  # OpenStackImageService(self)
         self.security = OpenStackSecurityService(self)
-        # self.BlockStore = EC2BlockStore(self)
-        # self.ObjectStore = EC2ObjectStore(self)
+        self.block_store = None  # OpenStackBlockStore(self)
+        self.object_store = None  # OpenStackObjectStore(self)
 
     def _connect_nova(self):
         """
@@ -56,7 +58,7 @@ class OpenStackSecurityService(SecurityService):
 
     def list_key_pairs(self):
         """
-        List all key pairs.
+        List all key pairs associated with this account.
 
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
