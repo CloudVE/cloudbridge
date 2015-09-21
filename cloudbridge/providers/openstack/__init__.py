@@ -76,7 +76,7 @@ class OpenStackSecurityService(SecurityService):
 
     def list_key_pairs(self):
         """
-        List all key pairs.
+        List all key pairs associated with this account.
 
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects

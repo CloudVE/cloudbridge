@@ -1,18 +1,21 @@
 class CloudProviderServiceType():
 
     """
-    Defines possible service types that
-    are offered by providers. Providers can implement the
-    has_service method and clients can check for the availability
-    of a service with
-    if (provider.has_service(CloudProviderServiceTypes.OBJECTSTORE))
-        provider.ObjectStore.
+    Defines possible service types that are offered by providers.
+
+    Providers can implement the ``has_service`` method and clients can check
+    for the availability of a service with::
+
+        if (provider.has_service(CloudProviderServiceTypes.OBJECTSTORE))
+            ...
+
     """
     COMPUTE = 'compute'
     IMAGE = 'image'
     SECURITY = 'security'
     VOLUME = 'volume'
-    OBJECTSTORE = 'objectstore'
+    BLOCKSTORE = 'block_store'
+    OBJECTSTORE = 'object_store'
 
 
 class CloudProvider():
@@ -37,20 +40,22 @@ class CloudProvider():
         raise NotImplementedError(
             '__init__ not implemented by this provider')
 
-    def has_service(self, service):
+    def has_service(self, service_type):
         """
-        Checks whether this provider supports a given service"
+        Checks whether this provider supports a given service.
 
-        :type config: an object with required fields
-        :param config: This can be a Bunch or any other object whose fields can
-                       be accessed using dot notation. See specific provider
-                       implementation for the required fields.
+        :type service_type: str or :class:``.CloudProviderServiceType``
+        :param service_type: Type of service the check support for.
 
-        :rtype: ``object`` of :class:`.CloudProvider`
-        :return:  a concrete provider instance
+        :rtype: bool
+        :return: ``True`` if the service type is supported.
         """
-        raise NotImplementedError(
-            'has_service not implemented by this provider')
+        try:
+            if getattr(self, service_type):
+                return True
+        except AttributeError:
+            pass  # Undefined service type
+        return False
 
     def account(self):
         """
@@ -71,7 +76,7 @@ class CloudProvider():
         :return:  a ComputeService object
         """
         raise NotImplementedError(
-            'CloudProvider.Compute not implemented by this provider')
+            'CloudProvider.compute not implemented by this provider')
 
     def image(self):
         """
@@ -82,7 +87,7 @@ class CloudProvider():
         :return: an ImageService object
         """
         raise NotImplementedError(
-            'CloudProvider.Images not implemented by this provider')
+            'CloudProvider.image not implemented by this provider')
 
     def security(self):
         """
@@ -92,7 +97,7 @@ class CloudProvider():
         :return: a SecurityService object
         """
         raise NotImplementedError(
-            'CloudProvider.Security not implemented by this provider')
+            'CloudProvider.security not implemented by this provider')
 
     def volume(self):
         """
@@ -103,7 +108,7 @@ class CloudProvider():
         :return: a VolumeService object
         """
         raise NotImplementedError(
-            'CloudProvider.VolumeService not implemented by this provider')
+            'CloudProvider.volume not implemented by this provider')
 
     def object_store(self):
         """
@@ -113,7 +118,7 @@ class CloudProvider():
         :return: an ObjectStoreService object
         """
         raise NotImplementedError(
-            'CloudProvider.ObjectStore not implemented by this provider')
+            'CloudProvider.object_store not implemented by this provider')
 
 
 class ProviderService():
@@ -357,7 +362,7 @@ class SecurityService(ProviderService):
 
     def list_key_pairs(self):
         """
-        List all key pairs.
+        List all key pairs associated with this account.
 
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects

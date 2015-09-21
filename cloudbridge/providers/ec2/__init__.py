@@ -17,7 +17,7 @@ class EC2CloudProviderV1(BaseCloudProvider):
         self.config = config
         self.cloud_type = 'ec2'
 
-        # Initialize optional fields
+        # Initialize cloud connection fields
         if isinstance(config, dict):
             self.a_key = config.get('access_key', os.environ.get('EC2_ACCESS_KEY', None))
             self.s_key = config.get('secret_key', os.environ.get('EC2_SECRET_KEY', None))
@@ -27,24 +27,27 @@ class EC2CloudProviderV1(BaseCloudProvider):
             self.ec2_port = config.get('ec2_port', '')
             self.ec2_conn_path = config.get('ec2_conn_path', '/')
         else:
-            self.a_key = config.access_key if hasattr(
-                config, 'access_key') and config.access_key else os.environ.get('EC2_ACCESS_KEY', None)
-            self.s_key = config.secret_key if hasattr(
-                config, 'secret_key') and config.secret_key else os.environ.get('EC2_ACCESS_KEY', None)
+            self.a_key = config.access_key if hasattr(config, 'access_key') and \
+                config.access_key else os.environ.get('EC2_ACCESS_KEY', None)
+            self.s_key = config.secret_key if hasattr(config, 'secret_key') and \
+                config.secret_key else os.environ.get('EC2_ACCESS_KEY', None)
             self.is_secure = config.is_secure if hasattr(config, 'is_secure') else True
-            self.region_name = config.region_name if hasattr(config, 'region_name') else 'us-east-1'
-            self.region_endpoint = config.region_endpoint if hasattr(
-                config, 'region_endpoint') else 'ec2.us-east-1.amazonaws.com'
+            self.region_name = config.region_name if hasattr(config, 'region_name') \
+                else 'us-east-1'
+            self.region_endpoint = config.region_endpoint if hasattr(config, 'region_endpoint') \
+                else 'ec2.us-east-1.amazonaws.com'
             self.ec2_port = config.ec2_port if hasattr(config, 'ec2_port') else ''
             self.ec2_conn_path = config.ec2_conn_path if hasattr(config, 'ec2_conn_path') else "/"
 
+        # Create a connection object
         self.ec2_conn = self._connect_ec2()
 
-        # self.Compute = EC2ComputeService(self)
-        # self.Images = EC2ImageService(self)
+        # Initialize provider services
+        self.compute = None  # EC2ComputeService(self)
+        self.images = None  # EC2ImageService(self)
         self.security = EC2SecurityService(self)
-        # self.BlockStore = EC2BlockStore(self)
-        # self.ObjectStore = EC2ObjectStore(self)
+        self.block_store = None  # EC2BlockStore(self)
+        self.object_store = None  # EC2ObjectStore(self)
 
     def _connect_ec2(self):
         """
@@ -70,7 +73,7 @@ class EC2SecurityService(SecurityService):
 
     def list_key_pairs(self):
         """
-        List all key pairs.
+        List all key pairs associated with this account.
 
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
