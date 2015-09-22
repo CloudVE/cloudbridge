@@ -7,6 +7,7 @@ import os
 from boto.ec2.regioninfo import RegionInfo
 
 from cloudbridge.providers.base import BaseCloudProvider
+from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import KeyPair
 
@@ -80,3 +81,13 @@ class EC2SecurityService(SecurityService):
         """
         key_pairs = self.provider.ec2_conn.get_all_key_pairs()
         return [KeyPair(kp.name) for kp in key_pairs]
+
+    def list_security_groups(self):
+        """
+        Create a new security group
+
+        :rtype: ``list`` of :class:`.KeyPair`
+        :return:  list of KeyPair objects
+        """
+        groups = self.provider.ec2_conn.get_all_security_groups()
+        return [BaseSecurityGroup(group.name) for group in groups]

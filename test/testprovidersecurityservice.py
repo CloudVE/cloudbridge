@@ -2,7 +2,7 @@ import unittest
 from cloudbridge.providers.factory import CloudProviderFactory
 from cloudbridge.providers.factory import ProviderList
 from cloudbridge.providers import interfaces
-from helpers import ProviderTestBase
+from test.helpers import ProviderTestBase
 
 
 class ProviderSecurityServiceTestCase(ProviderTestBase):

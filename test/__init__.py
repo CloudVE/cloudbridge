@@ -22,8 +22,8 @@ unittest and nose2's automatic discovery.
 (The test generator will automatically add unittest.TestCase as a base class to each combination)
 """
 
-from helpers import ProviderTestCaseGenerator
-from testprovidersecurityservice import ProviderSecurityServiceTestCase
+from test.helpers import ProviderTestCaseGenerator
+from test.testprovidersecurityservice import ProviderSecurityServiceTestCase
 
 PROVIDER_TESTS = [ProviderSecurityServiceTestCase]
 
