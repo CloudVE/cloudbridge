@@ -1,4 +1,4 @@
-class CloudProviderServiceType():
+class CloudProviderServiceType(object):
 
     """
     Defines possible service types that are offered by providers.
@@ -18,7 +18,7 @@ class CloudProviderServiceType():
     OBJECTSTORE = 'object_store'
 
 
-class CloudProvider():
+class CloudProvider(object):
 
     """
     Base interface for a cloud provider
@@ -117,7 +117,7 @@ class CloudProvider():
             'CloudProvider.object_store not implemented by this provider')
 
 
-class ProviderService():
+class ProviderService(object):
 
     """
     Base interface for any service supported by a provider
@@ -407,7 +407,7 @@ class SecurityService(ProviderService):
             'delete_security_group not implemented by this provider')
 
 
-class Instance():
+class Instance(object):
 
     def instance_id(self):
         """
@@ -531,7 +531,7 @@ class Instance():
             'key_pair_name not implemented by this provider')
 
 
-class Volume():
+class Volume(object):
 
     def attach(self, instance_id, device):
         """
@@ -596,7 +596,7 @@ class Volume():
             'delete not implemented by this provider')
 
 
-class Snapshot():
+class Snapshot(object):
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
@@ -660,7 +660,7 @@ class Snapshot():
         raise NotImplementedError('delete not implemented by this provider')
 
 
-class Region():
+class Region(object):
 
     def name(self):
         raise NotImplementedError(
@@ -671,7 +671,7 @@ class Region():
             'list_zones not implemented by this provider')
 
 
-class KeyPair():
+class KeyPair(object):
 
     def __init__(self, name, material=None):
         self.name = name
@@ -691,7 +691,7 @@ class KeyPair():
     #         'name not implemented by this provider')
 
 
-class SecurityGroup():
+class SecurityGroup(object):
 
     def name(self):
         """
@@ -704,7 +704,7 @@ class SecurityGroup():
             'name not implemented by this provider')
 
 
-class ContainerProvider():
+class ContainerProvider(object):
 
     """
     Represents a container instance, such as Docker or LXC
@@ -719,7 +719,7 @@ class ContainerProvider():
             'delete_container not implemented by this provider')
 
 
-class DeploymentProvider():
+class DeploymentProvider(object):
 
     """
     Represents a deployment provider, such as Ansible or Shell script provider

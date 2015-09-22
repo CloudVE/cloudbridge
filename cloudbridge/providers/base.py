@@ -25,6 +25,12 @@ class BaseCloudProvider(CloudProvider):
             pass  # Undefined service type
         return False
 
+    def _get_config_value(self, config, key, default_value):
+        if isinstance(config, dict):
+            return config.get(key, default_value)
+        else:
+            return getattr(config, key) if hasattr(config, key) and getattr(config, key) else default_value
+
 
 class BaseKeyPair(KeyPair):
 

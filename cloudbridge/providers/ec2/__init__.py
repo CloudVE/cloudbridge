@@ -19,26 +19,16 @@ class EC2CloudProviderV1(BaseCloudProvider):
         self.cloud_type = 'ec2'
 
         # Initialize cloud connection fields
-        if isinstance(config, dict):
-            self.a_key = config.get('access_key', os.environ.get('EC2_ACCESS_KEY', None))
-            self.s_key = config.get('secret_key', os.environ.get('EC2_SECRET_KEY', None))
-            self.is_secure = config.get('is_secure', True)
-            self.region_name = config.get('region_name', 'us-east-1')
-            self.region_endpoint = config.get('region_endpoint', 'ec2.us-east-1.amazonaws.com')
-            self.ec2_port = config.get('ec2_port', '')
-            self.ec2_conn_path = config.get('ec2_conn_path', '/')
-        else:
-            self.a_key = config.access_key if hasattr(config, 'access_key') and \
-                config.access_key else os.environ.get('EC2_ACCESS_KEY', None)
-            self.s_key = config.secret_key if hasattr(config, 'secret_key') and \
-                config.secret_key else os.environ.get('EC2_ACCESS_KEY', None)
-            self.is_secure = config.is_secure if hasattr(config, 'is_secure') else True
-            self.region_name = config.region_name if hasattr(config, 'region_name') \
-                else 'us-east-1'
-            self.region_endpoint = config.region_endpoint if hasattr(config, 'region_endpoint') \
-                else 'ec2.us-east-1.amazonaws.com'
-            self.ec2_port = config.ec2_port if hasattr(config, 'ec2_port') else ''
-            self.ec2_conn_path = config.ec2_conn_path if hasattr(config, 'ec2_conn_path') else "/"
+        self.a_key = self._get_config_value(
+            config, 'access_key', os.environ.get('EC2_ACCESS_KEY', None))
+        self.s_key = self._get_config_value(
+            config, 'secret_key', os.environ.get('EC2_SECRET_KEY', None))
+        self.is_secure = self._get_config_value(config, 'is_secure', True)
+        self.region_name = self._get_config_value(config, 'region_name', 'us-east-1')
+        self.region_endpoint = self._get_config_value(
+            config, 'region_endpoint', 'ec2.us-east-1.amazonaws.com')
+        self.ec2_port = self._get_config_value(config, 'ec2_port', '')
+        self.ec2_conn_path = self._get_config_value(config, 'ec2_port', '/')
 
         # Create a connection object
         self.ec2_conn = self._connect_ec2()

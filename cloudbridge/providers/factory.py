@@ -1,13 +1,13 @@
 import importlib
 
 
-class ProviderList():
+class ProviderList(object):
     EC2 = 'ec2'
     OPENSTACK = 'openstack'
     AZURE = 'azure'
 
 
-class CloudProviderFactory():
+class CloudProviderFactory(object):
 
     """
     Get info and handle on the available cloud provider implementations.

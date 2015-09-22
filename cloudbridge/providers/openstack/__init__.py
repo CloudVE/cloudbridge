@@ -19,28 +19,19 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
     def __init__(self, config):
         self.config = config
 
-        # Initialize optional fields
-        if isinstance(config, dict):
-            self.api_version = config.get(
-                'api_version', os.environ.get('OS_COMPUTE_API_VERSION', 2))
-            self.username = config.get('username', os.environ.get('OS_USERNAME', None))
-            self.password = config.get('password', os.environ.get('OS_PASSWORD', None))
-            self.tenant_name = config.get('tenant_name', os.environ.get('OS_TENANT_NAME', None))
-            self.auth_url = config.get('auth_url', os.environ.get('OS_AUTH_URL', None))
-        else:
-            self.api_version = config.api_version if hasattr(
-                config, 'api_version') and config.api_version else os.environ.get('OS_COMPUTE_API_VERSION', None)
-            self.username = config.username if hasattr(
-                config, 'username') and config.username else os.environ.get('OS_USERNAME', None)
-            self.password = config.password if hasattr(
-                config, 'password') and config.password else os.environ.get('OS_PASSWORD', None)
-            self.tenant_name = config.tenant_name if hasattr(
-                config, 'tenant_name') and config.tenant_name else os.environ.get('OS_TENANT_NAME', None)
-            self.auth_url = config.auth_url if hasattr(
-                config, 'auth_url') and config.auth_url else os.environ.get('OS_AUTH_URL', None)
+        self.api_version = self._get_config_value(
+            config, 'api_version', os.environ.get('OS_COMPUTE_API_VERSION', 2))
+        self.username = self._get_config_value(
+            config, 'username', os.environ.get('OS_USERNAME', None))
+        self.password = self._get_config_value(
+            config, 'password', os.environ.get('OS_PASSWORD', None))
+        self.tenant_name = self._get_config_value(
+            config, 'tenant_name', os.environ.get('OS_TENANT_NAME', None))
+        self.auth_url = self._get_config_value(
+            config, 'auth_url', os.environ.get('OS_AUTH_URL', None))
 
-        self._nova = self._connect_nova()
-        self._keystone = self._connect_keystone()
+        self.nova = self._connect_nova()
+        self.keystone = self._connect_keystone()
 
         # self.Compute = EC2ComputeService(self)
         # self.Images = EC2ImageService(self)
@@ -81,7 +72,7 @@ class OpenStackSecurityService(SecurityService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        key_pairs = self.provider._nova.keypairs.list()
+        key_pairs = self.provider.nova.keypairs.list()
         return [KeyPair(kp.id) for kp in key_pairs]
 
     def list_security_groups(self):
@@ -91,5 +82,5 @@ class OpenStackSecurityService(SecurityService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        groups = self.provider._nova.security_groups.list()
+        groups = self.provider.nova.security_groups.list()
         return [BaseSecurityGroup(group.name) for group in groups]
