@@ -1,9 +1,9 @@
-# libcloudbridge
-libcloudbridge provides a layer of abstraction over different cloud providers. It's a straightfoward implementation of
+# cloudbridge
+cloudbridge provides a layer of abstraction over different cloud providers. It's a straightfoward implementation of
 the bridge pattern.
 
-[![Code Climate](https://codeclimate.com/github/gvlproject/libcloudbridge/badges/gpa.svg)](https://codeclimate.com/github/gvlproject/libcloudbridge)
-[![Test Coverage](https://codeclimate.com/github/gvlproject/libcloudbridge/badges/coverage.svg)](https://codeclimate.com/github/gvlproject/libcloudbridge/coverage)
+[![Code Climate](https://codeclimate.com/github/gvlproject/libcloudbridge/badges/gpa.svg)](https://codeclimate.com/github/gvlproject/cloudbridge)
+[![Test Coverage](https://codeclimate.com/github/gvlproject/libcloudbridge/badges/coverage.svg)](https://codeclimate.com/github/gvlproject/cloudbridge/coverage)
 
 Usage example
 ```python
