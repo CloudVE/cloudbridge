@@ -5,6 +5,8 @@ the bridge pattern.
 [![Code Climate](https://codeclimate.com/github/gvlproject/libcloudbridge/badges/gpa.svg)](https://codeclimate.com/github/gvlproject/cloudbridge)
 [![Test Coverage](https://codeclimate.com/github/gvlproject/libcloudbridge/badges/coverage.svg)](https://codeclimate.com/github/gvlproject/cloudbridge/coverage)
 [![Build Status](https://travis-ci.org/gvlproject/cloudbridge.svg?branch=master)](https://travis-ci.org/gvlproject/cloudbridge)
+[![Code Health](https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat)](https://landscape.io/github/gvlproject/cloudbridge/master)
+[![Coverage Status](https://coveralls.io/repos/gvlproject/cloudbridge/badge.svg?branch=master&service=github)](https://coveralls.io/github/gvlproject/cloudbridge?branch=master)
 
 Usage example
 ```python
