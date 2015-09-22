@@ -13,7 +13,8 @@ automatically generate a new Python class for each combination of test and provi
 load_tests protocol (https://docs.python.org/2/library/unittest.html#load-tests-protocol)
 is used to aid test discovery.
 
-Use ``python -m unittest tests`` to run these unit tests. (alternatively, use ``nose2 tests``)
+Use ``python setup.py test`` to run these unit tests. (alternatively,use
+``python -m unittest test``)
 
 All test cases need to be registered below, and available providers will be discovered through
 the ProviderFactory. Test Cases must not inherit from unittest.TestCase, to avoid confusing
