@@ -9,9 +9,9 @@ from keystoneclient import session
 from keystoneclient.auth.identity import Password
 
 from cloudbridge.providers.base import BaseCloudProvider
+from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import KeyPair
-from cloudbridge.providers.common import BaseSecurityGroup
 
 
 class OpenStackCloudProviderV1(BaseCloudProvider):

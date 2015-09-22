@@ -1,4 +1,6 @@
 from cloudbridge.providers.interfaces import CloudProvider
+from cloudbridge.providers.interfaces import KeyPair
+from cloudbridge.providers.interfaces import SecurityGroup
 
 
 class BaseCloudProvider(CloudProvider):
@@ -22,3 +24,32 @@ class BaseCloudProvider(CloudProvider):
         except AttributeError:
             pass  # Undefined service type
         return False
+
+
+class BaseKeyPair(KeyPair):
+
+    def __init__(self, name, material=None):
+        self.name = name
+        self.material = material
+
+    def __repr__(self):
+        return "<CBKeyPair: {0}>".format(self.name)
+
+    # def name(self):
+    #     """
+    #     Return the name of this key pair.
+
+    #     :rtype: str
+    #     :return: A name of this ssh key pair
+    #     """
+    #     raise NotImplementedError(
+    #         'name not implemented by this provider')
+
+
+class BaseSecurityGroup(SecurityGroup):
+
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return "<CBSecurityGroup: {0}>".format(self.name)
