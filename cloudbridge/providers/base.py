@@ -16,7 +16,7 @@ class BaseCloudProvider(CloudProvider):
         Checks whether this provider supports a given service.
 
         :type service_type: str or :class:``.CloudProviderServiceType``
-        :param service_type: Type of service the check support for.
+        :param service_type: Type of service to check support for.
 
         :rtype: bool
         :return: ``True`` if the service type is supported.

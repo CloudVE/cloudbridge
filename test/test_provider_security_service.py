@@ -1,6 +1,3 @@
-import unittest
-from cloudbridge.providers.factory import CloudProviderFactory
-from cloudbridge.providers.factory import ProviderList
 from cloudbridge.providers import interfaces
 from test.helpers import ProviderTestBase
 

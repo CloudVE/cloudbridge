@@ -23,9 +23,13 @@ unittest and nose2's automatic discovery.
 """
 
 from test.helpers import ProviderTestCaseGenerator
-from test.testprovidersecurityservice import ProviderSecurityServiceTestCase
+from test.test_provider_security_service import ProviderSecurityServiceTestCase
+from test.test_provider_interface import ProviderInterfaceTestCase
 
-PROVIDER_TESTS = [ProviderSecurityServiceTestCase]
+PROVIDER_TESTS = [
+    ProviderSecurityServiceTestCase,
+    ProviderInterfaceTestCase
+]
 
 
 def load_tests(loader=None, tests=None, pattern=None):
