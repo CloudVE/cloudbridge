@@ -33,6 +33,13 @@ class ProviderTestCaseGenerator():
         """
         return provider_class({})
 
+    def generate_new_test_class(self, name, testcase_class):
+        """
+        Generates a new type which inherits from the given testcase_class and unittest.TestCase
+        """
+        class_name = "{0}{1}".format(name, testcase_class.__name__)
+        return type(class_name, (testcase_class, unittest.TestCase), {})
+
     def generate_test_suite_for_provider_testcase(self, provider_class, testcase_class):
         """
         Generate and return a suite of tests for a specific provider class and testcase
@@ -42,10 +49,8 @@ class ProviderTestCaseGenerator():
         testnames = testloader.getTestCaseNames(testcase_class)
         suite = unittest.TestSuite()
         for name in testnames:
-            generated_cls = type(
-                "test" + provider_class.__name__ + str(testcase_class.__name__), (testcase_class, unittest.TestCase), {})
-            suite.addTest(
-                generated_cls(name, self.create_provider_instance(provider_class)))
+            generated_cls = self.generate_new_test_class(provider_class.__name__, testcase_class)
+            suite.addTest(generated_cls(name, self.create_provider_instance(provider_class)))
         return suite
 
     def generate_test_suite_for_provider(self, provider_class):

@@ -5,6 +5,9 @@ from cloudbridge.providers.interfaces import SecurityGroup
 
 class BaseCloudProvider(CloudProvider):
 
+    def __init__(self, config):
+        self.config = config
+
     def name(self):
         return str(self.__class__.__name__)
 
@@ -25,11 +28,11 @@ class BaseCloudProvider(CloudProvider):
             pass  # Undefined service type
         return False
 
-    def _get_config_value(self, config, key, default_value):
-        if isinstance(config, dict):
-            return config.get(key, default_value)
+    def _get_config_value(self, key, default_value):
+        if isinstance(self.config, dict):
+            return self.config.get(key, default_value)
         else:
-            return getattr(config, key) if hasattr(config, key) and getattr(config, key) else default_value
+            return getattr(self.config, key) if hasattr(self.config, key) and getattr(self.config, key) else default_value
 
 
 class BaseKeyPair(KeyPair):

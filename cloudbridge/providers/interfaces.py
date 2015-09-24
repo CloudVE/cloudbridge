@@ -40,6 +40,16 @@ class CloudProvider(object):
         raise NotImplementedError(
             '__init__ not implemented by this provider')
 
+    def config(self):
+        """
+        Returns the config object associated with this provider.
+
+        :rtype: ``object``
+        :return:  The config object used to initialize this provider
+        """
+        raise NotImplementedError(
+            'CloudProvider.config not implemented by this provider')
+
     def has_service(self, service_type):
         """
         Checks whether this provider supports a given service.

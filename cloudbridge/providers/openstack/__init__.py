@@ -17,18 +17,15 @@ from cloudbridge.providers.interfaces import KeyPair
 class OpenStackCloudProviderV1(BaseCloudProvider):
 
     def __init__(self, config):
-        self.config = config
+        super(OpenStackCloudProviderV1, self).__init__(config)
 
         self.api_version = self._get_config_value(
-            config, 'api_version', os.environ.get('OS_COMPUTE_API_VERSION', 2))
-        self.username = self._get_config_value(
-            config, 'username', os.environ.get('OS_USERNAME', None))
-        self.password = self._get_config_value(
-            config, 'password', os.environ.get('OS_PASSWORD', None))
+            'api_version', os.environ.get('OS_COMPUTE_API_VERSION', 2))
+        self.username = self._get_config_value('username', os.environ.get('OS_USERNAME', None))
+        self.password = self._get_config_value('password', os.environ.get('OS_PASSWORD', None))
         self.tenant_name = self._get_config_value(
-            config, 'tenant_name', os.environ.get('OS_TENANT_NAME', None))
-        self.auth_url = self._get_config_value(
-            config, 'auth_url', os.environ.get('OS_AUTH_URL', None))
+            'tenant_name', os.environ.get('OS_TENANT_NAME', None))
+        self.auth_url = self._get_config_value('auth_url', os.environ.get('OS_AUTH_URL', None))
 
         self.nova = self._connect_nova()
         self.keystone = self._connect_keystone()

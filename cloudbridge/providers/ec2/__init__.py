@@ -15,20 +15,18 @@ from cloudbridge.providers.interfaces import KeyPair
 class EC2CloudProviderV1(BaseCloudProvider):
 
     def __init__(self, config):
-        self.config = config
+        super(EC2CloudProviderV1, self).__init__(config)
         self.cloud_type = 'ec2'
 
         # Initialize cloud connection fields
-        self.a_key = self._get_config_value(
-            config, 'access_key', os.environ.get('EC2_ACCESS_KEY', None))
-        self.s_key = self._get_config_value(
-            config, 'secret_key', os.environ.get('EC2_SECRET_KEY', None))
-        self.is_secure = self._get_config_value(config, 'is_secure', True)
-        self.region_name = self._get_config_value(config, 'region_name', 'us-east-1')
+        self.a_key = self._get_config_value('access_key', os.environ.get('EC2_ACCESS_KEY', None))
+        self.s_key = self._get_config_value('secret_key', os.environ.get('EC2_SECRET_KEY', None))
+        self.is_secure = self._get_config_value('is_secure', True)
+        self.region_name = self._get_config_value('region_name', 'us-east-1')
         self.region_endpoint = self._get_config_value(
-            config, 'region_endpoint', 'ec2.us-east-1.amazonaws.com')
-        self.ec2_port = self._get_config_value(config, 'ec2_port', '')
-        self.ec2_conn_path = self._get_config_value(config, 'ec2_port', '/')
+            'region_endpoint', 'ec2.us-east-1.amazonaws.com')
+        self.ec2_port = self._get_config_value('ec2_port', '')
+        self.ec2_conn_path = self._get_config_value('ec2_port', '/')
 
         # Create a connection object
         self.ec2_conn = self._connect_ec2()
