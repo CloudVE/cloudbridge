@@ -6,6 +6,7 @@ the bridge pattern.
 [![Code Health](https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat)](https://landscape.io/github/gvlproject/cloudbridge/master)
 [![Coverage Status](https://coveralls.io/repos/gvlproject/cloudbridge/badge.svg?branch=master&service=github)](https://coveralls.io/github/gvlproject/cloudbridge?branch=master)
 [![Build Status](https://travis-ci.org/gvlproject/cloudbridge.svg?branch=master)](https://travis-ci.org/gvlproject/cloudbridge)
+[![Release Status](https://img.shields.io/pypi/status/cloudbridge.svg)](https://pypi.python.org/pypi/cloudbridge/)
 
 Usage example
 ```python
