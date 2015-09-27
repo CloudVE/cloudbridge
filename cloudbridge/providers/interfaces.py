@@ -200,9 +200,37 @@ class ComputeService(ProviderService):
         raise NotImplementedError(
             'list_regions not implemented by this provider')
 
-    def create_instance(self):
+    def create_instance(self, name, image, instance_type, zone=None, keypair=None, security_groups=None,
+                        user_data=None, block_device_mapping=None, network_interfaces=None, **kwargs):
         """
         Creates a new virtual machine instance.
+
+        :type  name: ``str``
+        :param name: The name of the virtual machine instance
+
+        :type  image: ``MachineImage`` or ``str``
+        :param image: The MachineImage object or id to boot the virtual machine with
+
+        :type  instance_type: ``InstanceType`` or ``str``
+        :param instance_type: The InstanceType or name, specifying the size of the instance to boot into
+
+        :type  zone: ``Zone`` or ``str``
+        :param zone: The Zone or its name, where the instance should be placed.
+
+        :type  keypair: ``KeyPair`` or ``str``
+        :param keypair: The KeyPair object or its name, to set for the instance
+
+        :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a list of ``str`` names
+        :param security_groups: A list of SecurityGroup objects or a list of SecurityGroup names, which should be assigned to this instance.
+
+        :type  user_data: ``str``
+        :param user_data: An extra userdata object which is compatible with the provider.
+
+        :type  block_device_mapping: ``BlockDeviceMapping`` object
+        :param block_device_mapping: A ``BlockDeviceMapping`` object which describes additional block device mappings for this instance
+
+        :type  network_interfaces: ``NetworkInterfaceList`` object
+        :param network_interfaces: A ``NetworkInterfaceList`` object which describes network interfaces for this instance
 
         :rtype: `object`` of :class:`.Instance`
         :return:  an instance of Instance class
@@ -459,7 +487,7 @@ class Instance(object):
         raise NotImplementedError(
             'private_ips not implemented by this provider')
 
-    def type(self):
+    def instance_type(self):
         """
         Get the instance type.
 
@@ -500,9 +528,9 @@ class Instance(object):
         raise NotImplementedError(
             'image_id not implemented by this provider')
 
-    def placement(self):
+    def placement_zone(self):
         """
-        Get the placement where this instance is running.
+        Get the placement zone where this instance is running.
 
         :rtype: str
         :return: Region/zone/placement where this instance is running.
@@ -539,6 +567,39 @@ class Instance(object):
         """
         raise NotImplementedError(
             'key_pair_name not implemented by this provider')
+
+
+class MachineImage(object):
+
+    def image_id(self):
+        """
+        Get the image identifier.
+
+        :rtype: ``str``
+        :return: ID for this instance as returned by the cloud middleware.
+        """
+        raise NotImplementedError(
+            'MachineImage.image_id not implemented by this provider')
+
+    def name(self):
+        """
+        Get the image name.
+
+        :rtype: ``str``
+        :return: Name for this image as returned by the cloud middleware.
+        """
+        raise NotImplementedError(
+            'MachineImage.name not implemented by this provider')
+
+    def description(self):
+        """
+        Get the image description.
+
+        :rtype: ``str``
+        :return: Description for this image as returned by the cloud middleware
+        """
+        raise NotImplementedError(
+            'MachineImage.description not implemented by this provider')
 
 
 class Volume(object):
@@ -683,22 +744,35 @@ class Region(object):
 
 class KeyPair(object):
 
-    def __init__(self, name, material=None):
-        self.name = name
-        self.material = material
+    def name(self):
+        raise NotImplementedError(
+            'name not implemented by this provider')
 
-    def __repr__(self):
-        return "CloudBridge KeyPair:{0}".format(self.name)
+    def meterial(self):
+        raise NotImplementedError(
+            'meterial not implemented by this provider')
 
-    # def name(self):
-    #     """
-    #     Return the name of this key pair.
 
-    #     :rtype: str
-    #     :return: A name of this ssh key pair
-    #     """
-    #     raise NotImplementedError(
-    #         'name not implemented by this provider')
+class PlacementZone(object):
+
+    """
+    A placement zone object.
+    """
+
+    def name(self):
+        raise NotImplementedError(
+            'PlacementZone.name not implemented by this provider')
+
+
+class InstanceType(object):
+
+    """
+    An instance type object.
+    """
+
+    def name(self):
+        raise NotImplementedError(
+            'InstanceType.name not implemented by this provider')
 
 
 class SecurityGroup(object):

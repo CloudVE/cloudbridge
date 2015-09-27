@@ -10,7 +10,10 @@ from keystoneclient.auth.identity import Password
 
 from cloudbridge.providers.base import BaseCloudProvider
 from cloudbridge.providers.base import BaseSecurityGroup
+from cloudbridge.providers.base import BaseKeyPair
+from cloudbridge.providers.interfaces import Instance
 from cloudbridge.providers.interfaces import SecurityService
+from cloudbridge.providers.interfaces import ComputeService
 from cloudbridge.providers.interfaces import KeyPair
 
 
@@ -40,7 +43,8 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         """
         Get an openstack client object for the given cloud.
         """
-        return nova_client.Client(self.api_version, self.username, self.password, self.tenant_name, self.auth_url)
+        return nova_client.Client(
+            self.api_version, self.username, self.password, self.tenant_name, self.auth_url)
 
     def _connect_keystone(self):
         """
@@ -70,7 +74,7 @@ class OpenStackSecurityService(SecurityService):
         :return:  list of KeyPair objects
         """
         key_pairs = self.provider.nova.keypairs.list()
-        return [KeyPair(kp.id) for kp in key_pairs]
+        return [BaseKeyPair(kp.id) for kp in key_pairs]
 
     def list_security_groups(self):
         """
