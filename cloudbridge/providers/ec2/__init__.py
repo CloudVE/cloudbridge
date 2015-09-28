@@ -148,13 +148,13 @@ class EC2Instance(Instance):
         """
         Get the image ID for this insance.
         """
-        return self._ec2_instance.id
+        return self._ec2_instance.image_id
 
     def placement_zone(self):
         """
         Get the placement zone where this instance is running.
         """
-        return self._ec2_instance.id
+        return self._ec2_instance.placement
 
     def mac_address(self):
         """

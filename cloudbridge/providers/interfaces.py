@@ -180,15 +180,15 @@ class ComputeService(ProviderService):
         raise NotImplementedError(
             'list_instances not implemented by this provider')
 
-    def list_instance_types(self):
+    def instance_types(self):
         """
-        List all instance types supported by this provider.
+        Provides access to all Instance type related services in this provider.
 
-        :rtype: ``list`` of :class:`.InstanceType`
-        :return: list of InstanceType objects
+        :rtype: ``object`` of :class:`.InstanceTypeService`
+        :return:  an InstanceTypeService object
         """
         raise NotImplementedError(
-            'list_instance_types not implemented by this provider')
+            'instance_types not implemented by this provider')
 
     def list_regions(self):
         """
@@ -764,11 +764,38 @@ class PlacementZone(object):
             'PlacementZone.name not implemented by this provider')
 
 
+class InstanceTypesService(object):
+
+    def list(self):
+        """
+        List all instance types.
+
+        :rtype: ``list`` of :class:`.InstanceType`
+        :return: list of InstanceType objects
+        """
+        raise NotImplementedError(
+            'InstanceTypesService.list not implemented by this provider')
+
+    def find_by_name(self, name):
+        """
+        Searches for an instance by a given list of attributes.
+
+        :rtype: ``object`` of :class:`.InstanceType`
+        :return: an Instance object
+        """
+        raise NotImplementedError(
+            'InstanceTypesService.find_instance not implemented by this provider')
+
+
 class InstanceType(object):
 
     """
     An instance type object.
     """
+
+    def id(self):
+        raise NotImplementedError(
+            'InstanceType.id not implemented by this provider')
 
     def name(self):
         raise NotImplementedError(

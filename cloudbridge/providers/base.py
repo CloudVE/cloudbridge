@@ -8,6 +8,7 @@ class BaseCloudProvider(CloudProvider):
     def __init__(self, config):
         self.config = config
 
+    @property
     def name(self):
         return str(self.__class__.__name__)
 
@@ -32,7 +33,8 @@ class BaseCloudProvider(CloudProvider):
         if isinstance(self.config, dict):
             return self.config.get(key, default_value)
         else:
-            return getattr(self.config, key) if hasattr(self.config, key) and getattr(self.config, key) else default_value
+            return getattr(self.config, key) if hasattr(
+                self.config, key) and getattr(self.config, key) else default_value
 
 
 class BaseKeyPair(KeyPair):
