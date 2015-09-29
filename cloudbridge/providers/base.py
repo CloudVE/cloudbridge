@@ -1,3 +1,7 @@
+"""
+Implementation of common methods across cloud providers.
+"""
+
 from cloudbridge.providers.interfaces import CloudProvider
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import SecurityGroup
@@ -30,6 +34,18 @@ class BaseCloudProvider(CloudProvider):
         return False
 
     def _get_config_value(self, key, default_value):
+        """
+        A convenience method to extract a configuration value.
+
+        :type key: str
+        :param key: a field to look for in the ``self.config`` field
+
+        :type default_value: anything
+        : param default_value: the default value to return if a value for the
+                               ``key`` is not available
+
+        :return: a configuration value for the supplied ``key``
+        """
         if isinstance(self.config, dict):
             return self.config.get(key, default_value)
         else:
@@ -45,16 +61,6 @@ class BaseKeyPair(KeyPair):
 
     def __repr__(self):
         return "<CBKeyPair: {0}>".format(self.name)
-
-    # def name(self):
-    #     """
-    #     Return the name of this key pair.
-
-    #     :rtype: str
-    #     :return: A name of this ssh key pair
-    #     """
-    #     raise NotImplementedError(
-    #         'name not implemented by this provider')
 
 
 class BaseSecurityGroup(SecurityGroup):

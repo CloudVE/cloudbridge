@@ -212,25 +212,34 @@ class ComputeService(ProviderService):
         :param image: The MachineImage object or id to boot the virtual machine with
 
         :type  instance_type: ``InstanceType`` or ``str``
-        :param instance_type: The InstanceType or name, specifying the size of the instance to boot into
+        :param instance_type: The InstanceType or name, specifying the size of
+                              the instance to boot into
 
         :type  zone: ``Zone`` or ``str``
         :param zone: The Zone or its name, where the instance should be placed.
 
         :type  keypair: ``KeyPair`` or ``str``
-        :param keypair: The KeyPair object or its name, to set for the instance
+        :param keypair: The KeyPair object or its name, to set for the instance.
 
-        :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a list of ``str`` names
-        :param security_groups: A list of SecurityGroup objects or a list of SecurityGroup names, which should be assigned to this instance.
+        :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a
+                                list of ``str`` names
+        :param security_groups: A list of ``SecurityGroup`` objects or a list
+                                of ``SecurityGroup`` names, which should be
+                                assigned to this instance.
 
         :type  user_data: ``str``
-        :param user_data: An extra userdata object which is compatible with the provider.
+        :param user_data: An extra userdata object which is compatible with
+                          the provider.
 
         :type  block_device_mapping: ``BlockDeviceMapping`` object
-        :param block_device_mapping: A ``BlockDeviceMapping`` object which describes additional block device mappings for this instance
+        :param block_device_mapping: A ``BlockDeviceMapping`` object which
+                                     describes additional block device mappings
+                                     for this instance.
 
         :type  network_interfaces: ``NetworkInterfaceList`` object
-        :param network_interfaces: A ``NetworkInterfaceList`` object which describes network interfaces for this instance
+        :param network_interfaces: A ``NetworkInterfaceList`` object which
+                                   describes network interfaces for this
+                                   instance.
 
         :rtype: `object`` of :class:`.Instance`
         :return:  an instance of Instance class
@@ -734,10 +743,22 @@ class Snapshot(object):
 class Region(object):
 
     def name(self):
+        """
+        Name of the region/zone.
+
+        :rtype: str
+        :return: Name of the region/zone.
+        """
         raise NotImplementedError(
             'name not implemented by this provider')
 
     def list_zones(self):
+        """
+        List all available regions.
+
+        :rtype: list
+        :return: List of all the available regions.
+        """
         raise NotImplementedError(
             'list_zones not implemented by this provider')
 
@@ -745,16 +766,27 @@ class Region(object):
 class KeyPair(object):
 
     def name(self):
+        """
+        Return the name of this key pair.
+
+        :rtype: str
+        :return: A name of this ssh key pair
+        """
         raise NotImplementedError(
             'name not implemented by this provider')
 
-    def meterial(self):
+    def material(self):
+        """
+        Unencrypted private key.
+
+        :rtype: str
+        :return: Unencrypted private key.
+        """
         raise NotImplementedError(
-            'meterial not implemented by this provider')
+            'material not implemented by this provider')
 
 
 class PlacementZone(object):
-
     """
     A placement zone object.
     """
