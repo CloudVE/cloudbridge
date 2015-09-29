@@ -23,8 +23,10 @@ class EC2Instance(Instance):
     def name(self):
         """
         Get the instance name.
+
+        .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        return self._ec2_instance.tags['Name']
+        return self._ec2_instance.tags.get('Name')
 
     @name.setter
     def name(self, value):
