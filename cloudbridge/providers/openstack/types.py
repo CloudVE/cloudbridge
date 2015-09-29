@@ -35,7 +35,7 @@ class OpenStackInstance(Instance):
         """
         Get the instance identifier.
         """
-        return self._ec2_instance.id
+        return self._os_instance.id
 
     @property
     def name(self):
