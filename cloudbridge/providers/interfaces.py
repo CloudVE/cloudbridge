@@ -841,10 +841,59 @@ class SecurityGroup(object):
         Return the name of this security group.
 
         :rtype: str
-        :return: A name of this security group
+        :return: A name of this security group.
         """
         raise NotImplementedError(
             'name not implemented by this provider')
+
+    def create(self, name, description):
+        """
+        Create a new security group under the current account.
+
+        :type name: str
+        :param name: The name of the new security group.
+
+        :type description: str
+        :param description: The description of the new security group.
+
+        :rtype: ``object`` of :class:`.SecurityGroup`
+        :return: a SecurityGroup object
+        """
+        raise NotImplementedError(
+            'create not implemented by this provider')
+
+    def delete(self):
+        """
+        Delete this security group.
+        """
+        raise NotImplementedError(
+            'delete not implemented by this provider')
+
+    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
+                 cidr_ip=None, group_id=None):
+        """
+        Create a security group rule
+
+        :type ip_protocol: str
+        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
+
+        :type from_port: int
+        :param from_port: The beginning port number you are enabling
+
+        :type to_port: int
+        :param to_port: The ending port number you are enabling
+
+        :type cidr_ip: str or list of strings
+        :param cidr_ip: The CIDR block you are providing access to.
+
+        :type group_id: ``object`` of :class:`.SecurityGroup`
+        :param group_id: The Security Group you are granting access to.
+
+        :rtype: bool
+        :return: True if successful.
+        """
+        raise NotImplementedError(
+            'add_rule not implemented by this provider')
 
 
 class ContainerProvider(object):
