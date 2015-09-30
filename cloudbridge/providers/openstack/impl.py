@@ -12,6 +12,7 @@ from novaclient import client as nova_client
 from cloudbridge.providers.base import BaseCloudProvider
 
 from .services import OpenStackComputeService
+from .services import OpenStackImageService
 from .services import OpenStackSecurityService
 
 
@@ -32,7 +33,7 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         self.keystone = self._connect_keystone()
 
         self.compute = OpenStackComputeService(self)
-        # self.images = EC2ImageService(self)
+        self.images = OpenStackImageService(self)
         self.security = OpenStackSecurityService(self)
         # self.block_store = EC2BlockStore(self)
         # self.object_store = EC2ObjectStore(self)

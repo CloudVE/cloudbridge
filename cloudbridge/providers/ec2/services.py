@@ -5,6 +5,7 @@ Services implemented by this provider
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import ComputeService
+from cloudbridge.providers.interfaces import ImageService
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
@@ -12,6 +13,7 @@ from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 
+from .types import EC2Image
 from .types import EC2Instance
 
 
@@ -39,6 +41,36 @@ class EC2SecurityService(SecurityService):
         """
         groups = self.provider.ec2_conn.get_all_security_groups()
         return [BaseSecurityGroup(group.name) for group in groups]
+
+
+class EC2ImageService(ImageService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def get_image(self, id):
+        """
+        Returns an Image given its id
+        """
+        image = self.provider.ec2_conn.get_image(id)
+        if image:
+            return EC2Image(self.provider, image)
+        else:
+            return None
+
+    def find_image(self, name):
+        """
+        Searches for an image by a given list of attributes
+        """
+        raise NotImplementedError(
+            'find_image not implemented by this provider')
+
+    def list_images(self):
+        """
+        List all images.
+        """
+        images = self.provider.ec2_conn.get_all_images()
+        return [EC2Image(self.provider, image) for image in images]
 
 
 class EC2ComputeService(ComputeService):

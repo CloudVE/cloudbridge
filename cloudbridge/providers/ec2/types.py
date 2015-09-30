@@ -5,6 +5,50 @@ DataTypes used by this provider
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import Instance
+from cloudbridge.providers.interfaces import MachineImage
+
+
+class EC2Image(MachineImage):
+
+    def __init__(self, provider, image):
+        self.provider = provider
+        if isinstance(image, MachineImage):
+            self._ec2_image = image._ec2_image
+        else:
+            self._ec2_image = image
+
+    def image_id(self):
+        """
+        Get the image identifier.
+
+        :rtype: ``str``
+        :return: ID for this instance as returned by the cloud middleware.
+        """
+        return self._ec2_image.id
+
+    def name(self):
+        """
+        Get the image name.
+
+        :rtype: ``str``
+        :return: Name for this image as returned by the cloud middleware.
+        """
+        return self._ec2_image.name
+
+    def description(self):
+        """
+        Get the image description.
+
+        :rtype: ``str``
+        :return: Description for this image as returned by the cloud middleware
+        """
+        return self._ec2_image.description
+
+    def delete(self):
+        """
+        Delete this image
+        """
+        self._ec2_image.deregister()
 
 
 class EC2Instance(Instance):
@@ -95,3 +139,11 @@ class EC2Instance(Instance):
         Get the name of the key pair associated with this instance.
         """
         return BaseKeyPair(self._ec2_instance.key_name)
+
+    def create_image(self, name):
+        """
+        Create a new image based on this instance.
+        """
+        image_id = self._ec2_instance.create_image(name)
+        image = self.provider.images.get_image(image_id)
+        return EC2Image(self.provider, image)

@@ -341,15 +341,6 @@ class ImageService(ProviderService):
         raise NotImplementedError(
             'list_images not implemented by this provider')
 
-    def create_image(self):
-        """
-        Create a new image.
-        :return:  an Image object
-        :rtype: ``object`` of :class:`.Image`
-        """
-        raise NotImplementedError(
-            'create_image not implemented by this provider')
-
 
 class ObjectStoreService(ProviderService):
 
@@ -577,6 +568,15 @@ class Instance(object):
         raise NotImplementedError(
             'key_pair_name not implemented by this provider')
 
+    def create_image(self, name):
+        """
+        Create a new image based on this instance.
+        :return:  an Image object
+        :rtype: ``object`` of :class:`.Image`
+        """
+        raise NotImplementedError(
+            'create_image not implemented by this provider')
+
 
 class MachineImage(object):
 
@@ -609,6 +609,16 @@ class MachineImage(object):
         """
         raise NotImplementedError(
             'MachineImage.description not implemented by this provider')
+
+    def delete(self):
+        """
+        Delete this image
+
+        :rtype: ``bool``
+        :return: True if the operation succeeded
+        """
+        raise NotImplementedError(
+            'MachineImage.delete not implemented by this provider')
 
 
 class Volume(object):
@@ -787,6 +797,7 @@ class KeyPair(object):
 
 
 class PlacementZone(object):
+
     """
     A placement zone object.
     """

@@ -5,6 +5,7 @@ Services implemented by this provider
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import ComputeService
+from cloudbridge.providers.interfaces import ImageService
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import InstanceTypesService
 from cloudbridge.providers.interfaces import KeyPair
@@ -13,6 +14,7 @@ from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 
+from .types import OpenStackImage
 from .types import OpenStackInstance
 from .types import OpenStackInstanceType
 
@@ -41,6 +43,36 @@ class OpenStackSecurityService(SecurityService):
         """
         groups = self.provider.nova.security_groups.list()
         return [BaseSecurityGroup(group.name) for group in groups]
+
+
+class OpenStackImageService(ImageService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def get_image(self, id):
+        """
+        Returns an Image given its id
+        """
+        image = self.provider.nova.images.get(id)
+        if image:
+            return OpenStackImage(self.provider, image)
+        else:
+            return None
+
+    def find_image(self, name):
+        """
+        Searches for an image by a given list of attributes
+        """
+        raise NotImplementedError(
+            'find_image not implemented by this provider')
+
+    def list_images(self):
+        """
+        List all images.
+        """
+        images = self.provider.nova.images.list()
+        return [OpenStackImage(self.provider, image) for image in images]
 
 
 class OpenStackInstanceTypesService(InstanceTypesService):
