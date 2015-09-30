@@ -13,7 +13,7 @@ class OpenStackImage(MachineImage):
 
     def __init__(self, provider, os_image):
         self.provider = provider
-        if isinstance(os_image):
+        if isinstance(os_image, MachineImage):
             self._os_image = os_image._os_image
         else:
             self._os_image = os_image
@@ -161,4 +161,4 @@ class OpenStackInstance(Instance):
         Create a new image based on this instance.
         """
         image_id = self._os_instance.create_image(name)
-        return OpenStackImage(self.provider, self.provider.images.get(image_id))
+        return OpenStackImage(self.provider, self.provider.images.get_image(image_id))
