@@ -750,29 +750,6 @@ class Snapshot(object):
         raise NotImplementedError('delete not implemented by this provider')
 
 
-class Region(object):
-
-    def name(self):
-        """
-        Name of the region/zone.
-
-        :rtype: str
-        :return: Name of the region/zone.
-        """
-        raise NotImplementedError(
-            'name not implemented by this provider')
-
-    def list_zones(self):
-        """
-        List all available regions.
-
-        :rtype: list
-        :return: List of all the available regions.
-        """
-        raise NotImplementedError(
-            'list_zones not implemented by this provider')
-
-
 class KeyPair(object):
 
     def name(self):
@@ -796,15 +773,58 @@ class KeyPair(object):
             'material not implemented by this provider')
 
 
-class PlacementZone(object):
-
+class Region(object):
     """
-    A placement zone object.
+    Represents a cloud region, typically a separate geographic area and will
+    contain at least one placement zone.
     """
 
     def name(self):
+        """
+        Name of the region.
+
+        :rtype: str
+        :return: Name of the region.
+        """
+        raise NotImplementedError(
+            'name not implemented by this provider')
+
+    def list_zones(self):
+        """
+        List all available placement zones within this region.
+
+        :rtype: list
+        :return: List of all the available placement zones.
+        """
+        raise NotImplementedError(
+            'list_zones not implemented by this provider')
+
+
+class PlacementZone(object):
+
+    """
+    Represents a placement zone. A placement zone is contained within a Region.
+    """
+
+    def name(self):
+        """
+        Name of the placement zone.
+
+        :rtype: str
+        :return: Name of the placement zone.
+        """
         raise NotImplementedError(
             'PlacementZone.name not implemented by this provider')
+
+    def region_name(self):
+        """
+        A region this placement zone is associated with.
+
+        :rtype: str
+        :return: The name of the region the zone is associated with.
+        """
+        raise NotImplementedError(
+            'region_name not implemented by this provider')
 
 
 class InstanceTypesService(object):
