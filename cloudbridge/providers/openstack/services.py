@@ -17,6 +17,7 @@ from cloudbridge.providers.interfaces import SecurityService
 from .types import OpenStackImage
 from .types import OpenStackInstance
 from .types import OpenStackInstanceType
+from .types import OpenStackRegion
 
 
 class OpenStackSecurityService(SecurityService):
@@ -122,3 +123,19 @@ class OpenStackComputeService(ComputeService):
                                                         userdata=user_data
                                                         )
         return OpenStackInstance(self.provider, os_instance)
+
+    def list_instances(self):
+        """
+        List all instances.
+        """
+        instances = self.provider.nova.servers.list()
+        return [OpenStackInstance(self.provider, instance) for instance in instances]
+
+    def list_regions(self):
+        """
+        List all data center regions.
+        """
+        # detailed must be set to ``False`` because the (default) ``True``
+        # value requires Admin priviledges
+        regions = self.provider.nova.availability_zones.list(detailed=False)
+        return [OpenStackRegion(self.provider, region) for region in regions]

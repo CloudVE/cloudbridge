@@ -7,6 +7,7 @@ from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import Instance
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImage
+from cloudbridge.providers.interfaces import Region
 
 
 class OpenStackImage(MachineImage):
@@ -162,3 +163,17 @@ class OpenStackInstance(Instance):
         """
         image_id = self._os_instance.create_image(name)
         return OpenStackImage(self.provider, self.provider.images.get_image(image_id))
+
+
+class OpenStackRegion(Region):
+
+    def __init__(self, provider, os_region):
+        self.provider = provider
+        self._os_region = os_region
+
+    @property
+    def name(self):
+        return self._os_region.zoneName
+
+    def __repr__(self):
+        return "<OSRegion: {0}>".format(self.name)
