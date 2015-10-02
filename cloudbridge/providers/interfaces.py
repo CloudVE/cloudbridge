@@ -445,6 +445,41 @@ class SecurityService(ProviderService):
             'delete_security_group not implemented by this provider')
 
 
+class InstanceWaitException(Exception):
+
+    """
+    Marker interface for instance wait exceptions.
+    Thrown when a timeout or errors occurs waiting for an instance to reach
+    state RUNNING.
+    """
+    pass
+
+
+class InstanceState(object):
+
+    """
+    Standard states for a node
+
+    :cvar UNKNOWN: Instance state unknown.
+    :cvar PENDING: Instance is pending
+    :cvar CONFIGURING: Instance is being reconfigured in some way.
+    :cvar RUNNING: Instance is running.
+    :cvar REBOOTING: Instance is rebooting.
+    :cvar TERMINATED: Instance is terminated. No further operations possible.
+    :cvar STOPPED: Instance is stopped. Instance can be resumed.
+    :cvar ERROR: Instance is in an error state. No further operations possible.
+
+    """
+    UNKNOWN = "unknown"
+    PENDING = "pending"
+    CONFIGURING = "configuring"
+    RUNNING = "running"
+    REBOOTING = "rebooting"
+    TERMINATED = "terminated"
+    STOPPED = "stopped"
+    ERROR = "error"
+
+
 class Instance(object):
 
     def instance_id(self):
@@ -455,7 +490,7 @@ class Instance(object):
         :return: ID for this instance as returned by the cloud middleware.
         """
         raise NotImplementedError(
-            'instance_id not implemented by this provider')
+            'Instance.instance_id not implemented by this provider')
 
     def name(self):
         """
@@ -465,7 +500,7 @@ class Instance(object):
         :return: Name for this instance as returned by the cloud middleware.
         """
         raise NotImplementedError(
-            'name not implemented by this provider')
+            'Instance.name not implemented by this provider')
 
     def public_ips(self):
         """
@@ -475,7 +510,7 @@ class Instance(object):
         :return: A list of public IP addresses associated with this instance.
         """
         raise NotImplementedError(
-            'public_ips not implemented by this provider')
+            'Instance.public_ips not implemented by this provider')
 
     def private_ips(self):
         """
@@ -485,7 +520,7 @@ class Instance(object):
         :return: A list of private IP addresses associated with this instance.
         """
         raise NotImplementedError(
-            'private_ips not implemented by this provider')
+            'Instance.private_ips not implemented by this provider')
 
     def instance_type(self):
         """
@@ -495,7 +530,17 @@ class Instance(object):
         :return: API type of this instance (e.g., ``m1.large``)
         """
         raise NotImplementedError(
-            'type not implemented by this provider')
+            'Instance.instance_type not implemented by this provider')
+
+    def instance_state(self):
+        """
+        Get the current state of this instance.
+
+        :rtype: ``InstanceType``
+        :return: The instance state such as RUNNING, PENDING, TERMINATED etc.
+        """
+        raise NotImplementedError(
+            'Instance.instance_state not implemented by this provider')
 
     def reboot(self):
         """
@@ -505,7 +550,7 @@ class Instance(object):
         :return: ``True`` if the reboot was succesful; ``False`` otherwise.
         """
         raise NotImplementedError(
-            'reboot not implemented by this provider')
+            'Instance.reboot not implemented by this provider')
 
     def terminate(self):
         """
@@ -516,7 +561,7 @@ class Instance(object):
                  initiated; ``False`` otherwise.
         """
         raise NotImplementedError(
-            'terminate not implemented by this provider')
+            'Instance.terminate not implemented by this provider')
 
     def image_id(self):
         """
@@ -526,7 +571,7 @@ class Instance(object):
         :return: Image ID (i.e., AMI) this instance is using.
         """
         raise NotImplementedError(
-            'image_id not implemented by this provider')
+            'Instance.image_id not implemented by this provider')
 
     def placement_zone(self):
         """
@@ -536,7 +581,7 @@ class Instance(object):
         :return: Region/zone/placement where this instance is running.
         """
         raise NotImplementedError(
-            'placement not implemented by this provider')
+            'Instance.placement not implemented by this provider')
 
     def mac_address(self):
         """
@@ -546,7 +591,7 @@ class Instance(object):
         :return: MAC address for ths instance.
         """
         raise NotImplementedError(
-            'mac_address not implemented by this provider')
+            'Instance.mac_address not implemented by this provider')
 
     def security_group_ids(self):
         """
@@ -556,7 +601,7 @@ class Instance(object):
         :return: A list of security group IDs associated with this instance.
         """
         raise NotImplementedError(
-            'security_group_ids not implemented by this provider')
+            'Instance.security_group_ids not implemented by this provider')
 
     def key_pair_name(self):
         """
@@ -566,7 +611,25 @@ class Instance(object):
         :return: Name of the ssh key pair associated with this instance.
         """
         raise NotImplementedError(
-            'key_pair_name not implemented by this provider')
+            'Instance.key_pair_name not implemented by this provider')
+
+    def wait_till_ready(self, timeout=600, interval=5):
+        """
+        Wait until the instance is running or the timeout elapses.
+        Throws an exception if the instance reaches an error state.
+
+        :type timeout: int
+        :param timeout: Maximum timeout to wait before giving up
+
+        :type interval: int
+        :param interval: How frequently to poll instance state
+
+        :rtype: :bool
+        :return: True if instance is ready. False if the instance is
+        not ready within the specified timeout.
+        """
+        raise NotImplementedError(
+            'Instance.wait_till_ready not implemented by this provider')
 
     def create_image(self, name):
         """
@@ -575,11 +638,47 @@ class Instance(object):
         :rtype: ``object`` of :class:`.Image`
         """
         raise NotImplementedError(
-            'create_image not implemented by this provider')
+            'Instance.create_image not implemented by this provider')
+
+    def refresh(self):
+        """
+        Refreshes the state of this instance by re-querying the cloud provider
+        for its latest state.
+        """
+        raise NotImplementedError(
+            'Instance.refresh not implemented by this provider')
+
+
+class MachineImageWaitException(Exception):
+
+    """
+    Marker interface for image wait exceptions.
+    Thrown when a timeout or errors occurs waiting for an image to reach
+    state RUNNING.
+    """
+    pass
+
+
+class MachineImageState(object):
+
+    """
+    Standard states for a machine image
+
+    :cvar UNKNOWN: Image state unknown.
+    :cvar PENDING: Image is pending
+    :cvar AVAILABLE: Image is available
+    :cvar ERROR: Image is in an error state. Not recoverable.
+
+    """
+    UNKNOWN = "unknown"
+    PENDING = "pending"
+    AVAILABLE = "available"
+    ERROR = "error"
 
 
 class MachineImage(object):
 
+    @property
     def image_id(self):
         """
         Get the image identifier.
@@ -590,6 +689,7 @@ class MachineImage(object):
         raise NotImplementedError(
             'MachineImage.image_id not implemented by this provider')
 
+    @property
     def name(self):
         """
         Get the image name.
@@ -600,6 +700,7 @@ class MachineImage(object):
         raise NotImplementedError(
             'MachineImage.name not implemented by this provider')
 
+    @property
     def description(self):
         """
         Get the image description.
@@ -619,6 +720,32 @@ class MachineImage(object):
         """
         raise NotImplementedError(
             'MachineImage.delete not implemented by this provider')
+
+    def wait_till_ready(self, timeout=600, interval=5):
+        """
+        Wait until the image is running or the timeout elapses.
+        Throws an exception if the image reaches an error state.
+
+        :type timeout: int
+        :param timeout: Maximum timeout to wait before giving up
+
+        :type interval: int
+        :param interval: How frequently to poll image state
+
+        :rtype: :bool
+        :return: True if image is ready. False if the image is
+        not ready within the specified timeout.
+        """
+        raise NotImplementedError(
+            'Image.wait_till_ready not implemented by this provider')
+
+    def refresh(self):
+        """
+        Refreshes the state of this image by re-querying the cloud provider
+        for its latest state.
+        """
+        raise NotImplementedError(
+            'Image.refresh not implemented by this provider')
 
 
 class Volume(object):
@@ -774,6 +901,7 @@ class KeyPair(object):
 
 
 class Region(object):
+
     """
     Represents a cloud region, typically a separate geographic area and will
     contain at least one placement zone.
