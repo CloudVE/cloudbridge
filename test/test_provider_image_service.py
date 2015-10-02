@@ -28,8 +28,6 @@ class ProviderImageServiceTestCase(ProviderTestBase):
             test_image.wait_till_ready()
             images = self.provider.images.list_images()
             images = [image for image in images if image.name == name]
-            print "Expecting image:", name
-            print "Found image", images
             self.assertTrue(
                 len(images) == 1,
                 "List images does not return the expected image %s" %

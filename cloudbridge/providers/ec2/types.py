@@ -64,7 +64,6 @@ class EC2MachineImage(BaseMachineImage):
 
     @property
     def image_state(self):
-        print "Image State", self._ec2_image.state
         return EC2MachineImage.IMAGE_STATE_MAP.get(
             self._ec2_image.state, MachineImageState.UNKNOWN)
 
