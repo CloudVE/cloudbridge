@@ -23,14 +23,17 @@ unittest and nose2's automatic discovery.
 """
 
 from test.helpers import ProviderTestCaseGenerator
+from test.test_compute_service import ProviderComputeServiceTestCase
+from test.test_provider_image_service import ProviderImageServiceTestCase
 from test.test_provider_interface import ProviderInterfaceTestCase
 from test.test_provider_security_service import ProviderSecurityServiceTestCase
-from test.test_compute_service import ProviderComputeServiceTestCase
+
 
 PROVIDER_TESTS = [
     ProviderInterfaceTestCase,
     ProviderSecurityServiceTestCase,
-    ProviderComputeServiceTestCase
+    ProviderComputeServiceTestCase,
+    #     ProviderImageServiceTestCase
 ]
 
 

@@ -3,13 +3,19 @@ from cloudbridge.providers.factory import CloudProviderFactory
 from cloudbridge.providers.factory import ProviderList
 
 
-def get_test_instance(provider):
+def create_test_instance(provider):
     instance_name = "HelloCloudBridge-{0}".format(provider.name)
     if "EC2CloudProvider" in provider.name:
         return provider.compute.create_instance(instance_name, "ami-d85e75b0", "t1.micro")
     elif "OpenStackCloudProvider" in provider.name:
         return provider.compute.create_instance(
             "{0}-{1}".format(instance_name, provider.name), "d57696ba-5ed2-43fe-bf78-a587829973a9", "m2.xsmall")
+
+
+def get_test_instance(provider):
+    instance = create_test_instance(provider)
+    instance.wait_till_ready()
+    return instance
 
 
 class ProviderTestBase(object):

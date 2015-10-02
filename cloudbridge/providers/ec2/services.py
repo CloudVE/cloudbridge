@@ -71,7 +71,7 @@ class EC2ImageService(ImageService):
         """
         # TODO: get_all_images returns too many images - some kind of filtering
         # abilities are needed. Forced to "self" for now
-        images = self.provider.ec2_conn.get_all_images(owner="self")
+        images = self.provider.ec2_conn.get_all_images(owners="self")
         return [EC2MachineImage(self.provider, image) for image in images]
 
 

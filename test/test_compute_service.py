@@ -1,6 +1,6 @@
 from cloudbridge.providers import interfaces
-import test.helpers
 from test.helpers import ProviderTestBase
+import test.helpers
 
 
 class ProviderComputeServiceTestCase(ProviderTestBase):
@@ -15,14 +15,8 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
     def tearDown(self):
         self.instance.terminate()
 
-    def test_create_instance(self):
-        # Need a less dangerous test
-        #         instance = self.provider.compute.create_instance(
-        #             "HelloBridgeCloud",
-        #             "ami-d85e75b0",
-        #             "t1.micro")
-        #
-        #         self.assertIsInstance(instance, interfaces.Instance)
-        #         self.assertEqual(instance.name, "HelloBridgeCloud")
-        #         instance.terminate()
+    def test_instance_status(self):
+        """
+        instance_state should return an object of type InstanceState
+        """
         pass
