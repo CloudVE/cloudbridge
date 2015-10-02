@@ -1,15 +1,19 @@
+import os
 import unittest
 from cloudbridge.providers.factory import CloudProviderFactory
-from cloudbridge.providers.factory import ProviderList
 
 
 def create_test_instance(provider):
     instance_name = "HelloCloudBridge-{0}".format(provider.name)
     if "EC2CloudProvider" in provider.name:
-        return provider.compute.create_instance(instance_name, "ami-d85e75b0", "t1.micro")
+        ami = os.environ.get('CB_AMI', 'ami-d85e75b0')
+        instance_type = os.environ.get('CB_INSTANCE_TYPE', 't1.micro')
+        return provider.compute.create_instance(instance_name, ami, instance_type)
     elif "OpenStackCloudProvider" in provider.name:
+        image_id = os.environ.get('CB_IMAGE', "d57696ba-5ed2-43fe-bf78-a587829973a9")
+        instance_type = os.environ.get('CB_FLAVOR', "m2.xsmall")
         return provider.compute.create_instance(
-            "{0}-{1}".format(instance_name, provider.name), "d57696ba-5ed2-43fe-bf78-a587829973a9", "m2.xsmall")
+            "{0}-{1}".format(instance_name, provider.name), image_id, instance_type)
 
 
 def get_test_instance(provider):
@@ -84,7 +88,11 @@ class ProviderTestCaseGenerator():
         Generate and return a suite of tests for all provider and test class combinations
         """
         factory = CloudProviderFactory()
-        provider_classes = factory.get_all_provider_classes()
+        provider_name = os.environ.get("CB_TEST_PROVIDER", None)
+        if provider_name:
+            provider_classes = [factory.get_provider_class(provider_name)]
+        else:
+            provider_classes = factory.get_all_provider_classes()
         suite = unittest.TestSuite()
         suites = map(self.generate_test_suite_for_provider, provider_classes)
         map(suite.addTest, suites)
