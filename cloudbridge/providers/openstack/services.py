@@ -14,9 +14,9 @@ from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 
-from .types import OpenStackImage
 from .types import OpenStackInstance
 from .types import OpenStackInstanceType
+from .types import OpenStackMachineImage
 
 
 class OpenStackSecurityService(SecurityService):
@@ -56,7 +56,7 @@ class OpenStackImageService(ImageService):
         """
         image = self.provider.nova.images.get(id)
         if image:
-            return OpenStackImage(self.provider, image)
+            return OpenStackMachineImage(self.provider, image)
         else:
             return None
 
@@ -72,7 +72,7 @@ class OpenStackImageService(ImageService):
         List all images.
         """
         images = self.provider.nova.images.list()
-        return [OpenStackImage(self.provider, image) for image in images]
+        return [OpenStackMachineImage(self.provider, image) for image in images]
 
 
 class OpenStackInstanceTypesService(InstanceTypesService):
@@ -121,4 +121,11 @@ class OpenStackComputeService(ComputeService):
                                                         security_groups=security_groups_list,
                                                         userdata=user_data
                                                         )
+        return OpenStackInstance(self.provider, os_instance)
+
+    def get_instance(self, id):
+        """
+        Returns an instance given its id.
+        """
+        os_instance = self.provider.nova.servers.get(id)
         return OpenStackInstance(self.provider, os_instance)

@@ -13,8 +13,8 @@ from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 
-from .types import EC2Image
 from .types import EC2Instance
+from .types import EC2MachineImage
 
 
 class EC2SecurityService(SecurityService):
@@ -54,7 +54,7 @@ class EC2ImageService(ImageService):
         """
         image = self.provider.ec2_conn.get_image(id)
         if image:
-            return EC2Image(self.provider, image)
+            return EC2MachineImage(self.provider, image)
         else:
             return None
 
@@ -69,8 +69,10 @@ class EC2ImageService(ImageService):
         """
         List all images.
         """
-        images = self.provider.ec2_conn.get_all_images()
-        return [EC2Image(self.provider, image) for image in images]
+        # TODO: get_all_images returns too many images - some kind of filtering
+        # abilities are needed. Forced to "self" for now
+        images = self.provider.ec2_conn.get_all_images(owner="self")
+        return [EC2MachineImage(self.provider, image) for image in images]
 
 
 class EC2ComputeService(ComputeService):
