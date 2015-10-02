@@ -33,7 +33,7 @@ PROVIDER_TESTS = [
     ProviderInterfaceTestCase,
     ProviderSecurityServiceTestCase,
     ProviderComputeServiceTestCase,
-    #     ProviderImageServiceTestCase
+    ProviderImageServiceTestCase
 ]
 
 
