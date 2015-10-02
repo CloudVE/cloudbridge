@@ -9,6 +9,7 @@ from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import InstanceState
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImageState
+from cloudbridge.providers.interfaces import Region
 
 
 class OpenStackMachineImage(BaseMachineImage):
@@ -233,3 +234,17 @@ class OpenStackInstance(BaseInstance):
         for its latest state.
         """
         self._os_instance = self.provider.compute.get_instance(self.instance_id)._os_instance
+
+
+class OpenStackRegion(Region):
+
+    def __init__(self, provider, os_region):
+        self.provider = provider
+        self._os_region = os_region
+
+    @property
+    def name(self):
+        return self._os_region.zoneName
+
+    def __repr__(self):
+        return "<OSRegion: {0}>".format(self.name)
