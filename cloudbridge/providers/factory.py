@@ -96,6 +96,19 @@ class CloudProviderFactory(object):
                                  class_name)
         return provider_class
 
+    def get_provider_class(self, name, version=None):
+        """
+        Return a class for the requested provider.
+
+        :rtype: provider class or ``None``
+        :return: A class corresponding to the requested provider or ``None``
+                 if the provider was not found.
+        """
+        provider_class = self.find_provider_impl(name, version)
+        if provider_class:
+            return self._get_provider_class(provider_class)
+        return None
+
     def get_all_provider_classes(self):
         """
         Returns a list of classes for all available provider implementations
