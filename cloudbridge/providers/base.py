@@ -126,16 +126,16 @@ class BaseMachineImage(MachineImage):
                     "Image is in state: {0} which is a terminal state and cannot be waited on.".format(state))
             else:
                 log.debug(
-                    "Image is in state '{0}'. Waiting another {1} seconds to reach state a ready state...".format(
+                    "Image is in state '{0}'. Waiting another {1} seconds to reach a ready state...".format(
                         state,
                         time_left))
                 time.sleep(interval)
             self.refresh()
 
         raise MachineImageWaitException(
-            "Waited too long for image to become ready. Image Id: %s is still in state: %s".format(
-                self.image_id,
+            "Waited too long for image to become ready. Image: {0}({1}) is still in state: {2}".format(
                 self.name,
+                self.image_id,
                 self.image_state))
 
 

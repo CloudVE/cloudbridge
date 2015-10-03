@@ -51,11 +51,11 @@ class OpenStackImageService(ImageService):
     def __init__(self, provider):
         self.provider = provider
 
-    def get_image(self, id):
+    def get_image(self, image_id):
         """
         Returns an Image given its id
         """
-        image = self.provider.nova.images.get(id)
+        image = self.provider.nova.images.get(image_id)
         if image:
             return OpenStackMachineImage(self.provider, image)
         else:
@@ -73,7 +73,8 @@ class OpenStackImageService(ImageService):
         List all images.
         """
         images = self.provider.nova.images.list()
-        return [OpenStackMachineImage(self.provider, image) for image in images]
+        return [OpenStackMachineImage(self.provider, image)
+                for image in images]
 
 
 class OpenStackInstanceTypesService(InstanceTypesService):
@@ -82,10 +83,12 @@ class OpenStackInstanceTypesService(InstanceTypesService):
         self.provider = provider
 
     def list(self):
-        return [OpenStackInstanceType(f) for f in self.provider.nova.flavors.list()]
+        return [OpenStackInstanceType(f)
+                for f in self.provider.nova.flavors.list()]
 
     def find_by_name(self, name):
-        return next((itype for itype in self.list() if itype.name == name), None)
+        return next(
+            (itype for itype in self.list() if itype.name == name), None)
 
 
 class OpenStackComputeService(ComputeService):
@@ -104,9 +107,12 @@ class OpenStackComputeService(ComputeService):
             instance_type,
             InstanceType) else self.instance_types.find_by_name(instance_type).id
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
-        keypair_name = keypair.name if isinstance(keypair, KeyPair) else keypair
+        keypair_name = keypair.name if isinstance(
+            keypair,
+            KeyPair) else keypair
         if security_groups:
-            if isinstance(security_groups, list) and isinstance(security_groups[0], SecurityGroup):
+            if isinstance(security_groups, list) and isinstance(
+                    security_groups[0], SecurityGroup):
                 security_groups_list = [sg.name for sg in security_groups]
             else:
                 security_groups_list = security_groups
@@ -129,7 +135,8 @@ class OpenStackComputeService(ComputeService):
         List all instances.
         """
         instances = self.provider.nova.servers.list()
-        return [OpenStackInstance(self.provider, instance) for instance in instances]
+        return [OpenStackInstance(self.provider, instance)
+                for instance in instances]
 
     def list_regions(self):
         """
@@ -140,9 +147,9 @@ class OpenStackComputeService(ComputeService):
         regions = self.provider.nova.availability_zones.list(detailed=False)
         return [OpenStackRegion(self.provider, region) for region in regions]
 
-    def get_instance(self, id):
+    def get_instance(self, instance_id):
         """
         Returns an instance given its id.
         """
-        os_instance = self.provider.nova.servers.get(id)
+        os_instance = self.provider.nova.servers.get(instance_id)
         return OpenStackInstance(self.provider, os_instance)

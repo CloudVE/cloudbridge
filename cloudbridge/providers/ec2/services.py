@@ -48,11 +48,11 @@ class EC2ImageService(ImageService):
     def __init__(self, provider):
         self.provider = provider
 
-    def get_image(self, id):
+    def get_image(self, image_id):
         """
         Returns an Image given its id
         """
-        image = self.provider.ec2_conn.get_image(id)
+        image = self.provider.ec2_conn.get_image(image_id)
         if image:
             return EC2MachineImage(self.provider, image)
         else:
@@ -90,9 +90,12 @@ class EC2ComputeService(ComputeService):
             instance_type,
             InstanceType) else instance_type
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
-        keypair_name = keypair.name if isinstance(keypair, KeyPair) else keypair
+        keypair_name = keypair.name if isinstance(
+            keypair,
+            KeyPair) else keypair
         if security_groups:
-            if isinstance(security_groups, list) and isinstance(security_groups[0], SecurityGroup):
+            if isinstance(security_groups, list) and isinstance(
+                    security_groups[0], SecurityGroup):
                 security_groups_list = [sg.name for sg in security_groups]
             else:
                 security_groups_list = security_groups

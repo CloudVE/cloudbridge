@@ -29,8 +29,8 @@ class ProviderFactoryTestCase(unittest.TestCase):
         Searching for a provider with a known name or version should return a valid implementation
         """
         self.assertTrue(CloudProviderFactory().find_provider_impl(factory.ProviderList.EC2))
-        self.assertEquals(CloudProviderFactory().find_provider_impl(factory.ProviderList.EC2, version=1),
-                          "cloudbridge.providers.ec2.EC2CloudProviderV1")
+        self.assertEqual(CloudProviderFactory().find_provider_impl(factory.ProviderList.EC2, version=1),
+                         "cloudbridge.providers.ec2.EC2CloudProviderV1")
 
     def test_find_provider_impl_invalid(self):
         """

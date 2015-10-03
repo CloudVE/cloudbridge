@@ -26,7 +26,7 @@ class ComputeService(ProviderService):
     Base interface for compute service supported by a provider
     """
 
-    def get_instance(self, id):
+    def get_instance(self, instance_id):
         """
         Returns an instance given its id.
 
@@ -130,7 +130,7 @@ class VolumeService(ProviderService):
     Base interface for a Volume Service
     """
 
-    def get_volume(self, id):
+    def get_volume(self, volume_id):
         """
         Returns a volume given its id.
 
@@ -187,7 +187,7 @@ class ImageService(ProviderService):
     Base interface for an Image Service
     """
 
-    def get_image(self, id):
+    def get_image(self, image_id):
         """
         Returns an Image given its id
 
@@ -224,7 +224,7 @@ class ObjectStoreService(ProviderService):
     Base interface for an Object Storage Service
     """
 
-    def get_container(self, id):
+    def get_container(self, container_id):
         """
         Returns a container given its id
 
