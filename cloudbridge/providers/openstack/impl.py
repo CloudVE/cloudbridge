@@ -1,5 +1,6 @@
 """
-Provider implementation based on openstack python client for OpenStack compatible clouds.
+Provider implementation based on openstack python client for OpenStack
+compatible clouds.
 """
 
 import os
@@ -23,11 +24,14 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
 
         self.api_version = self._get_config_value(
             'api_version', os.environ.get('OS_COMPUTE_API_VERSION', 2))
-        self.username = self._get_config_value('username', os.environ.get('OS_USERNAME', None))
-        self.password = self._get_config_value('password', os.environ.get('OS_PASSWORD', None))
+        self.username = self._get_config_value(
+            'username', os.environ.get('OS_USERNAME', None))
+        self.password = self._get_config_value(
+            'password', os.environ.get('OS_PASSWORD', None))
         self.tenant_name = self._get_config_value(
             'tenant_name', os.environ.get('OS_TENANT_NAME', None))
-        self.auth_url = self._get_config_value('auth_url', os.environ.get('OS_AUTH_URL', None))
+        self.auth_url = self._get_config_value(
+            'auth_url', os.environ.get('OS_AUTH_URL', None))
 
         self.nova = self._connect_nova()
         self.keystone = self._connect_keystone()
@@ -43,18 +47,24 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         Get an openstack client object for the given cloud.
         """
         return nova_client.Client(
-            self.api_version, self.username, self.password, self.tenant_name, self.auth_url)
+            self.api_version, self.username, self.password, self.tenant_name,
+            self.auth_url)
 
     def _connect_keystone(self):
         """
         Get an openstack client object for the given cloud.
         """
-        auth = Password(self.auth_url, username=self.username, password=self.password,
-                        tenant_name=self.tenant_name)
-        # Wow, the internal keystoneV2 implementation is terribly buggy. It needs both a separate Session object
-        # and the username, password again for things to work correctly. Plus, a manual call to authenticate() is
-        # also required if the service  catalogue needs to be queried
-        keystone = keystone_client.Client(session=session.Session(auth=auth), auth_url=self.auth_url, username=self.username,
-                                          password=self.password, tenant_name=self.tenant_name)
+        auth = Password(self.auth_url, username=self.username,
+                        password=self.password, tenant_name=self.tenant_name)
+        # Wow, the internal keystoneV2 implementation is terribly buggy. It
+        # needs both a separate Session object and the username, password again
+        # for things to work correctly. Plus, a manual call to authenticate()
+        # is also required if the service  catalogue needs to be queried
+        keystone = keystone_client.Client(
+            session=session.Session(auth=auth),
+            auth_url=self.auth_url,
+            username=self.username,
+            password=self.password,
+            tenant_name=self.tenant_name)
         keystone.authenticate()
         return keystone

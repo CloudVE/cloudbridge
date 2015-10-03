@@ -63,7 +63,7 @@ class EC2MachineImage(BaseMachineImage):
         self._ec2_image.deregister()
 
     @property
-    def image_state(self):
+    def state(self):
         return EC2MachineImage.IMAGE_STATE_MAP.get(
             self._ec2_image.state, MachineImageState.UNKNOWN)
 
@@ -72,7 +72,8 @@ class EC2MachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        self._ec2_image = self.provider.images.get_image(self.image_id)._ec2_image
+        self._ec2_image = self.provider.images.get_image(
+            self.image_id)._ec2_image
 
 
 class EC2InstanceType(InstanceType):
@@ -94,7 +95,8 @@ class EC2InstanceType(InstanceType):
 
 class EC2Instance(BaseInstance):
 
-    # ref: http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html
+    # ref:
+    # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html
     INSTANCE_STATE_MAP = {
         'pending': InstanceState.PENDING,
         'running': InstanceState.RUNNING,
@@ -190,7 +192,8 @@ class EC2Instance(BaseInstance):
         """
         Get the security group IDs associated with this instance.
         """
-        return [BaseSecurityGroup(group.name) for group in self._ec2_instance.groups]
+        return [BaseSecurityGroup(group.name)
+                for group in self._ec2_instance.groups]
 
     @property
     def key_pair_name(self):
@@ -208,7 +211,7 @@ class EC2Instance(BaseInstance):
         return EC2MachineImage(self.provider, image)
 
     @property
-    def instance_state(self):
+    def state(self):
         return EC2Instance.INSTANCE_STATE_MAP.get(
             self._ec2_instance.state, InstanceState.UNKNOWN)
 

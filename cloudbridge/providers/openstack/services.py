@@ -97,15 +97,17 @@ class OpenStackComputeService(ComputeService):
         self.provider = provider
         self.instance_types = OpenStackInstanceTypesService(self.provider)
 
-    def create_instance(self, name, image, instance_type, zone=None, keypair=None, security_groups=None,
-                        user_data=None, block_device_mapping=None, network_interfaces=None, **kwargs):
+    def create_instance(self, name, image, instance_type, zone=None,
+                        keypair=None, security_groups=None, user_data=None,
+                        block_device_mapping=None, network_interfaces=None,
+                        **kwargs):
         """
         Creates a new virtual machine instance.
         """
         image_id = image.image_id if isinstance(image, MachineImage) else image
-        instance_size = instance_type.name if isinstance(
-            instance_type,
-            InstanceType) else self.instance_types.find_by_name(instance_type).id
+        instance_size = instance_type.name if \
+            isinstance(instance_type, InstanceType) else \
+            self.instance_types.find_by_name(instance_type).id
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
         keypair_name = keypair.name if isinstance(
             keypair,
@@ -119,15 +121,16 @@ class OpenStackComputeService(ComputeService):
         else:
             security_groups_list = None
 
-        os_instance = self.provider.nova.servers.create(name, image_id,
-                                                        instance_size,
-                                                        min_count=1,
-                                                        max_count=1,
-                                                        availability_zone=zone_name,
-                                                        key_name=keypair_name,
-                                                        security_groups=security_groups_list,
-                                                        userdata=user_data
-                                                        )
+        os_instance = self.provider.nova.servers.create(
+            name,
+            image_id,
+            instance_size,
+            min_count=1,
+            max_count=1,
+            availability_zone=zone_name,
+            key_name=keypair_name,
+            security_groups=security_groups_list,
+            userdata=user_data)
         return OpenStackInstance(self.provider, os_instance)
 
     def list_instances(self):

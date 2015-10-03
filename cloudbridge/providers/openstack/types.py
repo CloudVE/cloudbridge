@@ -68,7 +68,7 @@ class OpenStackMachineImage(BaseMachineImage):
         self._os_image.delete()
 
     @property
-    def image_state(self):
+    def state(self):
         return OpenStackMachineImage.IMAGE_STATE_MAP.get(
             self._os_image.status, MachineImageState.UNKNOWN)
 
@@ -207,7 +207,8 @@ class OpenStackInstance(BaseInstance):
         """
         Get the security group IDs associated with this instance.
         """
-        return [BaseSecurityGroup(group.name) for group in self._os_instance.security_groups]
+        return [BaseSecurityGroup(group.name)
+                for group in self._os_instance.security_groups]
 
     @property
     def key_pair_name(self):
@@ -221,10 +222,11 @@ class OpenStackInstance(BaseInstance):
         Create a new image based on this instance.
         """
         image_id = self._os_instance.create_image(name)
-        return OpenStackMachineImage(self.provider, self.provider.images.get_image(image_id))
+        return OpenStackMachineImage(
+            self.provider, self.provider.images.get_image(image_id))
 
     @property
-    def instance_state(self):
+    def state(self):
         return OpenStackInstance.INSTANCE_STATE_MAP.get(
             self._os_instance.status, InstanceState.UNKNOWN)
 
@@ -233,7 +235,8 @@ class OpenStackInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        self._os_instance = self.provider.compute.get_instance(self.instance_id)._os_instance
+        self._os_instance = self.provider.compute.get_instance(
+            self.instance_id)._os_instance
 
 
 class OpenStackRegion(Region):

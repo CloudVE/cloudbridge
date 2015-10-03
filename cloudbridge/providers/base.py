@@ -8,12 +8,12 @@ import time
 from cloudbridge.providers.interfaces import CloudProvider
 from cloudbridge.providers.interfaces import Instance
 from cloudbridge.providers.interfaces import InstanceState
-from cloudbridge.providers.interfaces import InstanceWaitException
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import MachineImageState
-from cloudbridge.providers.interfaces import MachineImageWaitException
+from cloudbridge.providers.interfaces import ObjectLifeCycleMixin
 from cloudbridge.providers.interfaces import SecurityGroup
+from cloudbridge.providers.interfaces import WaitStateException
 
 
 log = logging.getLogger(__name__)
@@ -62,10 +62,58 @@ class BaseCloudProvider(CloudProvider):
             return self.config.get(key, default_value)
         else:
             return getattr(self.config, key) if hasattr(
-                self.config, key) and getattr(self.config, key) else default_value
+                self.config, key) and getattr(self.config, key) else \
+                default_value
 
 
-class BaseInstance(Instance):
+class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
+    """
+    A base implementation of an ObjectLifeCycleMixin.
+    This base implementation has an implementation of wait_till_ready
+    which refreshes the object's state till the desired ready states
+    are reached. Subclasses must implement two new properties - ready_states
+    and terminal_states, which return a list of states to wait for.
+    """
+    @property
+    def ready_states(self):
+        raise NotImplementedError(
+            "ready_states not implemented by this object. Subclasses must"
+            " implement this method and return a valid set of ready states")
+
+    @property
+    def terminal_states(self):
+        raise NotImplementedError(
+            "terminal_states not implemented by this object. Subclasses must"
+            " implement this method and return a valid set of terminal states")
+
+    def wait_till_ready(self, timeout=600, interval=5):
+        assert timeout > 0
+        assert timeout > interval
+        assert interval > 0
+
+        for time_left in range(timeout, 0, -interval):
+            if self.state in self.ready_states:
+                return True
+            elif self.state in self.terminal_states:
+                raise WaitStateException(
+                    "Object: {0} is in state: {1} which is a terminal state"
+                    " and cannot be waited on.".format(self, self.state))
+            else:
+                log.debug(
+                    "Object {0} is in state: {1}. Waiting another {2} seconds"
+                    " to reach state a ready state...".format(
+                        self,
+                        self.state,
+                        time_left))
+                time.sleep(interval)
+            self.refresh()
+
+        raise WaitStateException("Waited too long for object: {0} to become"
+                                 " ready. It's still  in state: {1}".format(
+                                     self, self.state))
+
+
+class BaseInstance(BaseObjectLifeCycleMixin, Instance):
 
     @property
     def ready_states(self):
@@ -75,34 +123,8 @@ class BaseInstance(Instance):
     def terminal_states(self):
         return [InstanceState.TERMINATED, InstanceState.ERROR]
 
-    def wait_till_ready(self, timeout=600, interval=5):
-        assert timeout > 0
-        assert timeout > interval
-        assert interval > 0
 
-        for time_left in range(timeout, 0, -interval):
-            state = self.instance_state
-            if state in self.ready_states:
-                return True
-            elif state in self.terminal_states:
-                raise InstanceWaitException(
-                    "Instance is in state: {0} which is a terminal state and cannot be waited on.".format(state))
-            else:
-                log.debug(
-                    "Instance is in state '{0}'. Waiting another {1} seconds to reach state a ready state...".format(
-                        state,
-                        time_left))
-                time.sleep(interval)
-            self.refresh()
-
-        raise InstanceWaitException(
-            "Waited too long for instance to become ready. Instance Id: %s is in state: %s".format(
-                self.instance_id,
-                self.name,
-                self.instance_state))
-
-
-class BaseMachineImage(MachineImage):
+class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
 
     @property
     def ready_states(self):
@@ -111,32 +133,6 @@ class BaseMachineImage(MachineImage):
     @property
     def terminal_states(self):
         return [MachineImageState.ERROR]
-
-    def wait_till_ready(self, timeout=600, interval=5):
-        assert timeout > 0
-        assert timeout > interval
-        assert interval > 0
-
-        for time_left in range(timeout, 0, -interval):
-            state = self.image_state
-            if state in self.ready_states:
-                return True
-            elif state in self.terminal_states:
-                raise MachineImageWaitException(
-                    "Image is in state: {0} which is a terminal state and cannot be waited on.".format(state))
-            else:
-                log.debug(
-                    "Image is in state '{0}'. Waiting another {1} seconds to reach a ready state...".format(
-                        state,
-                        time_left))
-                time.sleep(interval)
-            self.refresh()
-
-        raise MachineImageWaitException(
-            "Waited too long for image to become ready. Image: {0}({1}) is still in state: {2}".format(
-                self.name,
-                self.image_id,
-                self.image_state))
 
 
 class BaseKeyPair(KeyPair):

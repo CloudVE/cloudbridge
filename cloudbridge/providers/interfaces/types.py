@@ -23,14 +23,72 @@ class CloudProviderServiceType(object):
     OBJECTSTORE = 'object_store'
 
 
-class InstanceWaitException(Exception):
+class WaitStateException(Exception):
 
     """
-    Marker interface for instance wait exceptions.
-    Thrown when a timeout or errors occurs waiting for an instance to reach
-    state RUNNING.
+    Marker interface for object wait exceptions.
+    Thrown when a timeout or errors occurs waiting for an object does not reach
+    the expected state within a specified time limit.
     """
     pass
+
+
+class ObjectLifeCycleMixin(object):
+
+    """
+    A mixin for an object with a defined life-cycle, such as an Instance,
+    Volume, Image or Snapshot. An object that supports ObjectLifeCycleMixin
+    will always have a state, defining which point in its lifecycle it is
+    currently at.
+
+    It also defines a wait_till_ready operation, which indicates that the
+    object is in a state in its lifecycle where it is ready to be used by an
+    end-user.
+
+    A refresh operation allows the object to synchronise its state with the
+    service provider.
+    """
+    @property
+    def state(self):
+        """
+        Get the current state of this object.
+
+        :rtype: ``str``
+        :return: The current state as a string
+        """
+        raise NotImplementedError(
+            'LifeCycleObject.state not implemented by this service')
+
+    def refresh(self):
+        """
+        Refreshs this object's state and synchronize it with the underlying
+        service provider.
+        """
+        raise NotImplementedError(
+            'LifeCycleObject.refresh not implemented by this service')
+
+    def wait_till_ready(self, timeout, interval):
+        """
+        Wait till the current object is in a ready state, which is any
+        state where the end-user can successfully interact with the object.
+        Will throw a WaitStateException if the object is not ready within
+        the specified timeout.
+
+        :type timeout: int
+        :param timeout: The maximum length of time (in seconds) to wait for the
+        object to become ready.
+
+        :type interval: int
+        :param interval: How frequently to poll the object's ready state (in
+        seconds)
+
+        :rtype: ``True``
+        :return: Returns True if successful. A WaitStateException exception may
+        be thrown by the underlying service if the object cannot get into a
+        ready state (e.g. If the object is in an error state)
+        """
+        raise NotImplementedError(
+            'LifeCycleObject.wait_till_ready not implemented by this service')
 
 
 class InstanceState(object):
@@ -58,7 +116,7 @@ class InstanceState(object):
     ERROR = "error"
 
 
-class Instance(object):
+class Instance(ObjectLifeCycleMixin):
 
     def instance_id(self):
         """
@@ -109,16 +167,6 @@ class Instance(object):
         """
         raise NotImplementedError(
             'Instance.instance_type not implemented by this provider')
-
-    def instance_state(self):
-        """
-        Get the current state of this instance.
-
-        :rtype: ``InstanceType``
-        :return: The instance state such as RUNNING, PENDING, TERMINATED etc.
-        """
-        raise NotImplementedError(
-            'Instance.instance_state not implemented by this provider')
 
     def reboot(self):
         """
@@ -191,24 +239,6 @@ class Instance(object):
         raise NotImplementedError(
             'Instance.key_pair_name not implemented by this provider')
 
-    def wait_till_ready(self, timeout=600, interval=5):
-        """
-        Wait until the instance is running or the timeout elapses.
-        Throws an exception if the instance reaches an error state.
-
-        :type timeout: int
-        :param timeout: Maximum timeout to wait before giving up
-
-        :type interval: int
-        :param interval: How frequently to poll instance state
-
-        :rtype: :bool
-        :return: True if instance is ready. False if the instance is
-        not ready within the specified timeout.
-        """
-        raise NotImplementedError(
-            'Instance.wait_till_ready not implemented by this provider')
-
     def create_image(self, name):
         """
         Create a new image based on this instance.
@@ -217,24 +247,6 @@ class Instance(object):
         """
         raise NotImplementedError(
             'Instance.create_image not implemented by this provider')
-
-    def refresh(self):
-        """
-        Refreshes the state of this instance by re-querying the cloud provider
-        for its latest state.
-        """
-        raise NotImplementedError(
-            'Instance.refresh not implemented by this provider')
-
-
-class MachineImageWaitException(Exception):
-
-    """
-    Marker interface for image wait exceptions.
-    Thrown when a timeout or errors occurs waiting for an image to reach
-    state RUNNING.
-    """
-    pass
 
 
 class MachineImageState(object):
@@ -254,7 +266,7 @@ class MachineImageState(object):
     ERROR = "error"
 
 
-class MachineImage(object):
+class MachineImage(ObjectLifeCycleMixin):
 
     @property
     def image_id(self):
@@ -299,34 +311,8 @@ class MachineImage(object):
         raise NotImplementedError(
             'MachineImage.delete not implemented by this provider')
 
-    def wait_till_ready(self, timeout=600, interval=5):
-        """
-        Wait until the image is running or the timeout elapses.
-        Throws an exception if the image reaches an error state.
 
-        :type timeout: int
-        :param timeout: Maximum timeout to wait before giving up
-
-        :type interval: int
-        :param interval: How frequently to poll image state
-
-        :rtype: :bool
-        :return: True if image is ready. False if the image is
-        not ready within the specified timeout.
-        """
-        raise NotImplementedError(
-            'Image.wait_till_ready not implemented by this provider')
-
-    def refresh(self):
-        """
-        Refreshes the state of this image by re-querying the cloud provider
-        for its latest state.
-        """
-        raise NotImplementedError(
-            'Image.refresh not implemented by this provider')
-
-
-class Volume(object):
+class Volume(ObjectLifeCycleMixin):
 
     def attach(self, instance_id, device):
         """
@@ -391,7 +377,7 @@ class Volume(object):
             'delete not implemented by this provider')
 
 
-class Snapshot(object):
+class Snapshot(ObjectLifeCycleMixin):
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """

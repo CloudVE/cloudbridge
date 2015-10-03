@@ -76,8 +76,10 @@ class ComputeService(ProviderService):
         raise NotImplementedError(
             'list_regions not implemented by this provider')
 
-    def create_instance(self, name, image, instance_type, zone=None, keypair=None, security_groups=None,
-                        user_data=None, block_device_mapping=None, network_interfaces=None, **kwargs):
+    def create_instance(self, name, image, instance_type, zone=None,
+                        keypair=None, security_groups=None, user_data=None,
+                        block_device_mapping=None, network_interfaces=None,
+                        **kwargs):
         """
         Creates a new virtual machine instance.
 
@@ -85,7 +87,8 @@ class ComputeService(ProviderService):
         :param name: The name of the virtual machine instance
 
         :type  image: ``MachineImage`` or ``str``
-        :param image: The MachineImage object or id to boot the virtual machine with
+        :param image: The MachineImage object or id to boot the virtual machine
+        with
 
         :type  instance_type: ``InstanceType`` or ``str``
         :param instance_type: The InstanceType or name, specifying the size of
@@ -95,7 +98,8 @@ class ComputeService(ProviderService):
         :param zone: The Zone or its name, where the instance should be placed.
 
         :type  keypair: ``KeyPair`` or ``str``
-        :param keypair: The KeyPair object or its name, to set for the instance.
+        :param keypair: The KeyPair object or its name, to set for the
+        instance.
 
         :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a
                                 list of ``str`` names
@@ -341,4 +345,5 @@ class InstanceTypesService(object):
         :return: an Instance object
         """
         raise NotImplementedError(
-            'InstanceTypesService.find_instance not implemented by this provider')
+            'InstanceTypesService.find_instance not implemented by this'
+            'provider')

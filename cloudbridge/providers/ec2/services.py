@@ -80,8 +80,10 @@ class EC2ComputeService(ComputeService):
     def __init__(self, provider):
         self.provider = provider
 
-    def create_instance(self, name, image, instance_type, zone=None, keypair=None, security_groups=None,
-                        user_data=None, block_device_mapping=None, network_interfaces=None, **kwargs):
+    def create_instance(self, name, image, instance_type, zone=None,
+                        keypair=None, security_groups=None, user_data=None,
+                        block_device_mapping=None, network_interfaces=None,
+                        **kwargs):
         """
         Creates a new virtual machine instance.
         """

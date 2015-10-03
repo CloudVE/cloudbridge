@@ -11,8 +11,8 @@ class CloudProvider(object):
 
     def __init__(self, config):
         """
-        Create a new provider implementation given a dictionary of configuration
-        attributes.
+        Create a new provider implementation given a dictionary of
+        configuration attributes.
 
         :type config: an object with required fields
         :param config: This can be a Bunch or any other object whose fields can
