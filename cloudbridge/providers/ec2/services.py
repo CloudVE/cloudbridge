@@ -88,31 +88,27 @@ class EC2ComputeService(ComputeService):
         Creates a new virtual machine instance.
         """
         image_id = image.image_id if isinstance(image, MachineImage) else image
-        instance_size = instance_type.name if isinstance(
-            instance_type,
-            InstanceType) else instance_type
+        instance_size = instance_type.name if \
+            isinstance(instance_type, InstanceType) else instance_type
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
         keypair_name = keypair.name if isinstance(
             keypair,
             KeyPair) else keypair
         if security_groups:
-            if isinstance(security_groups, list) and isinstance(
-                    security_groups[0], SecurityGroup):
+            if isinstance(security_groups, list) and \
+                    isinstance(security_groups[0], SecurityGroup):
                 security_groups_list = [sg.name for sg in security_groups]
             else:
                 security_groups_list = security_groups
         else:
             security_groups_list = None
 
-        reservation = self.provider.ec2_conn.run_instances(image_id=image_id,
-                                                           instance_type=instance_size,
-                                                           min_count=1,
-                                                           max_count=1,
-                                                           placement=zone_name,
-                                                           key_name=keypair_name,
-                                                           security_groups=security_groups_list,
-                                                           user_data=user_data
-                                                           )
+        reservation = self.provider.ec2_conn.run_instances(
+            image_id=image_id, instance_type=instance_size,
+            min_count=1, max_count=1, placement=zone_name,
+            key_name=keypair_name, security_groups=security_groups_list,
+            user_data=user_data
+        )
         if reservation:
             instance = EC2Instance(self.provider, reservation.instances[0])
             instance.name = name

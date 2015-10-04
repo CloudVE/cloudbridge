@@ -19,8 +19,8 @@ class ProviderImageServiceTestCase(ProviderTestBase):
     def test_create_and_list_image(self):
         """
         Create a new image and check whether that image can be listed.
-        This covers waiting till the image is ready, checking that the image name is the expected one and
-        whether list_images is functional.
+        This covers waiting till the image is ready, checking that the image
+        name is the expected one and whether list_images is functional.
         """
         name = "CBUnitTestListImg-{0}".format(uuid.uuid4())
         test_image = self.instance.create_image(name)

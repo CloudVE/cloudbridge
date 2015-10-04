@@ -77,7 +77,8 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        self._os_image = self.provider.images.get_image(self.image_id)._os_image
+        image = self.provider.images.get_image(self.image_id)
+        self._os_image = image._os_image
 
 
 class OpenStackInstanceType(InstanceType):

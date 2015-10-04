@@ -3,11 +3,13 @@ from setuptools import setup, find_packages
 
 setup(name='cloudbridge',
       version=0.1,
-      description='A simple layer of abstraction over multiple cloud providers.',
+      description='A simple layer of abstraction over multiple cloud'
+      'providers.',
       author='Galaxy and GVL Projects',
       author_email='support@genome.edu.au',
       url='http://cloudbridge.readthedocs.org/',
-      install_requires=['bunch>=1.00', 'python-keystoneclient', 'python-novaclient', 'boto'],
+      install_requires=['bunch>=1.00', 'python-keystoneclient',
+                        'python-novaclient', 'boto'],
       packages=find_packages(),
       license='MIT',
       classifiers=[

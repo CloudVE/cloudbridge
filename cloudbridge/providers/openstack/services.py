@@ -109,12 +109,11 @@ class OpenStackComputeService(ComputeService):
             isinstance(instance_type, InstanceType) else \
             self.instance_types.find_by_name(instance_type).id
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
-        keypair_name = keypair.name if isinstance(
-            keypair,
-            KeyPair) else keypair
+        keypair_name = keypair.name if \
+            isinstance(keypair, KeyPair) else keypair
         if security_groups:
-            if isinstance(security_groups, list) and isinstance(
-                    security_groups[0], SecurityGroup):
+            if isinstance(security_groups, list) and \
+                    isinstance(security_groups[0], SecurityGroup):
                 security_groups_list = [sg.name for sg in security_groups]
             else:
                 security_groups_list = security_groups
