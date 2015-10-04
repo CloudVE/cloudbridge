@@ -25,7 +25,7 @@ discovered through the ``ProviderFactory``. Test Cases must not inherit from
 discovery. (The test generator will automatically add ``unittest.TestCase``
 as a base class to each combination).
 """
-
+import cloudbridge
 from test.helpers import ProviderTestCaseGenerator
 from test.test_compute_service import ProviderComputeServiceTestCase
 from test.test_provider_image_service import ProviderImageServiceTestCase
@@ -46,4 +46,5 @@ def load_tests(loader=None, tests=None, pattern=None):
     This function is required to aid the load_tests protocol
     (https://docs.python.org/2/library/unittest.html#load-tests-protocol)
     """
+    cloudbridge.init_logging()
     return ProviderTestCaseGenerator(PROVIDER_TESTS).generate_tests()
