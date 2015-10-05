@@ -1,6 +1,6 @@
 # cloudbridge
-cloudbridge provides a layer of abstraction over different cloud providers. It's a straightfoward implementation of
-the bridge pattern.
+cloudbridge provides a layer of abstraction over different cloud providers.
+It's a straightfoward implementation of the [bridge pattern](https://en.wikipedia.org/wiki/Bridge_pattern).
 
 [![Code Climate](https://codeclimate.com/github/gvlproject/libcloudbridge/badges/gpa.svg)](https://codeclimate.com/github/gvlproject/cloudbridge)
 [![Code Health](https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat)](https://landscape.io/github/gvlproject/cloudbridge/master)
@@ -16,7 +16,7 @@ from bunch import Bunch
 config = Bunch(access_key='a_key',
                secret_key='s_key')
 
-provider = CloudProviderFactory().create_provider(ProviderList.EC2, config)
+provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
 print(provider.security.list_key_pairs())
 ```
 
@@ -30,7 +30,7 @@ tests, you should have all the environment variables listed in
 If you’d like to run the tests on a specific environment only, use a command
 like this: `tox -e py27` (or ``python setup.py test`` directly). If you'd
 like to run the tests for a specific cloud only, you should export env var
-``CB_TEST_PROVIDER`` and specify the desired provider name (e.g., ``ec2`` or
+``CB_TEST_PROVIDER`` and specify the desired provider name (e.g., ``aws`` or
 ``openstack``) and then run the ``tox`` command.
 
 Note that running the tests will create various cloud resources, for which you

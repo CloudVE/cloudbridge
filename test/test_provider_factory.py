@@ -11,7 +11,7 @@ class ProviderFactoryTestCase(unittest.TestCase):
         Creating a provider with a known name should return
         a valid implementation
         """
-        self.assertIsInstance(CloudProviderFactory().create_provider(factory.ProviderList.EC2, {}, version=1),
+        self.assertIsInstance(CloudProviderFactory().create_provider(factory.ProviderList.AWS, {}, version=1),
                               interfaces.CloudProvider,
                               "create_provider did not return a valid instance type")
 
@@ -22,15 +22,15 @@ class ProviderFactoryTestCase(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             CloudProviderFactory().create_provider("ec23", {})
         with self.assertRaises(NotImplementedError):
-            CloudProviderFactory().create_provider(factory.ProviderList.EC2, {}, version=100)
+            CloudProviderFactory().create_provider(factory.ProviderList.AWS, {}, version=100)
 
     def test_find_provider_impl_valid(self):
         """
         Searching for a provider with a known name or version should return a valid implementation
         """
-        self.assertTrue(CloudProviderFactory().find_provider_impl(factory.ProviderList.EC2))
-        self.assertEqual(CloudProviderFactory().find_provider_impl(factory.ProviderList.EC2, version=1),
-                         "cloudbridge.providers.ec2.EC2CloudProviderV1")
+        self.assertTrue(CloudProviderFactory().find_provider_impl(factory.ProviderList.AWS))
+        self.assertEqual(CloudProviderFactory().find_provider_impl(factory.ProviderList.AWS, version=1),
+                         "cloudbridge.providers.aws.AWSCloudProviderV1")
 
     def test_find_provider_impl_invalid(self):
         """
@@ -38,4 +38,4 @@ class ProviderFactoryTestCase(unittest.TestCase):
         """
         self.assertIsNone(CloudProviderFactory().find_provider_impl("openstack1"))
         self.assertIsNone(CloudProviderFactory().find_provider_impl(
-            factory.ProviderList.EC2, version=100))
+            factory.ProviderList.AWS, version=100))

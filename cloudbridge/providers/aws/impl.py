@@ -1,5 +1,5 @@
 """
-Provider implementation based on boto library for EC2-compatible clouds.
+Provider implementation based on boto library for AWS-compatible clouds.
 """
 
 import os
@@ -9,16 +9,16 @@ from boto.ec2.regioninfo import RegionInfo
 
 from cloudbridge.providers.base import BaseCloudProvider
 
-from .services import EC2ComputeService
-from .services import EC2ImageService
-from .services import EC2SecurityService
+from .services import AWSComputeService
+from .services import AWSImageService
+from .services import AWSSecurityService
 
 
-class EC2CloudProviderV1(BaseCloudProvider):
+class AWSCloudProviderV1(BaseCloudProvider):
 
     def __init__(self, config):
-        super(EC2CloudProviderV1, self).__init__(config)
-        self.cloud_type = 'ec2'
+        super(AWSCloudProviderV1, self).__init__(config)
+        self.cloud_type = 'aws'
 
         # Initialize cloud connection fields
         self.a_key = self._get_config_value(
@@ -36,11 +36,11 @@ class EC2CloudProviderV1(BaseCloudProvider):
         self.ec2_conn = self._connect_ec2()
 
         # Initialize provider services
-        self.compute = EC2ComputeService(self)
-        self.images = EC2ImageService(self)
-        self.security = EC2SecurityService(self)
-        self.block_store = None  # EC2BlockStore(self)
-        self.object_store = None  # EC2ObjectStore(self)
+        self.compute = AWSComputeService(self)
+        self.images = AWSImageService(self)
+        self.security = AWSSecurityService(self)
+        self.block_store = None  # AWSBlockStore(self)
+        self.object_store = None  # AWSObjectStore(self)
 
     def _connect_ec2(self):
         """
@@ -52,7 +52,7 @@ class EC2CloudProviderV1(BaseCloudProvider):
             aws_secret_access_key=self.s_key,
             # api_version is needed for availability
             # zone support for EC2
-            api_version='2012-06-01' if self.cloud_type == 'ec2' else None,
+            api_version='2012-06-01' if self.cloud_type == 'aws' else None,
             is_secure=self.is_secure,
             region=r,
             port=self.ec2_port,
@@ -70,7 +70,7 @@ class EC2CloudProviderV1(BaseCloudProvider):
             aws_secret_access_key=self.s_key,
             # api_version is needed for availability
             # zone support for EC2
-            api_version='2012-06-01' if self.cloud_type == 'ec2' else None,
+            api_version='2012-06-01' if self.cloud_type == 'aws' else None,
             is_secure=self.is_secure,
             region=r,
             port=self.ec2_port,

@@ -2,7 +2,7 @@ import importlib
 
 
 class ProviderList(object):
-    EC2 = 'ec2'
+    AWS = 'aws'
     OPENSTACK = 'openstack'
     AZURE = 'azure'
 
@@ -28,9 +28,9 @@ class CloudProviderFactory(object):
                  "implementations":
                  [{"class": "cloudbridge.providers.openstack.OpenStackCloudProviderV1",
                    "version": 1}]},
-                {"name": ProviderList.EC2,
+                {"name": ProviderList.AWS,
                  "implementations":
-                 [{"class": "cloudbridge.providers.ec2.EC2CloudProviderV1",
+                 [{"class": "cloudbridge.providers.aws.AWSCloudProviderV1",
                    "version": 1}]}]
 
     def find_provider_impl(self, name, version=None):
@@ -72,7 +72,7 @@ class CloudProviderFactory(object):
         cloud provider.
 
         :type name: str
-        :param name: Cloud provider name: one of ``ec2``, ``openstack``.
+        :param name: Cloud provider name: one of ``aws``, ``openstack``.
 
         :type config: an object with required fields
         :param config: This can be a Bunch or any other object whose fields can

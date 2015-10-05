@@ -13,11 +13,11 @@ from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 
-from .types import EC2Instance
-from .types import EC2MachineImage
+from .types import AWSInstance
+from .types import AWSMachineImage
 
 
-class EC2SecurityService(SecurityService):
+class AWSSecurityService(SecurityService):
 
     def __init__(self, provider):
         self.provider = provider
@@ -43,7 +43,7 @@ class EC2SecurityService(SecurityService):
         return [BaseSecurityGroup(group.name) for group in groups]
 
 
-class EC2ImageService(ImageService):
+class AWSImageService(ImageService):
 
     def __init__(self, provider):
         self.provider = provider
@@ -54,7 +54,7 @@ class EC2ImageService(ImageService):
         """
         image = self.provider.ec2_conn.get_image(image_id)
         if image:
-            return EC2MachineImage(self.provider, image)
+            return AWSMachineImage(self.provider, image)
         else:
             return None
 
@@ -72,10 +72,10 @@ class EC2ImageService(ImageService):
         # TODO: get_all_images returns too many images - some kind of filtering
         # abilities are needed. Forced to "self" for now
         images = self.provider.ec2_conn.get_all_images(owners="self")
-        return [EC2MachineImage(self.provider, image) for image in images]
+        return [AWSMachineImage(self.provider, image) for image in images]
 
 
-class EC2ComputeService(ComputeService):
+class AWSComputeService(ComputeService):
 
     def __init__(self, provider):
         self.provider = provider
@@ -110,6 +110,6 @@ class EC2ComputeService(ComputeService):
             user_data=user_data
         )
         if reservation:
-            instance = EC2Instance(self.provider, reservation.instances[0])
+            instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
         return instance

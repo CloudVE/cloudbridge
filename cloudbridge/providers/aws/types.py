@@ -11,7 +11,7 @@ from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImageState
 
 
-class EC2MachineImage(BaseMachineImage):
+class AWSMachineImage(BaseMachineImage):
 
     IMAGE_STATE_MAP = {
         'pending': MachineImageState.PENDING,
@@ -21,7 +21,7 @@ class EC2MachineImage(BaseMachineImage):
 
     def __init__(self, provider, image):
         self.provider = provider
-        if isinstance(image, EC2MachineImage):
+        if isinstance(image, AWSMachineImage):
             self._ec2_image = image._ec2_image
         else:
             self._ec2_image = image
@@ -64,7 +64,7 @@ class EC2MachineImage(BaseMachineImage):
 
     @property
     def state(self):
-        return EC2MachineImage.IMAGE_STATE_MAP.get(
+        return AWSMachineImage.IMAGE_STATE_MAP.get(
             self._ec2_image.state, MachineImageState.UNKNOWN)
 
     def refresh(self):
@@ -76,7 +76,7 @@ class EC2MachineImage(BaseMachineImage):
             self.image_id)._ec2_image
 
 
-class EC2InstanceType(InstanceType):
+class AWSInstanceType(InstanceType):
 
     def __init__(self, instance_type):
         self.instance_type = instance_type
@@ -90,10 +90,10 @@ class EC2InstanceType(InstanceType):
         return self.instance_type
 
     def __repr__(self):
-        return "<CB-EC2InstanceType: {0}>".format(self.id)
+        return "<CB-AWSInstanceType: {0}>".format(self.id)
 
 
-class EC2Instance(BaseInstance):
+class AWSInstance(BaseInstance):
 
     # ref:
     # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html
@@ -152,7 +152,7 @@ class EC2Instance(BaseInstance):
         """
         Get the instance type.
         """
-        return EC2InstanceType(self._ec2_instance.instance_type)
+        return AWSInstanceType(self._ec2_instance.instance_type)
 
     def reboot(self):
         """
@@ -208,11 +208,11 @@ class EC2Instance(BaseInstance):
         """
         image_id = self._ec2_instance.create_image(name)
         image = self.provider.images.get_image(image_id)
-        return EC2MachineImage(self.provider, image)
+        return AWSMachineImage(self.provider, image)
 
     @property
     def state(self):
-        return EC2Instance.INSTANCE_STATE_MAP.get(
+        return AWSInstance.INSTANCE_STATE_MAP.get(
             self._ec2_instance.state, InstanceState.UNKNOWN)
 
     def refresh(self):

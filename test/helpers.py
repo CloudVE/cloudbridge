@@ -5,7 +5,7 @@ from cloudbridge.providers.factory import CloudProviderFactory
 
 def create_test_instance(provider):
     instance_name = "HelloCloudBridge-{0}".format(provider.name)
-    if "EC2CloudProvider" in provider.name:
+    if "AWSCloudProvider" in provider.name:
         ami = os.environ.get('CB_AMI', 'ami-d85e75b0')
         instance_type = os.environ.get('CB_INSTANCE_TYPE', 't1.micro')
         return provider.compute.create_instance(
