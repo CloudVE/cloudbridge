@@ -95,7 +95,7 @@ class OpenStackInstanceType(InstanceType):
         return self.os_flavor.name
 
     def __repr__(self):
-        return "<OSInstanceType: {0}={1}>".format(self.id, self.name)
+        return "<CB-OSInstanceType: {0}={1}>".format(self.id, self.name)
 
 
 class OpenStackInstance(BaseInstance):
@@ -251,4 +251,4 @@ class OpenStackRegion(Region):
         return self._os_region.zoneName
 
     def __repr__(self):
-        return "<OSRegion: {0}>".format(self.name)
+        return "<CB-OSRegion: {0}>".format(self.name)

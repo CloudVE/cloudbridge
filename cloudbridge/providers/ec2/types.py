@@ -90,7 +90,7 @@ class EC2InstanceType(InstanceType):
         return self.instance_type
 
     def __repr__(self):
-        return "<EC2InstanceType: {0}>".format(self.id)
+        return "<CB-EC2InstanceType: {0}>".format(self.id)
 
 
 class EC2Instance(BaseInstance):
