@@ -14,10 +14,10 @@ from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 
-from .types import OpenStackInstance
-from .types import OpenStackInstanceType
-from .types import OpenStackMachineImage
-from .types import OpenStackRegion
+from .resources import OpenStackInstance
+from .resources import OpenStackInstanceType
+from .resources import OpenStackMachineImage
+from .resources import OpenStackRegion
 
 
 class OpenStackSecurityService(SecurityService):

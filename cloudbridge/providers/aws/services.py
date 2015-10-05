@@ -13,8 +13,8 @@ from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 
-from .types import AWSInstance
-from .types import AWSMachineImage
+from .resources import AWSInstance
+from .resources import AWSMachineImage
 
 
 class AWSSecurityService(SecurityService):
