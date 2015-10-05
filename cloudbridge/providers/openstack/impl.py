@@ -36,11 +36,36 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         self.nova = self._connect_nova()
         self.keystone = self._connect_keystone()
 
-        self.compute = OpenStackComputeService(self)
-        self.images = OpenStackImageService(self)
-        self.security = OpenStackSecurityService(self)
-        # self.block_store = EC2BlockStore(self)
-        # self.object_store = EC2ObjectStore(self)
+        self._compute = OpenStackComputeService(self)
+        self._images = OpenStackImageService(self)
+        self._security = OpenStackSecurityService(self)
+        self._block_store = None  # OpenStackBlockStore(self)
+        self._object_store = None  # OpenStackObjectStore(self)
+        self._volumes = None  # OpenStackVolumeService(self)
+
+    @property
+    def compute(self):
+        return self._compute
+
+    @property
+    def images(self):
+        return self._images
+
+    @property
+    def security(self):
+        return self._security
+
+    @property
+    def block_store(self):
+        return self._block_store
+
+    @property
+    def object_store(self):
+        return self._object_store
+
+    @property
+    def volumes(self):
+        return self._volumes
 
     def _connect_nova(self):
         """

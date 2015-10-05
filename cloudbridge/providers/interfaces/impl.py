@@ -25,6 +25,7 @@ class CloudProvider(object):
         raise NotImplementedError(
             '__init__ not implemented by this provider')
 
+    @property
     def config(self):
         """
         Returns the config object associated with this provider.
@@ -48,6 +49,7 @@ class CloudProvider(object):
         raise NotImplementedError(
             'CloudProvider.has_service not implemented by this provider')
 
+    @property
     def account(self):
         """
         Provides access to all user account related services in this provider.
@@ -59,6 +61,7 @@ class CloudProvider(object):
         raise NotImplementedError(
             'CloudProvider.Compute not implemented by this provider')
 
+    @property
     def compute(self):
         """
         Provides access to all compute related services in this provider.
@@ -69,7 +72,8 @@ class CloudProvider(object):
         raise NotImplementedError(
             'CloudProvider.compute not implemented by this provider')
 
-    def image(self):
+    @property
+    def images(self):
         """
         Provides access to all Image related services in this provider.
         (e.g. Glance in Openstack)
@@ -78,8 +82,9 @@ class CloudProvider(object):
         :return: an ImageService object
         """
         raise NotImplementedError(
-            'CloudProvider.image not implemented by this provider')
+            'CloudProvider.images not implemented by this provider')
 
+    @property
     def security(self):
         """
         Provides access to keypair management and firewall control
@@ -90,7 +95,8 @@ class CloudProvider(object):
         raise NotImplementedError(
             'CloudProvider.security not implemented by this provider')
 
-    def volume(self):
+    @property
+    def volumes(self):
         """
         Provides access to the volume/elastic block store services in this
         provider.
@@ -99,8 +105,9 @@ class CloudProvider(object):
         :return: a VolumeService object
         """
         raise NotImplementedError(
-            'CloudProvider.volume not implemented by this provider')
+            'CloudProvider.volumes not implemented by this provider')
 
+    @property
     def object_store(self):
         """
         Provides access to object storage services in this provider.

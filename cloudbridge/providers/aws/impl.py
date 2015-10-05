@@ -36,11 +36,36 @@ class AWSCloudProviderV1(BaseCloudProvider):
         self.ec2_conn = self._connect_ec2()
 
         # Initialize provider services
-        self.compute = AWSComputeService(self)
-        self.images = AWSImageService(self)
-        self.security = AWSSecurityService(self)
-        self.block_store = None  # AWSBlockStore(self)
-        self.object_store = None  # AWSObjectStore(self)
+        self._compute = AWSComputeService(self)
+        self._images = AWSImageService(self)
+        self._security = AWSSecurityService(self)
+        self._block_store = None  # AWSBlockStore(self)
+        self._object_store = None  # AWSObjectStore(self)
+        self._volumes = None  # AWSVolumeService(self)
+
+    @property
+    def compute(self):
+        return self._compute
+
+    @property
+    def images(self):
+        return self._images
+
+    @property
+    def security(self):
+        return self._security
+
+    @property
+    def block_store(self):
+        return self._block_store
+
+    @property
+    def object_store(self):
+        return self._object_store
+
+    @property
+    def volumes(self):
+        return self._volumes
 
     def _connect_ec2(self):
         """
