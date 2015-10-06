@@ -148,8 +148,8 @@ class VolumeService(ProviderService):
         """
         Searches for a volume by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.Instance`
-        :return: an Instance object or ``None`` if not found
+        :rtype: ``object`` of :class:`.Volume`
+        :return: a Volume object or ``None`` if not found
         """
         raise NotImplementedError(
             'find_volume not implemented by this provider')
@@ -164,25 +164,117 @@ class VolumeService(ProviderService):
         raise NotImplementedError(
             'list_volumes not implemented by this provider')
 
-    def list_volume_snapshots(self):
+    def create_volume(self, name, size, zone, snapshot=None, description=None):
         """
-        List all volume snapshots.
+        Creates a new volume.
+
+        :type  name: ``str``
+        :param name: The name of the volume
+
+        :type  size: ``int``
+        :param size: The size of the volume (in GB)
+
+        :type  zone: ``str`` or ``PlacementZone``
+        :param zone: The availability zone in which the Volume will be created.
+
+        :type  description: ``str``
+        :param description: An optional description that may be supported by
+        some providers. Providers that do not support this property will return
+        None.
+
+        :rtype: ``object`` of :class:`.Volume`
+        :return: a newly created Volume object
+        """
+        raise NotImplementedError(
+            'create_volume not implemented by this provider')
+
+
+class SnapshotService(ProviderService):
+
+    """
+    Base interface for a Snapshot Service
+    """
+
+    def get_snapshot(self, volume_id):
+        """
+        Returns a snapshot given its id.
+
+        :rtype: ``object`` of :class:`.Snapshot`
+        :return: a Snapshot object
+        """
+        raise NotImplementedError(
+            'get_snapshot not implemented by this provider')
+
+    def find_snapshot(self, name):
+        """
+        Searches for a snapshot by a given list of attributes.
+
+        :rtype: ``object`` of :class:`.Snapshot`
+        :return: a Snapshot object or ``None`` if not found
+        """
+        raise NotImplementedError(
+            'find_snapshot not implemented by this provider')
+
+    def list_snapshots(self):
+        """
+        List all snapshots.
 
         :rtype: ``list`` of :class:`.Snapshot`
         :return: a list of Snapshot objects
         """
         raise NotImplementedError(
-            'list_volume_snapshots not implemented by this provider')
+            'list_snapshots not implemented by this provider')
 
-    def create_volume(self):
+    def create_snapshot(self, name, volume, description=None):
         """
-        Creates a new volume.
+        Creates a new snapshot off a volume.
 
-        :rtype: ``list`` of :class:`.Volume`
-        :return: a newly created Volume object
+        :type  name: ``str``
+        :param name: The name of the snapshot
+
+        :type  volume: ``str`` or ``Volume``
+        :param volume: The volume to create a snapshot of.
+
+        :type  description: ``str``
+        :param description: An optional description that may be supported by
+        some providers. Providers that do not support this property will return
+        None.
+
+        :rtype: ``object`` of :class:`.Snapshot`
+        :return: a newly created Snapshot object
         """
         raise NotImplementedError(
-            'create_volume not implemented by this provider')
+            'create_snapshot not implemented by this provider')
+
+
+class BlockStoreService(ProviderService):
+
+    """
+    Base interface for a Block Store Service
+    """
+
+    @property
+    def volumes(self):
+        """
+        Provides access to the volume and snapshot services in this
+        provider.
+
+        :rtype: ``object`` of :class:`.BlockStoreService`
+        :return: a BlockStoreService object
+        """
+        raise NotImplementedError(
+            'CloudProvider.block_store not implemented by this provider')
+
+    @property
+    def snapshots(self):
+        """
+        Provides access to object storage services in this provider.
+
+        :rtype: ``object`` of :class:`.ObjectStoreService`
+        :return: an ObjectStoreService object
+        """
+        raise NotImplementedError(
+            'CloudProvider.object_store not implemented by this provider')
 
 
 class ImageService(ProviderService):

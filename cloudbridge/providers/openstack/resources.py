@@ -9,6 +9,7 @@ from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import InstanceState
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImageState
+from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import Region
 
 
@@ -79,6 +80,36 @@ class OpenStackMachineImage(BaseMachineImage):
         """
         image = self.provider.images.get_image(self.image_id)
         self._os_image = image._os_image
+
+
+class OpenStackPlacementZone(PlacementZone):
+
+    def __init__(self, provider, zone):
+        self.provider = provider
+        if isinstance(zone, OpenStackPlacementZone):
+            self._os_zone = zone._os_zone
+        else:
+            self._os_zone = zone
+
+    @property
+    def name(self):
+        """
+        Get the zone name.
+
+        :rtype: ``str``
+        :return: Name for this zone as returned by the cloud middleware.
+        """
+        return self._os_zone.zoneName
+
+    @property
+    def region(self):
+        """
+        Get the region that this zone belongs to.
+
+        :rtype: ``str``
+        :return: Name of this zone's region as returned by the cloud middleware
+        """
+        return self._os_zone.region_name
 
 
 class OpenStackInstanceType(InstanceType):
@@ -193,7 +224,8 @@ class OpenStackInstance(BaseInstance):
         """
         Get the placement zone where this instance is running.
         """
-        return self._os_instance.availability_zone
+        return OpenStackPlacementZone(
+            self.provider, self._os_instance.availability_zone)
 
     @property
     def mac_address(self):
@@ -238,6 +270,9 @@ class OpenStackInstance(BaseInstance):
         """
         self._os_instance = self.provider.compute.get_instance(
             self.instance_id)._os_instance
+
+    def __repr__(self):
+        return "<CB-OSInstance: {0}({1})>".format(self.name, self.instance_id)
 
 
 class OpenStackRegion(Region):

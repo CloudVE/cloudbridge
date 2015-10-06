@@ -118,6 +118,7 @@ class InstanceState(object):
 
 class Instance(ObjectLifeCycleMixin):
 
+    @property
     def instance_id(self):
         """
         Get the instance identifier.
@@ -128,6 +129,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.instance_id not implemented by this provider')
 
+    @property
     def name(self):
         """
         Get the instance name.
@@ -138,6 +140,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.name not implemented by this provider')
 
+    @property
     def public_ips(self):
         """
         Get all the public IP addresses for this instance.
@@ -148,6 +151,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.public_ips not implemented by this provider')
 
+    @property
     def private_ips(self):
         """
         Get all the private IP addresses for this instance.
@@ -158,6 +162,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.private_ips not implemented by this provider')
 
+    @property
     def instance_type(self):
         """
         Get the instance type.
@@ -189,6 +194,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.terminate not implemented by this provider')
 
+    @property
     def image_id(self):
         """
         Get the image ID for this insance.
@@ -199,6 +205,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.image_id not implemented by this provider')
 
+    @property
     def placement_zone(self):
         """
         Get the placement zone where this instance is running.
@@ -209,6 +216,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.placement not implemented by this provider')
 
+    @property
     def mac_address(self):
         """
         Get the MAC address for this instance.
@@ -219,6 +227,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.mac_address not implemented by this provider')
 
+    @property
     def security_group_ids(self):
         """
         Get the security group IDs associated with this instance.
@@ -229,6 +238,7 @@ class Instance(ObjectLifeCycleMixin):
         raise NotImplementedError(
             'Instance.security_group_ids not implemented by this provider')
 
+    @property
     def key_pair_name(self):
         """
         Get the name of the key pair associated with this instance.
@@ -312,7 +322,52 @@ class MachineImage(ObjectLifeCycleMixin):
             'MachineImage.delete not implemented by this provider')
 
 
+class VolumeState(object):
+
+    """
+    Standard states for a volume
+
+    :cvar UNKNOWN: Volume state unknown.
+    :cvar CREATING: Volume is being created.
+    :cvar CONFIGURING: Volume is being configured in some way.
+    :cvar AVAILABLE: Volume is available and can be attached to an instance.
+    :cvar IN_USE: Volume is attached and in-use.
+    :cvar DELETED: Volume has been deleted. No further operations possible.
+    :cvar ERROR: Volume is in an error state. No further operations possible.
+
+    """
+    UNKNOWN = "unknown"
+    CREATING = "creating"
+    CONFIGURING = "configuring"
+    AVAILABLE = "available"
+    IN_USE = "in-use"
+    DELETED = "deleted"
+    ERROR = "error"
+
+
 class Volume(ObjectLifeCycleMixin):
+
+    @property
+    def volume_id(self):
+        """
+        Get the volume identifier.
+
+        :rtype: ``str``
+        :return: ID for this instance as returned by the cloud middleware.
+        """
+        raise NotImplementedError(
+            'Volume.volume_id not implemented by this provider')
+
+    @property
+    def name(self):
+        """
+        Get the volume name.
+
+        :rtype: ``str``
+        :return: Name for this volume as returned by the cloud middleware.
+        """
+        raise NotImplementedError(
+            'Volume.name not implemented by this provider')
 
     def attach(self, instance_id, device):
         """
@@ -330,7 +385,7 @@ class Volume(ObjectLifeCycleMixin):
         :return: True if successful
         """
         raise NotImplementedError(
-            'attach not implemented by this provider')
+            'Volume.attach not implemented by this provider')
 
     def detach(self, force=False):
         """
@@ -350,9 +405,9 @@ class Volume(ObjectLifeCycleMixin):
         :return: True if successful
         """
         raise NotImplementedError(
-            'detach not implemented by this provider')
+            'Volume.detach not implemented by this provider')
 
-    def snapshot(self, description=None):
+    def create_snapshot(self, description=None):
         """
         Create a snapshot of this Volume.
 
@@ -364,7 +419,7 @@ class Volume(ObjectLifeCycleMixin):
         :return: The created Snapshot object
         """
         raise NotImplementedError(
-            'snapshot not implemented by this provider')
+            'Volume.snapshot not implemented by this provider')
 
     def delete(self):
         """
@@ -374,7 +429,26 @@ class Volume(ObjectLifeCycleMixin):
         :return: True if successful
         """
         raise NotImplementedError(
-            'delete not implemented by this provider')
+            'Volume.delete not implemented by this provider')
+
+
+class SnapshotState(object):
+
+    """
+    Standard states for a snapshot
+
+    :cvar UNKNOWN: Snapshot state unknown.
+    :cvar PENDING: Snapshot is pending.
+    :cvar CONFIGURING: Snapshot is being configured in some way.
+    :cvar AVAILABLE: Snapshot has been completed and is ready for use.
+    :cvar ERROR: Snapshot is in an error state. No further operations possible.
+
+    """
+    UNKNOWN = "unknown"
+    PENDING = "pending"
+    CONFIGURING = "configuring"
+    AVAILABLE = "available"
+    ERROR = "error"
 
 
 class Snapshot(ObjectLifeCycleMixin):
@@ -443,6 +517,7 @@ class Snapshot(ObjectLifeCycleMixin):
 
 class KeyPair(object):
 
+    @property
     def name(self):
         """
         Return the name of this key pair.
@@ -453,6 +528,7 @@ class KeyPair(object):
         raise NotImplementedError(
             'name not implemented by this provider')
 
+    @property
     def material(self):
         """
         Unencrypted private key.
@@ -471,6 +547,7 @@ class Region(object):
     contain at least one placement zone.
     """
 
+    @property
     def name(self):
         """
         Name of the region.
@@ -498,6 +575,7 @@ class PlacementZone(object):
     Represents a placement zone. A placement zone is contained within a Region.
     """
 
+    @property
     def name(self):
         """
         Name of the placement zone.
@@ -508,7 +586,8 @@ class PlacementZone(object):
         raise NotImplementedError(
             'PlacementZone.name not implemented by this provider')
 
-    def region_name(self):
+    @property
+    def region(self):
         """
         A region this placement zone is associated with.
 
@@ -525,10 +604,12 @@ class InstanceType(object):
     An instance type object.
     """
 
+    @property
     def id(self):
         raise NotImplementedError(
             'InstanceType.id not implemented by this provider')
 
+    @property
     def name(self):
         raise NotImplementedError(
             'InstanceType.name not implemented by this provider')
@@ -536,6 +617,7 @@ class InstanceType(object):
 
 class SecurityGroup(object):
 
+    @property
     def name(self):
         """
         Return the name of this security group.

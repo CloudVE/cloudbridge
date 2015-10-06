@@ -13,6 +13,10 @@ from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import MachineImageState
 from cloudbridge.providers.interfaces import ObjectLifeCycleMixin
 from cloudbridge.providers.interfaces import SecurityGroup
+from cloudbridge.providers.interfaces import Snapshot
+from cloudbridge.providers.interfaces import SnapshotState
+from cloudbridge.providers.interfaces import Volume
+from cloudbridge.providers.interfaces import VolumeState
 from cloudbridge.providers.interfaces import WaitStateException
 
 
@@ -94,31 +98,40 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
             "terminal_states not implemented by this object. Subclasses must"
             " implement this method and return a valid set of terminal states")
 
-    def wait_till_ready(self, timeout=600, interval=5):
+    def wait_for(self, target_states, terminal_states=None, timeout=600,
+                 interval=5):
         assert timeout > 0
         assert timeout > interval
         assert interval > 0
 
         for time_left in range(timeout, 0, -interval):
-            if self.state in self.ready_states:
+            if self.state in target_states:
                 return True
-            elif self.state in self.terminal_states:
+            elif self.state in terminal_states:
                 raise WaitStateException(
                     "Object: {0} is in state: {1} which is a terminal state"
                     " and cannot be waited on.".format(self, self.state))
             else:
                 log.debug(
                     "Object {0} is in state: {1}. Waiting another {2} seconds"
-                    " to reach state a ready state...".format(
+                    " to reach target state(s): {3}...".format(
                         self,
                         self.state,
-                        time_left))
+                        time_left,
+                        target_states))
                 time.sleep(interval)
             self.refresh()
 
         raise WaitStateException("Waited too long for object: {0} to become"
                                  " ready. It's still  in state: {1}".format(
                                      self, self.state))
+
+    def wait_till_ready(self, timeout=600, interval=5):
+        self.wait_for(
+            self.ready_states,
+            self.terminal_states,
+            timeout,
+            interval)
 
 
 class BaseInstance(BaseObjectLifeCycleMixin, Instance):
@@ -143,11 +156,47 @@ class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
         return [MachineImageState.ERROR]
 
 
+class BaseVolume(BaseObjectLifeCycleMixin, Volume):
+
+    @property
+    def ready_states(self):
+        return [VolumeState.AVAILABLE]
+
+    @property
+    def terminal_states(self):
+        return [VolumeState.ERROR, VolumeState.DELETED]
+
+
+class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
+
+    @property
+    def ready_states(self):
+        return [SnapshotState.AVAILABLE]
+
+    @property
+    def terminal_states(self):
+        return [SnapshotState.ERROR]
+
+
 class BaseKeyPair(KeyPair):
 
     def __init__(self, name, material=None):
-        self.name = name
-        self.material = material
+        self._name = name
+        self._material = material
+
+    @property
+    def name(self):
+        """
+        Return the name of this key pair.
+        """
+        return self._name
+
+    @property
+    def material(self):
+        """
+        Unencrypted private key.
+        """
+        return self._material
 
     def __repr__(self):
         return "<CBKeyPair: {0}>".format(self.name)
@@ -156,7 +205,14 @@ class BaseKeyPair(KeyPair):
 class BaseSecurityGroup(SecurityGroup):
 
     def __init__(self, name):
-        self.name = name
+        self._name = name
+
+    @property
+    def name(self):
+        """
+        Return the name of this key pair.
+        """
+        return self._name
 
     def __repr__(self):
         return "<CBSecurityGroup: {0}>".format(self.name)

@@ -106,6 +106,10 @@ class ProviderTestCaseGenerator():
         provider_name = os.environ.get("CB_TEST_PROVIDER", None)
         if provider_name:
             provider_classes = [factory.get_provider_class(provider_name)]
+            if not provider_classes[0]:
+                raise ValueError(
+                    "Could not find specified test provider %s" %
+                    provider_name)
         else:
             provider_classes = factory.get_all_provider_classes()
         suite = unittest.TestSuite()

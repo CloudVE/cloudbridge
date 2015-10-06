@@ -9,6 +9,7 @@ from boto.ec2.regioninfo import RegionInfo
 
 from cloudbridge.providers.base import BaseCloudProvider
 
+from .services import AWSBlockStoreService
 from .services import AWSComputeService
 from .services import AWSImageService
 from .services import AWSSecurityService
@@ -39,7 +40,7 @@ class AWSCloudProviderV1(BaseCloudProvider):
         self._compute = AWSComputeService(self)
         self._images = AWSImageService(self)
         self._security = AWSSecurityService(self)
-        self._block_store = None  # AWSBlockStoreService(self)
+        self._block_store = AWSBlockStoreService(self)
         self._object_store = None  # AWSObjectStore(self)
 
     @property

@@ -4,6 +4,7 @@ Services implemented by this provider
 
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseSecurityGroup
+from cloudbridge.providers.interfaces import BlockStoreService
 from cloudbridge.providers.interfaces import ComputeService
 from cloudbridge.providers.interfaces import ImageService
 from cloudbridge.providers.interfaces import InstanceType
@@ -12,9 +13,13 @@ from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
+from cloudbridge.providers.interfaces import SnapshotService
+from cloudbridge.providers.interfaces import VolumeService
 
 from .resources import AWSInstance
 from .resources import AWSMachineImage
+from .resources import AWSSnapshot
+from .resources import AWSVolume
 
 
 class AWSSecurityService(SecurityService):
@@ -41,6 +46,111 @@ class AWSSecurityService(SecurityService):
         """
         groups = self.provider.ec2_conn.get_all_security_groups()
         return [BaseSecurityGroup(group.name) for group in groups]
+
+
+class AWSBlockStoreService(BlockStoreService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+        # Initialize provider services
+        self._volumes = AWSVolumeService(self.provider)
+        self._snapshots = AWSSnapshotService(self.provider)
+
+    @property
+    def volumes(self):
+        return self._volumes
+
+    @property
+    def snapshots(self):
+        return self._snapshots
+
+
+class AWSVolumeService(VolumeService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def get_volume(self, volume_id):
+        """
+        Returns a volume given its id.
+        """
+        vols = self.provider.ec2_conn.get_all_volumes(volume_ids=[volume_id])
+        return AWSVolume(self.provider, vols[0]) if vols else None
+
+    def find_volume(self, name):
+        """
+        Searches for a volume by a given list of attributes.
+        """
+        raise NotImplementedError(
+            'find_volume not implemented by this provider')
+
+    def list_volumes(self):
+        """
+        List all volumes.
+        """
+        return [AWSVolume(self.provider, vol)
+                for vol in self.provider.ec2_conn.get_all_volumes()]
+
+    def create_volume(self, name, size, zone, snapshot=None):
+        """
+        Creates a new volume.
+        """
+        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        snapshot_id = snapshot.id if isinstance(
+            zone, AWSSnapshot) and snapshot else snapshot
+
+        ec2_vol = self.provider.ec2_conn.create_volume(
+            size,
+            zone_name,
+            snapshot=snapshot_id)
+        cb_vol = AWSVolume(self.provider, ec2_vol)
+        cb_vol.name = name
+        return cb_vol
+
+
+class AWSSnapshotService(SnapshotService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def get_snapshot(self, snapshot_id):
+        """
+        Returns a snapshot given its id.
+        """
+        snaps = self.provider.ec2_conn.get_all_snapshots(
+            snapshot_ids=[snapshot_id])
+        return AWSSnapshot(self.provider, snaps[0]) if snaps else None
+
+    def find_snapshot(self, name):
+        """
+        Searches for a volume by a given list of attributes.
+        """
+        raise NotImplementedError(
+            'find_volume not implemented by this provider')
+
+    def list_snapshots(self):
+        """
+        List all snapshot.
+        """
+        # TODO: get_all_images returns too many images - some kind of filtering
+        # abilities are needed. Forced to "self" for now
+        return [AWSSnapshot(self.provider, snap)
+                for snap in
+                self.provider.ec2_conn.get_all_snapshots(owner="self")]
+
+    def create_snapshot(self, name, volume, description=None):
+        """
+        Creates a new snapshot of a given volume.
+        """
+        volume_id = volume.id if isinstance(volume, AWSVolume) else volume
+
+        ec2_snap = self.provider.ec2_conn.create_snapshot(
+            volume_id,
+            description=description)
+        cb_snap = AWSSnapshot(self.provider, ec2_snap)
+        cb_snap.name = name
+        return cb_snap
 
 
 class AWSImageService(ImageService):

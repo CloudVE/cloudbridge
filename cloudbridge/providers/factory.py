@@ -26,7 +26,8 @@ class CloudProviderFactory(object):
         """
         return [{"name": ProviderList.OPENSTACK,
                  "implementations":
-                 [{"class": "cloudbridge.providers.openstack.OpenStackCloudProviderV1",
+                 [{"class":
+                   "cloudbridge.providers.openstack.OpenStackCloudProviderV1",
                    "version": 1}]},
                 {"name": ProviderList.AWS,
                  "implementations":
@@ -60,8 +61,9 @@ class CloudProviderFactory(object):
                         return None
                 else:
                     # Return latest available version
-                    return sorted((item for item in provider["implementations"]),
-                                  key=lambda x: x["version"])[-1]["class"]
+                    return sorted(
+                        (item for item in provider["implementations"]),
+                        key=lambda x: x["version"])[-1]["class"]
         return None
 
     def create_provider(self, name, config, version=None):
@@ -85,8 +87,8 @@ class CloudProviderFactory(object):
         impl = self.find_provider_impl(name, version=version)
         if impl is None:
             raise NotImplementedError(
-                'A provider by name {0} implementing interface v1 could not be '
-                'found'.format(name))
+                'A provider by name {0} implementing interface v1 could not be'
+                ' found'.format(name))
         provider_class = self._get_provider_class(impl)
         return provider_class(config)
 

@@ -2,13 +2,6 @@
 Public interface exports
 """
 from .impl import CloudProvider
-from .services import ComputeService
-from .services import ImageService
-from .services import InstanceTypesService
-from .services import ObjectStoreService
-from .services import ProviderService
-from .services import SecurityService
-from .services import VolumeService
 from .resources import CloudProviderServiceType
 from .resources import Instance
 from .resources import InstanceState
@@ -21,5 +14,16 @@ from .resources import PlacementZone
 from .resources import Region
 from .resources import SecurityGroup
 from .resources import Snapshot
+from .resources import SnapshotState
 from .resources import Volume
+from .resources import VolumeState
 from .resources import WaitStateException
+from .services import BlockStoreService
+from .services import ComputeService
+from .services import ImageService
+from .services import InstanceTypesService
+from .services import ObjectStoreService
+from .services import ProviderService
+from .services import SecurityService
+from .services import SnapshotService
+from .services import VolumeService

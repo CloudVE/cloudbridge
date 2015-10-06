@@ -96,16 +96,16 @@ class CloudProvider(object):
             'CloudProvider.security not implemented by this provider')
 
     @property
-    def volumes(self):
+    def block_store(self):
         """
-        Provides access to the volume/elastic block store services in this
+        Provides access to the volume and snapshot services in this
         provider.
 
-        :rtype: ``object`` of :class:`.VolumeService`
-        :return: a VolumeService object
+        :rtype: ``object`` of :class:`.BlockStoreService`
+        :return: a BlockStoreService object
         """
         raise NotImplementedError(
-            'CloudProvider.volumes not implemented by this provider')
+            'CloudProvider.block_store not implemented by this provider')
 
     @property
     def object_store(self):

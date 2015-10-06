@@ -41,7 +41,6 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         self._security = OpenStackSecurityService(self)
         self._block_store = None  # OpenStackBlockStore(self)
         self._object_store = None  # OpenStackObjectStore(self)
-        self._volumes = None  # OpenStackVolumeService(self)
 
     @property
     def compute(self):
@@ -62,10 +61,6 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
     @property
     def object_store(self):
         return self._object_store
-
-    @property
-    def volumes(self):
-        return self._volumes
 
     def _connect_nova(self):
         """
