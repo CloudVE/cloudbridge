@@ -22,9 +22,9 @@ class AWSCloudProviderV1(BaseCloudProvider):
 
         # Initialize cloud connection fields
         self.a_key = self._get_config_value(
-            'access_key', os.environ.get('EC2_ACCESS_KEY', None))
+            'access_key', os.environ.get('AWS_ACCESS_KEY', None))
         self.s_key = self._get_config_value(
-            'secret_key', os.environ.get('EC2_SECRET_KEY', None))
+            'secret_key', os.environ.get('AWS_SECRET_KEY', None))
         self.is_secure = self._get_config_value('is_secure', True)
         self.region_name = self._get_config_value('region_name', 'us-east-1')
         self.region_endpoint = self._get_config_value(
@@ -39,9 +39,8 @@ class AWSCloudProviderV1(BaseCloudProvider):
         self._compute = AWSComputeService(self)
         self._images = AWSImageService(self)
         self._security = AWSSecurityService(self)
-        self._block_store = None  # AWSBlockStore(self)
+        self._block_store = None  # AWSBlockStoreService(self)
         self._object_store = None  # AWSObjectStore(self)
-        self._volumes = None  # AWSVolumeService(self)
 
     @property
     def compute(self):
@@ -62,10 +61,6 @@ class AWSCloudProviderV1(BaseCloudProvider):
     @property
     def object_store(self):
         return self._object_store
-
-    @property
-    def volumes(self):
-        return self._volumes
 
     def _connect_ec2(self):
         """
