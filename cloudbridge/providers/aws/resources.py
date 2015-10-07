@@ -2,6 +2,8 @@
 DataTypes used by this provider
 """
 
+from boto.exception import EC2ResponseError
+
 from cloudbridge.providers.base import BaseInstance
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
@@ -77,8 +79,12 @@ class AWSMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        self._ec2_image = self.provider.images.get_image(
-            self.image_id)._ec2_image
+        image = self.provider.images.get_image(self.image_id)
+        if image:
+            self._ec2_image = image._ec2_image
+        else:
+            # image no longer exists
+            self._ec2_image.state = "unknown"
 
 
 class AWSPlacementZone(PlacementZone):
@@ -391,7 +397,12 @@ class AWSSnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        self._snapshot.update()
+        try:
+            self._snapshot.update()
+        except EC2ResponseError:
+            # The snapshot no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._snapshot.status = 'unknown'
 
     def delete(self):
         """
