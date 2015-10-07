@@ -28,7 +28,8 @@ class ComputeService(ProviderService):
 
     def get_instance(self, instance_id):
         """
-        Returns an instance given its id.
+        Returns an instance given its id. Returns None
+        if the object does not exist.
 
         :rtype: ``object`` of :class:`.Instance`
         :return:  an Instance object
@@ -136,7 +137,8 @@ class VolumeService(ProviderService):
 
     def get_volume(self, volume_id):
         """
-        Returns a volume given its id.
+        Returns a volume given its id. Returns None if the volume
+        does not exist.
 
         :rtype: ``object`` of :class:`.Volume`
         :return: a Volume object
@@ -197,7 +199,8 @@ class SnapshotService(ProviderService):
 
     def get_snapshot(self, volume_id):
         """
-        Returns a snapshot given its id.
+        Returns a snapshot given its id. Returns None if the snapshot
+        does not exist.
 
         :rtype: ``object`` of :class:`.Snapshot`
         :return: a Snapshot object
@@ -285,7 +288,8 @@ class ImageService(ProviderService):
 
     def get_image(self, image_id):
         """
-        Returns an Image given its id
+        Returns an Image given its id. Returns None if the Image does not
+        exist.
 
         :rtype: ``object`` of :class:`.Image`
         :return:  an Image instance
@@ -322,7 +326,8 @@ class ObjectStoreService(ProviderService):
 
     def get_container(self, container_id):
         """
-        Returns a container given its id
+        Returns a container given its id. Returns None if the container
+        does not exist.
 
         :rtype: ``object`` of :class:`.Container`
         :return:  a Container instance

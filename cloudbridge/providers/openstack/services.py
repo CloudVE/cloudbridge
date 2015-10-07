@@ -1,6 +1,8 @@
 """
 Services implemented by this provider
 """
+from cinderclient.exceptions import NotFound as CinderNotFound
+from novaclient.exceptions import NotFound as NovaNotFound
 
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseSecurityGroup
@@ -60,10 +62,10 @@ class OpenStackImageService(ImageService):
         """
         Returns an Image given its id
         """
-        image = self.provider.nova.images.get(image_id)
-        if image:
-            return OpenStackMachineImage(self.provider, image)
-        else:
+        try:
+            return OpenStackMachineImage(
+                self.provider, self.provider.nova.images.get(image_id))
+        except NovaNotFound:
             return None
 
     def find_image(self, name):
@@ -123,8 +125,11 @@ class OpenStackVolumeService(VolumeService):
         """
         Returns a volume given its id.
         """
-        vol = self.provider.cinder.volumes.get(volume_id)
-        return OpenStackVolume(self.provider, vol) if vol else None
+        try:
+            return OpenStackVolume(
+                self.provider, self.provider.cinder.volumes.get(volume_id))
+        except CinderNotFound:
+            return None
 
     def find_volume(self, name):
         """
@@ -163,8 +168,12 @@ class OpenStackSnapshotService(SnapshotService):
         """
         Returns a snapshot given its id.
         """
-        snap = self.provider.cinder.volume_snapshots.get(snapshot_id)
-        return OpenStackSnapshot(self.provider, snap) if snap else None
+        try:
+            return OpenStackSnapshot(
+                self.provider,
+                self.provider.cinder.volume_snapshots.get(snapshot_id))
+        except CinderNotFound:
+            return None
 
     def find_snapshot(self, name):
         """
@@ -255,5 +264,8 @@ class OpenStackComputeService(ComputeService):
         """
         Returns an instance given its id.
         """
-        os_instance = self.provider.nova.servers.get(instance_id)
-        return OpenStackInstance(self.provider, os_instance)
+        try:
+            os_instance = self.provider.nova.servers.get(instance_id)
+            return OpenStackInstance(self.provider, os_instance)
+        except NovaNotFound:
+            return None

@@ -1,9 +1,6 @@
 """
 DataTypes used by this provider
 """
-
-from cinderclient.exceptions import NotFound
-
 from cloudbridge.providers.base import BaseInstance
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
@@ -84,10 +81,10 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        try:
-            image = self.provider.images.get_image(self.image_id)
+        image = self.provider.images.get_image(self.image_id)
+        if image:
             self._os_image = image._os_image
-        except NotFound:
+        else:
             # The image no longer exists and cannot be refreshed.
             # set the status to unknown
             self._os_image.status = 'unknown'
@@ -282,10 +279,11 @@ class OpenStackInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        try:
-            self._os_instance = self.provider.compute.get_instance(
-                self.instance_id)._os_instance
-        except NotFound:
+        instance = self.provider.compute.get_instance(
+            self.instance_id)
+        if instance:
+            self._os_instance = instance._os_instance
+        else:
             # The instance no longer exists and cannot be refreshed.
             # set the status to unknown
             self._os_instance.status = 'unknown'
@@ -386,10 +384,11 @@ class OpenStackVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        try:
-            self._volume = self.provider.block_store.volumes.get_volume(
-                self.volume_id)._volume
-        except NotFound:
+        vol = self.provider.block_store.volumes.get_volume(
+            self.volume_id)
+        if vol:
+            self._volume = vol._volume
+        else:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
             self._volume.status = 'unknown'
@@ -442,10 +441,11 @@ class OpenStackSnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        try:
-            self._snapshot = self.provider.block_store.snapshots.get_snapshot(
-                self.snapshot_id)._snapshot
-        except NotFound:
+        snap = self.provider.block_store.snapshots.get_snapshot(
+            self.snapshot_id)
+        if snap:
+            self._snapshot = snap._snapshot
+        else:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
             self._snapshot.status = 'unknown'
