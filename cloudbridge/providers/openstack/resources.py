@@ -2,15 +2,21 @@
 DataTypes used by this provider
 """
 
+from cinderclient.exceptions import NotFound
+
 from cloudbridge.providers.base import BaseInstance
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
 from cloudbridge.providers.base import BaseSecurityGroup
+from cloudbridge.providers.base import BaseSnapshot
+from cloudbridge.providers.base import BaseVolume
 from cloudbridge.providers.interfaces import InstanceState
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImageState
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import Region
+from cloudbridge.providers.interfaces import SnapshotState
+from cloudbridge.providers.interfaces import VolumeState
 
 
 class OpenStackMachineImage(BaseMachineImage):
@@ -78,8 +84,13 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self.provider.images.get_image(self.image_id)
-        self._os_image = image._os_image
+        try:
+            image = self.provider.images.get_image(self.image_id)
+            self._os_image = image._os_image
+        except NotFound:
+            # The image no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._os_image.status = 'unknown'
 
 
 class OpenStackPlacementZone(PlacementZone):
@@ -99,7 +110,8 @@ class OpenStackPlacementZone(PlacementZone):
         :rtype: ``str``
         :return: Name for this zone as returned by the cloud middleware.
         """
-        return self._os_zone.zoneName
+        # return self._os_zone.zoneName
+        return self._os_zone
 
     @property
     def region(self):
@@ -178,6 +190,7 @@ class OpenStackInstance(BaseInstance):
         Set the instance name.
         """
         self._os_instance.name = value
+        self._os_instance.update()
 
     @property
     def public_ips(self):
@@ -225,7 +238,8 @@ class OpenStackInstance(BaseInstance):
         Get the placement zone where this instance is running.
         """
         return OpenStackPlacementZone(
-            self.provider, self._os_instance.availability_zone)
+            self.provider,
+            getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None))
 
     @property
     def mac_address(self):
@@ -268,8 +282,13 @@ class OpenStackInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        self._os_instance = self.provider.compute.get_instance(
-            self.instance_id)._os_instance
+        try:
+            self._os_instance = self.provider.compute.get_instance(
+                self.instance_id)._os_instance
+        except NotFound:
+            # The instance no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._os_instance.status = 'unknown'
 
     def __repr__(self):
         return "<CB-OSInstance: {0}({1})>".format(self.name, self.instance_id)
@@ -287,3 +306,155 @@ class OpenStackRegion(Region):
 
     def __repr__(self):
         return "<CB-OSRegion: {0}>".format(self.name)
+
+
+class OpenStackVolume(BaseVolume):
+
+    # Ref: http://developer.openstack.org/api-ref-blockstorage-v2.html
+    VOLUME_STATE_MAP = {
+        'creating': VolumeState.CREATING,
+        'available': VolumeState.AVAILABLE,
+        'attaching': VolumeState.CONFIGURING,
+        'in-use': VolumeState.IN_USE,
+        'deleting': VolumeState.CONFIGURING,
+        'error': VolumeState.ERROR,
+        'error_deleting': VolumeState.ERROR,
+        'backing-up': VolumeState.CONFIGURING,
+        'restoring-backup': VolumeState.CONFIGURING,
+        'error_restoring': VolumeState.ERROR,
+        'error_extending': VolumeState.ERROR
+    }
+
+    def __init__(self, provider, volume):
+        self.provider = provider
+        self._volume = volume
+
+    @property
+    def volume_id(self):
+        return self._volume.id
+
+    @property
+    def name(self):
+        """
+        Get the volume name.
+        """
+        return self._volume.name
+
+    @name.setter
+    def name(self, value):
+        """
+        Set the volume name.
+        """
+        self._volume.name = value
+        self._volume.update()
+
+    def attach(self, instance, device):
+        """
+        Attach this volume to an instance.
+        """
+        instance_id = instance.instance_id if isinstance(
+            instance,
+            OpenStackInstance) else instance
+        self._volume.attach(instance_id, device)
+
+    def detach(self, force=False):
+        """
+        Detach this volume from an instance.
+        """
+        self._volume.detach()
+
+    def create_snapshot(self, name, description=None):
+        """
+        Create a snapshot of this Volume.
+        """
+        return self.provider.block_store.snapshots.create_snapshot(
+            name, self, description=description)
+
+    def delete(self):
+        """
+        Delete this volume.
+        """
+        self._volume.delete()
+
+    @property
+    def state(self):
+        return OpenStackVolume.VOLUME_STATE_MAP.get(
+            self._volume.status, VolumeState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this volume by re-querying the cloud provider
+        for its latest state.
+        """
+        try:
+            self._volume = self.provider.block_store.volumes.get_volume(
+                self.volume_id)._volume
+        except NotFound:
+            # The volume no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._volume.status = 'unknown'
+
+    def __repr__(self):
+        return "<CB-OSVolume: {0} ({1})>".format(self.volume_id, self.name)
+
+
+class OpenStackSnapshot(BaseSnapshot):
+
+    # Ref: http://developer.openstack.org/api-ref-blockstorage-v2.html
+    SNAPSHOT_STATE_MAP = {
+        'creating': SnapshotState.PENDING,
+        'available': SnapshotState.AVAILABLE,
+        'deleting': SnapshotState.CONFIGURING,
+        'error': SnapshotState.ERROR,
+        'error_deleting': SnapshotState.ERROR
+    }
+
+    def __init__(self, provider, snapshot):
+        self.provider = provider
+        self._snapshot = snapshot
+
+    @property
+    def snapshot_id(self):
+        return self._snapshot.id
+
+    @property
+    def name(self):
+        """
+        Get the snapshot name.
+        """
+        return self._snapshot.name
+
+    @name.setter
+    def name(self, value):
+        """
+        Set the snapshot name.
+        """
+        self._snapshot.add_tag('Name', value)
+        self._snapshot.update()
+
+    @property
+    def state(self):
+        return OpenStackSnapshot.SNAPSHOT_STATE_MAP.get(
+            self._snapshot.status, SnapshotState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this snapshot by re-querying the cloud provider
+        for its latest state.
+        """
+        try:
+            self._snapshot = self.provider.block_store.snapshots.get_snapshot(
+                self.snapshot_id)._snapshot
+        except NotFound:
+            # The snapshot no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._snapshot.status = 'unknown'
+
+    def delete(self):
+        """
+        Delete this snapshot.
+        """
+        self._snapshot.delete()
+
+    def __repr__(self):
+        return "<CB-OSSnapshot: {0} ({1}>".format(self.snapshot_id, self.name)

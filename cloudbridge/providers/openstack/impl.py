@@ -5,6 +5,7 @@ compatible clouds.
 
 import os
 
+from cinderclient import client as cinder_client
 from keystoneclient import client as keystone_client
 from keystoneclient import session
 from keystoneclient.auth.identity import Password
@@ -12,6 +13,7 @@ from novaclient import client as nova_client
 
 from cloudbridge.providers.base import BaseCloudProvider
 
+from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
 from .services import OpenStackImageService
 from .services import OpenStackSecurityService
@@ -35,11 +37,12 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
 
         self.nova = self._connect_nova()
         self.keystone = self._connect_keystone()
+        self.cinder = self._connect_cinder()
 
         self._compute = OpenStackComputeService(self)
         self._images = OpenStackImageService(self)
         self._security = OpenStackSecurityService(self)
-        self._block_store = None  # OpenStackBlockStore(self)
+        self._block_store = OpenStackBlockStoreService(self)
         self._object_store = None  # OpenStackObjectStore(self)
 
     @property
@@ -64,7 +67,7 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
 
     def _connect_nova(self):
         """
-        Get an openstack client object for the given cloud.
+        Get an openstack nova client object for the given cloud.
         """
         return nova_client.Client(
             self.api_version, self.username, self.password, self.tenant_name,
@@ -72,7 +75,7 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
 
     def _connect_keystone(self):
         """
-        Get an openstack client object for the given cloud.
+        Get an openstack keystone client object for the given cloud.
         """
         auth = Password(self.auth_url, username=self.username,
                         password=self.password, tenant_name=self.tenant_name)
@@ -88,3 +91,11 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
             tenant_name=self.tenant_name)
         keystone.authenticate()
         return keystone
+
+    def _connect_cinder(self):
+        """
+        Get an openstack cinder client object for the given cloud.
+        """
+        return cinder_client.Client(
+            self.api_version, self.username, self.password, self.tenant_name,
+            self.auth_url)

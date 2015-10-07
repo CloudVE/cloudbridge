@@ -4,6 +4,7 @@ Services implemented by this provider
 
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseSecurityGroup
+from cloudbridge.providers.interfaces import BlockStoreService
 from cloudbridge.providers.interfaces import ComputeService
 from cloudbridge.providers.interfaces import ImageService
 from cloudbridge.providers.interfaces import InstanceType
@@ -13,11 +14,15 @@ from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
+from cloudbridge.providers.interfaces import SnapshotService
+from cloudbridge.providers.interfaces import VolumeService
 
 from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
 from .resources import OpenStackMachineImage
 from .resources import OpenStackRegion
+from .resources import OpenStackSnapshot
+from .resources import OpenStackVolume
 
 
 class OpenStackSecurityService(SecurityService):
@@ -89,6 +94,103 @@ class OpenStackInstanceTypesService(InstanceTypesService):
     def find_by_name(self, name):
         return next(
             (itype for itype in self.list() if itype.name == name), None)
+
+
+class OpenStackBlockStoreService(BlockStoreService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+        # Initialize provider services
+        self._volumes = OpenStackVolumeService(self.provider)
+        self._snapshots = OpenStackSnapshotService(self.provider)
+
+    @property
+    def volumes(self):
+        return self._volumes
+
+    @property
+    def snapshots(self):
+        return self._snapshots
+
+
+class OpenStackVolumeService(VolumeService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def get_volume(self, volume_id):
+        """
+        Returns a volume given its id.
+        """
+        vol = self.provider.cinder.volumes.get(volume_id)
+        return OpenStackVolume(self.provider, vol) if vol else None
+
+    def find_volume(self, name):
+        """
+        Searches for a volume by a given list of attributes.
+        """
+        raise NotImplementedError(
+            'find_volume not implemented by this provider')
+
+    def list_volumes(self):
+        """
+        List all volumes.
+        """
+        return [OpenStackVolume(self.provider, vol)
+                for vol in self.provider.cinder.volumes.list()]
+
+    def create_volume(self, name, size, zone, snapshot=None):
+        """
+        Creates a new volume.
+        """
+        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        snapshot_id = snapshot.snapshot_id if isinstance(
+            zone, OpenStackSnapshot) and snapshot else snapshot
+
+        os_vol = self.provider.cinder.volumes.create(
+            size, name=name, availability_zone=zone_name,
+            snapshot_id=snapshot_id)
+        return OpenStackVolume(self.provider, os_vol)
+
+
+class OpenStackSnapshotService(SnapshotService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def get_snapshot(self, snapshot_id):
+        """
+        Returns a snapshot given its id.
+        """
+        snap = self.provider.cinder.volume_snapshots.get(snapshot_id)
+        return OpenStackSnapshot(self.provider, snap) if snap else None
+
+    def find_snapshot(self, name):
+        """
+        Searches for a volume by a given list of attributes.
+        """
+        raise NotImplementedError(
+            'find_volume not implemented by this provider')
+
+    def list_snapshots(self):
+        """
+        List all snapshot.
+        """
+        return [OpenStackSnapshot(self.provider, snap)
+                for snap in self.provider.cinder.volume_snapshots.list()]
+
+    def create_snapshot(self, name, volume, description=None):
+        """
+        Creates a new snapshot of a given volume.
+        """
+        volume_id = volume.volume_id if \
+            isinstance(volume, OpenStackVolume) else volume
+
+        os_snap = self.provider.cinder.volume_snapshots.create(
+            volume_id, name=name,
+            description=description)
+        return OpenStackSnapshot(self.provider, os_snap)
 
 
 class OpenStackComputeService(ComputeService):
