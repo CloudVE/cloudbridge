@@ -400,4 +400,4 @@ class AWSSnapshot(BaseSnapshot):
         self._snapshot.delete()
 
     def __repr__(self):
-        return "<CB-AWSVolume: {0} ({1}>".format(self.snapshot_id, self.name)
+        return "<CB-AWSSnapshot: {0} ({1}>".format(self.snapshot_id, self.name)

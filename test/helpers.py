@@ -1,6 +1,37 @@
+from contextlib import contextmanager
 import os
+import sys
 import unittest
+
 from cloudbridge.providers.factory import CloudProviderFactory
+
+
+@contextmanager
+def exception_action(cleanup_func):
+    """
+    Context manager to carry out a given
+    cleanup action when an exception occurs.
+    If any errors occur during the cleanup
+    action, those are ignored, and the original
+    traceback is preserved.
+
+    :params func: This function is called only
+        if an exception occurs. Any exceptions raised
+        by func are ignored.
+    Usage:
+        with exception_action(lambda e: print("Oops!")):
+            do_something()
+    """
+    try:
+        yield
+    except:
+        exc_info = sys.exc_info()
+        try:
+            cleanup_func()
+        except:
+            pass
+        # raise the original exception
+        raise exc_info[0], exc_info[1], exc_info[2]
 
 
 def create_test_instance(provider):

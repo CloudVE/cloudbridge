@@ -3,7 +3,7 @@ import uuid
 from cloudbridge.providers.interfaces import SnapshotState
 from cloudbridge.providers.interfaces import VolumeState
 from test.helpers import ProviderTestBase
-import test.helpers
+import test.helpers as helpers
 
 
 class ProviderBlockStoreServiceTestCase(ProviderTestBase):
@@ -13,7 +13,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             methodName=methodName, provider=provider)
 
     def setUp(self):
-        self.instance = test.helpers.get_test_instance(self.provider)
+        self.instance = helpers.get_test_instance(self.provider)
 
     def tearDown(self):
         self.instance.terminate()
@@ -28,7 +28,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             name,
             1,
             self.instance.placement_zone)
-        try:
+        with helpers.exception_action(lambda x: test_vol.delete()):
             test_vol.wait_till_ready()
             volumes = self.provider.block_store.volumes.list_volumes()
             found_volumes = [vol for vol in volumes if vol.name == name]
@@ -36,7 +36,6 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                 len(found_volumes) == 1,
                 "List volumes does not return the expected volume %s" %
                 name)
-        finally:
             test_vol.delete()
 
     def test_attach_detach_volume(self):
@@ -46,7 +45,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
         name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4())
         test_vol = self.provider.block_store.volumes.create_volume(
             name, 1, self.instance.placement_zone)
-        try:
+        with helpers.exception_action(lambda x: test_vol.delete()):
             test_vol.wait_till_ready()
             test_vol.attach(self.instance, '/dev/sda2')
             test_vol.wait_for(
@@ -56,7 +55,6 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             test_vol.wait_for(
                 [VolumeState.AVAILABLE], terminal_states=[VolumeState.ERROR,
                                                           VolumeState.DELETED])
-        finally:
             test_vol.delete()
 
     def test_crud_snapshot(self):
@@ -70,15 +68,20 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             name,
             1,
             self.instance.placement_zone)
-        try:
+        with helpers.exception_action(lambda x: test_vol.delete()):
             test_vol.wait_till_ready()
             snap_name = "CBSnapshot-{0}".format(name)
             test_snap = test_vol.create_snapshot(name=snap_name,
                                                  description=snap_name)
-            try:
-                test_snap.wait_for(
-                    [SnapshotState.AVAILABLE],
+
+            def cleanup_snap(snap):
+                snap.delete()
+                snap.wait_for(
+                    [SnapshotState.UNKNOWN],
                     terminal_states=[SnapshotState.ERROR])
+
+            with helpers.exception_action(lambda x: cleanup_snap(test_snap)):
+                test_snap.wait_till_ready()
                 snaps = self.provider.block_store.snapshots.list_snapshots()
                 found_snaps = [snap for snap in snaps
                                if snap.name == snap_name]
@@ -86,7 +89,4 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                     len(found_snaps) == 1,
                     "List snapshots does not return the expected volume %s" %
                     name)
-            finally:
-                test_snap.delete()
-        finally:
-            test_vol.delete()
+                cleanup_snap(test_snap)

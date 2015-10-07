@@ -1,7 +1,7 @@
 import uuid
 
 from test.helpers import ProviderTestBase
-import test.helpers
+import test.helpers as helpers
 
 
 class ProviderImageServiceTestCase(ProviderTestBase):
@@ -11,7 +11,7 @@ class ProviderImageServiceTestCase(ProviderTestBase):
             methodName=methodName, provider=provider)
 
     def setUp(self):
-        self.instance = test.helpers.get_test_instance(self.provider)
+        self.instance = helpers.get_test_instance(self.provider)
 
     def tearDown(self):
         self.instance.terminate()
@@ -24,7 +24,7 @@ class ProviderImageServiceTestCase(ProviderTestBase):
         """
         name = "CBUnitTestListImg-{0}".format(uuid.uuid4())
         test_image = self.instance.create_image(name)
-        try:
+        with helpers.exception_action(lambda x: test_image.delete()):
             test_image.wait_till_ready()
             images = self.provider.images.list_images()
             images = [image for image in images if image.name == name]
@@ -32,5 +32,4 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                 len(images) == 1,
                 "List images does not return the expected image %s" %
                 name)
-        finally:
             test_image.delete()

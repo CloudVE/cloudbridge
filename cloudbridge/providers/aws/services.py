@@ -97,7 +97,7 @@ class AWSVolumeService(VolumeService):
         Creates a new volume.
         """
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
-        snapshot_id = snapshot.id if isinstance(
+        snapshot_id = snapshot.snapshot_id if isinstance(
             zone, AWSSnapshot) and snapshot else snapshot
 
         ec2_vol = self.provider.ec2_conn.create_volume(
@@ -143,7 +143,9 @@ class AWSSnapshotService(SnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
-        volume_id = volume.id if isinstance(volume, AWSVolume) else volume
+        volume_id = volume.volume_id if isinstance(
+            volume,
+            AWSVolume) else volume
 
         ec2_snap = self.provider.ec2_conn.create_snapshot(
             volume_id,
