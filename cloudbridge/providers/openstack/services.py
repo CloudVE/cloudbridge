@@ -44,10 +44,10 @@ class OpenStackSecurityService(SecurityService):
 
     def list_security_groups(self):
         """
-        Create a new security group
+        List all security groups associated with this account.
 
-        :rtype: ``list`` of :class:`.KeyPair`
-        :return:  list of KeyPair objects
+        :rtype: ``list`` of :class:`.SecurityGroup`
+        :return:  list of SecurityGroup objects
         """
         groups = self.provider.nova.security_groups.list()
         return [BaseSecurityGroup(group.name) for group in groups]

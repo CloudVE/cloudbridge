@@ -39,10 +39,10 @@ class AWSSecurityService(SecurityService):
 
     def list_security_groups(self):
         """
-        Create a new security group
+        List all security groups associated with this account.
 
-        :rtype: ``list`` of :class:`.KeyPair`
-        :return:  list of KeyPair objects
+        :rtype: ``list`` of :class:`.SecurityGroup`
+        :return:  list of SecurityGroup objects
         """
         groups = self.provider.ec2_conn.get_all_security_groups()
         return [BaseSecurityGroup(group.name) for group in groups]

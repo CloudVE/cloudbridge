@@ -393,10 +393,10 @@ class SecurityService(ProviderService):
 
     def list_security_groups(self):
         """
-        Create a new SecurityGroup.
+        List all security groups associated with this account.
 
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return:  A SecurityGroup instance
+        :rtype: ``list`` of :class:`.SecurityGroup`
+        :return:  list of SecurityGroup objects
         """
         raise NotImplementedError(
             'list_security_groups not implemented by this provider')
@@ -406,7 +406,7 @@ class SecurityService(ProviderService):
         Create a new SecurityGroup.
 
         :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A keypair instance
+        :return:  A SecurityGroup instance
         """
         raise NotImplementedError(
             'create_security_group not implemented by this provider')
@@ -416,7 +416,7 @@ class SecurityService(ProviderService):
         Delete an existing SecurityGroup.
 
         :rtype: ``bool``
-        :return:  True if successful, false otherwise
+        :return:  ``True`` if successful, ``False`` otherwise
         """
         raise NotImplementedError(
             'delete_security_group not implemented by this provider')
