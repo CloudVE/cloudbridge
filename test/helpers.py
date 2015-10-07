@@ -25,13 +25,13 @@ def exception_action(cleanup_func):
     try:
         yield
     except:
-        exc_info = sys.exc_info()
+        _, ex_val, ex_traceback = sys.exc_info()
         try:
             cleanup_func()
         except:
             pass
         # raise the original exception
-        raise exc_info[0], exc_info[1], exc_info[2]
+        raise ex_val.with_traceback(ex_traceback)
 
 
 def create_test_instance(provider):
