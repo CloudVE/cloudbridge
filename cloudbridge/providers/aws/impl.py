@@ -35,6 +35,7 @@ class AWSCloudProviderV1(BaseCloudProvider):
 
         # Create a connection object
         self.ec2_conn = self._connect_ec2()
+        self.s3_conn = self._connect_s3()
 
         # Initialize provider services
         self._compute = AWSComputeService(self)
@@ -65,7 +66,7 @@ class AWSCloudProviderV1(BaseCloudProvider):
 
     def _connect_ec2(self):
         """
-        Get a boto connection object for the given cloud.
+        Get a boto ec2 connection object.
         """
         r = RegionInfo(name=self.region_name, endpoint=self.region_endpoint)
         ec2_conn = boto.connect_ec2(
@@ -83,18 +84,8 @@ class AWSCloudProviderV1(BaseCloudProvider):
 
     def _connect_s3(self):
         """
-        Get a boto connection object for the given cloud.
+        Get a boto S3 connection object.
         """
-        r = RegionInfo(name=self.region_name, endpoint=self.region_endpoint)
-        ec2_conn = boto.connect_ec2(
-            aws_access_key_id=self.a_key,
-            aws_secret_access_key=self.s_key,
-            # api_version is needed for availability
-            # zone support for EC2
-            api_version='2012-06-01' if self.cloud_type == 'aws' else None,
-            is_secure=self.is_secure,
-            region=r,
-            port=self.ec2_port,
-            path=self.ec2_conn_path,
-            validate_certs=False)
-        return ec2_conn
+        s3_conn = boto.connect_s3(aws_access_key_id=self.a_key,
+                                  aws_secret_access_key=self.s_key)
+        return s3_conn
