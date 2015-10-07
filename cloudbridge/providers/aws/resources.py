@@ -233,7 +233,7 @@ class AWSInstance(BaseInstance):
         """
         Get the security group IDs associated with this instance.
         """
-        return [BaseSecurityGroup(group.name)
+        return [BaseSecurityGroup(group.id, group.name, group.description)
                 for group in self._ec2_instance.groups]
 
     @property

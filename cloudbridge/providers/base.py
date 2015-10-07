@@ -204,15 +204,34 @@ class BaseKeyPair(KeyPair):
 
 class BaseSecurityGroup(SecurityGroup):
 
-    def __init__(self, name):
+    def __init__(self, group_id, name, description):
+        self._id = group_id
         self._name = name
+        self._description = description
+
+    @property
+    def id(self):
+        """
+        Get the ID of this security group.
+
+        :rtype: str
+        :return: Security group ID
+        """
+        return self._id
 
     @property
     def name(self):
         """
-        Return the name of this key pair.
+        Return the name of this security group.
         """
         return self._name
+
+    @property
+    def description(self):
+        """
+        Return the description of this security group.
+        """
+        return self._description
 
     def __repr__(self):
         return "<CBSecurityGroup: {0}>".format(self.name)

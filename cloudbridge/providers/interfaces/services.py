@@ -259,11 +259,10 @@ class BlockStoreService(ProviderService):
     @property
     def volumes(self):
         """
-        Provides access to the volume and snapshot services in this
-        provider.
+        Provides access to the volumes (i.e., block storage) for this provider.
 
-        :rtype: ``object`` of :class:`.BlockStoreService`
-        :return: a BlockStoreService object
+        :rtype: ``object`` of :class:`.VolumeService`
+        :return: a VolumeService object
         """
         raise NotImplementedError(
             'CloudProvider.block_store not implemented by this provider')
@@ -271,10 +270,10 @@ class BlockStoreService(ProviderService):
     @property
     def snapshots(self):
         """
-        Provides access to object storage services in this provider.
+        Provides access to volume snapshots for this provider.
 
-        :rtype: ``object`` of :class:`.ObjectStoreService`
-        :return: an ObjectStoreService object
+        :rtype: ``object`` of :class:`.SnapshotService`
+        :return: an SnapshotService object
         """
         raise NotImplementedError(
             'CloudProvider.object_store not implemented by this provider')
@@ -368,10 +367,37 @@ class ObjectStoreService(ProviderService):
 class SecurityService(ProviderService):
 
     """
-    Base interface for an Image Service
+    Base interface for a Security Service.
     """
 
-    def list_key_pairs(self):
+    @property
+    def key_pairs(self):
+        """
+        Provides access to key pairs for this provider.
+
+        :rtype: ``object`` of :class:`.KeyPairService`
+        :return: a KeyPairService object
+        """
+        return self._key_pairs
+
+    @property
+    def security_groups(self):
+        """
+        Provides access to security groups for this provider.
+
+        :rtype: ``object`` of :class:`.SecurityGroupService`
+        :return: a SecurityGroupService object
+        """
+        return self._security_groups
+
+
+class KeyPairService(ProviderService):
+
+    """
+    Base interface for key pairs.
+    """
+
+    def list(self):
         """
         List all key pairs associated with this account.
 
@@ -381,7 +407,7 @@ class SecurityService(ProviderService):
         raise NotImplementedError(
             'list_key_pairs not implemented by this provider')
 
-    def create_key_pair(self):
+    def create(self):
         """
         Create a new keypair.
 
@@ -391,7 +417,27 @@ class SecurityService(ProviderService):
         raise NotImplementedError(
             'create_key_pair not implemented by this provider')
 
-    def list_security_groups(self):
+    def delete(self, key_name):
+        """
+        Delete an existing SecurityGroup.
+
+        :type key_name: str
+        :param key_name: The name of the key pair to be deleted.
+
+        :rtype: ``bool``
+        :return:  ``True`` if successful, ``False`` otherwise
+        """
+        raise NotImplementedError(
+            'delete not implemented by this provider')
+
+
+class SecurityGroupService(ProviderService):
+
+    """
+    Base interface for security groups.
+    """
+
+    def list(self):
         """
         List all security groups associated with this account.
 
@@ -399,27 +445,49 @@ class SecurityService(ProviderService):
         :return:  list of SecurityGroup objects
         """
         raise NotImplementedError(
-            'list_security_groups not implemented by this provider')
+            'list not implemented by this provider')
 
-    def create_security_group(self):
+    def create(self, name, description):
         """
         Create a new SecurityGroup.
 
-        :rtype: ``object`` of :class:`.KeyPair`
+        :type name: str
+        :param name: The name of the new security group.
+
+        :type description: str
+        :param description: The description of the new security group.
+
+        :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance
         """
         raise NotImplementedError(
-            'create_security_group not implemented by this provider')
+            'create not implemented by this provider')
 
-    def delete_security_group(self):
+    def get(self, group_id):
+        """
+        Get a security group.
+
+        :type group_id: str
+        :param group_id: The security group to get by ID
+
+        :rtype: :class:`SecurityGroup`
+        :return: If found, return SecurityGroup object. Else, return ``None``.
+        """
+        raise NotImplementedError(
+            'get not implemented by this provider')
+
+    def delete(self, group_id):
         """
         Delete an existing SecurityGroup.
+
+        :type group_id: str
+        :param group_id: The security group ID to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if successful, ``False`` otherwise
         """
         raise NotImplementedError(
-            'delete_security_group not implemented by this provider')
+            'delete not implemented by this provider')
 
 
 class InstanceTypesService(object):

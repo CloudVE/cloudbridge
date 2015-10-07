@@ -539,6 +539,16 @@ class KeyPair(object):
         raise NotImplementedError(
             'material not implemented by this provider')
 
+    def delete(self):
+        """
+        Delete this key pair.
+
+        :rtype: bool
+        :return: ``True`` is successful.
+        """
+        raise NotImplementedError(
+            'delete not implemented by this provider')
+
 
 class Region(object):
 
@@ -628,25 +638,34 @@ class SecurityGroup(object):
         raise NotImplementedError(
             'name not implemented by this provider')
 
-    def create(self, name, description):
+    @property
+    def description(self):
         """
-        Create a new security group under the current account.
+        Return the description of this security group.
 
-        :type name: str
-        :param name: The name of the new security group.
-
-        :type description: str
-        :param description: The description of the new security group.
-
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return: a SecurityGroup object
+        :rtype: str
+        :return: A description of this security group.
         """
         raise NotImplementedError(
-            'create not implemented by this provider')
+            'description not implemented by this provider')
+
+    @property
+    def id(self):
+        """
+        Get the ID of this security group.
+
+        :rtype: str
+        :return: Security group ID
+        """
+        raise NotImplementedError(
+            'id not implemented by this provider')
 
     def delete(self):
         """
         Delete this security group.
+
+        :rtype: bool
+        :return: ``True`` is successful.
         """
         raise NotImplementedError(
             'delete not implemented by this provider')

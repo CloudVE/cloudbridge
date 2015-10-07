@@ -45,7 +45,8 @@ class AWSSecurityService(SecurityService):
         :return:  list of SecurityGroup objects
         """
         groups = self.provider.ec2_conn.get_all_security_groups()
-        return [BaseSecurityGroup(group.name) for group in groups]
+        return [BaseSecurityGroup(group.id, group.name, group.description)
+                for group in groups]
 
 
 class AWSBlockStoreService(BlockStoreService):

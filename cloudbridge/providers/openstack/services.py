@@ -12,9 +12,11 @@ from cloudbridge.providers.interfaces import ImageService
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import InstanceTypesService
 from cloudbridge.providers.interfaces import KeyPair
+from cloudbridge.providers.interfaces import KeyPairService
 from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
+from cloudbridge.providers.interfaces import SecurityGroupService
 from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import SnapshotService
 from cloudbridge.providers.interfaces import VolumeService
@@ -23,6 +25,7 @@ from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
 from .resources import OpenStackMachineImage
 from .resources import OpenStackRegion
+# from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
 from .resources import OpenStackVolume
 
@@ -32,7 +35,37 @@ class OpenStackSecurityService(SecurityService):
     def __init__(self, provider):
         self.provider = provider
 
-    def list_key_pairs(self):
+        # Initialize provider services
+        self._key_pairs = OpenStackKeyPairService(provider)
+        self._security_groups = OpenStackSecurityGroupService(provider)
+
+    @property
+    def key_pairs(self):
+        """
+        Provides access to key pairs for this provider.
+
+        :rtype: ``object`` of :class:`.KeyPairService`
+        :return: a KeyPairService object
+        """
+        return self._key_pairs
+
+    @property
+    def security_groups(self):
+        """
+        Provides access to security groups for this provider.
+
+        :rtype: ``object`` of :class:`.SecurityGroupService`
+        :return: a SecurityGroupService object
+        """
+        return self._security_groups
+
+
+class OpenStackKeyPairService(KeyPairService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def list(self):
         """
         List all key pairs associated with this account.
 
@@ -42,7 +75,13 @@ class OpenStackSecurityService(SecurityService):
         key_pairs = self.provider.nova.keypairs.list()
         return [BaseKeyPair(kp.id) for kp in key_pairs]
 
-    def list_security_groups(self):
+
+class OpenStackSecurityGroupService(SecurityGroupService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def list(self):
         """
         List all security groups associated with this account.
 
@@ -50,7 +89,41 @@ class OpenStackSecurityService(SecurityService):
         :return:  list of SecurityGroup objects
         """
         groups = self.provider.nova.security_groups.list()
-        return [BaseSecurityGroup(group.name) for group in groups]
+        return [BaseSecurityGroup(group.id, group.name, group.description)
+                for group in groups]
+
+    def create(self, name, description):
+        """
+        Create a new security group under the current account.
+
+        :type name: str
+        :param name: The name of the new security group.
+
+        :type description: str
+        :param description: The description of the new security group.
+
+        :rtype: ``object`` of :class:`.SecurityGroup`
+        :return: a SecurityGroup object
+        """
+        sg = self.provider.nova.security_groups.create(name, description)
+        if sg:
+            return BaseSecurityGroup(sg.id, name, description)
+        return None
+
+    def get(self, group_id):
+        """
+        Get a security group.
+
+        :type group_id: str
+        :param group_id: The security group to get by ID
+
+        :rtype: :class:`SecurityGroup`
+        :return: If found, return SecurityGroup object. Else, return ``None``.
+        """
+        sg = self.provider.nova.security_groups.get(group_id)
+        if sg:
+            return BaseSecurityGroup(sg.id, sg.name, sg.description)
+        return None
 
 
 class OpenStackImageService(ImageService):

@@ -251,7 +251,7 @@ class OpenStackInstance(BaseInstance):
         """
         Get the security group IDs associated with this instance.
         """
-        return [BaseSecurityGroup(group.name)
+        return [BaseSecurityGroup(group.id, group.name, group.description)
                 for group in self._os_instance.security_groups]
 
     @property
