@@ -3,6 +3,8 @@ Public interface exports
 """
 from .impl import CloudProvider
 from .resources import CloudProviderServiceType
+from .resources import Container
+from .resources import ContainerObject
 from .resources import Instance
 from .resources import InstanceState
 from .resources import InstanceType

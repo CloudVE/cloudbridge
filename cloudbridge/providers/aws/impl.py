@@ -12,6 +12,7 @@ from cloudbridge.providers.base import BaseCloudProvider
 from .services import AWSBlockStoreService
 from .services import AWSComputeService
 from .services import AWSImageService
+from .services import AWSObjectStoreService
 from .services import AWSSecurityService
 
 
@@ -42,7 +43,7 @@ class AWSCloudProviderV1(BaseCloudProvider):
         self._images = AWSImageService(self)
         self._security = AWSSecurityService(self)
         self._block_store = AWSBlockStoreService(self)
-        self._object_store = None  # AWSObjectStore(self)
+        self._object_store = AWSObjectStoreService(self)
 
     @property
     def compute(self):

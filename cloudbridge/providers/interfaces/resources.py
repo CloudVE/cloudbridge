@@ -695,3 +695,104 @@ class SecurityGroup(object):
         """
         raise NotImplementedError(
             'add_rule not implemented by this provider')
+
+
+class ContainerObject(object):
+
+    """
+    Represents an object stored within a container.
+    """
+
+    @property
+    def name(self):
+        """
+        Get this object's name.
+
+        :rtype: ``str``
+        :return: Name of this object as returned by the cloud middleware.
+        """
+        raise NotImplementedError(
+            'ContainerObject.name not implemented by this provider')
+
+    def download(self, target_stream):
+        """
+        Download this object and write its
+        contents to the target_stream.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        raise NotImplementedError(
+            'ContainerObject.download not implemented by this provider')
+
+    def upload(self, source_stream):
+        """
+        Set the contents of this object to the data read from the source
+        stream.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        raise NotImplementedError(
+            'ContainerObject.upload not implemented by this provider')
+
+    def delete(self):
+        """
+        Delete this object.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        raise NotImplementedError(
+            'ContainerObject.delete not implemented by this provider')
+
+
+class Container(object):
+
+    @property
+    def name(self):
+        """
+        Get this container's name.
+
+        :rtype: ``str``
+        :return: Name of this container as returned by the cloud middleware.
+        """
+        raise NotImplementedError(
+            'Container.name not implemented by this provider')
+
+    def get(self, key):
+        """
+        Retrieve a given object from this container.
+
+        :type key: ``str``
+        :param key: the identifier of the object to retrieve
+
+        :rtype: ContainerObject
+        :return: The ContainerObject or None if it cannot be found.
+        """
+        raise NotImplementedError(
+            'Container.list not implemented by this provider')
+
+    def list(self):
+        """
+        List all objects within this container.
+
+        :rtype: ContainerObject
+        :return: List of all available ContainerObjects within this container
+        """
+        raise NotImplementedError(
+            'Container.list not implemented by this provider')
+
+    def delete(self, delete_contents=False):
+        """
+        Delete this container.
+
+        :type delete_contents: ``bool``
+        :param delete_contents: If True, all objects within the container will
+        be deleted.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        raise NotImplementedError(
+            'Container.delete not implemented by this provider')

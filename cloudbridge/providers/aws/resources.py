@@ -1,8 +1,9 @@
 """
 DataTypes used by this provider
 """
-
+import shutil
 from boto.exception import EC2ResponseError
+from boto.s3.key import Key
 
 from cloudbridge.providers.base import BaseInstance
 from cloudbridge.providers.base import BaseKeyPair
@@ -10,6 +11,8 @@ from cloudbridge.providers.base import BaseMachineImage
 from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.base import BaseSnapshot
 from cloudbridge.providers.base import BaseVolume
+from cloudbridge.providers.interfaces import Container
+from cloudbridge.providers.interfaces import ContainerObject
 from cloudbridge.providers.interfaces import InstanceState
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImageState
@@ -411,4 +414,89 @@ class AWSSnapshot(BaseSnapshot):
         self._snapshot.delete()
 
     def __repr__(self):
-        return "<CB-AWSSnapshot: {0} ({1}>".format(self.snapshot_id, self.name)
+        return "<CB-AWSSnapshot: {0} ({1})>".format(self.snapshot_id,
+                                                    self.name)
+
+
+class AWSContainerObject(ContainerObject):
+
+    def __init__(self, provider, key):
+        self.provider = provider
+        self._key = key
+
+    @property
+    def name(self):
+        """
+        Get this object's name.
+        """
+        return self._key.name
+
+    def download(self, target_stream):
+        """
+        Download this object and write its
+        contents to the target_stream.
+        """
+        shutil.copyfileobj(self._key, target_stream)
+
+    def upload(self, data):
+        """
+        Set the contents of this object to the data read from the source
+        string.
+        """
+        self._key.set_contents_from_string(data)
+
+    def delete(self):
+        """
+        Delete this object.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        self._key.delete()
+
+    def __repr__(self):
+        return "<CB-AWSContainerObject: {0}>".format(self.name)
+
+
+class AWSContainer(Container):
+
+    def __init__(self, provider, bucket):
+        self.provider = provider
+        self._bucket = bucket
+
+    @property
+    def name(self):
+        """
+        Get this container's name.
+        """
+        return self._bucket.name
+
+    def get(self, key):
+        """
+        Retrieve a given object from this container.
+        """
+        raise NotImplementedError(
+            'Container.list not implemented by this provider')
+
+    def list(self):
+        """
+        List all objects within this container.
+
+        :rtype: ContainerObject
+        :return: List of all available ContainerObjects within this container
+        """
+        objects = self._bucket.list()
+        return [AWSContainerObject(self.provider, obj) for obj in objects]
+
+    def delete(self, delete_contents=False):
+        """
+        Delete this container.
+        """
+        self._bucket.delete()
+
+    def create_object(self, name):
+        key = Key(self._bucket, name)
+        return AWSContainerObject(self.provider, key)
+
+    def __repr__(self):
+        return "<CB-AWSContainer: {0}>".format(self.name)

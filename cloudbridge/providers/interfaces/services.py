@@ -354,9 +354,16 @@ class ObjectStoreService(ProviderService):
         raise NotImplementedError(
             'list_containers not implemented by this provider')
 
-    def create_container(self):
+    def create_container(self, name, location=None):
         """
         Create a new container.
+
+        :type name: str
+        :param name: The name of this container
+
+        :type location: ``object`` of :class:`.Region`
+        :param location: The region in which to place this container
+
         :return:  a Container object
         :rtype: ``object`` of :class:`.Container`
         """

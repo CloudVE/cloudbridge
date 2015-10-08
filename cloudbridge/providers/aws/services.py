@@ -10,12 +10,14 @@ from cloudbridge.providers.interfaces import ImageService
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
+from cloudbridge.providers.interfaces import ObjectStoreService
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import SnapshotService
 from cloudbridge.providers.interfaces import VolumeService
 
+from .resources import AWSContainer
 from .resources import AWSInstance
 from .resources import AWSMachineImage
 from .resources import AWSSnapshot
@@ -108,6 +110,46 @@ class AWSVolumeService(VolumeService):
         cb_vol = AWSVolume(self.provider, ec2_vol)
         cb_vol.name = name
         return cb_vol
+
+
+class AWSObjectStoreService(ObjectStoreService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def get_container(self, container_id):
+        """
+        Returns a container given its id. Returns None if the container
+        does not exist.
+        """
+        bucket = self.provider.s3_conn.lookup(container_id)
+        if bucket:
+            return AWSContainer(self.provider, bucket)
+        else:
+            return None
+
+    def find_container(self, name):
+        """
+        Searches for a container by a given list of attributes
+        """
+        raise NotImplementedError(
+            'find_container not implemented by this provider')
+
+    def list_containers(self):
+        """
+        List all containers.
+        """
+        buckets = self.provider.s3_conn.get_all_buckets()
+        return [AWSContainer(self.provider, bucket) for bucket in buckets]
+
+    def create_container(self, name, location=None):
+        """
+        Create a new container.
+        """
+        bucket = self.provider.s3_conn.create_bucket(
+            name,
+            location=location if location else '')
+        return AWSContainer(self.provider, bucket)
 
 
 class AWSSnapshotService(SnapshotService):
