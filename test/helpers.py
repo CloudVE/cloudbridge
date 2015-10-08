@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import os
 import sys
 import unittest
+from six import reraise
 
 from cloudbridge.providers.factory import CloudProviderFactory
 
@@ -25,13 +26,13 @@ def exception_action(cleanup_func):
     try:
         yield
     except:
-        _, ex_val, ex_traceback = sys.exc_info()
+        ex_class, ex_val, ex_traceback = sys.exc_info()
         try:
             cleanup_func()
         except:
             pass
         # raise the original exception
-        raise ex_val.with_traceback(ex_traceback)
+        reraise(ex_class, ex_val, ex_traceback)
 
 
 def create_test_instance(provider):
