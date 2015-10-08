@@ -477,3 +477,9 @@ class OpenStackKeyPair(BaseKeyPair):
         if hasattr(self._key_pair, 'private_key'):
             return self._key_pair.private_key
         return None
+
+
+class OpenStackSecurityGroup(BaseSecurityGroup):
+
+    def __init__(self, provider, security_group):
+        super(OpenStackSecurityGroup, self).__init__(provider, security_group)

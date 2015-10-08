@@ -4,7 +4,6 @@ Services implemented by the OpenStack provider.
 from cinderclient.exceptions import NotFound as CinderNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
-from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import BlockStoreService
 from cloudbridge.providers.interfaces import ComputeService
 from cloudbridge.providers.interfaces import ImageService
@@ -25,7 +24,7 @@ from .resources import OpenStackInstanceType
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
 from .resources import OpenStackRegion
-# from .resources import OpenStackSecurityGroup
+from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
 from .resources import OpenStackVolume
 
@@ -123,8 +122,7 @@ class OpenStackSecurityGroupService(SecurityGroupService):
         :return:  list of SecurityGroup objects
         """
         groups = self.provider.nova.security_groups.list()
-        return [BaseSecurityGroup(group.id, group.name, group.description)
-                for group in groups]
+        return [OpenStackSecurityGroup(self.provider, group) for group in groups]
 
     def create(self, name, description):
         """
@@ -141,23 +139,28 @@ class OpenStackSecurityGroupService(SecurityGroupService):
         """
         sg = self.provider.nova.security_groups.create(name, description)
         if sg:
-            return BaseSecurityGroup(sg.id, name, description)
+            return OpenStackSecurityGroup(self.provider, sg)
         return None
 
-    def get(self, group_id):
+    def get(self, groupnames=None, group_ids=None):
         """
         Get a security group.
 
-        :type group_id: str
-        :param group_id: The security group to get by ID
+        :type groupnames: list
+        :param groupnames: A list of the names of security groups to retrieve.
+                           If not provided, all security groups will be
+                           returned.
 
-        :rtype: :class:`SecurityGroup`
-        :return: If found, return SecurityGroup object. Else, return ``None``.
+        :type group_ids: list
+        :param group_ids: A list of IDs of security groups to retrieve.
+                          If not provided, all security groups will be
+                          returned.
+
+        :rtype: list of :class:`SecurityGroup`
+        :return: A list of SecurityGroup objects or an empty list if none found.
         """
-        sg = self.provider.nova.security_groups.get(group_id)
-        if sg:
-            return BaseSecurityGroup(sg.id, sg.name, sg.description)
-        return None
+        raise NotImplementedError(
+            'get not implemented by this provider')
 
 
 class OpenStackImageService(ImageService):
