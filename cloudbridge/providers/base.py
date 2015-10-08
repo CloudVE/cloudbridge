@@ -208,10 +208,9 @@ class BaseKeyPair(KeyPair):
 
 class BaseSecurityGroup(SecurityGroup):
 
-    def __init__(self, group_id, name, description):
-        self._id = group_id
-        self._name = name
-        self._description = description
+    def __init__(self, provider, security_group):
+        self.provider = provider
+        self._security_group = security_group
 
     @property
     def id(self):
@@ -221,21 +220,27 @@ class BaseSecurityGroup(SecurityGroup):
         :rtype: str
         :return: Security group ID
         """
-        return self._id
+        return self._security_group.id
 
     @property
     def name(self):
         """
         Return the name of this security group.
         """
-        return self._name
+        return self._security_group.name
 
     @property
     def description(self):
         """
         Return the description of this security group.
         """
-        return self._description
+        return self._security_group.description
+
+    def delete(self):
+        """
+        Delete this security group.
+        """
+        return self._security_group.delete()
 
     def __repr__(self):
         return "<CBSecurityGroup: {0}>".format(self.name)

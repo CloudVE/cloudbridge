@@ -14,9 +14,8 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
         self.assertIsInstance(key_pairs[0], interfaces.KeyPair)
         self.assertIsNotNone(key_pairs[0].name)
 
-    def test_crud_security_groups(self):
-        # groups = self.provider.security.create_security_group()
-        groups = self.provider.security.list_security_groups()
+    def test_list_security_groups(self):
+        groups = self.provider.security.security_groups.list()
         # Assume there's always one keypair at least
-#         self.assertIsInstance(groups[0], interfaces.KeyPair)
-#         self.assertIsNotNone(key_pairs[0].name)
+        self.assertIsInstance(groups[0], interfaces.SecurityGroup)
+        self.assertIsNotNone(groups[0].name)

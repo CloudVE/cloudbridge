@@ -470,20 +470,27 @@ class SecurityGroupService(ProviderService):
         :param description: The description of the new security group.
 
         :rtype: ``object`` of :class:`.SecurityGroup`
-        :return:  A SecurityGroup instance
+        :return:  A SecurityGroup instance or ``None`` if one was not created.
         """
         raise NotImplementedError(
             'create not implemented by this provider')
 
-    def get(self, group_id):
+    def get(self, groupnames=None, group_ids=None):
         """
         Get a security group.
 
-        :type group_id: str
-        :param group_id: The security group to get by ID
+        :type groupnames: list
+        :param groupnames: A list of the names of security groups to retrieve.
+                           If not provided, all security groups will be
+                           returned.
 
-        :rtype: :class:`SecurityGroup`
-        :return: If found, return SecurityGroup object. Else, return ``None``.
+        :type group_ids: list
+        :param group_ids: A list of IDs of security groups to retrieve.
+                          If not provided, all security groups will be
+                          returned.
+
+        :rtype: list of :class:`SecurityGroup`
+        :return: A list of SecurityGroup objects or an empty list if none found.
         """
         raise NotImplementedError(
             'get not implemented by this provider')
@@ -496,7 +503,10 @@ class SecurityGroupService(ProviderService):
         :param group_id: The security group ID to be deleted.
 
         :rtype: ``bool``
-        :return:  ``True`` if successful, ``False`` otherwise
+        :return:  ``True`` if the security group does not exist, ``False``
+                  otherwise. Note that this implies that the group may not have
+                  been deleted by this method but instead has not existed in
+                  the first place.
         """
         raise NotImplementedError(
             'delete not implemented by this provider')

@@ -1,6 +1,7 @@
 """
 Services implemented by the AWS provider.
 """
+from boto.exception import EC2ResponseError
 
 from cloudbridge.providers.interfaces import BlockStoreService
 from cloudbridge.providers.interfaces import ComputeService
@@ -21,6 +22,7 @@ from .resources import AWSContainer
 from .resources import AWSInstance
 from .resources import AWSKeyPair
 from .resources import AWSMachineImage
+from .resources import AWSSecurityGroup
 from .resources import AWSSnapshot
 from .resources import AWSVolume
 
@@ -108,6 +110,81 @@ class AWSSecurityGroupService(SecurityGroupService):
 
     def __init__(self, provider):
         self.provider = provider
+
+    def list(self):
+        """
+        List all security groups associated with this account.
+
+        :rtype: ``list`` of :class:`.SecurityGroup`
+        :return:  list of SecurityGroup objects
+        """
+        security_groups = self.provider.ec2_conn.get_all_security_groups()
+        return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
+
+    def create(self, name, description):
+        """
+        Create a new SecurityGroup.
+
+        :type name: str
+        :param name: The name of the new security group.
+
+        :type description: str
+        :param description: The description of the new security group.
+
+        :rtype: ``object`` of :class:`.SecurityGroup`
+        :return:  A SecurityGroup instance or ``None`` if one was not created.
+        """
+        sg = self.provider.ec2_conn.create_security_group(name, description)
+        if sg:
+            return AWSSecurityGroup(self.provider, sg)
+        return None
+
+    def get(self, groupnames=None, group_ids=None):
+        """
+        Get a security group.
+
+        :type groupnames: list
+        :param groupnames: A list of the names of security groups to retrieve.
+                           If not provided, all security groups will be
+                           returned.
+
+        :type group_ids: list
+        :param group_ids: A list of IDs of security groups to retrieve.
+                          If not provided, all security groups will be
+                          returned.
+
+        :rtype: list of :class:`SecurityGroup`
+        :return: A list of SecurityGroup objects or an empty list if none found.
+        """
+        try:
+            security_groups = self.provider.ec2_conn.get_all_security_groups(
+                groupnames=groupnames, group_ids=group_ids)
+        except EC2ResponseError:
+            security_groups = []
+        return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
+
+    def delete(self, group_id):
+        """
+        Delete an existing SecurityGroup.
+
+        :type group_id: str
+        :param group_id: The security group ID to be deleted.
+
+        :rtype: ``bool``
+        :return:  ``True`` if the security group does not exist, ``False``
+                  otherwise. Note that this implies that the group may not have
+                  been deleted by this method but instead has not existed in
+                  the first place.
+        """
+        try:
+            for sg in self.provider.ec2_conn.get_all_security_groups(group_ids=[group_id]):
+                try:
+                    sg.delete()
+                except EC2ResponseError:
+                    return False
+        except EC2ResponseError:
+            pass
+        return True
 
 
 class AWSBlockStoreService(BlockStoreService):

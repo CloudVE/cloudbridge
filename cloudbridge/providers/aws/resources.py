@@ -236,8 +236,7 @@ class AWSInstance(BaseInstance):
         """
         Get the security group IDs associated with this instance.
         """
-        return [BaseSecurityGroup(group.id, group.name, group.description)
-                for group in self._ec2_instance.groups]
+        return self._ec2_instance.groups
 
     @property
     def key_pair_name(self):
@@ -433,6 +432,12 @@ class AWSKeyPair(BaseKeyPair):
 
         """
         return self._key_pair.material
+
+
+class AWSSecurityGroup(BaseSecurityGroup):
+
+    def __init__(self, provider, security_group):
+        super(AWSSecurityGroup, self).__init__(provider, security_group)
 
 
 class AWSContainerObject(ContainerObject):
