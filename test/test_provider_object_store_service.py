@@ -52,7 +52,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 obj.upload("dummy content")
                 objs = test_container.list()
                 found_objs = [o for o in objs if o.name == obj_name]
-                print "FOUND: ", found_objs
+                print("FOUND: ", found_objs)
                 self.assertTrue(
                     len(found_objs) == 1,
                     "List container objects does not return the expected"
