@@ -244,7 +244,7 @@ class AWSInstance(BaseInstance):
         """
         Get the name of the key pair associated with this instance.
         """
-        return BaseKeyPair(self._ec2_instance.key_name)
+        return self._ec2_instance.key_name
 
     def create_image(self, name):
         """
@@ -416,6 +416,23 @@ class AWSSnapshot(BaseSnapshot):
     def __repr__(self):
         return "<CB-AWSSnapshot: {0} ({1})>".format(self.snapshot_id,
                                                     self.name)
+
+
+class AWSKeyPair(BaseKeyPair):
+
+    def __init__(self, provider, key_pair):
+        super(AWSKeyPair, self).__init__(provider, key_pair)
+
+    @property
+    def material(self):
+        """
+        Unencrypted private key.
+
+        :rtype: str
+        :return: Unencrypted private key or ``None`` if not available.
+
+        """
+        return self._key_pair.material
 
 
 class AWSContainerObject(ContainerObject):

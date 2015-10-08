@@ -534,7 +534,7 @@ class KeyPair(object):
         Unencrypted private key.
 
         :rtype: str
-        :return: Unencrypted private key.
+        :return: Unencrypted private key or ``None`` if not available.
         """
         raise NotImplementedError(
             'material not implemented by this provider')

@@ -180,23 +180,27 @@ class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
 
 class BaseKeyPair(KeyPair):
 
-    def __init__(self, name, material=None):
-        self._name = name
-        self._material = material
+    def __init__(self, provider, key_pair):
+        self.provider = provider
+        self._key_pair = key_pair
 
     @property
     def name(self):
         """
         Return the name of this key pair.
         """
-        return self._name
+        return self._key_pair.name
 
-    @property
-    def material(self):
+    def delete(self):
         """
-        Unencrypted private key.
+        Delete this KeyPair.
+
+        :rtype: bool
+        :return: True if successful, otherwise False.
         """
-        return self._material
+        # This implementation assumes the `delete` method exists across multiple
+        # providers.
+        self._key_pair.delete()
 
     def __repr__(self):
         return "<CBKeyPair: {0}>".format(self.name)

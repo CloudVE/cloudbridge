@@ -259,7 +259,7 @@ class OpenStackInstance(BaseInstance):
         """
         Get the name of the key pair associated with this instance.
         """
-        return BaseKeyPair(self._os_instance.key_name)
+        return self._os_instance.key_name
 
     def create_image(self, name):
         """
@@ -458,3 +458,22 @@ class OpenStackSnapshot(BaseSnapshot):
 
     def __repr__(self):
         return "<CB-OSSnapshot: {0} ({1}>".format(self.snapshot_id, self.name)
+
+
+class OpenStackKeyPair(BaseKeyPair):
+
+    def __init__(self, provider, key_pair):
+        super(OpenStackKeyPair, self).__init__(provider, key_pair)
+
+    @property
+    def material(self):
+        """
+        Unencrypted private key.
+
+        :rtype: str
+        :return: Unencrypted private key or ``None`` if not available.
+
+        """
+        if hasattr(self._key_pair, 'private_key'):
+            return self._key_pair.private_key
+        return None

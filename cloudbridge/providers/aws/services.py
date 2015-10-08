@@ -1,24 +1,25 @@
 """
-Services implemented by this provider
+Services implemented by the AWS provider.
 """
 
-from cloudbridge.providers.base import BaseKeyPair
-from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import BlockStoreService
 from cloudbridge.providers.interfaces import ComputeService
 from cloudbridge.providers.interfaces import ImageService
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import KeyPair
+from cloudbridge.providers.interfaces import KeyPairService
 from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import ObjectStoreService
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
+from cloudbridge.providers.interfaces import SecurityGroupService
 from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import SnapshotService
 from cloudbridge.providers.interfaces import VolumeService
 
 from .resources import AWSContainer
 from .resources import AWSInstance
+from .resources import AWSKeyPair
 from .resources import AWSMachineImage
 from .resources import AWSSnapshot
 from .resources import AWSVolume
@@ -29,7 +30,37 @@ class AWSSecurityService(SecurityService):
     def __init__(self, provider):
         self.provider = provider
 
-    def list_key_pairs(self):
+        # Initialize provider services
+        self._key_pairs = AWSKeyPairService(provider)
+        self._security_groups = AWSSecurityGroupService(provider)
+
+    @property
+    def key_pairs(self):
+        """
+        Provides access to key pairs for this provider.
+
+        :rtype: ``object`` of :class:`.KeyPairService`
+        :return: a KeyPairService object
+        """
+        return self._key_pairs
+
+    @property
+    def security_groups(self):
+        """
+        Provides access to security groups for this provider.
+
+        :rtype: ``object`` of :class:`.SecurityGroupService`
+        :return: a SecurityGroupService object
+        """
+        return self._security_groups
+
+
+class AWSKeyPairService(KeyPairService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def list(self):
         """
         List all key pairs associated with this account.
 
@@ -37,18 +68,46 @@ class AWSSecurityService(SecurityService):
         :return:  list of KeyPair objects
         """
         key_pairs = self.provider.ec2_conn.get_all_key_pairs()
-        return [BaseKeyPair(kp.name) for kp in key_pairs]
+        return [AWSKeyPair(self.provider, kp) for kp in key_pairs]
 
-    def list_security_groups(self):
+    def create(self, key_name):
         """
-        List all security groups associated with this account.
+        Create a new key pair.
 
-        :rtype: ``list`` of :class:`.SecurityGroup`
-        :return:  list of SecurityGroup objects
+        :type key_name: str
+        :param key_name: The name of the key pair to be created.
+
+        :rtype: ``object`` of :class:`.KeyPair`
+        :return:  A keypair instance or None if one was not be created.
         """
-        groups = self.provider.ec2_conn.get_all_security_groups()
-        return [BaseSecurityGroup(group.id, group.name, group.description)
-                for group in groups]
+        kp = self.provider.ec2_conn.create_key_pair(key_name)
+        if kp:
+            return AWSKeyPair(self.provider, kp)
+        return None
+
+    def delete(self, key_name):
+        """
+        Delete an existing key pair.
+
+        :type key_name: str
+        :param key_name: The name of the key pair to be deleted.
+
+        :rtype: ``bool``
+        :return:  ``True`` if the key does not exist, ``False`` otherwise. Note
+                  that this implies that the key may not have been deleted by
+                  this method but instead has not existed in the first place.
+        """
+        for kp in self.provider.ec2_conn.get_all_key_pairs():
+            if kp.name == key_name:
+                kp.delete()
+                return True
+        return True
+
+
+class AWSSecurityGroupService(SecurityGroupService):
+
+    def __init__(self, provider):
+        self.provider = provider
 
 
 class AWSBlockStoreService(BlockStoreService):

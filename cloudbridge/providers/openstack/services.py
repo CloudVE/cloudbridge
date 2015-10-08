@@ -1,10 +1,9 @@
 """
-Services implemented by this provider
+Services implemented by the OpenStack provider.
 """
 from cinderclient.exceptions import NotFound as CinderNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
-from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.interfaces import BlockStoreService
 from cloudbridge.providers.interfaces import ComputeService
@@ -23,6 +22,7 @@ from cloudbridge.providers.interfaces import VolumeService
 
 from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
+from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
 from .resources import OpenStackRegion
 # from .resources import OpenStackSecurityGroup
@@ -73,7 +73,41 @@ class OpenStackKeyPairService(KeyPairService):
         :return:  list of KeyPair objects
         """
         key_pairs = self.provider.nova.keypairs.list()
-        return [BaseKeyPair(kp.id) for kp in key_pairs]
+        return [OpenStackKeyPair(self.provider, kp) for kp in key_pairs]
+
+    def create(self, key_name):
+        """
+        Create a new key pair.
+
+        :type key_name: str
+        :param key_name: The name of the key pair to be created.
+
+        :rtype: ``object`` of :class:`.KeyPair`
+        :return:  A keypair instance or None if one was not be created.
+        """
+        kp = self.provider.nova.keypairs.create(key_name)
+        if kp:
+            return OpenStackKeyPair(self.provider, kp)
+        return None
+
+    def delete(self, key_name):
+        """
+        Delete an existing key pair.
+
+        :type key_name: str
+        :param key_name: The name of the key pair to be deleted.
+
+        :rtype: ``bool``
+        :return:  ``True`` if the key does not exist, ``False`` otherwise. Note
+                  that this implies that the key may not have been deleted by
+                  this method but instead has not existed in the first place.
+        """
+        try:
+            kp = self.provider.nova.keypairs.find(name=key_name)
+            kp.delete()
+            return True
+        except NovaNotFound:
+            return True
 
 
 class OpenStackSecurityGroupService(SecurityGroupService):

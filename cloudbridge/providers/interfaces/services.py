@@ -414,9 +414,12 @@ class KeyPairService(ProviderService):
         raise NotImplementedError(
             'list_key_pairs not implemented by this provider')
 
-    def create(self):
+    def create(self, key_name):
         """
         Create a new keypair.
+
+        :type key_name: str
+        :param key_name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance
@@ -432,7 +435,9 @@ class KeyPairService(ProviderService):
         :param key_name: The name of the key pair to be deleted.
 
         :rtype: ``bool``
-        :return:  ``True`` if successful, ``False`` otherwise
+        :return:  ``True`` if the key does not exist, ``False`` otherwise. Note
+                  that this implies that the key may not have been deleted by
+                  this method but instead has not existed at all.
         """
         raise NotImplementedError(
             'delete not implemented by this provider')

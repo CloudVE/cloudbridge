@@ -9,7 +9,7 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             methodName=methodName, provider=provider)
 
     def test_list_key_pairs(self):
-        key_pairs = self.provider.security.list_key_pairs()
+        key_pairs = self.provider.security.key_pairs.list()
         # Assume there's always one keypair at least
         self.assertIsInstance(key_pairs[0], interfaces.KeyPair)
         self.assertIsNotNone(key_pairs[0].name)
