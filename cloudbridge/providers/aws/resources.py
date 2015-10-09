@@ -237,8 +237,16 @@ class AWSInstance(BaseInstance):
         """
         Get the security groups associated with this instance.
         """
+        # boto instance.groups field returns a ``Group`` object so need to
+        # convert that into a ``SecurityGroup`` object before creating a
+        # cloudbridge SecurityGroup object
+        security_groups = []
+        names = []
+        for group in self._ec2_instance.groups:
+            names.append(group.name)
+        security_groups = self.provider.security.security_groups.get(names)
         return [AWSSecurityGroup(self.provider, group)
-                for group in self._ec2_instance.groups]
+                for group in security_groups]
 
     @property
     def key_pair_name(self):
