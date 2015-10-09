@@ -233,11 +233,12 @@ class AWSInstance(BaseInstance):
             'mac_address not implemented by this provider')
 
     @property
-    def security_group_ids(self):
+    def security_groups(self):
         """
-        Get the security group IDs associated with this instance.
+        Get the security groups associated with this instance.
         """
-        return self._ec2_instance.groups
+        return [AWSSecurityGroup(self.provider, group)
+                for group in self._ec2_instance.groups]
 
     @property
     def key_pair_name(self):

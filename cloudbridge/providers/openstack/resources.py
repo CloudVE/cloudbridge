@@ -253,12 +253,16 @@ class OpenStackInstance(BaseInstance):
             'mac_address not implemented by this provider')
 
     @property
-    def security_group_ids(self):
+    def security_groups(self):
         """
-        Get the security group IDs associated with this instance.
+        Get the security groups associated with this instance.
         """
-        return [BaseSecurityGroup(group.id, group.name, group.description)
-                for group in self._os_instance.security_groups]
+        security_groups = []
+        for group in self._os_instance.security_groups:
+            security_groups.append(self.provider.nova.security_groups.find(
+                name=group.get('name')))
+        return [OpenStackSecurityGroup(self.provider, group)
+                for group in security_groups]
 
     @property
     def key_pair_name(self):
@@ -295,7 +299,7 @@ class OpenStackInstance(BaseInstance):
             self._os_instance.status = 'unknown'
 
     def __repr__(self):
-        return "<CB-OSInstance: {0}({1})>".format(self.name, self.instance_id)
+        return "<CB-OSInstance: {0} ({1})>".format(self.name, self.instance_id)
 
 
 class OpenStackRegion(Region):
