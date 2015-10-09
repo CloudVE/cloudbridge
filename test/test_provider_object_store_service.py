@@ -1,4 +1,9 @@
-import StringIO
+# Python 3 compatibility fix
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 import uuid
 
 from test.helpers import ProviderTestBase
@@ -86,7 +91,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 # types. Need to make this consistent - possibly provider
                 # multiple methods like upload_from_file, from_stream etc.
                 obj.upload(content)
-                target_stream = StringIO.StringIO()
+                target_stream = StringIO()
                 obj.download(target_stream)
                 self.assertEqual(target_stream.getvalue(), content)
                 obj.delete()
