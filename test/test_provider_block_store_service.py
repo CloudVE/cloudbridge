@@ -37,6 +37,15 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                 "List volumes does not return the expected volume %s" %
                 name)
             test_vol.delete()
+            test_vol.wait_for(
+                [VolumeState.DELETED, VolumeState.UNKNOWN],
+                terminal_states=[VolumeState.ERROR])
+            volumes = self.provider.block_store.volumes.list_volumes()
+            found_volumes = [vol for vol in volumes if vol.name == name]
+            self.assertTrue(
+                len(found_volumes) == 0,
+                "Volume %s should have been deleted but still exists." %
+                name)
 
     def test_attach_detach_volume(self):
         """
@@ -90,3 +99,10 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                     "List snapshots does not return the expected volume %s" %
                     name)
                 cleanup_snap(test_snap)
+                snaps = self.provider.block_store.snapshots.list_snapshots()
+                found_snaps = [snap for snap in snaps
+                               if snap.name == snap_name]
+                self.assertTrue(
+                    len(found_snaps) == 0,
+                    "Snapshot %s should have been deleted but still exists." %
+                    snap_name)

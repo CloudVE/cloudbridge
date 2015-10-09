@@ -1,5 +1,5 @@
 import uuid
-
+from cloudbridge.providers.interfaces import MachineImageState
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
@@ -27,9 +27,18 @@ class ProviderImageServiceTestCase(ProviderTestBase):
         with helpers.exception_action(lambda x: test_image.delete()):
             test_image.wait_till_ready()
             images = self.provider.images.list_images()
-            images = [image for image in images if image.name == name]
+            found_images = [image for image in images if image.name == name]
             self.assertTrue(
-                len(images) == 1,
+                len(found_images) == 1,
                 "List images does not return the expected image %s" %
                 name)
             test_image.delete()
+            test_image.wait_for(
+                [MachineImageState.UNKNOWN],
+                terminal_states=[MachineImageState.ERROR])
+            images = self.provider.images.list_images()
+            found_images = [image for image in images if image.name == name]
+            self.assertTrue(
+                len(found_images) == 0,
+                "Image %s should have been deleted but still exists." %
+                name)

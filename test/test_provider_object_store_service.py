@@ -26,6 +26,12 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 "List containers does not return the expected container %s" %
                 name)
             test_container.delete()
+            containers = self.provider.object_store.list_containers()
+            found_containers = [c for c in containers if c.name == name]
+            self.assertTrue(
+                len(found_containers) == 0,
+                "Container %s should have been deleted but still exists." %
+                name)
 
     def test_crud_container_objects(self):
         """
@@ -52,12 +58,17 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 obj.upload("dummy content")
                 objs = test_container.list()
                 found_objs = [o for o in objs if o.name == obj_name]
-                print("FOUND: ", found_objs)
                 self.assertTrue(
                     len(found_objs) == 1,
                     "List container objects does not return the expected"
                     " object %s" % obj_name)
                 obj.delete()
+                objs = test_container.list()
+                found_objs = [o for o in objs if o.name == obj_name]
+                self.assertTrue(
+                    len(found_objs) == 0,
+                    "Object %s should have been deleted but still exists." %
+                    obj_name)
             test_container.delete()
 
     def test_upload_download_container_content(self):

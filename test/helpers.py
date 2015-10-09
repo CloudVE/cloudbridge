@@ -25,7 +25,7 @@ def exception_action(cleanup_func):
     """
     try:
         yield
-    except:
+    except Exception:
         ex_class, ex_val, ex_traceback = sys.exc_info()
         try:
             cleanup_func()
