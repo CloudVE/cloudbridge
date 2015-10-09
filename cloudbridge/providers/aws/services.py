@@ -345,11 +345,14 @@ class AWSImageService(ImageService):
         """
         Returns an Image given its id
         """
-        image = self.provider.ec2_conn.get_image(image_id)
-        if image:
-            return AWSMachineImage(self.provider, image)
-        else:
-            return None
+        try:
+            image = self.provider.ec2_conn.get_image(image_id)
+            if image:
+                return AWSMachineImage(self.provider, image)
+        except EC2ResponseError:
+            pass
+
+        return None
 
     def find_image(self, name):
         """

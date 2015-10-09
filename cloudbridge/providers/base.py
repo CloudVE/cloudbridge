@@ -155,6 +155,10 @@ class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
     def terminal_states(self):
         return [MachineImageState.ERROR]
 
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.image_id, self.name)
+
 
 class BaseVolume(BaseObjectLifeCycleMixin, Volume):
 
@@ -198,8 +202,8 @@ class BaseKeyPair(KeyPair):
         :rtype: bool
         :return: True if successful, otherwise False.
         """
-        # This implementation assumes the `delete` method exists across multiple
-        # providers.
+        # This implementation assumes the `delete` method exists across
+        #  multiple providers.
         self._key_pair.delete()
 
     def __repr__(self):

@@ -10,7 +10,7 @@ setup(name='cloudbridge',
       url='http://cloudbridge.readthedocs.org/',
       install_requires=['bunch>=1.00', 'six>=1.9.0', 'python-keystoneclient',
                         'python-novaclient', 'python-cinderclient',
-                        'python-swiftclient', 'boto'],
+                        'python-swiftclient', 'boto', 'retrying'],
       packages=find_packages(),
       license='MIT',
       classifiers=[

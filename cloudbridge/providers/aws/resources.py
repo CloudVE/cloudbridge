@@ -4,6 +4,7 @@ DataTypes used by this provider
 import shutil
 from boto.exception import EC2ResponseError
 from boto.s3.key import Key
+from retrying import retry
 
 from cloudbridge.providers.base import BaseInstance
 from cloudbridge.providers.base import BaseKeyPair
@@ -70,7 +71,7 @@ class AWSMachineImage(BaseMachineImage):
         """
         Delete this image
         """
-        self._ec2_image.deregister()
+        self._ec2_image.deregister(delete_snapshot=True)
 
     @property
     def state(self):
@@ -250,8 +251,12 @@ class AWSInstance(BaseInstance):
         Create a new image based on this instance.
         """
         image_id = self._ec2_instance.create_image(name)
-        image = self.provider.images.get_image(image_id)
-        return AWSMachineImage(self.provider, image)
+        # Sometimes, the image takes a while to register, so retry a few times
+        # if the image cannot be found
+        retry_decorator = retry(retry_on_result=lambda result: result is None,
+                                stop_max_attempt_number=3, wait_fixed=1000)
+        image = retry_decorator(self.provider.images.get_image)(image_id)
+        return image
 
     @property
     def state(self):

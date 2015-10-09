@@ -39,7 +39,7 @@ from test.test_provider_security_service import ProviderSecurityServiceTestCase
 
 PROVIDER_TESTS = [
     ProviderInterfaceTestCase,
-    #     ProviderSecurityServiceTestCase,
+    ProviderSecurityServiceTestCase,
     ProviderComputeServiceTestCase,
     ProviderImageServiceTestCase,
     ProviderBlockStoreServiceTestCase,
