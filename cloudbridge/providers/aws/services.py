@@ -154,7 +154,8 @@ class AWSSecurityGroupService(SecurityGroupService):
                           returned.
 
         :rtype: list of :class:`SecurityGroup`
-        :return: A list of SecurityGroup objects or an empty list if none found.
+        :return: A list of SecurityGroup objects or an empty list if none
+        found.
         """
         try:
             security_groups = self.provider.ec2_conn.get_all_security_groups(
@@ -177,7 +178,8 @@ class AWSSecurityGroupService(SecurityGroupService):
                   the first place.
         """
         try:
-            for sg in self.provider.ec2_conn.get_all_security_groups(group_ids=[group_id]):
+            for sg in self.provider.ec2_conn.get_all_security_groups(
+                    group_ids=[group_id]):
                 try:
                     sg.delete()
                 except EC2ResponseError:

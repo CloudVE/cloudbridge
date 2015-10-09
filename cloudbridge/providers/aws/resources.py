@@ -263,7 +263,12 @@ class AWSInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        self._ec2_instance.update()
+        try:
+            self._ec2_instance.update()
+        except EC2ResponseError:
+            # The volume no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._ec2_instance.status = 'unknown'
 
     def __repr__(self):
         return "<CB-AWSInstance: {0}({1})>".format(self.name, self.instance_id)
@@ -349,7 +354,12 @@ class AWSVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        self._volume.update()
+        try:
+            self._volume.update()
+        except EC2ResponseError:
+            # The volume no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._volume.status = 'unknown'
 
     def __repr__(self):
         return "<CB-AWSVolume: {0} ({1})>".format(self.volume_id, self.name)
