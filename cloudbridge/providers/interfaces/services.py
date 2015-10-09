@@ -475,12 +475,12 @@ class SecurityGroupService(ProviderService):
         raise NotImplementedError(
             'create not implemented by this provider')
 
-    def get(self, groupnames=None, group_ids=None):
+    def get(self, group_names=None, group_ids=None):
         """
-        Get a security group.
+        Get all security groups associated with your account.
 
-        :type groupnames: list
-        :param groupnames: A list of the names of security groups to retrieve.
+        :type group_names: list
+        :param group_names: A list of the names of security groups to retrieve.
                            If not provided, all security groups will be
                            returned.
 

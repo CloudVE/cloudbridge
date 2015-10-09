@@ -145,12 +145,12 @@ class OpenStackSecurityGroupService(SecurityGroupService):
             return OpenStackSecurityGroup(self.provider, sg)
         return None
 
-    def get(self, groupnames=None, group_ids=None):
+    def get(self, group_names=None, group_ids=None):
         """
-        Get a security group.
+        Get all security groups associated with your account.
 
-        :type groupnames: list
-        :param groupnames: A list of the names of security groups to retrieve.
+        :type group_names: list
+        :param group_names: A list of the names of security groups to retrieve.
                            If not provided, all security groups will be
                            returned.
 
@@ -163,8 +163,39 @@ class OpenStackSecurityGroupService(SecurityGroupService):
         :return: A list of SecurityGroup objects or an empty list if none
         found.
         """
-        raise NotImplementedError(
-            'get not implemented by this provider')
+        if not group_names:
+            group_names = []
+        if not group_ids:
+            group_ids = []
+        security_groups = self.provider.nova.security_groups.list()
+        filtered = []
+        for sg in security_groups:
+            if sg.name in group_names:
+                filtered.append(sg)
+            if sg.id in group_ids:
+                filtered.append(sg)
+        # If a filter was specified, use the filtered list; otherwise, get all
+        return [OpenStackSecurityGroup(self.provider, sg)
+                for sg in (filtered
+                           if (group_names or group_ids) else security_groups)]
+
+    def delete(self, group_id):
+        """
+        Delete an existing SecurityGroup.
+
+        :type group_id: str
+        :param group_id: The security group ID to be deleted.
+
+        :rtype: ``bool``
+        :return:  ``True`` if the security group does not exist, ``False``
+                  otherwise. Note that this implies that the group may not have
+                  been deleted by this method but instead has not existed in
+                  the first place.
+        """
+        sg = self.get(group_ids=[group_id])
+        if sg:
+            sg[0].delete()
+        return True
 
 
 class OpenStackImageService(ImageService):

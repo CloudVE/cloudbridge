@@ -139,12 +139,12 @@ class AWSSecurityGroupService(SecurityGroupService):
             return AWSSecurityGroup(self.provider, sg)
         return None
 
-    def get(self, groupnames=None, group_ids=None):
+    def get(self, group_names=None, group_ids=None):
         """
-        Get a security group.
+        Get all security groups associated with your account.
 
-        :type groupnames: list
-        :param groupnames: A list of the names of security groups to retrieve.
+        :type group_names: list
+        :param group_names: A list of the names of security groups to retrieve.
                            If not provided, all security groups will be
                            returned.
 
@@ -159,7 +159,7 @@ class AWSSecurityGroupService(SecurityGroupService):
         """
         try:
             security_groups = self.provider.ec2_conn.get_all_security_groups(
-                groupnames=groupnames, group_ids=group_ids)
+                groupnames=group_names, group_ids=group_ids)
         except EC2ResponseError:
             security_groups = []
         return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
