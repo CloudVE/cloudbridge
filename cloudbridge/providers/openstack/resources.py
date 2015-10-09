@@ -1,12 +1,18 @@
 """
 DataTypes used by this provider
 """
+import shutil
+
+from swiftclient.exceptions import ClientException
+
 from cloudbridge.providers.base import BaseInstance
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
 from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.base import BaseSnapshot
 from cloudbridge.providers.base import BaseVolume
+from cloudbridge.providers.interfaces import Container
+from cloudbridge.providers.interfaces import ContainerObject
 from cloudbridge.providers.interfaces import InstanceState
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImageState
@@ -483,3 +489,102 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 
     def __init__(self, provider, security_group):
         super(OpenStackSecurityGroup, self).__init__(provider, security_group)
+
+
+class OpenStackContainerObject(ContainerObject):
+
+    def __init__(self, provider, cbcontainer, obj):
+        self.provider = provider
+        self.cbcontainer = cbcontainer
+        self._obj = obj
+
+    @property
+    def name(self):
+        """
+        Get this object's name.
+        """
+        return self._obj.get("name")
+
+    def download(self, target_stream):
+        """
+        Download this object and write its
+        contents to the target_stream.
+        """
+        _, content = self.provider.swift.get_object(
+            self.cbcontainer.name, self.name, resp_chunk_size=65536)
+        shutil.copyfileobj(content, target_stream)
+
+    def upload(self, data):
+        """
+        Set the contents of this object to the data read from the source
+        string.
+        """
+        self.provider.swift.put_object(self.cbcontainer.name, self.name,
+                                       data)
+
+    def delete(self):
+        """
+        Delete this object.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        try:
+            self.provider.swift.delete_object(self.cbcontainer.name, self.name)
+        except ClientException as err:
+            if err.http_status == 404:
+                return True
+        return False
+
+    def __repr__(self):
+        return "<CB-OpenStackContainerObject: {0}>".format(self.name)
+
+
+class OpenStackContainer(Container):
+
+    def __init__(self, provider, container):
+        self.provider = provider
+        self._container = container
+
+    @property
+    def name(self):
+        """
+        Get this container's name.
+        """
+        return self._container.get("name")
+
+    def get(self, key):
+        """
+        Retrieve a given object from this container.
+        """
+        _, object_list = self.provider.swift.get_container(
+            self.name, prefix=key)
+        if object_list:
+            return OpenStackContainerObject(self.provider, self,
+                                            object_list[0])
+        else:
+            return None
+
+    def list(self):
+        """
+        List all objects within this container.
+
+        :rtype: ContainerObject
+        :return: List of all available ContainerObjects within this container
+        """
+        _, object_list = self.provider.swift.get_container(self.name)
+        return [
+            OpenStackContainer(self.provider, o) for o in object_list]
+
+    def delete(self, delete_contents=False):
+        """
+        Delete this container.
+        """
+        self.provider.swift.delete_container(self.name)
+
+    def create_object(self, object_name):
+        self.provider.swift.put_object(self.name, object_name, None)
+        return self.get(object_name)
+
+    def __repr__(self):
+        return "<CB-OpenStackContainer: {0}>".format(self.name)

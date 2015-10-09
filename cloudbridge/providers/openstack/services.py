@@ -12,6 +12,7 @@ from cloudbridge.providers.interfaces import InstanceTypesService
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import KeyPairService
 from cloudbridge.providers.interfaces import MachineImage
+from cloudbridge.providers.interfaces import ObjectStoreService
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityGroupService
@@ -19,6 +20,7 @@ from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import SnapshotService
 from cloudbridge.providers.interfaces import VolumeService
 
+from .resources import OpenStackContainer
 from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
 from .resources import OpenStackKeyPair
@@ -122,7 +124,8 @@ class OpenStackSecurityGroupService(SecurityGroupService):
         :return:  list of SecurityGroup objects
         """
         groups = self.provider.nova.security_groups.list()
-        return [OpenStackSecurityGroup(self.provider, group) for group in groups]
+        return [OpenStackSecurityGroup(
+            self.provider, group) for group in groups]
 
     def create(self, name, description):
         """
@@ -157,7 +160,8 @@ class OpenStackSecurityGroupService(SecurityGroupService):
                           returned.
 
         :rtype: list of :class:`SecurityGroup`
-        :return: A list of SecurityGroup objects or an empty list if none found.
+        :return: A list of SecurityGroup objects or an empty list if none
+        found.
         """
         raise NotImplementedError(
             'get not implemented by this provider')
@@ -310,6 +314,46 @@ class OpenStackSnapshotService(SnapshotService):
             volume_id, name=name,
             description=description)
         return OpenStackSnapshot(self.provider, os_snap)
+
+
+class OpenStackObjectStoreService(ObjectStoreService):
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    def get_container(self, container_id):
+        """
+        Returns a container given its id. Returns None if the container
+        does not exist.
+        """
+        _, container_list = self.provider.swift.get_account(
+            prefix=container_id)
+        if container_list:
+            return OpenStackContainer(self.provider, container_list[0])
+        else:
+            return None
+
+    def find_container(self, name):
+        """
+        Searches for a container by a given list of attributes
+        """
+        raise NotImplementedError(
+            'find_container not implemented by this provider')
+
+    def list_containers(self):
+        """
+        List all containers.
+        """
+        _, container_list = self.provider.swift.get_account()
+        return [
+            OpenStackContainer(self.provider, c) for c in container_list]
+
+    def create_container(self, name, location=None):
+        """
+        Create a new container.
+        """
+        self.provider.swift.put_container(name)
+        return self.get_container(name)
 
 
 class OpenStackComputeService(ComputeService):

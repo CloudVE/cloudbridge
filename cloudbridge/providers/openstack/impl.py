@@ -10,12 +10,14 @@ from keystoneclient import client as keystone_client
 from keystoneclient import session
 from keystoneclient.auth.identity import Password
 from novaclient import client as nova_client
+from swiftclient import client as swift_client
 
 from cloudbridge.providers.base import BaseCloudProvider
 
 from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
 from .services import OpenStackImageService
+from .services import OpenStackObjectStoreService
 from .services import OpenStackSecurityService
 
 
@@ -24,8 +26,6 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
     def __init__(self, config):
         super(OpenStackCloudProviderV1, self).__init__(config)
 
-        self.api_version = self._get_config_value(
-            'api_version', os.environ.get('OS_COMPUTE_API_VERSION', 2))
         self.username = self._get_config_value(
             'username', os.environ.get('OS_USERNAME', None))
         self.password = self._get_config_value(
@@ -38,12 +38,13 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         self.nova = self._connect_nova()
         self.keystone = self._connect_keystone()
         self.cinder = self._connect_cinder()
+        self.swift = self._connect_swift()
 
         self._compute = OpenStackComputeService(self)
         self._images = OpenStackImageService(self)
         self._security = OpenStackSecurityService(self)
         self._block_store = OpenStackBlockStoreService(self)
-        self._object_store = None  # OpenStackObjectStore(self)
+        self._object_store = OpenStackObjectStoreService(self)
 
     @property
     def compute(self):
@@ -69,9 +70,13 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         """
         Get an openstack nova client object for the given cloud.
         """
+        api_version = self._get_config_value(
+            'os_compute_api_version',
+            os.environ.get('OS_COMPUTE_API_VERSION', 2))
+
         return nova_client.Client(
-            self.api_version, self.username, self.password, self.tenant_name,
-            self.auth_url)
+            api_version, username=self.username, api_key=self.password,
+            project_id=self.tenant_name, auth_url=self.auth_url)
 
     def _connect_keystone(self):
         """
@@ -96,6 +101,18 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         """
         Get an openstack cinder client object for the given cloud.
         """
+        api_version = self._get_config_value(
+            'os_volume_api_version',
+            os.environ.get('OS_VOLUME_API_VERSION', 2))
+
         return cinder_client.Client(
-            self.api_version, self.username, self.password, self.tenant_name,
-            self.auth_url)
+            api_version, username=self.username, api_key=self.password,
+            project_id=self.tenant_name, auth_url=self.auth_url)
+
+    def _connect_swift(self):
+        """
+        Get an openstack swift client object for the given cloud.
+        """
+        return swift_client.Connection(
+            authurl=self.auth_url, auth_version='2', user=self.username,
+            key=self.password, tenant_name=self.tenant_name)
