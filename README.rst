@@ -41,6 +41,11 @@ In the example above, the AWS_ACCESS_KEY and AWS_SECRET_KEY environment variable
 must be set to your cloud credentials.
 
 
+Documentation
+~~~~~~~~~~~~~
+Complete documentation can be found at <https://cloudbridge.readthedocs.org>.
+
+
 Running tests
 ~~~~~~~~~~~~~
 To run the test suite locally, install `tox`_ with :code:`pip install tox`
