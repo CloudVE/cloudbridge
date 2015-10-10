@@ -233,11 +233,20 @@ class AWSInstance(BaseInstance):
             'mac_address not implemented by this provider')
 
     @property
-    def security_group_ids(self):
+    def security_groups(self):
         """
-        Get the security group IDs associated with this instance.
+        Get the security groups associated with this instance.
         """
-        return self._ec2_instance.groups
+        # boto instance.groups field returns a ``Group`` object so need to
+        # convert that into a ``SecurityGroup`` object before creating a
+        # cloudbridge SecurityGroup object
+        security_groups = []
+        names = []
+        for group in self._ec2_instance.groups:
+            names.append(group.name)
+        security_groups = self.provider.security.security_groups.get(names)
+        return [AWSSecurityGroup(self.provider, group)
+                for group in security_groups]
 
     @property
     def key_pair_name(self):

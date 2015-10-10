@@ -228,15 +228,15 @@ class Instance(ObjectLifeCycleMixin):
             'Instance.mac_address not implemented by this provider')
 
     @property
-    def security_group_ids(self):
+    def security_groups(self):
         """
-        Get the security group IDs associated with this instance.
+        Get the security groups associated with this instance.
 
-        :rtype: list
-        :return: A list of security group IDs associated with this instance.
+        :rtype: list or :class:``SecurityGroup`` objects
+        :return: A list of SecurityGroup objects associated with this instance.
         """
         raise NotImplementedError(
-            'Instance.security_group_ids not implemented by this provider')
+            'Instance.security_groups not implemented by this provider')
 
     @property
     def key_pair_name(self):
