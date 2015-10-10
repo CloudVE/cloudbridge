@@ -28,14 +28,11 @@ must be set to your cloud credentials.
 Contents:
 
 .. toctree::
+   :glob:
    :maxdepth: 2
 
-    getting_started
-    supported_clouds
-    core_interfaces
-    testing
-    api_docs
-    faq
+   api_docs/cloudbridge
+
 
 Indices and tables
 ==================
