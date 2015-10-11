@@ -490,7 +490,8 @@ class SecurityGroupService(ProviderService):
                           returned.
 
         :rtype: list of :class:`SecurityGroup`
-        :return: A list of SecurityGroup objects or an empty list if none found.
+        :return: A list of SecurityGroup objects or an empty list if none
+        found.
         """
         raise NotImplementedError(
             'get not implemented by this provider')

@@ -2,7 +2,8 @@ cloudbridge
 ===========
 
 cloudbridge provides a layer of abstraction over different cloud providers.
-It's a straightfoward implementation of the `bridge pattern`_.
+It's a straightfoward implementation of the `bridge pattern`_. It is currently
+under development and is in a Pre-Alpha state.
 
 .. image:: https://codeclimate.com/github/gvlproject/cloudbridge/badges/gpa.svg
    :target: https://codeclimate.com/github/gvlproject/cloudbridge
@@ -43,7 +44,7 @@ must be set to your cloud credentials.
 
 Documentation
 ~~~~~~~~~~~~~
-Complete documentation can be found at <https://cloudbridge.readthedocs.org>.
+Documentation can be found at <https://cloudbridge.readthedocs.org>.
 
 
 Running tests
