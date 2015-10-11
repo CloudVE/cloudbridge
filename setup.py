@@ -1,5 +1,10 @@
+import sys
 from setuptools import setup, find_packages
 
+if sys.version_info[0] == 2:
+    backports = ["py2-ipaddress"]
+else:
+    backports = []
 
 setup(name='cloudbridge',
       version=0.1,
@@ -10,7 +15,7 @@ setup(name='cloudbridge',
       url='http://cloudbridge.readthedocs.org/',
       install_requires=['bunch>=1.00', 'six>=1.9.0', 'python-keystoneclient',
                         'python-novaclient', 'python-cinderclient',
-                        'python-swiftclient', 'boto', 'retrying'],
+                        'python-swiftclient', 'boto', 'retrying'] + backports,
       packages=find_packages(),
       license='MIT',
       classifiers=[

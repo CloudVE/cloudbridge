@@ -1,5 +1,5 @@
-import socket
 import uuid
+import ipaddress
 
 from cloudbridge.providers.interfaces import InstanceState
 from test.helpers import ProviderTestBase
@@ -38,12 +38,9 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
 
     def _is_valid_ip(self, address):
         try:
-            socket.inet_pton(socket.AF_INET, address)
-        except socket.error:  # not a valid address
-            try:
-                socket.inet_pton(socket.AF_INET, address)
-            except socket.error:  # still not a valid address
-                return False
+            ipaddress.ip_address(address)
+        except ValueError:
+            return False
         return True
 
     def test_instance_properties(self):
@@ -63,5 +60,14 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                              " {1}".format(test_instance.image_id, image_id))
             self.assertIsInstance(test_instance.public_ips, list)
             self.assertIsInstance(test_instance.private_ips, list)
+            # Must have either a public or a private ip
+            ip_private = test_instance.private_ips[0] \
+                if test_instance.private_ips else None
+            ip_address = test_instance.public_ips[0] \
+                if test_instance.public_ips else ip_private
+            self.assertIsNotNone(
+                ip_address,
+                "Instance must have either a public IP or a private IP")
             self.assertTrue(
-                self._is_valid_ip(self.test_instance.private_ips[0]))
+                self._is_valid_ip(ip_address),
+                "Instance must have a valid IP address")

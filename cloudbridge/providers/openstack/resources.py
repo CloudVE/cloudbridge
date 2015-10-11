@@ -3,6 +3,7 @@ DataTypes used by this provider
 """
 import shutil
 
+import ipaddress
 from swiftclient.exceptions import ClientException
 
 from cloudbridge.providers.base import BaseInstance
@@ -200,14 +201,24 @@ class OpenStackInstance(BaseInstance):
         """
         Get all the public IP addresses for this instance.
         """
-        return self._os_instance.networks['public']
+        # Openstack doesn't provide an easy way to figure our whether an ip is
+        # public or private, since the returned ips are grouped by an arbitrary
+        # network label. Therefore, it's necessary to parse the address and
+        # determine whether it's public or private
+        return [address
+                for addresses in self._os_instance.networks.itervalues()
+                for address in addresses
+                if not ipaddress.ip_address(address).is_private]
 
     @property
     def private_ips(self):
         """
         Get all the private IP addresses for this instance.
         """
-        return self._os_instance.networks['private']
+        return [address
+                for addresses in self._os_instance.networks.itervalues()
+                for address in addresses
+                if ipaddress.ip_address(address).is_private]
 
     @property
     def instance_type(self):
