@@ -29,32 +29,43 @@ def exception_action(cleanup_func):
         ex_class, ex_val, ex_traceback = sys.exc_info()
         try:
             cleanup_func()
-        except:
-            pass
-        # raise the original exception
+        except Exception as e:
+            print("Error during cleanup: {0}".format(e))
         reraise(ex_class, ex_val, ex_traceback)
 
+TEST_DATA_CONFIG = {
+    "AWSCloudProvider": {
+        "image": os.environ.get('CB_IMAGE_AWS', 'ami-d85e75b0'),
+        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS',
+                                        't1.micro'),
+        "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
+    },
+    "OpenStackCloudProvider": {
+        "image": os.environ.get('CB_IMAGE_OS',
+                                'd57696ba-5ed2-43fe-bf78-a587829973a9'),
+        "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm2.xsmall'),
+        "placement": os.environ.get('CB_PLACEMENT_OS', 'NCI'),
+    }
+}
 
-def create_test_instance(provider):
-    instance_name = "HelloCloudBridge-{0}".format(provider.name)
+
+def get_provider_test_data(provider, key):
     if "AWSCloudProvider" in provider.name:
-        ami = os.environ.get('CB_AMI', 'ami-d85e75b0')
-        instance_type = os.environ.get('CB_INSTANCE_TYPE', 't1.micro')
-        return provider.compute.create_instance(
-            instance_name, ami, instance_type)
+        return TEST_DATA_CONFIG.get("AWSCloudProvider").get(key)
     elif "OpenStackCloudProvider" in provider.name:
-        image_id = os.environ.get(
-            'CB_IMAGE',
-            "d57696ba-5ed2-43fe-bf78-a587829973a9")
-        instance_type = os.environ.get('CB_FLAVOR', "m2.xsmall")
-        return provider.compute.create_instance(
-            "{0}-{1}".format(instance_name, provider.name),
-            image_id,
-            instance_type)
+        return TEST_DATA_CONFIG.get("OpenStackCloudProvider").get(key)
+    return None
 
 
-def get_test_instance(provider):
-    instance = create_test_instance(provider)
+def create_test_instance(provider, instance_name):
+    return provider.compute.create_instance(
+        instance_name,
+        get_provider_test_data(provider, 'image'),
+        get_provider_test_data(provider, 'instance_type'))
+
+
+def get_test_instance(provider, name):
+    instance = create_test_instance(provider, name)
     instance.wait_till_ready()
     return instance
 

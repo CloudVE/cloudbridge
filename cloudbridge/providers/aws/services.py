@@ -409,3 +409,32 @@ class AWSComputeService(ComputeService):
             instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
         return instance
+
+    def get_instance(self, instance_id):
+        """
+        Returns an instance given its id. Returns None
+        if the object does not exist.
+        """
+        reservation = self.provider.ec2_conn.get_all_reservations(
+            instance_ids=[instance_id])
+        if reservation:
+            return AWSInstance(self.provider, reservation.instances[0])
+
+    def find_instance(self, name):
+        """
+        Searches for an instance by a given list of attributes.
+
+        :rtype: ``object`` of :class:`.Instance`
+        :return: an Instance object
+        """
+        raise NotImplementedError(
+            'find_instance not implemented by this provider')
+
+    def list_instances(self):
+        """
+        List all instances.
+        """
+        reservations = self.provider.ec2_conn.get_all_reservations()
+        return [AWSInstance(self.provider, inst)
+                for res in reservations
+                for inst in res.instances]
