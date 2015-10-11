@@ -12,12 +12,6 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
         super(ProviderBlockStoreServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
-    def setUp(self):
-        self.instance = helpers.get_test_instance(self.provider)
-
-    def tearDown(self):
-        self.instance.terminate()
-
     def test_crud_volume(self):
         """
         Create a new volume, check whether the expected values are set,
@@ -27,8 +21,8 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
         test_vol = self.provider.block_store.volumes.create_volume(
             name,
             1,
-            self.instance.placement_zone)
-        with helpers.exception_action(lambda x: test_vol.delete()):
+            helpers.get_provider_test_data(self.provider, "placement"))
+        with helpers.exception_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             volumes = self.provider.block_store.volumes.list_volumes()
             found_volumes = [vol for vol in volumes if vol.name == name]
@@ -51,20 +45,25 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
         """
         Create a new volume, and attempt to attach it to an instance
         """
-        name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4())
-        test_vol = self.provider.block_store.volumes.create_volume(
-            name, 1, self.instance.placement_zone)
-        with helpers.exception_action(lambda x: test_vol.delete()):
-            test_vol.wait_till_ready()
-            test_vol.attach(self.instance, '/dev/sda2')
-            test_vol.wait_for(
-                [VolumeState.IN_USE], terminal_states=[VolumeState.ERROR,
-                                                       VolumeState.DELETED])
-            test_vol.detach()
-            test_vol.wait_for(
-                [VolumeState.AVAILABLE], terminal_states=[VolumeState.ERROR,
-                                                          VolumeState.DELETED])
-            test_vol.delete()
+        instance_name = "CBVolOps-{0}-{1}".format(
+            self.provider.name,
+            uuid.uuid4())
+        test_instance = helpers.get_test_instance(self.provider, instance_name)
+        with helpers.exception_action(lambda: test_instance.terminate()):
+            name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4())
+            test_vol = self.provider.block_store.volumes.create_volume(
+                name, 1, test_instance.placement_zone)
+            with helpers.exception_action(lambda: test_vol.delete()):
+                test_vol.wait_till_ready()
+                test_vol.attach(test_instance, '/dev/sda2')
+                test_vol.wait_for(
+                    [VolumeState.IN_USE],
+                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
+                test_vol.detach()
+                test_vol.wait_for(
+                    [VolumeState.AVAILABLE],
+                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
+                test_vol.delete()
 
     def test_crud_snapshot(self):
         """
@@ -76,8 +75,8 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
         test_vol = self.provider.block_store.volumes.create_volume(
             name,
             1,
-            self.instance.placement_zone)
-        with helpers.exception_action(lambda x: test_vol.delete()):
+            helpers.get_provider_test_data(self.provider, "placement"))
+        with helpers.exception_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             snap_name = "CBSnapshot-{0}".format(name)
             test_snap = test_vol.create_snapshot(name=snap_name,
@@ -89,7 +88,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                     [SnapshotState.UNKNOWN],
                     terminal_states=[SnapshotState.ERROR])
 
-            with helpers.exception_action(lambda x: cleanup_snap(test_snap)):
+            with helpers.exception_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready()
                 snaps = self.provider.block_store.snapshots.list_snapshots()
                 found_snaps = [snap for snap in snaps

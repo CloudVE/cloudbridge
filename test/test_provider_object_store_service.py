@@ -23,7 +23,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
         """
         name = "cbtestcreatecontainer-{0}".format(uuid.uuid4())
         test_container = self.provider.object_store.create_container(name)
-        with helpers.exception_action(lambda x: test_container.delete()):
+        with helpers.exception_action(lambda: test_container.delete()):
             containers = self.provider.object_store.list_containers()
             found_containers = [c for c in containers if c.name == name]
             self.assertTrue(
@@ -51,11 +51,11 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
         objects = test_container.list()
         self.assertEqual([], objects)
 
-        with helpers.exception_action(lambda x: test_container.delete()):
+        with helpers.exception_action(lambda: test_container.delete()):
             obj_name = "hello_world.txt"
             obj = test_container.create_object(obj_name)
 
-            with helpers.exception_action(lambda x: obj.delete()):
+            with helpers.exception_action(lambda: obj.delete()):
                 # TODO: This is wrong. We shouldn't have to have a separate
                 # call to upload some content before being able to delete
                 # the content. Maybe the create_object method should accept
@@ -81,11 +81,11 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
         name = "cbtestcontainerobjs-{0}".format(uuid.uuid4())
         test_container = self.provider.object_store.create_container(name)
 
-        with helpers.exception_action(lambda x: test_container.delete()):
+        with helpers.exception_action(lambda: test_container.delete()):
             obj_name = "hello_upload_download.txt"
             obj = test_container.create_object(obj_name)
 
-            with helpers.exception_action(lambda x: obj.delete()):
+            with helpers.exception_action(lambda: obj.delete()):
                 content = "Hello World. Here's some content"
                 # TODO: Upload and download methods accept different parameter
                 # types. Need to make this consistent - possibly provider

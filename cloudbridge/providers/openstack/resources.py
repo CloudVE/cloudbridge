@@ -233,7 +233,7 @@ class OpenStackInstance(BaseInstance):
         """
         Get the image ID for this instance.
         """
-        return self._os_instance.image_id
+        return self._os_instance.image.get("id")
 
     @property
     def placement_zone(self):

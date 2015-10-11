@@ -211,6 +211,7 @@ class AWSInstance(BaseInstance):
         """
         self._ec2_instance.terminate()
 
+    @property
     def image_id(self):
         """
         Get the image ID for this insance.
@@ -240,10 +241,7 @@ class AWSInstance(BaseInstance):
         # boto instance.groups field returns a ``Group`` object so need to
         # convert that into a ``SecurityGroup`` object before creating a
         # cloudbridge SecurityGroup object
-        security_groups = []
-        names = []
-        for group in self._ec2_instance.groups:
-            names.append(group.name)
+        names = [group.name for group in self._ec2_instance.groups]
         security_groups = self.provider.security.security_groups.get(names)
         return [AWSSecurityGroup(self.provider, group)
                 for group in security_groups]
