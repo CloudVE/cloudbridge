@@ -461,6 +461,41 @@ class AWSSecurityGroup(BaseSecurityGroup):
     def __init__(self, provider, security_group):
         super(AWSSecurityGroup, self).__init__(provider, security_group)
 
+    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
+                 cidr_ip=None, src_group=None):
+        """
+        Create a security group rule.
+
+        You need to pass in either ``src_group`` OR ``ip_protocol``,
+        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
+        you are authorizing another group or you are authorizing some
+        ip-based rule.
+
+        :type ip_protocol: str
+        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
+
+        :type from_port: int
+        :param from_port: The beginning port number you are enabling
+
+        :type to_port: int
+        :param to_port: The ending port number you are enabling
+
+        :type cidr_ip: str or list of strings
+        :param cidr_ip: The CIDR block you are providing access to.
+
+        :type src_group: ``object`` of :class:`.SecurityGroup`
+        :param src_group: The Security Group you are granting access to.
+
+        :rtype: bool
+        :return: True if successful.
+        """
+        return self._security_group.authorize(
+            ip_protocol=ip_protocol,
+            from_port=from_port,
+            to_port=to_port,
+            cidr_ip=cidr_ip,
+            src_group=src_group._security_group)
+
 
 class AWSContainerObject(ContainerObject):
 
