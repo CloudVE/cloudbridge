@@ -418,7 +418,7 @@ class AWSComputeService(ComputeService):
         reservation = self.provider.ec2_conn.get_all_reservations(
             instance_ids=[instance_id])
         if reservation:
-            return AWSInstance(self.provider, reservation.instances[0])
+            return AWSInstance(self.provider, reservation[0].instances[0])
 
     def find_instance(self, name):
         """

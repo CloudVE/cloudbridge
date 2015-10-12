@@ -34,6 +34,8 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
             'tenant_name', os.environ.get('OS_TENANT_NAME', None))
         self.auth_url = self._get_config_value(
             'auth_url', os.environ.get('OS_AUTH_URL', None))
+        self.region_name = self._get_config_value(
+            'region_name', os.environ.get('OS_REGION_NAME', None))
 
         self.nova = self._connect_nova()
         self.keystone = self._connect_keystone()
@@ -73,10 +75,14 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         api_version = self._get_config_value(
             'os_compute_api_version',
             os.environ.get('OS_COMPUTE_API_VERSION', 2))
+        service_name = self._get_config_value(
+            'nova_service_name',
+            os.environ.get('NOVA_SERVICE_NAME', None))
 
         return nova_client.Client(
             api_version, username=self.username, api_key=self.password,
-            project_id=self.tenant_name, auth_url=self.auth_url)
+            project_id=self.tenant_name, auth_url=self.auth_url,
+            region_name=self.region_name, service_name=service_name)
 
     def _connect_keystone(self):
         """
@@ -93,7 +99,8 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
             auth_url=self.auth_url,
             username=self.username,
             password=self.password,
-            tenant_name=self.tenant_name)
+            tenant_name=self.tenant_name,
+            region_name=self.region_name)
         keystone.authenticate()
         return keystone
 
@@ -113,6 +120,8 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         """
         Get an openstack swift client object for the given cloud.
         """
+        os_options = {'region_name': self.region_name}
         return swift_client.Connection(
             authurl=self.auth_url, auth_version='2', user=self.username,
-            key=self.password, tenant_name=self.tenant_name)
+            key=self.password, tenant_name=self.tenant_name,
+            os_options=os_options)
