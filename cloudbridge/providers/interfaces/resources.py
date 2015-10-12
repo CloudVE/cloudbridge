@@ -671,9 +671,14 @@ class SecurityGroup(object):
             'delete not implemented by this provider')
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, group_id=None):
+                 cidr_ip=None, src_group=None):
         """
-        Create a security group rule
+        Create a security group rule.
+
+        You need to pass in either ``src_group`` OR ``ip_protocol``,
+        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
+        you are authorizing another group or you are authorizing some
+        ip-based rule.
 
         :type ip_protocol: str
         :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
@@ -687,8 +692,8 @@ class SecurityGroup(object):
         :type cidr_ip: str or list of strings
         :param cidr_ip: The CIDR block you are providing access to.
 
-        :type group_id: ``object`` of :class:`.SecurityGroup`
-        :param group_id: The Security Group you are granting access to.
+        :type src_group: ``object`` of :class:`.SecurityGroup`
+        :param src_group: The Security Group you are granting access to.
 
         :rtype: bool
         :return: True if successful.
