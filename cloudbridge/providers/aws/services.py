@@ -72,27 +72,27 @@ class AWSKeyPairService(KeyPairService):
         key_pairs = self._provider.ec2_conn.get_all_key_pairs()
         return [AWSKeyPair(self._provider, kp) for kp in key_pairs]
 
-    def create(self, key_name):
+    def create(self, name):
         """
         Create a new key pair.
 
-        :type key_name: str
-        :param key_name: The name of the key pair to be created.
+        :type name: str
+        :param name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or None if one was not be created.
         """
-        kp = self._provider.ec2_conn.create_key_pair(key_name)
+        kp = self._provider.ec2_conn.create_key_pair(name)
         if kp:
             return AWSKeyPair(self._provider, kp)
         return None
 
-    def delete(self, key_name):
+    def delete(self, name):
         """
         Delete an existing key pair.
 
-        :type key_name: str
-        :param key_name: The name of the key pair to be deleted.
+        :type name: str
+        :param name: The name of the key pair to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if the key does not exist, ``False`` otherwise. Note
@@ -100,7 +100,7 @@ class AWSKeyPairService(KeyPairService):
                   this method but instead has not existed in the first place.
         """
         for kp in self._provider.ec2_conn.get_all_key_pairs():
-            if kp.name == key_name:
+            if kp.name == name:
                 kp.delete()
                 return True
         return True

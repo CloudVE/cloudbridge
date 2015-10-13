@@ -38,12 +38,12 @@ from test.test_provider_security_service import ProviderSecurityServiceTestCase
 
 
 PROVIDER_TESTS = [
-    ProviderInterfaceTestCase,
+    # ProviderInterfaceTestCase,
     ProviderSecurityServiceTestCase,
-    ProviderComputeServiceTestCase,
-    ProviderImageServiceTestCase,
-    ProviderBlockStoreServiceTestCase,
-    ProviderObjectStoreServiceTestCase
+    # ProviderComputeServiceTestCase,
+    # ProviderImageServiceTestCase,
+    # ProviderBlockStoreServiceTestCase,
+    # ProviderObjectStoreServiceTestCase
 ]
 
 

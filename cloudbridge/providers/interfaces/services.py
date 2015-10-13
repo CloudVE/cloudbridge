@@ -414,12 +414,12 @@ class KeyPairService(ProviderService):
         raise NotImplementedError(
             'list_key_pairs not implemented by this provider')
 
-    def create(self, key_name):
+    def create(self, name):
         """
         Create a new keypair.
 
-        :type key_name: str
-        :param key_name: The name of the key pair to be created.
+        :type name: str
+        :param name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance
@@ -427,12 +427,12 @@ class KeyPairService(ProviderService):
         raise NotImplementedError(
             'create_key_pair not implemented by this provider')
 
-    def delete(self, key_name):
+    def delete(self, name):
         """
         Delete an existing SecurityGroup.
 
-        :type key_name: str
-        :param key_name: The name of the key pair to be deleted.
+        :type name: str
+        :param name: The name of the key pair to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if the key does not exist, ``False`` otherwise. Note

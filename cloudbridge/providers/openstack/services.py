@@ -76,27 +76,27 @@ class OpenStackKeyPairService(KeyPairService):
         key_pairs = self._provider.nova.keypairs.list()
         return [OpenStackKeyPair(self._provider, kp) for kp in key_pairs]
 
-    def create(self, key_name):
+    def create(self, name):
         """
         Create a new key pair.
 
-        :type key_name: str
-        :param key_name: The name of the key pair to be created.
+        :type name: str
+        :param name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or None if one was not be created.
         """
-        kp = self._provider.nova.keypairs.create(key_name)
+        kp = self._provider.nova.keypairs.create(name)
         if kp:
             return OpenStackKeyPair(self._provider, kp)
         return None
 
-    def delete(self, key_name):
+    def delete(self, name):
         """
         Delete an existing key pair.
 
-        :type key_name: str
-        :param key_name: The name of the key pair to be deleted.
+        :type name: str
+        :param name: The name of the key pair to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if the key does not exist, ``False`` otherwise. Note
@@ -104,7 +104,7 @@ class OpenStackKeyPairService(KeyPairService):
                   this method but instead has not existed in the first place.
         """
         try:
-            kp = self._provider.nova.keypairs.find(name=key_name)
+            kp = self._provider.nova.keypairs.find(name=name)
             kp.delete()
             return True
         except NovaNotFound:
