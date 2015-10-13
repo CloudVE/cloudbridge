@@ -419,6 +419,8 @@ class AWSComputeService(ComputeService):
             instance_ids=[instance_id])
         if reservation:
             return AWSInstance(self.provider, reservation[0].instances[0])
+        else:
+            return None
 
     def find_instance(self, name):
         """

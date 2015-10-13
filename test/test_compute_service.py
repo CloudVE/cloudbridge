@@ -1,6 +1,5 @@
 import uuid
 import ipaddress
-
 from cloudbridge.providers.interfaces import InstanceState
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
@@ -29,11 +28,12 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             inst.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],
                 terminal_states=[InstanceState.ERROR])
-            all_instances = self.provider.compute.list_instances()
-            found_instances = [i for i in all_instances if i.name == name]
+            deleted_inst = self.provider.compute.get_instance(inst.instance_id)
             self.assertTrue(
-                len(found_instances) == 0,
-                "List instances does not return the expected instance %s" %
+                deleted_inst is None or deleted_inst.state in (
+                    InstanceState.TERMINATED,
+                    InstanceState.UNKNOWN),
+                "Instance %s should have been deleted but still exists." %
                 name)
 
     def _is_valid_ip(self, address):

@@ -276,8 +276,8 @@ class AWSInstance(BaseInstance):
         for its latest state.
         """
         try:
-            self._ec2_instance.update()
-        except EC2ResponseError:
+            self._ec2_instance.update(validate=True)
+        except (EC2ResponseError, ValueError):
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
             self._ec2_instance.status = 'unknown'
@@ -367,8 +367,8 @@ class AWSVolume(BaseVolume):
         for its latest state.
         """
         try:
-            self._volume.update()
-        except EC2ResponseError:
+            self._volume.update(validate=True)
+        except (EC2ResponseError, ValueError):
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
             self._volume.status = 'unknown'
@@ -422,8 +422,8 @@ class AWSSnapshot(BaseSnapshot):
         for its latest state.
         """
         try:
-            self._snapshot.update()
-        except EC2ResponseError:
+            self._snapshot.update(validate=True)
+        except (EC2ResponseError, ValueError):
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
             self._snapshot.status = 'unknown'
