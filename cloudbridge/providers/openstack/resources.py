@@ -36,7 +36,7 @@ class OpenStackMachineImage(BaseMachineImage):
     }
 
     def __init__(self, provider, os_image):
-        self.provider = provider
+        self._provider = provider
         if isinstance(os_image, OpenStackMachineImage):
             self._os_image = os_image._os_image
         else:
@@ -88,7 +88,7 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self.provider.images.get_image(self.image_id)
+        image = self._provider.images.get_image(self.image_id)
         if image:
             self._os_image = image._os_image
         else:
@@ -100,7 +100,7 @@ class OpenStackMachineImage(BaseMachineImage):
 class OpenStackPlacementZone(PlacementZone):
 
     def __init__(self, provider, zone):
-        self.provider = provider
+        self._provider = provider
         if isinstance(zone, OpenStackPlacementZone):
             self._os_zone = zone._os_zone
         else:
@@ -171,7 +171,7 @@ class OpenStackInstance(BaseInstance):
     }
 
     def __init__(self, provider, os_instance):
-        self.provider = provider
+        self._provider = provider
         self._os_instance = os_instance
 
     @property
@@ -252,7 +252,7 @@ class OpenStackInstance(BaseInstance):
         Get the placement zone where this instance is running.
         """
         return OpenStackPlacementZone(
-            self.provider,
+            self._provider,
             getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None))
 
     @property
@@ -270,9 +270,9 @@ class OpenStackInstance(BaseInstance):
         """
         security_groups = []
         for group in self._os_instance.security_groups:
-            security_groups.append(self.provider.nova.security_groups.find(
+            security_groups.append(self._provider.nova.security_groups.find(
                 name=group.get('name')))
-        return [OpenStackSecurityGroup(self.provider, group)
+        return [OpenStackSecurityGroup(self._provider, group)
                 for group in security_groups]
 
     @property
@@ -288,7 +288,7 @@ class OpenStackInstance(BaseInstance):
         """
         image_id = self._os_instance.create_image(name)
         return OpenStackMachineImage(
-            self.provider, self.provider.images.get_image(image_id))
+            self._provider, self._provider.images.get_image(image_id))
 
     @property
     def state(self):
@@ -300,7 +300,7 @@ class OpenStackInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        instance = self.provider.compute.get_instance(
+        instance = self._provider.compute.get_instance(
             self.instance_id)
         if instance:
             self._os_instance = instance._os_instance
@@ -316,7 +316,7 @@ class OpenStackInstance(BaseInstance):
 class OpenStackRegion(Region):
 
     def __init__(self, provider, os_region):
-        self.provider = provider
+        self._provider = provider
         self._os_region = os_region
 
     @property
@@ -345,7 +345,7 @@ class OpenStackVolume(BaseVolume):
     }
 
     def __init__(self, provider, volume):
-        self.provider = provider
+        self._provider = provider
         self._volume = volume
 
     @property
@@ -386,7 +386,7 @@ class OpenStackVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
-        return self.provider.block_store.snapshots.create_snapshot(
+        return self._provider.block_store.snapshots.create_snapshot(
             name, self, description=description)
 
     def delete(self):
@@ -405,7 +405,7 @@ class OpenStackVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        vol = self.provider.block_store.volumes.get_volume(
+        vol = self._provider.block_store.volumes.get_volume(
             self.volume_id)
         if vol:
             self._volume = vol._volume
@@ -430,7 +430,7 @@ class OpenStackSnapshot(BaseSnapshot):
     }
 
     def __init__(self, provider, snapshot):
-        self.provider = provider
+        self._provider = provider
         self._snapshot = snapshot
 
     @property
@@ -462,7 +462,7 @@ class OpenStackSnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        snap = self.provider.block_store.snapshots.get_snapshot(
+        snap = self._provider.block_store.snapshots.get_snapshot(
             self.snapshot_id)
         if snap:
             self._snapshot = snap._snapshot
@@ -535,14 +535,14 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         """
         if src_group:
             for protocol in ['tcp', 'udp']:
-                self.provider.nova.security_group_rules.create(
+                self._provider.nova.security_group_rules.create(
                     parent_group_id=self._security_group.id,
                     ip_protocol=protocol,
                     from_port=1,
                     to_port=65535,
                     group_id=src_group.id)
         else:
-            return self.provider.nova.security_group_rules.create(
+            return self._provider.nova.security_group_rules.create(
                 parent_group_id=self._security_group.id,
                 ip_protocol=ip_protocol,
                 from_port=from_port,
@@ -553,7 +553,7 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 class OpenStackContainerObject(ContainerObject):
 
     def __init__(self, provider, cbcontainer, obj):
-        self.provider = provider
+        self._provider = provider
         self.cbcontainer = cbcontainer
         self._obj = obj
 
@@ -569,7 +569,7 @@ class OpenStackContainerObject(ContainerObject):
         Download this object and write its
         contents to the target_stream.
         """
-        _, content = self.provider.swift.get_object(
+        _, content = self._provider.swift.get_object(
             self.cbcontainer.name, self.name, resp_chunk_size=65536)
         shutil.copyfileobj(content, target_stream)
 
@@ -578,7 +578,7 @@ class OpenStackContainerObject(ContainerObject):
         Set the contents of this object to the data read from the source
         string.
         """
-        self.provider.swift.put_object(self.cbcontainer.name, self.name,
+        self._provider.swift.put_object(self.cbcontainer.name, self.name,
                                        data)
 
     def delete(self):
@@ -589,7 +589,7 @@ class OpenStackContainerObject(ContainerObject):
         :return: True if successful
         """
         try:
-            self.provider.swift.delete_object(self.cbcontainer.name, self.name)
+            self._provider.swift.delete_object(self.cbcontainer.name, self.name)
         except ClientException as err:
             if err.http_status == 404:
                 return True
@@ -602,7 +602,7 @@ class OpenStackContainerObject(ContainerObject):
 class OpenStackContainer(Container):
 
     def __init__(self, provider, container):
-        self.provider = provider
+        self._provider = provider
         self._container = container
 
     @property
@@ -616,10 +616,10 @@ class OpenStackContainer(Container):
         """
         Retrieve a given object from this container.
         """
-        _, object_list = self.provider.swift.get_container(
+        _, object_list = self._provider.swift.get_container(
             self.name, prefix=key)
         if object_list:
-            return OpenStackContainerObject(self.provider, self,
+            return OpenStackContainerObject(self._provider, self,
                                             object_list[0])
         else:
             return None
@@ -631,18 +631,18 @@ class OpenStackContainer(Container):
         :rtype: ContainerObject
         :return: List of all available ContainerObjects within this container
         """
-        _, object_list = self.provider.swift.get_container(self.name)
+        _, object_list = self._provider.swift.get_container(self.name)
         return [
-            OpenStackContainer(self.provider, o) for o in object_list]
+            OpenStackContainer(self._provider, o) for o in object_list]
 
     def delete(self, delete_contents=False):
         """
         Delete this container.
         """
-        self.provider.swift.delete_container(self.name)
+        self._provider.swift.delete_container(self.name)
 
     def create_object(self, object_name):
-        self.provider.swift.put_object(self.name, object_name, None)
+        self._provider.swift.put_object(self.name, object_name, None)
         return self.get(object_name)
 
     def __repr__(self):

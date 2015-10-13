@@ -31,7 +31,7 @@ class AWSMachineImage(BaseMachineImage):
     }
 
     def __init__(self, provider, image):
-        self.provider = provider
+        self._provider = provider
         if isinstance(image, AWSMachineImage):
             self._ec2_image = image._ec2_image
         else:
@@ -83,7 +83,7 @@ class AWSMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self.provider.images.get_image(self.image_id)
+        image = self._provider.images.get_image(self.image_id)
         if image:
             self._ec2_image = image._ec2_image
         else:
@@ -94,7 +94,7 @@ class AWSMachineImage(BaseMachineImage):
 class AWSPlacementZone(PlacementZone):
 
     def __init__(self, provider, zone):
-        self.provider = provider
+        self._provider = provider
         if isinstance(zone, AWSPlacementZone):
             self._aws_zone = zone._aws_zone
         else:
@@ -152,7 +152,7 @@ class AWSInstance(BaseInstance):
     }
 
     def __init__(self, provider, ec2_instance):
-        self.provider = provider
+        self._provider = provider
         self._ec2_instance = ec2_instance
 
     @property
@@ -223,7 +223,7 @@ class AWSInstance(BaseInstance):
         """
         Get the placement zone where this instance is running.
         """
-        return AWSPlacementZone(self.provider, self._ec2_instance.placement)
+        return AWSPlacementZone(self._provider, self._ec2_instance.placement)
 
     @property
     def mac_address(self):
@@ -242,8 +242,8 @@ class AWSInstance(BaseInstance):
         # convert that into a ``SecurityGroup`` object before creating a
         # cloudbridge SecurityGroup object
         names = [group.name for group in self._ec2_instance.groups]
-        security_groups = self.provider.security.security_groups.get(names)
-        return [AWSSecurityGroup(self.provider, group)
+        security_groups = self._provider.security.security_groups.get(names)
+        return [AWSSecurityGroup(self._provider, group)
                 for group in security_groups]
 
     @property
@@ -262,7 +262,7 @@ class AWSInstance(BaseInstance):
         # if the image cannot be found
         retry_decorator = retry(retry_on_result=lambda result: result is None,
                                 stop_max_attempt_number=3, wait_fixed=1000)
-        image = retry_decorator(self.provider.images.get_image)(image_id)
+        image = retry_decorator(self._provider.images.get_image)(image_id)
         return image
 
     @property
@@ -301,7 +301,7 @@ class AWSVolume(BaseVolume):
     }
 
     def __init__(self, provider, volume):
-        self.provider = provider
+        self._provider = provider
         self._volume = volume
 
     @property
@@ -344,7 +344,7 @@ class AWSVolume(BaseVolume):
         Create a snapshot of this Volume.
         """
         snap = AWSSnapshot(
-            self.provider,
+            self._provider,
             self._volume.create_snapshot(
                 description=description))
         snap.name = name
@@ -388,7 +388,7 @@ class AWSSnapshot(BaseSnapshot):
     }
 
     def __init__(self, provider, snapshot):
-        self.provider = provider
+        self._provider = provider
         self._snapshot = snapshot
 
     @property
@@ -500,7 +500,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
 class AWSContainerObject(ContainerObject):
 
     def __init__(self, provider, key):
-        self.provider = provider
+        self._provider = provider
         self._key = key
 
     @property
@@ -540,7 +540,7 @@ class AWSContainerObject(ContainerObject):
 class AWSContainer(Container):
 
     def __init__(self, provider, bucket):
-        self.provider = provider
+        self._provider = provider
         self._bucket = bucket
 
     @property
@@ -565,7 +565,7 @@ class AWSContainer(Container):
         :return: List of all available ContainerObjects within this container
         """
         objects = self._bucket.list()
-        return [AWSContainerObject(self.provider, obj) for obj in objects]
+        return [AWSContainerObject(self._provider, obj) for obj in objects]
 
     def delete(self, delete_contents=False):
         """
@@ -575,7 +575,7 @@ class AWSContainer(Container):
 
     def create_object(self, name):
         key = Key(self._bucket, name)
-        return AWSContainerObject(self.provider, key)
+        return AWSContainerObject(self._provider, key)
 
     def __repr__(self):
         return "<CB-AWSContainer: {0}>".format(self.name)

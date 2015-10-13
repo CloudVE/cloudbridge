@@ -34,7 +34,7 @@ from .resources import OpenStackVolume
 class OpenStackSecurityService(SecurityService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
         # Initialize provider services
         self._key_pairs = OpenStackKeyPairService(provider)
@@ -64,7 +64,7 @@ class OpenStackSecurityService(SecurityService):
 class OpenStackKeyPairService(KeyPairService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
     def list(self):
         """
@@ -73,8 +73,8 @@ class OpenStackKeyPairService(KeyPairService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        key_pairs = self.provider.nova.keypairs.list()
-        return [OpenStackKeyPair(self.provider, kp) for kp in key_pairs]
+        key_pairs = self._provider.nova.keypairs.list()
+        return [OpenStackKeyPair(self._provider, kp) for kp in key_pairs]
 
     def create(self, key_name):
         """
@@ -86,9 +86,9 @@ class OpenStackKeyPairService(KeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or None if one was not be created.
         """
-        kp = self.provider.nova.keypairs.create(key_name)
+        kp = self._provider.nova.keypairs.create(key_name)
         if kp:
-            return OpenStackKeyPair(self.provider, kp)
+            return OpenStackKeyPair(self._provider, kp)
         return None
 
     def delete(self, key_name):
@@ -104,7 +104,7 @@ class OpenStackKeyPairService(KeyPairService):
                   this method but instead has not existed in the first place.
         """
         try:
-            kp = self.provider.nova.keypairs.find(name=key_name)
+            kp = self._provider.nova.keypairs.find(name=key_name)
             kp.delete()
             return True
         except NovaNotFound:
@@ -114,7 +114,7 @@ class OpenStackKeyPairService(KeyPairService):
 class OpenStackSecurityGroupService(SecurityGroupService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
     def list(self):
         """
@@ -123,9 +123,9 @@ class OpenStackSecurityGroupService(SecurityGroupService):
         :rtype: ``list`` of :class:`.SecurityGroup`
         :return:  list of SecurityGroup objects
         """
-        groups = self.provider.nova.security_groups.list()
+        groups = self._provider.nova.security_groups.list()
         return [OpenStackSecurityGroup(
-            self.provider, group) for group in groups]
+            self._provider, group) for group in groups]
 
     def create(self, name, description):
         """
@@ -140,9 +140,9 @@ class OpenStackSecurityGroupService(SecurityGroupService):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return: a SecurityGroup object
         """
-        sg = self.provider.nova.security_groups.create(name, description)
+        sg = self._provider.nova.security_groups.create(name, description)
         if sg:
-            return OpenStackSecurityGroup(self.provider, sg)
+            return OpenStackSecurityGroup(self._provider, sg)
         return None
 
     def get(self, group_names=None, group_ids=None):
@@ -167,7 +167,7 @@ class OpenStackSecurityGroupService(SecurityGroupService):
             group_names = []
         if not group_ids:
             group_ids = []
-        security_groups = self.provider.nova.security_groups.list()
+        security_groups = self._provider.nova.security_groups.list()
         filtered = []
         for sg in security_groups:
             if sg.name in group_names:
@@ -175,7 +175,7 @@ class OpenStackSecurityGroupService(SecurityGroupService):
             if sg.id in group_ids:
                 filtered.append(sg)
         # If a filter was specified, use the filtered list; otherwise, get all
-        return [OpenStackSecurityGroup(self.provider, sg)
+        return [OpenStackSecurityGroup(self._provider, sg)
                 for sg in (filtered
                            if (group_names or group_ids) else security_groups)]
 
@@ -201,7 +201,7 @@ class OpenStackSecurityGroupService(SecurityGroupService):
 class OpenStackImageService(ImageService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
     def get_image(self, image_id):
         """
@@ -209,7 +209,7 @@ class OpenStackImageService(ImageService):
         """
         try:
             return OpenStackMachineImage(
-                self.provider, self.provider.nova.images.get(image_id))
+                self._provider, self._provider.nova.images.get(image_id))
         except NovaNotFound:
             return None
 
@@ -224,19 +224,19 @@ class OpenStackImageService(ImageService):
         """
         List all images.
         """
-        images = self.provider.nova.images.list()
-        return [OpenStackMachineImage(self.provider, image)
+        images = self._provider.nova.images.list()
+        return [OpenStackMachineImage(self._provider, image)
                 for image in images]
 
 
 class OpenStackInstanceTypesService(InstanceTypesService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
     def list(self):
         return [OpenStackInstanceType(f)
-                for f in self.provider.nova.flavors.list()]
+                for f in self._provider.nova.flavors.list()]
 
     def find_by_name(self, name):
         return next(
@@ -246,11 +246,11 @@ class OpenStackInstanceTypesService(InstanceTypesService):
 class OpenStackBlockStoreService(BlockStoreService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
         # Initialize provider services
-        self._volumes = OpenStackVolumeService(self.provider)
-        self._snapshots = OpenStackSnapshotService(self.provider)
+        self._volumes = OpenStackVolumeService(self._provider)
+        self._snapshots = OpenStackSnapshotService(self._provider)
 
     @property
     def volumes(self):
@@ -264,7 +264,7 @@ class OpenStackBlockStoreService(BlockStoreService):
 class OpenStackVolumeService(VolumeService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
     def get_volume(self, volume_id):
         """
@@ -272,7 +272,7 @@ class OpenStackVolumeService(VolumeService):
         """
         try:
             return OpenStackVolume(
-                self.provider, self.provider.cinder.volumes.get(volume_id))
+                self._provider, self._provider.cinder.volumes.get(volume_id))
         except CinderNotFound:
             return None
 
@@ -287,8 +287,8 @@ class OpenStackVolumeService(VolumeService):
         """
         List all volumes.
         """
-        return [OpenStackVolume(self.provider, vol)
-                for vol in self.provider.cinder.volumes.list()]
+        return [OpenStackVolume(self._provider, vol)
+                for vol in self._provider.cinder.volumes.list()]
 
     def create_volume(self, name, size, zone, snapshot=None):
         """
@@ -298,16 +298,16 @@ class OpenStackVolumeService(VolumeService):
         snapshot_id = snapshot.snapshot_id if isinstance(
             zone, OpenStackSnapshot) and snapshot else snapshot
 
-        os_vol = self.provider.cinder.volumes.create(
+        os_vol = self._provider.cinder.volumes.create(
             size, name=name, availability_zone=zone_name,
             snapshot_id=snapshot_id)
-        return OpenStackVolume(self.provider, os_vol)
+        return OpenStackVolume(self._provider, os_vol)
 
 
 class OpenStackSnapshotService(SnapshotService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
     def get_snapshot(self, snapshot_id):
         """
@@ -315,8 +315,8 @@ class OpenStackSnapshotService(SnapshotService):
         """
         try:
             return OpenStackSnapshot(
-                self.provider,
-                self.provider.cinder.volume_snapshots.get(snapshot_id))
+                self._provider,
+                self._provider.cinder.volume_snapshots.get(snapshot_id))
         except CinderNotFound:
             return None
 
@@ -331,8 +331,8 @@ class OpenStackSnapshotService(SnapshotService):
         """
         List all snapshot.
         """
-        return [OpenStackSnapshot(self.provider, snap)
-                for snap in self.provider.cinder.volume_snapshots.list()]
+        return [OpenStackSnapshot(self._provider, snap)
+                for snap in self._provider.cinder.volume_snapshots.list()]
 
     def create_snapshot(self, name, volume, description=None):
         """
@@ -341,26 +341,26 @@ class OpenStackSnapshotService(SnapshotService):
         volume_id = volume.volume_id if \
             isinstance(volume, OpenStackVolume) else volume
 
-        os_snap = self.provider.cinder.volume_snapshots.create(
+        os_snap = self._provider.cinder.volume_snapshots.create(
             volume_id, name=name,
             description=description)
-        return OpenStackSnapshot(self.provider, os_snap)
+        return OpenStackSnapshot(self._provider, os_snap)
 
 
 class OpenStackObjectStoreService(ObjectStoreService):
 
     def __init__(self, provider):
-        self.provider = provider
+        self._provider = provider
 
     def get_container(self, container_id):
         """
         Returns a container given its id. Returns None if the container
         does not exist.
         """
-        _, container_list = self.provider.swift.get_account(
+        _, container_list = self._provider.swift.get_account(
             prefix=container_id)
         if container_list:
-            return OpenStackContainer(self.provider, container_list[0])
+            return OpenStackContainer(self._provider, container_list[0])
         else:
             return None
 
@@ -375,23 +375,23 @@ class OpenStackObjectStoreService(ObjectStoreService):
         """
         List all containers.
         """
-        _, container_list = self.provider.swift.get_account()
+        _, container_list = self._provider.swift.get_account()
         return [
-            OpenStackContainer(self.provider, c) for c in container_list]
+            OpenStackContainer(self._provider, c) for c in container_list]
 
     def create_container(self, name, location=None):
         """
         Create a new container.
         """
-        self.provider.swift.put_container(name)
+        self._provider.swift.put_container(name)
         return self.get_container(name)
 
 
 class OpenStackComputeService(ComputeService):
 
     def __init__(self, provider):
-        self.provider = provider
-        self.instance_types = OpenStackInstanceTypesService(self.provider)
+        self._provider = provider
+        self.instance_types = OpenStackInstanceTypesService(self._provider)
 
     def create_instance(self, name, image, instance_type, zone=None,
                         keypair=None, security_groups=None, user_data=None,
@@ -416,7 +416,7 @@ class OpenStackComputeService(ComputeService):
         else:
             security_groups_list = None
 
-        os_instance = self.provider.nova.servers.create(
+        os_instance = self._provider.nova.servers.create(
             name,
             image_id,
             instance_size,
@@ -426,14 +426,14 @@ class OpenStackComputeService(ComputeService):
             key_name=keypair_name,
             security_groups=security_groups_list,
             userdata=user_data)
-        return OpenStackInstance(self.provider, os_instance)
+        return OpenStackInstance(self._provider, os_instance)
 
     def list_instances(self):
         """
         List all instances.
         """
-        instances = self.provider.nova.servers.list()
-        return [OpenStackInstance(self.provider, instance)
+        instances = self._provider.nova.servers.list()
+        return [OpenStackInstance(self._provider, instance)
                 for instance in instances]
 
     def list_regions(self):
@@ -442,15 +442,15 @@ class OpenStackComputeService(ComputeService):
         """
         # detailed must be set to ``False`` because the (default) ``True``
         # value requires Admin priviledges
-        regions = self.provider.nova.availability_zones.list(detailed=False)
-        return [OpenStackRegion(self.provider, region) for region in regions]
+        regions = self._provider.nova.availability_zones.list(detailed=False)
+        return [OpenStackRegion(self._provider, region) for region in regions]
 
     def get_instance(self, instance_id):
         """
         Returns an instance given its id.
         """
         try:
-            os_instance = self.provider.nova.servers.get(instance_id)
-            return OpenStackInstance(self.provider, os_instance)
+            os_instance = self._provider.nova.servers.get(instance_id)
+            return OpenStackInstance(self._provider, os_instance)
         except NovaNotFound:
             return None
