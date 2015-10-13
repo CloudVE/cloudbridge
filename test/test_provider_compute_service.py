@@ -71,3 +71,4 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address")
+            test_instance.terminate()
