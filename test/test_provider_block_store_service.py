@@ -30,6 +30,24 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                 len(found_volumes) == 1,
                 "List volumes does not return the expected volume %s" %
                 name)
+
+            get_vol = self.provider.block_store.volumes.get_volume(
+                test_vol.volume_id)
+            self.assertTrue(
+                found_volumes[0].volume_id ==
+                get_vol.volume_id == test_vol.volume_id,
+                "Ids returned by list: {0} and get: {1} are not as "
+                " expected: {2}" .format(found_volumes[0].volume_id,
+                                         get_vol.volume_id,
+                                         test_vol.volume_id))
+            self.assertTrue(
+                found_volumes[0].name ==
+                get_vol.name == test_vol.name,
+                "Names returned by list: {0} and get: {1} are not as "
+                " expected: {2}" .format(found_volumes[0].name,
+                                         get_vol.name,
+                                         test_vol.name))
+
             test_vol.delete()
             test_vol.wait_for(
                 [VolumeState.DELETED, VolumeState.UNKNOWN],
@@ -55,7 +73,8 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             test_vol = self.provider.block_store.volumes.create_volume(
                 name, 1, test_instance.placement_zone)
             with helpers.exception_action(lambda: test_vol.delete()):
-                test_vol.wait_till_ready(interval=self.get_test_wait_interval())
+                test_vol.wait_till_ready(
+                    interval=self.get_test_wait_interval())
                 test_vol.attach(test_instance, '/dev/sda2')
                 test_vol.wait_for(
                     [VolumeState.IN_USE],
@@ -102,6 +121,24 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                     len(found_snaps) == 1,
                     "List snapshots does not return the expected volume %s" %
                     name)
+
+                get_snap = self.provider.block_store.snapshots.get_snapshot(
+                    test_snap.snapshot_id)
+                self.assertTrue(
+                    found_snaps[0].snapshot_id ==
+                    get_snap.snapshot_id == test_snap.snapshot_id,
+                    "Ids returned by list: {0} and get: {1} are not as "
+                    " expected: {2}" .format(found_snaps[0].snapshot_id,
+                                             get_snap.snapshot_id,
+                                             test_snap.snapshot_id))
+                self.assertTrue(
+                    found_snaps[0].name ==
+                    get_snap.name == test_snap.name,
+                    "Names returned by list: {0} and get: {1} are not as "
+                    " expected: {2}" .format(found_snaps[0].name,
+                                             get_snap.name,
+                                             test_snap.name))
+
                 cleanup_snap(test_snap)
                 snaps = self.provider.block_store.snapshots.list_snapshots()
                 found_snaps = [snap for snap in snaps

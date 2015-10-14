@@ -579,7 +579,7 @@ class OpenStackContainerObject(ContainerObject):
         string.
         """
         self._provider.swift.put_object(self.cbcontainer.name, self.name,
-                                       data)
+                                        data)
 
     def delete(self):
         """
@@ -589,7 +589,8 @@ class OpenStackContainerObject(ContainerObject):
         :return: True if successful
         """
         try:
-            self._provider.swift.delete_object(self.cbcontainer.name, self.name)
+            self._provider.swift.delete_object(self.cbcontainer.name,
+                                               self.name)
         except ClientException as err:
             if err.http_status == 404:
                 return True

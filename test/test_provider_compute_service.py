@@ -24,6 +24,24 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                 len(found_instances) == 1,
                 "List instances does not return the expected instance %s" %
                 name)
+
+            get_inst = self.provider.compute.get_instance(
+                inst.instance_id)
+            self.assertTrue(
+                found_instances[0].instance_id ==
+                get_inst.instance_id == inst.instance_id,
+                "Ids returned by list: {0} and get: {1} are not as "
+                " expected: {2}" .format(found_instances[0].instance_id,
+                                         get_inst.instance_id,
+                                         inst.instance_id))
+            self.assertTrue(
+                found_instances[0].name ==
+                get_inst.name == inst.name,
+                "Names returned by list: {0} and get: {1} are not as "
+                " expected: {2}" .format(found_instances[0].name,
+                                         get_inst.name,
+                                         inst.name))
+
             inst.terminate()
             inst.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],

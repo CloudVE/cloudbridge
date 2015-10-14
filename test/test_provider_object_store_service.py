@@ -30,6 +30,17 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 len(found_containers) == 1,
                 "List containers does not return the expected container %s" %
                 name)
+
+            get_container = self.provider.object_store.get_container(
+                test_container.name)
+            self.assertTrue(
+                found_containers[0].name ==
+                get_container.name == test_container.name,
+                "Names returned by list: {0} and get: {1} are not as "
+                " expected: {2}" .format(found_containers[0].name,
+                                         get_container.name,
+                                         test_container.name))
+
             test_container.delete()
             containers = self.provider.object_store.list_containers()
             found_containers = [c for c in containers if c.name == name]
@@ -67,6 +78,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                     len(found_objs) == 1,
                     "List container objects does not return the expected"
                     " object %s" % obj_name)
+
                 obj.delete()
                 objs = test_container.list()
                 found_objs = [o for o in objs if o.name == obj_name]

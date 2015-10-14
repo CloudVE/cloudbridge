@@ -33,17 +33,35 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                     len(found_images) == 1,
                     "List images does not return the expected image %s" %
                     name)
+
+                get_img = self.provider.images.get_image(
+                    test_image.image_id)
+                self.assertTrue(
+                    found_images[0].image_id ==
+                    get_img.image_id == test_image.image_id,
+                    "Ids returned by list: {0} and get: {1} are not as "
+                    " expected: {2}" .format(found_images[0].image_id,
+                                             get_img.image_id,
+                                             test_image.image_id))
+                self.assertTrue(
+                    found_images[0].name ==
+                    get_img.name == test_image.name,
+                    "Names returned by list: {0} and get: {1} are not as "
+                    " expected: {2}" .format(found_images[0].name,
+                                             get_img.name,
+                                             test_image.name))
+
                 test_image.delete()
                 test_image.wait_for(
                     [MachineImageState.UNKNOWN],
                     terminal_states=[MachineImageState.ERROR],
                     interval=self.get_test_wait_interval())
-            # TODO: Images take a long time to deregister on EC2. Needs
-            # investigation
-#                 images = self.provider.images.list_images()
-#                 found_images = [image for image in images
-#                                 if image.name == name]
-#                 self.assertTrue(
-#                     len(found_images) == 0,
-#                     "Image %s should have been deleted but still exists." %
-#                     name)
+                # TODO: Images take a long time to deregister on EC2. Needs
+                # investigation
+                images = self.provider.images.list_images()
+                found_images = [image for image in images
+                                if image.name == name]
+                self.assertTrue(
+                    len(found_images) == 0,
+                    "Image %s should have been deleted but still exists." %
+                    name)
