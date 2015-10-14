@@ -1,10 +1,4 @@
-import sys
 from setuptools import setup, find_packages
-
-if sys.version_info[0] == 2:
-    backports = ["py2-ipaddress"]
-else:
-    backports = []
 
 setup(name='cloudbridge',
       version=0.1,
@@ -14,12 +8,16 @@ setup(name='cloudbridge',
       author_email='support@genome.edu.au',
       url='http://cloudbridge.readthedocs.org/',
       install_requires=[
-          'bunch>=1.00', 'six>=1.9.0', 'python-keystoneclient',
-          'python-novaclient', 'python-cinderclient',
-          'python-swiftclient', 'boto', 'retrying', 'moto>=0.4.15'] + backports,
-      dependency_links=[
-          "git+git://github.com/gvlproject/moto.git@1.4.15#egg=moto-1.4.15"
-      ],
+          'bunch>=1.00', 'six>=1.9.0', 'retrying'],
+      extras_require={
+          ':python_version=="2.7"': ['py2-ipaddress'],
+          ':python_version=="3"': ['py2-ipaddress'],
+          ':python_version=="3.1"': ['py2-ipaddress'],
+          ':python_version=="3.2"': ['py2-ipaddress'],
+          'full': ['python-keystoneclient',
+                   'python-novaclient', 'python-cinderclient',
+                   'python-swiftclient', 'boto'],
+      },
       packages=find_packages(),
       license='MIT',
       classifiers=[

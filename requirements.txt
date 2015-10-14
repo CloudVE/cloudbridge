@@ -1,1 +1,3 @@
--e .
+-e ".[full]"
+# Hack to install out patched version of moto until/if our pull gets upstream
+git+git://github.com/gvlproject/moto.git@0b3ad166c05b497d026d3168698f07c303e49392
