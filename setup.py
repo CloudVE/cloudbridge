@@ -13,9 +13,13 @@ setup(name='cloudbridge',
       author='Galaxy and GVL Projects',
       author_email='support@genome.edu.au',
       url='http://cloudbridge.readthedocs.org/',
-      install_requires=['bunch>=1.00', 'six>=1.9.0', 'python-keystoneclient',
-                        'python-novaclient', 'python-cinderclient',
-                        'python-swiftclient', 'boto', 'retrying'] + backports,
+      install_requires=[
+          'bunch>=1.00', 'six>=1.9.0', 'python-keystoneclient',
+          'python-novaclient', 'python-cinderclient',
+          'python-swiftclient', 'boto', 'retrying', 'moto>=0.4.15'] + backports,
+      dependency_links=[
+          "git+git://github.com/gvlproject/moto.git@1.4.15#egg=moto-1.4.15"
+      ],
       packages=find_packages(),
       license='MIT',
       classifiers=[
