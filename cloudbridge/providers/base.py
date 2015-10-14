@@ -185,7 +185,7 @@ class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
 class BaseKeyPair(KeyPair):
 
     def __init__(self, provider, key_pair):
-        self.provider = provider
+        self._provider = provider
         self._key_pair = key_pair
 
     @property
@@ -213,7 +213,7 @@ class BaseKeyPair(KeyPair):
 class BaseSecurityGroup(SecurityGroup):
 
     def __init__(self, provider, security_group):
-        self.provider = provider
+        self._provider = provider
         self._security_group = security_group
 
     @property

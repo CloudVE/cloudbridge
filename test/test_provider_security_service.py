@@ -11,10 +11,10 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
 
     def test_crud_key_pair_service(self):
         name = 'cbtestkeypair-{0}'.format(uuid.uuid4())
-        kp = self.provider.security.key_pairs.create(key_name=name)
+        kp = self.provider.security.key_pairs.create(name=name)
         with helpers.exception_action(
             lambda:
-                self.provider.security.key_pairs.delete(key_name=kp.name)
+                self.provider.security.key_pairs.delete(name=kp.name)
         ):
             kpl = self.provider.security.key_pairs.list()
             found_kp = [k for k in kpl if k.name == name]
@@ -22,7 +22,7 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 len(found_kp) == 1,
                 "List key pairs did not return the expected key {0}."
                 .format(name))
-            self.provider.security.key_pairs.delete(key_name=kp.name)
+            self.provider.security.key_pairs.delete(name=kp.name)
             kpl = self.provider.security.key_pairs.list()
             found_kp = [k for k in kpl if k.name == name]
             self.assertTrue(
