@@ -24,7 +24,8 @@ class ProviderImageServiceTestCase(ProviderTestBase):
             name = "CBUnitTestListImg-{0}".format(uuid.uuid4())
             test_image = test_instance.create_image(name)
             with helpers.exception_action(lambda: test_image.delete()):
-                test_image.wait_till_ready(interval=helpers.TEST_WAIT_INTERVAL)
+                test_image.wait_till_ready(
+                    interval=self.get_test_wait_interval())
                 images = self.provider.images.list_images()
                 found_images = [image for image in images
                                 if image.name == name]
@@ -36,7 +37,7 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                 test_image.wait_for(
                     [MachineImageState.UNKNOWN],
                     terminal_states=[MachineImageState.ERROR],
-                    interval=helpers.TEST_WAIT_INTERVAL)
+                    interval=self.get_test_wait_interval())
             # TODO: Images take a long time to deregister on EC2. Needs
             # investigation
 #                 images = self.provider.images.list_images()

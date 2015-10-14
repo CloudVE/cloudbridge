@@ -23,7 +23,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             1,
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.exception_action(lambda: test_vol.delete()):
-            test_vol.wait_till_ready(interval=helpers.TEST_WAIT_INTERVAL)
+            test_vol.wait_till_ready(interval=self.get_test_wait_interval())
             volumes = self.provider.block_store.volumes.list_volumes()
             found_volumes = [vol for vol in volumes if vol.name == name]
             self.assertTrue(
@@ -34,7 +34,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             test_vol.wait_for(
                 [VolumeState.DELETED, VolumeState.UNKNOWN],
                 terminal_states=[VolumeState.ERROR],
-                interval=helpers.TEST_WAIT_INTERVAL)
+                interval=self.get_test_wait_interval())
             volumes = self.provider.block_store.volumes.list_volumes()
             found_volumes = [vol for vol in volumes if vol.name == name]
             self.assertTrue(
@@ -55,17 +55,17 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             test_vol = self.provider.block_store.volumes.create_volume(
                 name, 1, test_instance.placement_zone)
             with helpers.exception_action(lambda: test_vol.delete()):
-                test_vol.wait_till_ready(interval=helpers.TEST_WAIT_INTERVAL)
+                test_vol.wait_till_ready(interval=self.get_test_wait_interval())
                 test_vol.attach(test_instance, '/dev/sda2')
                 test_vol.wait_for(
                     [VolumeState.IN_USE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED],
-                    interval=helpers.TEST_WAIT_INTERVAL)
+                    interval=self.get_test_wait_interval())
                 test_vol.detach()
                 test_vol.wait_for(
                     [VolumeState.AVAILABLE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED],
-                    interval=helpers.TEST_WAIT_INTERVAL)
+                    interval=self.get_test_wait_interval())
                 test_vol.delete()
 
     def test_crud_snapshot(self):
@@ -80,7 +80,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             1,
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.exception_action(lambda: test_vol.delete()):
-            test_vol.wait_till_ready(interval=helpers.TEST_WAIT_INTERVAL)
+            test_vol.wait_till_ready(interval=self.get_test_wait_interval())
             snap_name = "CBSnapshot-{0}".format(name)
             test_snap = test_vol.create_snapshot(name=snap_name,
                                                  description=snap_name)
@@ -90,10 +90,11 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                 snap.wait_for(
                     [SnapshotState.UNKNOWN],
                     terminal_states=[SnapshotState.ERROR],
-                    interval=helpers.TEST_WAIT_INTERVAL)
+                    interval=self.get_test_wait_interval())
 
             with helpers.exception_action(lambda: cleanup_snap(test_snap)):
-                test_snap.wait_till_ready(interval=helpers.TEST_WAIT_INTERVAL)
+                test_snap.wait_till_ready(
+                    interval=self.get_test_wait_interval())
                 snaps = self.provider.block_store.snapshots.list_snapshots()
                 found_snaps = [snap for snap in snaps
                                if snap.name == snap_name]

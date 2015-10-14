@@ -14,12 +14,6 @@ def parse_bool(val):
         return False
 
 
-TEST_WAIT_INTERVAL = 0 if parse_bool(
-    os.environ.get(
-        "CB_USE_MOCK_DRIVERS",
-        True)) else 5
-
-
 @contextmanager
 def exception_action(cleanup_func):
     """
@@ -77,10 +71,40 @@ def create_test_instance(provider, instance_name):
         get_provider_test_data(provider, 'instance_type'))
 
 
+def get_provider_wait_interval(provider):
+    if isinstance(provider, TestMockHelperMixin):
+        return 0
+    else:
+        return 5
+
+
 def get_test_instance(provider, name):
     instance = create_test_instance(provider, name)
-    instance.wait_till_ready(interval=TEST_WAIT_INTERVAL)
+    instance.wait_till_ready(interval=get_provider_wait_interval(provider))
     return instance
+
+
+class TestMockHelperMixin(object):
+    """
+    A helper class that providers mock drivers can use to be notified when a
+    test setup/teardown occurs. This is useful when activating libraries
+    like HTTPretty which take over socket communications.
+    """
+
+    def setUpMock(self):
+        """
+        Called before a test is started.
+        """
+        raise NotImplementedError(
+            'TestMockHelperMixin.setUpMock not implemented')
+
+    def tearDownMock(self):
+        """
+        Called before test teardown.
+        """
+        raise NotImplementedError(
+            'TestMockHelperMixin.tearDownMock not implemented by this'
+            ' provider')
 
 
 class ProviderTestBase(object):
@@ -95,6 +119,17 @@ class ProviderTestBase(object):
     def __init__(self, methodName, provider):
         unittest.TestCase.__init__(self, methodName=methodName)
         self.provider = provider
+
+    def setUp(self):
+        if isinstance(self.provider, TestMockHelperMixin):
+            self.provider.setUpMock()
+
+    def tearDown(self):
+        if isinstance(self.provider, TestMockHelperMixin):
+            self.provider.tearDownMock()
+
+    def get_test_wait_interval(self):
+        return get_provider_wait_interval(self.provider)
 
 
 class ProviderTestCaseGenerator():

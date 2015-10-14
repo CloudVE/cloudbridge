@@ -6,10 +6,11 @@ import os
 
 import boto
 from boto.ec2.regioninfo import RegionInfo
-
-from cloudbridge.providers.base import BaseCloudProvider
 from moto.ec2 import mock_ec2
 from moto.s3 import mock_s3
+
+from cloudbridge.providers.base import BaseCloudProvider
+from test.helpers import TestMockHelperMixin
 
 from .services import AWSBlockStoreService
 from .services import AWSComputeService
@@ -94,11 +95,23 @@ class AWSCloudProviderV1(BaseCloudProvider):
         return s3_conn
 
 
-class MockAWSCloudProvider(AWSCloudProviderV1):
+class MockAWSCloudProvider(AWSCloudProviderV1, TestMockHelperMixin):
 
     def __init__(self, config):
-        ec2mock = mock_ec2()
-        ec2mock.start()
-        s3mock = mock_s3()
-        s3mock.start()
         super(MockAWSCloudProvider, self).__init__(config)
+
+    def setUpMock(self):
+        """
+        Let Moto take over all socket communications
+        """
+        self.ec2mock = mock_ec2()
+        self.ec2mock.start()
+        self.s3mock = mock_s3()
+        self.s3mock.start()
+
+    def tearDownMock(self):
+        """
+        Stop Moto intercepting all socket communications
+        """
+        self.s3mock.stop()
+        self.ec2mock.stop()
