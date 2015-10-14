@@ -68,7 +68,7 @@ def create_test_instance(provider, instance_name):
 
 def get_test_instance(provider, name):
     instance = create_test_instance(provider, name)
-    instance.wait_till_ready()
+    instance.wait_till_ready(interval=TEST_WAIT_INTERVAL)
     return instance
 
 
@@ -142,13 +142,20 @@ class ProviderTestCaseGenerator():
         map(suite.addTest, suites)
         return suite
 
+    def _parse_bool(self, val):
+        if val:
+            return str(val).upper() in ['TRUE', 'YES']
+        else:
+            return False
+
     def generate_tests(self):
         """
         Generate and return a suite of tests for all provider and test class
         combinations
         """
         factory = CloudProviderFactory()
-        use_mock_drivers = os.environ.get("CB_USE_MOCK_DRIVERS", True)
+        use_mock_drivers = self._parse_bool(
+            os.environ.get("CB_USE_MOCK_DRIVERS", True))
         provider_name = os.environ.get("CB_TEST_PROVIDER", None)
         if provider_name:
             provider_classes = [

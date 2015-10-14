@@ -106,19 +106,24 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
         end_time = time.time() + timeout
         while True:
             if self.state in target_states:
+                log.debug(
+                    "Object: {0} successfully reached target state:"
+                    " {1}".format(self, self.state))
                 return True
             elif self.state in terminal_states:
                 raise WaitStateException(
                     "Object: {0} is in state: {1} which is a terminal state"
                     " and cannot be waited on.".format(self, self.state))
             else:
-                log.debug(
-                    "Object {0} is in state: {1}. Waiting another {2} seconds"
-                    " to reach target state(s): {3}...".format(
-                        self,
-                        self.state,
-                        int(end_time - time.time()),
-                        target_states))
+                # print output every 30 seconds to avoid spamming log
+                if (int(end_time - time.time()) % 15 == 0):
+                    log.debug(
+                        "Object {0} is in state: {1}. Waiting another {2}"
+                        " seconds to reach target state(s): {3}...".format(
+                            self,
+                            self.state,
+                            int(end_time - time.time()),
+                            target_states))
                 time.sleep(interval)
                 if time.time() > end_time:
                     raise WaitStateException(
