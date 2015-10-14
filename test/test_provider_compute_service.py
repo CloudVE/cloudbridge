@@ -17,7 +17,7 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             uuid.uuid4())
         inst = helpers.create_test_instance(self.provider, name)
         with helpers.exception_action(lambda: inst.terminate()):
-            inst.wait_till_ready()
+            inst.wait_till_ready(interval=helpers.TEST_WAIT_INTERVAL)
             all_instances = self.provider.compute.list_instances()
             found_instances = [i for i in all_instances if i.name == name]
             self.assertTrue(
@@ -27,7 +27,8 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             inst.terminate()
             inst.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR])
+                terminal_states=[InstanceState.ERROR],
+                interval=helpers.TEST_WAIT_INTERVAL)
             deleted_inst = self.provider.compute.get_instance(inst.instance_id)
             self.assertTrue(
                 deleted_inst is None or deleted_inst.state in (

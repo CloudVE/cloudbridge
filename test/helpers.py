@@ -6,7 +6,7 @@ from six import reraise
 
 from cloudbridge.providers.factory import CloudProviderFactory
 
-TEST_WAIT_INTERVAL = 1
+TEST_WAIT_INTERVAL = 0
 
 
 @contextmanager

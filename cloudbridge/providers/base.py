@@ -102,9 +102,9 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
                  interval=5):
         assert timeout > 0
         assert timeout > interval
-        assert interval > 0
 
-        for time_left in range(timeout, 0, -interval):
+        end_time = time.time() + timeout
+        while True:
             if self.state in target_states:
                 return True
             elif self.state in terminal_states:
@@ -117,14 +117,14 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
                     " to reach target state(s): {3}...".format(
                         self,
                         self.state,
-                        time_left,
+                        int(end_time - time.time()),
                         target_states))
                 time.sleep(interval)
+                if time.time() > end_time:
+                    raise WaitStateException(
+                        "Waited too long for object: {0} to become ready. It's"
+                        " still in state: {1}".format(self, self.state))
             self.refresh()
-
-        raise WaitStateException("Waited too long for object: {0} to become"
-                                 " ready. It's still  in state: {1}".format(
-                                     self, self.state))
 
     def wait_till_ready(self, timeout=600, interval=5):
         self.wait_for(
