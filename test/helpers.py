@@ -6,7 +6,18 @@ from six import reraise
 
 from cloudbridge.providers.factory import CloudProviderFactory
 
-TEST_WAIT_INTERVAL = 0
+
+def parse_bool(val):
+    if val:
+        return str(val).upper() in ['TRUE', 'YES']
+    else:
+        return False
+
+
+TEST_WAIT_INTERVAL = 0 if parse_bool(
+    os.environ.get(
+        "CB_USE_MOCK_DRIVERS",
+        True)) else 5
 
 
 @contextmanager
@@ -142,19 +153,13 @@ class ProviderTestCaseGenerator():
         map(suite.addTest, suites)
         return suite
 
-    def _parse_bool(self, val):
-        if val:
-            return str(val).upper() in ['TRUE', 'YES']
-        else:
-            return False
-
     def generate_tests(self):
         """
         Generate and return a suite of tests for all provider and test class
         combinations
         """
         factory = CloudProviderFactory()
-        use_mock_drivers = self._parse_bool(
+        use_mock_drivers = parse_bool(
             os.environ.get("CB_USE_MOCK_DRIVERS", True))
         provider_name = os.environ.get("CB_TEST_PROVIDER", None)
         if provider_name:
