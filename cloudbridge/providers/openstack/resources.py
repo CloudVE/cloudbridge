@@ -11,6 +11,7 @@ from cloudbridge.providers.base import BaseInstanceType
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
 from cloudbridge.providers.base import BaseSecurityGroup
+from cloudbridge.providers.base import BaseSecurityGroupRule
 from cloudbridge.providers.base import BaseSnapshot
 from cloudbridge.providers.base import BaseVolume
 from cloudbridge.providers.interfaces import Container
@@ -526,6 +527,13 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
     def __init__(self, provider, security_group):
         super(OpenStackSecurityGroup, self).__init__(provider, security_group)
 
+    @property
+    def rules(self):
+        # Update SG object; otherwise, recenlty added rules do now show
+        self._security_group = self._provider.nova.security_groups.get(self._security_group)
+        return [OpenStackSecurityGroupRule(self._provider, r, self)
+                for r in self._security_group.rules]
+
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
         """
@@ -563,12 +571,47 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
                     to_port=65535,
                     group_id=src_group.id)
         else:
-            return self._provider.nova.security_group_rules.create(
-                parent_group_id=self._security_group.id,
-                ip_protocol=ip_protocol,
-                from_port=from_port,
-                to_port=to_port,
-                cidr=cidr_ip)
+            if self._provider.nova.security_group_rules.create(
+               parent_group_id=self._security_group.id,
+               ip_protocol=ip_protocol,
+               from_port=from_port,
+               to_port=to_port,
+               cidr=cidr_ip):
+                return True
+            else:
+                return False
+
+
+class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
+
+    def __init__(self, provider, rule, parent):
+        super(OpenStackSecurityGroupRule, self).__init__(provider, rule, parent)
+
+    @property
+    def ip_protocol(self):
+        return self._rule.get('ip_protocol')
+
+    @property
+    def from_port(self):
+        return self._rule.get('from_port')
+
+    @property
+    def to_port(self):
+        return self._rule.get('to_port')
+
+    @property
+    def cidr_ip(self):
+        return self._rule.get('cidr_ip', {}).get('cidr')
+
+    @property
+    def group(self):
+        cg = self._rule.get('group', {}).get('name')
+        if cg:
+            security_groups = self.parent._provider.nova.security_groups.list()
+            for sg in security_groups:
+                if sg.name == cg:
+                    return OpenStackSecurityGroup(self.parent._provider, sg)
+        return None
 
 
 class OpenStackContainerObject(ContainerObject):

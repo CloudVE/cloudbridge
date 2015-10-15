@@ -741,6 +741,17 @@ class SecurityGroup(object):
         raise NotImplementedError(
             'id not implemented by this provider')
 
+    @property
+    def rules(self):
+        """
+        Get the list of rules for this security group.
+
+        :rtype: list of :class:``.SecurityGroupRule``
+        :return: A list of security group rule objects
+        """
+        raise NotImplementedError(
+            'rules not implemented by this provider')
+
     def delete(self):
         """
         Delete this security group.
@@ -781,6 +792,56 @@ class SecurityGroup(object):
         """
         raise NotImplementedError(
             'add_rule not implemented by this provider')
+
+
+class SecurityGroupRule(object):
+
+    """
+    Represents a security group rule.
+    """
+
+    @property
+    def ip_protocol(self):
+        """
+        IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
+        """
+        raise NotImplementedError(
+            'ip_protocol not implemented by this provider')
+
+    @property
+    def from_port(self):
+        """
+        Lowest port number opened as part of this rule.
+        """
+        raise NotImplementedError(
+            'from_port not implemented by this provider')
+
+    @property
+    def to_port(self):
+        """
+        Highest port number opened as part of this rule.
+        """
+        raise NotImplementedError(
+            'to_port not implemented by this provider')
+
+    @property
+    def cidr_ip(self):
+        """
+        CIDR block this security group is providing access to.
+        """
+        raise NotImplementedError(
+            'cidr_ip not implemented by this provider')
+
+    @property
+    def group(self):
+        """
+        Security group given access permissions by this rule.
+
+        :rtype: ``object`` of :class:`.SecurityGroup`
+        :return: The Security Group with granting access.
+        """
+        raise NotImplementedError(
+            'group not implemented by this provider')
 
 
 class ContainerObject(object):

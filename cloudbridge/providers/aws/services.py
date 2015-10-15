@@ -464,7 +464,7 @@ class AWSInstanceTypesService(InstanceTypesService):
         """
         TODO: Neeeds a caching function with timeout
         """
-        print "###########################", self._provider
+        print("###########################", self._provider)
         r = requests.get(self._provider.config.get(
             "aws_instance_info_url",
             "https://raw.githubusercontent.com/powdahound/ec2instances.info"

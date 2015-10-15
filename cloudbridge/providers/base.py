@@ -14,6 +14,7 @@ from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import MachineImageState
 from cloudbridge.providers.interfaces import ObjectLifeCycleMixin
 from cloudbridge.providers.interfaces import SecurityGroup
+from cloudbridge.providers.interfaces import SecurityGroupRule
 from cloudbridge.providers.interfaces import Snapshot
 from cloudbridge.providers.interfaces import SnapshotState
 from cloudbridge.providers.interfaces import Volume
@@ -262,3 +263,15 @@ class BaseSecurityGroup(SecurityGroup):
 
     def __repr__(self):
         return "<CBSecurityGroup: {0}>".format(self.name)
+
+
+class BaseSecurityGroupRule(SecurityGroupRule):
+
+    def __init__(self, provider, rule, parent):
+        self._provider = provider
+        self._rule = rule
+        self.parent = parent
+
+    def __repr__(self):
+        return "<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}".format(
+            self.ip_protocol, self.from_port, self.to_port)

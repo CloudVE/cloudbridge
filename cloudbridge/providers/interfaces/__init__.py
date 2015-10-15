@@ -15,6 +15,7 @@ from .resources import ObjectLifeCycleMixin
 from .resources import PlacementZone
 from .resources import Region
 from .resources import SecurityGroup
+from .resources import SecurityGroupRule
 from .resources import Snapshot
 from .resources import SnapshotState
 from .resources import Volume

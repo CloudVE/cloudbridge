@@ -149,12 +149,12 @@ class OpenStackSecurityGroupService(SecurityGroupService):
         Get all security groups associated with your account.
 
         :type group_names: list
-        :param group_names: A list of the names of security groups to retrieve.
-                           If not provided, all security groups will be
-                           returned.
+        :param group_names: A list of strings of the names of security groups
+                           to retrieve. If not provided, all security groups
+                           will be returned.
 
         :type group_ids: list
-        :param group_ids: A list of IDs of security groups to retrieve.
+        :param group_ids: A list of string IDs of security groups to retrieve.
                           If not provided, all security groups will be
                           returned.
 

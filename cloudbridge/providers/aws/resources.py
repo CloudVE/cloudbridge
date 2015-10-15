@@ -12,6 +12,7 @@ from cloudbridge.providers.base import BaseInstanceType
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
 from cloudbridge.providers.base import BaseSecurityGroup
+from cloudbridge.providers.base import BaseSecurityGroupRule
 from cloudbridge.providers.base import BaseSnapshot
 from cloudbridge.providers.base import BaseVolume
 from cloudbridge.providers.interfaces import Container
@@ -489,6 +490,11 @@ class AWSSecurityGroup(BaseSecurityGroup):
     def __init__(self, provider, security_group):
         super(AWSSecurityGroup, self).__init__(provider, security_group)
 
+    @property
+    def rules(self):
+        return [AWSSecurityGroupRule(self._provider, r, self)
+                for r in self._security_group.rules]
+
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
         """
@@ -523,6 +529,39 @@ class AWSSecurityGroup(BaseSecurityGroup):
             to_port=to_port,
             cidr_ip=cidr_ip,
             src_group=src_group._security_group)
+
+
+class AWSSecurityGroupRule(BaseSecurityGroupRule):
+
+    def __init__(self, provider, rule, parent):
+        super(AWSSecurityGroupRule, self).__init__(provider, rule, parent)
+
+    @property
+    def ip_protocol(self):
+        return self._rule.ip_protocol
+
+    @property
+    def from_port(self):
+        return self._rule.from_port
+
+    @property
+    def to_port(self):
+        return self._rule.to_port
+
+    @property
+    def cidr_ip(self):
+        if len(self._rule.grants) > 0:
+            return self._rule.grants[0].cidr_ip
+        return None
+
+    @property
+    def group(self):
+        if len(self._rule.grants) > 0:
+            if self._rule.grants[0].group_id:
+                cg = self.parent._provider.ec2_conn.get_all_security_groups(
+                    group_ids=[self._rule.grants[0].group_id])[0]
+                return AWSSecurityGroup(self.parent._provider, cg)
+        return None
 
 
 class AWSContainerObject(ContainerObject):
