@@ -10,7 +10,7 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             methodName=methodName, provider=provider)
 
     def test_crud_key_pair_service(self):
-        name = 'cbtestkeypair-{0}'.format(uuid.uuid4())
+        name = 'cbtestkeypairA-{0}'.format(uuid.uuid4())
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.exception_action(
             lambda:
@@ -23,6 +23,37 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 "List key pairs did not return the expected key {0}."
                 .format(name))
             self.provider.security.key_pairs.delete(name=kp.name)
+            kpl = self.provider.security.key_pairs.list()
+            found_kp = [k for k in kpl if k.name == name]
+            self.assertTrue(
+                len(found_kp) == 0,
+                "Key pair {0} should have been deleted but still exists."
+                .format(name))
+        no_kp = self.provider.security.key_pairs.delete(name='bogus_kp')
+        self.assertTrue(
+            no_kp,
+            "Found a key pair {0} that should not exist?".format(no_kp))
+
+    def test_key_pair(self):
+        name = 'cbtestkeypairB-{0}'.format(uuid.uuid4())
+        kp = self.provider.security.key_pairs.create(name=name)
+        with helpers.exception_action(
+            lambda:
+                self.provider.security.key_pairs.delete(name=kp.name)
+        ):
+            kpl = self.provider.security.key_pairs.list()
+            found_kp = [k for k in kpl if k.name == name]
+            self.assertTrue(
+                len(found_kp) == 1,
+                "List key pairs did not return the expected key {0}."
+                .format(name))
+            self.assertTrue(
+                repr(kp) == "<CBKeyPair: {0}>".format(name),
+                "KeyPair repr {0} not matching expected format.".format(kp))
+            self.assertIsNotNone(
+                kp.material,
+                "KeyPair material is empty but it should not be.")
+            kp.delete()
             kpl = self.provider.security.key_pairs.list()
             found_kp = [k for k in kpl if k.name == name]
             self.assertTrue(

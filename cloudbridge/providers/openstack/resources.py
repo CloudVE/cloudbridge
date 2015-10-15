@@ -518,9 +518,7 @@ class OpenStackKeyPair(BaseKeyPair):
         :return: Unencrypted private key or ``None`` if not available.
 
         """
-        if hasattr(self._key_pair, 'private_key'):
-            return self._key_pair.private_key
-        return None
+        return getattr(self._key_pair, 'private_key', None)
 
 
 class OpenStackSecurityGroup(BaseSecurityGroup):
