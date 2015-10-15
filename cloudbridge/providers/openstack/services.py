@@ -2,8 +2,6 @@
 Services implemented by the OpenStack provider.
 """
 from cinderclient.exceptions import NotFound as CinderNotFound
-from novaclient.exceptions import NotFound as NovaNotFound
-
 from cloudbridge.providers.interfaces import BlockStoreService
 from cloudbridge.providers.interfaces import ComputeService
 from cloudbridge.providers.interfaces import ImageService
@@ -19,6 +17,7 @@ from cloudbridge.providers.interfaces import SecurityGroupService
 from cloudbridge.providers.interfaces import SecurityService
 from cloudbridge.providers.interfaces import SnapshotService
 from cloudbridge.providers.interfaces import VolumeService
+from novaclient.exceptions import NotFound as NovaNotFound
 
 from .resources import OpenStackContainer
 from .resources import OpenStackInstance
@@ -391,7 +390,15 @@ class OpenStackComputeService(ComputeService):
 
     def __init__(self, provider):
         self._provider = provider
-        self.instance_types = OpenStackInstanceTypesService(self._provider)
+        self._instance_types = OpenStackInstanceTypesService(self._provider)
+
+    @property
+    def provider(self):
+        return self._provider
+
+    @property
+    def instance_types(self):
+        return self._instance_types
 
     def create_instance(self, name, image, instance_type, zone=None,
                         keypair=None, security_groups=None, user_data=None,

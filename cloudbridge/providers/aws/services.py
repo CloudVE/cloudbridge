@@ -2,11 +2,13 @@
 Services implemented by the AWS provider.
 """
 from boto.exception import EC2ResponseError
+import requests
 
 from cloudbridge.providers.interfaces import BlockStoreService
 from cloudbridge.providers.interfaces import ComputeService
 from cloudbridge.providers.interfaces import ImageService
 from cloudbridge.providers.interfaces import InstanceType
+from cloudbridge.providers.interfaces import InstanceTypesService
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import KeyPairService
 from cloudbridge.providers.interfaces import MachineImage
@@ -20,6 +22,7 @@ from cloudbridge.providers.interfaces import VolumeService
 
 from .resources import AWSContainer
 from .resources import AWSInstance
+from .resources import AWSInstanceType
 from .resources import AWSKeyPair
 from .resources import AWSMachineImage
 from .resources import AWSSecurityGroup
@@ -375,6 +378,15 @@ class AWSComputeService(ComputeService):
 
     def __init__(self, provider):
         self._provider = provider
+        self._instance_types = AWSInstanceTypesService(self.provider)
+
+    @property
+    def provider(self):
+        return self._provider
+
+    @property
+    def instance_types(self):
+        return self._instance_types
 
     def create_instance(self, name, image, instance_type, zone=None,
                         keypair=None, security_groups=None, user_data=None,
@@ -440,3 +452,29 @@ class AWSComputeService(ComputeService):
         return [AWSInstance(self._provider, inst)
                 for res in reservations
                 for inst in res.instances]
+
+
+class AWSInstanceTypesService(InstanceTypesService):
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    @property
+    def instance_data(self):
+        """
+        TODO: Neeeds a caching function with timeout
+        """
+        print "###########################", self._provider
+        r = requests.get(self._provider.config.get(
+            "aws_instance_info_url",
+            "https://raw.githubusercontent.com/powdahound/ec2instances.info"
+            "/master/www/instances.json"))
+        return r.json()
+
+    def list(self):
+        return [AWSInstanceType(self._provider, inst_data)
+                for inst_data in self.instance_data]
+
+    def find_by_name(self, name):
+        return next(
+            (itype for itype in self.list() if itype.name == name), None)

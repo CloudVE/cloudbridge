@@ -624,6 +624,87 @@ class InstanceType(object):
         raise NotImplementedError(
             'InstanceType.name not implemented by this provider')
 
+    @property
+    def family(self):
+        """
+        The family/group that this instance type belongs to. For example,
+        General Purpose Instances or High-Memory Instances. If the provider
+        does not support such a grouping, it may return None.
+
+        :rtype: str
+        :return: Name of the instance family.
+        """
+        raise NotImplementedError(
+            'InstanceType.family not implemented by this provider')
+
+    @property
+    def vcpus(self):
+        """
+        The number of VCPUs supported by this instance type.
+
+        :rtype: int
+        :return: Number of VCPUs
+        """
+        raise NotImplementedError(
+            'InstanceType.vcpus not implemented by this provider')
+
+    @property
+    def ram(self):
+        """
+        The amount of RAM (in mb) supported by this instance type.
+
+        :rtype: int
+        :return: Total RAM (in MB).
+        """
+        raise NotImplementedError(
+            'InstanceType.ram not implemented by this provider')
+
+    @property
+    def root_disk(self):
+        """
+        The size of this instance types's root disk (in GB).
+
+        :rtype: int
+        :return: Size of root disk (in GB).
+        """
+        raise NotImplementedError(
+            'InstanceType.root_disk not implemented by this provider')
+
+    @property
+    def ephemeral_disk(self):
+        """
+        The size of this instance types's total ephemeral storage (in GB).
+
+        :rtype: int
+        :return: Size of ephemeral disks (in GB).
+        """
+        raise NotImplementedError(
+            'InstanceType.ephemeral_disk not implemented by this provider')
+
+    @property
+    def total_disk(self):
+        """
+        The total disk space available on this instance type.
+        (root_disk + ephemeral)
+
+        :rtype: int
+        :return: Size of total disk space (in GB).
+        """
+        raise NotImplementedError(
+            'InstanceType.total_disk not implemented by this provider')
+
+    @property
+    def extra_data(self):
+        """
+        A dictionary of extra data about this instance. May contain
+        nested dictionaries, but all key value pairs are strings or integers.
+
+        :rtype: dict
+        :return: Extra attributes for this instance type
+        """
+        raise NotImplementedError(
+            'InstanceType.extra_data not implemented by this provider')
+
 
 class SecurityGroup(object):
 

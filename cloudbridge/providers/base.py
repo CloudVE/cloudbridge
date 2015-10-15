@@ -8,6 +8,7 @@ import time
 from cloudbridge.providers.interfaces import CloudProvider
 from cloudbridge.providers.interfaces import Instance
 from cloudbridge.providers.interfaces import InstanceState
+from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import MachineImageState
@@ -26,7 +27,7 @@ log = logging.getLogger(__name__)
 class BaseCloudProvider(CloudProvider):
 
     def __init__(self, config):
-        self.config = config
+        self._config = config
 
     @property
     def config(self):
@@ -135,6 +136,16 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
             self.terminal_states,
             timeout,
             interval)
+
+
+class BaseInstanceType(InstanceType):
+
+    @property
+    def total_disk(self):
+        return self.root_disk + self.ephemeral_disk
+
+    def __repr__(self):
+        return "<CB-{0}: {1}>".format(self.__class__.__name__, self.name)
 
 
 class BaseInstance(BaseObjectLifeCycleMixin, Instance):

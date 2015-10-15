@@ -2,11 +2,13 @@
 DataTypes used by this provider
 """
 import shutil
+
 from boto.exception import EC2ResponseError
 from boto.s3.key import Key
 from retrying import retry
 
 from cloudbridge.providers.base import BaseInstance
+from cloudbridge.providers.base import BaseInstanceType
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
 from cloudbridge.providers.base import BaseSecurityGroup
@@ -15,7 +17,6 @@ from cloudbridge.providers.base import BaseVolume
 from cloudbridge.providers.interfaces import Container
 from cloudbridge.providers.interfaces import ContainerObject
 from cloudbridge.providers.interfaces import InstanceState
-from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImageState
 from cloudbridge.providers.interfaces import SnapshotState
 from cloudbridge.providers.interfaces import VolumeState
@@ -121,21 +122,48 @@ class AWSPlacementZone(PlacementZone):
         return self._aws_zone.region_name
 
 
-class AWSInstanceType(InstanceType):
+class AWSInstanceType(BaseInstanceType):
 
-    def __init__(self, instance_type):
-        self.instance_type = instance_type
+    def __init__(self, provider, instance_dict):
+        self._provider = provider
+        self._inst_dict = instance_dict
 
     @property
     def id(self):
-        return self.instance_type
+        return self._inst_dict['instance_type']
 
     @property
     def name(self):
-        return self.instance_type
+        return self._inst_dict['instance_type']
 
-    def __repr__(self):
-        return "<CB-AWSInstanceType: {0}>".format(self.id)
+    @property
+    def family(self):
+        return self._inst_dict.get('family')
+
+    @property
+    def vcpus(self):
+        return self._inst_dict.get('vCPU')
+
+    @property
+    def ram(self):
+        return self._inst_dict.get('memory')
+
+    @property
+    def root_disk(self):
+        return 0
+
+    @property
+    def ephemeral_disk(self):
+        storage = self._inst_dict.get('storage')
+        if storage:
+            return storage.get('size') * storage.get("devices")
+        else:
+            return 0
+
+    @property
+    def extra_data(self):
+        return {key: val for key, val in enumerate(self._inst_dict)
+                if key not in ["instance_type", "family", "vCPU", "memory"]}
 
 
 class AWSInstance(BaseInstance):

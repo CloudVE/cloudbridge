@@ -57,6 +57,7 @@ class ComputeService(ProviderService):
         raise NotImplementedError(
             'list_instances not implemented by this provider')
 
+    @property
     def instance_types(self):
         """
         Provides access to all Instance type related services in this provider.

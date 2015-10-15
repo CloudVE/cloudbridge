@@ -6,6 +6,7 @@ import os
 
 import boto
 from boto.ec2.regioninfo import RegionInfo
+from httpretty import HTTPretty
 from moto.ec2 import mock_ec2
 from moto.s3 import mock_s3
 
@@ -108,6 +109,43 @@ class MockAWSCloudProvider(AWSCloudProviderV1, TestMockHelperMixin):
         self.ec2mock.start()
         self.s3mock = mock_s3()
         self.s3mock.start()
+        HTTPretty.register_uri(
+            method="GET",
+            uri="https://raw.githubusercontent.com/powdahound/ec2instances."
+            "info/master/www/instances.json",
+            body="""
+[
+  {
+    "family": "General Purpose",
+    "enhanced_networking": false,
+    "vCPU": 1,
+    "generation": "previous",
+    "ebs_iops": 0,
+    "network_performance": "Low",
+    "ebs_throughput": 0,
+    "vpc": {
+      "ips_per_eni": 4,
+      "max_enis": 2
+    },
+    "arch": [
+      "i386",
+      "x86_64"
+    ],
+    "linux_virtualization_types": [],
+    "ebs_optimized": false,
+    "storage": {
+      "ssd": false,
+      "devices": 1,
+      "size": 160
+    },
+    "max_bandwidth": 0,
+    "instance_type": "m1.small",
+    "ECU": 1.0,
+    "memory": 1.7
+  }
+]
+"""
+        )
 
     def tearDownMock(self):
         """

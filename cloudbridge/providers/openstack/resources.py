@@ -7,6 +7,7 @@ import ipaddress
 from swiftclient.exceptions import ClientException
 
 from cloudbridge.providers.base import BaseInstance
+from cloudbridge.providers.base import BaseInstanceType
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
 from cloudbridge.providers.base import BaseSecurityGroup
@@ -15,7 +16,6 @@ from cloudbridge.providers.base import BaseVolume
 from cloudbridge.providers.interfaces import Container
 from cloudbridge.providers.interfaces import ContainerObject
 from cloudbridge.providers.interfaces import InstanceState
-from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import MachineImageState
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import Region
@@ -128,21 +128,44 @@ class OpenStackPlacementZone(PlacementZone):
         return self._os_zone.region_name
 
 
-class OpenStackInstanceType(InstanceType):
+class OpenStackInstanceType(BaseInstanceType):
 
     def __init__(self, os_flavor):
-        self.os_flavor = os_flavor
+        self._os_flavor = os_flavor
 
     @property
     def id(self):
-        return self.os_flavor.id
+        return self._os_flavor.id
 
     @property
     def name(self):
-        return self.os_flavor.name
+        return self._os_flavor.name
 
-    def __repr__(self):
-        return "<CB-OSInstanceType: {0}={1}>".format(self.id, self.name)
+    @property
+    def family(self):
+        # TODO: This may not be standardised accross openstack
+        # but NeCTAR is using it this way
+        return self._os_flavor.extras.get('group')
+
+    @property
+    def vcpus(self):
+        return self._os_flavor.vcpus
+
+    @property
+    def ram(self):
+        return self._os_flavor.ram
+
+    @property
+    def root_disk(self):
+        return self._os_flavor.disk
+
+    @property
+    def ephemeral_disk(self):
+        return self._os_flavor.get('OS-FLV-EXT-DATA:ephemeral', 0)
+
+    @property
+    def extra_data(self):
+        return self._os_flavor.extras
 
 
 class OpenStackInstance(BaseInstance):
