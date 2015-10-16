@@ -454,6 +454,10 @@ class AWSComputeService(ComputeService):
                 for inst in res.instances]
 
 
+AWS_INSTANCE_DATA_DEFAULT_URL = "https://swift.rc.nectar.org.au:8888/v1/" \
+                                "AUTH_377/cloud-bridge/aws/instance_data.json"
+
+
 class AWSInstanceTypesService(InstanceTypesService):
 
     def __init__(self, provider):
@@ -464,11 +468,8 @@ class AWSInstanceTypesService(InstanceTypesService):
         """
         TODO: Neeeds a caching function with timeout
         """
-        print("###########################", self._provider)
         r = requests.get(self._provider.config.get(
-            "aws_instance_info_url",
-            "https://raw.githubusercontent.com/powdahound/ec2instances.info"
-            "/master/www/instances.json"))
+            "aws_instance_info_url", AWS_INSTANCE_DATA_DEFAULT_URL))
         return r.json()
 
     def list(self):
