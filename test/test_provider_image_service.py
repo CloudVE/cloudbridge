@@ -1,4 +1,5 @@
 import uuid
+import six
 from cloudbridge.providers.interfaces import MachineImageState
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
@@ -26,6 +27,12 @@ class ProviderImageServiceTestCase(ProviderTestBase):
             with helpers.exception_action(lambda: test_image.delete()):
                 test_image.wait_till_ready(
                     interval=self.get_test_wait_interval())
+
+                self.assertTrue(
+                    test_image.description is None or isinstance(
+                        test_image.description, six.string_types),
+                    "Image description must be None or a string")
+
                 images = self.provider.images.list_images()
                 found_images = [image for image in images
                                 if image.name == name]

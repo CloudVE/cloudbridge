@@ -27,6 +27,8 @@ as a base class to each combination).
 """
 import cloudbridge
 from test.helpers import ProviderTestCaseGenerator
+from test.test_instance_types_service import \
+    ProviderInstanceTypesServiceTestCase
 from test.test_provider_block_store_service import \
     ProviderBlockStoreServiceTestCase
 from test.test_provider_compute_service import ProviderComputeServiceTestCase
@@ -40,6 +42,7 @@ from test.test_provider_security_service import ProviderSecurityServiceTestCase
 PROVIDER_TESTS = [
     ProviderInterfaceTestCase,
     ProviderSecurityServiceTestCase,
+    ProviderInstanceTypesServiceTestCase,
     ProviderComputeServiceTestCase,
     ProviderImageServiceTestCase,
     ProviderBlockStoreServiceTestCase,

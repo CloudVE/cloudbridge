@@ -91,16 +91,3 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address")
             test_instance.terminate()
-
-    def test_instance_types(self):
-        instance_types = self.provider.compute.instance_types.list()
-        for inst_type in instance_types:
-            self.assertIsNotNone(
-                inst_type.id,
-                "Instance type id must have a value")
-            self.assertIsNotNone(
-                inst_type.name,
-                "Instance type name must have a value")
-            self.assertIsNotNone(
-                inst_type.name,
-                "Instance type name must have a value")
