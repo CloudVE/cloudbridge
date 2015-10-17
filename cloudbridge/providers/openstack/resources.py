@@ -47,9 +47,6 @@ class OpenStackMachineImage(BaseMachineImage):
     def image_id(self):
         """
         Get the image identifier.
-
-        :rtype: ``str``
-        :return: ID for this instance as returned by the cloud middleware.
         """
         return self._os_image.id
 
@@ -57,9 +54,6 @@ class OpenStackMachineImage(BaseMachineImage):
     def name(self):
         """
         Get the image name.
-
-        :rtype: ``str``
-        :return: Name for this image as returned by the cloud middleware.
         """
         return self._os_image.name
 
@@ -67,11 +61,8 @@ class OpenStackMachineImage(BaseMachineImage):
     def description(self):
         """
         Get the image description.
-
-        :rtype: ``str``
-        :return: Description for this image as returned by the cloud middleware
         """
-        return self._os_image.description
+        return None
 
     def delete(self):
         """
