@@ -528,7 +528,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
             from_port=from_port,
             to_port=to_port,
             cidr_ip=cidr_ip,
-            src_group=src_group._security_group)
+            src_group=src_group._security_group if src_group else None)
 
 
 class AWSSecurityGroupRule(BaseSecurityGroupRule):
