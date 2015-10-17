@@ -62,7 +62,7 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 .format(name))
 
     def test_crud_security_group_service(self):
-        name = 'cbtestsecuritygroup-{0}'.format(uuid.uuid4())
+        name = 'cbtestsecuritygroupA-{0}'.format(uuid.uuid4())
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
         with helpers.exception_action(
@@ -78,6 +78,34 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 "List security groups did not return the expected group {0}."
                 .format(name))
             self.provider.security.security_groups.delete(group_id=sg.id)
+            sgl = self.provider.security.security_groups.list()
+            found_sg = [g for g in sgl if g.name == name]
+            self.assertTrue(
+                len(found_sg) == 0,
+                "Security group {0} should have been deleted but still exists."
+                .format(name))
+
+    def test_security_group(self):
+        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
+        sg = self.provider.security.security_groups.create(
+            name=name, description=name)
+        with helpers.exception_action(
+            lambda:
+                self.provider.security.security_groups.delete(group_id=sg.id)
+        ):
+            sg.add_rule('tcp', 1111, 1111, '0.0.0.0/0')
+            self.assertTrue(
+                sg.rules[0].cidr_ip == '0.0.0.0/0',
+                "Wrong security group {0} CIDR range.".format(name))
+            self.assertTrue(
+                repr(sg.rules[0]) == ("<CBSecurityGroupRule: IP: {0}; from: "
+                                      "{1}; to: {2}>"
+                                      .format(sg.rules[0].ip_protocol,
+                                              sg.rules[0].from_port,
+                                              sg.rules[0].to_port)),
+                ("Security group rule repr {0} not matching expected format."
+                 .format(sg.rules[0])))
+            sg.delete()
             sgl = self.provider.security.security_groups.list()
             found_sg = [g for g in sgl if g.name == name]
             self.assertTrue(
