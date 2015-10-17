@@ -94,9 +94,14 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 self.provider.security.security_groups.delete(group_id=sg.id)
         ):
             sg.add_rule('tcp', 1111, 1111, '0.0.0.0/0')
+            found_rules = [rule for rule in sg.rules if
+                           rule.cidr_ip == '0.0.0.0/0' and
+                           rule.ip_protocol == 'tcp' and
+                           rule.from_port == 1111 and
+                           rule.to_port == 1111]
             self.assertTrue(
-                sg.rules[0].cidr_ip == '0.0.0.0/0',
-                "Wrong security group {0} CIDR range.".format(name))
+                len(found_rules) == 1,
+                "Expected rule not found in security group: {0}".format(name))
             self.assertTrue(
                 repr(sg.rules[0]) == ("<CBSecurityGroupRule: IP: {0}; from: "
                                       "{1}; to: {2}>"

@@ -146,7 +146,7 @@ class OpenStackInstanceType(BaseInstanceType):
     def family(self):
         # TODO: This may not be standardised accross openstack
         # but NeCTAR is using it this way
-        return self._os_flavor.extras.get('group')
+        return self.extra_data.get('flavor_class:name')
 
     @property
     def vcpus(self):
@@ -162,11 +162,16 @@ class OpenStackInstanceType(BaseInstanceType):
 
     @property
     def ephemeral_disk(self):
-        return self._os_flavor.get('OS-FLV-EXT-DATA:ephemeral', 0)
+        return 0 if self._os_flavor.ephemeral == 'N/A' else \
+            self._os_flavor.ephemeral
 
     @property
     def extra_data(self):
-        return self._os_flavor.extras
+        extras = self._os_flavor.get_keys()
+        extras['rxtx_factor'] = self._os_flavor.rxtx_factor
+        extras['swap'] = self._os_flavor.swap
+        extras['is_public'] = self._os_flavor.is_public
+        return extras
 
 
 class OpenStackInstance(BaseInstance):
@@ -530,7 +535,8 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
     @property
     def rules(self):
         # Update SG object; otherwise, recenlty added rules do now show
-        self._security_group = self._provider.nova.security_groups.get(self._security_group)
+        self._security_group = self._provider.nova.security_groups.get(
+            self._security_group)
         return [OpenStackSecurityGroupRule(self._provider, r, self)
                 for r in self._security_group.rules]
 
@@ -585,7 +591,8 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
     def __init__(self, provider, rule, parent):
-        super(OpenStackSecurityGroupRule, self).__init__(provider, rule, parent)
+        super(OpenStackSecurityGroupRule, self).__init__(
+            provider, rule, parent)
 
     @property
     def ip_protocol(self):
@@ -601,7 +608,7 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def cidr_ip(self):
-        return self._rule.get('cidr_ip', {}).get('cidr')
+        return self._rule.get('ip_range', {}).get('cidr')
 
     @property
     def group(self):
