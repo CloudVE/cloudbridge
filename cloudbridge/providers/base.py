@@ -273,5 +273,5 @@ class BaseSecurityGroupRule(SecurityGroupRule):
         self.parent = parent
 
     def __repr__(self):
-        return "<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}".format(
+        return "<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}>".format(
             self.ip_protocol, self.from_port, self.to_port)
