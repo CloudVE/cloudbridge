@@ -182,10 +182,12 @@ class ProviderTestCaseGenerator():
         class
         """
         suite = unittest.TestSuite()
-        suites = map(
-            lambda test_class: self.generate_test_suite_for_provider_testcase(
-                provider_class, test_class), self.all_test_classes)
-        map(suite.addTest, suites)
+        suites = [
+            self.generate_test_suite_for_provider_testcase(
+                provider_class, test_class)
+            for test_class in self.all_test_classes]
+        for s in suites:
+            suite.addTest(s)
         return suite
 
     def generate_tests(self):
@@ -210,6 +212,8 @@ class ProviderTestCaseGenerator():
             provider_classes = factory.get_all_provider_classes(
                 get_mock=use_mock_drivers)
         suite = unittest.TestSuite()
-        suites = map(self.generate_test_suite_for_provider, provider_classes)
-        map(suite.addTest, suites)
+        suites = [
+            self.generate_test_suite_for_provider(p) for p in provider_classes]
+        for s in suites:
+            suite.addTest(s)
         return suite
