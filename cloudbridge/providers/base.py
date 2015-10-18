@@ -20,6 +20,10 @@ from cloudbridge.providers.interfaces import SnapshotState
 from cloudbridge.providers.interfaces import Volume
 from cloudbridge.providers.interfaces import VolumeState
 from cloudbridge.providers.interfaces import WaitStateException
+from cloudbridge.providers.interfaces.services import ImageService,\
+    ProviderService, ComputeService, VolumeService, SnapshotService,\
+    BlockStoreService, ObjectStoreService, SecurityService, KeyPairService,\
+    SecurityGroupService, InstanceTypesService
 
 
 log = logging.getLogger(__name__)
@@ -275,3 +279,73 @@ class BaseSecurityGroupRule(SecurityGroupRule):
     def __repr__(self):
         return "<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}>".format(
             self.ip_protocol, self.from_port, self.to_port)
+
+
+class BaseProviderService(ProviderService):
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    @property
+    def provider(self):
+        return self._provider
+
+
+class BaseComputeService(ComputeService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseComputeService, self).__init__(provider)
+
+
+class BaseVolumeService(VolumeService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseVolumeService, self).__init__(provider)
+
+
+class BaseSnapshotService(SnapshotService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseSnapshotService, self).__init__(provider)
+
+
+class BaseBlockStoreService(BlockStoreService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseBlockStoreService, self).__init__(provider)
+
+
+class BaseImageService(ImageService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseImageService, self).__init__(provider)
+
+
+class BaseObjectStoreService(ObjectStoreService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseObjectStoreService, self).__init__(provider)
+
+
+class BaseSecurityService(SecurityService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseSecurityService, self).__init__(provider)
+
+
+class BaseKeyPairService(KeyPairService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseKeyPairService, self).__init__(provider)
+
+
+class BaseSecurityGroupService(SecurityGroupService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseSecurityGroupService, self).__init__(provider)
+
+
+class BaseInstanceTypesService(InstanceTypesService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseInstanceTypesService, self).__init__(provider)

@@ -1,14 +1,18 @@
 """
 Specification for a provider interface
 """
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class CloudProvider(object):
+
+    __metaclass__ = ABCMeta
 
     """
     Base interface for a cloud provider
     """
 
+    @abstractmethod
     def __init__(self, config):
         """
         Create a new provider implementation given a dictionary of
@@ -22,10 +26,9 @@ class CloudProvider(object):
         :rtype: ``object`` of :class:`.CloudProvider`
         :return:  a concrete provider instance
         """
-        raise NotImplementedError(
-            '__init__ not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def config(self):
         """
         Returns the config object associated with this provider.
@@ -33,9 +36,8 @@ class CloudProvider(object):
         :rtype: ``object``
         :return:  The config object used to initialize this provider
         """
-        raise NotImplementedError(
-            'CloudProvider.config not implemented by this provider')
 
+    @abstractmethod
     def has_service(self, service_type):
         """
         Checks whether this provider supports a given service.
@@ -46,10 +48,9 @@ class CloudProvider(object):
         :rtype: bool
         :return: ``True`` if the service type is supported.
         """
-        raise NotImplementedError(
-            'CloudProvider.has_service not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def account(self):
         """
         Provides access to all user account related services in this provider.
@@ -58,10 +59,9 @@ class CloudProvider(object):
         :rtype: ``object`` of :class:`.ComputeService`
         :return:  a ComputeService object
         """
-        raise NotImplementedError(
-            'CloudProvider.Compute not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def compute(self):
         """
         Provides access to all compute related services in this provider.
@@ -69,10 +69,9 @@ class CloudProvider(object):
         :rtype: ``object`` of :class:`.ComputeService`
         :return:  a ComputeService object
         """
-        raise NotImplementedError(
-            'CloudProvider.compute not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def images(self):
         """
         Provides access to all Image related services in this provider.
@@ -81,10 +80,9 @@ class CloudProvider(object):
         :rtype: ``object`` of :class:`.ImageService`
         :return: an ImageService object
         """
-        raise NotImplementedError(
-            'CloudProvider.images not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def security(self):
         """
         Provides access to keypair management and firewall control
@@ -92,10 +90,9 @@ class CloudProvider(object):
         :rtype: ``object`` of :class:`.SecurityService`
         :return: a SecurityService object
         """
-        raise NotImplementedError(
-            'CloudProvider.security not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def block_store(self):
         """
         Provides access to the volume and snapshot services in this
@@ -104,10 +101,9 @@ class CloudProvider(object):
         :rtype: ``object`` of :class:`.BlockStoreService`
         :return: a BlockStoreService object
         """
-        raise NotImplementedError(
-            'CloudProvider.block_store not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def object_store(self):
         """
         Provides access to object storage services in this provider.
@@ -115,8 +111,7 @@ class CloudProvider(object):
         :rtype: ``object`` of :class:`.ObjectStoreService`
         :return: an ObjectStoreService object
         """
-        raise NotImplementedError(
-            'CloudProvider.object_store not implemented by this provider')
+        pass
 
 
 class ContainerProvider(object):
@@ -124,14 +119,15 @@ class ContainerProvider(object):
     """
     Represents a container instance, such as Docker or LXC
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def create_container(self):
-        raise NotImplementedError(
-            'create_container not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete_container(self):
-        raise NotImplementedError(
-            'delete_container not implemented by this provider')
+        pass
 
 
 class DeploymentProvider(object):
@@ -139,10 +135,11 @@ class DeploymentProvider(object):
     """
     Represents a deployment provider, such as Ansible or Shell script provider
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def deploy(self, target):
         """
         Deploys on given target, where target is an Instance or Container
         """
-        raise NotImplementedError(
-            'deploy not implemented by this provider')
+        pass

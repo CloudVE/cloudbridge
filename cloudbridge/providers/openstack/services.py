@@ -2,22 +2,24 @@
 Services implemented by the OpenStack provider.
 """
 from cinderclient.exceptions import NotFound as CinderNotFound
-from cloudbridge.providers.interfaces import BlockStoreService
-from cloudbridge.providers.interfaces import ComputeService
-from cloudbridge.providers.interfaces import ImageService
+from novaclient.exceptions import NotFound as NovaNotFound
+
+from cloudbridge.providers.base import BaseBlockStoreService
+from cloudbridge.providers.base import BaseComputeService
+from cloudbridge.providers.base import BaseImageService
+from cloudbridge.providers.base import BaseInstanceTypesService
+from cloudbridge.providers.base import BaseKeyPairService
+from cloudbridge.providers.base import BaseObjectStoreService
+from cloudbridge.providers.base import BaseSecurityGroupService
+from cloudbridge.providers.base import BaseSecurityService
+from cloudbridge.providers.base import BaseSnapshotService
+from cloudbridge.providers.base import BaseVolumeService
+
 from cloudbridge.providers.interfaces import InstanceType
-from cloudbridge.providers.interfaces import InstanceTypesService
 from cloudbridge.providers.interfaces import KeyPair
-from cloudbridge.providers.interfaces import KeyPairService
 from cloudbridge.providers.interfaces import MachineImage
-from cloudbridge.providers.interfaces import ObjectStoreService
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
-from cloudbridge.providers.interfaces import SecurityGroupService
-from cloudbridge.providers.interfaces import SecurityService
-from cloudbridge.providers.interfaces import SnapshotService
-from cloudbridge.providers.interfaces import VolumeService
-from novaclient.exceptions import NotFound as NovaNotFound
 
 from .resources import OpenStackContainer
 from .resources import OpenStackInstance
@@ -30,10 +32,10 @@ from .resources import OpenStackSnapshot
 from .resources import OpenStackVolume
 
 
-class OpenStackSecurityService(SecurityService):
+class OpenStackSecurityService(BaseSecurityService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackSecurityService, self).__init__(provider)
 
         # Initialize provider services
         self._key_pairs = OpenStackKeyPairService(provider)
@@ -60,10 +62,10 @@ class OpenStackSecurityService(SecurityService):
         return self._security_groups
 
 
-class OpenStackKeyPairService(KeyPairService):
+class OpenStackKeyPairService(BaseKeyPairService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackKeyPairService, self).__init__(provider)
 
     def list(self):
         """
@@ -110,10 +112,10 @@ class OpenStackKeyPairService(KeyPairService):
             return True
 
 
-class OpenStackSecurityGroupService(SecurityGroupService):
+class OpenStackSecurityGroupService(BaseSecurityGroupService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackSecurityGroupService, self).__init__(provider)
 
     def list(self):
         """
@@ -197,10 +199,10 @@ class OpenStackSecurityGroupService(SecurityGroupService):
         return True
 
 
-class OpenStackImageService(ImageService):
+class OpenStackImageService(BaseImageService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackImageService, self).__init__(provider)
 
     def get_image(self, image_id):
         """
@@ -228,10 +230,10 @@ class OpenStackImageService(ImageService):
                 for image in images]
 
 
-class OpenStackInstanceTypesService(InstanceTypesService):
+class OpenStackInstanceTypesService(BaseInstanceTypesService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackInstanceTypesService, self).__init__(provider)
 
     def list(self):
         return [OpenStackInstanceType(f)
@@ -242,10 +244,10 @@ class OpenStackInstanceTypesService(InstanceTypesService):
             (itype for itype in self.list() if itype.name == name), None)
 
 
-class OpenStackBlockStoreService(BlockStoreService):
+class OpenStackBlockStoreService(BaseBlockStoreService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackBlockStoreService, self).__init__(provider)
 
         # Initialize provider services
         self._volumes = OpenStackVolumeService(self._provider)
@@ -260,10 +262,10 @@ class OpenStackBlockStoreService(BlockStoreService):
         return self._snapshots
 
 
-class OpenStackVolumeService(VolumeService):
+class OpenStackVolumeService(BaseVolumeService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackVolumeService, self).__init__(provider)
 
     def get_volume(self, volume_id):
         """
@@ -303,10 +305,10 @@ class OpenStackVolumeService(VolumeService):
         return OpenStackVolume(self._provider, os_vol)
 
 
-class OpenStackSnapshotService(SnapshotService):
+class OpenStackSnapshotService(BaseSnapshotService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackSnapshotService, self).__init__(provider)
 
     def get_snapshot(self, snapshot_id):
         """
@@ -346,10 +348,10 @@ class OpenStackSnapshotService(SnapshotService):
         return OpenStackSnapshot(self._provider, os_snap)
 
 
-class OpenStackObjectStoreService(ObjectStoreService):
+class OpenStackObjectStoreService(BaseObjectStoreService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackObjectStoreService, self).__init__(provider)
 
     def get_container(self, container_id):
         """
@@ -386,15 +388,11 @@ class OpenStackObjectStoreService(ObjectStoreService):
         return self.get_container(name)
 
 
-class OpenStackComputeService(ComputeService):
+class OpenStackComputeService(BaseComputeService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(OpenStackComputeService, self).__init__(provider)
         self._instance_types = OpenStackInstanceTypesService(self._provider)
-
-    @property
-    def provider(self):
-        return self._provider
 
     @property
     def instance_types(self):
@@ -434,6 +432,13 @@ class OpenStackComputeService(ComputeService):
             security_groups=security_groups_list,
             userdata=user_data)
         return OpenStackInstance(self._provider, os_instance)
+
+    def find_instance(self, name):
+        """
+        Searches for an instance by a given list of attributes.
+        """
+        raise NotImplementedError(
+            'find_instance not implemented by this provider')
 
     def list_instances(self):
         """

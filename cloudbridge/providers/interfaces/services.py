@@ -1,6 +1,7 @@
 """
 Specifications for services available through a provider
 """
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class ProviderService(object):
@@ -8,7 +9,9 @@ class ProviderService(object):
     """
     Base interface for any service supported by a provider
     """
+    __metaclass__ = ABCMeta
 
+    @abstractproperty
     def provider(self):
         """
         Returns the provider instance associated with this service.
@@ -16,8 +19,7 @@ class ProviderService(object):
         :rtype: ``object`` of :class:`.CloudProvider`
         :return: a Provider object
         """
-        raise NotImplementedError(
-            'ComputeService.Provider not implemented by this provider')
+        pass
 
 
 class ComputeService(ProviderService):
@@ -25,7 +27,9 @@ class ComputeService(ProviderService):
     """
     Base interface for compute service supported by a provider
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def get_instance(self, instance_id):
         """
         Returns an instance given its id. Returns None
@@ -34,9 +38,9 @@ class ComputeService(ProviderService):
         :rtype: ``object`` of :class:`.Instance`
         :return:  an Instance object
         """
-        raise NotImplementedError(
-            'get_instance not implemented by this provider')
+        pass
 
+    @abstractmethod
     def find_instance(self, name):
         """
         Searches for an instance by a given list of attributes.
@@ -44,9 +48,9 @@ class ComputeService(ProviderService):
         :rtype: ``object`` of :class:`.Instance`
         :return: an Instance object
         """
-        raise NotImplementedError(
-            'find_instance not implemented by this provider')
+        pass
 
+    @abstractmethod
     def list_instances(self):
         """
         List all instances.
@@ -54,10 +58,9 @@ class ComputeService(ProviderService):
         :rtype: ``list`` of :class:`.Instance`
         :return: list of Instance objects
         """
-        raise NotImplementedError(
-            'list_instances not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def instance_types(self):
         """
         Provides access to all Instance type related services in this provider.
@@ -65,9 +68,9 @@ class ComputeService(ProviderService):
         :rtype: ``object`` of :class:`.InstanceTypeService`
         :return:  an InstanceTypeService object
         """
-        raise NotImplementedError(
-            'instance_types not implemented by this provider')
+        pass
 
+    @abstractmethod
     def list_regions(self):
         """
         List all data center regions for this provider.
@@ -75,12 +78,13 @@ class ComputeService(ProviderService):
         :rtype: ``list`` of :class:`.Region`
         :return: list of Region objects
         """
-        raise NotImplementedError(
-            'list_regions not implemented by this provider')
+        pass
 
+    @abstractmethod
     def create_instance(self, name, image, instance_type, zone=None,
                         keypair=None, security_groups=None, user_data=None,
                         block_device_mapping=None, network_interfaces=None,
+                        launch_configuration=None,
                         **kwargs):
         """
         Creates a new virtual machine instance.
@@ -123,11 +127,17 @@ class ComputeService(ProviderService):
                                    describes network interfaces for this
                                    instance.
 
+        :type  launch_configuration: ``LaunchConfiguration`` object
+        :param launch_configuration: A ``LaunchConfiguration`` object which
+        describes advanced launch configuration options for an instance. This
+        include blck_device_mappings and network_interfaces. To construct a
+        launch configuration object, call
+        provider.compute.instances.create_launch_configuration()
+
         :rtype: `object`` of :class:`.Instance`
         :return:  an instance of Instance class
         """
-        raise NotImplementedError(
-            'create_instance not implemented by this provider')
+        pass
 
 
 class VolumeService(ProviderService):
@@ -135,7 +145,9 @@ class VolumeService(ProviderService):
     """
     Base interface for a Volume Service
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def get_volume(self, volume_id):
         """
         Returns a volume given its id. Returns None if the volume
@@ -144,9 +156,9 @@ class VolumeService(ProviderService):
         :rtype: ``object`` of :class:`.Volume`
         :return: a Volume object
         """
-        raise NotImplementedError(
-            'get_volume not implemented by this provider')
+        pass
 
+    @abstractmethod
     def find_volume(self, name):
         """
         Searches for a volume by a given list of attributes.
@@ -154,9 +166,9 @@ class VolumeService(ProviderService):
         :rtype: ``object`` of :class:`.Volume`
         :return: a Volume object or ``None`` if not found
         """
-        raise NotImplementedError(
-            'find_volume not implemented by this provider')
+        pass
 
+    @abstractmethod
     def list_volumes(self):
         """
         List all volumes.
@@ -164,9 +176,9 @@ class VolumeService(ProviderService):
         :rtype: ``list`` of :class:`.Volume`
         :return: a list of Volume objects
         """
-        raise NotImplementedError(
-            'list_volumes not implemented by this provider')
+        pass
 
+    @abstractmethod
     def create_volume(self, name, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
@@ -188,8 +200,7 @@ class VolumeService(ProviderService):
         :rtype: ``object`` of :class:`.Volume`
         :return: a newly created Volume object
         """
-        raise NotImplementedError(
-            'create_volume not implemented by this provider')
+        pass
 
 
 class SnapshotService(ProviderService):
@@ -197,7 +208,9 @@ class SnapshotService(ProviderService):
     """
     Base interface for a Snapshot Service
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def get_snapshot(self, volume_id):
         """
         Returns a snapshot given its id. Returns None if the snapshot
@@ -206,9 +219,9 @@ class SnapshotService(ProviderService):
         :rtype: ``object`` of :class:`.Snapshot`
         :return: a Snapshot object
         """
-        raise NotImplementedError(
-            'get_snapshot not implemented by this provider')
+        pass
 
+    @abstractmethod
     def find_snapshot(self, name):
         """
         Searches for a snapshot by a given list of attributes.
@@ -216,9 +229,9 @@ class SnapshotService(ProviderService):
         :rtype: ``object`` of :class:`.Snapshot`
         :return: a Snapshot object or ``None`` if not found
         """
-        raise NotImplementedError(
-            'find_snapshot not implemented by this provider')
+        pass
 
+    @abstractmethod
     def list_snapshots(self):
         """
         List all snapshots.
@@ -226,9 +239,9 @@ class SnapshotService(ProviderService):
         :rtype: ``list`` of :class:`.Snapshot`
         :return: a list of Snapshot objects
         """
-        raise NotImplementedError(
-            'list_snapshots not implemented by this provider')
+        pass
 
+    @abstractmethod
     def create_snapshot(self, name, volume, description=None):
         """
         Creates a new snapshot off a volume.
@@ -247,8 +260,7 @@ class SnapshotService(ProviderService):
         :rtype: ``object`` of :class:`.Snapshot`
         :return: a newly created Snapshot object
         """
-        raise NotImplementedError(
-            'create_snapshot not implemented by this provider')
+        pass
 
 
 class BlockStoreService(ProviderService):
@@ -256,8 +268,9 @@ class BlockStoreService(ProviderService):
     """
     Base interface for a Block Store Service
     """
+    __metaclass__ = ABCMeta
 
-    @property
+    @abstractproperty
     def volumes(self):
         """
         Provides access to the volumes (i.e., block storage) for this provider.
@@ -265,10 +278,9 @@ class BlockStoreService(ProviderService):
         :rtype: ``object`` of :class:`.VolumeService`
         :return: a VolumeService object
         """
-        raise NotImplementedError(
-            'CloudProvider.block_store not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def snapshots(self):
         """
         Provides access to volume snapshots for this provider.
@@ -276,8 +288,7 @@ class BlockStoreService(ProviderService):
         :rtype: ``object`` of :class:`.SnapshotService`
         :return: an SnapshotService object
         """
-        raise NotImplementedError(
-            'CloudProvider.object_store not implemented by this provider')
+        pass
 
 
 class ImageService(ProviderService):
@@ -285,7 +296,9 @@ class ImageService(ProviderService):
     """
     Base interface for an Image Service
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def get_image(self, image_id):
         """
         Returns an Image given its id. Returns None if the Image does not
@@ -294,9 +307,9 @@ class ImageService(ProviderService):
         :rtype: ``object`` of :class:`.Image`
         :return:  an Image instance
         """
-        raise NotImplementedError(
-            'get_image implemented by this provider')
+        pass
 
+    @abstractmethod
     def find_image(self, name):
         """
         Searches for an image by a given list of attributes
@@ -304,9 +317,9 @@ class ImageService(ProviderService):
         :rtype: ``object`` of :class:`.Image`
         :return:  an Image instance
         """
-        raise NotImplementedError(
-            'find_image not implemented by this provider')
+        pass
 
+    @abstractmethod
     def list_images(self):
         """
         List all images.
@@ -314,8 +327,7 @@ class ImageService(ProviderService):
         :rtype: ``list`` of :class:`.Image`
         :return:  list of image objects
         """
-        raise NotImplementedError(
-            'list_images not implemented by this provider')
+        pass
 
 
 class ObjectStoreService(ProviderService):
@@ -323,7 +335,9 @@ class ObjectStoreService(ProviderService):
     """
     Base interface for an Object Storage Service
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def get_container(self, container_id):
         """
         Returns a container given its id. Returns None if the container
@@ -332,9 +346,9 @@ class ObjectStoreService(ProviderService):
         :rtype: ``object`` of :class:`.Container`
         :return:  a Container instance
         """
-        raise NotImplementedError(
-            'get_container implemented by this provider')
+        pass
 
+    @abstractmethod
     def find_container(self, name):
         """
         Searches for a container by a given list of attributes
@@ -342,9 +356,9 @@ class ObjectStoreService(ProviderService):
         :rtype: ``object`` of :class:`.Container`
         :return:  a Container instance
         """
-        raise NotImplementedError(
-            'find_container not implemented by this provider')
+        pass
 
+    @abstractmethod
     def list_containers(self):
         """
         List all containers.
@@ -352,9 +366,9 @@ class ObjectStoreService(ProviderService):
         :rtype: ``list`` of :class:`.Container`
         :return:  list of container objects
         """
-        raise NotImplementedError(
-            'list_containers not implemented by this provider')
+        pass
 
+    @abstractmethod
     def create_container(self, name, location=None):
         """
         Create a new container.
@@ -368,8 +382,7 @@ class ObjectStoreService(ProviderService):
         :return:  a Container object
         :rtype: ``object`` of :class:`.Container`
         """
-        raise NotImplementedError(
-            'create_container not implemented by this provider')
+        pass
 
 
 class SecurityService(ProviderService):
@@ -377,8 +390,9 @@ class SecurityService(ProviderService):
     """
     Base interface for a Security Service.
     """
+    __metaclass__ = ABCMeta
 
-    @property
+    @abstractproperty
     def key_pairs(self):
         """
         Provides access to key pairs for this provider.
@@ -386,9 +400,9 @@ class SecurityService(ProviderService):
         :rtype: ``object`` of :class:`.KeyPairService`
         :return: a KeyPairService object
         """
-        return self._key_pairs
+        pass
 
-    @property
+    @abstractproperty
     def security_groups(self):
         """
         Provides access to security groups for this provider.
@@ -396,7 +410,7 @@ class SecurityService(ProviderService):
         :rtype: ``object`` of :class:`.SecurityGroupService`
         :return: a SecurityGroupService object
         """
-        return self._security_groups
+        pass
 
 
 class KeyPairService(ProviderService):
@@ -404,7 +418,9 @@ class KeyPairService(ProviderService):
     """
     Base interface for key pairs.
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def list(self):
         """
         List all key pairs associated with this account.
@@ -412,9 +428,9 @@ class KeyPairService(ProviderService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        raise NotImplementedError(
-            'list_key_pairs not implemented by this provider')
+        pass
 
+    @abstractmethod
     def create(self, name):
         """
         Create a new keypair.
@@ -425,9 +441,9 @@ class KeyPairService(ProviderService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance
         """
-        raise NotImplementedError(
-            'create_key_pair not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self, name):
         """
         Delete an existing SecurityGroup.
@@ -440,8 +456,7 @@ class KeyPairService(ProviderService):
                   that this implies that the key may not have been deleted by
                   this method but instead has not existed at all.
         """
-        raise NotImplementedError(
-            'delete not implemented by this provider')
+        pass
 
 
 class SecurityGroupService(ProviderService):
@@ -449,7 +464,9 @@ class SecurityGroupService(ProviderService):
     """
     Base interface for security groups.
     """
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def list(self):
         """
         List all security groups associated with this account.
@@ -457,9 +474,9 @@ class SecurityGroupService(ProviderService):
         :rtype: ``list`` of :class:`.SecurityGroup`
         :return:  list of SecurityGroup objects
         """
-        raise NotImplementedError(
-            'list not implemented by this provider')
+        pass
 
+    @abstractmethod
     def create(self, name, description):
         """
         Create a new SecurityGroup.
@@ -473,9 +490,9 @@ class SecurityGroupService(ProviderService):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.
         """
-        raise NotImplementedError(
-            'create not implemented by this provider')
+        pass
 
+    @abstractmethod
     def get(self, group_names=None, group_ids=None):
         """
         Get all security groups associated with your account.
@@ -494,9 +511,9 @@ class SecurityGroupService(ProviderService):
         :return: A list of SecurityGroup objects or an empty list if none
         found.
         """
-        raise NotImplementedError(
-            'get not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self, group_id):
         """
         Delete an existing SecurityGroup.
@@ -510,12 +527,13 @@ class SecurityGroupService(ProviderService):
                   been deleted by this method but instead has not existed in
                   the first place.
         """
-        raise NotImplementedError(
-            'delete not implemented by this provider')
+        pass
 
 
 class InstanceTypesService(object):
+    __metaclass__ = ABCMeta
 
+    @abstractmethod
     def list(self):
         """
         List all instance types.
@@ -523,9 +541,9 @@ class InstanceTypesService(object):
         :rtype: ``list`` of :class:`.InstanceType`
         :return: list of InstanceType objects
         """
-        raise NotImplementedError(
-            'InstanceTypesService.list not implemented by this provider')
+        pass
 
+    @abstractmethod
     def find_by_name(self, name):
         """
         Searches for an instance by a given list of attributes.
@@ -533,6 +551,4 @@ class InstanceTypesService(object):
         :rtype: ``object`` of :class:`.InstanceType`
         :return: an Instance object
         """
-        raise NotImplementedError(
-            'InstanceTypesService.find_instance not implemented by this'
-            'provider')
+        pass

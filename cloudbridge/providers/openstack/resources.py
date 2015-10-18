@@ -497,6 +497,16 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         self._snapshot.delete()
 
+    def create_volume(self, placement, size=None, volume_type=None, iops=None):
+        raise NotImplementedError(
+            'create_volume not implemented by this provider')
+
+    def share(self, user_ids=None):
+        raise NotImplementedError('share not implemented by this provider')
+
+    def unshare(self, user_ids=None):
+        raise NotImplementedError('share not implemented by this provider')
+
     def __repr__(self):
         return "<CB-OSSnapshot: {0} ({1}>".format(self.snapshot_id, self.name)
 

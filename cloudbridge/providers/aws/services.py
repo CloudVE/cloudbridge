@@ -4,21 +4,22 @@ Services implemented by the AWS provider.
 from boto.exception import EC2ResponseError
 import requests
 
-from cloudbridge.providers.interfaces import BlockStoreService
-from cloudbridge.providers.interfaces import ComputeService
-from cloudbridge.providers.interfaces import ImageService
+from cloudbridge.providers.base import BaseBlockStoreService
+from cloudbridge.providers.base import BaseComputeService
+from cloudbridge.providers.base import BaseImageService
+from cloudbridge.providers.base import BaseInstanceTypesService
+from cloudbridge.providers.base import BaseKeyPairService
+from cloudbridge.providers.base import BaseObjectStoreService
+from cloudbridge.providers.base import BaseSecurityGroupService
+from cloudbridge.providers.base import BaseSecurityService
+from cloudbridge.providers.base import BaseSnapshotService
+from cloudbridge.providers.base import BaseVolumeService
+
 from cloudbridge.providers.interfaces import InstanceType
-from cloudbridge.providers.interfaces import InstanceTypesService
 from cloudbridge.providers.interfaces import KeyPair
-from cloudbridge.providers.interfaces import KeyPairService
 from cloudbridge.providers.interfaces import MachineImage
-from cloudbridge.providers.interfaces import ObjectStoreService
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
-from cloudbridge.providers.interfaces import SecurityGroupService
-from cloudbridge.providers.interfaces import SecurityService
-from cloudbridge.providers.interfaces import SnapshotService
-from cloudbridge.providers.interfaces import VolumeService
 
 from .resources import AWSContainer
 from .resources import AWSInstance
@@ -30,10 +31,10 @@ from .resources import AWSSnapshot
 from .resources import AWSVolume
 
 
-class AWSSecurityService(SecurityService):
+class AWSSecurityService(BaseSecurityService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSSecurityService, self).__init__(provider)
 
         # Initialize provider services
         self._key_pairs = AWSKeyPairService(provider)
@@ -60,10 +61,10 @@ class AWSSecurityService(SecurityService):
         return self._security_groups
 
 
-class AWSKeyPairService(KeyPairService):
+class AWSKeyPairService(BaseKeyPairService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSKeyPairService, self).__init__(provider)
 
     def list(self):
         """
@@ -72,8 +73,8 @@ class AWSKeyPairService(KeyPairService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        key_pairs = self._provider.ec2_conn.get_all_key_pairs()
-        return [AWSKeyPair(self._provider, kp) for kp in key_pairs]
+        key_pairs = self.provider.ec2_conn.get_all_key_pairs()
+        return [AWSKeyPair(self.provider, kp) for kp in key_pairs]
 
     def create(self, name):
         """
@@ -85,9 +86,9 @@ class AWSKeyPairService(KeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or None if one was not be created.
         """
-        kp = self._provider.ec2_conn.create_key_pair(name)
+        kp = self.provider.ec2_conn.create_key_pair(name)
         if kp:
-            return AWSKeyPair(self._provider, kp)
+            return AWSKeyPair(self.provider, kp)
         return None
 
     def delete(self, name):
@@ -102,17 +103,17 @@ class AWSKeyPairService(KeyPairService):
                   that this implies that the key may not have been deleted by
                   this method but instead has not existed in the first place.
         """
-        for kp in self._provider.ec2_conn.get_all_key_pairs():
+        for kp in self.provider.ec2_conn.get_all_key_pairs():
             if kp.name == name:
                 kp.delete()
                 return True
         return True
 
 
-class AWSSecurityGroupService(SecurityGroupService):
+class AWSSecurityGroupService(BaseSecurityGroupService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSSecurityGroupService, self).__init__(provider)
 
     def list(self):
         """
@@ -121,8 +122,8 @@ class AWSSecurityGroupService(SecurityGroupService):
         :rtype: ``list`` of :class:`.SecurityGroup`
         :return:  list of SecurityGroup objects
         """
-        security_groups = self._provider.ec2_conn.get_all_security_groups()
-        return [AWSSecurityGroup(self._provider, sg) for sg in security_groups]
+        security_groups = self.provider.ec2_conn.get_all_security_groups()
+        return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
 
     def create(self, name, description):
         """
@@ -137,9 +138,9 @@ class AWSSecurityGroupService(SecurityGroupService):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.
         """
-        sg = self._provider.ec2_conn.create_security_group(name, description)
+        sg = self.provider.ec2_conn.create_security_group(name, description)
         if sg:
-            return AWSSecurityGroup(self._provider, sg)
+            return AWSSecurityGroup(self.provider, sg)
         return None
 
     def get(self, group_names=None, group_ids=None):
@@ -161,11 +162,11 @@ class AWSSecurityGroupService(SecurityGroupService):
         found.
         """
         try:
-            security_groups = self._provider.ec2_conn.get_all_security_groups(
+            security_groups = self.provider.ec2_conn.get_all_security_groups(
                 groupnames=group_names, group_ids=group_ids)
         except EC2ResponseError:
             security_groups = []
-        return [AWSSecurityGroup(self._provider, sg) for sg in security_groups]
+        return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
 
     def delete(self, group_id):
         """
@@ -181,7 +182,7 @@ class AWSSecurityGroupService(SecurityGroupService):
                   the first place.
         """
         try:
-            for sg in self._provider.ec2_conn.get_all_security_groups(
+            for sg in self.provider.ec2_conn.get_all_security_groups(
                     group_ids=[group_id]):
                 try:
                     sg.delete()
@@ -192,14 +193,14 @@ class AWSSecurityGroupService(SecurityGroupService):
         return True
 
 
-class AWSBlockStoreService(BlockStoreService):
+class AWSBlockStoreService(BaseBlockStoreService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSBlockStoreService, self).__init__(provider)
 
         # Initialize provider services
-        self._volumes = AWSVolumeService(self._provider)
-        self._snapshots = AWSSnapshotService(self._provider)
+        self._volumes = AWSVolumeService(self.provider)
+        self._snapshots = AWSSnapshotService(self.provider)
 
     @property
     def volumes(self):
@@ -210,17 +211,17 @@ class AWSBlockStoreService(BlockStoreService):
         return self._snapshots
 
 
-class AWSVolumeService(VolumeService):
+class AWSVolumeService(BaseVolumeService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSVolumeService, self).__init__(provider)
 
     def get_volume(self, volume_id):
         """
         Returns a volume given its id.
         """
-        vols = self._provider.ec2_conn.get_all_volumes(volume_ids=[volume_id])
-        return AWSVolume(self._provider, vols[0]) if vols else None
+        vols = self.provider.ec2_conn.get_all_volumes(volume_ids=[volume_id])
+        return AWSVolume(self.provider, vols[0]) if vols else None
 
     def find_volume(self, name):
         """
@@ -233,8 +234,8 @@ class AWSVolumeService(VolumeService):
         """
         List all volumes.
         """
-        return [AWSVolume(self._provider, vol)
-                for vol in self._provider.ec2_conn.get_all_volumes()]
+        return [AWSVolume(self.provider, vol)
+                for vol in self.provider.ec2_conn.get_all_volumes()]
 
     def create_volume(self, name, size, zone, snapshot=None):
         """
@@ -244,28 +245,28 @@ class AWSVolumeService(VolumeService):
         snapshot_id = snapshot.snapshot_id if isinstance(
             zone, AWSSnapshot) and snapshot else snapshot
 
-        ec2_vol = self._provider.ec2_conn.create_volume(
+        ec2_vol = self.provider.ec2_conn.create_volume(
             size,
             zone_name,
             snapshot=snapshot_id)
-        cb_vol = AWSVolume(self._provider, ec2_vol)
+        cb_vol = AWSVolume(self.provider, ec2_vol)
         cb_vol.name = name
         return cb_vol
 
 
-class AWSObjectStoreService(ObjectStoreService):
+class AWSObjectStoreService(BaseObjectStoreService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSObjectStoreService, self).__init__(provider)
 
     def get_container(self, container_id):
         """
         Returns a container given its id. Returns None if the container
         does not exist.
         """
-        bucket = self._provider.s3_conn.lookup(container_id)
+        bucket = self.provider.s3_conn.lookup(container_id)
         if bucket:
-            return AWSContainer(self._provider, bucket)
+            return AWSContainer(self.provider, bucket)
         else:
             return None
 
@@ -280,31 +281,31 @@ class AWSObjectStoreService(ObjectStoreService):
         """
         List all containers.
         """
-        buckets = self._provider.s3_conn.get_all_buckets()
-        return [AWSContainer(self._provider, bucket) for bucket in buckets]
+        buckets = self.provider.s3_conn.get_all_buckets()
+        return [AWSContainer(self.provider, bucket) for bucket in buckets]
 
     def create_container(self, name, location=None):
         """
         Create a new container.
         """
-        bucket = self._provider.s3_conn.create_bucket(
+        bucket = self.provider.s3_conn.create_bucket(
             name,
             location=location if location else '')
-        return AWSContainer(self._provider, bucket)
+        return AWSContainer(self.provider, bucket)
 
 
-class AWSSnapshotService(SnapshotService):
+class AWSSnapshotService(BaseSnapshotService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSSnapshotService, self).__init__(provider)
 
     def get_snapshot(self, snapshot_id):
         """
         Returns a snapshot given its id.
         """
-        snaps = self._provider.ec2_conn.get_all_snapshots(
+        snaps = self.provider.ec2_conn.get_all_snapshots(
             snapshot_ids=[snapshot_id])
-        return AWSSnapshot(self._provider, snaps[0]) if snaps else None
+        return AWSSnapshot(self.provider, snaps[0]) if snaps else None
 
     def find_snapshot(self, name):
         """
@@ -319,9 +320,9 @@ class AWSSnapshotService(SnapshotService):
         """
         # TODO: get_all_images returns too many images - some kind of filtering
         # abilities are needed. Forced to "self" for now
-        return [AWSSnapshot(self._provider, snap)
+        return [AWSSnapshot(self.provider, snap)
                 for snap in
-                self._provider.ec2_conn.get_all_snapshots(owner="self")]
+                self.provider.ec2_conn.get_all_snapshots(owner="self")]
 
     def create_snapshot(self, name, volume, description=None):
         """
@@ -331,27 +332,27 @@ class AWSSnapshotService(SnapshotService):
             volume,
             AWSVolume) else volume
 
-        ec2_snap = self._provider.ec2_conn.create_snapshot(
+        ec2_snap = self.provider.ec2_conn.create_snapshot(
             volume_id,
             description=description)
-        cb_snap = AWSSnapshot(self._provider, ec2_snap)
+        cb_snap = AWSSnapshot(self.provider, ec2_snap)
         cb_snap.name = name
         return cb_snap
 
 
-class AWSImageService(ImageService):
+class AWSImageService(BaseImageService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSImageService, self).__init__(provider)
 
     def get_image(self, image_id):
         """
         Returns an Image given its id
         """
         try:
-            image = self._provider.ec2_conn.get_image(image_id)
+            image = self.provider.ec2_conn.get_image(image_id)
             if image:
-                return AWSMachineImage(self._provider, image)
+                return AWSMachineImage(self.provider, image)
         except EC2ResponseError:
             pass
 
@@ -370,19 +371,15 @@ class AWSImageService(ImageService):
         """
         # TODO: get_all_images returns too many images - some kind of filtering
         # abilities are needed. Forced to "self" for now
-        images = self._provider.ec2_conn.get_all_images(owners="self")
-        return [AWSMachineImage(self._provider, image) for image in images]
+        images = self.provider.ec2_conn.get_all_images(owners="self")
+        return [AWSMachineImage(self.provider, image) for image in images]
 
 
-class AWSComputeService(ComputeService):
+class AWSComputeService(BaseComputeService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSComputeService, self).__init__(provider)
         self._instance_types = AWSInstanceTypesService(self.provider)
-
-    @property
-    def provider(self):
-        return self._provider
 
     @property
     def instance_types(self):
@@ -411,14 +408,14 @@ class AWSComputeService(ComputeService):
         else:
             security_groups_list = None
 
-        reservation = self._provider.ec2_conn.run_instances(
+        reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
             min_count=1, max_count=1, placement=zone_name,
             key_name=keypair_name, security_groups=security_groups_list,
             user_data=user_data
         )
         if reservation:
-            instance = AWSInstance(self._provider, reservation.instances[0])
+            instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
         return instance
 
@@ -427,10 +424,10 @@ class AWSComputeService(ComputeService):
         Returns an instance given its id. Returns None
         if the object does not exist.
         """
-        reservation = self._provider.ec2_conn.get_all_reservations(
+        reservation = self.provider.ec2_conn.get_all_reservations(
             instance_ids=[instance_id])
         if reservation:
-            return AWSInstance(self._provider, reservation[0].instances[0])
+            return AWSInstance(self.provider, reservation[0].instances[0])
         else:
             return None
 
@@ -448,32 +445,42 @@ class AWSComputeService(ComputeService):
         """
         List all instances.
         """
-        reservations = self._provider.ec2_conn.get_all_reservations()
-        return [AWSInstance(self._provider, inst)
+        reservations = self.provider.ec2_conn.get_all_reservations()
+        return [AWSInstance(self.provider, inst)
                 for res in reservations
                 for inst in res.instances]
+
+    def list_regions(self):
+        """
+        List all data center regions for this provider.
+
+        :rtype: ``list`` of :class:`.Region`
+        :return: list of Region objects
+        """
+        raise NotImplementedError(
+            'list_regions not implemented by this provider')
 
 
 AWS_INSTANCE_DATA_DEFAULT_URL = "https://swift.rc.nectar.org.au:8888/v1/" \
                                 "AUTH_377/cloud-bridge/aws/instance_data.json"
 
 
-class AWSInstanceTypesService(InstanceTypesService):
+class AWSInstanceTypesService(BaseInstanceTypesService):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(AWSInstanceTypesService, self).__init__(provider)
 
     @property
     def instance_data(self):
         """
         TODO: Neeeds a caching function with timeout
         """
-        r = requests.get(self._provider.config.get(
+        r = requests.get(self.provider.config.get(
             "aws_instance_info_url", AWS_INSTANCE_DATA_DEFAULT_URL))
         return r.json()
 
     def list(self):
-        return [AWSInstanceType(self._provider, inst_data)
+        return [AWSInstanceType(self.provider, inst_data)
                 for inst_data in self.instance_data]
 
     def find_by_name(self, name):

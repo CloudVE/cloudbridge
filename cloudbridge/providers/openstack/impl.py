@@ -49,6 +49,11 @@ class OpenStackCloudProviderV1(BaseCloudProvider):
         self._object_store = OpenStackObjectStoreService(self)
 
     @property
+    def account(self):
+        raise NotImplementedError(
+            'account not implemented by this provider')
+
+    @property
     def compute(self):
         return self._compute
 

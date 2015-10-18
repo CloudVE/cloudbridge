@@ -1,6 +1,7 @@
 """
 Specifications for data objects exposed through a provider or service
 """
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class CloudProviderServiceType(object):
@@ -48,7 +49,9 @@ class ObjectLifeCycleMixin(object):
     A refresh operation allows the object to synchronise its state with the
     service provider.
     """
-    @property
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
     def state(self):
         """
         Get the current state of this object.
@@ -56,17 +59,17 @@ class ObjectLifeCycleMixin(object):
         :rtype: ``str``
         :return: The current state as a string
         """
-        raise NotImplementedError(
-            'LifeCycleObject.state not implemented by this service')
+        pass
 
+    @abstractmethod
     def refresh(self):
         """
         Refreshs this object's state and synchronize it with the underlying
         service provider.
         """
-        raise NotImplementedError(
-            'LifeCycleObject.refresh not implemented by this service')
+        pass
 
+    @abstractmethod
     def wait_till_ready(self, timeout, interval):
         """
         Wait till the current object is in a ready state, which is any
@@ -87,8 +90,7 @@ class ObjectLifeCycleMixin(object):
         be thrown by the underlying service if the object cannot get into a
         ready state (e.g. If the object is in an error state)
         """
-        raise NotImplementedError(
-            'LifeCycleObject.wait_till_ready not implemented by this service')
+        pass
 
 
 class InstanceState(object):
@@ -118,7 +120,9 @@ class InstanceState(object):
 
 class Instance(ObjectLifeCycleMixin):
 
-    @property
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
     def instance_id(self):
         """
         Get the instance identifier.
@@ -126,10 +130,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: str
         :return: ID for this instance as returned by the cloud middleware.
         """
-        raise NotImplementedError(
-            'Instance.instance_id not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def name(self):
         """
         Get the instance name.
@@ -137,10 +140,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: str
         :return: Name for this instance as returned by the cloud middleware.
         """
-        raise NotImplementedError(
-            'Instance.name not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def public_ips(self):
         """
         Get all the public IP addresses for this instance.
@@ -148,10 +150,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: list
         :return: A list of public IP addresses associated with this instance.
         """
-        raise NotImplementedError(
-            'Instance.public_ips not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def private_ips(self):
         """
         Get all the private IP addresses for this instance.
@@ -159,10 +160,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: list
         :return: A list of private IP addresses associated with this instance.
         """
-        raise NotImplementedError(
-            'Instance.private_ips not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def instance_type(self):
         """
         Get the instance type.
@@ -170,9 +170,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: str
         :return: API type of this instance (e.g., ``m1.large``)
         """
-        raise NotImplementedError(
-            'Instance.instance_type not implemented by this provider')
+        pass
 
+    @abstractmethod
     def reboot(self):
         """
         Reboot this instance (using the cloud middleware API).
@@ -180,9 +180,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: bool
         :return: ``True`` if the reboot was succesful; ``False`` otherwise.
         """
-        raise NotImplementedError(
-            'Instance.reboot not implemented by this provider')
+        pass
 
+    @abstractmethod
     def terminate(self):
         """
         Permanently terminate this instance.
@@ -191,10 +191,9 @@ class Instance(ObjectLifeCycleMixin):
         :return: ``True`` if the termination of the instance was succesfully
                  initiated; ``False`` otherwise.
         """
-        raise NotImplementedError(
-            'Instance.terminate not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def image_id(self):
         """
         Get the image ID for this insance.
@@ -202,10 +201,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: str
         :return: Image ID (i.e., AMI) this instance is using.
         """
-        raise NotImplementedError(
-            'Instance.image_id not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def placement_zone(self):
         """
         Get the placement zone where this instance is running.
@@ -213,10 +211,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: str
         :return: Region/zone/placement where this instance is running.
         """
-        raise NotImplementedError(
-            'Instance.placement not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def mac_address(self):
         """
         Get the MAC address for this instance.
@@ -224,10 +221,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: str
         :return: MAC address for ths instance.
         """
-        raise NotImplementedError(
-            'Instance.mac_address not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def security_groups(self):
         """
         Get the security groups associated with this instance.
@@ -235,10 +231,9 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: list or :class:``SecurityGroup`` objects
         :return: A list of SecurityGroup objects associated with this instance.
         """
-        raise NotImplementedError(
-            'Instance.security_groups not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def key_pair_name(self):
         """
         Get the name of the key pair associated with this instance.
@@ -246,17 +241,16 @@ class Instance(ObjectLifeCycleMixin):
         :rtype: str
         :return: Name of the ssh key pair associated with this instance.
         """
-        raise NotImplementedError(
-            'Instance.key_pair_name not implemented by this provider')
+        pass
 
+    @abstractmethod
     def create_image(self, name):
         """
         Create a new image based on this instance.
         :return:  an Image object
         :rtype: ``object`` of :class:`.Image`
         """
-        raise NotImplementedError(
-            'Instance.create_image not implemented by this provider')
+        pass
 
 
 class MachineImageState(object):
@@ -278,7 +272,9 @@ class MachineImageState(object):
 
 class MachineImage(ObjectLifeCycleMixin):
 
-    @property
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
     def image_id(self):
         """
         Get the image identifier.
@@ -286,10 +282,9 @@ class MachineImage(ObjectLifeCycleMixin):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        raise NotImplementedError(
-            'MachineImage.image_id not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def name(self):
         """
         Get the image name.
@@ -297,10 +292,9 @@ class MachineImage(ObjectLifeCycleMixin):
         :rtype: ``str``
         :return: Name for this image as returned by the cloud middleware.
         """
-        raise NotImplementedError(
-            'MachineImage.name not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def description(self):
         """
         Get the image description.
@@ -308,9 +302,9 @@ class MachineImage(ObjectLifeCycleMixin):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        raise NotImplementedError(
-            'MachineImage.description not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self):
         """
         Delete this image
@@ -318,8 +312,7 @@ class MachineImage(ObjectLifeCycleMixin):
         :rtype: ``bool``
         :return: True if the operation succeeded
         """
-        raise NotImplementedError(
-            'MachineImage.delete not implemented by this provider')
+        pass
 
 
 class VolumeState(object):
@@ -347,7 +340,9 @@ class VolumeState(object):
 
 class Volume(ObjectLifeCycleMixin):
 
-    @property
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
     def volume_id(self):
         """
         Get the volume identifier.
@@ -355,10 +350,9 @@ class Volume(ObjectLifeCycleMixin):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        raise NotImplementedError(
-            'Volume.volume_id not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def name(self):
         """
         Get the volume name.
@@ -366,9 +360,9 @@ class Volume(ObjectLifeCycleMixin):
         :rtype: ``str``
         :return: Name for this volume as returned by the cloud middleware.
         """
-        raise NotImplementedError(
-            'Volume.name not implemented by this provider')
+        pass
 
+    @abstractmethod
     def attach(self, instance_id, device):
         """
         Attach this volume to an instance.
@@ -384,9 +378,9 @@ class Volume(ObjectLifeCycleMixin):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError(
-            'Volume.attach not implemented by this provider')
+        pass
 
+    @abstractmethod
     def detach(self, force=False):
         """
         Detach this volume from an instance.
@@ -404,9 +398,9 @@ class Volume(ObjectLifeCycleMixin):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError(
-            'Volume.detach not implemented by this provider')
+        pass
 
+    @abstractmethod
     def create_snapshot(self, description=None):
         """
         Create a snapshot of this Volume.
@@ -418,9 +412,9 @@ class Volume(ObjectLifeCycleMixin):
         :rtype: :class:`.Snapshot`
         :return: The created Snapshot object
         """
-        raise NotImplementedError(
-            'Volume.snapshot not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self):
         """
         Delete this volume.
@@ -428,8 +422,7 @@ class Volume(ObjectLifeCycleMixin):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError(
-            'Volume.delete not implemented by this provider')
+        pass
 
 
 class SnapshotState(object):
@@ -453,6 +446,9 @@ class SnapshotState(object):
 
 class Snapshot(ObjectLifeCycleMixin):
 
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.
@@ -476,9 +472,9 @@ class Snapshot(ObjectLifeCycleMixin):
         :rtype: :class:`.Volume`
         :return: An instance of the created Volume
         """
-        raise NotImplementedError(
-            'create_volume not implemented by this provider')
+        pass
 
+    @abstractmethod
     def share(self, user_ids=None):
         """
         Share this Snapshot.
@@ -490,8 +486,9 @@ class Snapshot(ObjectLifeCycleMixin):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError('share not implemented by this provider')
+        pass
 
+    @abstractmethod
     def unshare(self, user_ids=None):
         """
         Unshare this Snapshot.
@@ -503,8 +500,9 @@ class Snapshot(ObjectLifeCycleMixin):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError('unshare not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self):
         """
         Delete this snapshot.
@@ -512,12 +510,14 @@ class Snapshot(ObjectLifeCycleMixin):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError('delete not implemented by this provider')
+        pass
 
 
 class KeyPair(object):
 
-    @property
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
     def name(self):
         """
         Return the name of this key pair.
@@ -525,10 +525,9 @@ class KeyPair(object):
         :rtype: str
         :return: A name of this ssh key pair
         """
-        raise NotImplementedError(
-            'name not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def material(self):
         """
         Unencrypted private key.
@@ -536,9 +535,9 @@ class KeyPair(object):
         :rtype: str
         :return: Unencrypted private key or ``None`` if not available.
         """
-        raise NotImplementedError(
-            'material not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self):
         """
         Delete this key pair.
@@ -546,8 +545,7 @@ class KeyPair(object):
         :rtype: bool
         :return: ``True`` is successful.
         """
-        raise NotImplementedError(
-            'delete not implemented by this provider')
+        pass
 
 
 class Region(object):
@@ -556,8 +554,9 @@ class Region(object):
     Represents a cloud region, typically a separate geographic area and will
     contain at least one placement zone.
     """
+    __metaclass__ = ABCMeta
 
-    @property
+    @abstractproperty
     def name(self):
         """
         Name of the region.
@@ -565,9 +564,9 @@ class Region(object):
         :rtype: str
         :return: Name of the region.
         """
-        raise NotImplementedError(
-            'name not implemented by this provider')
+        pass
 
+    @abstractmethod
     def list_zones(self):
         """
         List all available placement zones within this region.
@@ -575,8 +574,7 @@ class Region(object):
         :rtype: list
         :return: List of all the available placement zones.
         """
-        raise NotImplementedError(
-            'list_zones not implemented by this provider')
+        pass
 
 
 class PlacementZone(object):
@@ -584,8 +582,9 @@ class PlacementZone(object):
     """
     Represents a placement zone. A placement zone is contained within a Region.
     """
+    __metaclass__ = ABCMeta
 
-    @property
+    @abstractproperty
     def name(self):
         """
         Name of the placement zone.
@@ -593,10 +592,9 @@ class PlacementZone(object):
         :rtype: str
         :return: Name of the placement zone.
         """
-        raise NotImplementedError(
-            'PlacementZone.name not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def region(self):
         """
         A region this placement zone is associated with.
@@ -604,8 +602,7 @@ class PlacementZone(object):
         :rtype: str
         :return: The name of the region the zone is associated with.
         """
-        raise NotImplementedError(
-            'region_name not implemented by this provider')
+        pass
 
 
 class InstanceType(object):
@@ -613,18 +610,17 @@ class InstanceType(object):
     """
     An instance type object.
     """
+    __metaclass__ = ABCMeta
 
-    @property
+    @abstractproperty
     def id(self):
-        raise NotImplementedError(
-            'InstanceType.id not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def name(self):
-        raise NotImplementedError(
-            'InstanceType.name not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def family(self):
         """
         The family/group that this instance type belongs to. For example,
@@ -634,10 +630,9 @@ class InstanceType(object):
         :rtype: str
         :return: Name of the instance family.
         """
-        raise NotImplementedError(
-            'InstanceType.family not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def vcpus(self):
         """
         The number of VCPUs supported by this instance type.
@@ -645,10 +640,9 @@ class InstanceType(object):
         :rtype: int
         :return: Number of VCPUs
         """
-        raise NotImplementedError(
-            'InstanceType.vcpus not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def ram(self):
         """
         The amount of RAM (in mb) supported by this instance type.
@@ -656,10 +650,9 @@ class InstanceType(object):
         :rtype: int
         :return: Total RAM (in MB).
         """
-        raise NotImplementedError(
-            'InstanceType.ram not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def root_disk(self):
         """
         The size of this instance types's root disk (in GB).
@@ -667,10 +660,9 @@ class InstanceType(object):
         :rtype: int
         :return: Size of root disk (in GB).
         """
-        raise NotImplementedError(
-            'InstanceType.root_disk not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def ephemeral_disk(self):
         """
         The size of this instance types's total ephemeral storage (in GB).
@@ -678,10 +670,9 @@ class InstanceType(object):
         :rtype: int
         :return: Size of ephemeral disks (in GB).
         """
-        raise NotImplementedError(
-            'InstanceType.ephemeral_disk not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def total_disk(self):
         """
         The total disk space available on this instance type.
@@ -690,10 +681,9 @@ class InstanceType(object):
         :rtype: int
         :return: Size of total disk space (in GB).
         """
-        raise NotImplementedError(
-            'InstanceType.total_disk not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def extra_data(self):
         """
         A dictionary of extra data about this instance. May contain
@@ -702,35 +692,14 @@ class InstanceType(object):
         :rtype: dict
         :return: Extra attributes for this instance type
         """
-        raise NotImplementedError(
-            'InstanceType.extra_data not implemented by this provider')
+        pass
 
 
 class SecurityGroup(object):
 
-    @property
-    def name(self):
-        """
-        Return the name of this security group.
+    __metaclass__ = ABCMeta
 
-        :rtype: str
-        :return: A name of this security group.
-        """
-        raise NotImplementedError(
-            'name not implemented by this provider')
-
-    @property
-    def description(self):
-        """
-        Return the description of this security group.
-
-        :rtype: str
-        :return: A description of this security group.
-        """
-        raise NotImplementedError(
-            'description not implemented by this provider')
-
-    @property
+    @abstractproperty
     def id(self):
         """
         Get the ID of this security group.
@@ -738,10 +707,29 @@ class SecurityGroup(object):
         :rtype: str
         :return: Security group ID
         """
-        raise NotImplementedError(
-            'id not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
+    def name(self):
+        """
+        Return the name of this security group.
+
+        :rtype: str
+        :return: A name of this security group.
+        """
+        pass
+
+    @abstractproperty
+    def description(self):
+        """
+        Return the description of this security group.
+
+        :rtype: str
+        :return: A description of this security group.
+        """
+        pass
+
+    @abstractproperty
     def rules(self):
         """
         Get the list of rules for this security group.
@@ -749,9 +737,9 @@ class SecurityGroup(object):
         :rtype: list of :class:``.SecurityGroupRule``
         :return: A list of security group rule objects
         """
-        raise NotImplementedError(
-            'rules not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self):
         """
         Delete this security group.
@@ -759,9 +747,9 @@ class SecurityGroup(object):
         :rtype: bool
         :return: ``True`` is successful.
         """
-        raise NotImplementedError(
-            'delete not implemented by this provider')
+        pass
 
+    @abstractmethod
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
         """
@@ -790,8 +778,7 @@ class SecurityGroup(object):
         :rtype: bool
         :return: True if successful.
         """
-        raise NotImplementedError(
-            'add_rule not implemented by this provider')
+        pass
 
 
 class SecurityGroupRule(object):
@@ -799,40 +786,37 @@ class SecurityGroupRule(object):
     """
     Represents a security group rule.
     """
+    __metaclass__ = ABCMeta
 
-    @property
+    @abstractproperty
     def ip_protocol(self):
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
         """
-        raise NotImplementedError(
-            'ip_protocol not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def from_port(self):
         """
         Lowest port number opened as part of this rule.
         """
-        raise NotImplementedError(
-            'from_port not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def to_port(self):
         """
         Highest port number opened as part of this rule.
         """
-        raise NotImplementedError(
-            'to_port not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def cidr_ip(self):
         """
         CIDR block this security group is providing access to.
         """
-        raise NotImplementedError(
-            'cidr_ip not implemented by this provider')
+        pass
 
-    @property
+    @abstractproperty
     def group(self):
         """
         Security group given access permissions by this rule.
@@ -840,8 +824,7 @@ class SecurityGroupRule(object):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return: The Security Group with granting access.
         """
-        raise NotImplementedError(
-            'group not implemented by this provider')
+        pass
 
 
 class ContainerObject(object):
@@ -849,8 +832,9 @@ class ContainerObject(object):
     """
     Represents an object stored within a container.
     """
+    __metaclass__ = ABCMeta
 
-    @property
+    @abstractproperty
     def name(self):
         """
         Get this object's name.
@@ -858,9 +842,9 @@ class ContainerObject(object):
         :rtype: ``str``
         :return: Name of this object as returned by the cloud middleware.
         """
-        raise NotImplementedError(
-            'ContainerObject.name not implemented by this provider')
+        pass
 
+    @abstractmethod
     def download(self, target_stream):
         """
         Download this object and write its
@@ -869,9 +853,9 @@ class ContainerObject(object):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError(
-            'ContainerObject.download not implemented by this provider')
+        pass
 
+    @abstractmethod
     def upload(self, source_stream):
         """
         Set the contents of this object to the data read from the source
@@ -880,9 +864,9 @@ class ContainerObject(object):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError(
-            'ContainerObject.upload not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self):
         """
         Delete this object.
@@ -890,13 +874,14 @@ class ContainerObject(object):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError(
-            'ContainerObject.delete not implemented by this provider')
+        pass
 
 
 class Container(object):
 
-    @property
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
     def name(self):
         """
         Get this container's name.
@@ -904,9 +889,9 @@ class Container(object):
         :rtype: ``str``
         :return: Name of this container as returned by the cloud middleware.
         """
-        raise NotImplementedError(
-            'Container.name not implemented by this provider')
+        pass
 
+    @abstractmethod
     def get(self, key):
         """
         Retrieve a given object from this container.
@@ -917,9 +902,9 @@ class Container(object):
         :rtype: ContainerObject
         :return: The ContainerObject or None if it cannot be found.
         """
-        raise NotImplementedError(
-            'Container.list not implemented by this provider')
+        pass
 
+    @abstractmethod
     def list(self):
         """
         List all objects within this container.
@@ -927,9 +912,9 @@ class Container(object):
         :rtype: ContainerObject
         :return: List of all available ContainerObjects within this container
         """
-        raise NotImplementedError(
-            'Container.list not implemented by this provider')
+        pass
 
+    @abstractmethod
     def delete(self, delete_contents=False):
         """
         Delete this container.
@@ -941,5 +926,4 @@ class Container(object):
         :rtype: bool
         :return: True if successful
         """
-        raise NotImplementedError(
-            'Container.delete not implemented by this provider')
+        pass
