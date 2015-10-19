@@ -2,6 +2,7 @@ import unittest
 from cloudbridge.providers import factory
 from cloudbridge.providers import interfaces
 from cloudbridge.providers.factory import CloudProviderFactory
+import helpers
 
 
 class ProviderFactoryTestCase(unittest.TestCase):
@@ -50,3 +51,34 @@ class ProviderFactoryTestCase(unittest.TestCase):
             CloudProviderFactory().find_provider_impl("openstack1"))
         self.assertIsNone(CloudProviderFactory().find_provider_impl(
             factory.ProviderList.AWS, version=100))
+
+    def test_find_provider_mock_valid(self):
+        """
+        Searching for a provider with a known mock driver should return
+        an implementation implementing helpers.TestMockHelperMixin
+        """
+        mock = CloudProviderFactory().get_provider_class(
+            factory.ProviderList.AWS, version=1,
+            get_mock=True)
+        self.assertTrue(
+            issubclass(
+                mock,
+                helpers.TestMockHelperMixin),
+            "Expected mock for AWS but class does not implement mock provider")
+        mock = CloudProviderFactory().get_provider_class(
+            factory.ProviderList.AWS, get_mock=True)
+        self.assertTrue(
+            issubclass(
+                mock,
+                helpers.TestMockHelperMixin),
+            "Expected mock for AWS but class does not implement mock provider")
+        mock = CloudProviderFactory().get_provider_class(
+            factory.ProviderList.AWS, version=1,
+            get_mock=False)
+        for cls in CloudProviderFactory().get_all_provider_classes(
+                get_mock=False):
+            self.assertTrue(
+                not issubclass(
+                    mock,
+                    helpers.TestMockHelperMixin),
+                "Did not expect mock but class implements mock provider")
