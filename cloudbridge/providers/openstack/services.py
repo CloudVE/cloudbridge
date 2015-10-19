@@ -7,6 +7,7 @@ from novaclient.exceptions import NotFound as NovaNotFound
 from cloudbridge.providers.base import BaseBlockStoreService
 from cloudbridge.providers.base import BaseComputeService
 from cloudbridge.providers.base import BaseImageService
+from cloudbridge.providers.base import BaseInstanceService
 from cloudbridge.providers.base import BaseInstanceTypesService
 from cloudbridge.providers.base import BaseKeyPairService
 from cloudbridge.providers.base import BaseObjectStoreService
@@ -14,7 +15,6 @@ from cloudbridge.providers.base import BaseSecurityGroupService
 from cloudbridge.providers.base import BaseSecurityService
 from cloudbridge.providers.base import BaseSnapshotService
 from cloudbridge.providers.base import BaseVolumeService
-
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
@@ -392,16 +392,36 @@ class OpenStackComputeService(BaseComputeService):
 
     def __init__(self, provider):
         super(OpenStackComputeService, self).__init__(provider)
-        self._instance_types = OpenStackInstanceTypesService(self._provider)
+        self._instance_type_svc = OpenStackInstanceTypesService(self._provider)
+        self._instance_svc = OpenStackInstanceService(self._provider)
 
     @property
     def instance_types(self):
-        return self._instance_types
+        return self._instance_type_svc
 
-    def create_instance(self, name, image, instance_type, zone=None,
-                        keypair=None, security_groups=None, user_data=None,
-                        block_device_mapping=None, network_interfaces=None,
-                        **kwargs):
+    @property
+    def instances(self):
+        return self._instance_svc
+
+    def list_regions(self):
+        """
+        List all data center regions.
+        """
+        # detailed must be set to ``False`` because the (default) ``True``
+        # value requires Admin priviledges
+        regions = self._provider.nova.availability_zones.list(detailed=False)
+        return [OpenStackRegion(self._provider, region) for region in regions]
+
+
+class OpenStackInstanceService(BaseInstanceService):
+
+    def __init__(self, provider):
+        super(OpenStackInstanceService, self).__init__(provider)
+
+    def create(self, name, image, instance_type, zone=None,
+               keypair=None, security_groups=None, user_data=None,
+               block_device_mapping=None, network_interfaces=None,
+               **kwargs):
         """
         Creates a new virtual machine instance.
         """
@@ -433,14 +453,14 @@ class OpenStackComputeService(BaseComputeService):
             userdata=user_data)
         return OpenStackInstance(self._provider, os_instance)
 
-    def find_instance(self, name):
+    def find(self, name):
         """
         Searches for an instance by a given list of attributes.
         """
         raise NotImplementedError(
             'find_instance not implemented by this provider')
 
-    def list_instances(self):
+    def list(self):
         """
         List all instances.
         """
@@ -448,16 +468,7 @@ class OpenStackComputeService(BaseComputeService):
         return [OpenStackInstance(self._provider, instance)
                 for instance in instances]
 
-    def list_regions(self):
-        """
-        List all data center regions.
-        """
-        # detailed must be set to ``False`` because the (default) ``True``
-        # value requires Admin priviledges
-        regions = self._provider.nova.availability_zones.list(detailed=False)
-        return [OpenStackRegion(self._provider, region) for region in regions]
-
-    def get_instance(self, instance_id):
+    def get(self, instance_id):
         """
         Returns an instance given its id.
         """

@@ -65,7 +65,7 @@ def get_provider_test_data(provider, key):
 
 
 def create_test_instance(provider, instance_name):
-    return provider.compute.create_instance(
+    return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'))

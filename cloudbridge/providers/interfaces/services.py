@@ -29,37 +29,6 @@ class ComputeService(ProviderService):
     """
     __metaclass__ = ABCMeta
 
-    @abstractmethod
-    def get_instance(self, instance_id):
-        """
-        Returns an instance given its id. Returns None
-        if the object does not exist.
-
-        :rtype: ``object`` of :class:`.Instance`
-        :return:  an Instance object
-        """
-        pass
-
-    @abstractmethod
-    def find_instance(self, name):
-        """
-        Searches for an instance by a given list of attributes.
-
-        :rtype: ``object`` of :class:`.Instance`
-        :return: an Instance object
-        """
-        pass
-
-    @abstractmethod
-    def list_instances(self):
-        """
-        List all instances.
-
-        :rtype: ``list`` of :class:`.Instance`
-        :return: list of Instance objects
-        """
-        pass
-
     @abstractproperty
     def instance_types(self):
         """
@@ -67,6 +36,16 @@ class ComputeService(ProviderService):
 
         :rtype: ``object`` of :class:`.InstanceTypeService`
         :return:  an InstanceTypeService object
+        """
+        pass
+
+    @abstractproperty
+    def instances(self):
+        """
+        Provides access to all Instance related services in this provider.
+
+        :rtype: ``object`` of :class:`.InstanceService`
+        :return:  an InstanceService object
         """
         pass
 
@@ -80,12 +59,51 @@ class ComputeService(ProviderService):
         """
         pass
 
+
+class InstanceService(ProviderService):
+    """
+    Provides access to instances in a provider, including creating,
+    listing and deleting instances.
+    """
+    __metaclass__ = ABCMeta
+
     @abstractmethod
-    def create_instance(self, name, image, instance_type, zone=None,
-                        keypair=None, security_groups=None, user_data=None,
-                        block_device_mapping=None, network_interfaces=None,
-                        launch_configuration=None,
-                        **kwargs):
+    def get(self, instance_id):
+        """
+        Returns an instance given its id. Returns None
+        if the object does not exist.
+
+        :rtype: ``object`` of :class:`.Instance`
+        :return:  an Instance object
+        """
+        pass
+
+    @abstractmethod
+    def find(self, name):
+        """
+        Searches for an instance by a given list of attributes.
+
+        :rtype: ``object`` of :class:`.Instance`
+        :return: an Instance object
+        """
+        pass
+
+    @abstractmethod
+    def list(self):
+        """
+        List all instances.
+
+        :rtype: ``list`` of :class:`.Instance`
+        :return: list of Instance objects
+        """
+        pass
+
+    @abstractmethod
+    def create(self, name, image, instance_type, zone=None,
+               keypair=None, security_groups=None, user_data=None,
+               block_device_mapping=None, network_interfaces=None,
+               launch_configuration=None,
+               **kwargs):
         """
         Creates a new virtual machine instance.
 

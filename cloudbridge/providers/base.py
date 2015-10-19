@@ -20,10 +20,18 @@ from cloudbridge.providers.interfaces import SnapshotState
 from cloudbridge.providers.interfaces import Volume
 from cloudbridge.providers.interfaces import VolumeState
 from cloudbridge.providers.interfaces import WaitStateException
-from cloudbridge.providers.interfaces.services import ImageService,\
-    ProviderService, ComputeService, VolumeService, SnapshotService,\
-    BlockStoreService, ObjectStoreService, SecurityService, KeyPairService,\
-    SecurityGroupService, InstanceTypesService
+from cloudbridge.providers.interfaces.services import InstanceTypesService
+from cloudbridge.providers.interfaces.services import KeyPairService
+from cloudbridge.providers.interfaces.services import ObjectStoreService
+from cloudbridge.providers.interfaces.services import SecurityGroupService
+from cloudbridge.providers.interfaces.services import SecurityService
+from cloudbridge.providers.interfaces.services import BlockStoreService
+from cloudbridge.providers.interfaces.services import ComputeService
+from cloudbridge.providers.interfaces.services import ImageService
+from cloudbridge.providers.interfaces.services import InstanceService
+from cloudbridge.providers.interfaces.services import ProviderService
+from cloudbridge.providers.interfaces.services import SnapshotService
+from cloudbridge.providers.interfaces.services import VolumeService
 
 
 log = logging.getLogger(__name__)
@@ -349,3 +357,9 @@ class BaseInstanceTypesService(InstanceTypesService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseInstanceTypesService, self).__init__(provider)
+
+
+class BaseInstanceService(InstanceService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseInstanceService, self).__init__(provider)

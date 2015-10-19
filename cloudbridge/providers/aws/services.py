@@ -7,6 +7,7 @@ import requests
 from cloudbridge.providers.base import BaseBlockStoreService
 from cloudbridge.providers.base import BaseComputeService
 from cloudbridge.providers.base import BaseImageService
+from cloudbridge.providers.base import BaseInstanceService
 from cloudbridge.providers.base import BaseInstanceTypesService
 from cloudbridge.providers.base import BaseKeyPairService
 from cloudbridge.providers.base import BaseObjectStoreService
@@ -14,7 +15,6 @@ from cloudbridge.providers.base import BaseSecurityGroupService
 from cloudbridge.providers.base import BaseSecurityService
 from cloudbridge.providers.base import BaseSnapshotService
 from cloudbridge.providers.base import BaseVolumeService
-
 from cloudbridge.providers.interfaces import InstanceType
 from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
@@ -379,16 +379,37 @@ class AWSComputeService(BaseComputeService):
 
     def __init__(self, provider):
         super(AWSComputeService, self).__init__(provider)
-        self._instance_types = AWSInstanceTypesService(self.provider)
+        self._instance_type_svc = AWSInstanceTypesService(self.provider)
+        self._instance_svc = AWSInstanceService(self.provider)
 
     @property
     def instance_types(self):
-        return self._instance_types
+        return self._instance_type_svc
 
-    def create_instance(self, name, image, instance_type, zone=None,
-                        keypair=None, security_groups=None, user_data=None,
-                        block_device_mapping=None, network_interfaces=None,
-                        **kwargs):
+    @property
+    def instances(self):
+        return self._instance_svc
+
+    def list_regions(self):
+        """
+        List all data center regions for this provider.
+
+        :rtype: ``list`` of :class:`.Region`
+        :return: list of Region objects
+        """
+        raise NotImplementedError(
+            'list_regions not implemented by this provider')
+
+
+class AWSInstanceService(BaseInstanceService):
+
+    def __init__(self, provider):
+        super(AWSInstanceService, self).__init__(provider)
+
+    def create(self, name, image, instance_type, zone=None,
+               keypair=None, security_groups=None, user_data=None,
+               block_device_mapping=None, network_interfaces=None,
+               **kwargs):
         """
         Creates a new virtual machine instance.
         """
@@ -419,7 +440,7 @@ class AWSComputeService(BaseComputeService):
             instance.name = name
         return instance
 
-    def get_instance(self, instance_id):
+    def get(self, instance_id):
         """
         Returns an instance given its id. Returns None
         if the object does not exist.
@@ -431,7 +452,7 @@ class AWSComputeService(BaseComputeService):
         else:
             return None
 
-    def find_instance(self, name):
+    def find(self, name):
         """
         Searches for an instance by a given list of attributes.
 
@@ -441,7 +462,7 @@ class AWSComputeService(BaseComputeService):
         raise NotImplementedError(
             'find_instance not implemented by this provider')
 
-    def list_instances(self):
+    def list(self):
         """
         List all instances.
         """
@@ -449,17 +470,6 @@ class AWSComputeService(BaseComputeService):
         return [AWSInstance(self.provider, inst)
                 for res in reservations
                 for inst in res.instances]
-
-    def list_regions(self):
-        """
-        List all data center regions for this provider.
-
-        :rtype: ``list`` of :class:`.Region`
-        :return: list of Region objects
-        """
-        raise NotImplementedError(
-            'list_regions not implemented by this provider')
-
 
 AWS_INSTANCE_DATA_DEFAULT_URL = "https://swift.rc.nectar.org.au:8888/v1/" \
                                 "AUTH_377/cloud-bridge/aws/instance_data.json"
