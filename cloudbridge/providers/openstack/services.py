@@ -204,7 +204,7 @@ class OpenStackImageService(BaseImageService):
     def __init__(self, provider):
         super(OpenStackImageService, self).__init__(provider)
 
-    def get_image(self, image_id):
+    def get(self, image_id):
         """
         Returns an Image given its id
         """
@@ -214,14 +214,14 @@ class OpenStackImageService(BaseImageService):
         except NovaNotFound:
             return None
 
-    def find_image(self, name):
+    def find(self, name):
         """
         Searches for an image by a given list of attributes
         """
         raise NotImplementedError(
             'find_image not implemented by this provider')
 
-    def list_images(self):
+    def list(self):
         """
         List all images.
         """
@@ -353,7 +353,7 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
     def __init__(self, provider):
         super(OpenStackObjectStoreService, self).__init__(provider)
 
-    def get_container(self, container_id):
+    def get(self, container_id):
         """
         Returns a container given its id. Returns None if the container
         does not exist.
@@ -365,14 +365,14 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         else:
             return None
 
-    def find_container(self, name):
+    def find(self, name):
         """
         Searches for a container by a given list of attributes
         """
         raise NotImplementedError(
             'find_container not implemented by this provider')
 
-    def list_containers(self):
+    def list(self):
         """
         List all containers.
         """
@@ -380,7 +380,7 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         return [
             OpenStackContainer(self._provider, c) for c in container_list]
 
-    def create_container(self, name, location=None):
+    def create(self, name, location=None):
         """
         Create a new container.
         """

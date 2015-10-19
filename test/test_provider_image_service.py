@@ -33,7 +33,7 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                         test_image.description, six.string_types),
                     "Image description must be None or a string")
 
-                images = self.provider.images.list_images()
+                images = self.provider.images.list()
                 found_images = [image for image in images
                                 if image.name == name]
                 self.assertTrue(
@@ -41,7 +41,7 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                     "List images does not return the expected image %s" %
                     name)
 
-                get_img = self.provider.images.get_image(
+                get_img = self.provider.images.get(
                     test_image.image_id)
                 self.assertTrue(
                     found_images[0].image_id ==
@@ -65,7 +65,7 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                     interval=self.get_test_wait_interval())
                 # TODO: Images take a long time to deregister on EC2. Needs
                 # investigation
-                images = self.provider.images.list_images()
+                images = self.provider.images.list()
                 found_images = [image for image in images
                                 if image.name == name]
                 self.assertTrue(

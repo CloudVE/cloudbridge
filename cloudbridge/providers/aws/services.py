@@ -305,7 +305,7 @@ class AWSObjectStoreService(BaseObjectStoreService):
     def __init__(self, provider):
         super(AWSObjectStoreService, self).__init__(provider)
 
-    def get_container(self, container_id):
+    def get(self, container_id):
         """
         Returns a container given its id. Returns None if the container
         does not exist.
@@ -316,21 +316,21 @@ class AWSObjectStoreService(BaseObjectStoreService):
         else:
             return None
 
-    def find_container(self, name):
+    def find(self, name):
         """
         Searches for a container by a given list of attributes
         """
         raise NotImplementedError(
             'find_container not implemented by this provider')
 
-    def list_containers(self):
+    def list(self):
         """
         List all containers.
         """
         buckets = self.provider.s3_conn.get_all_buckets()
         return [AWSContainer(self.provider, bucket) for bucket in buckets]
 
-    def create_container(self, name, location=None):
+    def create(self, name, location=None):
         """
         Create a new container.
         """
@@ -345,7 +345,7 @@ class AWSImageService(BaseImageService):
     def __init__(self, provider):
         super(AWSImageService, self).__init__(provider)
 
-    def get_image(self, image_id):
+    def get(self, image_id):
         """
         Returns an Image given its id
         """
@@ -358,14 +358,14 @@ class AWSImageService(BaseImageService):
 
         return None
 
-    def find_image(self, name):
+    def find(self, name):
         """
         Searches for an image by a given list of attributes
         """
         raise NotImplementedError(
             'find_image not implemented by this provider')
 
-    def list_images(self):
+    def list(self):
         """
         List all images.
         """

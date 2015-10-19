@@ -85,7 +85,7 @@ class AWSMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self._provider.images.get_image(self.image_id)
+        image = self._provider.images.get(self.image_id)
         if image:
             self._ec2_image = image._ec2_image
         else:
@@ -291,7 +291,7 @@ class AWSInstance(BaseInstance):
         # if the image cannot be found
         retry_decorator = retry(retry_on_result=lambda result: result is None,
                                 stop_max_attempt_number=3, wait_fixed=1000)
-        image = retry_decorator(self._provider.images.get_image)(image_id)
+        image = retry_decorator(self._provider.images.get)(image_id)
         return image
 
     @property

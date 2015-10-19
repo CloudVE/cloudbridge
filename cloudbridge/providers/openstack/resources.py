@@ -80,7 +80,7 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self._provider.images.get_image(self.image_id)
+        image = self._provider.images.get(self.image_id)
         if image:
             self._os_image = image._os_image
         else:
@@ -308,7 +308,7 @@ class OpenStackInstance(BaseInstance):
         """
         image_id = self._os_instance.create_image(name)
         return OpenStackMachineImage(
-            self._provider, self._provider.images.get_image(image_id))
+            self._provider, self._provider.images.get(image_id))
 
     @property
     def state(self):
@@ -320,7 +320,7 @@ class OpenStackInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        instance = self._provider.compute.get_instance(
+        instance = self._provider.compute.instances.get(
             self.instance_id)
         if instance:
             self._os_instance = instance._os_instance
@@ -406,7 +406,7 @@ class OpenStackVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.block_store.snapshots.create_snapshot(
+        return self._provider.block_store.snapshots.create(
             name, self, description=description)
 
     def delete(self):
@@ -425,7 +425,7 @@ class OpenStackVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        vol = self._provider.block_store.volumes.get_volume(
+        vol = self._provider.block_store.volumes.get(
             self.volume_id)
         if vol:
             self._volume = vol._volume
@@ -482,7 +482,7 @@ class OpenStackSnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        snap = self._provider.block_store.snapshots.get_snapshot(
+        snap = self._provider.block_store.snapshots.get(
             self.snapshot_id)
         if snap:
             self._snapshot = snap._snapshot

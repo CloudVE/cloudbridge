@@ -22,16 +22,16 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
         and delete it
         """
         name = "cbtestcreatecontainer-{0}".format(uuid.uuid4())
-        test_container = self.provider.object_store.create_container(name)
+        test_container = self.provider.object_store.create(name)
         with helpers.exception_action(lambda: test_container.delete()):
-            containers = self.provider.object_store.list_containers()
+            containers = self.provider.object_store.list()
             found_containers = [c for c in containers if c.name == name]
             self.assertTrue(
                 len(found_containers) == 1,
                 "List containers does not return the expected container %s" %
                 name)
 
-            get_container = self.provider.object_store.get_container(
+            get_container = self.provider.object_store.get(
                 test_container.name)
             self.assertTrue(
                 found_containers[0].name ==
@@ -42,7 +42,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                                          test_container.name))
 
             test_container.delete()
-            containers = self.provider.object_store.list_containers()
+            containers = self.provider.object_store.list()
             found_containers = [c for c in containers if c.name == name]
             self.assertTrue(
                 len(found_containers) == 0,
@@ -56,7 +56,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
         Delete everything afterwards.
         """
         name = "cbtestcontainerobjs-{0}".format(uuid.uuid4())
-        test_container = self.provider.object_store.create_container(name)
+        test_container = self.provider.object_store.create(name)
 
         # ensure that the container is empty
         objects = test_container.list()
@@ -91,7 +91,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
     def test_upload_download_container_content(self):
 
         name = "cbtestcontainerobjs-{0}".format(uuid.uuid4())
-        test_container = self.provider.object_store.create_container(name)
+        test_container = self.provider.object_store.create(name)
 
         with helpers.exception_action(lambda: test_container.delete()):
             obj_name = "hello_upload_download.txt"
