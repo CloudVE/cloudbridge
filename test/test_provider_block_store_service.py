@@ -18,20 +18,20 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
         and delete it
         """
         name = "CBUnitTestCreateVol-{0}".format(uuid.uuid4())
-        test_vol = self.provider.block_store.volumes.create_volume(
+        test_vol = self.provider.block_store.volumes.create(
             name,
             1,
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.exception_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready(interval=self.get_test_wait_interval())
-            volumes = self.provider.block_store.volumes.list_volumes()
+            volumes = self.provider.block_store.volumes.list()
             found_volumes = [vol for vol in volumes if vol.name == name]
             self.assertTrue(
                 len(found_volumes) == 1,
                 "List volumes does not return the expected volume %s" %
                 name)
 
-            get_vol = self.provider.block_store.volumes.get_volume(
+            get_vol = self.provider.block_store.volumes.get(
                 test_vol.volume_id)
             self.assertTrue(
                 found_volumes[0].volume_id ==
@@ -53,7 +53,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                 [VolumeState.DELETED, VolumeState.UNKNOWN],
                 terminal_states=[VolumeState.ERROR],
                 interval=self.get_test_wait_interval())
-            volumes = self.provider.block_store.volumes.list_volumes()
+            volumes = self.provider.block_store.volumes.list()
             found_volumes = [vol for vol in volumes if vol.name == name]
             self.assertTrue(
                 len(found_volumes) == 0,
@@ -70,7 +70,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
         test_instance = helpers.get_test_instance(self.provider, instance_name)
         with helpers.exception_action(lambda: test_instance.terminate()):
             name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4())
-            test_vol = self.provider.block_store.volumes.create_volume(
+            test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.placement_zone)
             with helpers.exception_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready(
@@ -94,7 +94,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
         Delete everything afterwards.
         """
         name = "CBUnitTestCreateSnap-{0}".format(uuid.uuid4())
-        test_vol = self.provider.block_store.volumes.create_volume(
+        test_vol = self.provider.block_store.volumes.create(
             name,
             1,
             helpers.get_provider_test_data(self.provider, "placement"))
@@ -114,7 +114,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             with helpers.exception_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready(
                     interval=self.get_test_wait_interval())
-                snaps = self.provider.block_store.snapshots.list_snapshots()
+                snaps = self.provider.block_store.snapshots.list()
                 found_snaps = [snap for snap in snaps
                                if snap.name == snap_name]
                 self.assertTrue(
@@ -122,7 +122,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                     "List snapshots does not return the expected volume %s" %
                     name)
 
-                get_snap = self.provider.block_store.snapshots.get_snapshot(
+                get_snap = self.provider.block_store.snapshots.get(
                     test_snap.snapshot_id)
                 self.assertTrue(
                     found_snaps[0].snapshot_id ==
@@ -140,7 +140,7 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                                              test_snap.name))
 
                 cleanup_snap(test_snap)
-                snaps = self.provider.block_store.snapshots.list_snapshots()
+                snaps = self.provider.block_store.snapshots.list()
                 found_snaps = [snap for snap in snaps
                                if snap.name == snap_name]
                 self.assertTrue(

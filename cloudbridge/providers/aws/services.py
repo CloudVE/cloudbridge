@@ -199,16 +199,16 @@ class AWSBlockStoreService(BaseBlockStoreService):
         super(AWSBlockStoreService, self).__init__(provider)
 
         # Initialize provider services
-        self._volumes = AWSVolumeService(self.provider)
-        self._snapshots = AWSSnapshotService(self.provider)
+        self._volume_svc = AWSVolumeService(self.provider)
+        self._snapshot_svc = AWSSnapshotService(self.provider)
 
     @property
     def volumes(self):
-        return self._volumes
+        return self._volume_svc
 
     @property
     def snapshots(self):
-        return self._snapshots
+        return self._snapshot_svc
 
 
 class AWSVolumeService(BaseVolumeService):
@@ -216,28 +216,28 @@ class AWSVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(AWSVolumeService, self).__init__(provider)
 
-    def get_volume(self, volume_id):
+    def get(self, volume_id):
         """
         Returns a volume given its id.
         """
         vols = self.provider.ec2_conn.get_all_volumes(volume_ids=[volume_id])
         return AWSVolume(self.provider, vols[0]) if vols else None
 
-    def find_volume(self, name):
+    def find(self, name):
         """
         Searches for a volume by a given list of attributes.
         """
         raise NotImplementedError(
             'find_volume not implemented by this provider')
 
-    def list_volumes(self):
+    def list(self):
         """
         List all volumes.
         """
         return [AWSVolume(self.provider, vol)
                 for vol in self.provider.ec2_conn.get_all_volumes()]
 
-    def create_volume(self, name, size, zone, snapshot=None):
+    def create(self, name, size, zone, snapshot=None):
         """
         Creates a new volume.
         """
@@ -252,6 +252,52 @@ class AWSVolumeService(BaseVolumeService):
         cb_vol = AWSVolume(self.provider, ec2_vol)
         cb_vol.name = name
         return cb_vol
+
+
+class AWSSnapshotService(BaseSnapshotService):
+
+    def __init__(self, provider):
+        super(AWSSnapshotService, self).__init__(provider)
+
+    def get(self, snapshot_id):
+        """
+        Returns a snapshot given its id.
+        """
+        snaps = self.provider.ec2_conn.get_all_snapshots(
+            snapshot_ids=[snapshot_id])
+        return AWSSnapshot(self.provider, snaps[0]) if snaps else None
+
+    def find(self, name):
+        """
+        Searches for a volume by a given list of attributes.
+        """
+        raise NotImplementedError(
+            'find_volume not implemented by this provider')
+
+    def list(self):
+        """
+        List all snapshot.
+        """
+        # TODO: get_all_images returns too many images - some kind of filtering
+        # abilities are needed. Forced to "self" for now
+        return [AWSSnapshot(self.provider, snap)
+                for snap in
+                self.provider.ec2_conn.get_all_snapshots(owner="self")]
+
+    def create(self, name, volume, description=None):
+        """
+        Creates a new snapshot of a given volume.
+        """
+        volume_id = volume.volume_id if isinstance(
+            volume,
+            AWSVolume) else volume
+
+        ec2_snap = self.provider.ec2_conn.create_snapshot(
+            volume_id,
+            description=description)
+        cb_snap = AWSSnapshot(self.provider, ec2_snap)
+        cb_snap.name = name
+        return cb_snap
 
 
 class AWSObjectStoreService(BaseObjectStoreService):
@@ -292,52 +338,6 @@ class AWSObjectStoreService(BaseObjectStoreService):
             name,
             location=location if location else '')
         return AWSContainer(self.provider, bucket)
-
-
-class AWSSnapshotService(BaseSnapshotService):
-
-    def __init__(self, provider):
-        super(AWSSnapshotService, self).__init__(provider)
-
-    def get_snapshot(self, snapshot_id):
-        """
-        Returns a snapshot given its id.
-        """
-        snaps = self.provider.ec2_conn.get_all_snapshots(
-            snapshot_ids=[snapshot_id])
-        return AWSSnapshot(self.provider, snaps[0]) if snaps else None
-
-    def find_snapshot(self, name):
-        """
-        Searches for a volume by a given list of attributes.
-        """
-        raise NotImplementedError(
-            'find_volume not implemented by this provider')
-
-    def list_snapshots(self):
-        """
-        List all snapshot.
-        """
-        # TODO: get_all_images returns too many images - some kind of filtering
-        # abilities are needed. Forced to "self" for now
-        return [AWSSnapshot(self.provider, snap)
-                for snap in
-                self.provider.ec2_conn.get_all_snapshots(owner="self")]
-
-    def create_snapshot(self, name, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
-        volume_id = volume.volume_id if isinstance(
-            volume,
-            AWSVolume) else volume
-
-        ec2_snap = self.provider.ec2_conn.create_snapshot(
-            volume_id,
-            description=description)
-        cb_snap = AWSSnapshot(self.provider, ec2_snap)
-        cb_snap.name = name
-        return cb_snap
 
 
 class AWSImageService(BaseImageService):

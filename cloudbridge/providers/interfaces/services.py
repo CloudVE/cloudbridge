@@ -166,7 +166,7 @@ class VolumeService(ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_volume(self, volume_id):
+    def get(self, volume_id):
         """
         Returns a volume given its id. Returns None if the volume
         does not exist.
@@ -177,7 +177,7 @@ class VolumeService(ProviderService):
         pass
 
     @abstractmethod
-    def find_volume(self, name):
+    def find(self, name):
         """
         Searches for a volume by a given list of attributes.
 
@@ -187,7 +187,7 @@ class VolumeService(ProviderService):
         pass
 
     @abstractmethod
-    def list_volumes(self):
+    def list(self):
         """
         List all volumes.
 
@@ -197,7 +197,7 @@ class VolumeService(ProviderService):
         pass
 
     @abstractmethod
-    def create_volume(self, name, size, zone, snapshot=None, description=None):
+    def create(self, name, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
 
@@ -229,7 +229,7 @@ class SnapshotService(ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_snapshot(self, volume_id):
+    def get(self, volume_id):
         """
         Returns a snapshot given its id. Returns None if the snapshot
         does not exist.
@@ -240,7 +240,7 @@ class SnapshotService(ProviderService):
         pass
 
     @abstractmethod
-    def find_snapshot(self, name):
+    def find(self, name):
         """
         Searches for a snapshot by a given list of attributes.
 
@@ -250,7 +250,7 @@ class SnapshotService(ProviderService):
         pass
 
     @abstractmethod
-    def list_snapshots(self):
+    def list(self):
         """
         List all snapshots.
 
@@ -260,7 +260,7 @@ class SnapshotService(ProviderService):
         pass
 
     @abstractmethod
-    def create_snapshot(self, name, volume, description=None):
+    def create(self, name, volume, description=None):
         """
         Creates a new snapshot off a volume.
 

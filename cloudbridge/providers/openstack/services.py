@@ -250,16 +250,16 @@ class OpenStackBlockStoreService(BaseBlockStoreService):
         super(OpenStackBlockStoreService, self).__init__(provider)
 
         # Initialize provider services
-        self._volumes = OpenStackVolumeService(self._provider)
-        self._snapshots = OpenStackSnapshotService(self._provider)
+        self._volume_svc = OpenStackVolumeService(self._provider)
+        self._snapshot_svc = OpenStackSnapshotService(self._provider)
 
     @property
     def volumes(self):
-        return self._volumes
+        return self._volume_svc
 
     @property
     def snapshots(self):
-        return self._snapshots
+        return self._snapshot_svc
 
 
 class OpenStackVolumeService(BaseVolumeService):
@@ -267,7 +267,7 @@ class OpenStackVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(OpenStackVolumeService, self).__init__(provider)
 
-    def get_volume(self, volume_id):
+    def get(self, volume_id):
         """
         Returns a volume given its id.
         """
@@ -277,21 +277,21 @@ class OpenStackVolumeService(BaseVolumeService):
         except CinderNotFound:
             return None
 
-    def find_volume(self, name):
+    def find(self, name):
         """
         Searches for a volume by a given list of attributes.
         """
         raise NotImplementedError(
             'find_volume not implemented by this provider')
 
-    def list_volumes(self):
+    def list(self):
         """
         List all volumes.
         """
         return [OpenStackVolume(self._provider, vol)
                 for vol in self._provider.cinder.volumes.list()]
 
-    def create_volume(self, name, size, zone, snapshot=None):
+    def create(self, name, size, zone, snapshot=None):
         """
         Creates a new volume.
         """
@@ -310,7 +310,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(OpenStackSnapshotService, self).__init__(provider)
 
-    def get_snapshot(self, snapshot_id):
+    def get(self, snapshot_id):
         """
         Returns a snapshot given its id.
         """
@@ -321,21 +321,21 @@ class OpenStackSnapshotService(BaseSnapshotService):
         except CinderNotFound:
             return None
 
-    def find_snapshot(self, name):
+    def find(self, name):
         """
         Searches for a volume by a given list of attributes.
         """
         raise NotImplementedError(
             'find_volume not implemented by this provider')
 
-    def list_snapshots(self):
+    def list(self):
         """
         List all snapshot.
         """
         return [OpenStackSnapshot(self._provider, snap)
                 for snap in self._provider.cinder.volume_snapshots.list()]
 
-    def create_snapshot(self, name, volume, description=None):
+    def create(self, name, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
