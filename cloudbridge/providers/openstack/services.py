@@ -385,7 +385,7 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         Create a new container.
         """
         self._provider.swift.put_container(name)
-        return self.get_container(name)
+        return self.get(name)
 
 
 class OpenStackComputeService(BaseComputeService):
@@ -428,7 +428,7 @@ class OpenStackInstanceService(BaseInstanceService):
         image_id = image.image_id if isinstance(image, MachineImage) else image
         instance_size = instance_type.name if \
             isinstance(instance_type, InstanceType) else \
-            self.instance_types.find_by_name(instance_type).id
+            self.provider.compute.instance_types.find_by_name(instance_type).id
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
         keypair_name = keypair.name if \
             isinstance(keypair, KeyPair) else keypair
