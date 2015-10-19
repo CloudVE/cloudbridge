@@ -1,9 +1,4 @@
-# Python 3 compatibility fix
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
-
+from io import BytesIO
 import uuid
 
 from test.helpers import ProviderTestBase
@@ -103,7 +98,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 # types. Need to make this consistent - possibly provider
                 # multiple methods like upload_from_file, from_stream etc.
                 obj.upload(content)
-                target_stream = StringIO()
+                target_stream = BytesIO()
                 obj.download(target_stream)
                 self.assertEqual(target_stream.getvalue(), content)
                 obj.delete()

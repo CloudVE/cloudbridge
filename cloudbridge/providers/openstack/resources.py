@@ -226,7 +226,7 @@ class OpenStackInstance(BaseInstance):
         # network label. Therefore, it's necessary to parse the address and
         # determine whether it's public or private
         return [address
-                for addresses in self._os_instance.networks.itervalues()
+                for _, addresses in self._os_instance.networks.items()
                 for address in addresses
                 if not ipaddress.ip_address(address).is_private]
 
@@ -236,7 +236,7 @@ class OpenStackInstance(BaseInstance):
         Get all the private IP addresses for this instance.
         """
         return [address
-                for addresses in self._os_instance.networks.itervalues()
+                for _, addresses in self._os_instance.networks.items()
                 for address in addresses
                 if ipaddress.ip_address(address).is_private]
 
