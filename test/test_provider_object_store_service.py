@@ -100,6 +100,6 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 obj.upload(content)
                 target_stream = BytesIO()
                 obj.download(target_stream)
-                self.assertEqual(target_stream.getvalue(), content)
+                self.assertEqual(str(target_stream.getvalue()), content)
                 obj.delete()
             test_container.delete()
