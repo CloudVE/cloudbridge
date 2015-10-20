@@ -2,7 +2,7 @@ import unittest
 from cloudbridge.providers import factory
 from cloudbridge.providers import interfaces
 from cloudbridge.providers.factory import CloudProviderFactory
-import helpers
+import test.helpers as helpers
 
 
 class ProviderFactoryTestCase(unittest.TestCase):
