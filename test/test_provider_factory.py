@@ -1,6 +1,8 @@
 import unittest
+
 from cloudbridge.providers import factory
 from cloudbridge.providers import interfaces
+from cloudbridge.providers.aws import AWSCloudProviderV1
 from cloudbridge.providers.factory import CloudProviderFactory
 import test.helpers as helpers
 
@@ -82,3 +84,25 @@ class ProviderFactoryTestCase(unittest.TestCase):
                     mock,
                     helpers.TestMockHelperMixin),
                 "Did not expect mock but class implements mock provider")
+
+    def test_get_provider_class_valid(self):
+        """
+        Searching for a provider class with a known name should return a valid
+        class
+        """
+        self.assertTrue(
+            CloudProviderFactory().get_provider_class(
+                factory.ProviderList.AWS))
+        self.assertEqual(CloudProviderFactory().get_provider_class(
+            factory.ProviderList.AWS, version=1),
+            AWSCloudProviderV1)
+
+    def test_get_provider_class_invalid(self):
+        """
+        Searching for a provider class with an invalid name or version should
+        return None
+        """
+        self.assertIsNone(CloudProviderFactory().get_provider_class("aws1"))
+        self.assertIsNone(CloudProviderFactory().get_provider_class(
+            factory.ProviderList.AWS,
+            version=100))
