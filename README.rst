@@ -39,13 +39,31 @@ look like the following.
 	print(provider.security.key_pairs.list())
 
 In the example above, the AWS_ACCESS_KEY and AWS_SECRET_KEY environment variables
-must be set to your cloud credentials.
+must be set to your AWS credentials.
 
 
 Documentation
 ~~~~~~~~~~~~~
-Documentation can be found at <https://cloudbridge.readthedocs.org>.
+Documentation can be found at https://cloudbridge.readthedocs.org.
 
+Contributing
+~~~~~~~~~~~~
+Community contributions for any part of the project are welcome. If you have
+a completely new idea or would like to bounce your idea before moving forward
+with the implementation, feel free to create an issue to start a discussion.
+
+Contributions should come in the form or a pull request. We strive for 100%
+test coverage so code will only be accepted if it comes with appropriate tests
+and it does not break existing functionality. Further, the code needs to be
+well documented and all methods have docstrings.
+
+Conceptually, the library is laid out such that there is a factory used to
+create a reference to a cloud provider. Each provider offers a set of services
+and resources. Services typically perform actions while resources offer
+information (and can act on itself, when appropriate). The structure of each
+object is defined via an abstract interface (see
+``cloudbridge/providers/interfaces``) and any object should implement the
+defined interface.
 
 Running tests
 ~~~~~~~~~~~~~
@@ -56,13 +74,16 @@ tests, you should have all the environment variables listed in
 ``tox.ini`` file (under ``passenv``) exported.
 
 If you’d like to run the tests on a specific environment only, use a command
-like this: ``tox -e py27`` (or ``python setup.py test`` directly). If you'd
+like such: ``tox -e py27`` (or ``python setup.py test`` directly). If you'd
 like to run the tests for a specific cloud only, you should export env var
 ``CB_TEST_PROVIDER`` and specify the desired provider name (e.g., ``aws`` or
 ``openstack``) and then run the ``tox`` command.
 
-Note that running the tests will create various cloud resources, for which you
-may incur costs.
+Note that running the tests may create various cloud resources, for which you
+may incur costs. For the AWS cloud, there is also a mock provider that will
+simulate AWS resources. It is used by default when running the test suite. To
+disable it, set the following environment variable:
+``export CB_USE_MOCK_DRIVERS=No``.
 
 
 .. _`bridge pattern`: https://en.wikipedia.org/wiki/Bridge_pattern
