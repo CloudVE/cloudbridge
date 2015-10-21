@@ -86,6 +86,7 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 .format(name))
 
     def test_security_group(self):
+        """Test for proper creation of a security group."""
         name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
@@ -93,7 +94,8 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             lambda:
                 self.provider.security.security_groups.delete(group_id=sg.id)
         ):
-            sg.add_rule('tcp', 1111, 1111, '0.0.0.0/0')
+            sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
+                        cidr_ip='0.0.0.0/0')
             found_rules = [rule for rule in sg.rules if
                            rule.cidr_ip == '0.0.0.0/0' and
                            rule.ip_protocol == 'tcp' and
@@ -110,6 +112,32 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                                               sg.rules[0].to_port)),
                 ("Security group rule repr {0} not matching expected format."
                  .format(sg.rules[0])))
+            sg.delete()
+            sgl = self.provider.security.security_groups.list()
+            found_sg = [g for g in sgl if g.name == name]
+            self.assertTrue(
+                len(found_sg) == 0,
+                "Security group {0} should have been deleted but still exists."
+                .format(name))
+
+    def test_security_group_group_role(self):
+        """Test for proper creation of a security group rule."""
+        name = 'cbtestsecuritygroupC-{0}'.format(uuid.uuid4())
+        sg = self.provider.security.security_groups.create(
+            name=name, description=name)
+        with helpers.exception_action(
+            lambda:
+                self.provider.security.security_groups.delete(group_id=sg.id)
+        ):
+            self.assertTrue(
+                len(sg.rules) == 0,
+                "Expected no security group group rule. Got {0}."
+                .format(sg.rules))
+            sg.add_rule(src_group=sg)
+            self.assertTrue(
+                sg.rules[0].group.name == name,
+                "Expected security group rule name {0}. Got {1}."
+                .format(name, sg.rules[0].group.name))
             sg.delete()
             sgl = self.provider.security.security_groups.list()
             found_sg = [g for g in sgl if g.name == name]
