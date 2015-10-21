@@ -11,6 +11,7 @@ from cloudbridge.providers.base import BaseInstanceService
 from cloudbridge.providers.base import BaseInstanceTypesService
 from cloudbridge.providers.base import BaseKeyPairService
 from cloudbridge.providers.base import BaseObjectStoreService
+from cloudbridge.providers.base import BaseRegionService
 from cloudbridge.providers.base import BaseSecurityGroupService
 from cloudbridge.providers.base import BaseSecurityService
 from cloudbridge.providers.base import BaseSnapshotService
@@ -26,6 +27,7 @@ from .resources import AWSInstance
 from .resources import AWSInstanceType
 from .resources import AWSKeyPair
 from .resources import AWSMachineImage
+from .resources import AWSRegion
 from .resources import AWSSecurityGroup
 from .resources import AWSSnapshot
 from .resources import AWSVolume
@@ -381,6 +383,7 @@ class AWSComputeService(BaseComputeService):
         super(AWSComputeService, self).__init__(provider)
         self._instance_type_svc = AWSInstanceTypesService(self.provider)
         self._instance_svc = AWSInstanceService(self.provider)
+        self._region_svc = AWSRegionService(self.provider)
 
     @property
     def instance_types(self):
@@ -390,15 +393,9 @@ class AWSComputeService(BaseComputeService):
     def instances(self):
         return self._instance_svc
 
-    def list_regions(self):
-        """
-        List all data center regions for this provider.
-
-        :rtype: ``list`` of :class:`.Region`
-        :return: list of Region objects
-        """
-        raise NotImplementedError(
-            'list_regions not implemented by this provider')
+    @property
+    def regions(self):
+        return self._region_svc
 
 
 class AWSInstanceService(BaseInstanceService):
@@ -483,7 +480,7 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
     @property
     def instance_data(self):
         """
-        TODO: Neeeds a caching function with timeout
+        TODO: Needs a caching function with timeout
         """
         r = requests.get(self.provider.config.get(
             "aws_instance_info_url", AWS_INSTANCE_DATA_DEFAULT_URL))
@@ -496,3 +493,22 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
     def find_by_name(self, name):
         return next(
             (itype for itype in self.list() if itype.name == name), None)
+
+
+class AWSRegionService(BaseRegionService):
+
+    def __init__(self, provider):
+        super(AWSRegionService, self).__init__(provider)
+
+    def get(self, region_id):
+        region = self.provider.ec2_conn.get_all_regions(
+            region_names=[region_id])
+        if region:
+            return AWSRegion(self.provider, region[0])
+        else:
+            return None
+
+    def list(self):
+        regions = self.provider.ec2_conn.get_all_regions()
+        return [AWSRegion(self.provider, region)
+                for region in regions]

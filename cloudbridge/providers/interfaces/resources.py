@@ -557,6 +557,16 @@ class Region(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
+    def id(self):
+        """
+        The id for this region
+
+        :rtype: str
+        :return: Id of the region.
+        """
+        pass
+
+    @abstractproperty
     def name(self):
         """
         Name of the region.
@@ -566,13 +576,13 @@ class Region(object):
         """
         pass
 
-    @abstractmethod
-    def list_zones(self):
+    @abstractproperty
+    def zones(self):
         """
-        List all available placement zones within this region.
+        Accesss information about placement zones within this region.
 
-        :rtype: list
-        :return: List of all the available placement zones.
+        :rtype: iterable
+        :return: Iterable of  available placement zones in this region.
         """
         pass
 

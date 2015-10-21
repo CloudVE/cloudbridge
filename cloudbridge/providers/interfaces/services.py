@@ -49,13 +49,13 @@ class ComputeService(ProviderService):
         """
         pass
 
-    @abstractmethod
-    def list_regions(self):
+    @abstractproperty
+    def regions(self):
         """
-        List all data center regions for this provider.
+        Provides access to all Region related services in this provider.
 
-        :rtype: ``list`` of :class:`.Region`
-        :return: list of Region objects
+        :rtype: ``object`` of :class:`.RegionService`
+        :return:  a RegionService object
         """
         pass
 
@@ -568,5 +568,34 @@ class InstanceTypesService(object):
 
         :rtype: ``object`` of :class:`.InstanceType`
         :return: an Instance object
+        """
+        pass
+
+
+class RegionService(ProviderService):
+
+    """
+    Base interface for a Region service
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, region_id):
+        """
+        Returns a region given its id. Returns None if the region
+        does not exist.
+
+        :rtype: ``object`` of :class:`.Region`
+        :return:  a Region instance
+        """
+        pass
+
+    @abstractmethod
+    def list(self):
+        """
+        List all regions.
+
+        :rtype: ``list`` of :class:`.Region`
+        :return:  list of region objects
         """
         pass

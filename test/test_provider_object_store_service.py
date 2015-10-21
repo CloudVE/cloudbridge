@@ -93,13 +93,13 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
             obj = test_container.create_object(obj_name)
 
             with helpers.exception_action(lambda: obj.delete()):
-                content = "Hello World. Here's some content"
+                content = b"Hello World. Here's some content"
                 # TODO: Upload and download methods accept different parameter
                 # types. Need to make this consistent - possibly provider
                 # multiple methods like upload_from_file, from_stream etc.
                 obj.upload(content)
                 target_stream = BytesIO()
                 obj.download(target_stream)
-                self.assertEqual(str(target_stream.getvalue()), content)
+                self.assertEqual(target_stream.getvalue(), content)
                 obj.delete()
             test_container.delete()

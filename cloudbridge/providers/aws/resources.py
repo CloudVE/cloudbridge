@@ -11,6 +11,7 @@ from cloudbridge.providers.base import BaseInstance
 from cloudbridge.providers.base import BaseInstanceType
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
+from cloudbridge.providers.base import BaseRegion
 from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.base import BaseSecurityGroupRule
 from cloudbridge.providers.base import BaseSnapshot
@@ -656,3 +657,25 @@ class AWSContainer(Container):
 
     def __repr__(self):
         return "<CB-AWSContainer: {0}>".format(self.name)
+
+
+class AWSRegion(BaseRegion):
+
+    def __init__(self, provider, aws_region):
+        self._provider = provider
+        self._aws_region = aws_region
+
+    @property
+    def id(self):
+        return self._aws_region.name
+
+    @property
+    def name(self):
+        return self._aws_region.name
+
+    @property
+    def zones(self):
+        """
+        Accesss information about placement zones within this region.
+        """
+        pass
