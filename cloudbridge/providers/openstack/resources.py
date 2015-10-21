@@ -10,6 +10,7 @@ from cloudbridge.providers.base import BaseInstance
 from cloudbridge.providers.base import BaseInstanceType
 from cloudbridge.providers.base import BaseKeyPair
 from cloudbridge.providers.base import BaseMachineImage
+from cloudbridge.providers.base import BaseRegion
 from cloudbridge.providers.base import BaseSecurityGroup
 from cloudbridge.providers.base import BaseSecurityGroupRule
 from cloudbridge.providers.base import BaseSnapshot
@@ -19,7 +20,6 @@ from cloudbridge.providers.interfaces import ContainerObject
 from cloudbridge.providers.interfaces import InstanceState
 from cloudbridge.providers.interfaces import MachineImageState
 from cloudbridge.providers.interfaces import PlacementZone
-from cloudbridge.providers.interfaces import Region
 from cloudbridge.providers.interfaces import SnapshotState
 from cloudbridge.providers.interfaces import VolumeState
 
@@ -333,18 +333,25 @@ class OpenStackInstance(BaseInstance):
         return "<CB-OSInstance: {0} ({1})>".format(self.name, self.instance_id)
 
 
-class OpenStackRegion(Region):
+class OpenStackRegion(BaseRegion):
 
     def __init__(self, provider, os_region):
         self._provider = provider
         self._os_region = os_region
 
     @property
-    def name(self):
-        return self._os_region.zoneName
+    def id(self):
+        return self._os_region
 
-    def __repr__(self):
-        return "<CB-OSRegion: {0}>".format(self.name)
+    @property
+    def name(self):
+        return self._os_region
+
+    @property
+    def zones(self):
+        # detailed must be set to ``False`` because the (default) ``True``
+        # value requires Admin privileges
+        return self._provider.nova.availability_zones.list(detailed=False)
 
 
 class OpenStackVolume(BaseVolume):

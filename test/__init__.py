@@ -36,6 +36,7 @@ from test.test_provider_image_service import ProviderImageServiceTestCase
 from test.test_provider_interface import ProviderInterfaceTestCase
 from test.test_provider_object_store_service import \
     ProviderObjectStoreServiceTestCase
+from test.test_provider_region_service import ProviderRegionServiceTestCase
 from test.test_provider_security_service import ProviderSecurityServiceTestCase
 
 
@@ -44,6 +45,7 @@ PROVIDER_TESTS = [
     ProviderSecurityServiceTestCase,
     ProviderInstanceTypesServiceTestCase,
     ProviderComputeServiceTestCase,
+    ProviderRegionServiceTestCase,
     ProviderImageServiceTestCase,
     ProviderBlockStoreServiceTestCase,
     ProviderObjectStoreServiceTestCase

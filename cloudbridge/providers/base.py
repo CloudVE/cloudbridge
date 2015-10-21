@@ -13,6 +13,7 @@ from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import MachineImageState
 from cloudbridge.providers.interfaces import ObjectLifeCycleMixin
+from cloudbridge.providers.interfaces import Region
 from cloudbridge.providers.interfaces import SecurityGroup
 from cloudbridge.providers.interfaces import SecurityGroupRule
 from cloudbridge.providers.interfaces import Snapshot
@@ -20,16 +21,17 @@ from cloudbridge.providers.interfaces import SnapshotState
 from cloudbridge.providers.interfaces import Volume
 from cloudbridge.providers.interfaces import VolumeState
 from cloudbridge.providers.interfaces import WaitStateException
-from cloudbridge.providers.interfaces.services import InstanceTypesService
-from cloudbridge.providers.interfaces.services import KeyPairService
-from cloudbridge.providers.interfaces.services import ObjectStoreService
-from cloudbridge.providers.interfaces.services import SecurityGroupService
-from cloudbridge.providers.interfaces.services import SecurityService
 from cloudbridge.providers.interfaces.services import BlockStoreService
 from cloudbridge.providers.interfaces.services import ComputeService
 from cloudbridge.providers.interfaces.services import ImageService
 from cloudbridge.providers.interfaces.services import InstanceService
+from cloudbridge.providers.interfaces.services import InstanceTypesService
+from cloudbridge.providers.interfaces.services import KeyPairService
+from cloudbridge.providers.interfaces.services import ObjectStoreService
 from cloudbridge.providers.interfaces.services import ProviderService
+from cloudbridge.providers.interfaces.services import RegionService
+from cloudbridge.providers.interfaces.services import SecurityGroupService
+from cloudbridge.providers.interfaces.services import SecurityService
 from cloudbridge.providers.interfaces.services import SnapshotService
 from cloudbridge.providers.interfaces.services import VolumeService
 
@@ -289,6 +291,22 @@ class BaseSecurityGroupRule(SecurityGroupRule):
             self.ip_protocol, self.from_port, self.to_port)
 
 
+class BaseRegion(Region):
+
+    def __init__(self, provider, region):
+        self._provider = provider
+        self._region = region
+
+    def __repr__(self):
+        return "<CB-{0}: {1}>".format(self.__class__.__name__,
+                                      self.name)
+
+    def __eq__(self, other):
+        if isinstance(other, Region):
+            return self._provider == other._provider and \
+                self.id == other.id
+
+
 class BaseProviderService(ProviderService):
 
     def __init__(self, provider):
@@ -363,3 +381,9 @@ class BaseInstanceService(InstanceService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseInstanceService, self).__init__(provider)
+
+
+class BaseRegionService(RegionService, BaseProviderService):
+
+    def __init__(self, provider):
+        super(BaseRegionService, self).__init__(provider)

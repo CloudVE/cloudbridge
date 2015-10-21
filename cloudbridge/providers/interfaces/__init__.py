@@ -28,6 +28,7 @@ from .services import InstanceTypesService
 from .services import KeyPairService
 from .services import ObjectStoreService
 from .services import ProviderService
+from .services import RegionService
 from .services import SecurityGroupService
 from .services import SecurityService
 from .services import SnapshotService

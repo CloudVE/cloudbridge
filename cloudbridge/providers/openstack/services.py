@@ -11,6 +11,7 @@ from cloudbridge.providers.base import BaseInstanceService
 from cloudbridge.providers.base import BaseInstanceTypesService
 from cloudbridge.providers.base import BaseKeyPairService
 from cloudbridge.providers.base import BaseObjectStoreService
+from cloudbridge.providers.base import BaseRegionService
 from cloudbridge.providers.base import BaseSecurityGroupService
 from cloudbridge.providers.base import BaseSecurityService
 from cloudbridge.providers.base import BaseSnapshotService
@@ -388,12 +389,38 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         return self.get(name)
 
 
+class OpenStackRegionService(BaseRegionService):
+
+    def __init__(self, provider):
+        super(OpenStackRegionService, self).__init__(provider)
+
+    def get(self, region_id):
+        regions = [endpoint.get('region') or endpoint.get('region_id')
+                   for svc in self.provider.keystone.service_catalog.get_data()
+                   for endpoint in svc.get('endpoints', [])]
+        region = [region for region in regions
+                  if region == region_id]
+        if region:
+            return OpenStackRegion(self.provider, region[0])
+        else:
+            return None
+
+    def list(self):
+        regions = [endpoint.get('region') or endpoint.get('region_id')
+                   for svc in self.provider.keystone.service_catalog.get_data()
+                   for endpoint in svc.get('endpoints', [])]
+        regions = [region for region in regions if region]
+        return [OpenStackRegion(self.provider, region)
+                for region in regions]
+
+
 class OpenStackComputeService(BaseComputeService):
 
     def __init__(self, provider):
         super(OpenStackComputeService, self).__init__(provider)
         self._instance_type_svc = OpenStackInstanceTypesService(self._provider)
         self._instance_svc = OpenStackInstanceService(self._provider)
+        self._region_svc = OpenStackRegionService(self.provider)
 
     @property
     def instance_types(self):
@@ -403,14 +430,9 @@ class OpenStackComputeService(BaseComputeService):
     def instances(self):
         return self._instance_svc
 
-    def list_regions(self):
-        """
-        List all data center regions.
-        """
-        # detailed must be set to ``False`` because the (default) ``True``
-        # value requires Admin priviledges
-        regions = self._provider.nova.availability_zones.list(detailed=False)
-        return [OpenStackRegion(self._provider, region) for region in regions]
+    @property
+    def regions(self):
+        return self._region_svc
 
 
 class OpenStackInstanceService(BaseInstanceService):
