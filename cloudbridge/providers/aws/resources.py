@@ -567,9 +567,9 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
     @property
     def group(self):
         if len(self._rule.grants) > 0:
-            if self._rule.grants[0].group_id:
+            if self._rule.grants[0].name:
                 cg = self.parent._provider.ec2_conn.get_all_security_groups(
-                    group_ids=[self._rule.grants[0].group_id])[0]
+                    groupnames=[self._rule.grants[0].name])[0]
                 return AWSSecurityGroup(self.parent._provider, cg)
         return None
 
