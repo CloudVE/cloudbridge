@@ -112,6 +112,12 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                                               sg.rules[0].to_port)),
                 ("Security group rule repr {0} not matching expected format."
                  .format(sg.rules[0])))
+            self.assertTrue(
+                sg == sg,
+                "The same security groups should be equal?")
+            self.assertFalse(
+                sg != sg,
+                "The same security groups should still be equal?")
             sg.delete()
             sgl = self.provider.security.security_groups.list()
             found_sg = [g for g in sgl if g.name == name]

@@ -245,6 +245,58 @@ class BaseSecurityGroup(SecurityGroup):
         self._provider = provider
         self._security_group = security_group
 
+    def __eq__(self, other):
+        """
+        Check if all the defined rules match across both security groups.
+        """
+        if isinstance(other, SecurityGroup) and \
+           self._provider == other._provider:
+            eq = True
+            for rule in other.rules:
+                eq = eq and self.rule_exists(self.rules, rule.from_port,
+                                             rule.to_port, rule.ip_protocol,
+                                             rule.cidr_ip)
+            # Make sure other.rules does not contain a subset of self.rules
+            for rule in self.rules:
+                eq = eq and self.rule_exists(other.rules, rule.from_port,
+                                             rule.to_port, rule.ip_protocol,
+                                             rule.cidr_ip)
+            return eq
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def rule_exists(self, rules, from_port, to_port, ip_protocol, cidr_ip):
+        """
+        Check if an authorization rule with supplied parameters exists.
+
+        :type rules: list of :class:``.SecurityGroupRule`` SecurityGroupRule
+        :param rules: A list of rules to check against
+
+        :type ip_protocol: str
+        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
+
+        :type from_port: int
+        :param from_port: The beginning port number
+
+        :type to_port: int
+        :param to_port: The ending port number
+
+        :type cidr_ip: str or list of strings
+        :param cidr_ip: The CIDR block
+
+        :rtype: bool
+        :return: ``True`` if an existing rule matches supplied parameters;
+                 ``False`` otherwise.
+        """
+        for rule in rules:
+            if rule.ip_protocol == ip_protocol and rule.from_port == from_port \
+               and rule.to_port == to_port and rule.cidr_ip == cidr_ip:
+                return True
+        return False
+
     @property
     def id(self):
         """
