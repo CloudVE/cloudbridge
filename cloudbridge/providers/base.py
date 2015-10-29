@@ -250,17 +250,11 @@ class BaseSecurityGroup(SecurityGroup):
         Check if all the defined rules match across both security groups.
         """
         if isinstance(other, SecurityGroup) and \
-           self._provider == other._provider:
+           self._provider == other._provider and \
+           len(self.rules) == len(other.rules):
             eq = True
             for rule in other.rules:
-                eq = eq and self.rule_exists(self.rules, rule.from_port,
-                                             rule.to_port, rule.ip_protocol,
-                                             rule.cidr_ip)
-            # Make sure other.rules does not contain a subset of self.rules
-            for rule in self.rules:
-                eq = eq and self.rule_exists(other.rules, rule.from_port,
-                                             rule.to_port, rule.ip_protocol,
-                                             rule.cidr_ip)
+                eq = eq and self.rule_exists(self.rules, rule)
             return eq
         else:
             return False
@@ -268,32 +262,22 @@ class BaseSecurityGroup(SecurityGroup):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def rule_exists(self, rules, from_port, to_port, ip_protocol, cidr_ip):
+    def rule_exists(self, rules, rule):
         """
-        Check if an authorization rule with supplied parameters exists.
+        Check if an authorization rule exists in a list of rules.
 
-        :type rules: list of :class:``.SecurityGroupRule`` SecurityGroupRule
+        :type rules: list of :class:``.SecurityGroupRule``
         :param rules: A list of rules to check against
 
-        :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
-
-        :type from_port: int
-        :param from_port: The beginning port number
-
-        :type to_port: int
-        :param to_port: The ending port number
-
-        :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block
+        :type rule: :class:``.SecurityGroupRule``
+        :param rule: A rule whose existence to check for
 
         :rtype: bool
-        :return: ``True`` if an existing rule matches supplied parameters;
+        :return: ``True`` if an existing rule matches the supplied rule;
                  ``False`` otherwise.
         """
-        for rule in rules:
-            if rule.ip_protocol == ip_protocol and rule.from_port == from_port \
-               and rule.to_port == to_port and rule.cidr_ip == cidr_ip:
+        for r in rules:
+            if r == rule:
                 return True
         return False
 
@@ -341,6 +325,15 @@ class BaseSecurityGroupRule(SecurityGroupRule):
     def __repr__(self):
         return "<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}>".format(
             self.ip_protocol, self.from_port, self.to_port)
+
+    def __eq__(self, other):
+        return self.ip_protocol == other.ip_protocol and \
+            self.from_port == other.from_port and \
+            self.to_port == other.to_port and \
+            self.cidr_ip == other.cidr_ip
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class BaseRegion(Region):
