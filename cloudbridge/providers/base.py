@@ -217,6 +217,11 @@ class BaseKeyPair(KeyPair):
         self._provider = provider
         self._key_pair = key_pair
 
+    def __eq__(self, other):
+        return isinstance(other, KeyPair) and \
+            self._provider == other._provider and \
+            self.name == other.name
+
     @property
     def name(self):
         """

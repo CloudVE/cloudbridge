@@ -53,6 +53,9 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             self.assertIsNotNone(
                 kp.material,
                 "KeyPair material is empty but it should not be.")
+            self.assertTrue(
+                kp == kp,
+                "The same key pair should be equal to self.")
             kp.delete()
             kpl = self.provider.security.key_pairs.list()
             found_kp = [k for k in kpl if k.name == name]
