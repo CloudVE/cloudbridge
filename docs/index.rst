@@ -7,7 +7,7 @@ Welcome to cloudbridge's documentation!
 =======================================
 
 cloudbridge provides a layer of abstraction over different cloud providers.
-It's a straightfoward implementation of the `bridge pattern`_.
+It's a straightforward implementation of the `bridge pattern`_.
 
 Usage example
 ~~~~~~~~~~~~~
