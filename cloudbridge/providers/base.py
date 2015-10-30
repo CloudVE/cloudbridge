@@ -254,15 +254,10 @@ class BaseSecurityGroup(SecurityGroup):
         """
         Check if all the defined rules match across both security groups.
         """
-        if isinstance(other, SecurityGroup) and \
-           self._provider == other._provider and \
-           len(self.rules) == len(other.rules):
-            eq = True
-            for rule in other.rules:
-                eq = eq and self.rule_exists(self.rules, rule)
-            return eq
-        else:
-            return False
+        return (isinstance(other, SecurityGroup) and
+                self._provider == other._provider and
+                len(self.rules) == len(other.rules) and  # Quick, hence included
+                set(self.rules) == set(other.rules))
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -339,6 +334,17 @@ class BaseSecurityGroupRule(SecurityGroupRule):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __hash__(self):
+        """
+        Return a hash-based interpretation of all of the object's field values.
+
+        This is requried for operations on hashed collections including
+        ``set``, ``frozenset``, and ``dict``.
+        """
+        return hash("{0}{1}{2}{3}{4}".format(self.ip_protocol, self.from_port,
+                                             self.to_port, self.cidr_ip,
+                                             self.group))
 
 
 class BaseRegion(Region):
