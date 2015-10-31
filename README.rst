@@ -50,27 +50,14 @@ Documentation can be found at https://cloudbridge.readthedocs.org.
 Design Goals
 ~~~~~~~~~~~~
 
-1. Create a cloud abstraction layer which minimises or eliminates the
-need for cloud specific special casing.
-i.e. Not require clients to write if EC2 do x else if OPENSTACK do y.
+ 1. Create a cloud abstraction layer which minimises or eliminates the need for cloud specific special casing (i.e., Not require clients to write ``if EC2 do x else if OPENSTACK do y``.)
 
-2. Have a suite of conformance tests which are comprehensive enough that goal 1
-can be achieved. This would also mean that clients need not manually test against
-each provider to make sure their application is compatible.
+ 2. Have a suite of conformance tests which are comprehensive enough that goal 1 can be achieved. This would also mean that clients need not manually test against each provider to make sure their application is compatible.
 
-3. Opt for a minimum set of features that a cloud provider will support,
-instead of  a lowest common denominator approach. This means that reasonably
-mature clouds like Amazon and Openstack are used as the benchmark against which
-functionality & features are determined. Therefore, there is a definite
-expectation that the cloud infrastructure will support a compute service with
-support for images and snapshots and various machine sizes. The cloud
-infrastructure will very likely support block storage, although this is
-currently optional. It may optionally support object storage
+ 3. Opt for a minimum set of features that a cloud provider will support, instead of  a lowest common denominator approach. This means that reasonably mature clouds like Amazon and Openstack are used as the benchmark against which
+functionality & features are determined. Therefore, there is a definite expectation that the cloud infrastructure will support a compute service with support for images and snapshots and various machine sizes. The cloud infrastructure will very likely support block storage, although this is currently optional. It may optionally support object storage
 
-4. Make the cloudbridge layer as thin as possible without compromising goal 1.
-By wrapping the cloud provider's native SDK and doing the minimal work necessary
-to adapt the interface, we can achieve greater development speed and reliability
-since the native provider SDK is most likely to have both properties.
+ 4. Make the cloudbridge layer as thin as possible without compromising goal 1. By wrapping the cloud provider's native SDK and doing the minimal work necessary to adapt the interface, we can achieve greater development speed and reliability since the native provider SDK is most likely to have both properties.
 
 
 Contributing
@@ -115,19 +102,11 @@ disable it, set the following environment variable:
 Testing philosophy
 ~~~~~~~~~~~~~~~~~~
 Our testing goals are to:
-* Write one set of tests that all provider implementations must pass.
-* Make that set of tests a 'conformance' test suite which validates that each
-implementation correctly implements the cloudbridge specification.
-* Make the test suite comprehensive enough that a provider which passes all the
-tests can be used safely by an application with no additional testing. In other
-words, the cloudbridge specification and accompanying test suite must be
-comprehensive enough that no provider specific workarounds, code or testing is
-required.
-* For development, mock providers may be used to speed up the feedback cycle,
-but providers must also pass the full suite of tests when run against actual
-cloud infrastructure to ensure that we are not testing against an idealised
-or imagined environment.
-* Aim for 100% code coverage.
+ * Write one set of tests that all provider implementations must pass.
+ * Make that set of tests a 'conformance' test suite, which validates that each implementation correctly implements the cloudbridge specification.
+ * Make the test suite comprehensive enough that a provider which passes all the tests can be used safely by an application with no additional testing. In other words, the cloudbridge specification and accompanying test suite must be comprehensive enough that no provider specific workarounds, code or testing is required.
+ * For development, mock providers may be used to speed up the feedback cycle, but providers must also pass the full suite of tests when run against actual cloud infrastructure to ensure that we are not testing against an idealised or imagined environment.
+ * Aim for 100% code coverage.
 
 .. _`bridge pattern`: https://en.wikipedia.org/wiki/Bridge_pattern
 .. _`tox`: https://tox.readthedocs.org/en/latest/
