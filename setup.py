@@ -1,5 +1,13 @@
 from setuptools import setup, find_packages
 
+base_reqs = ['bunch>=1.00', 'six>=1.9.0', 'retrying']
+openstack_reqs = ['python-keystoneclient',
+                  'python-novaclient', 'python-cinderclient',
+                  'python-swiftclient']
+aws_reqs = ['boto']
+full_reqs = base_reqs + aws_reqs + openstack_reqs
+dev_reqs = ['tox'] + full_reqs
+
 setup(name='cloudbridge',
       version=0.1,
       description='A simple layer of abstraction over multiple cloud'
@@ -7,16 +15,14 @@ setup(name='cloudbridge',
       author='Galaxy and GVL Projects',
       author_email='support@genome.edu.au',
       url='http://cloudbridge.readthedocs.org/',
-      install_requires=[
-          'bunch>=1.00', 'six>=1.9.0', 'retrying'],
+      install_requires=base_reqs,
       extras_require={
           ':python_version=="2.7"': ['py2-ipaddress'],
           ':python_version=="3"': ['py2-ipaddress'],
           ':python_version=="3.1"': ['py2-ipaddress'],
           ':python_version=="3.2"': ['py2-ipaddress'],
-          'full': ['python-keystoneclient',
-                   'python-novaclient', 'python-cinderclient',
-                   'python-swiftclient', 'boto'],
+          'full': full_reqs,
+          'dev': dev_reqs
       },
       packages=find_packages(),
       license='MIT',
