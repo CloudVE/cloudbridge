@@ -144,7 +144,7 @@ class MockAWSCloudProvider(AWSCloudProviderV1, TestMockHelperMixin):
       "size": 160
     },
     "max_bandwidth": 0,
-    "instance_type": "m1.small",
+    "instance_type": "t1.micro",
     "ECU": 1.0,
     "memory": 1.7
   }

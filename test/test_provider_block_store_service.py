@@ -32,14 +32,14 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                 name)
 
             get_vol = self.provider.block_store.volumes.get(
-                test_vol.volume_id)
+                test_vol.id)
             self.assertTrue(
-                found_volumes[0].volume_id ==
-                get_vol.volume_id == test_vol.volume_id,
+                found_volumes[0].id ==
+                get_vol.id == test_vol.id,
                 "Ids returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(found_volumes[0].volume_id,
-                                         get_vol.volume_id,
-                                         test_vol.volume_id))
+                " expected: {2}" .format(found_volumes[0].id,
+                                         get_vol.id,
+                                         test_vol.id))
             self.assertTrue(
                 found_volumes[0].name ==
                 get_vol.name == test_vol.name,
@@ -123,14 +123,14 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                     name)
 
                 get_snap = self.provider.block_store.snapshots.get(
-                    test_snap.snapshot_id)
+                    test_snap.id)
                 self.assertTrue(
-                    found_snaps[0].snapshot_id ==
-                    get_snap.snapshot_id == test_snap.snapshot_id,
+                    found_snaps[0].id ==
+                    get_snap.id == test_snap.id,
                     "Ids returned by list: {0} and get: {1} are not as "
-                    " expected: {2}" .format(found_snaps[0].snapshot_id,
-                                             get_snap.snapshot_id,
-                                             test_snap.snapshot_id))
+                    " expected: {2}" .format(found_snaps[0].id,
+                                             get_snap.id,
+                                             test_snap.id))
                 self.assertTrue(
                     found_snaps[0].name ==
                     get_snap.name == test_snap.name,

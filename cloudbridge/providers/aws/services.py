@@ -1,6 +1,10 @@
 """
 Services implemented by the AWS provider.
 """
+import string
+
+from boto.ec2.blockdevicemapping import BlockDeviceMapping
+from boto.ec2.blockdevicemapping import BlockDeviceType
 from boto.exception import EC2ResponseError
 import requests
 
@@ -10,6 +14,7 @@ from cloudbridge.providers.base import BaseImageService
 from cloudbridge.providers.base import BaseInstanceService
 from cloudbridge.providers.base import BaseInstanceTypesService
 from cloudbridge.providers.base import BaseKeyPairService
+from cloudbridge.providers.base import BaseLaunchConfig
 from cloudbridge.providers.base import BaseObjectStoreService
 from cloudbridge.providers.base import BaseRegionService
 from cloudbridge.providers.base import BaseSecurityGroupService
@@ -21,6 +26,9 @@ from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
+from cloudbridge.providers.interfaces.resources import Snapshot
+from cloudbridge.providers.interfaces.resources import Volume
+from cloudbridge.providers.interfaces.services import LaunchConfig
 
 from .resources import AWSContainer
 from .resources import AWSInstance
@@ -244,7 +252,7 @@ class AWSVolumeService(BaseVolumeService):
         Creates a new volume.
         """
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
-        snapshot_id = snapshot.snapshot_id if isinstance(
+        snapshot_id = snapshot.id if isinstance(
             zone, AWSSnapshot) and snapshot else snapshot
 
         ec2_vol = self.provider.ec2_conn.create_volume(
@@ -405,7 +413,7 @@ class AWSInstanceService(BaseInstanceService):
 
     def create(self, name, image, instance_type, zone=None,
                keypair=None, security_groups=None, user_data=None,
-               block_device_mapping=None, network_interfaces=None,
+               launch_config=None,
                **kwargs):
         """
         Creates a new virtual machine instance.
@@ -425,17 +433,70 @@ class AWSInstanceService(BaseInstanceService):
                 security_groups_list = security_groups
         else:
             security_groups_list = None
+        if launch_config:
+            bdm = self._process_block_device_mappings(launch_config, zone_name)
+        else:
+            bdm = None
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
             min_count=1, max_count=1, placement=zone_name,
             key_name=keypair_name, security_groups=security_groups_list,
-            user_data=user_data
-        )
+            user_data=user_data, block_device_map=bdm)
         if reservation:
             instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
         return instance
+
+    def _process_block_device_mappings(self, launch_config, zone=None):
+        """
+        Processes block device mapping information
+        and returns a Boto BlockDeviceMapping object. If new volumes
+        are requested (source is None and destination is VOLUME), they will be
+        created and the relevant volume ids included in the mapping.
+        """
+        bdm = BlockDeviceMapping()
+        # Assign letters from f onwards
+        # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
+        next_letter = iter(list(string.ascii_lowercase[6:]))
+        # assign ephemeral devices from 0 onwards
+        ephemeral_counter = 0
+        for device in launch_config.block_devices:
+            bd_type = BlockDeviceType()
+            if device.is_root:
+                bdm['/dev/sda1'] = bd_type
+            else:
+                bdm['sd' + next(next_letter)] = bd_type
+
+            if isinstance(device.source, Snapshot):
+                bd_type.snapshot_id = device.source.id
+            elif isinstance(device.source, Volume):
+                bd_type.volume_id = device.source.id
+            elif isinstance(device.source, MachineImage):
+                # Not supported
+                pass
+            else:
+                if device.dest_type == \
+                        LaunchConfig.DestinationType.VOLUME:
+                    # source is None, but destination is volume, therefore
+                    # create a blank volume. If the Zone is None, this
+                    # could fail since the volume and instance may be created
+                    # in two different zones.
+                    new_vol = self.provider.block_store.volumes.create(
+                        '',
+                        device.size,
+                        zone)
+                    bd_type.volume_id = new_vol.id
+                else:
+                    bd_type.ephemeral_name = 'ephemeral%s' % ephemeral_counter
+
+            bd_type.delete_on_terminate = device.delete_on_terminate
+            if device.size:
+                bd_type.size = device.size
+        return bdm
+
+    def create_launch_config(self):
+        return BaseLaunchConfig(self.provider)
 
     def get(self, instance_id):
         """

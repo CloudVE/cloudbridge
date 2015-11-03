@@ -2,6 +2,7 @@
 Specifications for services available through a provider
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+from enum import Enum
 
 
 class ProviderService(object):
@@ -101,8 +102,7 @@ class InstanceService(ProviderService):
     @abstractmethod
     def create(self, name, image, instance_type, zone=None,
                keypair=None, security_groups=None, user_data=None,
-               block_device_mapping=None, network_interfaces=None,
-               launch_configuration=None,
+               launch_config=None,
                **kwargs):
         """
         Creates a new virtual machine instance.
@@ -135,25 +135,130 @@ class InstanceService(ProviderService):
         :param user_data: An extra userdata object which is compatible with
                           the provider.
 
-        :type  block_device_mapping: ``BlockDeviceMapping`` object
-        :param block_device_mapping: A ``BlockDeviceMapping`` object which
-                                     describes additional block device mappings
-                                     for this instance.
-
-        :type  network_interfaces: ``NetworkInterfaceList`` object
-        :param network_interfaces: A ``NetworkInterfaceList`` object which
-                                   describes network interfaces for this
-                                   instance.
-
-        :type  launch_configuration: ``LaunchConfiguration`` object
-        :param launch_configuration: A ``LaunchConfiguration`` object which
+        :type  launch_config: ``LaunchConfig`` object
+        :param launch_config: A ``LaunchConfig`` object which
         describes advanced launch configuration options for an instance. This
-        include blck_device_mappings and network_interfaces. To construct a
+        include block_device_mappings and network_interfaces. To construct a
         launch configuration object, call
-        provider.compute.instances.create_launch_configuration()
+        provider.compute.instances.create_launch_config()
 
-        :rtype: `object`` of :class:`.Instance`
+        :rtype: ``object`` of :class:`.Instance`
         :return:  an instance of Instance class
+        """
+        pass
+
+    def create_launch_config(self):
+        """
+        Creates a ``LaunchConfig`` object which can be used
+        to set additional options when launching an instance, such as
+        block device mappings and network interfaces.
+
+        :rtype: ``object`` of :class:`.LaunchConfig`
+        :return:  an instance of a LaunchConfig class
+        """
+        pass
+
+
+class LaunchConfig(object):
+    """
+    Represents an advanced launch configuration object, containing
+    information such as BlockDeviceMappings, NetworkInterface configurations,
+    and other advanced options which may be useful when launching an instance.
+
+    Typical Usage:
+    ```
+        lc = provider.compute.instances.create_launch_config()
+        lc.add_block_device(...)
+        lc.add_network_interface(...)
+
+        inst = provider.compute.instances.create(name, image, instance_type,
+                                               launch_configuration=lc)
+    ```
+    """
+    class DestinationType(Enum):
+        LOCAL = 'local'
+        VOLUME = 'volume'
+
+    def add_block_device(self, dest_type, source=None, is_root=None,
+                         size=None, delete_on_terminate=None):
+        """
+        Adds a new block device mapping to the boot configuration. The block
+        device can be based on a snapshot, image, existing volume or be a blank
+        new volume, and is specified by the source parameter.
+        The destination can be either a Volume or a Local ephemeral device.
+
+        The property is_root can be set to True to override any existing root
+        device mappings. Otherwise, the default behaviour is to add new block
+        devices to the instance. When source is an Image and destination is
+        LOCAL, is_root=True is implied and does not need to be manually
+        specified. Specifying more than one device as root is an error and the
+        behaviour is indeterminate.
+
+        If no source is specified, then the destination must be LOCAL, and can
+        be used to add available ephemeral devices. (The total number of
+        ephemeral devices available for a particular InstanceType can be
+        determined by querying the InstanceTypes service).
+
+        Note that the device name, such as /dev/sda1, cannot be selected at
+        present, since this tends to be provider and instance type specific.
+        However, the order of device addition coupled with device type will
+        generally determine naming order, with devices added first getting
+        lower letters than instances added later (except when is_root is set).
+
+        Examples:
+        ```
+        lc = provider.compute.instances.create_launch_config()
+
+        # 1. Create and attach an empty volume to the instance of size 100GB
+        lc.add_block_device(LaunchConfig.DestinationType.VOLUME,
+                            size=100)
+
+        # 2. Override the size of the root device with a larger size
+        img = provider.images.get('<my_image_id>')
+        lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
+                            source=img, size=100)
+
+        # 3. Create and attach a volume based on a snapshot
+        snap = provider.block_store.snapshots.get('<my_snapshot_id>')
+        lc.add_block_device(LaunchConfig.DestinationType.VOLUME,
+                            source=snap)
+
+        # 4. Add all available ephemeral devices
+        inst_type = provider.compute.instance_types.find_by_name('m1.small')
+        for i in xrange(inst_type.num_ephemeral_disks):
+            lc.add_block_device(LaunchConfig.DestinationType.LOCAL)
+        ```
+
+        :type  source: ``Volume``, ``Snapshot``, ``Image`` or None.
+        :param source: The source block_device to add. If ``Volume``, the
+        volume will be attached directly to the instance. If ``Snapshot``, a
+        volume will be created based on the Snapshot and attached to the
+        instance. If ``Image``, a volume based on the Image will be attached to
+        the instance. If blank, the source is assumed to be an empty blank
+        volume.
+
+        :type  dest_type: an  enum of ``LaunchConfig.DestinationType``
+        :param dest_type: The dest_type can be DestinationType.LOCAL, in which
+        case a local, ephemeral disk is assumed. Otherwise, it can be
+        DestinationType.VOLUME, in which case a volume is used. Note however,
+        that not all source and destination types are compatible. Only
+        a source of type ``Image`` and ``None`` can be used with a destination
+        type of Local. The destination type ``Volume`` supports all valid
+        sources.
+
+        :type  is_root: ``bool``
+        :param is_root: Determines which device will serve as the root device.
+        If more than one device is defined as root, the behaviour is
+        indeterminate and provider specific.
+
+        :type  size: ``int``
+        :param size: The size of the destination volume. Only valid for
+        dest_type of 'volume'. An implementation may ignore this parameter
+        for certain sources like 'Volume'.
+
+        :type  delete_on_terminate: ``bool``
+        :param delete_on_terminate: Applies only if the dest_type is Volume,
+        and determines whether to delete the volume on instance termination.
         """
         pass
 

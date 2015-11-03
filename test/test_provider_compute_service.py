@@ -1,6 +1,11 @@
 import uuid
+
 import ipaddress
+
 from cloudbridge.providers.interfaces import InstanceState
+from cloudbridge.providers.interfaces.resources \
+    import InvalidConfigurationException
+from cloudbridge.providers.interfaces.services import LaunchConfig
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
@@ -92,3 +97,79 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address")
             test_instance.terminate()
+
+    def test_block_device_mappings(self):
+        name = "CBInstBlkMap-{0}-{1}".format(
+            self.provider.name,
+            uuid.uuid4())
+
+        outer_inst = helpers.create_test_instance(self.provider, name)
+        with helpers.exception_action(lambda: outer_inst.terminate()):
+            img = outer_inst.create_image(name)
+            with helpers.exception_action(lambda: img.delete()):
+                lc = self.provider.compute.instances.create_launch_config()
+
+                # specifying no size with a destination of volume should raise
+                # an exception
+                with self.assertRaises(InvalidConfigurationException):
+                    lc.add_block_device(LaunchConfig.DestinationType.VOLUME)
+
+                # specifying an invalid source type should raise an error
+                with self.assertRaises(InvalidConfigurationException):
+                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
+                                        source='1234')
+
+                # specifying an invalid size should raise an error
+                with self.assertRaises(InvalidConfigurationException):
+                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
+                                        source=img, size=-1)
+
+                # block_devices should be empty so far
+                self.assertFalse(
+                    lc.block_devices, "No block devices should have been added"
+                    " to mappings list since the configuration was invalid")
+
+                # Add a new volume
+                lc.add_block_device(LaunchConfig.DestinationType.VOLUME,
+                                    size=1)
+                # Override root volume size
+                if img:
+                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
+                                        source=img, size=11)
+
+                # Since the previous addition with destination=LOCAL with
+                # source=img implies a root volume, attempting to add another
+                # root volume should raise an exception.
+                with self.assertRaises(InvalidConfigurationException):
+                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
+                                        size=1, is_root=True)
+
+                # Add all available ephemeral devices
+                instance_type_name = helpers.get_provider_test_data(
+                    self.provider,
+                    "instance_type")
+                inst_type = self.provider.compute.instance_types.find_by_name(
+                    instance_type_name)
+                for _ in range(inst_type.num_ephemeral_disks):
+                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL)
+
+                # block_devices should be populated
+                self.assertTrue(
+                    len(lc.block_devices) >= 1,
+                    "Expected number of block devices %s not found" %
+                    len(lc.block_devices))
+
+                inst = helpers.create_test_instance(
+                    self.provider,
+                    name,
+                    launch_config=lc)
+                with helpers.exception_action(lambda: inst.terminate()):
+                    inst.wait_till_ready(
+                        interval=self.get_test_wait_interval())
+                    inst.terminate()
+                    inst.wait_for(
+                        [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                        terminal_states=[InstanceState.ERROR],
+                        interval=self.get_test_wait_interval())
+                    # TODO: Check instance attachments and make sure they
+                    # correspond to requested mappings

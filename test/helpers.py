@@ -64,11 +64,12 @@ def get_provider_test_data(provider, key):
     return None
 
 
-def create_test_instance(provider, instance_name):
+def create_test_instance(provider, instance_name, launch_config=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
-        get_provider_test_data(provider, 'instance_type'))
+        get_provider_test_data(provider, 'instance_type'),
+        launch_config=launch_config)
 
 
 def get_provider_wait_interval(provider):

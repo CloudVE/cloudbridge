@@ -4,6 +4,7 @@ Implementation of common methods across cloud providers.
 
 import logging
 import time
+import six
 
 from cloudbridge.providers.interfaces import CloudProvider
 from cloudbridge.providers.interfaces import Instance
@@ -21,12 +22,15 @@ from cloudbridge.providers.interfaces import SnapshotState
 from cloudbridge.providers.interfaces import Volume
 from cloudbridge.providers.interfaces import VolumeState
 from cloudbridge.providers.interfaces import WaitStateException
+from cloudbridge.providers.interfaces.resources \
+    import InvalidConfigurationException
 from cloudbridge.providers.interfaces.services import BlockStoreService
 from cloudbridge.providers.interfaces.services import ComputeService
 from cloudbridge.providers.interfaces.services import ImageService
 from cloudbridge.providers.interfaces.services import InstanceService
 from cloudbridge.providers.interfaces.services import InstanceTypesService
 from cloudbridge.providers.interfaces.services import KeyPairService
+from cloudbridge.providers.interfaces.services import LaunchConfig
 from cloudbridge.providers.interfaces.services import ObjectStoreService
 from cloudbridge.providers.interfaces.services import ProviderService
 from cloudbridge.providers.interfaces.services import RegionService
@@ -172,6 +176,82 @@ class BaseInstance(BaseObjectLifeCycleMixin, Instance):
     @property
     def terminal_states(self):
         return [InstanceState.TERMINATED, InstanceState.ERROR]
+
+
+class BaseLaunchConfig(LaunchConfig):
+
+    block_devices = []
+
+    def __init__(self, provider):
+        self.provider = provider
+
+    class BlockDeviceMapping(object):
+        """
+        Represents a block device mapping
+        """
+
+        def __init__(self, dest_type, source=None, is_root=None,
+                     size=None, delete_on_terminate=None):
+            self.dest_type = dest_type
+            self.source = dest_type
+            self.is_root = is_root
+            self.size = size
+            self.delete_on_terminate = delete_on_terminate
+
+        def __repr__(self):
+            return "<CB-{0}: Dest: {1}, Src: {2}, IsRoot: {3}, Size: {4}>" \
+                .format(self.__class__.__name__, self.dest_type, self.source,
+                        self.is_root, self.size)
+
+    def add_block_device(self, dest_type, source=None, is_root=None,
+                         size=None, delete_on_terminate=None):
+
+        block_device = self._parse_block_device(
+            dest_type, source, is_root, size, delete_on_terminate)
+        self.block_devices.append(block_device)
+
+    def _parse_block_device(self, dest_type, source=None, is_root=None,
+                            size=None, delete_on_terminate=None):
+        """
+        Validates a block device and throws an InvalidConfigurationException
+        if the configuration is incorrect.
+        """
+        if source is None:
+            if dest_type == LaunchConfig.DestinationType.VOLUME and \
+                    not size:
+                raise InvalidConfigurationException(
+                    "A size must be specified if the destination is a blank"
+                    " new volume")
+
+        if source and \
+                not isinstance(source, (Snapshot, Volume, MachineImage)):
+            raise InvalidConfigurationException(
+                "Source must be a Snapshot, Volume, MachineImage or None")
+        if source and isinstance(source, (Snapshot, Volume)) and \
+                not dest_type == LaunchConfig.DestinationType.VOLUME:
+            raise InvalidConfigurationException(
+                "The destination must be Volume if the sources is of type"
+                " Snapshot or Volume")
+        if size:
+            if not isinstance(size, six.integer_types) or not size >= 0:
+                raise InvalidConfigurationException(
+                    "The size must be None or a number greater than 0")
+
+        if source and isinstance(source, MachineImage) and \
+                dest_type == LaunchConfig.DestinationType.LOCAL:
+            # When source is an image and destination is LOCAL, is_root=True
+            # is implied
+            is_root = True
+
+        if is_root:
+            for bd in self.block_devices:
+                if bd.is_root:
+                    raise InvalidConfigurationException(
+                        "An existing block device: {0} has already been"
+                        " marked as root. There can only be one root device.")
+
+        return BaseLaunchConfig.BlockDeviceMapping(dest_type, source, is_root,
+                                                   size, delete_on_terminate)
 
 
 class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):

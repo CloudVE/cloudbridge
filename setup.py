@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-base_reqs = ['bunch>=1.00', 'six>=1.9.0', 'retrying']
+base_reqs = ['bunch>=1.00', 'six>=1.9.0', 'retrying', 'enum34']
 openstack_reqs = ['python-keystoneclient',
                   'python-novaclient', 'python-cinderclient',
                   'python-swiftclient']

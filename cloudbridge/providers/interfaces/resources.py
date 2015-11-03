@@ -24,12 +24,30 @@ class CloudProviderServiceType(object):
     OBJECTSTORE = 'object_store'
 
 
-class WaitStateException(Exception):
+class CloudBridgeBaseException(Exception):
+
+    """
+    Base class for all CloudBridge exceptions
+    """
+    pass
+
+
+class WaitStateException(CloudBridgeBaseException):
 
     """
     Marker interface for object wait exceptions.
     Thrown when a timeout or errors occurs waiting for an object does not reach
     the expected state within a specified time limit.
+    """
+    pass
+
+
+class InvalidConfigurationException(CloudBridgeBaseException):
+
+    """
+    Marker interface for invalid launch configurations.
+    Thrown when a combination of parameters in a LaunchConfig
+    object results in an illegal state.
     """
     pass
 
@@ -343,12 +361,13 @@ class Volume(ObjectLifeCycleMixin):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def volume_id(self):
+    def id(self):
         """
         Get the volume identifier.
 
         :rtype: ``str``
-        :return: ID for this instance as returned by the cloud middleware.
+        :return: ID for this volume. Will generally correspond to the cloud
+        middleware's ID, but should be treated as an opaque value.
         """
         pass
 
@@ -447,6 +466,17 @@ class SnapshotState(object):
 class Snapshot(ObjectLifeCycleMixin):
 
     __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def id(self):
+        """
+        Get the snapshot identifier.
+
+        :rtype: ``str``
+        :return: ID for this snapshot. Will generally correspond to the cloud
+        middleware's ID, but should be treated as an opaque value.
+        """
+        pass
 
     @abstractmethod
     def create_volume(self, placement, size=None, volume_type=None, iops=None):

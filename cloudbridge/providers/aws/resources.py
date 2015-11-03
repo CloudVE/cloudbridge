@@ -343,7 +343,7 @@ class AWSVolume(BaseVolume):
         self._volume = volume
 
     @property
-    def volume_id(self):
+    def id(self):
         return self._volume.id
 
     @property
@@ -412,7 +412,7 @@ class AWSVolume(BaseVolume):
             self._volume.status = 'unknown'
 
     def __repr__(self):
-        return "<CB-AWSVolume: {0} ({1})>".format(self.volume_id, self.name)
+        return "<CB-AWSVolume: {0} ({1})>".format(self.id, self.name)
 
 
 class AWSSnapshot(BaseSnapshot):
@@ -430,7 +430,7 @@ class AWSSnapshot(BaseSnapshot):
         self._snapshot = snapshot
 
     @property
-    def snapshot_id(self):
+    def id(self):
         return self._snapshot.id
 
     @property
@@ -483,7 +483,7 @@ class AWSSnapshot(BaseSnapshot):
         raise NotImplementedError('share not implemented by this provider')
 
     def __repr__(self):
-        return "<CB-AWSSnapshot: {0} ({1})>".format(self.snapshot_id,
+        return "<CB-AWSSnapshot: {0} ({1})>".format(self.id,
                                                     self.name)
 
 

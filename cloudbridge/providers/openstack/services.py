@@ -10,6 +10,7 @@ from cloudbridge.providers.base import BaseImageService
 from cloudbridge.providers.base import BaseInstanceService
 from cloudbridge.providers.base import BaseInstanceTypesService
 from cloudbridge.providers.base import BaseKeyPairService
+from cloudbridge.providers.base import BaseLaunchConfig
 from cloudbridge.providers.base import BaseObjectStoreService
 from cloudbridge.providers.base import BaseRegionService
 from cloudbridge.providers.base import BaseSecurityGroupService
@@ -21,6 +22,9 @@ from cloudbridge.providers.interfaces import KeyPair
 from cloudbridge.providers.interfaces import MachineImage
 from cloudbridge.providers.interfaces import PlacementZone
 from cloudbridge.providers.interfaces import SecurityGroup
+from cloudbridge.providers.interfaces.resources import Snapshot
+from cloudbridge.providers.interfaces.resources import Volume
+from cloudbridge.providers.interfaces.services import LaunchConfig
 
 from .resources import OpenStackContainer
 from .resources import OpenStackInstance
@@ -297,7 +301,7 @@ class OpenStackVolumeService(BaseVolumeService):
         Creates a new volume.
         """
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
-        snapshot_id = snapshot.snapshot_id if isinstance(
+        snapshot_id = snapshot.id if isinstance(
             zone, OpenStackSnapshot) and snapshot else snapshot
 
         os_vol = self._provider.cinder.volumes.create(
@@ -340,7 +344,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
-        volume_id = volume.volume_id if \
+        volume_id = volume.id if \
             isinstance(volume, OpenStackVolume) else volume
 
         os_snap = self._provider.cinder.volume_snapshots.create(
@@ -442,7 +446,7 @@ class OpenStackInstanceService(BaseInstanceService):
 
     def create(self, name, image, instance_type, zone=None,
                keypair=None, security_groups=None, user_data=None,
-               block_device_mapping=None, network_interfaces=None,
+               launch_config=None,
                **kwargs):
         """
         Creates a new virtual machine instance.
@@ -462,6 +466,10 @@ class OpenStackInstanceService(BaseInstanceService):
                 security_groups_list = security_groups
         else:
             security_groups_list = None
+        if launch_config:
+            bdm = self._to_block_device_mapping(launch_config)
+        else:
+            bdm = None
 
         os_instance = self._provider.nova.servers.create(
             name,
@@ -472,8 +480,50 @@ class OpenStackInstanceService(BaseInstanceService):
             availability_zone=zone_name,
             key_name=keypair_name,
             security_groups=security_groups_list,
-            userdata=user_data)
+            userdata=user_data,
+            block_device_mapping_v2=bdm)
         return OpenStackInstance(self._provider, os_instance)
+
+    def _to_block_device_mapping(self, launch_config):
+        """
+        Extracts block device mapping information
+        from a launch config and constructs a BlockDeviceMappingV2
+        object.
+        """
+        bdm = []
+        for device in launch_config.block_devices:
+            bdm_dict = {}
+            if device.is_root:
+                bdm_dict['device_name'] = '/dev/vda'
+            else:
+                # Let openstack auto assign device name
+                bdm_dict['device_name'] = None
+
+            if isinstance(device.source, Snapshot):
+                bdm_dict['source_type'] = 'snapshot'
+                bdm_dict['uuid'] = device.source.id
+            elif isinstance(device.source, Volume):
+                bdm_dict['source_type'] = 'volume'
+                bdm_dict['uuid'] = device.source.id
+            elif isinstance(device.source, MachineImage):
+                bdm_dict['source_type'] = 'image'
+                bdm_dict['uuid'] = device.source.id
+            else:
+                bdm_dict['source_type'] = 'blank'
+
+            bdm_dict['destination_type'] = \
+                'volume' if device.dest_type == \
+                LaunchConfig.DestinationType.LOCAL \
+                else 'local'
+            bdm_dict['delete_on_termination'] = device.delete_on_terminate
+            if device.size:
+                bdm_dict['size'] = device.size
+
+            bdm.append(bdm_dict)
+        return bdm
+
+    def create_launch_config(self):
+        return BaseLaunchConfig(self.provider)
 
     def find(self, name):
         """

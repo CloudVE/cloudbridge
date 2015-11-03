@@ -380,7 +380,7 @@ class OpenStackVolume(BaseVolume):
         self._volume = volume
 
     @property
-    def volume_id(self):
+    def id(self):
         return self._volume.id
 
     @property
@@ -437,7 +437,7 @@ class OpenStackVolume(BaseVolume):
         for its latest state.
         """
         vol = self._provider.block_store.volumes.get(
-            self.volume_id)
+            self.id)
         if vol:
             self._volume = vol._volume
         else:
@@ -446,7 +446,7 @@ class OpenStackVolume(BaseVolume):
             self._volume.status = 'unknown'
 
     def __repr__(self):
-        return "<CB-OSVolume: {0} ({1})>".format(self.volume_id, self.name)
+        return "<CB-OSVolume: {0} ({1})>".format(self.id, self.name)
 
 
 class OpenStackSnapshot(BaseSnapshot):
@@ -465,7 +465,7 @@ class OpenStackSnapshot(BaseSnapshot):
         self._snapshot = snapshot
 
     @property
-    def snapshot_id(self):
+    def id(self):
         return self._snapshot.id
 
     @property
@@ -494,7 +494,7 @@ class OpenStackSnapshot(BaseSnapshot):
         for its latest state.
         """
         snap = self._provider.block_store.snapshots.get(
-            self.snapshot_id)
+            self.id)
         if snap:
             self._snapshot = snap._snapshot
         else:
@@ -519,7 +519,7 @@ class OpenStackSnapshot(BaseSnapshot):
         raise NotImplementedError('share not implemented by this provider')
 
     def __repr__(self):
-        return "<CB-OSSnapshot: {0} ({1}>".format(self.snapshot_id, self.name)
+        return "<CB-OSSnapshot: {0} ({1}>".format(self.id, self.name)
 
 
 class OpenStackKeyPair(BaseKeyPair):
