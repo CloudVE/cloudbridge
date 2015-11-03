@@ -1,2 +1,2 @@
 -e ".[full]"
-git+git://github.com/spulec/moto.git@173fe95397b65a2840efef455b25e41200b5ca71
+git+git://github.com/spulec/moto.git@1d58aae42a7ea10d1617428970f6f5d55a76fc80
