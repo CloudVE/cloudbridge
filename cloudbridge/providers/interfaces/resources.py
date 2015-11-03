@@ -663,7 +663,7 @@ class InstanceType(object):
         pass
 
     @abstractproperty
-    def root_disk(self):
+    def size_root_disk(self):
         """
         The size of this instance types's root disk (in GB).
 
@@ -673,7 +673,7 @@ class InstanceType(object):
         pass
 
     @abstractproperty
-    def ephemeral_disk(self):
+    def size_ephemeral_disks(self):
         """
         The size of this instance types's total ephemeral storage (in GB).
 
@@ -683,7 +683,17 @@ class InstanceType(object):
         pass
 
     @abstractproperty
-    def total_disk(self):
+    def num_ephemeral_disks(self):
+        """
+        The total number of ephemeral disks on this instance type.
+
+        :rtype: int
+        :return: Number of ephemeral disks available.
+        """
+        pass
+
+    @abstractproperty
+    def size_total_disk(self):
         """
         The total disk space available on this instance type.
         (root_disk + ephemeral)

@@ -156,8 +156,8 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
 class BaseInstanceType(InstanceType):
 
     @property
-    def total_disk(self):
-        return self.root_disk + self.ephemeral_disk
+    def size_total_disk(self):
+        return self.size_root_disk + self.size_ephemeral_disks
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__, self.name)
@@ -256,7 +256,7 @@ class BaseSecurityGroup(SecurityGroup):
         """
         return (isinstance(other, SecurityGroup) and
                 self._provider == other._provider and
-                len(self.rules) == len(other.rules) and  # Quick, hence included
+                len(self.rules) == len(other.rules) and  # Shortcut
                 set(self.rules) == set(other.rules))
 
     def __ne__(self, other):

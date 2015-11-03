@@ -148,13 +148,17 @@ class OpenStackInstanceType(BaseInstanceType):
         return self._os_flavor.ram
 
     @property
-    def root_disk(self):
+    def size_root_disk(self):
         return self._os_flavor.disk
 
     @property
-    def ephemeral_disk(self):
+    def size_ephemeral_disks(self):
         return 0 if self._os_flavor.ephemeral == 'N/A' else \
             self._os_flavor.ephemeral
+
+    @property
+    def num_ephemeral_disks(self):
+        return 0 if self._os_flavor.ephemeral == 'N/A' else 1
 
     @property
     def extra_data(self):

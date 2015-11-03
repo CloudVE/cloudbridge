@@ -32,17 +32,26 @@ class ProviderInstanceTypesServiceTestCase(ProviderTestBase):
                 inst_type.ram is None or inst_type.ram >= 0,
                 "InstanceType ram must be None or a positive number")
             self.assertTrue(
-                inst_type.root_disk is None or inst_type.root_disk >= 0,
-                "InstanceType root_disk must be None or a positive number but"
-                " is: {0}".format(inst_type.root_disk))
+                inst_type.size_root_disk is None or
+                inst_type.size_root_disk >= 0,
+                "InstanceType size_root_disk must be None or a positive number"
+                " but is: {0}".format(inst_type.size_root_disk))
             self.assertTrue(
-                inst_type.ephemeral_disk is None or
-                inst_type.ephemeral_disk >= 0,
-                "InstanceType ephemeral_disk must be None or a positive"
+                inst_type.size_ephemeral_disks is None or
+                inst_type.size_ephemeral_disks >= 0,
+                "InstanceType size_ephemeral_disk must be None or a positive"
                 " number")
             self.assertTrue(
-                inst_type.total_disk is None or inst_type.total_disk >= 0,
-                "InstanceType total_disk must be None or a positive number")
+                isinstance(inst_type.num_ephemeral_disks,
+                           six.integer_types) and
+                inst_type.num_ephemeral_disks >= 0,
+                "InstanceType num_ephemeral_disks must be None or a positive"
+                " number")
+            self.assertTrue(
+                inst_type.size_total_disk is None or
+                inst_type.size_total_disk >= 0,
+                "InstanceType size_total_disk must be None or a positive"
+                " number")
             self.assertTrue(
                 inst_type.extra_data is None or isinstance(
                     inst_type.extra_data, dict),

@@ -151,14 +151,22 @@ class AWSInstanceType(BaseInstanceType):
         return self._inst_dict.get('memory')
 
     @property
-    def root_disk(self):
+    def size_root_disk(self):
         return 0
 
     @property
-    def ephemeral_disk(self):
+    def size_ephemeral_disks(self):
         storage = self._inst_dict.get('storage')
         if storage:
             return storage.get('size') * storage.get("devices")
+        else:
+            return 0
+
+    @property
+    def num_ephemeral_disks(self):
+        storage = self._inst_dict.get('storage')
+        if storage:
+            return storage.get("devices")
         else:
             return 0
 
