@@ -21,10 +21,10 @@ from .services import OpenStackObjectStoreService
 from .services import OpenStackSecurityService
 
 
-class OpenStackCloudProviderV1(BaseCloudProvider):
+class OpenStackCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
-        super(OpenStackCloudProviderV1, self).__init__(config)
+        super(OpenStackCloudProvider, self).__init__(config)
 
         self.username = self._get_config_value(
             'username', os.environ.get('OS_USERNAME', None))

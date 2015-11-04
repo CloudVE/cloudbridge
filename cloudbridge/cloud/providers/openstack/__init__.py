@@ -2,4 +2,4 @@
 Exports from this provider
 """
 
-from .impl import OpenStackCloudProviderV1
+from .impl import OpenStackCloudProvider

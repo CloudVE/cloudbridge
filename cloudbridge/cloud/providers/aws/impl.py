@@ -20,10 +20,10 @@ from .services import AWSObjectStoreService
 from .services import AWSSecurityService
 
 
-class AWSCloudProviderV1(BaseCloudProvider):
+class AWSCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
-        super(AWSCloudProviderV1, self).__init__(config)
+        super(AWSCloudProvider, self).__init__(config)
         self.cloud_type = 'aws'
 
         # Initialize cloud connection fields
@@ -101,7 +101,7 @@ class AWSCloudProviderV1(BaseCloudProvider):
         return s3_conn
 
 
-class MockAWSCloudProvider(AWSCloudProviderV1, TestMockHelperMixin):
+class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
 
     def __init__(self, config):
         super(MockAWSCloudProvider, self).__init__(config)
