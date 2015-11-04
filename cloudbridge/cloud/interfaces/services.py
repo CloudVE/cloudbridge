@@ -224,7 +224,7 @@ class LaunchConfig(object):
                             source=snap)
 
         # 4. Add all available ephemeral devices
-        inst_type = provider.compute.instance_types.find_by_name('m1.small')
+        inst_type = next(provider.compute.instance_types.find(name='m1.small'))
         for i in xrange(inst_type.num_ephemeral_disks):
             lc.add_block_device(LaunchConfig.DestinationType.LOCAL)
         ```
@@ -667,7 +667,7 @@ class InstanceTypesService(object):
         pass
 
     @abstractmethod
-    def find_by_name(self, name):
+    def find(self, **kwargs):
         """
         Searches for an instance by a given list of attributes.
 

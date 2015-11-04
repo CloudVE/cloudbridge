@@ -244,9 +244,12 @@ class OpenStackInstanceTypesService(BaseInstanceTypesService):
         return [OpenStackInstanceType(f)
                 for f in self._provider.nova.flavors.list()]
 
-    def find_by_name(self, name):
-        return next(
-            (itype for itype in self.list() if itype.name == name), None)
+    def find(self, **kwargs):
+        name = kwargs.get('name')
+        if name:
+            return (itype for itype in self.list() if itype.name == name)
+        else:
+            return None
 
 
 class OpenStackBlockStoreService(BaseBlockStoreService):
@@ -454,7 +457,9 @@ class OpenStackInstanceService(BaseInstanceService):
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.name if \
             isinstance(instance_type, InstanceType) else \
-            self.provider.compute.instance_types.find_by_name(instance_type).id
+            next(
+                self.provider.compute.instance_types.find(
+                    name=instance_type)).id
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
         keypair_name = keypair.name if \
             isinstance(keypair, KeyPair) else keypair

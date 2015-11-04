@@ -551,9 +551,12 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
         return [AWSInstanceType(self.provider, inst_data)
                 for inst_data in self.instance_data]
 
-    def find_by_name(self, name):
-        return next(
-            (itype for itype in self.list() if itype.name == name), None)
+    def find(self, **kwargs):
+        name = kwargs.get('name')
+        if name:
+            return (itype for itype in self.list() if itype.name == name)
+        else:
+            return None
 
 
 class AWSRegionService(BaseRegionService):

@@ -150,8 +150,8 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                 instance_type_name = helpers.get_provider_test_data(
                     self.provider,
                     "instance_type")
-                inst_type = self.provider.compute.instance_types.find_by_name(
-                    instance_type_name)
+                inst_type = next(self.provider.compute.instance_types.find(
+                    name=instance_type_name))
                 for _ in range(inst_type.num_ephemeral_disks):
                     lc.add_block_device(LaunchConfig.DestinationType.LOCAL)
 

@@ -10,6 +10,6 @@ provider = CloudProviderFactory().create_provider(
     config)
 # print provider.security.list_key_pairs()
 # print provider.compute.instance_types.list()
-# print provider.compute.instance_types.find_by_name("m1.small")
+# print next(provider.compute.instance_types.find_by_name("m1.small"))
 instance = helpers.get_test_instance(provider)
 # print provider.security.list_security_groups()
