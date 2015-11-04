@@ -12,7 +12,7 @@ from keystoneclient.auth.identity import Password
 from novaclient import client as nova_client
 from swiftclient import client as swift_client
 
-from cloudbridge.providers.base import BaseCloudProvider
+from cloudbridge.cloud.base import BaseCloudProvider
 
 from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService

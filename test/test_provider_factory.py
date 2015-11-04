@@ -1,9 +1,9 @@
 import unittest
 
-from cloudbridge.providers import factory
-from cloudbridge.providers import interfaces
-from cloudbridge.providers.aws import AWSCloudProviderV1
-from cloudbridge.providers.factory import CloudProviderFactory
+from cloudbridge.cloud import factory
+from cloudbridge.cloud import interfaces
+from cloudbridge.cloud.factory import CloudProviderFactory
+from cloudbridge.cloud.providers.aws import AWSCloudProviderV1
 import test.helpers as helpers
 
 
@@ -42,7 +42,7 @@ class ProviderFactoryTestCase(unittest.TestCase):
                 factory.ProviderList.AWS))
         self.assertEqual(CloudProviderFactory().find_provider_impl(
             factory.ProviderList.AWS, version=1),
-            "cloudbridge.providers.aws.AWSCloudProviderV1")
+            "cloudbridge.cloud.providers.aws.AWSCloudProviderV1")
 
     def test_find_provider_impl_invalid(self):
         """

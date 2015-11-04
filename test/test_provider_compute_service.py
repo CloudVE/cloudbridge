@@ -2,10 +2,10 @@ import uuid
 
 import ipaddress
 
-from cloudbridge.providers.interfaces import InstanceState
-from cloudbridge.providers.interfaces.resources \
+from cloudbridge.cloud.interfaces \
     import InvalidConfigurationException
-from cloudbridge.providers.interfaces.services import LaunchConfig
+from cloudbridge.cloud.interfaces import InstanceState
+from cloudbridge.cloud.interfaces import LaunchConfig
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 

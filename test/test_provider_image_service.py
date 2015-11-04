@@ -1,6 +1,6 @@
 import uuid
 import six
-from cloudbridge.providers.interfaces import MachineImageState
+from cloudbridge.cloud.interfaces import MachineImageState
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 

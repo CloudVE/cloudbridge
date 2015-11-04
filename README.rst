@@ -33,7 +33,7 @@ look like the following.
 
 .. code-block:: python
 
-	from cloudbridge.providers.factory import CloudProviderFactory, ProviderList
+	from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
 
 	provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
 	print(provider.security.key_pairs.list())

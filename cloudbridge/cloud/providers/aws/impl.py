@@ -10,7 +10,7 @@ from httpretty import HTTPretty
 from moto.ec2 import mock_ec2
 from moto.s3 import mock_s3
 
-from cloudbridge.providers.base import BaseCloudProvider
+from cloudbridge.cloud.base import BaseCloudProvider
 from test.helpers import TestMockHelperMixin
 
 from .services import AWSBlockStoreService

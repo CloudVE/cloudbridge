@@ -28,13 +28,15 @@ class CloudProviderFactory(object):
             {"name": ProviderList.OPENSTACK,
              "implementations":
                 [{"class":
-                  "cloudbridge.providers.openstack.OpenStackCloudProviderV1",
+                  "cloudbridge.cloud.providers.openstack.OpenStackCloud"
+                  "ProviderV1",
                   "version": 1}]},
             {"name": ProviderList.AWS,
              "implementations":
-                [{"class": "cloudbridge.providers.aws.AWSCloudProviderV1",
+                [{"class": "cloudbridge.cloud.providers.aws.AWSCloudProvider"
+                  "V1",
                   "mock_class":
-                  "cloudbridge.providers.aws.MockAWSCloudProvider",
+                  "cloudbridge.cloud.providers.aws.MockAWSCloudProvider",
                   "version": 1}]}]
 
     def find_provider_impl(self, name, version=None, get_mock=False):

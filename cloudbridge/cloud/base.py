@@ -4,40 +4,41 @@ Implementation of common methods across cloud providers.
 
 import logging
 import time
+
 import six
 
-from cloudbridge.providers.interfaces import CloudProvider
-from cloudbridge.providers.interfaces import Instance
-from cloudbridge.providers.interfaces import InstanceState
-from cloudbridge.providers.interfaces import InstanceType
-from cloudbridge.providers.interfaces import KeyPair
-from cloudbridge.providers.interfaces import MachineImage
-from cloudbridge.providers.interfaces import MachineImageState
-from cloudbridge.providers.interfaces import ObjectLifeCycleMixin
-from cloudbridge.providers.interfaces import Region
-from cloudbridge.providers.interfaces import SecurityGroup
-from cloudbridge.providers.interfaces import SecurityGroupRule
-from cloudbridge.providers.interfaces import Snapshot
-from cloudbridge.providers.interfaces import SnapshotState
-from cloudbridge.providers.interfaces import Volume
-from cloudbridge.providers.interfaces import VolumeState
-from cloudbridge.providers.interfaces import WaitStateException
-from cloudbridge.providers.interfaces.resources \
+from cloudbridge.cloud.interfaces import CloudProvider
+from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
-from cloudbridge.providers.interfaces.services import BlockStoreService
-from cloudbridge.providers.interfaces.services import ComputeService
-from cloudbridge.providers.interfaces.services import ImageService
-from cloudbridge.providers.interfaces.services import InstanceService
-from cloudbridge.providers.interfaces.services import InstanceTypesService
-from cloudbridge.providers.interfaces.services import KeyPairService
-from cloudbridge.providers.interfaces.services import LaunchConfig
-from cloudbridge.providers.interfaces.services import ObjectStoreService
-from cloudbridge.providers.interfaces.services import ProviderService
-from cloudbridge.providers.interfaces.services import RegionService
-from cloudbridge.providers.interfaces.services import SecurityGroupService
-from cloudbridge.providers.interfaces.services import SecurityService
-from cloudbridge.providers.interfaces.services import SnapshotService
-from cloudbridge.providers.interfaces.services import VolumeService
+from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.interfaces.resources import InstanceState
+from cloudbridge.cloud.interfaces.resources import InstanceType
+from cloudbridge.cloud.interfaces.resources import KeyPair
+from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
+from cloudbridge.cloud.interfaces.resources import Region
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
+from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
+from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import Volume
+from cloudbridge.cloud.interfaces.resources import VolumeState
+from cloudbridge.cloud.interfaces.resources import WaitStateException
+from cloudbridge.cloud.interfaces.services import BlockStoreService
+from cloudbridge.cloud.interfaces.services import ComputeService
+from cloudbridge.cloud.interfaces.services import ImageService
+from cloudbridge.cloud.interfaces.services import InstanceService
+from cloudbridge.cloud.interfaces.services import InstanceTypesService
+from cloudbridge.cloud.interfaces.services import KeyPairService
+from cloudbridge.cloud.interfaces.services import LaunchConfig
+from cloudbridge.cloud.interfaces.services import ObjectStoreService
+from cloudbridge.cloud.interfaces.services import ProviderService
+from cloudbridge.cloud.interfaces.services import RegionService
+from cloudbridge.cloud.interfaces.services import SecurityGroupService
+from cloudbridge.cloud.interfaces.services import SecurityService
+from cloudbridge.cloud.interfaces.services import SnapshotService
+from cloudbridge.cloud.interfaces.services import VolumeService
 
 
 log = logging.getLogger(__name__)

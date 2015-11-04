@@ -7,22 +7,22 @@ from boto.exception import EC2ResponseError
 from boto.s3.key import Key
 from retrying import retry
 
-from cloudbridge.providers.base import BaseInstance
-from cloudbridge.providers.base import BaseInstanceType
-from cloudbridge.providers.base import BaseKeyPair
-from cloudbridge.providers.base import BaseMachineImage
-from cloudbridge.providers.base import BaseRegion
-from cloudbridge.providers.base import BaseSecurityGroup
-from cloudbridge.providers.base import BaseSecurityGroupRule
-from cloudbridge.providers.base import BaseSnapshot
-from cloudbridge.providers.base import BaseVolume
-from cloudbridge.providers.interfaces import Container
-from cloudbridge.providers.interfaces import ContainerObject
-from cloudbridge.providers.interfaces import InstanceState
-from cloudbridge.providers.interfaces import MachineImageState
-from cloudbridge.providers.interfaces import SnapshotState
-from cloudbridge.providers.interfaces import VolumeState
-from cloudbridge.providers.interfaces.resources import PlacementZone
+from cloudbridge.cloud.base import BaseInstance
+from cloudbridge.cloud.base import BaseInstanceType
+from cloudbridge.cloud.base import BaseKeyPair
+from cloudbridge.cloud.base import BaseMachineImage
+from cloudbridge.cloud.base import BaseRegion
+from cloudbridge.cloud.base import BaseSecurityGroup
+from cloudbridge.cloud.base import BaseSecurityGroupRule
+from cloudbridge.cloud.base import BaseSnapshot
+from cloudbridge.cloud.base import BaseVolume
+from cloudbridge.cloud.interfaces.resources import Container
+from cloudbridge.cloud.interfaces.resources import ContainerObject
+from cloudbridge.cloud.interfaces.resources import InstanceState
+from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import PlacementZone
+from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import VolumeState
 
 
 class AWSMachineImage(BaseMachineImage):

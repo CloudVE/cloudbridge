@@ -1,7 +1,7 @@
 import uuid
 
-from cloudbridge.providers.interfaces import SnapshotState
-from cloudbridge.providers.interfaces import VolumeState
+from cloudbridge.cloud.interfaces import SnapshotState
+from cloudbridge.cloud.interfaces import VolumeState
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 

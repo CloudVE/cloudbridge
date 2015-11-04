@@ -4,27 +4,27 @@ Services implemented by the OpenStack provider.
 from cinderclient.exceptions import NotFound as CinderNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
-from cloudbridge.providers.base import BaseBlockStoreService
-from cloudbridge.providers.base import BaseComputeService
-from cloudbridge.providers.base import BaseImageService
-from cloudbridge.providers.base import BaseInstanceService
-from cloudbridge.providers.base import BaseInstanceTypesService
-from cloudbridge.providers.base import BaseKeyPairService
-from cloudbridge.providers.base import BaseLaunchConfig
-from cloudbridge.providers.base import BaseObjectStoreService
-from cloudbridge.providers.base import BaseRegionService
-from cloudbridge.providers.base import BaseSecurityGroupService
-from cloudbridge.providers.base import BaseSecurityService
-from cloudbridge.providers.base import BaseSnapshotService
-from cloudbridge.providers.base import BaseVolumeService
-from cloudbridge.providers.interfaces import InstanceType
-from cloudbridge.providers.interfaces import KeyPair
-from cloudbridge.providers.interfaces import MachineImage
-from cloudbridge.providers.interfaces import PlacementZone
-from cloudbridge.providers.interfaces import SecurityGroup
-from cloudbridge.providers.interfaces.resources import Snapshot
-from cloudbridge.providers.interfaces.resources import Volume
-from cloudbridge.providers.interfaces.services import LaunchConfig
+from cloudbridge.cloud.base import BaseBlockStoreService
+from cloudbridge.cloud.base import BaseComputeService
+from cloudbridge.cloud.base import BaseImageService
+from cloudbridge.cloud.base import BaseInstanceService
+from cloudbridge.cloud.base import BaseInstanceTypesService
+from cloudbridge.cloud.base import BaseKeyPairService
+from cloudbridge.cloud.base import BaseLaunchConfig
+from cloudbridge.cloud.base import BaseObjectStoreService
+from cloudbridge.cloud.base import BaseRegionService
+from cloudbridge.cloud.base import BaseSecurityGroupService
+from cloudbridge.cloud.base import BaseSecurityService
+from cloudbridge.cloud.base import BaseSnapshotService
+from cloudbridge.cloud.base import BaseVolumeService
+from cloudbridge.cloud.interfaces.resources import InstanceType
+from cloudbridge.cloud.interfaces.resources import KeyPair
+from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import PlacementZone
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
+from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import Volume
+from cloudbridge.cloud.interfaces.services import LaunchConfig
 
 from .resources import OpenStackContainer
 from .resources import OpenStackInstance

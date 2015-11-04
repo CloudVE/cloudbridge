@@ -39,7 +39,6 @@ from test.test_provider_object_store_service import \
 from test.test_provider_region_service import ProviderRegionServiceTestCase
 from test.test_provider_security_service import ProviderSecurityServiceTestCase
 
-
 PROVIDER_TESTS = [
     ProviderInterfaceTestCase,
     ProviderSecurityServiceTestCase,

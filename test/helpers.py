@@ -4,7 +4,7 @@ import sys
 import unittest
 from six import reraise
 
-from cloudbridge.providers.factory import CloudProviderFactory
+from cloudbridge.cloud.factory import CloudProviderFactory
 
 
 def parse_bool(val):

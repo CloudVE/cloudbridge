@@ -1,4 +1,4 @@
-from cloudbridge.providers.interfaces import Region
+from cloudbridge.cloud.interfaces import Region
 from test.helpers import ProviderTestBase
 
 

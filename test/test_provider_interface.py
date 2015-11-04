@@ -1,4 +1,4 @@
-from cloudbridge.providers import interfaces
+from cloudbridge.cloud import interfaces
 from test.helpers import ProviderTestBase
 
 
