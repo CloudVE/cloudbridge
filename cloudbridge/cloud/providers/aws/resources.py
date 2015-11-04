@@ -41,7 +41,7 @@ class AWSMachineImage(BaseMachineImage):
             self._ec2_image = image
 
     @property
-    def image_id(self):
+    def id(self):
         """
         Get the image identifier.
 
@@ -86,7 +86,7 @@ class AWSMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self._provider.images.get(self.image_id)
+        image = self._provider.images.get(self.id)
         if image:
             self._ec2_image = image._ec2_image
         else:

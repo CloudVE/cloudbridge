@@ -181,10 +181,9 @@ class BaseInstance(BaseObjectLifeCycleMixin, Instance):
 
 class BaseLaunchConfig(LaunchConfig):
 
-    block_devices = []
-
     def __init__(self, provider):
         self.provider = provider
+        self.block_devices = []
 
     class BlockDeviceMapping(object):
         """
@@ -194,7 +193,7 @@ class BaseLaunchConfig(LaunchConfig):
         def __init__(self, dest_type, source=None, is_root=None,
                      size=None, delete_on_terminate=None):
             self.dest_type = dest_type
-            self.source = dest_type
+            self.source = source
             self.is_root = is_root
             self.size = size
             self.delete_on_terminate = delete_on_terminate
@@ -267,7 +266,7 @@ class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.image_id, self.name)
+                                            self.id, self.name)
 
 
 class BaseVolume(BaseObjectLifeCycleMixin, Volume):

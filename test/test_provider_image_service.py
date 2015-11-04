@@ -50,14 +50,13 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                     name)
 
                 get_img = self.provider.images.get(
-                    test_image.image_id)
+                    test_image.id)
                 self.assertTrue(
-                    found_images[0].image_id ==
-                    get_img.image_id == test_image.image_id,
+                    found_images[0].id == get_img.id == test_image.id,
                     "Ids returned by list: {0} and get: {1} are not as "
-                    " expected: {2}" .format(found_images[0].image_id,
-                                             get_img.image_id,
-                                             test_image.image_id))
+                    " expected: {2}" .format(found_images[0].id,
+                                             get_img.id,
+                                             test_image.id))
                 self.assertTrue(
                     found_images[0].name ==
                     get_img.name == test_image.name,

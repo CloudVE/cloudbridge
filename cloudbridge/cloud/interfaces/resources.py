@@ -293,7 +293,7 @@ class MachineImage(ObjectLifeCycleMixin):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def image_id(self):
+    def id(self):
         """
         Get the image identifier.
 

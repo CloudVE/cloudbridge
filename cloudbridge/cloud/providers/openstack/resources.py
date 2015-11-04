@@ -44,7 +44,7 @@ class OpenStackMachineImage(BaseMachineImage):
             self._os_image = os_image
 
     @property
-    def image_id(self):
+    def id(self):
         """
         Get the image identifier.
         """
@@ -80,7 +80,7 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self._provider.images.get(self.image_id)
+        image = self._provider.images.get(self.id)
         if image:
             self._os_image = image._os_image
         else:

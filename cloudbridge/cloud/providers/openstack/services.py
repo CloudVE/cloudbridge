@@ -451,7 +451,7 @@ class OpenStackInstanceService(BaseInstanceService):
         """
         Creates a new virtual machine instance.
         """
-        image_id = image.image_id if isinstance(image, MachineImage) else image
+        image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.name if \
             isinstance(instance_type, InstanceType) else \
             self.provider.compute.instance_types.find_by_name(instance_type).id
@@ -467,7 +467,7 @@ class OpenStackInstanceService(BaseInstanceService):
         else:
             security_groups_list = None
         if launch_config:
-            bdm = self._to_block_device_mapping(launch_config)
+            bdm = None  # self._to_block_device_mapping(launch_config)
         else:
             bdm = None
 

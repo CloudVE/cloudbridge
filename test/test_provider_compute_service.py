@@ -126,9 +126,10 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                                         source=img, size=-1)
 
                 # block_devices should be empty so far
-                self.assertFalse(
-                    lc.block_devices, "No block devices should have been added"
-                    " to mappings list since the configuration was invalid")
+                self.assertListEqual(
+                    lc.block_devices, [], "No block devices should have been"
+                    " added to mappings list since the configuration was"
+                    " invalid")
 
                 # Add a new volume
                 lc.add_block_device(LaunchConfig.DestinationType.VOLUME,
