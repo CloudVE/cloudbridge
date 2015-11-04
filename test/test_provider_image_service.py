@@ -21,10 +21,18 @@ class ProviderImageServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
         test_instance = helpers.get_test_instance(self.provider, instance_name)
-        with helpers.exception_action(lambda: test_instance.terminate()):
+        with helpers.cleanup_action(lambda: test_instance.terminate()):
             name = "CBUnitTestListImg-{0}".format(uuid.uuid4())
             test_image = test_instance.create_image(name)
-            with helpers.exception_action(lambda: test_image.delete()):
+
+            def cleanup_img(img):
+                img.delete()
+                img.wait_for(
+                    [MachineImageState.UNKNOWN],
+                    terminal_states=[MachineImageState.ERROR],
+                    interval=self.get_test_wait_interval())
+
+            with helpers.cleanup_action(lambda: cleanup_img(test_image)):
                 test_image.wait_till_ready(
                     interval=self.get_test_wait_interval())
 
@@ -57,18 +65,12 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                     " expected: {2}" .format(found_images[0].name,
                                              get_img.name,
                                              test_image.name))
-
-                test_image.delete()
-                test_image.wait_for(
-                    [MachineImageState.UNKNOWN],
-                    terminal_states=[MachineImageState.ERROR],
-                    interval=self.get_test_wait_interval())
-                # TODO: Images take a long time to deregister on EC2. Needs
-                # investigation
-                images = self.provider.images.list()
-                found_images = [image for image in images
-                                if image.name == name]
-                self.assertTrue(
-                    len(found_images) == 0,
-                    "Image %s should have been deleted but still exists." %
-                    name)
+            # TODO: Images take a long time to deregister on EC2. Needs
+            # investigation
+            images = self.provider.images.list()
+            found_images = [image for image in images
+                            if image.name == name]
+            self.assertTrue(
+                len(found_images) == 0,
+                "Image %s should have been deleted but still exists." %
+                name)

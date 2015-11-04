@@ -15,19 +15,21 @@ def parse_bool(val):
 
 
 @contextmanager
-def exception_action(cleanup_func):
+def cleanup_action(cleanup_func):
     """
     Context manager to carry out a given
-    cleanup action when an exception occurs.
+    cleanup action after carrying out a set
+    of tasks, or when an exception occurs.
     If any errors occur during the cleanup
     action, those are ignored, and the original
     traceback is preserved.
 
-    :params func: This function is called only
-        if an exception occurs. Any exceptions raised
+    :params func: This function is called if
+    an exception occurs or at the end of the
+    context block. If any exceptions raised
         by func are ignored.
     Usage:
-        with exception_action(lambda e: print("Oops!")):
+        with cleanup_action(lambda e: print("Oops!")):
             do_something()
     """
     try:
@@ -37,8 +39,13 @@ def exception_action(cleanup_func):
         try:
             cleanup_func()
         except Exception as e:
-            print("Error during cleanup: {0}".format(e))
+            print("Error during exception cleanup: {0}".format(e))
         reraise(ex_class, ex_val, ex_traceback)
+    try:
+        cleanup_func()
+    except Exception as e:
+        print("Error during normal cleanup: {0}".format(e))
+
 
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
@@ -49,9 +56,9 @@ TEST_DATA_CONFIG = {
     },
     "OpenStackCloudProvider": {
         "image": os.environ.get('CB_IMAGE_OS',
-                                'd57696ba-5ed2-43fe-bf78-a587829973a9'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm2.xsmall'),
-        "placement": os.environ.get('CB_PLACEMENT_OS', 'NCI'),
+                                'fdd9a6ee-2c9b-490c-91ac-ca9b7c134264'),
+        "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.nano'),
+        "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
     }
 }
 
@@ -76,7 +83,7 @@ def get_provider_wait_interval(provider):
     if isinstance(provider, TestMockHelperMixin):
         return 0
     else:
-        return 5
+        return 1
 
 
 def get_test_instance(provider, name):

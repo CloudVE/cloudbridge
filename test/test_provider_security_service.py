@@ -12,7 +12,7 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
     def test_crud_key_pair_service(self):
         name = 'cbtestkeypairA-{0}'.format(uuid.uuid4())
         kp = self.provider.security.key_pairs.create(name=name)
-        with helpers.exception_action(
+        with helpers.cleanup_action(
             lambda:
                 self.provider.security.key_pairs.delete(name=kp.name)
         ):
@@ -22,13 +22,12 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 len(found_kp) == 1,
                 "List key pairs did not return the expected key {0}."
                 .format(name))
-            self.provider.security.key_pairs.delete(name=kp.name)
-            kpl = self.provider.security.key_pairs.list()
-            found_kp = [k for k in kpl if k.name == name]
-            self.assertTrue(
-                len(found_kp) == 0,
-                "Key pair {0} should have been deleted but still exists."
-                .format(name))
+        kpl = self.provider.security.key_pairs.list()
+        found_kp = [k for k in kpl if k.name == name]
+        self.assertTrue(
+            len(found_kp) == 0,
+            "Key pair {0} should have been deleted but still exists."
+            .format(name))
         no_kp = self.provider.security.key_pairs.delete(name='bogus_kp')
         self.assertTrue(
             no_kp,
@@ -37,10 +36,7 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
     def test_key_pair(self):
         name = 'cbtestkeypairB-{0}'.format(uuid.uuid4())
         kp = self.provider.security.key_pairs.create(name=name)
-        with helpers.exception_action(
-            lambda:
-                self.provider.security.key_pairs.delete(name=kp.name)
-        ):
+        with helpers.cleanup_action(lambda: kp.delete()):
             kpl = self.provider.security.key_pairs.list()
             found_kp = [k for k in kpl if k.name == name]
             self.assertTrue(
@@ -56,19 +52,18 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 kp == kp,
                 "The same key pair should be equal to self.")
-            kp.delete()
-            kpl = self.provider.security.key_pairs.list()
-            found_kp = [k for k in kpl if k.name == name]
-            self.assertTrue(
-                len(found_kp) == 0,
-                "Key pair {0} should have been deleted but still exists."
-                .format(name))
+        kpl = self.provider.security.key_pairs.list()
+        found_kp = [k for k in kpl if k.name == name]
+        self.assertTrue(
+            len(found_kp) == 0,
+            "Key pair {0} should have been deleted but still exists."
+            .format(name))
 
     def test_crud_security_group_service(self):
         name = 'cbtestsecuritygroupA-{0}'.format(uuid.uuid4())
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
-        with helpers.exception_action(
+        with helpers.cleanup_action(
             lambda:
                 self.provider.security.security_groups.delete(group_id=sg.id)
         ):
@@ -80,23 +75,19 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 len(found_sg) == 1,
                 "List security groups did not return the expected group {0}."
                 .format(name))
-            self.provider.security.security_groups.delete(group_id=sg.id)
-            sgl = self.provider.security.security_groups.list()
-            found_sg = [g for g in sgl if g.name == name]
-            self.assertTrue(
-                len(found_sg) == 0,
-                "Security group {0} should have been deleted but still exists."
-                .format(name))
+        sgl = self.provider.security.security_groups.list()
+        found_sg = [g for g in sgl if g.name == name]
+        self.assertTrue(
+            len(found_sg) == 0,
+            "Security group {0} should have been deleted but still exists."
+            .format(name))
 
     def test_security_group(self):
         """Test for proper creation of a security group."""
         name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
-        with helpers.exception_action(
-            lambda:
-                self.provider.security.security_groups.delete(group_id=sg.id)
-        ):
+        with helpers.cleanup_action(lambda: sg.delete()):
             sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
                         cidr_ip='0.0.0.0/0')
             found_rules = [rule for rule in sg.rules if
@@ -121,23 +112,19 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             self.assertFalse(
                 sg != sg,
                 "The same security groups should still be equal?")
-            sg.delete()
-            sgl = self.provider.security.security_groups.list()
-            found_sg = [g for g in sgl if g.name == name]
-            self.assertTrue(
-                len(found_sg) == 0,
-                "Security group {0} should have been deleted but still exists."
-                .format(name))
+        sgl = self.provider.security.security_groups.list()
+        found_sg = [g for g in sgl if g.name == name]
+        self.assertTrue(
+            len(found_sg) == 0,
+            "Security group {0} should have been deleted but still exists."
+            .format(name))
 
     def test_security_group_group_role(self):
         """Test for proper creation of a security group rule."""
         name = 'cbtestsecuritygroupC-{0}'.format(uuid.uuid4())
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
-        with helpers.exception_action(
-            lambda:
-                self.provider.security.security_groups.delete(group_id=sg.id)
-        ):
+        with helpers.cleanup_action(lambda: sg.delete()):
             self.assertTrue(
                 len(sg.rules) == 0,
                 "Expected no security group group rule. Got {0}."
@@ -147,10 +134,9 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 sg.rules[0].group.name == name,
                 "Expected security group rule name {0}. Got {1}."
                 .format(name, sg.rules[0].group.name))
-            sg.delete()
-            sgl = self.provider.security.security_groups.list()
-            found_sg = [g for g in sgl if g.name == name]
-            self.assertTrue(
-                len(found_sg) == 0,
-                "Security group {0} should have been deleted but still exists."
-                .format(name))
+        sgl = self.provider.security.security_groups.list()
+        found_sg = [g for g in sgl if g.name == name]
+        self.assertTrue(
+            len(found_sg) == 0,
+            "Security group {0} should have been deleted but still exists."
+            .format(name))

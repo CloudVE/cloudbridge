@@ -18,7 +18,7 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
         """
         name = "cbtestcreatecontainer-{0}".format(uuid.uuid4())
         test_container = self.provider.object_store.create(name)
-        with helpers.exception_action(lambda: test_container.delete()):
+        with helpers.cleanup_action(lambda: test_container.delete()):
             containers = self.provider.object_store.list()
             found_containers = [c for c in containers if c.name == name]
             self.assertTrue(
@@ -35,14 +35,12 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 " expected: {2}" .format(found_containers[0].name,
                                          get_container.name,
                                          test_container.name))
-
-            test_container.delete()
-            containers = self.provider.object_store.list()
-            found_containers = [c for c in containers if c.name == name]
-            self.assertTrue(
-                len(found_containers) == 0,
-                "Container %s should have been deleted but still exists." %
-                name)
+        containers = self.provider.object_store.list()
+        found_containers = [c for c in containers if c.name == name]
+        self.assertTrue(
+            len(found_containers) == 0,
+            "Container %s should have been deleted but still exists." %
+            name)
 
     def test_crud_container_objects(self):
         """
@@ -57,11 +55,11 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
         objects = test_container.list()
         self.assertEqual([], objects)
 
-        with helpers.exception_action(lambda: test_container.delete()):
+        with helpers.cleanup_action(lambda: test_container.delete()):
             obj_name = "hello_world.txt"
             obj = test_container.create_object(obj_name)
 
-            with helpers.exception_action(lambda: obj.delete()):
+            with helpers.cleanup_action(lambda: obj.delete()):
                 # TODO: This is wrong. We shouldn't have to have a separate
                 # call to upload some content before being able to delete
                 # the content. Maybe the create_object method should accept
@@ -73,26 +71,23 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                     len(found_objs) == 1,
                     "List container objects does not return the expected"
                     " object %s" % obj_name)
-
-                obj.delete()
-                objs = test_container.list()
-                found_objs = [o for o in objs if o.name == obj_name]
-                self.assertTrue(
-                    len(found_objs) == 0,
-                    "Object %s should have been deleted but still exists." %
-                    obj_name)
-            test_container.delete()
+            objs = test_container.list()
+            found_objs = [o for o in objs if o.name == obj_name]
+            self.assertTrue(
+                len(found_objs) == 0,
+                "Object %s should have been deleted but still exists." %
+                obj_name)
 
     def test_upload_download_container_content(self):
 
         name = "cbtestcontainerobjs-{0}".format(uuid.uuid4())
         test_container = self.provider.object_store.create(name)
 
-        with helpers.exception_action(lambda: test_container.delete()):
+        with helpers.cleanup_action(lambda: test_container.delete()):
             obj_name = "hello_upload_download.txt"
             obj = test_container.create_object(obj_name)
 
-            with helpers.exception_action(lambda: obj.delete()):
+            with helpers.cleanup_action(lambda: obj.delete()):
                 content = b"Hello World. Here's some content"
                 # TODO: Upload and download methods accept different parameter
                 # types. Need to make this consistent - possibly provider
@@ -101,5 +96,3 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 target_stream = BytesIO()
                 obj.download(target_stream)
                 self.assertEqual(target_stream.getvalue(), content)
-                obj.delete()
-            test_container.delete()

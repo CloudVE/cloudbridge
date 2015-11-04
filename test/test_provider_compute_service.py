@@ -21,7 +21,15 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
         inst = helpers.create_test_instance(self.provider, name)
-        with helpers.exception_action(lambda: inst.terminate()):
+
+        def cleanup_inst(instance):
+            instance.terminate()
+            instance.wait_for(
+                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                terminal_states=[InstanceState.ERROR],
+                interval=self.get_test_wait_interval())
+
+        with helpers.cleanup_action(lambda: cleanup_inst(inst)):
             inst.wait_till_ready(interval=self.get_test_wait_interval())
             all_instances = self.provider.compute.instances.list()
             found_instances = [i for i in all_instances if i.name == name]
@@ -46,20 +54,14 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                 " expected: {2}" .format(found_instances[0].name,
                                          get_inst.name,
                                          inst.name))
-
-            inst.terminate()
-            inst.wait_for(
-                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR],
-                interval=self.get_test_wait_interval())
-            deleted_inst = self.provider.compute.instances.get(
-                inst.instance_id)
-            self.assertTrue(
-                deleted_inst is None or deleted_inst.state in (
-                    InstanceState.TERMINATED,
-                    InstanceState.UNKNOWN),
-                "Instance %s should have been deleted but still exists." %
-                name)
+        deleted_inst = self.provider.compute.instances.get(
+            inst.instance_id)
+        self.assertTrue(
+            deleted_inst is None or deleted_inst.state in (
+                InstanceState.TERMINATED,
+                InstanceState.UNKNOWN),
+            "Instance %s should have been deleted but still exists." %
+            name)
 
     def _is_valid_ip(self, address):
         try:
@@ -74,7 +76,7 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             uuid.uuid4())
         test_instance = helpers.get_test_instance(self.provider,
                                                   instance_name)
-        with helpers.exception_action(lambda: test_instance.terminate()):
+        with helpers.cleanup_action(lambda: test_instance.terminate()):
             self.assertEqual(
                 test_instance.name, instance_name,
                 "Instance name {0} is not equal to the expected name"
@@ -96,17 +98,16 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address")
-            test_instance.terminate()
 
     def test_block_device_mappings(self):
         name = "CBInstBlkMap-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
 
-        outer_inst = helpers.create_test_instance(self.provider, name)
-        with helpers.exception_action(lambda: outer_inst.terminate()):
+        outer_inst = helpers.get_test_instance(self.provider, name)
+        with helpers.cleanup_action(lambda: outer_inst.terminate()):
             img = outer_inst.create_image(name)
-            with helpers.exception_action(lambda: img.delete()):
+            with helpers.cleanup_action(lambda: img.delete()):
                 lc = self.provider.compute.instances.create_launch_config()
 
                 # specifying no size with a destination of volume should raise
@@ -163,7 +164,7 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                     self.provider,
                     name,
                     launch_config=lc)
-                with helpers.exception_action(lambda: inst.terminate()):
+                with helpers.cleanup_action(lambda: inst.terminate()):
                     inst.wait_till_ready(
                         interval=self.get_test_wait_interval())
                     inst.terminate()
