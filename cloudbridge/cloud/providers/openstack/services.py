@@ -459,7 +459,7 @@ class OpenStackInstanceService(BaseInstanceService):
         Creates a new virtual machine instance.
         """
         image_id = image.id if isinstance(image, MachineImage) else image
-        instance_size = instance_type.name if \
+        instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else \
             next(
                 self.provider.compute.instance_types.find(
