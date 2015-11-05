@@ -9,6 +9,7 @@ from cinderclient import client as cinder_client
 from keystoneclient import client as keystone_client
 from keystoneclient import session
 from keystoneclient.auth.identity import Password
+from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from swiftclient import client as swift_client
 
@@ -40,6 +41,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self.keystone = self._connect_keystone()
         self.cinder = self._connect_cinder()
         self.swift = self._connect_swift()
+        self.neutron = self._connect_neutron()
 
         self._compute = OpenStackComputeService(self)
         self._security = OpenStackSecurityService(self)
@@ -124,3 +126,11 @@ class OpenStackCloudProvider(BaseCloudProvider):
             authurl=self.auth_url, auth_version='2', user=self.username,
             key=self.password, tenant_name=self.tenant_name,
             os_options=os_options)
+
+    def _connect_neutron(self):
+        """
+        Get an OpenStack Neutron (networking) client object for the given cloud.
+        """
+        return neutron_client.Client(
+            username=self.username, password=self.password,
+            tenant_name=self.tenant_name, auth_url=self.auth_url)

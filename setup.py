@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 base_reqs = ['bunch>=1.00', 'six>=1.9.0', 'retrying', 'enum34']
 openstack_reqs = ['python-keystoneclient',
                   'python-novaclient', 'python-cinderclient',
-                  'python-swiftclient']
+                  'python-swiftclient', 'python-neutronclient']
 aws_reqs = ['boto']
 full_reqs = base_reqs + aws_reqs + openstack_reqs
 dev_reqs = ['tox'] + full_reqs
