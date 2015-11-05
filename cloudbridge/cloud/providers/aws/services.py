@@ -422,7 +422,7 @@ class AWSInstanceService(BaseInstanceService):
         """
         Creates a new virtual machine instance.
         """
-        image_id = image.image_id if isinstance(image, MachineImage) else image
+        image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.name if \
             isinstance(instance_type, InstanceType) else instance_type
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
