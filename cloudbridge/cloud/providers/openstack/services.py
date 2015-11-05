@@ -434,10 +434,6 @@ class OpenStackComputeService(BaseComputeService):
         return self._images_svc
 
     @property
-    def images(self):
-        return self._images
-
-    @property
     def instance_types(self):
         return self._instance_type_svc
 
