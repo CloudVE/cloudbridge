@@ -31,6 +31,17 @@ class ComputeService(ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractproperty
+    def images(self):
+        """
+        Provides access to all Image related services in this provider.
+        (e.g. Glance in Openstack)
+
+        :rtype: ``object`` of :class:`.ImageService`
+        :return: an ImageService object
+        """
+        pass
+
+    @abstractproperty
     def instance_types(self):
         """
         Provides access to all Instance type related services in this provider.

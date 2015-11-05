@@ -16,7 +16,6 @@ from cloudbridge.cloud.base import BaseCloudProvider
 
 from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
-from .services import OpenStackImageService
 from .services import OpenStackObjectStoreService
 from .services import OpenStackSecurityService
 
@@ -43,7 +42,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self.swift = self._connect_swift()
 
         self._compute = OpenStackComputeService(self)
-        self._images = OpenStackImageService(self)
         self._security = OpenStackSecurityService(self)
         self._block_store = OpenStackBlockStoreService(self)
         self._object_store = OpenStackObjectStoreService(self)
@@ -56,10 +54,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
     @property
     def compute(self):
         return self._compute
-
-    @property
-    def images(self):
-        return self._images
 
     @property
     def security(self):

@@ -428,6 +428,7 @@ class OpenStackComputeService(BaseComputeService):
         self._instance_type_svc = OpenStackInstanceTypesService(self._provider)
         self._instance_svc = OpenStackInstanceService(self._provider)
         self._region_svc = OpenStackRegionService(self.provider)
+        self._images = OpenStackImageService(self.provider)
 
     @property
     def instance_types(self):

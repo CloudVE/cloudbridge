@@ -392,6 +392,11 @@ class AWSComputeService(BaseComputeService):
         self._instance_type_svc = AWSInstanceTypesService(self.provider)
         self._instance_svc = AWSInstanceService(self.provider)
         self._region_svc = AWSRegionService(self.provider)
+        self._images = AWSImageService(self.provider)
+
+    @property
+    def images(self):
+        return self._images
 
     @property
     def instance_types(self):

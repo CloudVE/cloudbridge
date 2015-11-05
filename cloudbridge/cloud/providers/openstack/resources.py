@@ -80,7 +80,7 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self._provider.images.get(self.id)
+        image = self._provider.compute.images.get(self.id)
         if image:
             self._os_image = image._os_image
         else:
@@ -312,7 +312,7 @@ class OpenStackInstance(BaseInstance):
         """
         image_id = self._os_instance.create_image(name)
         return OpenStackMachineImage(
-            self._provider, self._provider.images.get(image_id))
+            self._provider, self._provider.compute.images.get(image_id))
 
     @property
     def state(self):

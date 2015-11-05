@@ -15,7 +15,6 @@ from test.helpers import TestMockHelperMixin
 
 from .services import AWSBlockStoreService
 from .services import AWSComputeService
-from .services import AWSImageService
 from .services import AWSObjectStoreService
 from .services import AWSSecurityService
 
@@ -44,7 +43,6 @@ class AWSCloudProvider(BaseCloudProvider):
 
         # Initialize provider services
         self._compute = AWSComputeService(self)
-        self._images = AWSImageService(self)
         self._security = AWSSecurityService(self)
         self._block_store = AWSBlockStoreService(self)
         self._object_store = AWSObjectStoreService(self)
@@ -57,10 +55,6 @@ class AWSCloudProvider(BaseCloudProvider):
     @property
     def compute(self):
         return self._compute
-
-    @property
-    def images(self):
-        return self._images
 
     @property
     def security(self):

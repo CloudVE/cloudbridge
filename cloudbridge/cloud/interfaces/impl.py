@@ -72,17 +72,6 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def images(self):
-        """
-        Provides access to all Image related services in this provider.
-        (e.g. Glance in Openstack)
-
-        :rtype: ``object`` of :class:`.ImageService`
-        :return: an ImageService object
-        """
-        pass
-
-    @abstractproperty
     def security(self):
         """
         Provides access to keypair management and firewall control
