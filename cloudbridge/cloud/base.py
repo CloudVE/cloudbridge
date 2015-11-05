@@ -14,6 +14,7 @@ from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
+from cloudbridge.cloud.interfaces.resources import LaunchConfig
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
@@ -31,7 +32,6 @@ from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import InstanceTypesService
 from cloudbridge.cloud.interfaces.services import KeyPairService
-from cloudbridge.cloud.interfaces.services import LaunchConfig
 from cloudbridge.cloud.interfaces.services import ObjectStoreService
 from cloudbridge.cloud.interfaces.services import ProviderService
 from cloudbridge.cloud.interfaces.services import RegionService
@@ -190,9 +190,9 @@ class BaseLaunchConfig(LaunchConfig):
         Represents a block device mapping
         """
 
-        def __init__(self, dest_type, source=None, is_root=None,
+        def __init__(self, is_volume=False, source=None, is_root=None,
                      size=None, delete_on_terminate=None):
-            self.dest_type = dest_type
+            self.is_volume = is_volume
             self.source = source
             self.is_root = is_root
             self.size = size
@@ -200,48 +200,39 @@ class BaseLaunchConfig(LaunchConfig):
 
         def __repr__(self):
             return "<CB-{0}: Dest: {1}, Src: {2}, IsRoot: {3}, Size: {4}>" \
-                .format(self.__class__.__name__, self.dest_type, self.source,
-                        self.is_root, self.size)
+                .format(self.__class__.__name__,
+                        "volume" if self.is_volume else "ephemeral",
+                        self.source, self.is_root, self.size)
 
-    def add_block_device(self, dest_type, source=None, is_root=None,
-                         size=None, delete_on_terminate=None):
-
-        block_device = self._parse_block_device(
-            dest_type, source, is_root, size, delete_on_terminate)
+    def add_ephemeral_device(self):
+        block_device = BaseLaunchConfig.BlockDeviceMapping()
         self.block_devices.append(block_device)
 
-    def _parse_block_device(self, dest_type, source=None, is_root=None,
-                            size=None, delete_on_terminate=None):
+    def add_volume_device(self, source=None, is_root=None, size=None,
+                          delete_on_terminate=None):
+        block_device = self._validate_volume_device(
+            source=source, is_root=is_root, size=size,
+            delete_on_terminate=delete_on_terminate)
+        self.block_devices.append(block_device)
+
+    def _validate_volume_device(self, source=None, is_root=None,
+                                size=None, delete_on_terminate=None):
         """
-        Validates a block device and throws an InvalidConfigurationException
-        if the configuration is incorrect.
+        Validates a volume based device and throws an
+        InvalidConfigurationException if the configuration is incorrect.
         """
-        if source is None:
-            if dest_type == LaunchConfig.DestinationType.VOLUME and \
-                    not size:
-                raise InvalidConfigurationException(
-                    "A size must be specified if the destination is a blank"
-                    " new volume")
+        if source is None and not size:
+            raise InvalidConfigurationException(
+                "A size must be specified for a blank new volume")
 
         if source and \
                 not isinstance(source, (Snapshot, Volume, MachineImage)):
             raise InvalidConfigurationException(
                 "Source must be a Snapshot, Volume, MachineImage or None")
-        if source and isinstance(source, (Snapshot, Volume)) and \
-                not dest_type == LaunchConfig.DestinationType.VOLUME:
-            raise InvalidConfigurationException(
-                "The destination must be Volume if the sources is of type"
-                " Snapshot or Volume")
         if size:
-            if not isinstance(size, six.integer_types) or not size >= 0:
+            if not isinstance(size, six.integer_types) or not size > 0:
                 raise InvalidConfigurationException(
                     "The size must be None or a number greater than 0")
-
-        if source and isinstance(source, MachineImage) and \
-                dest_type == LaunchConfig.DestinationType.LOCAL:
-            # When source is an image and destination is LOCAL, is_root=True
-            # is implied
-            is_root = True
 
         if is_root:
             for bd in self.block_devices:
@@ -250,8 +241,9 @@ class BaseLaunchConfig(LaunchConfig):
                         "An existing block device: {0} has already been"
                         " marked as root. There can only be one root device.")
 
-        return BaseLaunchConfig.BlockDeviceMapping(dest_type, source, is_root,
-                                                   size, delete_on_terminate)
+        return BaseLaunchConfig.BlockDeviceMapping(
+            is_volume=True, source=source, is_root=is_root, size=size,
+            delete_on_terminate=delete_on_terminate)
 
 
 class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):

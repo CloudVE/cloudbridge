@@ -28,7 +28,6 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
-from cloudbridge.cloud.interfaces.services import LaunchConfig
 
 from .resources import AWSContainer
 from .resources import AWSInstance
@@ -392,11 +391,11 @@ class AWSComputeService(BaseComputeService):
         self._instance_type_svc = AWSInstanceTypesService(self.provider)
         self._instance_svc = AWSInstanceService(self.provider)
         self._region_svc = AWSRegionService(self.provider)
-        self._images = AWSImageService(self.provider)
+        self._images_svc = AWSImageService(self.provider)
 
     @property
     def images(self):
-        return self._images
+        return self._images_svc
 
     @property
     def instance_types(self):
@@ -468,21 +467,21 @@ class AWSInstanceService(BaseInstanceService):
         ephemeral_counter = 0
         for device in launch_config.block_devices:
             bd_type = BlockDeviceType()
-            if device.is_root:
-                bdm['/dev/sda1'] = bd_type
-            else:
-                bdm['sd' + next(next_letter)] = bd_type
 
-            if isinstance(device.source, Snapshot):
-                bd_type.snapshot_id = device.source.id
-            elif isinstance(device.source, Volume):
-                bd_type.volume_id = device.source.id
-            elif isinstance(device.source, MachineImage):
-                # Not supported
-                pass
-            else:
-                if device.dest_type == \
-                        LaunchConfig.DestinationType.VOLUME:
+            if device.is_volume:
+                if device.is_root:
+                    bdm['/dev/sda1'] = bd_type
+                else:
+                    bdm['sd' + next(next_letter)] = bd_type
+
+                if isinstance(device.source, Snapshot):
+                    bd_type.snapshot_id = device.source.id
+                elif isinstance(device.source, Volume):
+                    bd_type.volume_id = device.source.id
+                elif isinstance(device.source, MachineImage):
+                    # Not supported
+                    pass
+                else:
                     # source is None, but destination is volume, therefore
                     # create a blank volume. If the Zone is None, this
                     # could fail since the volume and instance may be created
@@ -492,12 +491,12 @@ class AWSInstanceService(BaseInstanceService):
                         device.size,
                         zone)
                     bd_type.volume_id = new_vol.id
-                else:
-                    bd_type.ephemeral_name = 'ephemeral%s' % ephemeral_counter
+                bd_type.delete_on_terminate = device.delete_on_terminate
+                if device.size:
+                    bd_type.size = device.size
+            else:  # device is ephemeral
+                bd_type.ephemeral_name = 'ephemeral%s' % ephemeral_counter
 
-            bd_type.delete_on_terminate = device.delete_on_terminate
-            if device.size:
-                bd_type.size = device.size
         return bdm
 
     def create_launch_config(self):

@@ -5,7 +5,6 @@ import ipaddress
 from cloudbridge.cloud.interfaces \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
-from cloudbridge.cloud.interfaces import LaunchConfig
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
@@ -104,74 +103,58 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
 
-        outer_inst = helpers.get_test_instance(self.provider, name)
-        with helpers.cleanup_action(lambda: outer_inst.terminate()):
-            img = outer_inst.create_image(name)
-            with helpers.cleanup_action(lambda: img.delete()):
-                lc = self.provider.compute.instances.create_launch_config()
+        lc = self.provider.compute.instances.create_launch_config()
 
-                # specifying no size with a destination of volume should raise
-                # an exception
-                with self.assertRaises(InvalidConfigurationException):
-                    lc.add_block_device(LaunchConfig.DestinationType.VOLUME)
+        # specifying an invalid size should raise
+        # an exception
+        with self.assertRaises(InvalidConfigurationException):
+            lc.add_volume_device(-1)
 
-                # specifying an invalid source type should raise an error
-                with self.assertRaises(InvalidConfigurationException):
-                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
-                                        source='1234')
+        # block_devices should be empty so far
+        self.assertListEqual(
+            lc.block_devices, [], "No block devices should have been"
+            " added to mappings list since the configuration was"
+            " invalid")
 
-                # specifying an invalid size should raise an error
-                with self.assertRaises(InvalidConfigurationException):
-                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
-                                        source=img, size=-1)
+        # Add a new volume
+        lc.add_volume_device(size=1)
 
-                # block_devices should be empty so far
-                self.assertListEqual(
-                    lc.block_devices, [], "No block devices should have been"
-                    " added to mappings list since the configuration was"
-                    " invalid")
+        # Override root volume size
+        image_id = helpers.get_provider_test_data(self.provider, "image")
+        img = self.provider.compute.images.get(image_id)
+        lc.add_volume_device(is_root=True, source=img, size=3)
 
-                # Add a new volume
-                lc.add_block_device(LaunchConfig.DestinationType.VOLUME,
-                                    size=1)
-                # Override root volume size
-                if img:
-                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
-                                        source=img, size=11)
+        # Attempting to add more than one root volume should raise an
+        # exception.
+        with self.assertRaises(InvalidConfigurationException):
+            lc.add_volume_device(size=1, is_root=True)
 
-                # Since the previous addition with destination=LOCAL with
-                # source=img implies a root volume, attempting to add another
-                # root volume should raise an exception.
-                with self.assertRaises(InvalidConfigurationException):
-                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL,
-                                        size=1, is_root=True)
+        # Add all available ephemeral devices
+#         instance_type_name = helpers.get_provider_test_data(
+#             self.provider,
+#             "instance_type")
+#         inst_type = next(self.provider.compute.instance_types.find(
+#             name=instance_type_name))
+#         for _ in range(inst_type.num_ephemeral_disks):
+#             lc.add_ephemeral_device()
 
-                # Add all available ephemeral devices
-                instance_type_name = helpers.get_provider_test_data(
-                    self.provider,
-                    "instance_type")
-                inst_type = next(self.provider.compute.instance_types.find(
-                    name=instance_type_name))
-                for _ in range(inst_type.num_ephemeral_disks):
-                    lc.add_block_device(LaunchConfig.DestinationType.LOCAL)
+        # block_devices should be populated
+#         self.assertTrue(
+#             len(lc.block_devices) == 2 + inst_type.num_ephemeral_disks,
+#             "Expected %d total block devices bit found %d" %
+#             (2 + inst_type.num_ephemeral_disks, len(lc.block_devices)))
 
-                # block_devices should be populated
-                self.assertTrue(
-                    len(lc.block_devices) >= 1,
-                    "Expected number of block devices %s not found" %
-                    len(lc.block_devices))
-
-                inst = helpers.create_test_instance(
-                    self.provider,
-                    name,
-                    launch_config=lc)
-                with helpers.cleanup_action(lambda: inst.terminate()):
-                    inst.wait_till_ready(
-                        interval=self.get_test_wait_interval())
-                    inst.terminate()
-                    inst.wait_for(
-                        [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                        terminal_states=[InstanceState.ERROR],
-                        interval=self.get_test_wait_interval())
-                    # TODO: Check instance attachments and make sure they
-                    # correspond to requested mappings
+        inst = helpers.create_test_instance(
+            self.provider,
+            name,
+            launch_config=lc)
+        with helpers.cleanup_action(lambda: inst.terminate()):
+            inst.wait_till_ready(
+                interval=self.get_test_wait_interval())
+            inst.terminate()
+            inst.wait_for(
+                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                terminal_states=[InstanceState.ERROR],
+                interval=self.get_test_wait_interval())
+            # TODO: Check instance attachments and make sure they
+            # correspond to requested mappings

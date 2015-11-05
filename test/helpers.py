@@ -56,8 +56,8 @@ TEST_DATA_CONFIG = {
     },
     "OpenStackCloudProvider": {
         "image": os.environ.get('CB_IMAGE_OS',
-                                'fdd9a6ee-2c9b-490c-91ac-ca9b7c134264'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.nano'),
+                                'ca4beba8-4948-4410-b6ed-4d68e54b5913'),
+        "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.tiny'),
         "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
     }
 }

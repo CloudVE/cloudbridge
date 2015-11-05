@@ -185,7 +185,7 @@ class Instance(ObjectLifeCycleMixin):
         """
         Get the instance type.
 
-        :rtype: str
+        :rtype: ``object`` of :class:`.InstanceType`
         :return: API type of this instance (e.g., ``m1.large``)
         """
         pass
@@ -286,6 +286,109 @@ class MachineImageState(object):
     PENDING = "pending"
     AVAILABLE = "available"
     ERROR = "error"
+
+
+class LaunchConfig(object):
+    """
+    Represents an advanced launch configuration object, containing
+    information such as BlockDeviceMappings, NetworkInterface configurations,
+    and other advanced options which may be useful when launching an instance.
+
+    Typical Usage:
+    ```
+        lc = provider.compute.instances.create_launch_config()
+        lc.add_block_device(...)
+        lc.add_network_interface(...)
+
+        inst = provider.compute.instances.create(name, image, instance_type,
+                                               launch_configuration=lc)
+    ```
+    """
+
+    @abstractmethod
+    def add_ephemeral_device(self):
+        """
+        Adds a new ephemeral block device mapping to the boot configuration.
+        This can be used to add existing ephemeral devices to the instance.
+        (The total number of ephemeral devices available for a particular
+        InstanceType can be determined by querying the InstanceTypes service).
+        Note that on some services, such as AWS, ephemeral devices must be
+        added in as a device mapping at instance creation time, and cannot be
+        added afterwards.
+
+        Note that the device name, such as /dev/sda1, cannot be selected at
+        present, since this tends to be provider and instance type specific.
+        However, the order of device addition coupled with device type will
+        generally determine naming order, with devices added first getting
+        lower letters than instances added later.
+
+        Examples:
+        ```
+        lc = provider.compute.instances.create_launch_config()
+
+        # 1. Add all available ephemeral devices
+        inst_type = next(provider.compute.instance_types.find(name='m1.small'))
+        for i in range(inst_type.num_ephemeral_disks):
+            lc.add_ephemeral_device()
+        """
+        pass
+
+    @abstractmethod
+    def add_volume_device(self, source=None, is_root=None, size=None,
+                          delete_on_terminate=None):
+        """
+        Adds a new volume based block device mapping to the boot configuration.
+        The volume can be based on a snapshot, image, existing volume or
+        be a blank new volume, and is specified by the source parameter.
+
+        The property is_root can be set to True to override any existing root
+        device mappings. Otherwise, the default behaviour is to add new block
+        devices to the instance.
+
+        Note that the device name, such as /dev/sda1, cannot be selected at
+        present, since this tends to be provider and instance type specific.
+        However, the order of device addition coupled with device type will
+        generally determine naming order, with devices added first getting
+        lower letters than instances added later (except when is_root is set).
+
+        Examples:
+        ```
+        lc = provider.compute.instances.create_launch_config()
+
+        # 1. Create and attach an empty volume to the instance of size 100GB
+        lc.add_volume_device(size=100, delete_on_terminate=True)
+
+        # 2. Create and attach a volume based on a snapshot
+        snap = provider.block_store.snapshots.get('<my_snapshot_id>')
+        lc.add_volume_device(source=snap)
+
+        # 3. Create and attach a volume based on an image and set it as root
+        img = provider.images.get('<my_image_id>')
+        lc.add_volume_device(source=img, size=100, is_root=True)
+        ```
+
+        :type  source: ``Volume``, ``Snapshot``, ``Image`` or None.
+        :param source: The source block_device to add. If ``Volume``, the
+        volume will be attached directly to the instance. If ``Snapshot``, a
+        volume will be created based on the Snapshot and attached to the
+        instance. If ``Image``, a volume based on the Image will be attached to
+        the instance. If None, the source is assumed to be an empty blank
+        volume.
+
+        :type  is_root: ``bool``
+        :param is_root: Determines which device will serve as the root device.
+        If more than one device is defined as root, an
+        InvalidConfigurationException will be thrown.
+
+        :type  size: ``int``
+        :param size: The size of the volume to create. An implementation may
+        ignore this parameter for certain sources like 'Volume'.
+
+        :type  delete_on_terminate: ``bool``
+        :param delete_on_terminate: Determines whether to delete or keep the
+        volume on instance termination.
+        """
+        pass
 
 
 class MachineImage(ObjectLifeCycleMixin):

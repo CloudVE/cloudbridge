@@ -24,7 +24,6 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
-from cloudbridge.cloud.interfaces.services import LaunchConfig
 
 from .resources import OpenStackContainer
 from .resources import OpenStackInstance
@@ -428,7 +427,11 @@ class OpenStackComputeService(BaseComputeService):
         self._instance_type_svc = OpenStackInstanceTypesService(self._provider)
         self._instance_svc = OpenStackInstanceService(self._provider)
         self._region_svc = OpenStackRegionService(self.provider)
-        self._images = OpenStackImageService(self.provider)
+        self._images_svc = OpenStackImageService(self.provider)
+
+    @property
+    def images(self):
+        return self._images_svc
 
     @property
     def instance_types(self):
@@ -473,7 +476,7 @@ class OpenStackInstanceService(BaseInstanceService):
         else:
             security_groups_list = None
         if launch_config:
-            bdm = None  # self._to_block_device_mapping(launch_config)
+            bdm = self._to_block_device_mapping(launch_config)
         else:
             bdm = None
 
@@ -499,32 +502,38 @@ class OpenStackInstanceService(BaseInstanceService):
         bdm = []
         for device in launch_config.block_devices:
             bdm_dict = {}
-            if device.is_root:
-                bdm_dict['device_name'] = '/dev/vda'
-            else:
-                # Let openstack auto assign device name
-                bdm_dict['device_name'] = None
 
-            if isinstance(device.source, Snapshot):
-                bdm_dict['source_type'] = 'snapshot'
-                bdm_dict['uuid'] = device.source.id
-            elif isinstance(device.source, Volume):
-                bdm_dict['source_type'] = 'volume'
-                bdm_dict['uuid'] = device.source.id
-            elif isinstance(device.source, MachineImage):
-                bdm_dict['source_type'] = 'image'
-                bdm_dict['uuid'] = device.source.id
+            # Let openstack auto assign device name
+            bdm_dict['device_name'] = None
+
+            if device.is_volume:
+                bdm_dict['destination_type'] = 'volume'
+
+                if device.is_root:
+                    bdm_dict['device_name'] = '/dev/sda'
+
+                if isinstance(device.source, Snapshot):
+                    bdm_dict['source_type'] = 'snapshot'
+                    bdm_dict['uuid'] = device.source.id
+                elif isinstance(device.source, Volume):
+                    bdm_dict['source_type'] = 'volume'
+                    bdm_dict['uuid'] = device.source.id
+                elif isinstance(device.source, MachineImage):
+                    bdm_dict['source_type'] = 'image'
+                    bdm_dict['uuid'] = device.source.id
+                else:
+                    bdm_dict['source_type'] = 'blank'
+
+                if device.delete_on_terminate is not None:
+                    bdm_dict[
+                        'delete_on_termination'] = device.delete_on_terminate
+
+                if device.size:
+                    bdm_dict['volume_size'] = device.size
             else:
+                bdm_dict['destination_type'] = 'local'
                 bdm_dict['source_type'] = 'blank'
-
-            bdm_dict['destination_type'] = \
-                'volume' if device.dest_type == \
-                LaunchConfig.DestinationType.LOCAL \
-                else 'local'
-            bdm_dict['delete_on_termination'] = device.delete_on_terminate
-            if device.size:
-                bdm_dict['size'] = device.size
-
+                bdm_dict['delete_on_termination'] = True
             bdm.append(bdm_dict)
         return bdm
 

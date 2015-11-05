@@ -158,7 +158,8 @@ class OpenStackInstanceType(BaseInstanceType):
 
     @property
     def num_ephemeral_disks(self):
-        return 0 if self._os_flavor.ephemeral == 'N/A' else 1
+        return 0 if self._os_flavor.ephemeral == 'N/A' else \
+            self._os_flavor.ephemeral
 
     @property
     def extra_data(self):
