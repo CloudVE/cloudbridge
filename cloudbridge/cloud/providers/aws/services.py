@@ -439,14 +439,15 @@ class AWSInstanceService(BaseInstanceService):
             security_groups_list = None
         if launch_config:
             bdm = self._process_block_device_mappings(launch_config, zone_name)
+            net_id = self._get_net_id(launch_config)
         else:
-            bdm = None
+            bdm = net_id = None
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
             min_count=1, max_count=1, placement=zone_name,
             key_name=keypair_name, security_groups=security_groups_list,
-            user_data=user_data, block_device_map=bdm)
+            user_data=user_data, block_device_map=bdm, subnet_id=net_id)
         if reservation:
             instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
@@ -498,6 +499,10 @@ class AWSInstanceService(BaseInstanceService):
                 bd_type.ephemeral_name = 'ephemeral%s' % ephemeral_counter
 
         return bdm
+
+    def _get_net_id(self, launch_config):
+        return launch_config.net_ids[0] if len(launch_config.net_ids) > 0 \
+            else None
 
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)

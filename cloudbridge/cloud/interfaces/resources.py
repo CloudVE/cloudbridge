@@ -390,6 +390,20 @@ class LaunchConfig(object):
         """
         pass
 
+    @abstractmethod
+    def add_net_id(self, net_id):
+        """
+        Add a private netword ID to the launch configuration.
+
+        :type net_id: str
+        :param net_id: Network ID to launch an instance into. This is a
+                       preliminary implementation (pending full private cloud
+                       support within cloudbridge) so native netowrk IDs need
+                       to be supplied. For OpenStack, this is the Neutron
+                       network ID. For AWS, this is a subnet ID.
+        """
+        pass
+
 
 class MachineImage(ObjectLifeCycleMixin):
 

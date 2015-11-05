@@ -477,8 +477,9 @@ class OpenStackInstanceService(BaseInstanceService):
             security_groups_list = None
         if launch_config:
             bdm = self._to_block_device_mapping(launch_config)
+            nics = self._format_nics(launch_config)
         else:
-            bdm = None
+            bdm = nics = None
 
         os_instance = self._provider.nova.servers.create(
             name,
@@ -490,7 +491,8 @@ class OpenStackInstanceService(BaseInstanceService):
             key_name=keypair_name,
             security_groups=security_groups_list,
             userdata=user_data,
-            block_device_mapping_v2=bdm)
+            block_device_mapping_v2=bdm,
+            nics=nics)
         return OpenStackInstance(self._provider, os_instance)
 
     def _to_block_device_mapping(self, launch_config):
@@ -536,6 +538,15 @@ class OpenStackInstanceService(BaseInstanceService):
                 bdm_dict['delete_on_termination'] = True
             bdm.append(bdm_dict)
         return bdm
+
+    def _format_nics(self, launch_config):
+        """
+        Format network IDs for the API call.
+        """
+        nics = []
+        for net_id in launch_config.net_ids:
+            nics.append({'net-id': net_id})
+        return nics
 
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)
