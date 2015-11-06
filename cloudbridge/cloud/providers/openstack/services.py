@@ -243,13 +243,6 @@ class OpenStackInstanceTypesService(BaseInstanceTypesService):
         return [OpenStackInstanceType(f)
                 for f in self._provider.nova.flavors.list()]
 
-    def find(self, **kwargs):
-        name = kwargs.get('name')
-        if name:
-            return (itype for itype in self.list() if itype.name == name)
-        else:
-            return None
-
 
 class OpenStackBlockStoreService(BaseBlockStoreService):
 
@@ -401,15 +394,8 @@ class OpenStackRegionService(BaseRegionService):
         super(OpenStackRegionService, self).__init__(provider)
 
     def get(self, region_id):
-        regions = [endpoint.get('region') or endpoint.get('region_id')
-                   for svc in self.provider.keystone.service_catalog.get_data()
-                   for endpoint in svc.get('endpoints', [])]
-        region = [region for region in regions
-                  if region == region_id]
-        if region:
-            return OpenStackRegion(self.provider, region[0])
-        else:
-            return None
+        region = (r for r in self.list() if r.id == region_id)
+        return next(region, None)
 
     def list(self):
         regions = [endpoint.get('region') or endpoint.get('region_id')

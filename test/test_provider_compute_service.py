@@ -5,6 +5,7 @@ import ipaddress
 from cloudbridge.cloud.interfaces \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
+from cloudbridge.cloud.interfaces.resources import WaitStateException
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
@@ -149,8 +150,12 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             name,
             launch_config=lc)
         with helpers.cleanup_action(lambda: inst.terminate()):
-            inst.wait_till_ready(
-                interval=self.get_test_wait_interval())
+            try:
+                inst.wait_till_ready(
+                    interval=self.get_test_wait_interval())
+            except WaitStateException as e:
+                self.fail("The block device mapped launch did not complete"
+                          " successfully: %s" % e)
             inst.terminate()
             inst.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],
