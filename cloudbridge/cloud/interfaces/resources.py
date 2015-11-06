@@ -391,9 +391,20 @@ class LaunchConfig(object):
         pass
 
     @abstractmethod
-    def add_network_iterface(self, net_id):
+    def add_network_interface(self, net_id):
         """
         Add a private network info to the launch configuration.
+
+        Examples:
+        ```
+        lc = provider.compute.instances.create_launch_config()
+
+        # 1. Add a VPC subnet for use with AWS
+        lc.add_network_interface('subnet-c24aeaff')
+
+        # 2. Add a network ID for use with OpenStack
+        lc.add_network_interface('5820c766-75fe-4fc6-96ef-798f67623238')
+        ```
 
         :type net_id: str
         :param net_id: Network ID to launch an instance into. This is a
