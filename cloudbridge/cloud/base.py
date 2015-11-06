@@ -508,6 +508,13 @@ class BaseInstanceTypesService(InstanceTypesService, BaseProviderService):
     def __init__(self, provider):
         super(BaseInstanceTypesService, self).__init__(provider)
 
+    def find(self, **kwargs):
+        name = kwargs.get('name')
+        if name:
+            return (itype for itype in self.list() if itype.name == name)
+        else:
+            return None
+
 
 class BaseInstanceService(InstanceService, BaseProviderService):
 
