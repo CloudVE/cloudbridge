@@ -315,6 +315,18 @@ class OpenStackInstance(BaseInstance):
         return OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
 
+    def add_floating_ip(self, ip_address):
+        """
+        Add a floating IP address to this instance.
+        """
+        self._os_instance.add_floating_ip(ip_address)
+
+    def remove_floating_ip(self, ip_address):
+        """
+        Remove a floating IP address from this instance.
+        """
+        self._os_instance.remove_floating_ip(ip_address)
+
     @property
     def state(self):
         return OpenStackInstance.INSTANCE_STATE_MAP.get(

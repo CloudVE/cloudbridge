@@ -270,6 +270,26 @@ class Instance(ObjectLifeCycleMixin):
         """
         pass
 
+    @abstractmethod
+    def add_floating_ip(self, ip_address):
+        """
+        Add a public IP address to this instance.
+
+        :type ip_address: str
+        :param ip_address: The IP address to associate with the instance.
+        """
+        pass
+
+    @abstractmethod
+    def remove_floating_ip(self, ip_address):
+        """
+        Remove a public IP address from this instance.
+
+        :type ip_address: str
+        :param ip_address: The IP address to remove from the instance.
+        """
+        pass
+
 
 class MachineImageState(object):
 

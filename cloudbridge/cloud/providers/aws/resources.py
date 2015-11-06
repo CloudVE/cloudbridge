@@ -303,6 +303,19 @@ class AWSInstance(BaseInstance):
         image = retry_decorator(self._provider.compute.images.get)(image_id)
         return image
 
+    def add_floating_ip(self, ip_address):
+        """
+        Add an elastic IP address to this instance.
+        """
+        return self._ec2_instance.use_ip(ip_address)
+
+    def remove_floating_ip(self, ip_address):
+        """
+        Remove a elastic IP address from this instance.
+        """
+        raise NotImplementedError(
+            'remove_floating_ip not implemented by this provider.')
+
     @property
     def state(self):
         return AWSInstance.INSTANCE_STATE_MAP.get(
