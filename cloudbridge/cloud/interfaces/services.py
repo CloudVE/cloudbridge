@@ -460,9 +460,19 @@ class KeyPairService(ProviderService):
         pass
 
     @abstractmethod
+    def find(self, name):
+        """
+        Searches for a key pair by a given list of attributes.
+
+        :rtype: ``object`` of :class:`.KeyPair`
+        :return:  a KeyPair object
+        """
+        pass
+
+    @abstractmethod
     def create(self, name):
         """
-        Create a new keypair.
+        Create a new keypair or return an existing one by the same name.
 
         :type name: str
         :param name: The name of the key pair to be created.

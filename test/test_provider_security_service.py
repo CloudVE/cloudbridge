@@ -16,11 +16,10 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             lambda:
                 self.provider.security.key_pairs.delete(name=kp.name)
         ):
-            kpl = self.provider.security.key_pairs.list()
-            found_kp = [k for k in kpl if k.name == name]
+            found_kp = self.provider.security.key_pairs.find(name=name)
             self.assertTrue(
-                len(found_kp) == 1,
-                "List key pairs did not return the expected key {0}."
+                found_kp == kp,
+                "Find key pair did not return the expected key {0}."
                 .format(name))
         kpl = self.provider.security.key_pairs.list()
         found_kp = [k for k in kpl if k.name == name]
@@ -28,9 +27,9 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             len(found_kp) == 0,
             "Key pair {0} should have been deleted but still exists."
             .format(name))
-        no_kp = self.provider.security.key_pairs.delete(name='bogus_kp')
+        no_kp = self.provider.security.key_pairs.find(name='bogus_kp')
         self.assertTrue(
-            no_kp,
+            no_kp is None,
             "Found a key pair {0} that should not exist?".format(no_kp))
 
     def test_key_pair(self):

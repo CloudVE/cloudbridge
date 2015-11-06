@@ -85,9 +85,19 @@ class AWSKeyPairService(BaseKeyPairService):
         key_pairs = self.provider.ec2_conn.get_all_key_pairs()
         return [AWSKeyPair(self.provider, kp) for kp in key_pairs]
 
+    def find(self, name):
+        """
+        Searches for a key pair by a given list of attributes.
+        """
+        try:
+            kp = self.provider.ec2_conn.get_all_key_pairs([name])[0]
+            return AWSKeyPair(self.provider, kp)
+        except EC2ResponseError:
+            return None
+
     def create(self, name):
         """
-        Create a new key pair.
+        Create a new keypair or return an existing one by the same name.
 
         :type name: str
         :param name: The name of the key pair to be created.
@@ -95,28 +105,11 @@ class AWSKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or None if one was not be created.
         """
-        kp = self.provider.ec2_conn.create_key_pair(name)
+        kp = self.find(name=name)
         if kp:
-            return AWSKeyPair(self.provider, kp)
-        return None
-
-    def delete(self, name):
-        """
-        Delete an existing key pair.
-
-        :type name: str
-        :param name: The name of the key pair to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the key does not exist, ``False`` otherwise. Note
-                  that this implies that the key may not have been deleted by
-                  this method but instead has not existed in the first place.
-        """
-        for kp in self.provider.ec2_conn.get_all_key_pairs():
-            if kp.name == name:
-                kp.delete()
-                return True
-        return True
+            return kp
+        kp = self.provider.ec2_conn.create_key_pair(name)
+        return AWSKeyPair(self.provider, kp)
 
 
 class AWSSecurityGroupService(BaseSecurityGroupService):
