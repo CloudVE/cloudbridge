@@ -246,7 +246,7 @@ class BaseLaunchConfig(LaunchConfig):
             is_volume=True, source=source, is_root=is_root, size=size,
             delete_on_terminate=delete_on_terminate)
 
-    def add_net_id(self, net_id):
+    def add_network_iterface(self, net_id):
         self.net_ids.append(net_id)
 
 
