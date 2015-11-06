@@ -7,6 +7,8 @@ from boto.exception import EC2ResponseError
 from boto.s3.key import Key
 from retrying import retry
 
+from cloudbridge.cloud.base import BaseContainer
+from cloudbridge.cloud.base import BaseContainerObject
 from cloudbridge.cloud.base import BaseInstance
 from cloudbridge.cloud.base import BaseInstanceType
 from cloudbridge.cloud.base import BaseKeyPair
@@ -16,8 +18,6 @@ from cloudbridge.cloud.base import BaseSecurityGroup
 from cloudbridge.cloud.base import BaseSecurityGroupRule
 from cloudbridge.cloud.base import BaseSnapshot
 from cloudbridge.cloud.base import BaseVolume
-from cloudbridge.cloud.interfaces.resources import Container
-from cloudbridge.cloud.interfaces.resources import ContainerObject
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -333,9 +333,6 @@ class AWSInstance(BaseInstance):
             # set the status to unknown
             self._ec2_instance.status = 'unknown'
 
-    def __repr__(self):
-        return "<CB-AWSInstance: {0}({1})>".format(self.name, self.instance_id)
-
 
 class AWSVolume(BaseVolume):
 
@@ -424,9 +421,6 @@ class AWSVolume(BaseVolume):
             # set the status to unknown
             self._volume.status = 'unknown'
 
-    def __repr__(self):
-        return "<CB-AWSVolume: {0} ({1})>".format(self.id, self.name)
-
 
 class AWSSnapshot(BaseSnapshot):
 
@@ -494,10 +488,6 @@ class AWSSnapshot(BaseSnapshot):
 
     def unshare(self, user_ids=None):
         raise NotImplementedError('share not implemented by this provider')
-
-    def __repr__(self):
-        return "<CB-AWSSnapshot: {0} ({1})>".format(self.id,
-                                                    self.name)
 
 
 class AWSKeyPair(BaseKeyPair):
@@ -596,7 +586,7 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         return None
 
 
-class AWSContainerObject(ContainerObject):
+class AWSContainerObject(BaseContainerObject):
 
     def __init__(self, provider, key):
         self._provider = provider
@@ -632,11 +622,8 @@ class AWSContainerObject(ContainerObject):
         """
         self._key.delete()
 
-    def __repr__(self):
-        return "<CB-AWSContainerObject: {0}>".format(self.name)
 
-
-class AWSContainer(Container):
+class AWSContainer(BaseContainer):
 
     def __init__(self, provider, bucket):
         self._provider = provider
@@ -675,9 +662,6 @@ class AWSContainer(Container):
     def create_object(self, name):
         key = Key(self._bucket, name)
         return AWSContainerObject(self._provider, key)
-
-    def __repr__(self):
-        return "<CB-AWSContainer: {0}>".format(self.name)
 
 
 class AWSRegion(BaseRegion):

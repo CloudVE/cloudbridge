@@ -6,6 +6,8 @@ import shutil
 import ipaddress
 from swiftclient.exceptions import ClientException
 
+from cloudbridge.cloud.base import BaseContainer
+from cloudbridge.cloud.base import BaseContainerObject
 from cloudbridge.cloud.base import BaseInstance
 from cloudbridge.cloud.base import BaseInstanceType
 from cloudbridge.cloud.base import BaseKeyPair
@@ -15,8 +17,6 @@ from cloudbridge.cloud.base import BaseSecurityGroup
 from cloudbridge.cloud.base import BaseSecurityGroupRule
 from cloudbridge.cloud.base import BaseSnapshot
 from cloudbridge.cloud.base import BaseVolume
-from cloudbridge.cloud.interfaces.resources import Container
-from cloudbridge.cloud.interfaces.resources import ContainerObject
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -346,9 +346,6 @@ class OpenStackInstance(BaseInstance):
             # set the status to unknown
             self._os_instance.status = 'unknown'
 
-    def __repr__(self):
-        return "<CB-OSInstance: {0} ({1})>".format(self.name, self.instance_id)
-
 
 class OpenStackRegion(BaseRegion):
 
@@ -458,9 +455,6 @@ class OpenStackVolume(BaseVolume):
             # set the status to unknown
             self._volume.status = 'unknown'
 
-    def __repr__(self):
-        return "<CB-OSVolume: {0} ({1})>".format(self.id, self.name)
-
 
 class OpenStackSnapshot(BaseSnapshot):
 
@@ -530,9 +524,6 @@ class OpenStackSnapshot(BaseSnapshot):
 
     def unshare(self, user_ids=None):
         raise NotImplementedError('share not implemented by this provider')
-
-    def __repr__(self):
-        return "<CB-OSSnapshot: {0} ({1}>".format(self.id, self.name)
 
 
 class OpenStackKeyPair(BaseKeyPair):
@@ -646,7 +637,7 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
         return None
 
 
-class OpenStackContainerObject(ContainerObject):
+class OpenStackContainerObject(BaseContainerObject):
 
     def __init__(self, provider, cbcontainer, obj):
         self._provider = provider
@@ -692,11 +683,8 @@ class OpenStackContainerObject(ContainerObject):
                 return True
         return False
 
-    def __repr__(self):
-        return "<CB-OpenStackContainerObject: {0}>".format(self.name)
 
-
-class OpenStackContainer(Container):
+class OpenStackContainer(BaseContainer):
 
     def __init__(self, provider, container):
         self._provider = provider
@@ -741,6 +729,3 @@ class OpenStackContainer(Container):
     def create_object(self, object_name):
         self._provider.swift.put_object(self.name, object_name, None)
         return self.get(object_name)
-
-    def __repr__(self):
-        return "<CB-OpenStackContainer: {0}>".format(self.name)

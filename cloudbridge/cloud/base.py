@@ -10,6 +10,8 @@ import six
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.resources import Container
+from cloudbridge.cloud.interfaces.resources import ContainerObject
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
@@ -178,6 +180,10 @@ class BaseInstance(BaseObjectLifeCycleMixin, Instance):
     def terminal_states(self):
         return [InstanceState.TERMINATED, InstanceState.ERROR]
 
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.name, self.instance_id)
+
 
 class BaseLaunchConfig(LaunchConfig):
 
@@ -262,7 +268,7 @@ class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.id, self.name)
+                                            self.name, self.id)
 
 
 class BaseVolume(BaseObjectLifeCycleMixin, Volume):
@@ -275,6 +281,10 @@ class BaseVolume(BaseObjectLifeCycleMixin, Volume):
     def terminal_states(self):
         return [VolumeState.ERROR, VolumeState.DELETED]
 
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.name, self.id)
+
 
 class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
 
@@ -285,6 +295,10 @@ class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
     @property
     def terminal_states(self):
         return [SnapshotState.ERROR]
+
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.name, self.id)
 
 
 class BaseKeyPair(KeyPair):
@@ -437,6 +451,20 @@ class BaseRegion(Region):
         if isinstance(other, Region):
             return self._provider == other._provider and \
                 self.id == other.id
+
+
+class BaseContainerObject(ContainerObject):
+
+    def __repr__(self):
+        return "<CB-{0}: {1}>".format(self.__class__.__name__,
+                                      self.name)
+
+
+class BaseContainer(Container):
+
+    def __repr__(self):
+        return "<CB-{0}: {1}>".format(self.__class__.__name__,
+                                      self.name)
 
 
 class BaseProviderService(ProviderService):
