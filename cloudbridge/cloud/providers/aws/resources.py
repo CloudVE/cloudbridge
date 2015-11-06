@@ -194,7 +194,7 @@ class AWSInstance(BaseInstance):
         self._ec2_instance = ec2_instance
 
     @property
-    def instance_id(self):
+    def id(self):
         """
         Get the instance identifier.
         """
@@ -376,7 +376,7 @@ class AWSVolume(BaseVolume):
         """
         Attach this volume to an instance.
         """
-        instance_id = instance.instance_id if isinstance(
+        instance_id = instance.id if isinstance(
             instance,
             AWSInstance) else instance
         self._volume.attach(instance_id, device)

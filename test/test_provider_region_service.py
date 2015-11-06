@@ -25,3 +25,8 @@ class ProviderRegionServiceTestCase(ProviderTestBase):
             region,
             regions[0],
             "List and get methods should return the same regions")
+
+        self.assertTrue(
+            region.id in repr(region),
+            "repr(obj) should contain the object id so that the object"
+            " can be reconstructed, but does not.")

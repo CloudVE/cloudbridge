@@ -200,7 +200,7 @@ class OpenStackInstance(BaseInstance):
         self._os_instance = os_instance
 
     @property
-    def instance_id(self):
+    def id(self):
         """
         Get the instance identifier.
         """
@@ -338,7 +338,7 @@ class OpenStackInstance(BaseInstance):
         for its latest state.
         """
         instance = self._provider.compute.instances.get(
-            self.instance_id)
+            self.id)
         if instance:
             self._os_instance = instance._os_instance
         else:
@@ -412,7 +412,7 @@ class OpenStackVolume(BaseVolume):
         """
         Attach this volume to an instance.
         """
-        instance_id = instance.instance_id if isinstance(
+        instance_id = instance.id if isinstance(
             instance,
             OpenStackInstance) else instance
         self._volume.attach(instance_id, device)

@@ -182,7 +182,7 @@ class BaseInstance(BaseObjectLifeCycleMixin, Instance):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.instance_id)
+                                            self.name, self.id)
 
 
 class BaseLaunchConfig(LaunchConfig):

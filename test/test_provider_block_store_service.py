@@ -32,6 +32,10 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
 
         with helpers.cleanup_action(lambda: cleanup_vol(test_vol)):
             test_vol.wait_till_ready(interval=self.get_test_wait_interval())
+            self.assertTrue(
+                test_vol.id in repr(test_vol),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not. eval(repr(obj)) == obj")
             volumes = self.provider.block_store.volumes.list()
             found_volumes = [vol for vol in volumes if vol.name == name]
             self.assertTrue(
@@ -115,6 +119,11 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
             with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready(
                     interval=self.get_test_wait_interval())
+                self.assertTrue(
+                    test_snap.id in repr(test_snap),
+                    "repr(obj) should contain the object id so that the object"
+                    " can be reconstructed, but does not.")
+
                 snaps = self.provider.block_store.snapshots.list()
                 found_snaps = [snap for snap in snaps
                                if snap.name == snap_name]

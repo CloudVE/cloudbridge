@@ -44,8 +44,9 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 "List key pairs did not return the expected key {0}."
                 .format(name))
             self.assertTrue(
-                repr(kp) == "<CBKeyPair: {0}>".format(name),
-                "KeyPair repr {0} not matching expected format.".format(kp))
+                kp.name in repr(kp),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not. eval(repr(obj)) == obj")
             self.assertIsNotNone(
                 kp.material,
                 "KeyPair material is empty but it should not be.")
@@ -98,14 +99,16 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 len(found_rules) == 1,
                 "Expected rule not found in security group: {0}".format(name))
+
+            object_keys = (
+                sg.rules[0].ip_protocol,
+                sg.rules[0].from_port,
+                sg.rules[0].to_port)
             self.assertTrue(
-                repr(sg.rules[0]) == ("<CBSecurityGroupRule: IP: {0}; from: "
-                                      "{1}; to: {2}>"
-                                      .format(sg.rules[0].ip_protocol,
-                                              sg.rules[0].from_port,
-                                              sg.rules[0].to_port)),
-                ("Security group rule repr {0} not matching expected format."
-                 .format(sg.rules[0])))
+                all(str(key) in repr(sg.rules[0]) for key in object_keys),
+                "repr(obj) should contain ip_protocol, form_port and to_port"
+                " so that the object can be reconstructed, but does not."
+                " eval(repr(obj)) == obj")
             self.assertTrue(
                 sg == sg,
                 "The same security groups should be equal?")

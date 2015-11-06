@@ -141,7 +141,7 @@ class Instance(ObjectLifeCycleMixin):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def instance_id(self):
+    def id(self):
         """
         Get the instance identifier.
 

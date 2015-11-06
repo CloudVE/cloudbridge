@@ -37,6 +37,11 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                     interval=self.get_test_wait_interval())
 
                 self.assertTrue(
+                    test_instance.id in repr(test_instance),
+                    "repr(obj) should contain the object id so that the object"
+                    " can be reconstructed, but does not.")
+
+                self.assertTrue(
                     test_image.description is None or isinstance(
                         test_image.description, six.string_types),
                     "Image description must be None or a string")

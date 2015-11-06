@@ -11,6 +11,10 @@ class ProviderInstanceTypesServiceTestCase(ProviderTestBase):
     def test_instance_types(self):
         instance_types = self.provider.compute.instance_types.list()
         for inst_type in instance_types:
+            self.assertTrue(
+                inst_type.id in repr(inst_type),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not. eval(repr(obj)) == obj")
             self.assertIsNotNone(
                 inst_type.id,
                 "InstanceType id must have a value")

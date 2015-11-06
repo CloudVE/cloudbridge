@@ -31,6 +31,7 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
 
         with helpers.cleanup_action(lambda: cleanup_inst(inst)):
             inst.wait_till_ready(interval=self.get_test_wait_interval())
+
             all_instances = self.provider.compute.instances.list()
             found_instances = [i for i in all_instances if i.name == name]
             self.assertTrue(
@@ -39,14 +40,14 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                 name)
 
             get_inst = self.provider.compute.instances.get(
-                inst.instance_id)
+                inst.id)
             self.assertTrue(
-                found_instances[0].instance_id ==
-                get_inst.instance_id == inst.instance_id,
+                found_instances[0].id ==
+                get_inst.id == inst.id,
                 "Ids returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(found_instances[0].instance_id,
-                                         get_inst.instance_id,
-                                         inst.instance_id))
+                " expected: {2}" .format(found_instances[0].id,
+                                         get_inst.id,
+                                         inst.id))
             self.assertTrue(
                 found_instances[0].name ==
                 get_inst.name == inst.name,
@@ -55,7 +56,7 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
                                          get_inst.name,
                                          inst.name))
         deleted_inst = self.provider.compute.instances.get(
-            inst.instance_id)
+            inst.id)
         self.assertTrue(
             deleted_inst is None or deleted_inst.state in (
                 InstanceState.TERMINATED,
@@ -77,6 +78,10 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
         test_instance = helpers.get_test_instance(self.provider,
                                                   instance_name)
         with helpers.cleanup_action(lambda: test_instance.terminate()):
+            self.assertTrue(
+                test_instance.id in repr(test_instance),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not. eval(repr(obj)) == obj")
             self.assertEqual(
                 test_instance.name, instance_name,
                 "Instance name {0} is not equal to the expected name"
