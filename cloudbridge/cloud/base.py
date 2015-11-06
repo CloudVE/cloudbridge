@@ -167,7 +167,8 @@ class BaseInstanceType(InstanceType):
         return self.size_root_disk + self.size_ephemeral_disks
 
     def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__, self.name)
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.name, self.id)
 
 
 class BaseInstance(BaseObjectLifeCycleMixin, Instance):
