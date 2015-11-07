@@ -129,7 +129,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def _connect_neutron(self):
         """
-        Get an OpenStack Neutron (networking) client object for the given cloud.
+        Get an OpenStack Neutron (networking) client object for the given
+        cloud.
         """
         return neutron_client.Client(
             username=self.username, password=self.password,
