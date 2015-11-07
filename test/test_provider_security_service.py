@@ -21,6 +21,11 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 found_kp == kp,
                 "Find key pair did not return the expected key {0}."
                 .format(name))
+            recreated_kp = self.provider.security.key_pairs.create(name=name)
+            self.assertTrue(
+                recreated_kp == kp,
+                "Recreating key pair did not return the expected key {0}."
+                .format(name))
         kpl = self.provider.security.key_pairs.list()
         found_kp = [k for k in kpl if k.name == name]
         self.assertTrue(
