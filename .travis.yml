@@ -9,6 +9,10 @@ env:
   - TOX_ENV=pypy
 matrix:
   fast_finish: true
+  include:
+    - python: 3.5
+      env:
+      - TOXENV=py35
   allow_failures:
     - os: osx
 install:
