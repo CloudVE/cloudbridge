@@ -5,7 +5,6 @@ os:
 #  - osx
 env:
   - TOX_ENV=py27
-  - TOX_ENV=py35
   - TOX_ENV=pypy
 matrix:
   fast_finish: true
@@ -19,5 +18,5 @@ install:
   - pip install tox
   - pip install coveralls
 script:
-  - tox -e $TOX_ENV
+  - tox
 after_success: coveralls
