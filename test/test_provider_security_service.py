@@ -86,6 +86,11 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             len(found_sg) == 0,
             "Security group {0} should have been deleted but still exists."
             .format(name))
+        no_sg = self.provider.security.security_groups.get(
+            group_ids=['bogus_sg'])
+        self.assertTrue(
+            len(no_sg) == 0,
+            "Found a bogus security group?!?".format(no_sg))
 
     def test_security_group(self):
         """Test for proper creation of a security group."""
