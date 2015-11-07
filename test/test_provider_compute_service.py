@@ -123,12 +123,18 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             " invalid")
 
         # Add a new volume
-        lc.add_volume_device(size=1)
+        lc.add_volume_device(size=1, delete_on_terminate=True)
 
         # Override root volume size
         image_id = helpers.get_provider_test_data(self.provider, "image")
         img = self.provider.compute.images.get(image_id)
-        lc.add_volume_device(is_root=True, source=img, size=2)
+        lc.add_volume_device(
+            is_root=True,
+            source=img,
+            # TODO: This should be greater than the ami size or tests will fail
+            # on actual infrastructures. Needs an image.size method
+            size=2,
+            delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
         # exception.
