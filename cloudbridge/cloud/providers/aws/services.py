@@ -21,6 +21,8 @@ from cloudbridge.cloud.base import BaseSecurityGroupService
 from cloudbridge.cloud.base import BaseSecurityService
 from cloudbridge.cloud.base import BaseSnapshotService
 from cloudbridge.cloud.base import BaseVolumeService
+from cloudbridge.cloud.interfaces.resources \
+    import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
@@ -480,6 +482,10 @@ class AWSInstanceService(BaseInstanceService):
                     # create a blank volume. If the Zone is None, this
                     # could fail since the volume and instance may be created
                     # in two different zones.
+                    if not zone:
+                        raise InvalidConfigurationException(
+                            "A zone must be specified when launching with a"
+                            " new blank volume block device mapping.")
                     new_vol = self.provider.block_store.volumes.create(
                         '',
                         device.size,

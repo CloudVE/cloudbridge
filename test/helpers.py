@@ -71,11 +71,13 @@ def get_provider_test_data(provider, key):
     return None
 
 
-def create_test_instance(provider, instance_name, launch_config=None):
+def create_test_instance(
+        provider, instance_name, zone=None, launch_config=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
+        zone=zone,
         launch_config=launch_config)
 
 

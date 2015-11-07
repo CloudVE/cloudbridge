@@ -128,7 +128,7 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
         # Override root volume size
         image_id = helpers.get_provider_test_data(self.provider, "image")
         img = self.provider.compute.images.get(image_id)
-        lc.add_volume_device(is_root=True, source=img, size=3)
+        lc.add_volume_device(is_root=True, source=img, size=2)
 
         # Attempting to add more than one root volume should raise an
         # exception.
@@ -153,6 +153,7 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
         inst = helpers.create_test_instance(
             self.provider,
             name,
+            zone=helpers.get_provider_test_data(self.provider, 'placement'),
             launch_config=lc)
         with helpers.cleanup_action(lambda: inst.terminate()):
             try:
