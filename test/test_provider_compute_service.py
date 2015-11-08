@@ -132,7 +132,7 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             is_root=True,
             source=img,
             # TODO: This should be greater than the ami size or tests will fail
-            # on actual infrastructures. Needs an image.size method
+            # on actual infrastructure. Needs an image.size method
             size=2,
             delete_on_terminate=True)
 
@@ -142,19 +142,19 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             lc.add_volume_device(size=1, is_root=True)
 
         # Add all available ephemeral devices
-#         instance_type_name = helpers.get_provider_test_data(
-#             self.provider,
-#             "instance_type")
-#         inst_type = next(self.provider.compute.instance_types.find(
-#             name=instance_type_name))
-#         for _ in range(inst_type.num_ephemeral_disks):
-#             lc.add_ephemeral_device()
+        instance_type_name = helpers.get_provider_test_data(
+            self.provider,
+            "instance_type")
+        inst_type = next(self.provider.compute.instance_types.find(
+            name=instance_type_name))
+        for _ in range(inst_type.num_ephemeral_disks):
+            lc.add_ephemeral_device()
 
         # block_devices should be populated
-#         self.assertTrue(
-#             len(lc.block_devices) == 2 + inst_type.num_ephemeral_disks,
-#             "Expected %d total block devices bit found %d" %
-#             (2 + inst_type.num_ephemeral_disks, len(lc.block_devices)))
+        self.assertTrue(
+            len(lc.block_devices) == 2 + inst_type.num_ephemeral_disks,
+            "Expected %d total block devices bit found %d" %
+            (2 + inst_type.num_ephemeral_disks, len(lc.block_devices)))
 
         inst = helpers.create_test_instance(
             self.provider,
