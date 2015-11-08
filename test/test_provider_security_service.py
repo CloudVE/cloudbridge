@@ -21,6 +21,11 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 found_kp == kp,
                 "Find key pair did not return the expected key {0}."
                 .format(name))
+            recreated_kp = self.provider.security.key_pairs.create(name=name)
+            self.assertTrue(
+                recreated_kp == kp,
+                "Recreating key pair did not return the expected key {0}."
+                .format(name))
         kpl = self.provider.security.key_pairs.list()
         found_kp = [k for k in kpl if k.name == name]
         self.assertTrue(
@@ -81,6 +86,11 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
             len(found_sg) == 0,
             "Security group {0} should have been deleted but still exists."
             .format(name))
+        no_sg = self.provider.security.security_groups.get(
+            group_ids=['bogus_sg'])
+        self.assertTrue(
+            len(no_sg) == 0,
+            "Found a bogus security group?!?".format(no_sg))
 
     def test_security_group(self):
         """Test for proper creation of a security group."""
