@@ -75,7 +75,7 @@ class ObjectLifeCycleMixin(object):
         Get the current state of this object.
 
         :rtype: ``str``
-        :return: The current state as a string
+        :return: The current state as a string.
         """
         pass
 
@@ -92,21 +92,22 @@ class ObjectLifeCycleMixin(object):
         """
         Wait till the current object is in a ready state, which is any
         state where the end-user can successfully interact with the object.
-        Will throw a WaitStateException if the object is not ready within
+        Will throw a ``WaitStateException`` if the object is not ready within
         the specified timeout.
 
         :type timeout: int
         :param timeout: The maximum length of time (in seconds) to wait for the
-        object to become ready.
+                        object to become ready.
 
         :type interval: int
         :param interval: How frequently to poll the object's ready state (in
-        seconds)
+                         seconds).
 
         :rtype: ``True``
-        :return: Returns True if successful. A WaitStateException exception may
-        be thrown by the underlying service if the object cannot get into a
-        ready state (e.g. If the object is in an error state)
+        :return: Returns ``True`` if successful. A ``WaitStateException``
+                 exception may be thrown by the underlying service if the
+                 object cannot  get into a ready state (e.g. if the object
+                 is in an error state).
         """
         pass
 
@@ -185,7 +186,7 @@ class Instance(ObjectLifeCycleMixin):
         """
         Get the instance type.
 
-        :rtype: ``object`` of :class:`.InstanceType`
+        :rtype: :class:``.InstanceType``
         :return: API type of this instance (e.g., ``m1.large``)
         """
         pass
@@ -265,8 +266,9 @@ class Instance(ObjectLifeCycleMixin):
     def create_image(self, name):
         """
         Create a new image based on this instance.
+
+        :rtype: :class:``.Image``
         :return:  an Image object
-        :rtype: ``object`` of :class:`.Image`
         """
         pass
 
@@ -388,25 +390,26 @@ class LaunchConfig(object):
         ```
 
         :type  source: ``Volume``, ``Snapshot``, ``Image`` or None.
-        :param source: The source block_device to add. If ``Volume``, the
-        volume will be attached directly to the instance. If ``Snapshot``, a
-        volume will be created based on the Snapshot and attached to the
-        instance. If ``Image``, a volume based on the Image will be attached to
-        the instance. If None, the source is assumed to be an empty blank
-        volume.
+        :param source: The source ``block_device`` to add. If ``Volume``, the
+                       volume will be attached directly to the instance.
+                       If ``Snapshot``, a volume will be created based on the
+                       Snapshot and attached to the instance. If ``Image``,
+                       a volume based on the Image will be attached to the
+                       instance. If ``None``, the source is assumed to be
+                       a blank volume.
 
         :type  is_root: ``bool``
         :param is_root: Determines which device will serve as the root device.
-        If more than one device is defined as root, an
-        InvalidConfigurationException will be thrown.
+                        If more than one device is defined as root, an
+                        ``InvalidConfigurationException`` will be thrown.
 
         :type  size: ``int``
         :param size: The size of the volume to create. An implementation may
-        ignore this parameter for certain sources like 'Volume'.
+                     ignore this parameter for certain sources like 'Volume'.
 
         :type  delete_on_terminate: ``bool``
         :param delete_on_terminate: Determines whether to delete or keep the
-        volume on instance termination.
+                                    volume on instance termination.
         """
         pass
 
@@ -468,7 +471,7 @@ class MachineImage(ObjectLifeCycleMixin):
         Get the image description.
 
         :rtype: ``str``
-        :return: Description for this image as returned by the cloud middleware
+        :return: Description for this image as returned by the cloud middleware.
         """
         pass
 
@@ -478,7 +481,7 @@ class MachineImage(ObjectLifeCycleMixin):
         Delete this image
 
         :rtype: ``bool``
-        :return: True if the operation succeeded
+        :return: ``True`` if the operation succeeded.
         """
         pass
 
@@ -517,7 +520,7 @@ class Volume(ObjectLifeCycleMixin):
 
         :rtype: ``str``
         :return: ID for this volume. Will generally correspond to the cloud
-        middleware's ID, but should be treated as an opaque value.
+                 middleware's ID, but should be treated as an opaque value.
         """
         pass
 
@@ -542,10 +545,10 @@ class Volume(ObjectLifeCycleMixin):
 
         :type device: str
         :param device: The device on the instance through which the
-                       volume will be exposed (e.g. /dev/sdh)
+                       volume will be exposed (e.g. /dev/sdh).
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -555,17 +558,18 @@ class Volume(ObjectLifeCycleMixin):
         Detach this volume from an instance.
 
         :type force: bool
-        :param force: Forces detachment if the previous detachment
-            attempt did not occur cleanly. This option is supported on select
-            clouds only. This option can lead to data loss or a corrupted file
-            system. Use this option only as a last resort to detach a volume
-            from a failed instance. The instance will not have an opportunity
-            to flush file system caches nor file system meta data. If you
-            use this option, you must perform file system check and
-            repair procedures.
+        :param force: Forces detachment if the previous detachment attempt
+                      did not occur cleanly. This option is supported on select
+                      clouds only. This option can lead to data loss or a
+                      corrupted file system. Use this option only as a last
+                      resort to detach a volume from a failed instance. The
+                      instance will not have an opportunity to flush file
+                      system caches nor file system meta data. If you
+                      use this option, you must perform file system check and
+                      repair procedures.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -578,8 +582,8 @@ class Volume(ObjectLifeCycleMixin):
         :param description: A description of the snapshot.
                             Limited to 256 characters.
 
-        :rtype: :class:`.Snapshot`
-        :return: The created Snapshot object
+        :rtype: :class:``.Snapshot``
+        :return: The created Snapshot object.
         """
         pass
 
@@ -589,7 +593,7 @@ class Volume(ObjectLifeCycleMixin):
         Delete this volume.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -624,7 +628,7 @@ class Snapshot(ObjectLifeCycleMixin):
 
         :rtype: ``str``
         :return: ID for this snapshot. Will generally correspond to the cloud
-        middleware's ID, but should be treated as an opaque value.
+                 middleware's ID, but should be treated as an opaque value.
         """
         pass
 
@@ -650,7 +654,7 @@ class Snapshot(ObjectLifeCycleMixin):
                      provider.
 
         :rtype: :class:`.Volume`
-        :return: An instance of the created Volume
+        :return: An instance of the created Volume.
         """
         pass
 
@@ -664,7 +668,7 @@ class Snapshot(ObjectLifeCycleMixin):
                          IDs are specified, the snapshot is made public.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -678,7 +682,7 @@ class Snapshot(ObjectLifeCycleMixin):
                          IDs are specified, the snapshot is made private.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -688,7 +692,7 @@ class Snapshot(ObjectLifeCycleMixin):
         Delete this snapshot.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -703,7 +707,7 @@ class KeyPair(object):
         Return the name of this key pair.
 
         :rtype: str
-        :return: A name of this ssh key pair
+        :return: A name of this ssh key pair.
         """
         pass
 
@@ -742,7 +746,7 @@ class Region(object):
         The id for this region
 
         :rtype: str
-        :return: Id of the region.
+        :return: ID of the region.
         """
         pass
 
@@ -762,7 +766,7 @@ class Region(object):
         Accesss information about placement zones within this region.
 
         :rtype: iterable
-        :return: Iterable of  available placement zones in this region.
+        :return: Iterable of available placement zones in this region.
         """
         pass
 
@@ -813,12 +817,13 @@ class InstanceType(object):
     @abstractproperty
     def family(self):
         """
-        The family/group that this instance type belongs to. For example,
-        General Purpose Instances or High-Memory Instances. If the provider
-        does not support such a grouping, it may return None.
+        The family/group that this instance type belongs to.
+
+        For example, General Purpose Instances or High-Memory Instances. If
+        the provider does not support such a grouping, it may return ``None``.
 
         :rtype: str
-        :return: Name of the instance family.
+        :return: Name of the instance family or ``None``.
         """
         pass
 
@@ -828,7 +833,7 @@ class InstanceType(object):
         The number of VCPUs supported by this instance type.
 
         :rtype: int
-        :return: Number of VCPUs
+        :return: Number of VCPUs.
         """
         pass
 
@@ -875,8 +880,8 @@ class InstanceType(object):
     @abstractproperty
     def size_total_disk(self):
         """
-        The total disk space available on this instance type.
-        (root_disk + ephemeral)
+        The total disk space available on this instance type
+        (root_disk + ephemeral).
 
         :rtype: int
         :return: Size of total disk space (in GB).
@@ -890,7 +895,7 @@ class InstanceType(object):
         nested dictionaries, but all key value pairs are strings or integers.
 
         :rtype: dict
-        :return: Extra attributes for this instance type
+        :return: Extra attributes for this instance type.
         """
         pass
 
@@ -905,7 +910,7 @@ class SecurityGroup(object):
         Get the ID of this security group.
 
         :rtype: str
-        :return: Security group ID
+        :return: Security group ID.
         """
         pass
 
@@ -935,7 +940,7 @@ class SecurityGroup(object):
         Get the list of rules for this security group.
 
         :rtype: list of :class:``.SecurityGroupRule``
-        :return: A list of security group rule objects
+        :return: A list of security group rule objects.
         """
         pass
 
@@ -945,7 +950,7 @@ class SecurityGroup(object):
         Delete this security group.
 
         :rtype: bool
-        :return: ``True`` is successful.
+        :return: ``True`` if successful.
         """
         pass
 
@@ -972,11 +977,11 @@ class SecurityGroup(object):
         :type cidr_ip: str or list of strings
         :param cidr_ip: The CIDR block you are providing access to.
 
-        :type src_group: ``object`` of :class:`.SecurityGroup`
-        :param src_group: The Security Group you are granting access to.
+        :type src_group: :class:``.SecurityGroup``
+        :param src_group: The Security Group object you are granting access to.
 
         :rtype: bool
-        :return: True if successful.
+        :return: ``True`` if successful.
         """
         pass
 
@@ -986,19 +991,19 @@ class SecurityGroup(object):
         Check if an authorization rule with supplied parameters exists.
 
         :type rules: list of :class:``.SecurityGroupRule`` SecurityGroupRule
-        :param rules: A list of rules to check against
+        :param rules: A list of rules to check against.
 
         :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
+        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
         :type from_port: int
-        :param from_port: The beginning port number
+        :param from_port: The beginning port number.
 
         :type to_port: int
-        :param to_port: The ending port number
+        :param to_port: The ending port number.
 
         :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block
+        :param cidr_ip: The CIDR block.
 
         :rtype: bool
         :return: ``True`` if an existing rule matches supplied parameters;
@@ -1047,7 +1052,7 @@ class SecurityGroupRule(object):
         """
         Security group given access permissions by this rule.
 
-        :rtype: ``object`` of :class:`.SecurityGroup`
+        :rtype: :class:``.SecurityGroup``
         :return: The Security Group with granting access.
         """
         pass
@@ -1065,7 +1070,7 @@ class ContainerObject(object):
         """
         Get this object's name.
 
-        :rtype: ``str``
+        :rtype: str
         :return: Name of this object as returned by the cloud middleware.
         """
         pass
@@ -1077,7 +1082,7 @@ class ContainerObject(object):
         contents to the target_stream.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -1088,7 +1093,7 @@ class ContainerObject(object):
         stream.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -1098,7 +1103,7 @@ class ContainerObject(object):
         Delete this object.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
 
@@ -1112,7 +1117,7 @@ class Container(object):
         """
         Get this container's name.
 
-        :rtype: ``str``
+        :rtype: str
         :return: Name of this container as returned by the cloud middleware.
         """
         pass
@@ -1122,11 +1127,11 @@ class Container(object):
         """
         Retrieve a given object from this container.
 
-        :type key: ``str``
+        :type key: str
         :param key: the identifier of the object to retrieve
 
-        :rtype: ContainerObject
-        :return: The ContainerObject or None if it cannot be found.
+        :rtype: :class:``.ContainerObject``
+        :return: The ContainerObject or ``None`` if it cannot be found.
         """
         pass
 
@@ -1135,8 +1140,8 @@ class Container(object):
         """
         List all objects within this container.
 
-        :rtype: ContainerObject
-        :return: List of all available ContainerObjects within this container
+        :rtype: :class:``.ContainerObject``
+        :return: List of all available ContainerObjects within this container.
         """
         pass
 
@@ -1145,11 +1150,11 @@ class Container(object):
         """
         Delete this container.
 
-        :type delete_contents: ``bool``
-        :param delete_contents: If True, all objects within the container will
-        be deleted.
+        :type delete_contents: bool
+        :param delete_contents: If ``True``, all objects within the container
+                                will be deleted.
 
         :rtype: bool
-        :return: True if successful
+        :return: ``True`` if successful.
         """
         pass
