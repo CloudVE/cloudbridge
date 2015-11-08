@@ -1,2 +1,3 @@
 -e ".[full]"
+httpretty==0.8.6
 git+git://github.com/spulec/moto.git@1d58aae42a7ea10d1617428970f6f5d55a76fc80
