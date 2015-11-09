@@ -21,6 +21,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import Region
+from cloudbridge.cloud.interfaces.resources import ResultList
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import Snapshot
@@ -158,6 +159,50 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
             self.terminal_states,
             timeout,
             interval)
+
+
+class BaseResultList(ResultList):
+
+    def __init__(self, is_truncated, marker, supports_total, total=None):
+        list.__init__(self)
+        self._marker = marker
+        self._is_truncated = is_truncated
+        self._supports_total = True if supports_total else False
+        self._total = total
+
+    @property
+    def marker(self):
+        return self._marker
+
+    @property
+    def is_truncated(self):
+        return self._is_truncated
+
+    @property
+    def supports_total(self):
+        return self._supports_total
+
+    @property
+    def total_results(self):
+        return self._total
+
+
+class BaseIterableObjectMixin():
+    """
+    A mixin to provide iteration capability for a class
+    that support a list(limit, marker) method.
+    """
+
+    def __iter__(self):
+        more_results = True
+        marker = None
+
+        while more_results:
+            result_list = self.list(marker=marker)
+            for result in result_list:
+                yield result
+            marker = result_list.marker
+            more_results = result_list.is_truncated
 
 
 class BaseInstanceType(InstanceType):
@@ -562,7 +607,8 @@ class BaseInstanceTypesService(InstanceTypesService, BaseProviderService):
             return None
 
 
-class BaseInstanceService(InstanceService, BaseProviderService):
+class BaseInstanceService(
+        BaseIterableObjectMixin, InstanceService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseInstanceService, self).__init__(provider)

@@ -1,6 +1,8 @@
 """
 Services implemented by the OpenStack provider.
 """
+import itertools
+
 from cinderclient.exceptions import NotFound as CinderNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
@@ -13,6 +15,7 @@ from cloudbridge.cloud.base import BaseKeyPairService
 from cloudbridge.cloud.base import BaseLaunchConfig
 from cloudbridge.cloud.base import BaseObjectStoreService
 from cloudbridge.cloud.base import BaseRegionService
+from cloudbridge.cloud.base import BaseResultList
 from cloudbridge.cloud.base import BaseSecurityGroupService
 from cloudbridge.cloud.base import BaseSecurityService
 from cloudbridge.cloud.base import BaseSnapshotService
@@ -536,13 +539,25 @@ class OpenStackInstanceService(BaseInstanceService):
         raise NotImplementedError(
             'find_instance not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all instances.
         """
-        instances = self._provider.nova.servers.list()
-        return [OpenStackInstance(self._provider, instance)
-                for instance in instances]
+        # TODO: Move hardcoded number to config setting
+        limit = limit or 50
+        instances = self._provider.nova.servers.list(
+            limit=limit + 1,
+            marker=marker)
+        # since we fetched one more than the limit, we can
+        # detect whether extra records are present
+        is_truncated = len(instances) > limit
+        next_token = instances[-2].id if is_truncated else instances[-1].id
+        results = BaseResultList(is_truncated,
+                                 next_token,
+                                 False)
+        for instance in itertools.islice(instances, limit):
+            results.append(OpenStackInstance(self._provider, instance))
+        return results
 
     def get(self, instance_id):
         """

@@ -79,6 +79,22 @@ class InstanceService(ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
+    def __iter__(self):
+        """
+        Iterate through the  list of instances.
+
+        Example:
+        ```
+        for instance in provider.compute.instances:
+            print(instance.name)
+        ```
+
+        :rtype: ``object`` of :class:`.Instance`
+        :return:  an Instance object
+        """
+        pass
+
+    @abstractmethod
     def get(self, instance_id):
         """
         Returns an instance given its id. Returns None
@@ -100,12 +116,60 @@ class InstanceService(ProviderService):
         pass
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
-        List all instances.
+        List all instances. If a limit and marker are specified,
+        the records will be fetched up to the limit starting from the
+        marker onwards. The returned list is a list of class
+        ResultList, which has extra properties like is_truncated,
+        supports_total and total_records to provide extra information
+        about record availability.
 
-        :rtype: ``list`` of :class:`.Instance`
-        :return: list of Instance objects
+        If limit is not specified, the limit will default to the underlying
+        provider's default limit. Therefore, you need to check the is_truncated
+        property to determine whether more records are available.
+
+        The total number of results can be determined through the total_results
+        property. Not all provides will support returning the total_results
+        property, so the supports_total property can be used to determine
+        whether a total is supported.
+
+        To iterate through all the records, it's recommended to iterate
+        directly through the instances using __iter__ instead of calling
+        the list method.
+
+        example:
+        ```
+        # get first page of results
+        instlist = provider.compute.instances.list(limit=50)
+        for instance in instlist:
+            print("Instance Data: {0}", instance)
+        if instlist.supports_total:
+            print("Total results: {0}".format(instlist.total_results))
+        else:
+            print("Total records unknown,"
+                  "but has more data?: {0}".format(instlist.is_truncated))
+
+        # Page to next set of results
+        if (instlist.is_truncated)
+            instlist = provider.compute.instances.list(limit=100,
+                                                       marker=instlist.marker)
+
+        # Alternative: iterate through total available records
+        for instance in provider.compute.instances:
+            print(instance)
+        ```
+
+        :type  limit: ``int``
+        :param limit: The maximum number of objects to return
+
+        :type  marker: ``str``
+        :param marker: The marker is an opaque identifier used to assist
+        in paging through very long lists of objects. It is returned on each
+        invocation of the list method.
+
+        :rtype: ``ResultList`` of :class:`.Instance`
+        :return: A ResultList object containing a list of Instances
         """
         pass
 

@@ -112,6 +112,69 @@ class ObjectLifeCycleMixin(object):
         pass
 
 
+class ResultList(list):
+    """
+    This is a wrapper class around a standard Python :py:class:`list` class
+    and provides some extra properties to aid with paging through a large
+    number of results.
+
+    example:
+    ```
+    # get first page of results
+    rl = provider.compute.instances.list(limit=50)
+    for result in rl:
+        print("Instance Data: {0}", result)
+    if rl.supports_total:
+        print("Total results: {0}".format(rl.total_results))
+    else:
+        print("Total records unknown,"
+              "but has more data?: {0}."format(rl.is_truncated))
+
+    # Page to next set of results
+    if (rl.is_truncated)
+        rl = provider.compute.instances.list(limit=100,
+                                             marker=rl.marker)
+    ```
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def marker(self):
+        """
+        This is an opaque identifier used to assist in paging through very long
+        lists of objects. This marker can be provided to the list method to get
+        the next set of results.
+        """
+        pass
+
+    @abstractproperty
+    def is_truncated(self):
+        """
+        Indicates whether this result list has more results
+        that can be paged in.
+        """
+        pass
+
+    @abstractproperty
+    def supports_total(self):
+        """
+        Indicates whether the provider supports returning the total number of
+        available results. The supports_total property should be checked
+        before accessing the total_results property.
+        """
+        pass
+
+    @abstractproperty
+    def total_results(self):
+        """
+        Indicates the total number of results for a particular query. The
+        supports_total property should be used to check whether the provider
+        supports returning the total number of results, before accessing this
+        property, or the behaviour is indeterminate.
+        """
+        pass
+
+
 class InstanceState(object):
 
     """
@@ -471,7 +534,8 @@ class MachineImage(ObjectLifeCycleMixin):
         Get the image description.
 
         :rtype: ``str``
-        :return: Description for this image as returned by the cloud middleware.
+        :return: Description for this image as returned by the cloud
+                 middleware.
         """
         pass
 

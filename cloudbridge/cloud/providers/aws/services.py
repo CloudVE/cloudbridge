@@ -17,6 +17,7 @@ from cloudbridge.cloud.base import BaseKeyPairService
 from cloudbridge.cloud.base import BaseLaunchConfig
 from cloudbridge.cloud.base import BaseObjectStoreService
 from cloudbridge.cloud.base import BaseRegionService
+from cloudbridge.cloud.base import BaseResultList
 from cloudbridge.cloud.base import BaseSecurityGroupService
 from cloudbridge.cloud.base import BaseSecurityService
 from cloudbridge.cloud.base import BaseSnapshotService
@@ -528,14 +529,18 @@ class AWSInstanceService(BaseInstanceService):
         raise NotImplementedError(
             'find_instance not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all instances.
         """
         reservations = self.provider.ec2_conn.get_all_reservations()
-        return [AWSInstance(self.provider, inst)
-                for res in reservations
-                for inst in res.instances]
+        results = BaseResultList(reservations.is_truncated,
+                                 reservations.next_token,
+                                 False)
+        for res in reservations:
+            for inst in res.instances:
+                results.append(AWSInstance(self.provider, inst))
+        return results
 
 AWS_INSTANCE_DATA_DEFAULT_URL = "https://swift.rc.nectar.org.au:8888/v1/" \
                                 "AUTH_377/cloud-bridge/aws/instance_data.json"

@@ -15,7 +15,7 @@ setup(name='cloudbridge',
       author='Galaxy and GVL Projects',
       author_email='support@genome.edu.au',
       url='http://cloudbridge.readthedocs.org/',
-      install_requires=base_reqs,
+      install_requires=full_reqs,
       extras_require={
           ':python_version=="2.7"': ['py2-ipaddress'],
           ':python_version=="3"': ['py2-ipaddress'],
