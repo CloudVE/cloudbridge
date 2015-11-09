@@ -25,21 +25,15 @@ look like the following.
 In the example above, the AWS_ACCESS_KEY and AWS_SECRET_KEY environment variables
 must be set to your cloud credentials.
 
-Contents:
-
+Documentation
+~~~~~~~~~~~~~
 .. toctree::
-   :glob:
-   :maxdepth: 2
+    :maxdepth: 2
 
-   api_docs/cloudbridge
+    api_docs/ref.rst
 
-
-Indices and tables
-==================
-
+Page index
+~~~~~~~~~~
 * :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
 
 .. _`bridge pattern`: https://en.wikipedia.org/wiki/Bridge_pattern
