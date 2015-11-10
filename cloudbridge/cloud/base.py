@@ -20,6 +20,7 @@ from cloudbridge.cloud.interfaces.resources import LaunchConfig
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
+from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 from cloudbridge.cloud.interfaces.resources import Region
 from cloudbridge.cloud.interfaces.resources import ResultList
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
@@ -46,11 +47,30 @@ from cloudbridge.cloud.interfaces.services import VolumeService
 
 log = logging.getLogger(__name__)
 
+DEFAULT_RESULT_LIMIT = 50
+
+
+class BaseConfiguration(dict):
+
+    def __init__(self, user_config):
+        self.update(user_config)
+
+    @property
+    def result_limit(self):
+        """
+        Get the maximum number of results to return for a
+        list method
+
+        :rtype: ``int``
+        :return: The maximum number of results to return
+        """
+        return self.get('result_limit', DEFAULT_RESULT_LIMIT)
+
 
 class BaseCloudProvider(CloudProvider):
 
     def __init__(self, config):
-        self._config = config
+        self._config = BaseConfiguration(config)
 
     @property
     def config(self):
@@ -187,7 +207,7 @@ class BaseResultList(ResultList):
         return self._total
 
 
-class BaseIterableObjectMixin():
+class BasePageableObjectMixin(PageableObjectMixin):
     """
     A mixin to provide iteration capability for a class
     that support a list(limit, marker) method.
@@ -506,7 +526,7 @@ class BaseContainerObject(ContainerObject):
                                       self.name)
 
 
-class BaseContainer(Container):
+class BaseContainer(BasePageableObjectMixin, Container):
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
@@ -529,13 +549,15 @@ class BaseComputeService(ComputeService, BaseProviderService):
         super(BaseComputeService, self).__init__(provider)
 
 
-class BaseVolumeService(VolumeService, BaseProviderService):
+class BaseVolumeService(
+        BasePageableObjectMixin, VolumeService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseVolumeService, self).__init__(provider)
 
 
-class BaseSnapshotService(SnapshotService, BaseProviderService):
+class BaseSnapshotService(
+        BasePageableObjectMixin, SnapshotService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseSnapshotService, self).__init__(provider)
@@ -547,13 +569,15 @@ class BaseBlockStoreService(BlockStoreService, BaseProviderService):
         super(BaseBlockStoreService, self).__init__(provider)
 
 
-class BaseImageService(ImageService, BaseProviderService):
+class BaseImageService(
+        BasePageableObjectMixin, ImageService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseImageService, self).__init__(provider)
 
 
-class BaseObjectStoreService(ObjectStoreService, BaseProviderService):
+class BaseObjectStoreService(
+        BasePageableObjectMixin, ObjectStoreService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseObjectStoreService, self).__init__(provider)
@@ -565,7 +589,8 @@ class BaseSecurityService(SecurityService, BaseProviderService):
         super(BaseSecurityService, self).__init__(provider)
 
 
-class BaseKeyPairService(KeyPairService, BaseProviderService):
+class BaseKeyPairService(
+        BasePageableObjectMixin, KeyPairService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseKeyPairService, self).__init__(provider)
@@ -588,13 +613,15 @@ class BaseKeyPairService(KeyPairService, BaseProviderService):
         return True
 
 
-class BaseSecurityGroupService(SecurityGroupService, BaseProviderService):
+class BaseSecurityGroupService(
+        BasePageableObjectMixin, SecurityGroupService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseSecurityGroupService, self).__init__(provider)
 
 
-class BaseInstanceTypesService(InstanceTypesService, BaseProviderService):
+class BaseInstanceTypesService(
+        BasePageableObjectMixin, InstanceTypesService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseInstanceTypesService, self).__init__(provider)
@@ -608,13 +635,14 @@ class BaseInstanceTypesService(InstanceTypesService, BaseProviderService):
 
 
 class BaseInstanceService(
-        BaseIterableObjectMixin, InstanceService, BaseProviderService):
+        BasePageableObjectMixin, InstanceService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseInstanceService, self).__init__(provider)
 
 
-class BaseRegionService(RegionService, BaseProviderService):
+class BaseRegionService(
+        BasePageableObjectMixin, RegionService, BaseProviderService):
 
     def __init__(self, provider):
         super(BaseRegionService, self).__init__(provider)

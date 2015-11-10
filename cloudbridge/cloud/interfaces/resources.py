@@ -52,6 +52,23 @@ class InvalidConfigurationException(CloudBridgeBaseException):
     pass
 
 
+class Configuration(dict):
+    """
+    Represents a cloudbridge configuration object
+    """
+
+    @abstractproperty
+    def result_limit(self):
+        """
+        Get the maximum number of results to return for a
+        list method
+
+        :rtype: ``int``
+        :return: The maximum number of results to return
+        """
+        pass
+
+
 class ObjectLifeCycleMixin(object):
 
     """
@@ -108,6 +125,70 @@ class ObjectLifeCycleMixin(object):
                  exception may be thrown by the underlying service if the
                  object cannot  get into a ready state (e.g. if the object
                  is in an error state).
+        """
+        pass
+
+
+class PageableObjectMixin(object):
+    """
+    A marker interface for objects which support paged iteration through
+    a list of objects with a list(limit, marker) method.
+    """
+
+    @abstractmethod
+    def __iter__(self):
+        """
+        Enables iteration through this object. Typically, an implementation
+        will call the list(limit, marker) method to transparently page
+        additional objects in as iteration progresses.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        Returns a list of objects up to a maximum limit.
+
+        If a limit and marker are specified, the records will be fetched up to
+        the limit starting from the marker onwards. The returned list is a list
+        of class ResultList, which has extra properties like is_truncated,
+        supports_total and total_records to provide extra information
+        about record availability.
+
+        If limit is not specified, the limit will default to the underlying
+        provider's default limit. Therefore, you need to check the is_truncated
+        property to determine whether more records are available.
+
+        The total number of results can be determined through the total_results
+        property. Not all provides will support returning the total_results
+        property, so the supports_total property can be used to determine
+        whether a total is supported.
+
+        To iterate through all the records, it will be easier to iterate
+        directly through the instances using __iter__ instead of calling
+        the list method. The __iter__ method will automatically call the list
+        method to fetch a batch of records at a time.
+
+        example::
+
+            # get first page of results
+            instlist = provider.compute.instances.list(limit=50)
+            for instance in instlist:
+                print("Instance Data: {0}", instance)
+            if instlist.supports_total:
+                print("Total results: {0}".format(instlist.total_results))
+            else:
+                print("Total records unknown,"
+                      "but has more data?: {0}".format(instlist.is_truncated))
+
+            # Page to next set of results
+            if (instlist.is_truncated)
+                instlist = provider.compute.instances.list(limit=100,
+                                                           marker=instlist.marker)
+
+            # Alternative: iterate through every available record
+            for instance in provider.compute.instances:
+                print(instance)
         """
         pass
 
@@ -1172,7 +1253,7 @@ class ContainerObject(object):
         pass
 
 
-class Container(object):
+class Container(PageableObjectMixin):
 
     __metaclass__ = ABCMeta
 
@@ -1200,7 +1281,7 @@ class Container(object):
         pass
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all objects within this container.
 

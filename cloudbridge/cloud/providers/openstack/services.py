@@ -2,7 +2,6 @@
 Services implemented by the OpenStack provider.
 """
 import itertools
-
 from cinderclient.exceptions import NotFound as CinderNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
@@ -15,7 +14,6 @@ from cloudbridge.cloud.base import BaseKeyPairService
 from cloudbridge.cloud.base import BaseLaunchConfig
 from cloudbridge.cloud.base import BaseObjectStoreService
 from cloudbridge.cloud.base import BaseRegionService
-from cloudbridge.cloud.base import BaseResultList
 from cloudbridge.cloud.base import BaseSecurityGroupService
 from cloudbridge.cloud.base import BaseSecurityService
 from cloudbridge.cloud.base import BaseSnapshotService
@@ -27,6 +25,7 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
+from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
 from .resources import OpenStackContainer
 from .resources import OpenStackInstance
@@ -74,23 +73,35 @@ class OpenStackKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(OpenStackKeyPairService, self).__init__(provider)
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all key pairs associated with this account.
 
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        key_pairs = self._provider.nova.keypairs.list()
-        return [OpenStackKeyPair(self._provider, kp) for kp in key_pairs]
+
+        def _list_key_pairs(nlimit):
+            keypairs = self.provider.nova.keypairs.list()
+            if marker:
+                keypairs = itertools.dropwhile(
+                    lambda kp: not kp.name == marker, keypairs)
+
+            return [OpenStackKeyPair(self.provider, kp)
+                    for kp in keypairs]
+
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            _list_key_pairs)
 
     def find(self, name):
         """
         Searches for a key pair by a given list of attributes.
         """
         try:
-            kp = self._provider.nova.keypairs.find(name=name)
-            return OpenStackKeyPair(self._provider, kp)
+            kp = self.provider.nova.keypairs.find(name=name)
+            return OpenStackKeyPair(self.provider, kp)
         except NovaNotFound:
             return None
 
@@ -107,8 +118,8 @@ class OpenStackKeyPairService(BaseKeyPairService):
         kp = self.find(name=name)
         if kp:
             return kp
-        kp = self._provider.nova.keypairs.create(name)
-        return OpenStackKeyPair(self._provider, kp)
+        kp = self.provider.nova.keypairs.create(name)
+        return OpenStackKeyPair(self.provider, kp)
 
 
 class OpenStackSecurityGroupService(BaseSecurityGroupService):
@@ -116,16 +127,27 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
     def __init__(self, provider):
         super(OpenStackSecurityGroupService, self).__init__(provider)
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all security groups associated with this account.
 
         :rtype: ``list`` of :class:`.SecurityGroup`
         :return:  list of SecurityGroup objects
         """
-        groups = self._provider.nova.security_groups.list()
-        return [OpenStackSecurityGroup(
-            self._provider, group) for group in groups]
+
+        def _list_security_groups(nlimit):
+            sgs = self.provider.nova.security_groups.list()
+            if marker:
+                sgs = itertools.dropwhile(
+                    lambda sg: not sg.name == marker, sgs)
+
+            return [OpenStackSecurityGroup(self.provider, sg)
+                    for sg in sgs]
+
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            _list_security_groups)
 
     def create(self, name, description):
         """
@@ -140,9 +162,9 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return: a SecurityGroup object
         """
-        sg = self._provider.nova.security_groups.create(name, description)
+        sg = self.provider.nova.security_groups.create(name, description)
         if sg:
-            return OpenStackSecurityGroup(self._provider, sg)
+            return OpenStackSecurityGroup(self.provider, sg)
         return None
 
     def get(self, group_names=None, group_ids=None):
@@ -167,7 +189,7 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
             group_names = []
         if not group_ids:
             group_ids = []
-        security_groups = self._provider.nova.security_groups.list()
+        security_groups = self.provider.nova.security_groups.list()
         filtered = []
         for sg in security_groups:
             if sg.name in group_names:
@@ -175,7 +197,7 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
             if sg.id in group_ids:
                 filtered.append(sg)
         # If a filter was specified, use the filtered list; otherwise, get all
-        return [OpenStackSecurityGroup(self._provider, sg)
+        return [OpenStackSecurityGroup(self.provider, sg)
                 for sg in (filtered
                            if (group_names or group_ids) else security_groups)]
 
@@ -209,7 +231,7 @@ class OpenStackImageService(BaseImageService):
         """
         try:
             return OpenStackMachineImage(
-                self._provider, self._provider.nova.images.get(image_id))
+                self.provider, self.provider.nova.images.get(image_id))
         except NovaNotFound:
             return None
 
@@ -220,13 +242,18 @@ class OpenStackImageService(BaseImageService):
         raise NotImplementedError(
             'find_image not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all images.
         """
-        images = self._provider.nova.images.list()
-        return [OpenStackMachineImage(self._provider, image)
-                for image in images]
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            lambda nlimit:
+                [OpenStackMachineImage(self.provider, img)
+                 for img in self.provider.nova.images.list(
+                    limit=nlimit,
+                    marker=marker)])
 
 
 class OpenStackInstanceTypesService(BaseInstanceTypesService):
@@ -234,9 +261,15 @@ class OpenStackInstanceTypesService(BaseInstanceTypesService):
     def __init__(self, provider):
         super(OpenStackInstanceTypesService, self).__init__(provider)
 
-    def list(self):
-        return [OpenStackInstanceType(f)
-                for f in self._provider.nova.flavors.list()]
+    def list(self, limit=None, marker=None):
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            lambda nlimit:
+                [OpenStackInstanceType(obj)
+                 for obj in self.provider.nova.flavors.list(
+                    limit=nlimit,
+                    marker=marker)])
 
 
 class OpenStackBlockStoreService(BaseBlockStoreService):
@@ -245,8 +278,8 @@ class OpenStackBlockStoreService(BaseBlockStoreService):
         super(OpenStackBlockStoreService, self).__init__(provider)
 
         # Initialize provider services
-        self._volume_svc = OpenStackVolumeService(self._provider)
-        self._snapshot_svc = OpenStackSnapshotService(self._provider)
+        self._volume_svc = OpenStackVolumeService(self.provider)
+        self._snapshot_svc = OpenStackSnapshotService(self.provider)
 
     @property
     def volumes(self):
@@ -268,7 +301,7 @@ class OpenStackVolumeService(BaseVolumeService):
         """
         try:
             return OpenStackVolume(
-                self._provider, self._provider.cinder.volumes.get(volume_id))
+                self.provider, self.provider.cinder.volumes.get(volume_id))
         except CinderNotFound:
             return None
 
@@ -279,12 +312,18 @@ class OpenStackVolumeService(BaseVolumeService):
         raise NotImplementedError(
             'find_volume not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all volumes.
         """
-        return [OpenStackVolume(self._provider, vol)
-                for vol in self._provider.cinder.volumes.list()]
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            lambda nlimit:
+                [OpenStackVolume(self.provider, vol)
+                 for vol in self.provider.cinder.volumes.list(
+                    limit=nlimit,
+                    marker=marker)])
 
     def create(self, name, size, zone, snapshot=None):
         """
@@ -294,10 +333,10 @@ class OpenStackVolumeService(BaseVolumeService):
         snapshot_id = snapshot.id if isinstance(
             zone, OpenStackSnapshot) and snapshot else snapshot
 
-        os_vol = self._provider.cinder.volumes.create(
+        os_vol = self.provider.cinder.volumes.create(
             size, name=name, availability_zone=zone_name,
             snapshot_id=snapshot_id)
-        return OpenStackVolume(self._provider, os_vol)
+        return OpenStackVolume(self.provider, os_vol)
 
 
 class OpenStackSnapshotService(BaseSnapshotService):
@@ -311,8 +350,8 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         try:
             return OpenStackSnapshot(
-                self._provider,
-                self._provider.cinder.volume_snapshots.get(snapshot_id))
+                self.provider,
+                self.provider.cinder.volume_snapshots.get(snapshot_id))
         except CinderNotFound:
             return None
 
@@ -323,12 +362,19 @@ class OpenStackSnapshotService(BaseSnapshotService):
         raise NotImplementedError(
             'find_volume not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all snapshot.
         """
-        return [OpenStackSnapshot(self._provider, snap)
-                for snap in self._provider.cinder.volume_snapshots.list()]
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            lambda nlimit:
+                [OpenStackSnapshot(self.provider, snap) for
+                 snap in self.provider.cinder.volume_snapshots.list(
+                    search_opts={
+                        'limit': nlimit,
+                        'marker': marker})])
 
     def create(self, name, volume, description=None):
         """
@@ -337,10 +383,10 @@ class OpenStackSnapshotService(BaseSnapshotService):
         volume_id = volume.id if \
             isinstance(volume, OpenStackVolume) else volume
 
-        os_snap = self._provider.cinder.volume_snapshots.create(
+        os_snap = self.provider.cinder.volume_snapshots.create(
             volume_id, name=name,
             description=description)
-        return OpenStackSnapshot(self._provider, os_snap)
+        return OpenStackSnapshot(self.provider, os_snap)
 
 
 class OpenStackObjectStoreService(BaseObjectStoreService):
@@ -353,10 +399,10 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         Returns a container given its id. Returns None if the container
         does not exist.
         """
-        _, container_list = self._provider.swift.get_account(
+        _, container_list = self.provider.swift.get_account(
             prefix=container_id)
         if container_list:
-            return OpenStackContainer(self._provider, container_list[0])
+            return OpenStackContainer(self.provider, container_list[0])
         else:
             return None
 
@@ -367,19 +413,26 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         raise NotImplementedError(
             'find_container not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all containers.
         """
-        _, container_list = self._provider.swift.get_account()
-        return [
-            OpenStackContainer(self._provider, c) for c in container_list]
+        def _list_containers(nlimit):
+            _, container_list = self.provider.swift.get_account(
+                limit=nlimit, marker=marker)
+            return [OpenStackContainer(self.provider, c)
+                    for c in container_list]
+
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            _list_containers)
 
     def create(self, name, location=None):
         """
         Create a new container.
         """
-        self._provider.swift.put_container(name)
+        self.provider.swift.put_container(name)
         return self.get(name)
 
 
@@ -392,21 +445,34 @@ class OpenStackRegionService(BaseRegionService):
         region = (r for r in self.list() if r.id == region_id)
         return next(region, None)
 
-    def list(self):
-        regions = [endpoint.get('region') or endpoint.get('region_id')
-                   for svc in self.provider.keystone.service_catalog.get_data()
-                   for endpoint in svc.get('endpoints', [])]
-        regions = [region for region in regions if region]
-        return [OpenStackRegion(self.provider, region)
-                for region in regions]
+    def list(self, limit=None, marker=None):
+
+        def _list_regions(nlimit):
+            regions = (
+                endpoint.get('region') or endpoint.get('region_id')
+                for svc in self.provider.keystone.service_catalog.get_data()
+                for endpoint in svc.get('endpoints', [])
+            )
+            regions = (region for region in regions if region)
+            if marker:
+                regions = itertools.dropwhile(
+                    lambda region: not region == marker, regions)
+
+            return [OpenStackRegion(self.provider, region)
+                    for region in regions]
+
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            _list_regions)
 
 
 class OpenStackComputeService(BaseComputeService):
 
     def __init__(self, provider):
         super(OpenStackComputeService, self).__init__(provider)
-        self._instance_type_svc = OpenStackInstanceTypesService(self._provider)
-        self._instance_svc = OpenStackInstanceService(self._provider)
+        self._instance_type_svc = OpenStackInstanceTypesService(self.provider)
+        self._instance_svc = OpenStackInstanceService(self.provider)
         self._region_svc = OpenStackRegionService(self.provider)
         self._images_svc = OpenStackImageService(self.provider)
 
@@ -462,7 +528,7 @@ class OpenStackInstanceService(BaseInstanceService):
         else:
             bdm = nics = None
 
-        os_instance = self._provider.nova.servers.create(
+        os_instance = self.provider.nova.servers.create(
             name,
             image_id,
             instance_size,
@@ -474,7 +540,7 @@ class OpenStackInstanceService(BaseInstanceService):
             userdata=user_data,
             block_device_mapping_v2=bdm,
             nics=nics)
-        return OpenStackInstance(self._provider, os_instance)
+        return OpenStackInstance(self.provider, os_instance)
 
     def _to_block_device_mapping(self, launch_config):
         """
@@ -543,28 +609,21 @@ class OpenStackInstanceService(BaseInstanceService):
         """
         List all instances.
         """
-        # TODO: Move hardcoded number to config setting
-        limit = limit or 50
-        instances = self._provider.nova.servers.list(
-            limit=limit + 1,
-            marker=marker)
-        # since we fetched one more than the limit, we can
-        # detect whether extra records are present
-        is_truncated = len(instances) > limit
-        next_token = instances[-2].id if is_truncated else instances[-1].id
-        results = BaseResultList(is_truncated,
-                                 next_token,
-                                 False)
-        for instance in itertools.islice(instances, limit):
-            results.append(OpenStackInstance(self._provider, instance))
-        return results
+        return oshelpers.to_result_list(
+            self.provider,
+            limit,
+            lambda nlimit:
+                [OpenStackInstance(self.provider, inst)
+                 for inst in self.provider.nova.servers.list(
+                    limit=nlimit,
+                    marker=marker)])
 
     def get(self, instance_id):
         """
         Returns an instance given its id.
         """
         try:
-            os_instance = self._provider.nova.servers.get(instance_id)
-            return OpenStackInstance(self._provider, os_instance)
+            os_instance = self.provider.nova.servers.get(instance_id)
+            return OpenStackInstance(self.provider, os_instance)
         except NovaNotFound:
             return None

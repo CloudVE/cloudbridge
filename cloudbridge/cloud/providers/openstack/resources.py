@@ -22,6 +22,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
 
 class OpenStackMachineImage(BaseMachineImage):
@@ -709,16 +710,24 @@ class OpenStackContainer(BaseContainer):
         else:
             return None
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all objects within this container.
 
         :rtype: ContainerObject
         :return: List of all available ContainerObjects within this container
         """
-        _, object_list = self._provider.swift.get_container(self.name)
-        return [
-            OpenStackContainer(self._provider, o) for o in object_list]
+        def _list_container_objects(nlimit):
+            _, object_list = self._provider.swift.get_container(
+                self.name,
+                limit=nlimit, marker=marker)
+            return [OpenStackContainerObject(
+                self._provider, self, obj) for obj in object_list]
+
+        return oshelpers.to_result_list(
+            self._provider,
+            limit,
+            _list_container_objects)
 
     def delete(self, delete_contents=False):
         """

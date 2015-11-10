@@ -2,6 +2,7 @@
 Specifications for services available through a provider
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 
 
 class ProviderService(object):
@@ -71,7 +72,7 @@ class ComputeService(ProviderService):
         pass
 
 
-class InstanceService(ProviderService):
+class InstanceService(PageableObjectMixin, ProviderService):
     """
     Provides access to instances in a provider, including creating,
     listing and deleting instances.
@@ -118,47 +119,19 @@ class InstanceService(ProviderService):
     @abstractmethod
     def list(self, limit=None, marker=None):
         """
-        List all instances. If a limit and marker are specified,
-        the records will be fetched up to the limit starting from the
-        marker onwards. The returned list is a list of class
-        ResultList, which has extra properties like is_truncated,
-        supports_total and total_records to provide extra information
-        about record availability.
+        List available instances.
 
-        If limit is not specified, the limit will default to the underlying
-        provider's default limit. Therefore, you need to check the is_truncated
-        property to determine whether more records are available.
+        The returned results can be limited with limit and marker. If not
+        specified, the limit defaults to a global default.
+        See :func:`~interfaces.resources.PageableObjectMixin.list`
+        for more information on how to page through returned results.
 
-        The total number of results can be determined through the total_results
-        property. Not all provides will support returning the total_results
-        property, so the supports_total property can be used to determine
-        whether a total is supported.
+        example::
 
-        To iterate through all the records, it's recommended to iterate
-        directly through the instances using __iter__ instead of calling
-        the list method.
-
-        example:
-        ```
-        # get first page of results
-        instlist = provider.compute.instances.list(limit=50)
-        for instance in instlist:
-            print("Instance Data: {0}", instance)
-        if instlist.supports_total:
-            print("Total results: {0}".format(instlist.total_results))
-        else:
-            print("Total records unknown,"
-                  "but has more data?: {0}".format(instlist.is_truncated))
-
-        # Page to next set of results
-        if (instlist.is_truncated)
-            instlist = provider.compute.instances.list(limit=100,
-                                                       marker=instlist.marker)
-
-        # Alternative: iterate through total available records
-        for instance in provider.compute.instances:
-            print(instance)
-        ```
+            # List instances
+            instlist = provider.compute.instances.list()
+            for instance in instlist:
+                print("Instance Data: {0}", instance)
 
         :type  limit: ``int``
         :param limit: The maximum number of objects to return
@@ -233,7 +206,7 @@ class InstanceService(ProviderService):
         pass
 
 
-class VolumeService(ProviderService):
+class VolumeService(PageableObjectMixin, ProviderService):
 
     """
     Base interface for a Volume Service
@@ -296,7 +269,7 @@ class VolumeService(ProviderService):
         pass
 
 
-class SnapshotService(ProviderService):
+class SnapshotService(PageableObjectMixin, ProviderService):
 
     """
     Base interface for a Snapshot Service
@@ -384,7 +357,7 @@ class BlockStoreService(ProviderService):
         pass
 
 
-class ImageService(ProviderService):
+class ImageService(PageableObjectMixin, ProviderService):
 
     """
     Base interface for an Image Service
@@ -423,7 +396,7 @@ class ImageService(ProviderService):
         pass
 
 
-class ObjectStoreService(ProviderService):
+class ObjectStoreService(PageableObjectMixin, ProviderService):
 
     """
     Base interface for an Object Storage Service
@@ -506,7 +479,7 @@ class SecurityService(ProviderService):
         pass
 
 
-class KeyPairService(ProviderService):
+class KeyPairService(PageableObjectMixin, ProviderService):
 
     """
     Base interface for key pairs.
@@ -562,7 +535,7 @@ class KeyPairService(ProviderService):
         pass
 
 
-class SecurityGroupService(ProviderService):
+class SecurityGroupService(PageableObjectMixin, ProviderService):
 
     """
     Base interface for security groups.
@@ -633,7 +606,7 @@ class SecurityGroupService(ProviderService):
         pass
 
 
-class InstanceTypesService(object):
+class InstanceTypesService(PageableObjectMixin, ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -657,7 +630,7 @@ class InstanceTypesService(object):
         pass
 
 
-class RegionService(ProviderService):
+class RegionService(PageableObjectMixin, ProviderService):
 
     """
     Base interface for a Region service
