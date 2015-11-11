@@ -133,7 +133,8 @@ class OpenStackPlacementZone(BasePlacementZone):
 
 class OpenStackInstanceType(BaseInstanceType):
 
-    def __init__(self, os_flavor):
+    def __init__(self, provider, os_flavor):
+        super(OpenStackInstanceType, self).__init__(provider)
         self._os_flavor = os_flavor
 
     @property
@@ -261,7 +262,7 @@ class OpenStackInstance(BaseInstance):
         """
         Get the instance type.
         """
-        return OpenStackInstanceType(self._os_instance.flavor)
+        return OpenStackInstanceType(self._provider, self._os_instance.flavor)
 
     def reboot(self):
         """

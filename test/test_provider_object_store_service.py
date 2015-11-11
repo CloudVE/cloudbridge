@@ -1,4 +1,5 @@
 from io import BytesIO
+import itertools
 import uuid
 
 from test.helpers import ProviderTestBase
@@ -20,6 +21,13 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
         test_container = self.provider.object_store.create(name)
         with helpers.cleanup_action(lambda: test_container.delete()):
             containers = self.provider.object_store.list()
+
+            # check iteration
+            iter_containers = list(itertools.islice(
+                self.provider.object_store,
+                len(containers)))
+            self.assertListEqual(iter_containers, containers)
+
             found_containers = [c for c in containers if c.name == name]
             self.assertTrue(
                 len(found_containers) == 1,
@@ -66,6 +74,13 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 # the file content as a parameter.
                 obj.upload("dummy content")
                 objs = test_container.list()
+
+                # check iteration
+                iter_objs = list(itertools.islice(
+                    test_container,
+                    len(objs)))
+                self.assertListEqual(iter_objs, objs)
+
                 found_objs = [o for o in objs if o.name == obj_name]
                 self.assertTrue(
                     len(found_objs) == 1,

@@ -1,5 +1,8 @@
+import itertools
 import uuid
+
 import six
+
 from cloudbridge.cloud.interfaces import MachineImageState
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
@@ -47,6 +50,13 @@ class ProviderImageServiceTestCase(ProviderTestBase):
                     "Image description must be None or a string")
 
                 images = self.provider.compute.images.list()
+
+                # check iteration
+                iter_images = list(itertools.islice(
+                    self.provider.compute.images,
+                    len(images)))
+                self.assertListEqual(iter_images, images)
+
                 found_images = [image for image in images
                                 if image.name == name]
                 self.assertTrue(

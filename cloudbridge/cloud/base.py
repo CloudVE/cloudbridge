@@ -261,7 +261,6 @@ class BaseInstance(BaseObjectLifeCycleMixin, Instance):
                 self.security_groups == other.security_groups and
                 self.public_ips == other.public_ips and
                 self.private_ips == other.private_ips and
-                self.mac_address == other.mac_address and
                 self.image_id == other.image_id)
 
     @property

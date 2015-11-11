@@ -1,3 +1,5 @@
+import itertools
+
 from cloudbridge.cloud.interfaces import Region
 from test.helpers import ProviderTestBase
 
@@ -14,6 +16,13 @@ class ProviderRegionServiceTestCase(ProviderTestBase):
         and whether zones are returned appropriately.
         """
         regions = self.provider.compute.regions.list()
+
+        # check iteration
+        iter_regions = list(itertools.islice(
+            self.provider.compute.regions,
+            len(regions)))
+        self.assertListEqual(iter_regions, regions)
+
         for region in regions:
             self.assertIsInstance(
                 region,

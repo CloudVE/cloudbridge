@@ -7,6 +7,7 @@ from boto.exception import EC2ResponseError
 from boto.s3.key import Key
 from retrying import retry
 
+from cloudbridge.cloud import helpers as cbhelpers
 from cloudbridge.cloud.base import BaseContainer
 from cloudbridge.cloud.base import BaseContainerObject
 from cloudbridge.cloud.base import BaseInstance
@@ -661,15 +662,17 @@ class AWSContainer(BaseContainer):
         raise NotImplementedError(
             'Container.list not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all objects within this container.
 
         :rtype: ContainerObject
         :return: List of all available ContainerObjects within this container
         """
-        objects = self._bucket.list()
-        return [AWSContainerObject(self._provider, obj) for obj in objects]
+        objects = [AWSContainerObject(self._provider, obj)
+                   for obj in self._bucket.list()]
+        return cbhelpers.to_result_list(self._provider, objects, limit,
+                                        marker)
 
     def delete(self, delete_contents=False):
         """

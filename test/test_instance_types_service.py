@@ -1,3 +1,4 @@
+import itertools
 import six
 from test.helpers import ProviderTestBase
 
@@ -10,6 +11,12 @@ class ProviderInstanceTypesServiceTestCase(ProviderTestBase):
 
     def test_instance_types(self):
         instance_types = self.provider.compute.instance_types.list()
+        # check iteration
+        iter_instance_types = list(itertools.islice(
+            self.provider.compute.instance_types,
+            len(instance_types)))
+        self.assertListEqual(iter_instance_types, instance_types)
+
         for inst_type in instance_types:
             self.assertTrue(
                 inst_type.id in repr(inst_type),

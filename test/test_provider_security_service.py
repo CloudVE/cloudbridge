@@ -1,4 +1,6 @@
+import itertools
 import uuid
+
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
@@ -27,6 +29,13 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 "Recreating key pair did not return the expected key {0}."
                 .format(name))
         kpl = self.provider.security.key_pairs.list()
+
+        # check iteration
+        iter_key_pairs = list(itertools.islice(
+            self.provider.security.key_pairs,
+            len(kpl)))
+        self.assertListEqual(iter_key_pairs, kpl)
+
         found_kp = [k for k in kpl if k.name == name]
         self.assertTrue(
             len(found_kp) == 0,
@@ -81,6 +90,13 @@ class ProviderSecurityServiceTestCase(ProviderTestBase):
                 "List security groups did not return the expected group {0}."
                 .format(name))
         sgl = self.provider.security.security_groups.list()
+
+        # check iteration
+        iter_security_groups = list(itertools.islice(
+            self.provider.security.security_groups,
+            len(sgl)))
+        self.assertListEqual(iter_security_groups, sgl)
+
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(
             len(found_sg) == 0,

@@ -1,3 +1,4 @@
+import itertools
 import uuid
 
 import ipaddress
@@ -33,6 +34,13 @@ class ProviderComputeServiceTestCase(ProviderTestBase):
             inst.wait_till_ready(interval=self.get_test_wait_interval())
 
             all_instances = self.provider.compute.instances.list()
+
+            # check iteration
+            iter_instances = list(itertools.islice(
+                self.provider.compute.instances,
+                len(all_instances)))
+            self.assertListEqual(iter_instances, all_instances)
+
             found_instances = [i for i in all_instances if i.name == name]
             self.assertTrue(
                 len(found_instances) == 1,

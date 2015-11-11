@@ -266,7 +266,7 @@ class OpenStackInstanceTypesService(BaseInstanceTypesService):
             self.provider,
             limit,
             lambda nlimit:
-                [OpenStackInstanceType(obj)
+                [OpenStackInstanceType(self.provider, obj)
                  for obj in self.provider.nova.flavors.list(
                     limit=nlimit,
                     marker=marker)])

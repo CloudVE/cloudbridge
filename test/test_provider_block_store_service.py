@@ -1,3 +1,4 @@
+import itertools
 import uuid
 
 from cloudbridge.cloud.interfaces import SnapshotState
@@ -37,6 +38,12 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                 "repr(obj) should contain the object id so that the object"
                 " can be reconstructed, but does not. eval(repr(obj)) == obj")
             volumes = self.provider.block_store.volumes.list()
+            # check iteration
+            iter_volumes = list(itertools.islice(
+                self.provider.block_store.volumes,
+                len(volumes)))
+            self.assertListEqual(iter_volumes, volumes)
+
             found_volumes = [vol for vol in volumes if vol.name == name]
             self.assertTrue(
                 len(found_volumes) == 1,
@@ -125,6 +132,13 @@ class ProviderBlockStoreServiceTestCase(ProviderTestBase):
                     " can be reconstructed, but does not.")
 
                 snaps = self.provider.block_store.snapshots.list()
+
+                # check iteration
+                iter_snaps = list(itertools.islice(
+                    self.provider.block_store.snapshots,
+                    len(snaps)))
+                self.assertListEqual(iter_snaps, snaps)
+
                 found_snaps = [snap for snap in snaps
                                if snap.name == snap_name]
                 self.assertTrue(
