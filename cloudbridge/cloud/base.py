@@ -183,8 +183,9 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
 
 class BaseResultList(ResultList):
 
-    def __init__(self, is_truncated, marker, supports_total, total=None):
-        list.__init__(self)
+    def __init__(
+            self, is_truncated, marker, supports_total, total=None, data=None):
+        list.__init__(self, data or [])
         self._marker = marker
         self._is_truncated = is_truncated
         self._supports_total = True if supports_total else False

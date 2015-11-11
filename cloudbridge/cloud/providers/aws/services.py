@@ -8,6 +8,7 @@ from boto.ec2.blockdevicemapping import BlockDeviceType
 from boto.exception import EC2ResponseError
 import requests
 
+from cloudbridge.cloud import helpers as cbhelpers
 from cloudbridge.cloud.base import BaseBlockStoreService
 from cloudbridge.cloud.base import BaseComputeService
 from cloudbridge.cloud.base import BaseImageService
@@ -31,6 +32,7 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
+from cloudbridge.cloud.providers.aws import helpers as awshelpers
 
 from .resources import AWSContainer
 from .resources import AWSInstance
@@ -78,15 +80,17 @@ class AWSKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(AWSKeyPairService, self).__init__(provider)
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all key pairs associated with this account.
 
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        key_pairs = self.provider.ec2_conn.get_all_key_pairs()
-        return [AWSKeyPair(self.provider, kp) for kp in key_pairs]
+        key_pairs = [AWSKeyPair(self.provider, kp)
+                     for kp in self.provider.ec2_conn.get_all_key_pairs()]
+        return cbhelpers.to_result_list(self.provider, key_pairs, limit,
+                                        marker)
 
     def find(self, name):
         """
@@ -120,15 +124,17 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
     def __init__(self, provider):
         super(AWSSecurityGroupService, self).__init__(provider)
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all security groups associated with this account.
 
         :rtype: ``list`` of :class:`.SecurityGroup`
         :return:  list of SecurityGroup objects
         """
-        security_groups = self.provider.ec2_conn.get_all_security_groups()
-        return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
+        sgs = [AWSSecurityGroup(self.provider, sg)
+               for sg in self.provider.ec2_conn.get_all_security_groups()]
+
+        return cbhelpers.to_result_list(self.provider, sgs, limit, marker)
 
     def create(self, name, description):
         """
@@ -235,12 +241,18 @@ class AWSVolumeService(BaseVolumeService):
         raise NotImplementedError(
             'find_volume not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all volumes.
         """
-        return [AWSVolume(self.provider, vol)
-                for vol in self.provider.ec2_conn.get_all_volumes()]
+        filtr = awshelpers.to_filter(self.provider, limit, marker)
+        vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
+        results = BaseResultList(vols.is_truncated,
+                                 vols.next_token,
+                                 False)
+        for vol in vols:
+            results.append(AWSVolume(self.provider, vol))
+        return results
 
     def create(self, name, size, zone, snapshot=None):
         """
@@ -279,15 +291,14 @@ class AWSSnapshotService(BaseSnapshotService):
         raise NotImplementedError(
             'find_volume not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
-        List all snapshot.
+        List all snapshots.
         """
-        # TODO: get_all_images returns too many images - some kind of filtering
-        # abilities are needed. Forced to "self" for now
-        return [AWSSnapshot(self.provider, snap)
-                for snap in
-                self.provider.ec2_conn.get_all_snapshots(owner="self")]
+        snaps = [AWSSnapshot(self.provider, snap)
+                 for snap in self.provider.ec2_conn.get_all_snapshots()]
+        return cbhelpers.to_result_list(self.provider, snaps, limit,
+                                        marker)
 
     def create(self, name, volume, description=None):
         """
@@ -328,12 +339,14 @@ class AWSObjectStoreService(BaseObjectStoreService):
         raise NotImplementedError(
             'find_container not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all containers.
         """
-        buckets = self.provider.s3_conn.get_all_buckets()
-        return [AWSContainer(self.provider, bucket) for bucket in buckets]
+        buckets = [AWSContainer(self.provider, bucket)
+                   for bucket in self.provider.s3_conn.get_all_buckets()]
+        return cbhelpers.to_result_list(self.provider, buckets, limit,
+                                        marker)
 
     def create(self, name, location=None):
         """
@@ -370,14 +383,14 @@ class AWSImageService(BaseImageService):
         raise NotImplementedError(
             'find_image not implemented by this provider')
 
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all images.
         """
-        # TODO: get_all_images returns too many images - some kind of filtering
-        # abilities are needed. Forced to "self" for now
-        images = self.provider.ec2_conn.get_all_images(owners="self")
-        return [AWSMachineImage(self.provider, image) for image in images]
+        images = [AWSMachineImage(self.provider, image)
+                  for image in self.provider.ec2_conn.get_all_images()]
+        return cbhelpers.to_result_list(self.provider, images, limit,
+                                        marker)
 
 
 class AWSComputeService(BaseComputeService):
@@ -533,7 +546,9 @@ class AWSInstanceService(BaseInstanceService):
         """
         List all instances.
         """
-        reservations = self.provider.ec2_conn.get_all_reservations()
+        reservations = self.provider.ec2_conn.get_all_reservations(
+            max_results=limit,
+            next_token=marker)
         results = BaseResultList(reservations.is_truncated,
                                  reservations.next_token,
                                  False)
@@ -560,9 +575,11 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
             "aws_instance_info_url", AWS_INSTANCE_DATA_DEFAULT_URL))
         return r.json()
 
-    def list(self):
-        return [AWSInstanceType(self.provider, inst_data)
-                for inst_data in self.instance_data]
+    def list(self, limit=None, marker=None):
+        inst_types = [AWSInstanceType(self.provider, inst_type)
+                      for inst_type in self.instance_data]
+        return cbhelpers.to_result_list(self.provider, inst_types, limit,
+                                        marker)
 
 
 class AWSRegionService(BaseRegionService):
@@ -578,7 +595,9 @@ class AWSRegionService(BaseRegionService):
         else:
             return None
 
-    def list(self):
-        regions = self.provider.ec2_conn.get_all_regions()
-        return [AWSRegion(self.provider, region)
-                for region in regions]
+    def list(self, limit=None, marker=None):
+
+        regions = [AWSRegion(self.provider, region)
+                   for region in self.provider.ec2_conn.get_all_regions()]
+        return cbhelpers.to_result_list(self.provider, regions, limit,
+                                        marker)
