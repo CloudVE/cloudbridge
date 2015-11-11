@@ -12,6 +12,7 @@ def to_result_list(provider, objects, limit, marker):
     do not natively support paging, since it's somewhat inefficient.
     """
     limit = limit or provider.config.result_limit
+    total_size = len(objects)
     if marker:
         from_marker = itertools.dropwhile(
             lambda obj: not obj.id == marker, objects)
@@ -22,4 +23,5 @@ def to_result_list(provider, objects, limit, marker):
     results = list(itertools.islice(objects, limit))
     return BaseResultList(is_truncated,
                           results[-1].id if is_truncated else None,
-                          False, data=results)
+                          True, total=total_size,
+                          data=results)

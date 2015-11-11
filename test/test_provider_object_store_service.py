@@ -27,13 +27,13 @@ class ProviderObjectStoreServiceTestCase(ProviderTestBase):
                 name)
 
             get_container = self.provider.object_store.get(
-                test_container.name)
+                test_container.id)
             self.assertTrue(
-                found_containers[0].name ==
-                get_container.name == test_container.name,
+                found_containers[0].id ==
+                get_container.id == test_container.id,
                 "Names returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(found_containers[0].name,
-                                         get_container.name,
+                " expected: {2}" .format(found_containers[0].id,
+                                         get_container.id,
                                          test_container.name))
         containers = self.provider.object_store.list()
         found_containers = [c for c in containers if c.name == name]

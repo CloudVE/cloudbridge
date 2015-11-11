@@ -777,6 +777,16 @@ class Snapshot(ObjectLifeCycleMixin):
         """
         pass
 
+    @abstractproperty
+    def name(self):
+        """
+        Get the snapshot name.
+
+        :rtype: ``str``
+        :return: Name for this snapshot as returned by the cloud middleware.
+        """
+        pass
+
     @abstractmethod
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
@@ -845,6 +855,17 @@ class Snapshot(ObjectLifeCycleMixin):
 class KeyPair(object):
 
     __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def id(self):
+        """
+        Return the id of this key pair.
+
+        :rtype: ``str``
+        :return: ID for this snapshot. Will generally correspond to the cloud
+                 middleware's name, but should be treated as an opaque value.
+        """
+        pass
 
     @abstractproperty
     def name(self):
@@ -922,6 +943,16 @@ class PlacementZone(object):
     Represents a placement zone. A placement zone is contained within a Region.
     """
     __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def id(self):
+        """
+        Name of the placement zone.
+
+        :rtype: str
+        :return: Name of the placement zone.
+        """
+        pass
 
     @abstractproperty
     def name(self):
@@ -1211,6 +1242,16 @@ class ContainerObject(object):
     __metaclass__ = ABCMeta
 
     @abstractproperty
+    def id(self):
+        """
+        Get this object's id.
+
+        :rtype: id
+        :return: id of this object as returned by the cloud middleware.
+        """
+        pass
+
+    @abstractproperty
     def name(self):
         """
         Get this object's name.
@@ -1256,6 +1297,16 @@ class ContainerObject(object):
 class Container(PageableObjectMixin):
 
     __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def id(self):
+        """
+        Get this container's id.
+
+        :rtype: id
+        :return: id of this container as returned by the cloud middleware.
+        """
+        pass
 
     @abstractproperty
     def name(self):

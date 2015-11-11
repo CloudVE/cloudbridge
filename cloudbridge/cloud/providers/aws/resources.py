@@ -13,6 +13,7 @@ from cloudbridge.cloud.base import BaseInstance
 from cloudbridge.cloud.base import BaseInstanceType
 from cloudbridge.cloud.base import BaseKeyPair
 from cloudbridge.cloud.base import BaseMachineImage
+from cloudbridge.cloud.base import BasePlacementZone
 from cloudbridge.cloud.base import BaseRegion
 from cloudbridge.cloud.base import BaseSecurityGroup
 from cloudbridge.cloud.base import BaseSecurityGroupRule
@@ -20,7 +21,6 @@ from cloudbridge.cloud.base import BaseSnapshot
 from cloudbridge.cloud.base import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
-from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
@@ -34,7 +34,7 @@ class AWSMachineImage(BaseMachineImage):
     }
 
     def __init__(self, provider, image):
-        self._provider = provider
+        super(AWSMachineImage, self).__init__(provider)
         if isinstance(image, AWSMachineImage):
             self._ec2_image = image._ec2_image
         else:
@@ -94,14 +94,24 @@ class AWSMachineImage(BaseMachineImage):
             self._ec2_image.state = "unknown"
 
 
-class AWSPlacementZone(PlacementZone):
+class AWSPlacementZone(BasePlacementZone):
 
     def __init__(self, provider, zone):
-        self._provider = provider
+        super(AWSPlacementZone, self).__init__(provider)
         if isinstance(zone, AWSPlacementZone):
             self._aws_zone = zone._aws_zone
         else:
             self._aws_zone = zone
+
+    @property
+    def id(self):
+        """
+        Get the zone id
+
+        :rtype: ``str``
+        :return: ID for this zone as returned by the cloud middleware.
+        """
+        return self._aws_zone
 
     @property
     def name(self):
@@ -127,7 +137,7 @@ class AWSPlacementZone(PlacementZone):
 class AWSInstanceType(BaseInstanceType):
 
     def __init__(self, provider, instance_dict):
-        self._provider = provider
+        super(AWSInstanceType, self).__init__(provider)
         self._inst_dict = instance_dict
 
     @property
@@ -190,7 +200,7 @@ class AWSInstance(BaseInstance):
     }
 
     def __init__(self, provider, ec2_instance):
-        self._provider = provider
+        super(AWSInstance, self).__init__(provider)
         self._ec2_instance = ec2_instance
 
     @property
@@ -349,7 +359,7 @@ class AWSVolume(BaseVolume):
     }
 
     def __init__(self, provider, volume):
-        self._provider = provider
+        super(AWSVolume, self).__init__(provider)
         self._volume = volume
 
     @property
@@ -433,7 +443,7 @@ class AWSSnapshot(BaseSnapshot):
     }
 
     def __init__(self, provider, snapshot):
-        self._provider = provider
+        super(AWSSnapshot, self).__init__(provider)
         self._snapshot = snapshot
 
     @property
@@ -589,8 +599,12 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 class AWSContainerObject(BaseContainerObject):
 
     def __init__(self, provider, key):
-        self._provider = provider
+        super(AWSContainerObject, self).__init__(provider)
         self._key = key
+
+    @property
+    def id(self):
+        return self._key.name
 
     @property
     def name(self):
@@ -626,8 +640,12 @@ class AWSContainerObject(BaseContainerObject):
 class AWSContainer(BaseContainer):
 
     def __init__(self, provider, bucket):
-        self._provider = provider
+        super(AWSContainer, self).__init__(provider)
         self._bucket = bucket
+
+    @property
+    def id(self):
+        return self._bucket.name
 
     @property
     def name(self):
@@ -667,7 +685,7 @@ class AWSContainer(BaseContainer):
 class AWSRegion(BaseRegion):
 
     def __init__(self, provider, aws_region):
-        self._provider = provider
+        super(AWSRegion, self).__init__(provider)
         self._aws_region = aws_region
 
     @property

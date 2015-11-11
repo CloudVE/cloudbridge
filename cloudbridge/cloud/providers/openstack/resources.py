@@ -12,6 +12,7 @@ from cloudbridge.cloud.base import BaseInstance
 from cloudbridge.cloud.base import BaseInstanceType
 from cloudbridge.cloud.base import BaseKeyPair
 from cloudbridge.cloud.base import BaseMachineImage
+from cloudbridge.cloud.base import BasePlacementZone
 from cloudbridge.cloud.base import BaseRegion
 from cloudbridge.cloud.base import BaseSecurityGroup
 from cloudbridge.cloud.base import BaseSecurityGroupRule
@@ -19,7 +20,6 @@ from cloudbridge.cloud.base import BaseSnapshot
 from cloudbridge.cloud.base import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
-from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
@@ -38,7 +38,7 @@ class OpenStackMachineImage(BaseMachineImage):
     }
 
     def __init__(self, provider, os_image):
-        self._provider = provider
+        super(OpenStackMachineImage, self).__init__(provider)
         if isinstance(os_image, OpenStackMachineImage):
             self._os_image = os_image._os_image
         else:
@@ -90,14 +90,24 @@ class OpenStackMachineImage(BaseMachineImage):
             self._os_image.status = 'unknown'
 
 
-class OpenStackPlacementZone(PlacementZone):
+class OpenStackPlacementZone(BasePlacementZone):
 
     def __init__(self, provider, zone):
-        self._provider = provider
+        super(OpenStackPlacementZone, self).__init__(provider)
         if isinstance(zone, OpenStackPlacementZone):
             self._os_zone = zone._os_zone
         else:
             self._os_zone = zone
+
+    @property
+    def id(self):
+        """
+        Get the zone id
+
+        :rtype: ``str``
+        :return: ID for this zone as returned by the cloud middleware.
+        """
+        return self._os_zone
 
     @property
     def name(self):
@@ -197,7 +207,7 @@ class OpenStackInstance(BaseInstance):
     }
 
     def __init__(self, provider, os_instance):
-        self._provider = provider
+        super(OpenStackInstance, self).__init__(provider)
         self._os_instance = os_instance
 
     @property
@@ -351,7 +361,7 @@ class OpenStackInstance(BaseInstance):
 class OpenStackRegion(BaseRegion):
 
     def __init__(self, provider, os_region):
-        self._provider = provider
+        super(OpenStackRegion, self).__init__(provider)
         self._os_region = os_region
 
     @property
@@ -387,7 +397,7 @@ class OpenStackVolume(BaseVolume):
     }
 
     def __init__(self, provider, volume):
-        self._provider = provider
+        super(OpenStackVolume, self).__init__(provider)
         self._volume = volume
 
     @property
@@ -469,7 +479,7 @@ class OpenStackSnapshot(BaseSnapshot):
     }
 
     def __init__(self, provider, snapshot):
-        self._provider = provider
+        super(OpenStackSnapshot, self).__init__(provider)
         self._snapshot = snapshot
 
     @property
@@ -641,9 +651,13 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 class OpenStackContainerObject(BaseContainerObject):
 
     def __init__(self, provider, cbcontainer, obj):
-        self._provider = provider
+        super(OpenStackContainerObject, self).__init__(provider)
         self.cbcontainer = cbcontainer
         self._obj = obj
+
+    @property
+    def id(self):
+        return self._obj.get("name")
 
     @property
     def name(self):
@@ -688,8 +702,12 @@ class OpenStackContainerObject(BaseContainerObject):
 class OpenStackContainer(BaseContainer):
 
     def __init__(self, provider, container):
-        self._provider = provider
+        super(OpenStackContainer, self).__init__(provider)
         self._container = container
+
+    @property
+    def id(self):
+        return self._container.get("name")
 
     @property
     def name(self):

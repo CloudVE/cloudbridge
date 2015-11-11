@@ -329,12 +329,12 @@ class OpenStackVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
-        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             zone, OpenStackSnapshot) and snapshot else snapshot
 
         os_vol = self.provider.cinder.volumes.create(
-            size, name=name, availability_zone=zone_name,
+            size, name=name, availability_zone=zone_id,
             snapshot_id=snapshot_id)
         return OpenStackVolume(self.provider, os_vol)
 
@@ -511,7 +511,7 @@ class OpenStackInstanceService(BaseInstanceService):
             next(
                 self.provider.compute.instance_types.find(
                     name=instance_type)).id
-        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         keypair_name = keypair.name if \
             isinstance(keypair, KeyPair) else keypair
         if security_groups:
@@ -534,7 +534,7 @@ class OpenStackInstanceService(BaseInstanceService):
             instance_size,
             min_count=1,
             max_count=1,
-            availability_zone=zone_name,
+            availability_zone=zone_id,
             key_name=keypair_name,
             security_groups=security_groups_list,
             userdata=user_data,

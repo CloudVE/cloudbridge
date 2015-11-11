@@ -21,6 +21,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
+from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Region
 from cloudbridge.cloud.interfaces.resources import ResultList
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
@@ -228,6 +229,14 @@ class BasePageableObjectMixin(PageableObjectMixin):
 
 class BaseInstanceType(InstanceType):
 
+    def __init__(self, provider):
+        self._provider = provider
+
+    def __eq__(self, other):
+        return (isinstance(other, InstanceType) and
+                self._provider == other._provider and
+                self.id == other.id)
+
     @property
     def size_total_disk(self):
         return self.size_root_disk + self.size_ephemeral_disks
@@ -238,6 +247,22 @@ class BaseInstanceType(InstanceType):
 
 
 class BaseInstance(BaseObjectLifeCycleMixin, Instance):
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    def __eq__(self, other):
+        return (isinstance(other, Instance) and
+                self._provider == other._provider and
+                self.id == other.id and
+                # check from most to least likely mutables
+                self.state == other.state and
+                self.name == other.name and
+                self.security_groups == other.security_groups and
+                self.public_ips == other.public_ips and
+                self.private_ips == other.private_ips and
+                self.mac_address == other.mac_address and
+                self.image_id == other.image_id)
 
     @property
     def ready_states(self):
@@ -325,6 +350,18 @@ class BaseLaunchConfig(LaunchConfig):
 
 class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
 
+    def __init__(self, provider):
+        self._provider = provider
+
+    def __eq__(self, other):
+        return (isinstance(other, MachineImage) and
+                self._provider == other._provider and
+                self.id == other.id and
+                # check from most to least likely mutables
+                self.state == other.state and
+                self.name == other.name and
+                self.description == other.description)
+
     @property
     def ready_states(self):
         return [MachineImageState.AVAILABLE]
@@ -340,6 +377,17 @@ class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
 
 class BaseVolume(BaseObjectLifeCycleMixin, Volume):
 
+    def __init__(self, provider):
+        self._provider = provider
+
+    def __eq__(self, other):
+        return (isinstance(other, Volume) and
+                self._provider == other._provider and
+                self.id == other.id and
+                # check from most to least likely mutables
+                self.state == other.state and
+                self.name == other.name)
+
     @property
     def ready_states(self):
         return [VolumeState.AVAILABLE]
@@ -354,6 +402,17 @@ class BaseVolume(BaseObjectLifeCycleMixin, Volume):
 
 
 class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    def __eq__(self, other):
+        return (isinstance(other, Snapshot) and
+                self._provider == other._provider and
+                self.id == other.id and
+                # check from most to least likely mutables
+                self.state == other.state and
+                self.name == other.name)
 
     @property
     def ready_states(self):
@@ -378,6 +437,13 @@ class BaseKeyPair(KeyPair):
         return isinstance(other, KeyPair) and \
             self._provider == other._provider and \
             self.name == other.name
+
+    @property
+    def id(self):
+        """
+        Return the id of this key pair.
+        """
+        return self._key_pair.name
 
     @property
     def name(self):
@@ -504,23 +570,47 @@ class BaseSecurityGroupRule(SecurityGroupRule):
                                              self.group))
 
 
-class BaseRegion(Region):
+class BasePlacementZone(PlacementZone):
 
-    def __init__(self, provider, region):
+    def __init__(self, provider):
         self._provider = provider
-        self._region = region
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.name)
+                                      self.id)
 
     def __eq__(self, other):
-        if isinstance(other, Region):
-            return self._provider == other._provider and \
-                self.id == other.id
+        return (isinstance(other, PlacementZone) and
+                self._provider == other._provider and
+                self.id == other.id)
+
+
+class BaseRegion(Region):
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    def __repr__(self):
+        return "<CB-{0}: {1}>".format(self.__class__.__name__,
+                                      self.id)
+
+    def __eq__(self, other):
+        return (isinstance(other, Region) and
+                self._provider == other._provider and
+                self.id == other.id)
 
 
 class BaseContainerObject(ContainerObject):
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    def __eq__(self, other):
+        return (isinstance(other, ContainerObject) and
+                self._provider == other._provider and
+                self.id == other.id and
+                # check from most to least likely mutables
+                self.name == other.name)
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
@@ -528,6 +618,16 @@ class BaseContainerObject(ContainerObject):
 
 
 class BaseContainer(BasePageableObjectMixin, Container):
+
+    def __init__(self, provider):
+        self._provider = provider
+
+    def __eq__(self, other):
+        return (isinstance(other, Container) and
+                self._provider == other._provider and
+                self.id == other.id and
+                # check from most to least likely mutables
+                self.name == other.name)
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,

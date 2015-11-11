@@ -258,13 +258,13 @@ class AWSVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
-        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             zone, AWSSnapshot) and snapshot else snapshot
 
         ec2_vol = self.provider.ec2_conn.create_volume(
             size,
-            zone_name,
+            zone_id,
             snapshot=snapshot_id)
         cb_vol = AWSVolume(self.provider, ec2_vol)
         cb_vol.name = name
@@ -432,9 +432,9 @@ class AWSInstanceService(BaseInstanceService):
         Creates a new virtual machine instance.
         """
         image_id = image.id if isinstance(image, MachineImage) else image
-        instance_size = instance_type.name if \
+        instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
-        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         keypair_name = keypair.name if isinstance(
             keypair,
             KeyPair) else keypair
@@ -447,14 +447,14 @@ class AWSInstanceService(BaseInstanceService):
         else:
             security_groups_list = None
         if launch_config:
-            bdm = self._process_block_device_mappings(launch_config, zone_name)
+            bdm = self._process_block_device_mappings(launch_config, zone_id)
             net_id = self._get_net_id(launch_config)
         else:
             bdm = net_id = None
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
-            min_count=1, max_count=1, placement=zone_name,
+            min_count=1, max_count=1, placement=zone_id,
             key_name=keypair_name, security_groups=security_groups_list,
             user_data=user_data, block_device_map=bdm, subnet_id=net_id)
         if reservation:

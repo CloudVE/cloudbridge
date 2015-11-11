@@ -20,7 +20,7 @@ class ProviderRegionServiceTestCase(ProviderTestBase):
                 Region,
                 "regions.list() should return a cloudbridge Region")
 
-        region = self.provider.compute.regions.get(regions[0].name)
+        region = self.provider.compute.regions.get(regions[0].id)
         self.assertEqual(
             region,
             regions[0],
