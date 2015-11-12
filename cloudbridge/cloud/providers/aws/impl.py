@@ -37,15 +37,27 @@ class AWSCloudProvider(BaseCloudProvider):
         self.ec2_port = self._get_config_value('ec2_port', '')
         self.ec2_conn_path = self._get_config_value('ec2_port', '/')
 
-        # Create a connection object
-        self.ec2_conn = self._connect_ec2()
-        self.s3_conn = self._connect_s3()
+        # service connections, lazily initialized
+        self._ec2_conn = None
+        self._s3_conn = None
 
         # Initialize provider services
         self._compute = AWSComputeService(self)
         self._security = AWSSecurityService(self)
         self._block_store = AWSBlockStoreService(self)
         self._object_store = AWSObjectStoreService(self)
+
+    @property
+    def ec2_conn(self):
+        if not self._ec2_conn:
+            self._ec2_conn = self._connect_ec2()
+        return self._ec2_conn
+
+    @property
+    def s3_conn(self):
+        if not self._s3_conn:
+            self._s3_conn = self._connect_s3()
+        return self._s3_conn
 
     @property
     def account(self):

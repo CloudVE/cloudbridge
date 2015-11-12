@@ -26,6 +26,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
     def __init__(self, config):
         super(OpenStackCloudProvider, self).__init__(config)
 
+        # Initialize cloud connection fields
         self.username = self._get_config_value(
             'username', os.environ.get('OS_USERNAME', None))
         self.password = self._get_config_value(
@@ -37,16 +38,48 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self.region_name = self._get_config_value(
             'region_name', os.environ.get('OS_REGION_NAME', None))
 
-        self.nova = self._connect_nova()
-        self.keystone = self._connect_keystone()
-        self.cinder = self._connect_cinder()
-        self.swift = self._connect_swift()
-        self.neutron = self._connect_neutron()
+        # service connections, lazily initialized
+        self._nova = None
+        self._keystone = None
+        self._cinder = None
+        self._swift = None
+        self._neutron = None
 
+        # Initialize provider services
         self._compute = OpenStackComputeService(self)
         self._security = OpenStackSecurityService(self)
         self._block_store = OpenStackBlockStoreService(self)
         self._object_store = OpenStackObjectStoreService(self)
+
+    @property
+    def nova(self):
+        if not self._nova:
+            self._nova = self._connect_nova()
+        return self._nova
+
+    @property
+    def keystone(self):
+        if not self._keystone:
+            self._keystone = self._connect_keystone()
+        return self._keystone
+
+    @property
+    def cinder(self):
+        if not self._cinder:
+            self._cinder = self._connect_cinder()
+        return self._cinder
+
+    @property
+    def swift(self):
+        if not self._swift:
+            self._swift = self._connect_swift()
+        return self._swift
+
+    @property
+    def neutron(self):
+        if not self._neutron:
+            self._neutron = self._connect_neutron()
+        return self._neutron
 
     @property
     def account(self):
