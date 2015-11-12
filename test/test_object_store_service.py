@@ -20,6 +20,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         name = "cbtestcreatecontainer-{0}".format(uuid.uuid4())
         test_container = self.provider.object_store.create(name)
         with helpers.cleanup_action(lambda: test_container.delete()):
+            self.assertTrue(
+                test_container.id in repr(test_container),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not. eval(repr(obj)) == obj")
+
             containers = self.provider.object_store.list()
 
             # check iteration
@@ -43,6 +48,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 " expected: {2}" .format(found_containers[0].id,
                                          get_container.id,
                                          test_container.name))
+
         containers = self.provider.object_store.list()
         found_containers = [c for c in containers if c.name == name]
         self.assertTrue(
@@ -66,6 +72,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: test_container.delete()):
             obj_name = "hello_world.txt"
             obj = test_container.create_object(obj_name)
+
+            self.assertTrue(
+                obj.id in repr(obj),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not. eval(repr(obj)) == obj")
 
             with helpers.cleanup_action(lambda: obj.delete()):
                 # TODO: This is wrong. We shouldn't have to have a separate

@@ -1161,32 +1161,6 @@ class SecurityGroup(object):
         """
         pass
 
-    @abstractmethod
-    def rule_exists(self, rules, from_port, to_port, ip_protocol, cidr_ip):
-        """
-        Check if an authorization rule with supplied parameters exists.
-
-        :type rules: list of :class:``.SecurityGroupRule`` SecurityGroupRule
-        :param rules: A list of rules to check against.
-
-        :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
-
-        :type from_port: int
-        :param from_port: The beginning port number.
-
-        :type to_port: int
-        :param to_port: The ending port number.
-
-        :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block.
-
-        :rtype: bool
-        :return: ``True`` if an existing rule matches supplied parameters;
-                 ``False`` otherwise.
-        """
-        pass
-
 
 class SecurityGroupRule(object):
 

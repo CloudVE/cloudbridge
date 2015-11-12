@@ -480,25 +480,6 @@ class BaseSecurityGroup(SecurityGroup):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def rule_exists(self, rules, rule):
-        """
-        Check if an authorization rule exists in a list of rules.
-
-        :type rules: list of :class:``.SecurityGroupRule``
-        :param rules: A list of rules to check against
-
-        :type rule: :class:``.SecurityGroupRule``
-        :param rule: A rule whose existence to check for
-
-        :rtype: bool
-        :return: ``True`` if an existing rule matches the supplied rule;
-                 ``False`` otherwise.
-        """
-        for r in rules:
-            if r == rule:
-                return True
-        return False
-
     @property
     def id(self):
         """

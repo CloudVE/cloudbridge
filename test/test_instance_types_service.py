@@ -1,5 +1,9 @@
 import itertools
+from test import helpers
+
 import six
+
+from cloudbridge.cloud.interfaces.resources import InstanceType
 from test.helpers import ProviderTestBase
 
 
@@ -67,3 +71,21 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
                 inst_type.extra_data is None or isinstance(
                     inst_type.extra_data, dict),
                 "InstanceType extra_data must be None or a dict")
+
+    def test_instance_types_find(self):
+        """
+        Searching for an instance by name should return an
+        InstanceType object and searching for a non-existent
+        object should return an empty iterator
+        """
+        instance_type_name = helpers.get_provider_test_data(
+            self.provider,
+            "instance_type")
+        inst_type = next(self.provider.compute.instance_types.find(
+            name=instance_type_name))
+        self.assertTrue(isinstance(inst_type, InstanceType),
+                        "Find must return an InstanceType object")
+
+        with self.assertRaises(StopIteration):
+            inst_type = next(self.provider.compute.instance_types.find(
+                name="Non_Existent_Instance_Type"))
