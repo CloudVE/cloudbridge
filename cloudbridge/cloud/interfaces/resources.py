@@ -105,10 +105,53 @@ class ObjectLifeCycleMixin(object):
         pass
 
     @abstractmethod
+    def wait_for(self, target_states, terminal_states=None, timeout=600,
+                 interval=5):
+        """
+        Wait for a specified timeout for an object to reach a set of desired
+        target states. If the object does not reach the desired state within
+        the specified timeout, a ``WaitStateException`` will be raised.
+        The optional terminal_states property can be used to specify an
+        additional set of states which, should the object reach one,
+        the object thereafter will not transition into the desired target
+        state. Should this happen, a ``WaitStateException`` will be raised.
+
+        Example::
+            instance.wait_for(
+                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                terminal_states=[InstanceState.ERROR],
+                interval=self.get_test_wait_interval())
+
+        :type target_states: ``list`` of states
+        :param target_states: The list of target states to wait for.
+
+        :type terminal_states: ``list`` of states
+        :param terminal_states: A list of terminal states after which the
+        object will not transition into a target state. A WaitStateException
+        will be raised if the object transition into a terminal state.
+
+        :type timeout: int
+        :param timeout: The maximum length of time (in seconds) to wait for the
+                        object to become ready.
+
+        :type interval: int
+        :param interval: How frequently to poll the object's ready state (in
+                         seconds).
+
+        :rtype: ``True``
+        :return: Returns ``True`` if successful. A ``WaitStateException``
+                 exception may be thrown by the underlying service if the
+                 object cannot  get into a ready state (e.g. if the object
+                 is in an error state).
+        """
+        pass
+
+    @abstractmethod
     def wait_till_ready(self, timeout, interval):
         """
-        Wait till the current object is in a ready state, which is any
-        state where the end-user can successfully interact with the object.
+        A convenience method to wait till the current object reaches a state
+        which is ready for use, which is any state where the end-user can
+        successfully interact with the object.
         Will throw a ``WaitStateException`` if the object is not ready within
         the specified timeout.
 

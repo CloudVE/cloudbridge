@@ -122,22 +122,11 @@ class BaseCloudProvider(CloudProvider):
 class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
     """
     A base implementation of an ObjectLifeCycleMixin.
-    This base implementation has an implementation of wait_till_ready
+    This base implementation has an implementation of wait_for
     which refreshes the object's state till the desired ready states
-    are reached. Subclasses must implement two new properties - ready_states
-    and terminal_states, which return a list of states to wait for.
+    are reached. Subclasses must still implement the wait_till_ready
+    method, since the desired ready states are object specific.
     """
-    @property
-    def ready_states(self):
-        raise NotImplementedError(
-            "ready_states not implemented by this object. Subclasses must"
-            " implement this method and return a valid set of ready states")
-
-    @property
-    def terminal_states(self):
-        raise NotImplementedError(
-            "terminal_states not implemented by this object. Subclasses must"
-            " implement this method and return a valid set of terminal states")
 
     def wait_for(self, target_states, terminal_states=None, timeout=600,
                  interval=5):
@@ -169,13 +158,6 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
                         "Waited too long for object: {0} to become ready. It's"
                         " still in state: {1}".format(self, self.state))
             self.refresh()
-
-    def wait_till_ready(self, timeout=600, interval=5):
-        self.wait_for(
-            self.ready_states,
-            self.terminal_states,
-            timeout,
-            interval)
 
 
 class BaseResultList(ResultList):
@@ -259,13 +241,12 @@ class BaseInstance(BaseObjectLifeCycleMixin, Instance):
                 self.private_ips == other.private_ips and
                 self.image_id == other.image_id)
 
-    @property
-    def ready_states(self):
-        return [InstanceState.RUNNING]
-
-    @property
-    def terminal_states(self):
-        return [InstanceState.TERMINATED, InstanceState.ERROR]
+    def wait_till_ready(self, timeout=600, interval=5):
+        self.wait_for(
+            [InstanceState.RUNNING],
+            terminal_states=[InstanceState.TERMINATED, InstanceState.ERROR],
+            timeout=timeout,
+            interval=interval)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
@@ -357,13 +338,12 @@ class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
                 self.name == other.name and
                 self.description == other.description)
 
-    @property
-    def ready_states(self):
-        return [MachineImageState.AVAILABLE]
-
-    @property
-    def terminal_states(self):
-        return [MachineImageState.ERROR]
+    def wait_till_ready(self, timeout=600, interval=5):
+        self.wait_for(
+            [MachineImageState.AVAILABLE],
+            terminal_states=[MachineImageState.ERROR],
+            timeout=timeout,
+            interval=interval)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
@@ -383,13 +363,12 @@ class BaseVolume(BaseObjectLifeCycleMixin, Volume):
                 self.state == other.state and
                 self.name == other.name)
 
-    @property
-    def ready_states(self):
-        return [VolumeState.AVAILABLE]
-
-    @property
-    def terminal_states(self):
-        return [VolumeState.ERROR, VolumeState.DELETED]
+    def wait_till_ready(self, timeout=600, interval=5):
+        self.wait_for(
+            [VolumeState.AVAILABLE],
+            terminal_states=[VolumeState.ERROR, VolumeState.DELETED],
+            timeout=timeout,
+            interval=interval)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
@@ -409,13 +388,12 @@ class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
                 self.state == other.state and
                 self.name == other.name)
 
-    @property
-    def ready_states(self):
-        return [SnapshotState.AVAILABLE]
-
-    @property
-    def terminal_states(self):
-        return [SnapshotState.ERROR]
+    def wait_till_ready(self, timeout=600, interval=5):
+        self.wait_for(
+            [SnapshotState.AVAILABLE],
+            terminal_states=[SnapshotState.ERROR],
+            timeout=timeout,
+            interval=interval)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
