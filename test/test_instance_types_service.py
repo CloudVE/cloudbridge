@@ -3,10 +3,10 @@ import six
 from test.helpers import ProviderTestBase
 
 
-class ProviderInstanceTypesServiceTestCase(ProviderTestBase):
+class CloudInstanceTypesServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
-        super(ProviderInstanceTypesServiceTestCase, self).__init__(
+        super(CloudInstanceTypesServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
     def test_instance_types(self):

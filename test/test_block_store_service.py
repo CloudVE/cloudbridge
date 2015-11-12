@@ -7,10 +7,10 @@ from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
-class ProviderBlockStoreServiceTestCase(ProviderTestBase):
+class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
-        super(ProviderBlockStoreServiceTestCase, self).__init__(
+        super(CloudBlockStoreServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
     def test_crud_volume(self):

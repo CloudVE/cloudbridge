@@ -11,10 +11,10 @@ from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
-class ProviderComputeServiceTestCase(ProviderTestBase):
+class CloudComputeServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
-        super(ProviderComputeServiceTestCase, self).__init__(
+        super(CloudComputeServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
     def test_crud_instance(self):

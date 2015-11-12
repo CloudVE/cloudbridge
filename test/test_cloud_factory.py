@@ -7,7 +7,7 @@ from cloudbridge.cloud.providers.aws import AWSCloudProvider
 import test.helpers as helpers
 
 
-class ProviderFactoryTestCase(unittest.TestCase):
+class CloudFactoryTestCase(unittest.TestCase):
 
     def test_create_provider_valid(self):
         """

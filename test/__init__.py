@@ -27,29 +27,27 @@ as a base class to each combination).
 """
 import cloudbridge
 from test.helpers import ProviderTestCaseGenerator
+from test.test_block_store_service import CloudBlockStoreServiceTestCase
 from test.test_cloud_helpers import CloudHelpersTestCase
-from test.test_instance_types_service import \
-    ProviderInstanceTypesServiceTestCase
-from test.test_provider_block_store_service import \
-    ProviderBlockStoreServiceTestCase
-from test.test_provider_compute_service import ProviderComputeServiceTestCase
-from test.test_provider_image_service import ProviderImageServiceTestCase
-from test.test_provider_interface import ProviderInterfaceTestCase
-from test.test_provider_object_store_service import \
-    ProviderObjectStoreServiceTestCase
-from test.test_provider_region_service import ProviderRegionServiceTestCase
-from test.test_provider_security_service import ProviderSecurityServiceTestCase
+from test.test_compute_service import CloudComputeServiceTestCase
+from test.test_image_service import CloudImageServiceTestCase
+from test.test_instance_types_service import CloudInstanceTypesServiceTestCase
+from test.test_interface import CloudInterfaceTestCase
+from test.test_object_store_service import CloudObjectStoreServiceTestCase
+from test.test_region_service import CloudRegionServiceTestCase
+from test.test_security_service import CloudSecurityServiceTestCase
+
 
 PROVIDER_TESTS = [
     CloudHelpersTestCase,
-    ProviderInterfaceTestCase,
-    ProviderSecurityServiceTestCase,
-    ProviderInstanceTypesServiceTestCase,
-    ProviderComputeServiceTestCase,
-    ProviderRegionServiceTestCase,
-    ProviderImageServiceTestCase,
-    ProviderBlockStoreServiceTestCase,
-    ProviderObjectStoreServiceTestCase
+    CloudInterfaceTestCase,
+    CloudSecurityServiceTestCase,
+    CloudInstanceTypesServiceTestCase,
+    CloudComputeServiceTestCase,
+    CloudRegionServiceTestCase,
+    CloudImageServiceTestCase,
+    CloudBlockStoreServiceTestCase,
+    CloudObjectStoreServiceTestCase
 ]
 
 

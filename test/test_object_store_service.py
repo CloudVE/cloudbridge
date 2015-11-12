@@ -6,10 +6,10 @@ from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
-class ProviderObjectStoreServiceTestCase(ProviderTestBase):
+class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
-        super(ProviderObjectStoreServiceTestCase, self).__init__(
+        super(CloudObjectStoreServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
     def test_crud_container(self):

@@ -77,10 +77,6 @@ class BaseCloudProvider(CloudProvider):
     def config(self):
         return self._config
 
-    @config.setter
-    def config(self, config):
-        self._config = config
-
     @property
     def name(self):
         return str(self.__class__.__name__)

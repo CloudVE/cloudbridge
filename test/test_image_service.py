@@ -8,10 +8,10 @@ from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
-class ProviderImageServiceTestCase(ProviderTestBase):
+class CloudImageServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
-        super(ProviderImageServiceTestCase, self).__init__(
+        super(CloudImageServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
     def test_create_and_list_image(self):

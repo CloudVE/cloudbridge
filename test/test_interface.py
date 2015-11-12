@@ -2,10 +2,10 @@ from cloudbridge.cloud import interfaces
 from test.helpers import ProviderTestBase
 
 
-class ProviderInterfaceTestCase(ProviderTestBase):
+class CloudInterfaceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
-        super(ProviderInterfaceTestCase, self).__init__(
+        super(CloudInterfaceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
     def test_name_property(self):

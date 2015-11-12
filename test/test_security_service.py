@@ -5,10 +5,10 @@ from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
-class ProviderSecurityServiceTestCase(ProviderTestBase):
+class CloudSecurityServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
-        super(ProviderSecurityServiceTestCase, self).__init__(
+        super(CloudSecurityServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
     def test_crud_key_pair_service(self):
