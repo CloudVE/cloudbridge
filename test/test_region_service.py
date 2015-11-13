@@ -28,6 +28,9 @@ class CloudRegionServiceTestCase(ProviderTestBase):
                 region,
                 Region,
                 "regions.list() should return a cloudbridge Region")
+            self.assertTrue(
+                region.name,
+                "Region name should be a non-empty string")
 
         region = self.provider.compute.regions.get(regions[0].id)
         self.assertEqual(

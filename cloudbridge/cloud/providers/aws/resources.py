@@ -246,7 +246,8 @@ class AWSInstance(BaseInstance):
         """
         Get the instance type.
         """
-        return AWSInstanceType(self._ec2_instance.instance_type)
+        return next(self._provider.compute.instance_types.find(
+            name=self._ec2_instance.instance_type))
 
     def reboot(self):
         """

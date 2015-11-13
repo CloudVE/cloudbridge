@@ -6,6 +6,7 @@ import ipaddress
 from cloudbridge.cloud.interfaces \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
+from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import WaitStateException
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
@@ -111,6 +112,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address")
+            self.assertIsInstance(test_instance.instance_type, InstanceType)
 
     def test_block_device_mappings(self):
         name = "CBInstBlkMap-{0}-{1}".format(

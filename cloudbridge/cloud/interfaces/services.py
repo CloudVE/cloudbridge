@@ -235,7 +235,7 @@ class VolumeService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all volumes.
 
@@ -298,7 +298,7 @@ class SnapshotService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all snapshots.
 
@@ -386,7 +386,7 @@ class ImageService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all images.
 
@@ -425,7 +425,7 @@ class ObjectStoreService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all containers.
 
@@ -487,7 +487,7 @@ class KeyPairService(PageableObjectMixin, ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all key pairs associated with this account.
 
@@ -543,7 +543,7 @@ class SecurityGroupService(PageableObjectMixin, ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all security groups associated with this account.
 
@@ -610,7 +610,7 @@ class InstanceTypesService(PageableObjectMixin, ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all instance types.
 
@@ -649,7 +649,7 @@ class RegionService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def list(self):
+    def list(self, limit=None, marker=None):
         """
         List all regions.
 

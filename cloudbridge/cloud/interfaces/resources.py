@@ -348,6 +348,14 @@ class Instance(ObjectLifeCycleMixin):
         """
         pass
 
+    @name.setter
+    @abstractmethod
+    def name(self, value):
+        """
+        Set the instance name.
+        """
+        pass
+
     @abstractproperty
     def public_ips(self):
         """
@@ -722,6 +730,14 @@ class Volume(ObjectLifeCycleMixin):
         """
         pass
 
+    @name.setter
+    @abstractmethod
+    def name(self, value):
+        """
+        Set the volume name.
+        """
+        pass
+
     @abstractmethod
     def attach(self, instance_id, device):
         """
@@ -762,9 +778,12 @@ class Volume(ObjectLifeCycleMixin):
         pass
 
     @abstractmethod
-    def create_snapshot(self, description=None):
+    def create_snapshot(self, name, description=None):
         """
         Create a snapshot of this Volume.
+
+        :type name: str
+        :param name: The name of this snapshot.
 
         :type description: str
         :param description: A description of the snapshot.
@@ -824,9 +843,14 @@ class Snapshot(ObjectLifeCycleMixin):
     def name(self):
         """
         Get the snapshot name.
+        """
+        pass
 
-        :rtype: ``str``
-        :return: Name for this snapshot as returned by the cloud middleware.
+    @name.setter
+    @abstractmethod
+    def name(self, value):
+        """
+        set the snapshot name.
         """
         pass
 

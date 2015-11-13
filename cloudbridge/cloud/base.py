@@ -130,7 +130,7 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
 
     def wait_for(self, target_states, terminal_states=None, timeout=600,
                  interval=5):
-        assert timeout > 0
+        assert timeout >= 0
         assert interval >= 0
         assert timeout >= interval
 
@@ -143,20 +143,20 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
                     " and cannot be waited on.".format(self, self.state))
             else:
                 log.debug(
-                    "Object {0} is in state: {1}. Waiting another {2}"
-                    " seconds to reach target state(s): {3}...".format(
-                        self,
-                        self.state,
-                        int(end_time - time.time()),
-                        target_states))
+                    "Object %s is in state: %s. Waiting another %s"
+                    " seconds to reach target state(s): %s...",
+                    self,
+                    self.state,
+                    int(end_time - time.time()),
+                    target_states)
                 time.sleep(interval)
                 if time.time() > end_time:
                     raise WaitStateException(
                         "Waited too long for object: {0} to become ready. It's"
                         " still in state: {1}".format(self, self.state))
             self.refresh()
-        log.debug("Object: {0} successfully reached target state:"
-                  " {1}".format(self, self.state))
+        log.debug("Object: %s successfully reached target state: %s",
+                  self, self.state)
         return True
 
 
@@ -164,7 +164,7 @@ class BaseResultList(ResultList):
 
     def __init__(
             self, is_truncated, marker, supports_total, total=None, data=None):
-        list.__init__(self, data or [])
+        super(BaseResultList, self).__init__(data or [])
         self._marker = marker
         self._is_truncated = is_truncated
         self._supports_total = True if supports_total else False

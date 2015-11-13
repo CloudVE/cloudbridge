@@ -42,4 +42,4 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
 
             # Hitting the timeout should raise an exception
             with self.assertRaises(WaitStateException):
-                test_vol.wait_for([VolumeState.ERROR], timeout=1, interval=1)
+                test_vol.wait_for([VolumeState.ERROR], timeout=0, interval=0)
