@@ -60,11 +60,6 @@ class AWSCloudProvider(BaseCloudProvider):
         return self._s3_conn
 
     @property
-    def account(self):
-        raise NotImplementedError(
-            'account not implemented by this provider')
-
-    @property
     def compute(self):
         return self._compute
 

@@ -131,16 +131,13 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
     def wait_for(self, target_states, terminal_states=None, timeout=600,
                  interval=5):
         assert timeout > 0
-        assert timeout > interval
+        assert interval >= 0
+        assert timeout >= interval
 
         end_time = time.time() + timeout
-        while True:
-            if self.state in target_states:
-                log.debug(
-                    "Object: {0} successfully reached target state:"
-                    " {1}".format(self, self.state))
-                return True
-            elif self.state in terminal_states:
+
+        while self.state not in target_states:
+            if self.state in (terminal_states or []):
                 raise WaitStateException(
                     "Object: {0} is in state: {1} which is a terminal state"
                     " and cannot be waited on.".format(self, self.state))
@@ -158,6 +155,9 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
                         "Waited too long for object: {0} to become ready. It's"
                         " still in state: {1}".format(self, self.state))
             self.refresh()
+        log.debug("Object: {0} successfully reached target state:"
+                  " {1}".format(self, self.state))
+        return True
 
 
 class BaseResultList(ResultList):
@@ -686,7 +686,8 @@ class BaseInstanceTypesService(
         if name:
             return (itype for itype in self.list() if itype.name == name)
         else:
-            return None
+            raise TypeError(
+                "Invalid parameters for search. Supported attributes: {name}")
 
 
 class BaseInstanceService(

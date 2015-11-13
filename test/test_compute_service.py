@@ -122,7 +122,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # specifying an invalid size should raise
         # an exception
         with self.assertRaises(InvalidConfigurationException):
-            lc.add_volume_device(-1)
+            lc.add_volume_device(size=-1)
+
+        # Attempting to add a blank volume without specifying a size
+        # should raise an exception
+        with self.assertRaises(InvalidConfigurationException):
+            lc.add_volume_device(source=None)
 
         # block_devices should be empty so far
         self.assertListEqual(

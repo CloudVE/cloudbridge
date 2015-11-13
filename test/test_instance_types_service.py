@@ -88,4 +88,8 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
 
         with self.assertRaises(StopIteration):
             inst_type = next(self.provider.compute.instance_types.find(
-                name="Non_Existent_Instance_Type"))
+                name="non_existent_instance_type"))
+
+        with self.assertRaises(TypeError):
+            self.provider.compute.instance_types.find(
+                non_existent_param="random_value")

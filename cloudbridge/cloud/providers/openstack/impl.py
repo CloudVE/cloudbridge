@@ -82,11 +82,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._neutron
 
     @property
-    def account(self):
-        raise NotImplementedError(
-            'account not implemented by this provider')
-
-    @property
     def compute(self):
         return self._compute
 

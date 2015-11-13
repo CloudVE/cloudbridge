@@ -81,6 +81,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             lambda:
                 self.provider.security.security_groups.delete(group_id=sg.id)
         ):
+            self.assertEqual(name, sg.description)
+
             sgl = self.provider.security.security_groups.get(
                 group_names=[
                     sg.name])

@@ -50,16 +50,16 @@ class CloudProvider(object):
         """
         pass
 
-    @abstractproperty
-    def account(self):
-        """
-        Provides access to all user account related services in this provider.
-        This includes listing available tenancies.
-
-        :rtype: ``object`` of :class:`.ComputeService`
-        :return:  a ComputeService object
-        """
-        pass
+#     @abstractproperty
+#     def account(self):
+#         """
+#         Provides access to all user account related services in this
+#         provider. This includes listing available tenancies.
+#
+#         :rtype: ``object`` of :class:`.ComputeService`
+#         :return:  a ComputeService object
+#         """
+#         pass
 
     @abstractproperty
     def compute(self):
