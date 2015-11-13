@@ -1,4 +1,3 @@
-import itertools
 import uuid
 
 import ipaddress
@@ -36,16 +35,18 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
             all_instances = self.provider.compute.instances.list()
 
-            # check iteration
-            iter_instances = list(itertools.islice(
-                self.provider.compute.instances,
-                len(all_instances)))
-            self.assertListEqual(iter_instances, all_instances)
-
             found_instances = [i for i in all_instances if i.name == name]
             self.assertTrue(
                 len(found_instances) == 1,
                 "List instances does not return the expected instance %s" %
+                name)
+
+            # check iteration
+            found_instances = [i for i in self.provider.compute.instances
+                               if i.name == name]
+            self.assertTrue(
+                len(found_instances) == 1,
+                "Iter instances does not return the expected instance %s" %
                 name)
 
             get_inst = self.provider.compute.instances.get(

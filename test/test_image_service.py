@@ -1,4 +1,3 @@
-import itertools
 import uuid
 
 import six
@@ -50,18 +49,19 @@ class CloudImageServiceTestCase(ProviderTestBase):
                     "Image description must be None or a string")
 
                 images = self.provider.compute.images.list()
-
-                # check iteration
-                iter_images = list(itertools.islice(
-                    self.provider.compute.images,
-                    len(images)))
-                self.assertListEqual(iter_images, images)
-
                 found_images = [image for image in images
                                 if image.name == name]
                 self.assertTrue(
                     len(found_images) == 1,
                     "List images does not return the expected image %s" %
+                    name)
+
+                # check iteration
+                found_images = [image for image in self.provider.compute.images
+                                if image.name == name]
+                self.assertTrue(
+                    len(found_images) == 1,
+                    "Iter images does not return the expected image %s" %
                     name)
 
                 get_img = self.provider.compute.images.get(

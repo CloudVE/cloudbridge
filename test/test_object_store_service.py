@@ -1,5 +1,4 @@
 from io import BytesIO
-import itertools
 import uuid
 
 from test.helpers import ProviderTestBase
@@ -27,16 +26,18 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
             containers = self.provider.object_store.list()
 
-            # check iteration
-            iter_containers = list(itertools.islice(
-                self.provider.object_store,
-                len(containers)))
-            self.assertListEqual(iter_containers, containers)
-
             found_containers = [c for c in containers if c.name == name]
             self.assertTrue(
                 len(found_containers) == 1,
                 "List containers does not return the expected container %s" %
+                name)
+
+            # check iteration
+            found_containers = [c for c in self.provider.object_store
+                                if c.name == name]
+            self.assertTrue(
+                len(found_containers) == 1,
+                "Iter containers does not return the expected container %s" %
                 name)
 
             get_container = self.provider.object_store.get(
@@ -87,9 +88,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 objs = test_container.list()
 
                 # check iteration
-                iter_objs = list(itertools.islice(
-                    test_container,
-                    len(objs)))
+                iter_objs = list(test_container)
                 self.assertListEqual(iter_objs, objs)
 
                 found_objs = [o for o in objs if o.name == obj_name]

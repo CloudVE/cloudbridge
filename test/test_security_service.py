@@ -1,4 +1,3 @@
-import itertools
 import uuid
 
 from test.helpers import ProviderTestBase
@@ -18,6 +17,22 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             lambda:
                 self.provider.security.key_pairs.delete(name=kp.name)
         ):
+            # test list method
+            kpl = self.provider.security.key_pairs.list()
+            found_kpl = [i for i in kpl if i.name == name]
+            self.assertTrue(
+                len(found_kpl) == 1,
+                "List keypairs does not return the expected keypair %s" %
+                name)
+
+            # check iteration
+            found_kpl = [i for i in self.provider.security.key_pairs
+                         if i.name == name]
+            self.assertTrue(
+                len(found_kpl) == 1,
+                "Iter keypairs does not return the expected keypair %s" %
+                name)
+
             found_kp = self.provider.security.key_pairs.find(name=name)
             self.assertTrue(
                 found_kp == kp,
@@ -29,13 +44,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "Recreating key pair did not return the expected key {0}."
                 .format(name))
         kpl = self.provider.security.key_pairs.list()
-
-        # check iteration
-        iter_key_pairs = list(itertools.islice(
-            self.provider.security.key_pairs,
-            len(kpl)))
-        self.assertListEqual(iter_key_pairs, kpl)
-
         found_kp = [k for k in kpl if k.name == name]
         self.assertTrue(
             len(found_kp) == 0,
@@ -83,6 +91,22 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         ):
             self.assertEqual(name, sg.description)
 
+            # test list method
+            sgl = self.provider.security.security_groups.list()
+            found_sgl = [i for i in sgl if i.name == name]
+            self.assertTrue(
+                len(found_sgl) == 1,
+                "List security groups does not return the expected group %s" %
+                name)
+
+            # check iteration
+            found_sgl = [i for i in self.provider.security.security_groups
+                         if i.name == name]
+            self.assertTrue(
+                len(found_sgl) == 1,
+                "Iter security groups does not return the expected group %s" %
+                name)
+
             sgl = self.provider.security.security_groups.get(
                 group_names=[
                     sg.name])
@@ -92,13 +116,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "List security groups did not return the expected group {0}."
                 .format(name))
         sgl = self.provider.security.security_groups.list()
-
-        # check iteration
-        iter_security_groups = list(itertools.islice(
-            self.provider.security.security_groups,
-            len(sgl)))
-        self.assertListEqual(iter_security_groups, sgl)
-
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(
             len(found_sg) == 0,

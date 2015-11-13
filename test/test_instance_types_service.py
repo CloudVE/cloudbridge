@@ -1,4 +1,3 @@
-import itertools
 from test import helpers
 
 import six
@@ -16,9 +15,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
     def test_instance_types(self):
         instance_types = self.provider.compute.instance_types.list()
         # check iteration
-        iter_instance_types = list(itertools.islice(
-            self.provider.compute.instance_types,
-            len(instance_types)))
+        iter_instance_types = list(self.provider.compute.instance_types)
         self.assertListEqual(iter_instance_types, instance_types)
 
         for inst_type in instance_types:
