@@ -1,12 +1,12 @@
 """
 Public interface exports
 """
-from .impl import CloudProvider
-from .resources import CloudProviderServiceType
-from .resources import InstanceState
-from .resources import InvalidConfigurationException
-from .resources import LaunchConfig
-from .resources import MachineImageState
-from .resources import Region
-from .resources import SnapshotState
-from .resources import VolumeState
+from .impl import CloudProvider  # noqa
+from .resources import CloudProviderServiceType  # noqa
+from .resources import InstanceState  # noqa
+from .resources import InvalidConfigurationException  # noqa
+from .resources import LaunchConfig  # noqa
+from .resources import MachineImageState  # noqa
+from .resources import Region  # noqa
+from .resources import SnapshotState  # noqa
+from .resources import VolumeState  # noqa

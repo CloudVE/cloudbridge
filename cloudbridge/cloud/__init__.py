@@ -1,2 +1,2 @@
-from .factory import CloudProviderFactory
-from .factory import ProviderList
+from .factory import CloudProviderFactory  # noqa
+from .factory import ProviderList  # noqa

@@ -254,7 +254,7 @@ class AWSVolumeService(BaseVolumeService):
             results.append(AWSVolume(self.provider, vol))
         return results
 
-    def create(self, name, size, zone, snapshot=None):
+    def create(self, name, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
         """

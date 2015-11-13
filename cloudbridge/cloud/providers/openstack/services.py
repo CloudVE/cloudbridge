@@ -81,6 +81,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :return:  list of KeyPair objects
         """
 
+        # pylint:disable=unused-argument
         def _list_key_pairs(nlimit):
             keypairs = self.provider.nova.keypairs.list()
             if marker:
@@ -135,6 +136,7 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         :return:  list of SecurityGroup objects
         """
 
+        # pylint:disable=unused-argument
         def _list_security_groups(nlimit):
             sgs = self.provider.nova.security_groups.list()
             if marker:
@@ -325,7 +327,7 @@ class OpenStackVolumeService(BaseVolumeService):
                     limit=nlimit,
                     marker=marker)])
 
-    def create(self, name, size, zone, snapshot=None):
+    def create(self, name, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
         """
@@ -334,8 +336,8 @@ class OpenStackVolumeService(BaseVolumeService):
             zone, OpenStackSnapshot) and snapshot else snapshot
 
         os_vol = self.provider.cinder.volumes.create(
-            size, name=name, availability_zone=zone_id,
-            snapshot_id=snapshot_id)
+            size, name=name, description=description,
+            availability_zone=zone_id, snapshot_id=snapshot_id)
         return OpenStackVolume(self.provider, os_vol)
 
 
@@ -417,6 +419,7 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         """
         List all containers.
         """
+        # pylint:disable=unused-argument
         def _list_containers(nlimit):
             _, container_list = self.provider.swift.get_account(
                 limit=nlimit, marker=marker)
@@ -447,6 +450,7 @@ class OpenStackRegionService(BaseRegionService):
 
     def list(self, limit=None, marker=None):
 
+        # pylint:disable=unused-argument
         def _list_regions(nlimit):
             regions = (
                 endpoint.get('region') or endpoint.get('region_id')

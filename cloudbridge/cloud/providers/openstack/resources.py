@@ -40,6 +40,7 @@ class OpenStackMachineImage(BaseMachineImage):
     def __init__(self, provider, os_image):
         super(OpenStackMachineImage, self).__init__(provider)
         if isinstance(os_image, OpenStackMachineImage):
+            # pylint:disable=protected-access
             self._os_image = os_image._os_image
         else:
             self._os_image = os_image
@@ -83,7 +84,7 @@ class OpenStackMachineImage(BaseMachineImage):
         """
         image = self._provider.compute.images.get(self.id)
         if image:
-            self._os_image = image._os_image
+            self._os_image = image._os_image  # pylint:disable=protected-access
         else:
             # The image no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -95,7 +96,7 @@ class OpenStackPlacementZone(BasePlacementZone):
     def __init__(self, provider, zone):
         super(OpenStackPlacementZone, self).__init__(provider)
         if isinstance(zone, OpenStackPlacementZone):
-            self._os_zone = zone._os_zone
+            self._os_zone = zone._os_zone  # pylint:disable=protected-access
         else:
             self._os_zone = zone
 
@@ -226,6 +227,7 @@ class OpenStackInstance(BaseInstance):
         return self._os_instance.name
 
     @name.setter
+    # pylint:disable=arguments-differ
     def name(self, value):
         """
         Set the instance name.
@@ -352,6 +354,7 @@ class OpenStackInstance(BaseInstance):
         instance = self._provider.compute.instances.get(
             self.id)
         if instance:
+            # pylint:disable=protected-access
             self._os_instance = instance._os_instance
         else:
             # The instance no longer exists and cannot be refreshed.
@@ -413,7 +416,7 @@ class OpenStackVolume(BaseVolume):
         return self._volume.name
 
     @name.setter
-    def name(self, value):
+    def name(self, value):  # pylint:disable=arguments-differ
         """
         Set the volume name.
         """
@@ -461,7 +464,7 @@ class OpenStackVolume(BaseVolume):
         vol = self._provider.block_store.volumes.get(
             self.id)
         if vol:
-            self._volume = vol._volume
+            self._volume = vol._volume  # pylint:disable=protected-access
         else:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -495,7 +498,7 @@ class OpenStackSnapshot(BaseSnapshot):
         return self._snapshot.name
 
     @name.setter
-    def name(self, value):
+    def name(self, value):  # pylint:disable=arguments-differ
         """
         Set the snapshot name.
         """
@@ -515,7 +518,7 @@ class OpenStackSnapshot(BaseSnapshot):
         snap = self._provider.block_store.snapshots.get(
             self.id)
         if snap:
-            self._snapshot = snap._snapshot
+            self._snapshot = snap._snapshot  # pylint:disable=protected-access
         else:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -642,10 +645,10 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
     def group(self):
         cg = self._rule.get('group', {}).get('name')
         if cg:
-            security_groups = self.parent._provider.nova.security_groups.list()
+            security_groups = self._provider.nova.security_groups.list()
             for sg in security_groups:
                 if sg.name == cg:
-                    return OpenStackSecurityGroup(self.parent._provider, sg)
+                    return OpenStackSecurityGroup(self._provider, sg)
         return None
 
 

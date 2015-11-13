@@ -37,6 +37,7 @@ class AWSMachineImage(BaseMachineImage):
     def __init__(self, provider, image):
         super(AWSMachineImage, self).__init__(provider)
         if isinstance(image, AWSMachineImage):
+            # pylint:disable=protected-access
             self._ec2_image = image._ec2_image
         else:
             self._ec2_image = image
@@ -89,6 +90,7 @@ class AWSMachineImage(BaseMachineImage):
         """
         image = self._provider.compute.images.get(self.id)
         if image:
+            # pylint:disable=protected-access
             self._ec2_image = image._ec2_image
         else:
             # image no longer exists
@@ -100,6 +102,7 @@ class AWSPlacementZone(BasePlacementZone):
     def __init__(self, provider, zone):
         super(AWSPlacementZone, self).__init__(provider)
         if isinstance(zone, AWSPlacementZone):
+            # pylint:disable=protected-access
             self._aws_zone = zone._aws_zone
         else:
             self._aws_zone = zone
@@ -221,6 +224,7 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.tags.get('Name')
 
     @name.setter
+    # pylint:disable=arguments-differ
     def name(self, value):
         """
         Set the instance name.
@@ -378,6 +382,7 @@ class AWSVolume(BaseVolume):
         return self._volume.tags.get('Name')
 
     @name.setter
+    # pylint:disable=arguments-differ
     def name(self, value):
         """
         Set the volume name.
@@ -462,6 +467,7 @@ class AWSSnapshot(BaseSnapshot):
         return self._snapshot.tags.get('Name')
 
     @name.setter
+    # pylint:disable=arguments-differ
     def name(self, value):
         """
         Set the snapshot name.
@@ -562,6 +568,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
             from_port=from_port,
             to_port=to_port,
             cidr_ip=cidr_ip,
+            # pylint:disable=protected-access
             src_group=src_group._security_group if src_group else None)
 
 
@@ -592,9 +599,9 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
     def group(self):
         if len(self._rule.grants) > 0:
             if self._rule.grants[0].name:
-                cg = self.parent._provider.ec2_conn.get_all_security_groups(
+                cg = self._provider.ec2_conn.get_all_security_groups(
                     groupnames=[self._rule.grants[0].name])[0]
-                return AWSSecurityGroup(self.parent._provider, cg)
+                return AWSSecurityGroup(self._provider, cg)
         return None
 
 

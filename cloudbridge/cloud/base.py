@@ -212,6 +212,7 @@ class BaseInstanceType(InstanceType):
 
     def __eq__(self, other):
         return (isinstance(other, InstanceType) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
@@ -231,6 +232,7 @@ class BaseInstance(BaseObjectLifeCycleMixin, Instance):
 
     def __eq__(self, other):
         return (isinstance(other, Instance) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id and
                 # check from most to least likely mutables
@@ -331,6 +333,7 @@ class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
 
     def __eq__(self, other):
         return (isinstance(other, MachineImage) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id and
                 # check from most to least likely mutables
@@ -357,6 +360,7 @@ class BaseVolume(BaseObjectLifeCycleMixin, Volume):
 
     def __eq__(self, other):
         return (isinstance(other, Volume) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id and
                 # check from most to least likely mutables
@@ -382,6 +386,7 @@ class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
 
     def __eq__(self, other):
         return (isinstance(other, Snapshot) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id and
                 # check from most to least likely mutables
@@ -407,9 +412,10 @@ class BaseKeyPair(KeyPair):
         self._key_pair = key_pair
 
     def __eq__(self, other):
-        return isinstance(other, KeyPair) and \
-            self._provider == other._provider and \
-            self.name == other.name
+        return (isinstance(other, KeyPair) and
+                # pylint:disable=protected-access
+                self._provider == other._provider and
+                self.name == other.name)
 
     @property
     def id(self):
@@ -451,6 +457,7 @@ class BaseSecurityGroup(SecurityGroup):
         Check if all the defined rules match across both security groups.
         """
         return (isinstance(other, SecurityGroup) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 len(self.rules) == len(other.rules) and  # Shortcut
                 set(self.rules) == set(other.rules))
@@ -535,6 +542,7 @@ class BasePlacementZone(PlacementZone):
 
     def __eq__(self, other):
         return (isinstance(other, PlacementZone) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
@@ -550,6 +558,7 @@ class BaseRegion(Region):
 
     def __eq__(self, other):
         return (isinstance(other, Region) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
 
@@ -561,6 +570,7 @@ class BaseContainerObject(ContainerObject):
 
     def __eq__(self, other):
         return (isinstance(other, ContainerObject) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id and
                 # check from most to least likely mutables
@@ -578,6 +588,7 @@ class BaseContainer(BasePageableObjectMixin, Container):
 
     def __eq__(self, other):
         return (isinstance(other, Container) and
+                # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id and
                 # check from most to least likely mutables
