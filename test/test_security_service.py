@@ -65,7 +65,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "List key pairs did not return the expected key {0}."
                 .format(name))
             self.assertTrue(
-                kp.name in repr(kp),
+                kp.id in repr(kp),
                 "repr(obj) should contain the object id so that the object"
                 " can be reconstructed, but does not. eval(repr(obj)) == obj")
             self.assertIsNotNone(
@@ -115,6 +115,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 len(found_sg) == 1,
                 "List security groups did not return the expected group {0}."
                 .format(name))
+            self.assertTrue(
+                sg.id in repr(sg),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not. eval(repr(obj)) == obj")
         sgl = self.provider.security.security_groups.list()
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(

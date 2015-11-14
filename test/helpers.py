@@ -41,10 +41,7 @@ def cleanup_action(cleanup_func):
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
         reraise(ex_class, ex_val, ex_traceback)
-    try:
-        cleanup_func()
-    except Exception as e:
-        print("Error during normal cleanup: {0}".format(e))
+    cleanup_func()
 
 
 TEST_DATA_CONFIG = {
@@ -72,12 +69,15 @@ def get_provider_test_data(provider, key):
 
 
 def create_test_instance(
-        provider, instance_name, zone=None, launch_config=None):
+        provider, instance_name, zone=None, launch_config=None,
+        keypair=None, security_groups=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
         zone=zone,
+        keypair=keypair,
+        security_groups=security_groups,
         launch_config=launch_config)
 
 
@@ -88,8 +88,12 @@ def get_provider_wait_interval(provider):
         return 1
 
 
-def get_test_instance(provider, name):
-    instance = create_test_instance(provider, name)
+def get_test_instance(provider, name, keypair=None, security_groups=None):
+    instance = create_test_instance(
+        provider,
+        name,
+        keypair=keypair,
+        security_groups=security_groups)
     instance.wait_till_ready(interval=get_provider_wait_interval(provider))
     return instance
 

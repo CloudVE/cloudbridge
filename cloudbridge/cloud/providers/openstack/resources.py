@@ -295,24 +295,13 @@ class OpenStackInstance(BaseInstance):
             getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None))
 
     @property
-    def mac_address(self):
-        """
-        Get the MAC address for this instance.
-        """
-        raise NotImplementedError(
-            'mac_address not implemented by this provider')
-
-    @property
     def security_groups(self):
         """
         Get the security groups associated with this instance.
         """
-        security_groups = []
-        for group in self._os_instance.security_groups:
-            security_groups.append(self._provider.nova.security_groups.find(
-                name=group.get('name')))
-        return [OpenStackSecurityGroup(self._provider, group)
-                for group in security_groups]
+        names = [group.get('name')
+                 for group in self._os_instance.security_groups]
+        return self._provider.security.security_groups.get(names)
 
     @property
     def key_pair_name(self):
@@ -533,12 +522,6 @@ class OpenStackSnapshot(BaseSnapshot):
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         raise NotImplementedError(
             'create_volume not implemented by this provider')
-
-    def share(self, user_ids=None):
-        raise NotImplementedError('share not implemented by this provider')
-
-    def unshare(self, user_ids=None):
-        raise NotImplementedError('share not implemented by this provider')
 
 
 class OpenStackKeyPair(BaseKeyPair):

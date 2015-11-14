@@ -280,14 +280,6 @@ class AWSInstance(BaseInstance):
         return AWSPlacementZone(self._provider, self._ec2_instance.placement)
 
     @property
-    def mac_address(self):
-        """
-        Get the MAC address for this instance.
-        """
-        raise NotImplementedError(
-            'mac_address not implemented by this provider')
-
-    @property
     def security_groups(self):
         """
         Get the security groups associated with this instance.
@@ -296,9 +288,7 @@ class AWSInstance(BaseInstance):
         # convert that into a ``SecurityGroup`` object before creating a
         # cloudbridge SecurityGroup object
         names = [group.name for group in self._ec2_instance.groups]
-        security_groups = self._provider.security.security_groups.get(names)
-        return [AWSSecurityGroup(self._provider, group)
-                for group in security_groups]
+        return self._provider.security.security_groups.get(names)
 
     @property
     def key_pair_name(self):
@@ -500,12 +490,6 @@ class AWSSnapshot(BaseSnapshot):
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         raise NotImplementedError(
             'create_volume not implemented by this provider')
-
-    def share(self, user_ids=None):
-        raise NotImplementedError('share not implemented by this provider')
-
-    def unshare(self, user_ids=None):
-        raise NotImplementedError('share not implemented by this provider')
 
 
 class AWSKeyPair(BaseKeyPair):

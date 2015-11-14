@@ -30,8 +30,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
             def cleanup_img(img):
                 img.delete()
                 img.wait_for(
-                    [MachineImageState.UNKNOWN],
-                    terminal_states=[MachineImageState.ERROR],
+                    [MachineImageState.UNKNOWN, MachineImageState.ERROR],
                     interval=self.get_test_wait_interval())
 
             with helpers.cleanup_action(lambda: cleanup_img(test_image)):

@@ -1,2 +1,2 @@
--e ".[full]"
+-e ".[dev]"
 git+git://github.com/openstack/python-keystoneclient.git@227e1b54cfc4a6a68268f9d5935d258b7490b7a3
