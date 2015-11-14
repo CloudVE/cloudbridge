@@ -1,3 +1,2 @@
 -e ".[full]"
-git+git://github.com/spulec/moto.git@ab3682a55c1c4f2983819e73a8cc59c0159a33f3
 git+git://github.com/openstack/python-keystoneclient.git@227e1b54cfc4a6a68268f9d5935d258b7490b7a3

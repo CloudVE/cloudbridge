@@ -5,14 +5,14 @@ openstack_reqs = ['python-novaclient', 'python-cinderclient',
                   'python-swiftclient', 'python-neutronclient']
 aws_reqs = ['boto']
 full_reqs = base_reqs + aws_reqs + openstack_reqs
-dev_reqs = ['tox'] + full_reqs
+dev_reqs = ['tox', 'moto>=0.4.18'] + full_reqs
 
 setup(name='cloudbridge',
       version=0.1,
       description='A simple layer of abstraction over multiple cloud'
       'providers.',
       author='Galaxy and GVL Projects',
-      author_email='support@genome.edu.au',
+      author_email='help@genome.edu.au',
       url='http://cloudbridge.readthedocs.org/',
       install_requires=full_reqs,
       extras_require={

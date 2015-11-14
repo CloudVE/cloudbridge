@@ -54,8 +54,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             get_vol = self.provider.block_store.volumes.get(
                 test_vol.id)
             self.assertTrue(
-                found_volumes[0].id ==
-                get_vol.id == test_vol.id,
+                found_volumes[0] ==
+                get_vol == test_vol,
                 "Ids returned by list: {0} and get: {1} are not as "
                 " expected: {2}" .format(found_volumes[0].id,
                                          get_vol.id,
@@ -152,8 +152,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 get_snap = self.provider.block_store.snapshots.get(
                     test_snap.id)
                 self.assertTrue(
-                    found_snaps[0].id ==
-                    get_snap.id == test_snap.id,
+                    found_snaps[0] ==
+                    get_snap == test_snap,
                     "Ids returned by list: {0} and get: {1} are not as "
                     " expected: {2}" .format(found_snaps[0].id,
                                              get_snap.id,

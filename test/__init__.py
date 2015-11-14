@@ -45,11 +45,11 @@ PROVIDER_TESTS = [
     CloudObjectLifeCycleTestCase,
     CloudSecurityServiceTestCase,
     CloudInstanceTypesServiceTestCase,
+    CloudBlockStoreServiceTestCase,
+    CloudObjectStoreServiceTestCase,
     CloudComputeServiceTestCase,
     CloudRegionServiceTestCase,
-    CloudImageServiceTestCase,
-    CloudBlockStoreServiceTestCase,
-    CloudObjectStoreServiceTestCase
+    CloudImageServiceTestCase
 ]
 
 

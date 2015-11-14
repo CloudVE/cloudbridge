@@ -260,7 +260,7 @@ class BaseLaunchConfig(LaunchConfig):
     def __init__(self, provider):
         self.provider = provider
         self.block_devices = []
-        self.net_ids = []
+        self.network_interfaces = []
 
     class BlockDeviceMapping(object):
         """
@@ -274,12 +274,6 @@ class BaseLaunchConfig(LaunchConfig):
             self.is_root = is_root
             self.size = size
             self.delete_on_terminate = delete_on_terminate
-
-        def __repr__(self):
-            return "<CB-{0}: Dest: {1}, Src: {2}, IsRoot: {3}, Size: {4}>" \
-                .format(self.__class__.__name__,
-                        "volume" if self.is_volume else "ephemeral",
-                        self.source, self.is_root, self.size)
 
     def add_ephemeral_device(self):
         block_device = BaseLaunchConfig.BlockDeviceMapping()
@@ -323,7 +317,7 @@ class BaseLaunchConfig(LaunchConfig):
             delete_on_terminate=delete_on_terminate)
 
     def add_network_interface(self, net_id):
-        self.net_ids.append(net_id)
+        self.network_interfaces.append(net_id)
 
 
 class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
@@ -496,7 +490,8 @@ class BaseSecurityGroup(SecurityGroup):
         return self._security_group.delete()
 
     def __repr__(self):
-        return "<CBSecurityGroup: {0}>".format(self.name)
+        return "<CB-{0}: {1}>".format(self.__class__.__name__,
+                                      self.id)
 
 
 class BaseSecurityGroupRule(SecurityGroupRule):

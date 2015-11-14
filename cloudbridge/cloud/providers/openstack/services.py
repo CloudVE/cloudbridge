@@ -595,7 +595,7 @@ class OpenStackInstanceService(BaseInstanceService):
         Format network IDs for the API call.
         """
         nics = []
-        for net_id in launch_config.net_ids:
+        for net_id in launch_config.network_interfaces:
             nics.append({'net-id': net_id})
         return nics
 

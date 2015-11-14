@@ -427,15 +427,15 @@ class Instance(ObjectLifeCycleMixin):
         """
         pass
 
-    @abstractproperty
-    def mac_address(self):
-        """
-        Get the MAC address for this instance.
-
-        :rtype: str
-        :return: MAC address for ths instance.
-        """
-        pass
+#     @abstractproperty
+#     def mac_address(self):
+#         """
+#         Get the MAC address for this instance.
+#
+#         :rtype: str
+#         :return: MAC address for ths instance.
+#         """
+#         pass
 
     @abstractproperty
     def security_groups(self):
@@ -880,33 +880,33 @@ class Snapshot(ObjectLifeCycleMixin):
         """
         pass
 
-    @abstractmethod
-    def share(self, user_ids=None):
-        """
-        Share this Snapshot.
-
-        :type user_ids: list of strings
-        :param user_ids: A list of cloud provider compatible user IDs. If no
-                         IDs are specified, the snapshot is made public.
-
-        :rtype: bool
-        :return: ``True`` if successful.
-        """
-        pass
-
-    @abstractmethod
-    def unshare(self, user_ids=None):
-        """
-        Unshare this Snapshot.
-
-        :type user_ids: list of strings
-        :param user_ids: A list of cloud provider compatible user IDs. If no
-                         IDs are specified, the snapshot is made private.
-
-        :rtype: bool
-        :return: ``True`` if successful.
-        """
-        pass
+#     @abstractmethod
+#     def share(self, user_ids=None):
+#         """
+#         Share this Snapshot.
+#
+#         :type user_ids: list of strings
+#         :param user_ids: A list of cloud provider compatible user IDs. If no
+#                          IDs are specified, the snapshot is made public.
+#
+#         :rtype: bool
+#         :return: ``True`` if successful.
+#         """
+#         pass
+#
+#     @abstractmethod
+#     def unshare(self, user_ids=None):
+#         """
+#         Unshare this Snapshot.
+#
+#         :type user_ids: list of strings
+#         :param user_ids: A list of cloud provider compatible user IDs. If no
+#                          IDs are specified, the snapshot is made private.
+#
+#         :rtype: bool
+#         :return: ``True`` if successful.
+#         """
+#         pass
 
     @abstractmethod
     def delete(self):

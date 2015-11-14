@@ -43,9 +43,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             get_container = self.provider.object_store.get(
                 test_container.id)
             self.assertTrue(
-                found_containers[0].id ==
-                get_container.id == test_container.id,
-                "Names returned by list: {0} and get: {1} are not as "
+                found_containers[0] ==
+                get_container == test_container,
+                "Objects returned by list: {0} and get: {1} are not as "
                 " expected: {2}" .format(found_containers[0].id,
                                          get_container.id,
                                          test_container.name))
@@ -96,6 +96,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     len(found_objs) == 1,
                     "List container objects does not return the expected"
                     " object %s" % obj_name)
+
+                self.assertTrue(
+                    found_objs[0] == obj,
+                    "Objects returned by list: {0} are not as "
+                    " expected: {1}" .format(found_objs[0].id,
+                                             obj.id))
+
             objs = test_container.list()
             found_objs = [o for o in objs if o.name == obj_name]
             self.assertTrue(

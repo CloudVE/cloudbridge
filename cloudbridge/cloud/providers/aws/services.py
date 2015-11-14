@@ -514,8 +514,9 @@ class AWSInstanceService(BaseInstanceService):
         return bdm
 
     def _get_net_id(self, launch_config):
-        return launch_config.net_ids[0] if len(launch_config.net_ids) > 0 \
-            else None
+        return (launch_config.network_interfaces[0]
+                if len(launch_config.network_interfaces) > 0
+                else None)
 
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)
