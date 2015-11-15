@@ -5,7 +5,7 @@ openstack_reqs = ['python-novaclient', 'python-cinderclient',
                   'python-swiftclient', 'python-neutronclient']
 aws_reqs = ['boto']
 full_reqs = base_reqs + aws_reqs + openstack_reqs
-dev_reqs = ['tox', 'moto>=0.4.18'] + full_reqs
+dev_reqs = ['tox', 'moto>=0.4.18', 'sphinx'] + full_reqs
 
 setup(name='cloudbridge',
       version=0.1,
