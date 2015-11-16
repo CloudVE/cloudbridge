@@ -1,4 +1,4 @@
-	.. cloudbridge documentation master file, created by
+.. cloudbridge documentation master file, created by
    sphinx-quickstart on Sat Oct 10 03:17:52 2015.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -25,6 +25,16 @@ look like the following.
 
 In the example above, the AWS_ACCESS_KEY and AWS_SECRET_KEY environment variables
 must be set to your cloud credentials.
+
+Quick Reference
+---------------
+
+The following object graph shows how to access various provider services, and the resource
+that they return. Click on any object to drill down into its details.
+
+.. raw:: html
+
+   <object data="_images/object_relationships_detailed.svg" type="image/svg+xml"></object>
 
 Installation
 ------------

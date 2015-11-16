@@ -31,7 +31,7 @@ Detailed class relationships
 The following diagram shows a typical provider object graph and the relationship
 between services.
 
-.. image:: images/object_relationships_detailed.svg
+.. figure:: images/object_relationships_detailed.svg
 
 Some services are nested. For example, to access the instance service, you can
 use `provider.compute.instances`. Similarly, to get a list of all instances,
