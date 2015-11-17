@@ -5,10 +5,6 @@ cloudbridge provides a layer of abstraction over different cloud providers.
 It's a straightforward implementation of the `bridge pattern`_. It is currently
 under development and is in a Pre-Alpha state.
 
-.. image:: https://codeclimate.com/github/gvlproject/cloudbridge/badges/gpa.svg
-   :target: https://codeclimate.com/github/gvlproject/cloudbridge
-   :alt: Code Climate
-
 .. image:: https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat
    :target: https://landscape.io/github/gvlproject/cloudbridge/master
    :alt: Landscape Code Health
@@ -20,6 +16,10 @@ under development and is in a Pre-Alpha state.
 .. image:: https://travis-ci.org/gvlproject/cloudbridge.svg?branch=master
    :target: https://travis-ci.org/gvlproject/cloudbridge
    :alt: Travis Build Status
+
+.. image:: https://codeclimate.com/github/gvlproject/cloudbridge/badges/gpa.svg
+   :target: https://codeclimate.com/github/gvlproject/cloudbridge
+   :alt: Code Climate
 
 .. image:: https://img.shields.io/pypi/status/cloudbridge.svg
    :target: https://pypi.python.org/pypi/cloudbridge/

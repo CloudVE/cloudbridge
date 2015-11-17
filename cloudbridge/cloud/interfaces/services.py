@@ -8,7 +8,9 @@ from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 class ProviderService(object):
 
     """
-    Base interface for any service supported by a provider
+    Base interface for any service supported by a provider. This interface
+    has a  provider property that can be used to access the provider associated
+    with this service.
     """
     __metaclass__ = ABCMeta
 
@@ -17,16 +19,19 @@ class ProviderService(object):
         """
         Returns the provider instance associated with this service.
 
-        :rtype: ``object`` of :class:`.CloudProvider`
-        :return: a Provider object
+        :rtype: :class:`.CloudProvider`
+        :return: a CloudProvider object
         """
         pass
 
 
 class ComputeService(ProviderService):
-
     """
-    Base interface for compute service supported by a provider
+    The compute service interface is a collection of services that provides
+    access to the underlying compute related services in a provider. For
+    example, the compute.instances service can be used to launch a new
+    instance, and the compute.images service can be used to list available
+    machine images.
     """
     __metaclass__ = ABCMeta
 
@@ -36,7 +41,23 @@ class ComputeService(ProviderService):
         Provides access to all Image related services in this provider.
         (e.g. Glance in Openstack)
 
-        :rtype: ``object`` of :class:`.ImageService`
+        Example:
+
+        .. code-block:: python
+
+            # print all images
+            for image in provider.compute.images:
+                print(image.id, image.name)
+
+            # print only first 50 images
+            for image in provider.compute.images.list(limit=50):
+                print(image.id, image.name)
+
+            # find image by name
+            image = provider.compute.images.find(name='Ubuntu 14.04')
+            print(image.id, image.name)
+
+        :rtype: :class:`.ImageService`
         :return: an ImageService object
         """
         pass
@@ -46,8 +67,20 @@ class ComputeService(ProviderService):
         """
         Provides access to all Instance type related services in this provider.
 
-        :rtype: ``object`` of :class:`.InstanceTypeService`
-        :return:  an InstanceTypeService object
+        Example:
+
+        .. code-block:: python
+
+            # list all instance sizes
+            for inst_type in provider.compute.instance_types:
+                print(inst_type.id, inst_type.name)
+
+            # find a specific size by name
+            inst_type = provider.compute.instance_types.find(name='m1.small')
+            print(inst_type.vcpus)
+
+        :rtype: :class:`.InstanceTypeService`
+        :return: an InstanceTypeService object
         """
         pass
 
@@ -56,8 +89,18 @@ class ComputeService(ProviderService):
         """
         Provides access to all Instance related services in this provider.
 
-        :rtype: ``object`` of :class:`.InstanceService`
-        :return:  an InstanceService object
+        Example:
+
+        .. code-block:: python
+
+            # launch a new instance
+            image = provider.compute.images.find(name='Ubuntu 14.04')[0]
+            size = provider.compute.instance_types.find(name='m1.small')
+            instance = provider.compute.instances.create('Hello', image, size)
+            print(instance.id, instance.name)
+
+        :rtype: :class:`.InstanceService`
+        :return: an InstanceService object
         """
         pass
 
@@ -66,8 +109,17 @@ class ComputeService(ProviderService):
         """
         Provides access to all Region related services in this provider.
 
-        :rtype: ``object`` of :class:`.RegionService`
-        :return:  a RegionService object
+        Example:
+
+        .. code-block:: python
+
+            for region in provider.compute.regions:
+                print("Region: ", region.name)
+                for zone in region.zones:
+                   print("\\tZone: ", zone.name)
+
+        :rtype: :class:`.RegionService`
+        :return: a RegionService object
         """
         pass
 
@@ -159,7 +211,7 @@ class InstanceService(PageableObjectMixin, ProviderService):
 
         :type  image: ``MachineImage`` or ``str``
         :param image: The MachineImage object or id to boot the virtual machine
-        with
+                      with
 
         :type  instance_type: ``InstanceType`` or ``str``
         :param instance_type: The InstanceType or name, specifying the size of
@@ -170,7 +222,7 @@ class InstanceService(PageableObjectMixin, ProviderService):
 
         :type  keypair: ``KeyPair`` or ``str``
         :param keypair: The KeyPair object or its name, to set for the
-        instance.
+                        instance.
 
         :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a
                                 list of ``str`` names
@@ -184,10 +236,10 @@ class InstanceService(PageableObjectMixin, ProviderService):
 
         :type  launch_config: ``LaunchConfig`` object
         :param launch_config: A ``LaunchConfig`` object which
-        describes advanced launch configuration options for an instance. This
-        include block_device_mappings and network_interfaces. To construct a
-        launch configuration object, call
-        provider.compute.instances.create_launch_config()
+               describes advanced launch configuration options for an instance.
+               This includes block_device_mappings and network_interfaces. To
+               construct a launch configuration object, call
+               provider.compute.instances.create_launch_config()
 
         :rtype: ``object`` of :class:`.Instance`
         :return:  an instance of Instance class
@@ -332,16 +384,29 @@ class SnapshotService(PageableObjectMixin, ProviderService):
 class BlockStoreService(ProviderService):
 
     """
-    Base interface for a Block Store Service
+    The Block Store Service interface provides access to block device services,
+    such as volume and snapshot services in the provider.
     """
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def volumes(self):
         """
-        Provides access to the volumes (i.e., block storage) for this provider.
+        Provides access to volumes (i.e., block storage) for this provider.
 
-        :rtype: ``object`` of :class:`.VolumeService`
+        Example:
+
+        .. code-block:: python
+
+            # print all volumes
+            for vol in provider.block_store.volumes:
+                print(vol.id, vol.name)
+
+            # find volume by name
+            vol = provider.block_store.volumes.find(name='my_vol')[0]
+            print(vol.id, vol.name)
+
+        :rtype: :class:`.VolumeService`
         :return: a VolumeService object
         """
         pass
@@ -351,7 +416,19 @@ class BlockStoreService(ProviderService):
         """
         Provides access to volume snapshots for this provider.
 
-        :rtype: ``object`` of :class:`.SnapshotService`
+        Example:
+
+        .. code-block:: python
+
+            # print all snapshots
+            for snap in provider.block_store.snapshots:
+                print(snap.id, snap.name)
+
+            # find snapshot by name
+            snap = provider.block_store.snapshots.find(name='my_snap')[0]
+            print(snap.id, snap.name)
+
+        :rtype: :class:`.SnapshotService`
         :return: an SnapshotService object
         """
         pass
@@ -399,7 +476,10 @@ class ImageService(PageableObjectMixin, ProviderService):
 class ObjectStoreService(PageableObjectMixin, ProviderService):
 
     """
-    Base interface for an Object Storage Service
+    The Object Storage Service interface provides access to the underlying
+    object store capabilities of this provider. This service is optional and
+    the :func:`CloudProvider.has_service()` method should be used to verify its
+    availability before using the service.
     """
     __metaclass__ = ABCMeta
 
@@ -407,10 +487,18 @@ class ObjectStoreService(PageableObjectMixin, ProviderService):
     def get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist.
+        does not exist. On some providers, such as AWS and Openstack,
+        the bucket id is the same as its name.
 
-        :rtype: ``object`` of :class:`.Bucket`
-        :return:  a Bucket instance or ``None``
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.object_store.get('my_bucket_id')
+            print(bucket.id, bucket.name)
+
+        :rtype: :class:`.Bucket`
+        :return:  a Bucket instance
         """
         pass
 
@@ -419,7 +507,15 @@ class ObjectStoreService(PageableObjectMixin, ProviderService):
         """
         Searches for a bucket by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.Bucket`
+        Example:
+
+        .. code-block:: python
+
+            buckets = provider.object_store.find(name='my_bucket_name')
+            for bucket in buckets:
+                print(bucket.id, bucket.name)
+
+        :rtype: :class:`.Bucket`
         :return:  a Bucket instance
         """
         pass
@@ -429,7 +525,15 @@ class ObjectStoreService(PageableObjectMixin, ProviderService):
         """
         List all buckets.
 
-        :rtype: ``list`` of :class:`.Bucket`
+        Example:
+
+        .. code-block:: python
+
+            buckets = provider.object_store.find(name='my_bucket_name')
+            for bucket in buckets:
+                print(bucket.id, bucket.name)
+
+        :rtype: :class:`.Bucket`
         :return:  list of bucket objects
         """
         pass
@@ -438,6 +542,14 @@ class ObjectStoreService(PageableObjectMixin, ProviderService):
     def create(self, name, location=None):
         """
         Create a new bucket.
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.object_store.create('my_bucket_name')
+            print(bucket.name)
+
 
         :type name: str
         :param name: The name of this bucket.
@@ -454,7 +566,8 @@ class ObjectStoreService(PageableObjectMixin, ProviderService):
 class SecurityService(ProviderService):
 
     """
-    Base interface for a Security Service.
+    The security service interface can be used to access security related
+    functions in the provider, such as firewall control and keypairs.
     """
     __metaclass__ = ABCMeta
 
@@ -463,7 +576,19 @@ class SecurityService(ProviderService):
         """
         Provides access to key pairs for this provider.
 
-        :rtype: ``object`` of :class:`.KeyPairService`
+        Example:
+
+        .. code-block:: python
+
+            # print all keypairs
+            for kp in provider.security.keypairs:
+                print(kp.id, kp.name)
+
+            # find keypair by name
+            kp = provider.security.keypairs.find(name='my_key_pair')[0]
+            print(kp.id, kp.name)
+
+        :rtype: :class:`.KeyPairService`
         :return: a KeyPairService object
         """
         pass
@@ -473,7 +598,19 @@ class SecurityService(ProviderService):
         """
         Provides access to security groups for this provider.
 
-        :rtype: ``object`` of :class:`.SecurityGroupService`
+        Example:
+
+        .. code-block:: python
+
+            # print all security groups
+            for sg in provider.security.security_groups:
+                print(sg.id, sg.name)
+
+            # find security group by name
+            sg = provider.security.security_groups.find(name='my_sg')[0]
+            print(sg.id, sg.name)
+
+        :rtype: :class:`.SecurityGroupService`
         :return: a SecurityGroupService object
         """
         pass

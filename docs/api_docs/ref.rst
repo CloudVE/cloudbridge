@@ -7,6 +7,6 @@ This section includes the API documentation for the reference interface.
    :maxdepth: 2
    :glob:
 
-   cloud/provider_manager.rst
+   cloud/providers.rst
    cloud/services.rst
    cloud/resources.rst
