@@ -5,25 +5,25 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class CloudProvider(object):
-
-    __metaclass__ = ABCMeta
-
     """
     Base interface for a cloud provider
     """
+    __metaclass__ = ABCMeta
 
     @abstractmethod
     def __init__(self, config):
         """
-        Create a new provider implementation given a dictionary of
+        Create a new provider instance given a dictionary of
         configuration attributes.
 
-        :type config: an object with required fields
-        :param config: This can be a Bunch or any other object whose fields can
-                       be accessed using dot notation. See specific provider
-                       implementation for the required fields.
+        :type config: :class:`dict`
+        :param config: A dictionary object containing provider initialization
+                       values. Alternatively, this can be a Bunch or any other
+                       object whose fields can be accessed as members. See
+                       specific provider implementation for the required
+                       fields.
 
-        :rtype: ``object`` of :class:`.CloudProvider`
+        :rtype: :class:`.CloudProvider`
         :return:  a concrete provider instance
         """
         pass
@@ -31,10 +31,27 @@ class CloudProvider(object):
     @abstractproperty
     def config(self):
         """
-        Returns the config object associated with this provider.
+        Returns the config object associated with this provider. This object
+        is a subclass of :class:`dict` and will contain the properties
+        provided at initialization time. In addition, it also contains extra
+        provider-wide properties such as the default result_limit for list()
+        queries.
 
-        :rtype: ``object``
-        :return:  The config object used to initialize this provider
+        Example:
+
+        .. code-block:: python
+
+            config = { 'aws_access_key' : '<my_key>' }
+            provider = factory.create_provider(ProviderList.AWS, config)
+            print(provider.config.get('aws_access_key'))
+            print(provider.config.result_limit))
+            # change provider result limit
+            provider.config.result_limit = 100
+
+        :rtype: :class:`.Configuration`
+        :return:  An object of class Configuration, which contains the values
+                  used to initialize the provider, as well as other global
+                  configuration properties.
         """
 
     @abstractmethod
@@ -42,10 +59,19 @@ class CloudProvider(object):
         """
         Checks whether this provider supports a given service.
 
-        :type service_type: str or :class:``.CloudProviderServiceType``
-        :param service_type: Type of service the check support for.
+        Example:
 
-        :rtype: bool
+        .. code-block:: python
+
+            if provider.has_service(CloudProviderServiceType.OBJECT_STORE):
+               print("Provider supports object store services")
+               provider.object_store.list()
+
+
+        :type service_type: :class:`.CloudProviderServiceType`
+        :param service_type: Type of service to check support for.
+
+        :rtype: :class:`bool`
         :return: ``True`` if the service type is supported.
         """
         pass
@@ -66,7 +92,20 @@ class CloudProvider(object):
         """
         Provides access to all compute related services in this provider.
 
-        :rtype: ``object`` of :class:`.ComputeService`
+        Example:
+
+        .. code-block:: python
+
+            regions = provider.compute.regions.list()
+            instance_types = provider.compute.instance_types.list()
+            instances = provider.compute.instances.list()
+            images = provider.compute.images.list()
+
+            # Alternatively
+            for instance in provider.compute.instances:
+               print(instance.name)
+
+        :rtype: :class:`.ComputeService`
         :return:  a ComputeService object
         """
         pass
@@ -75,6 +114,14 @@ class CloudProvider(object):
     def security(self):
         """
         Provides access to keypair management and firewall control
+
+        Example:
+
+        .. code-block:: python
+
+            keypairs = provider.security.keypairs.list()
+            security_groups = provider.security.security_groups.list()
+
 
         :rtype: ``object`` of :class:`.SecurityService`
         :return: a SecurityService object
@@ -87,7 +134,14 @@ class CloudProvider(object):
         Provides access to the volume and snapshot services in this
         provider.
 
-        :rtype: ``object`` of :class:`.BlockStoreService`
+        Example:
+
+        .. code-block:: python
+
+            volumes = provider.block_store.volumes.list()
+            snapshots = provider.block_store.snapshots.list()
+
+        :rtype: :class:`.BlockStoreService`
         :return: a BlockStoreService object
         """
         pass
@@ -96,6 +150,14 @@ class CloudProvider(object):
     def object_store(self):
         """
         Provides access to object storage services in this provider.
+
+        Example:
+
+        .. code-block:: python
+
+            if provider.has_service(CloudProviderServiceType.OBJECT_STORE):
+               print("Provider supports object store services")
+               print(provider.object_store.list())
 
         :rtype: ``object`` of :class:`.ObjectStoreService`
         :return: an ObjectStoreService object
