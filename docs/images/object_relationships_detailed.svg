@@ -558,7 +558,7 @@
        x="328.67926">snapshots</text>
   </a>
   <a
-     xlink:href="../api_docs/cloud/resources.html#container"
+     xlink:href="../api_docs/cloud/resources.html#bucket"
      target="_parent"
      id="svg_25">
     <path
@@ -574,7 +574,7 @@
        y="648.35571"
        id="e33_5"
        font-size="18.3663px"
-       xml:space="preserve">Container</text>
+       xml:space="preserve">Bucket</text>
   </a>
   <a
      xlink:href="../api_docs/cloud/resources.html#containerobject"
@@ -593,7 +593,7 @@
        y="648.35571"
        id="e34_5"
        font-size="18.3663px"
-       xml:space="preserve">ContainerObject</text>
+       xml:space="preserve">BucketObject</text>
   </a>
   <a
      xlink:href="../api_docs/cloud/resources.html#securitygrouprule"

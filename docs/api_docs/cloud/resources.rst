@@ -3,117 +3,117 @@ Resources
 
 .. contents:: :local:
 
-CloudProviderServiceType
-------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.CloudProviderServiceType
-    :members:
-
 CloudBridgeBaseException
 ------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.CloudBridgeBaseException
+.. autoclass:: cloudbridge.cloud.interfaces.services.CloudBridgeBaseException
     :members:
 
-WaitStateException
-------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.WaitStateException
+CloudProviderServiceType
+------------------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.CloudProviderServiceType
     :members:
 
-InvalidConfigurationException
------------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.InvalidConfigurationException
+Bucket
+---------
+.. autoclass:: cloudbridge.cloud.interfaces.services.Bucket
     :members:
 
-ObjectLifeCycleMixin
---------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.ObjectLifeCycleMixin
-    :members:
-
-ResultList
-----------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.ResultList
-    :members:
-
-InstanceState
--------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.InstanceState
+BucketObject
+---------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.BucketObject
     :members:
 
 Instance
 --------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Instance
+.. autoclass:: cloudbridge.cloud.interfaces.services.Instance
     :members:
 
-MachineImageState
------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.MachineImageState
-    :members:
-
-LaunchConfig
-------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.LaunchConfig
-    :members:
-
-MachineImage
-------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.MachineImage
-    :members:
-
-VolumeState
------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.VolumeState
-    :members:
-
-Volume
-------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Volume
-    :members:
-
-SnapshotState
+InstanceState
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.SnapshotState
-    :members:
-
-Snapshot
---------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Snapshot
-    :members:
-
-KeyPair
--------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.KeyPair
-    :members:
-
-Region
-------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Region
-    :members:
-
-PlacementZone
--------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.PlacementZone
+.. autoclass:: cloudbridge.cloud.interfaces.services.InstanceState
     :members:
 
 InstanceType
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.InstanceType
+.. autoclass:: cloudbridge.cloud.interfaces.services.InstanceType
+    :members:
+
+InvalidConfigurationException
+-----------------------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.InvalidConfigurationException
+    :members:
+
+KeyPair
+-------
+.. autoclass:: cloudbridge.cloud.interfaces.services.KeyPair
+    :members:
+
+LaunchConfig
+------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.LaunchConfig
+    :members:
+
+MachineImage
+------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.MachineImage
+    :members:
+
+MachineImageState
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.MachineImageState
+    :members:
+
+ObjectLifeCycleMixin
+--------------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.ObjectLifeCycleMixin
+    :members:
+
+PlacementZone
+-------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.PlacementZone
+    :members:
+
+Region
+------
+.. autoclass:: cloudbridge.cloud.interfaces.services.Region
+    :members:
+
+ResultList
+----------
+.. autoclass:: cloudbridge.cloud.interfaces.services.ResultList
     :members:
 
 SecurityGroup
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.SecurityGroup
+.. autoclass:: cloudbridge.cloud.interfaces.services.SecurityGroup
     :members:
 
 SecurityGroupRule
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.SecurityGroupRule
+.. autoclass:: cloudbridge.cloud.interfaces.services.SecurityGroupRule
     :members:
 
-ContainerObject
----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.ContainerObject
+Snapshot
+--------
+.. autoclass:: cloudbridge.cloud.interfaces.services.Snapshot
     :members:
 
-Container
----------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Container
+SnapshotState
+-------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.SnapshotState
+    :members:
+
+Volume
+------
+.. autoclass:: cloudbridge.cloud.interfaces.services.Volume
+    :members:
+
+VolumeState
+-----------
+.. autoclass:: cloudbridge.cloud.interfaces.services.VolumeState
+    :members:
+
+WaitStateException
+------------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.WaitStateException
     :members:

@@ -1275,10 +1275,10 @@ class SecurityGroupRule(object):
         pass
 
 
-class ContainerObject(object):
+class BucketObject(object):
 
     """
-    Represents an object stored within a container.
+    Represents an object stored within a bucket.
     """
     __metaclass__ = ABCMeta
 
@@ -1305,8 +1305,7 @@ class ContainerObject(object):
     @abstractmethod
     def download(self, target_stream):
         """
-        Download this object and write its
-        contents to the target_stream.
+        Download this object and write its contents to the ``target_stream``.
 
         :rtype: bool
         :return: ``True`` if successful.
@@ -1335,60 +1334,60 @@ class ContainerObject(object):
         pass
 
 
-class Container(PageableObjectMixin):
+class Bucket(PageableObjectMixin):
 
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def id(self):
         """
-        Get this container's id.
+        Get this bucket's id.
 
         :rtype: id
-        :return: id of this container as returned by the cloud middleware.
+        :return: id of this bucket as returned by the cloud middleware.
         """
         pass
 
     @abstractproperty
     def name(self):
         """
-        Get this container's name.
+        Get this bucket's name.
 
         :rtype: str
-        :return: Name of this container as returned by the cloud middleware.
+        :return: Name of this bucket as returned by the cloud middleware.
         """
         pass
 
     @abstractmethod
     def get(self, key):
         """
-        Retrieve a given object from this container.
+        Retrieve a given object from this bucket.
 
         :type key: str
         :param key: the identifier of the object to retrieve
 
-        :rtype: :class:``.ContainerObject``
-        :return: The ContainerObject or ``None`` if it cannot be found.
+        :rtype: :class:``.BucketObject``
+        :return: The BucketObject or ``None`` if it cannot be found.
         """
         pass
 
     @abstractmethod
     def list(self, limit=None, marker=None):
         """
-        List all objects within this container.
+        List all objects within this bucket.
 
-        :rtype: :class:``.ContainerObject``
-        :return: List of all available ContainerObjects within this container.
+        :rtype: :class:``.BucketObject``
+        :return: List of all available BucketObjects within this bucket.
         """
         pass
 
     @abstractmethod
     def delete(self, delete_contents=False):
         """
-        Delete this container.
+        Delete this bucket.
 
         :type delete_contents: bool
-        :param delete_contents: If ``True``, all objects within the container
+        :param delete_contents: If ``True``, all objects within the bucket
                                 will be deleted.
 
         :rtype: bool

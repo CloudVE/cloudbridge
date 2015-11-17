@@ -8,8 +8,8 @@ from boto.s3.key import Key
 from retrying import retry
 
 from cloudbridge.cloud import helpers as cbhelpers
-from cloudbridge.cloud.base import BaseContainer
-from cloudbridge.cloud.base import BaseContainerObject
+from cloudbridge.cloud.base import BaseBucket
+from cloudbridge.cloud.base import BaseBucketObject
 from cloudbridge.cloud.base import BaseInstance
 from cloudbridge.cloud.base import BaseInstanceType
 from cloudbridge.cloud.base import BaseKeyPair
@@ -589,10 +589,10 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         return None
 
 
-class AWSContainerObject(BaseContainerObject):
+class AWSBucketObject(BaseBucketObject):
 
     def __init__(self, provider, key):
-        super(AWSContainerObject, self).__init__(provider)
+        super(AWSBucketObject, self).__init__(provider)
         self._key = key
 
     @property
@@ -630,10 +630,10 @@ class AWSContainerObject(BaseContainerObject):
         self._key.delete()
 
 
-class AWSContainer(BaseContainer):
+class AWSBucket(BaseBucket):
 
     def __init__(self, provider, bucket):
-        super(AWSContainer, self).__init__(provider)
+        super(AWSBucket, self).__init__(provider)
         self._bucket = bucket
 
     @property
@@ -643,38 +643,38 @@ class AWSContainer(BaseContainer):
     @property
     def name(self):
         """
-        Get this container's name.
+        Get this bucket's name.
         """
         return self._bucket.name
 
     def get(self, key):
         """
-        Retrieve a given object from this container.
+        Retrieve a given object from this bucket.
         """
         raise NotImplementedError(
-            'Container.list not implemented by this provider')
+            'Bucket.list not implemented by this provider')
 
     def list(self, limit=None, marker=None):
         """
-        List all objects within this container.
+        List all objects within this bucket.
 
-        :rtype: ContainerObject
-        :return: List of all available ContainerObjects within this container
+        :rtype: BucketObject
+        :return: List of all available BucketObjects within this bucket.
         """
-        objects = [AWSContainerObject(self._provider, obj)
+        objects = [AWSBucketObject(self._provider, obj)
                    for obj in self._bucket.list()]
         return cbhelpers.to_result_list(self._provider, objects, limit,
                                         marker)
 
     def delete(self, delete_contents=False):
         """
-        Delete this container.
+        Delete this bucket.
         """
         self._bucket.delete()
 
     def create_object(self, name):
         key = Key(self._bucket, name)
-        return AWSContainerObject(self._provider, key)
+        return AWSBucketObject(self._provider, key)
 
 
 class AWSRegion(BaseRegion):

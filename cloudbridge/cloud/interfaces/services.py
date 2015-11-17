@@ -404,49 +404,49 @@ class ObjectStoreService(PageableObjectMixin, ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, container_id):
+    def get(self, bucket_id):
         """
-        Returns a container given its id. Returns None if the container
+        Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
 
-        :rtype: ``object`` of :class:`.Container`
-        :return:  a Container instance
+        :rtype: ``object`` of :class:`.Bucket`
+        :return:  a Bucket instance or ``None``
         """
         pass
 
     @abstractmethod
     def find(self, name):
         """
-        Searches for a container by a given list of attributes
+        Searches for a bucket by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.Container`
-        :return:  a Container instance
+        :rtype: ``object`` of :class:`.Bucket`
+        :return:  a Bucket instance
         """
         pass
 
     @abstractmethod
     def list(self, limit=None, marker=None):
         """
-        List all containers.
+        List all buckets.
 
-        :rtype: ``list`` of :class:`.Container`
-        :return:  list of container objects
+        :rtype: ``list`` of :class:`.Bucket`
+        :return:  list of bucket objects
         """
         pass
 
     @abstractmethod
     def create(self, name, location=None):
         """
-        Create a new container.
+        Create a new bucket.
 
         :type name: str
-        :param name: The name of this container
+        :param name: The name of this bucket.
 
         :type location: ``object`` of :class:`.Region`
-        :param location: The region in which to place this container
+        :param location: The region in which to place this bucket.
 
-        :return:  a Container object
-        :rtype: ``object`` of :class:`.Container`
+        :return:  a Bucket object
+        :rtype: ``object`` of :class:`.Bucket`
         """
         pass
 

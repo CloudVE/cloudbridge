@@ -34,7 +34,7 @@ from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.aws import helpers as awshelpers
 
-from .resources import AWSContainer
+from .resources import AWSBucket
 from .resources import AWSInstance
 from .resources import AWSInstanceType
 from .resources import AWSKeyPair
@@ -321,41 +321,41 @@ class AWSObjectStoreService(BaseObjectStoreService):
     def __init__(self, provider):
         super(AWSObjectStoreService, self).__init__(provider)
 
-    def get(self, container_id):
+    def get(self, bucket_id):
         """
-        Returns a container given its id. Returns None if the container
+        Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        bucket = self.provider.s3_conn.lookup(container_id)
+        bucket = self.provider.s3_conn.lookup(bucket_id)
         if bucket:
-            return AWSContainer(self.provider, bucket)
+            return AWSBucket(self.provider, bucket)
         else:
             return None
 
     def find(self, name):
         """
-        Searches for a container by a given list of attributes
+        Searches for a bucket by a given list of attributes.
         """
         raise NotImplementedError(
-            'find_container not implemented by this provider')
+            'ObjectStoreService.find not implemented by this provider.')
 
     def list(self, limit=None, marker=None):
         """
         List all containers.
         """
-        buckets = [AWSContainer(self.provider, bucket)
+        buckets = [AWSBucket(self.provider, bucket)
                    for bucket in self.provider.s3_conn.get_all_buckets()]
         return cbhelpers.to_result_list(self.provider, buckets, limit,
                                         marker)
 
     def create(self, name, location=None):
         """
-        Create a new container.
+        Create a new bucket.
         """
         bucket = self.provider.s3_conn.create_bucket(
             name,
             location=location if location else '')
-        return AWSContainer(self.provider, bucket)
+        return AWSBucket(self.provider, bucket)
 
 
 class AWSImageService(BaseImageService):

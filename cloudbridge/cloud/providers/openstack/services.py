@@ -27,7 +27,7 @@ from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
-from .resources import OpenStackContainer
+from .resources import OpenStackBucket
 from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
 from .resources import OpenStackKeyPair
@@ -396,24 +396,24 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
     def __init__(self, provider):
         super(OpenStackObjectStoreService, self).__init__(provider)
 
-    def get(self, container_id):
+    def get(self, bucket_id):
         """
-        Returns a container given its id. Returns None if the container
+        Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
         _, container_list = self.provider.swift.get_account(
-            prefix=container_id)
+            prefix=bucket_id)
         if container_list:
-            return OpenStackContainer(self.provider, container_list[0])
+            return OpenStackBucket(self.provider, container_list[0])
         else:
             return None
 
     def find(self, name):
         """
-        Searches for a container by a given list of attributes
+        Searches for a bucket by a given list of attributes.
         """
         raise NotImplementedError(
-            'find_container not implemented by this provider')
+            'ObjectStoreService.find not implemented by this provider')
 
     def list(self, limit=None, marker=None):
         """
@@ -423,7 +423,7 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         def _list_containers(nlimit):
             _, container_list = self.provider.swift.get_account(
                 limit=nlimit, marker=marker)
-            return [OpenStackContainer(self.provider, c)
+            return [OpenStackBucket(self.provider, c)
                     for c in container_list]
 
         return oshelpers.to_result_list(
@@ -433,7 +433,7 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
 
     def create(self, name, location=None):
         """
-        Create a new container.
+        Create a new bucket.
         """
         self.provider.swift.put_container(name)
         return self.get(name)

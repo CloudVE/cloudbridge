@@ -6,8 +6,8 @@ import shutil
 import ipaddress
 from swiftclient.exceptions import ClientException
 
-from cloudbridge.cloud.base import BaseContainer
-from cloudbridge.cloud.base import BaseContainerObject
+from cloudbridge.cloud.base import BaseBucket
+from cloudbridge.cloud.base import BaseBucketObject
 from cloudbridge.cloud.base import BaseInstance
 from cloudbridge.cloud.base import BaseInstanceType
 from cloudbridge.cloud.base import BaseKeyPair
@@ -635,10 +635,10 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
         return None
 
 
-class OpenStackContainerObject(BaseContainerObject):
+class OpenStackBucketObject(BaseBucketObject):
 
     def __init__(self, provider, cbcontainer, obj):
-        super(OpenStackContainerObject, self).__init__(provider)
+        super(OpenStackBucketObject, self).__init__(provider)
         self.cbcontainer = cbcontainer
         self._obj = obj
 
@@ -686,47 +686,47 @@ class OpenStackContainerObject(BaseContainerObject):
         return False
 
 
-class OpenStackContainer(BaseContainer):
+class OpenStackBucket(BaseBucket):
 
-    def __init__(self, provider, container):
-        super(OpenStackContainer, self).__init__(provider)
-        self._container = container
+    def __init__(self, provider, bucket):
+        super(OpenStackBucket, self).__init__(provider)
+        self._bucket = bucket
 
     @property
     def id(self):
-        return self._container.get("name")
+        return self._bucket.get("name")
 
     @property
     def name(self):
         """
-        Get this container's name.
+        Get this bucket's name.
         """
-        return self._container.get("name")
+        return self._bucket.get("name")
 
     def get(self, key):
         """
-        Retrieve a given object from this container.
+        Retrieve a given object from this bucket.
         """
         _, object_list = self._provider.swift.get_container(
             self.name, prefix=key)
         if object_list:
-            return OpenStackContainerObject(self._provider, self,
-                                            object_list[0])
+            return OpenStackBucketObject(self._provider, self,
+                                         object_list[0])
         else:
             return None
 
     def list(self, limit=None, marker=None):
         """
-        List all objects within this container.
+        List all objects within this bucket.
 
-        :rtype: ContainerObject
-        :return: List of all available ContainerObjects within this container
+        :rtype: BucketObject
+        :return: List of all available BucketObjects within this bucket.
         """
         def _list_container_objects(nlimit):
             _, object_list = self._provider.swift.get_container(
                 self.name,
                 limit=nlimit, marker=marker)
-            return [OpenStackContainerObject(
+            return [OpenStackBucketObject(
                 self._provider, self, obj) for obj in object_list]
 
         return oshelpers.to_result_list(
@@ -736,7 +736,7 @@ class OpenStackContainer(BaseContainer):
 
     def delete(self, delete_contents=False):
         """
-        Delete this container.
+        Delete this bucket.
         """
         self._provider.swift.delete_container(self.name)
 

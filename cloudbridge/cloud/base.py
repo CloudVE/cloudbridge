@@ -10,8 +10,8 @@ import six
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
-from cloudbridge.cloud.interfaces.resources import Container
-from cloudbridge.cloud.interfaces.resources import ContainerObject
+from cloudbridge.cloud.interfaces.resources import Bucket
+from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
@@ -558,13 +558,13 @@ class BaseRegion(Region):
                 self.id == other.id)
 
 
-class BaseContainerObject(ContainerObject):
+class BaseBucketObject(BucketObject):
 
     def __init__(self, provider):
         self._provider = provider
 
     def __eq__(self, other):
-        return (isinstance(other, ContainerObject) and
+        return (isinstance(other, BucketObject) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id and
@@ -576,13 +576,13 @@ class BaseContainerObject(ContainerObject):
                                       self.name)
 
 
-class BaseContainer(BasePageableObjectMixin, Container):
+class BaseBucket(BasePageableObjectMixin, Bucket):
 
     def __init__(self, provider):
         self._provider = provider
 
     def __eq__(self, other):
-        return (isinstance(other, Container) and
+        return (isinstance(other, Bucket) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id and
