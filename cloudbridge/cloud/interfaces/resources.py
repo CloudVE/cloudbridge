@@ -116,7 +116,10 @@ class ObjectLifeCycleMixin(object):
         the object thereafter will not transition into the desired target
         state. Should this happen, a ``WaitStateException`` will be raised.
 
-        Example::
+        Example:
+
+        .. code-block:: python
+
             instance.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],
                 terminal_states=[InstanceState.ERROR],
@@ -212,7 +215,9 @@ class PageableObjectMixin(object):
         the list method. The __iter__ method will automatically call the list
         method to fetch a batch of records at a time.
 
-        example::
+        Example:
+
+        .. code-block:: python
 
             # get first page of results
             instlist = provider.compute.instances.list(limit=50)
@@ -242,23 +247,24 @@ class ResultList(list):
     and provides some extra properties to aid with paging through a large
     number of results.
 
-    example:
-    ```
-    # get first page of results
-    rl = provider.compute.instances.list(limit=50)
-    for result in rl:
-        print("Instance Data: {0}", result)
-    if rl.supports_total:
-        print("Total results: {0}".format(rl.total_results))
-    else:
-        print("Total records unknown,"
-              "but has more data?: {0}."format(rl.is_truncated))
+    Example:
 
-    # Page to next set of results
-    if (rl.is_truncated)
-        rl = provider.compute.instances.list(limit=100,
-                                             marker=rl.marker)
-    ```
+    .. code-block:: python
+
+        # get first page of results
+        rl = provider.compute.instances.list(limit=50)
+        for result in rl:
+            print("Instance Data: {0}", result)
+        if rl.supports_total:
+            print("Total results: {0}".format(rl.total_results))
+        else:
+            print("Total records unknown,"
+                  "but has more data?: {0}."format(rl.is_truncated))
+
+        # Page to next set of results
+        if (rl.is_truncated)
+            rl = provider.compute.instances.list(limit=100,
+                                                 marker=rl.marker)
     """
     __metaclass__ = ABCMeta
 
@@ -511,15 +517,16 @@ class LaunchConfig(object):
     information such as BlockDeviceMappings, NetworkInterface configurations,
     and other advanced options which may be useful when launching an instance.
 
-    Typical Usage:
-    ```
+    Example:
+
+    .. code-block:: python
+
         lc = provider.compute.instances.create_launch_config()
         lc.add_block_device(...)
         lc.add_network_interface(...)
 
         inst = provider.compute.instances.create(name, image, instance_type,
                                                launch_configuration=lc)
-    ```
     """
 
     @abstractmethod
@@ -539,14 +546,16 @@ class LaunchConfig(object):
         generally determine naming order, with devices added first getting
         lower letters than instances added later.
 
-        Examples:
-        ```
-        lc = provider.compute.instances.create_launch_config()
+        Example:
 
-        # 1. Add all available ephemeral devices
-        inst_type = next(provider.compute.instance_types.find(name='m1.small'))
-        for i in range(inst_type.num_ephemeral_disks):
-            lc.add_ephemeral_device()
+        .. code-block:: python
+
+            lc = provider.compute.instances.create_launch_config()
+
+            # 1. Add all available ephemeral devices
+            inst_type = provider.compute.instance_types.find(name='m1.tiny')[0]
+            for i in range(inst_type.num_ephemeral_disks):
+                lc.add_ephemeral_device()
         """
         pass
 
@@ -568,21 +577,22 @@ class LaunchConfig(object):
         generally determine naming order, with devices added first getting
         lower letters than instances added later (except when is_root is set).
 
-        Examples:
-        ```
-        lc = provider.compute.instances.create_launch_config()
+        Example:
 
-        # 1. Create and attach an empty volume to the instance of size 100GB
-        lc.add_volume_device(size=100, delete_on_terminate=True)
+        .. code-block:: python
 
-        # 2. Create and attach a volume based on a snapshot
-        snap = provider.block_store.snapshots.get('<my_snapshot_id>')
-        lc.add_volume_device(source=snap)
+            lc = provider.compute.instances.create_launch_config()
 
-        # 3. Create and attach a volume based on an image and set it as root
-        img = provider.images.get('<my_image_id>')
-        lc.add_volume_device(source=img, size=100, is_root=True)
-        ```
+            # 1. Create and attach an empty volume of size 100GB
+            lc.add_volume_device(size=100, delete_on_terminate=True)
+
+            # 2. Create and attach a volume based on a snapshot
+            snap = provider.block_store.snapshots.get('<my_snapshot_id>')
+            lc.add_volume_device(source=snap)
+
+            # 3. Create+attach a volume based on an image and set it as root
+            img = provider.images.get('<my_image_id>')
+            lc.add_volume_device(source=img, size=100, is_root=True)
 
         :type  source: ``Volume``, ``Snapshot``, ``Image`` or None.
         :param source: The source ``block_device`` to add. If ``Volume``, the
@@ -613,16 +623,17 @@ class LaunchConfig(object):
         """
         Add a private network info to the launch configuration.
 
-        Examples:
-        ```
-        lc = provider.compute.instances.create_launch_config()
+        Example:
 
-        # 1. Add a VPC subnet for use with AWS
-        lc.add_network_interface('subnet-c24aeaff')
+        .. code-block:: python
 
-        # 2. Add a network ID for use with OpenStack
-        lc.add_network_interface('5820c766-75fe-4fc6-96ef-798f67623238')
-        ```
+            lc = provider.compute.instances.create_launch_config()
+
+            # 1. Add a VPC subnet for use with AWS
+            lc.add_network_interface('subnet-c24aeaff')
+
+            # 2. Add a network ID for use with OpenStack
+            lc.add_network_interface('5820c766-75fe-4fc6-96ef-798f67623238')
 
         :type net_id: str
         :param net_id: Network ID to launch an instance into. This is a

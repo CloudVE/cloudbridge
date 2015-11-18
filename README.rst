@@ -25,6 +25,11 @@ under development and is in a Pre-Alpha state.
    :target: https://pypi.python.org/pypi/cloudbridge/
    :alt: latest version available on PyPI
 
+.. image:: https://readthedocs.org/projects/cloudbridge/badge/?version=latest
+   :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
+   :alt: Documentation Status
+
+
 Usage example
 ~~~~~~~~~~~~~
 
