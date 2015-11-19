@@ -1,8 +1,9 @@
 cloudbridge
 ===========
 
-cloudbridge provides a layer of abstraction over different cloud providers.
-It's a straightforward implementation of the `bridge pattern`_. It is currently
+cloudbridge aims to provide a simple layer of abstraction over
+different cloud providers, reducing or eliminating the need to write
+conditional code for each cloud. It is currently
 under development and is in a Pre-Alpha state.
 
 .. image:: https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat
@@ -113,5 +114,4 @@ Our testing goals are to:
 4. For development, mock providers may be used to speed up the feedback cycle, but providers must also pass the full suite of tests when run against actual cloud infrastructure to ensure that we are not testing against an idealised or imagined environment.
 5. Aim for 100% code coverage.
 
-.. _`bridge pattern`: https://en.wikipedia.org/wiki/Bridge_pattern
 .. _`tox`: https://tox.readthedocs.org/en/latest/
