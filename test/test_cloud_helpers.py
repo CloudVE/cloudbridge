@@ -1,6 +1,6 @@
 import itertools
 
-from cloudbridge.cloud import helpers as cbhelpers
+from cloudbridge.cloud.base import ClientPagedResultList
 from test.helpers import ProviderTestBase
 
 
@@ -27,18 +27,18 @@ class CloudHelpersTestCase(ProviderTestBase):
                    DummyResult(4, "Four"),
                    ]
 
-        results = cbhelpers.to_result_list(self.provider, objects, 2, None)
+        results = ClientPagedResultList(self.provider, objects, 2, None)
         self.assertListEqual(results, list(itertools.islice(objects, 2)))
         self.assertEqual(results.marker, objects[1].id)
         self.assertTrue(results.supports_total)
         self.assertEqual(results.total_results, 4)
 
-        results = cbhelpers.to_result_list(self.provider, objects, 2, 2)
+        results = ClientPagedResultList(self.provider, objects, 2, 2)
         self.assertListEqual(results, list(itertools.islice(objects, 2, 4)))
         self.assertEqual(results.marker, None)
         self.assertTrue(results.supports_total)
         self.assertEqual(results.total_results, 4)
 
-        results = cbhelpers.to_result_list(self.provider, objects, 2, 3)
+        results = ClientPagedResultList(self.provider, objects, 2, 3)
         self.assertListEqual(results, list(itertools.islice(objects, 3, 4)))
         self.assertEqual(results.marker, None)

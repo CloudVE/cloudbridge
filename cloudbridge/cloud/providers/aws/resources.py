@@ -7,7 +7,6 @@ from boto.exception import EC2ResponseError
 from boto.s3.key import Key
 from retrying import retry
 
-from cloudbridge.cloud import helpers as cbhelpers
 from cloudbridge.cloud.base import BaseBucket
 from cloudbridge.cloud.base import BaseBucketObject
 from cloudbridge.cloud.base import BaseInstance
@@ -20,6 +19,7 @@ from cloudbridge.cloud.base import BaseSecurityGroup
 from cloudbridge.cloud.base import BaseSecurityGroupRule
 from cloudbridge.cloud.base import BaseSnapshot
 from cloudbridge.cloud.base import BaseVolume
+from cloudbridge.cloud.base import ClientPagedResultList
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
@@ -663,8 +663,8 @@ class AWSBucket(BaseBucket):
         """
         objects = [AWSBucketObject(self._provider, obj)
                    for obj in self._bucket.list()]
-        return cbhelpers.to_result_list(self._provider, objects, limit,
-                                        marker)
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
 
     def delete(self, delete_contents=False):
         """

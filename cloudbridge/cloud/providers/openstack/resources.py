@@ -722,17 +722,16 @@ class OpenStackBucket(BaseBucket):
         :rtype: BucketObject
         :return: List of all available BucketObjects within this bucket.
         """
-        def _list_container_objects(nlimit):
-            _, object_list = self._provider.swift.get_container(
-                self.name,
-                limit=nlimit, marker=marker)
-            return [OpenStackBucketObject(
-                self._provider, self, obj) for obj in object_list]
+        _, object_list = self._provider.swift.get_container(
+            self.name, limit=oshelpers.os_result_limit(self._provider, limit),
+            marker=marker)
+        cb_objects = [OpenStackBucketObject(
+            self._provider, self, obj) for obj in object_list]
 
-        return oshelpers.to_result_list(
+        return oshelpers.to_server_paged_list(
             self._provider,
-            limit,
-            _list_container_objects)
+            cb_objects,
+            limit)
 
     def delete(self, delete_contents=False):
         """

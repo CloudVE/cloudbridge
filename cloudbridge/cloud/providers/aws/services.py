@@ -8,7 +8,6 @@ from boto.ec2.blockdevicemapping import BlockDeviceType
 from boto.exception import EC2ResponseError
 import requests
 
-from cloudbridge.cloud import helpers as cbhelpers
 from cloudbridge.cloud.base import BaseBlockStoreService
 from cloudbridge.cloud.base import BaseComputeService
 from cloudbridge.cloud.base import BaseImageService
@@ -18,11 +17,12 @@ from cloudbridge.cloud.base import BaseKeyPairService
 from cloudbridge.cloud.base import BaseLaunchConfig
 from cloudbridge.cloud.base import BaseObjectStoreService
 from cloudbridge.cloud.base import BaseRegionService
-from cloudbridge.cloud.base import BaseResultList
 from cloudbridge.cloud.base import BaseSecurityGroupService
 from cloudbridge.cloud.base import BaseSecurityService
 from cloudbridge.cloud.base import BaseSnapshotService
 from cloudbridge.cloud.base import BaseVolumeService
+from cloudbridge.cloud.base import ClientPagedResultList
+from cloudbridge.cloud.base import ServerPagedResultList
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import InstanceType
@@ -89,8 +89,8 @@ class AWSKeyPairService(BaseKeyPairService):
         """
         key_pairs = [AWSKeyPair(self.provider, kp)
                      for kp in self.provider.ec2_conn.get_all_key_pairs()]
-        return cbhelpers.to_result_list(self.provider, key_pairs, limit,
-                                        marker)
+        return ClientPagedResultList(self.provider, key_pairs,
+                                     limit=limit, marker=marker)
 
     def find(self, name):
         """
@@ -134,7 +134,8 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         sgs = [AWSSecurityGroup(self.provider, sg)
                for sg in self.provider.ec2_conn.get_all_security_groups()]
 
-        return cbhelpers.to_result_list(self.provider, sgs, limit, marker)
+        return ClientPagedResultList(self.provider, sgs,
+                                     limit=limit, marker=marker)
 
     def create(self, name, description):
         """
@@ -246,13 +247,12 @@ class AWSVolumeService(BaseVolumeService):
         List all volumes.
         """
         filtr = awshelpers.to_filter(self.provider, limit, marker)
-        vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
-        results = BaseResultList(vols.is_truncated,
-                                 vols.next_token,
-                                 False)
-        for vol in vols:
-            results.append(AWSVolume(self.provider, vol))
-        return results
+        aws_vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
+        cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
+        return ServerPagedResultList(aws_vols.is_truncated,
+                                     aws_vols.next_token,
+                                     False,
+                                     data=cb_vols)
 
     def create(self, name, size, zone, snapshot=None, description=None):
         """
@@ -297,8 +297,8 @@ class AWSSnapshotService(BaseSnapshotService):
         """
         snaps = [AWSSnapshot(self.provider, snap)
                  for snap in self.provider.ec2_conn.get_all_snapshots()]
-        return cbhelpers.to_result_list(self.provider, snaps, limit,
-                                        marker)
+        return ClientPagedResultList(self.provider, snaps,
+                                     limit=limit, marker=marker)
 
     def create(self, name, volume, description=None):
         """
@@ -345,8 +345,8 @@ class AWSObjectStoreService(BaseObjectStoreService):
         """
         buckets = [AWSBucket(self.provider, bucket)
                    for bucket in self.provider.s3_conn.get_all_buckets()]
-        return cbhelpers.to_result_list(self.provider, buckets, limit,
-                                        marker)
+        return ClientPagedResultList(self.provider, buckets,
+                                     limit=limit, marker=marker)
 
     def create(self, name, location=None):
         """
@@ -389,8 +389,8 @@ class AWSImageService(BaseImageService):
         """
         images = [AWSMachineImage(self.provider, image)
                   for image in self.provider.ec2_conn.get_all_images()]
-        return cbhelpers.to_result_list(self.provider, images, limit,
-                                        marker)
+        return ClientPagedResultList(self.provider, images,
+                                     limit=limit, marker=marker)
 
 
 class AWSComputeService(BaseComputeService):
@@ -550,13 +550,12 @@ class AWSInstanceService(BaseInstanceService):
         reservations = self.provider.ec2_conn.get_all_reservations(
             max_results=limit,
             next_token=marker)
-        results = BaseResultList(reservations.is_truncated,
-                                 reservations.next_token,
-                                 False)
-        for res in reservations:
-            for inst in res.instances:
-                results.append(AWSInstance(self.provider, inst))
-        return results
+        instances = [AWSInstance(self.provider, inst)
+                     for res in reservations
+                     for inst in res.instances]
+        return ServerPagedResultList(reservations.is_truncated,
+                                     reservations.next_token,
+                                     False, data=instances)
 
 AWS_INSTANCE_DATA_DEFAULT_URL = "https://swift.rc.nectar.org.au:8888/v1/" \
                                 "AUTH_377/cloud-bridge/aws/instance_data.json"
@@ -579,8 +578,8 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
     def list(self, limit=None, marker=None):
         inst_types = [AWSInstanceType(self.provider, inst_type)
                       for inst_type in self.instance_data]
-        return cbhelpers.to_result_list(self.provider, inst_types, limit,
-                                        marker)
+        return ClientPagedResultList(self.provider, inst_types,
+                                     limit=limit, marker=marker)
 
 
 class AWSRegionService(BaseRegionService):
@@ -600,5 +599,5 @@ class AWSRegionService(BaseRegionService):
 
         regions = [AWSRegion(self.provider, region)
                    for region in self.provider.ec2_conn.get_all_regions()]
-        return cbhelpers.to_result_list(self.provider, regions, limit,
-                                        marker)
+        return ClientPagedResultList(self.provider, regions,
+                                     limit=limit, marker=marker)

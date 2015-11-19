@@ -1,7 +1,6 @@
 """
 Services implemented by the OpenStack provider.
 """
-import itertools
 from cinderclient.exceptions import NotFound as CinderNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
@@ -18,6 +17,7 @@ from cloudbridge.cloud.base import BaseSecurityGroupService
 from cloudbridge.cloud.base import BaseSecurityService
 from cloudbridge.cloud.base import BaseSnapshotService
 from cloudbridge.cloud.base import BaseVolumeService
+from cloudbridge.cloud.base import ClientPagedResultList
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
@@ -81,20 +81,11 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :return:  list of KeyPair objects
         """
 
-        # pylint:disable=unused-argument
-        def _list_key_pairs(nlimit):
-            keypairs = self.provider.nova.keypairs.list()
-            if marker:
-                keypairs = itertools.dropwhile(
-                    lambda kp: not kp.name == marker, keypairs)
-
-            return [OpenStackKeyPair(self.provider, kp)
-                    for kp in keypairs]
-
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            _list_key_pairs)
+        keypairs = self.provider.nova.keypairs.list()
+        results = [OpenStackKeyPair(self.provider, kp)
+                   for kp in keypairs]
+        return ClientPagedResultList(self.provider, results,
+                                     limit=limit, marker=marker)
 
     def find(self, name):
         """
@@ -136,20 +127,11 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         :return:  list of SecurityGroup objects
         """
 
-        # pylint:disable=unused-argument
-        def _list_security_groups(nlimit):
-            sgs = self.provider.nova.security_groups.list()
-            if marker:
-                sgs = itertools.dropwhile(
-                    lambda sg: not sg.name == marker, sgs)
+        sgs = [OpenStackSecurityGroup(self.provider, sg)
+               for sg in self.provider.nova.security_groups.list()]
 
-            return [OpenStackSecurityGroup(self.provider, sg)
-                    for sg in sgs]
-
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            _list_security_groups)
+        return ClientPagedResultList(self.provider, sgs,
+                                     limit=limit, marker=marker)
 
     def create(self, name, description):
         """
@@ -248,14 +230,13 @@ class OpenStackImageService(BaseImageService):
         """
         List all images.
         """
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            lambda nlimit:
-                [OpenStackMachineImage(self.provider, img)
-                 for img in self.provider.nova.images.list(
-                    limit=nlimit,
-                    marker=marker)])
+        cb_images = [
+            OpenStackMachineImage(self.provider, img)
+            for img in self.provider.nova.images.list(
+                limit=oshelpers.os_result_limit(self.provider, limit),
+                marker=marker)]
+
+        return oshelpers.to_server_paged_list(self.provider, cb_images, limit)
 
 
 class OpenStackInstanceTypesService(BaseInstanceTypesService):
@@ -264,14 +245,13 @@ class OpenStackInstanceTypesService(BaseInstanceTypesService):
         super(OpenStackInstanceTypesService, self).__init__(provider)
 
     def list(self, limit=None, marker=None):
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            lambda nlimit:
-                [OpenStackInstanceType(self.provider, obj)
-                 for obj in self.provider.nova.flavors.list(
-                    limit=nlimit,
-                    marker=marker)])
+        cb_itypes = [
+            OpenStackInstanceType(self.provider, obj)
+            for obj in self.provider.nova.flavors.list(
+                limit=oshelpers.os_result_limit(self.provider, limit),
+                marker=marker)]
+
+        return oshelpers.to_server_paged_list(self.provider, cb_itypes, limit)
 
 
 class OpenStackBlockStoreService(BaseBlockStoreService):
@@ -318,14 +298,13 @@ class OpenStackVolumeService(BaseVolumeService):
         """
         List all volumes.
         """
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            lambda nlimit:
-                [OpenStackVolume(self.provider, vol)
-                 for vol in self.provider.cinder.volumes.list(
-                    limit=nlimit,
-                    marker=marker)])
+        cb_vols = [
+            OpenStackVolume(self.provider, vol)
+            for vol in self.provider.cinder.volumes.list(
+                limit=oshelpers.os_result_limit(self.provider, limit),
+                marker=marker)]
+
+        return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
     def create(self, name, size, zone, snapshot=None, description=None):
         """
@@ -368,15 +347,13 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         List all snapshot.
         """
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            lambda nlimit:
-                [OpenStackSnapshot(self.provider, snap) for
-                 snap in self.provider.cinder.volume_snapshots.list(
-                    search_opts={
-                        'limit': nlimit,
-                        'marker': marker})])
+        cb_snaps = [
+            OpenStackSnapshot(self.provider, snap) for
+            snap in self.provider.cinder.volume_snapshots.list(
+                search_opts={'limit': oshelpers.os_result_limit(self.provider,
+                                                                limit),
+                             'marker': marker})]
+        return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
 
     def create(self, name, volume, description=None):
         """
@@ -419,17 +396,12 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         """
         List all containers.
         """
-        # pylint:disable=unused-argument
-        def _list_containers(nlimit):
-            _, container_list = self.provider.swift.get_account(
-                limit=nlimit, marker=marker)
-            return [OpenStackBucket(self.provider, c)
-                    for c in container_list]
-
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            _list_containers)
+        _, container_list = self.provider.swift.get_account(
+            limit=oshelpers.os_result_limit(self.provider, limit),
+            marker=marker)
+        cb_buckets = [OpenStackBucket(self.provider, c)
+                      for c in container_list]
+        return oshelpers.to_server_paged_list(self.provider, cb_buckets, limit)
 
     def create(self, name, location=None):
         """
@@ -450,25 +422,17 @@ class OpenStackRegionService(BaseRegionService):
 
     def list(self, limit=None, marker=None):
 
-        # pylint:disable=unused-argument
-        def _list_regions(nlimit):
-            regions = (
-                endpoint.get('region') or endpoint.get('region_id')
-                for svc in self.provider.keystone.service_catalog.get_data()
-                for endpoint in svc.get('endpoints', [])
-            )
-            regions = (region for region in regions if region)
-            if marker:
-                regions = itertools.dropwhile(
-                    lambda region: not region == marker, regions)
+        regions = (
+            endpoint.get('region') or endpoint.get('region_id')
+            for svc in self.provider.keystone.service_catalog.get_data()
+            for endpoint in svc.get('endpoints', [])
+        )
+        regions = (region for region in regions if region)
+        os_regions = [OpenStackRegion(self.provider, region)
+                      for region in regions]
 
-            return [OpenStackRegion(self.provider, region)
-                    for region in regions]
-
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            _list_regions)
+        return ClientPagedResultList(self.provider, os_regions,
+                                     limit=limit, marker=marker)
 
 
 class OpenStackComputeService(BaseComputeService):
@@ -613,14 +577,12 @@ class OpenStackInstanceService(BaseInstanceService):
         """
         List all instances.
         """
-        return oshelpers.to_result_list(
-            self.provider,
-            limit,
-            lambda nlimit:
-                [OpenStackInstance(self.provider, inst)
-                 for inst in self.provider.nova.servers.list(
-                    limit=nlimit,
-                    marker=marker)])
+        cb_insts = [
+            OpenStackInstance(self.provider, inst)
+            for inst in self.provider.nova.servers.list(
+                limit=oshelpers.os_result_limit(self.provider, limit),
+                marker=marker)]
+        return oshelpers.to_server_paged_list(self.provider, cb_insts, limit)
 
     def get(self, instance_id):
         """

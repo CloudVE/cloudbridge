@@ -2,6 +2,7 @@
 Implementation of common methods across cloud providers.
 """
 
+import itertools
 import logging
 import time
 
@@ -164,6 +165,7 @@ class BaseResultList(ResultList):
 
     def __init__(
             self, is_truncated, marker, supports_total, total=None, data=None):
+        # call list constructor
         super(BaseResultList, self).__init__(data or [])
         self._marker = marker
         self._is_truncated = is_truncated
@@ -187,6 +189,62 @@ class BaseResultList(ResultList):
         return self._total
 
 
+class ServerPagedResultList(BaseResultList):
+    """
+    This is a convenience class that extends the :class:`BaseResultList` class
+    and provides a server side implementation of paging. It is meant for use by
+    provider developers and is not meant for direct use by end-users.
+    This class can be used to wrap a partial result list when an operation
+    supports server side paging.
+    """
+
+    @property
+    def supports_server_paging(self):
+        return True
+
+    @property
+    def data(self):
+        raise NotImplementedError(
+            "ServerPagedResultLists do not support the data property")
+
+
+class ClientPagedResultList(BaseResultList):
+    """
+    This is a convenience class that extends the :class:`BaseResultList` class
+    and provides a client side implementation of paging. It is meant for use by
+    provider developers and is not meant for direct use by end-users.
+    This class can be used to wrap a full result list when an operation does
+    not support server side paging. This class will then provide a paged view
+    of the full result set entirely on the client side.
+    """
+
+    def __init__(self, provider, objects, limit=None, marker=None):
+        self._objects = objects
+        limit = limit or provider.config.result_limit
+        total_size = len(objects)
+        if marker:
+            from_marker = itertools.dropwhile(
+                lambda obj: not obj.id == marker, objects)
+            # skip one past the marker
+            next(from_marker, None)
+            objects = list(from_marker)
+        is_truncated = len(objects) > limit
+        results = list(itertools.islice(objects, limit))
+        super(ClientPagedResultList, self).__init__(
+            is_truncated,
+            results[-1].id if is_truncated else None,
+            True, total=total_size,
+            data=results)
+
+    @property
+    def supports_server_paging(self):
+        return False
+
+    @property
+    def data(self):
+        return self._objects
+
+
 class BasePageableObjectMixin(PageableObjectMixin):
     """
     A mixin to provide iteration capability for a class
@@ -194,15 +252,20 @@ class BasePageableObjectMixin(PageableObjectMixin):
     """
 
     def __iter__(self):
-        more_results = True
         marker = None
 
-        while more_results:
-            result_list = self.list(marker=marker)
+        result_list = self.list(marker=marker)
+        if result_list.supports_server_paging:
             for result in result_list:
                 yield result
-            marker = result_list.marker
-            more_results = result_list.is_truncated
+            while result_list.is_truncated:
+                result_list = self.list(marker=marker)
+                for result in result_list:
+                    yield result
+                marker = result_list.marker
+        else:
+            for result in result_list.data:
+                yield result
 
 
 class BaseInstanceType(InstanceType):

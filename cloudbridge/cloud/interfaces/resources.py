@@ -304,6 +304,19 @@ class ResultList(list):
         """
         pass
 
+    @abstractproperty
+    def supports_server_paging(self):
+        """
+        Indicates whether this ResultList supports client side paging or server
+        side paging. If server side paging is not supported, the data property
+        provides direct access to all available data.
+        """
+        pass
+
+    @abstractproperty
+    def data(self):
+        pass
+
 
 class InstanceState(object):
 
