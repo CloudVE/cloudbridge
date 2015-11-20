@@ -48,16 +48,23 @@ class CloudImageServiceTestCase(ProviderTestBase):
                     "Image description must be None or a string")
 
                 images = self.provider.compute.images.list()
-                found_images = [image for image in images
-                                if image.name == name]
+                list_images = [image for image in images
+                               if image.name == name]
                 self.assertTrue(
-                    len(found_images) == 1,
+                    len(list_images) == 1,
                     "List images does not return the expected image %s" %
                     name)
 
                 # check iteration
-                found_images = [image for image in self.provider.compute.images
-                                if image.name == name]
+                iter_images = [image for image in self.provider.compute.images
+                               if image.name == name]
+                self.assertTrue(
+                    len(iter_images) == 1,
+                    "Iter images does not return the expected image %s" %
+                    name)
+
+                # find image
+                found_images = self.provider.compute.images.find(name=name)
                 self.assertTrue(
                     len(found_images) == 1,
                     "Iter images does not return the expected image %s" %
@@ -66,18 +73,19 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 get_img = self.provider.compute.images.get(
                     test_image.id)
                 self.assertTrue(
-                    found_images[0] == get_img == test_image,
+                    iter_images[0] == get_img == test_image,
                     "Objects returned by list: {0} and get: {1} are not as "
                     " expected: {2}" .format(found_images[0].id,
                                              get_img.id,
                                              test_image.id))
                 self.assertTrue(
-                    found_images[0].name ==
+                    list_images[0].name == found_images[0].name ==
                     get_img.name == test_image.name,
-                    "Names returned by list: {0} and get: {1} are not as "
-                    " expected: {2}" .format(found_images[0].name,
-                                             get_img.name,
-                                             test_image.name))
+                    "Names returned by list: {0}, find: {1} and get: {2} are"
+                    " not as expected: {3}" .format(list_images[0].name,
+                                                    found_images[0].name,
+                                                    get_img.name,
+                                                    test_image.name))
             # TODO: Images take a long time to deregister on EC2. Needs
             # investigation
             images = self.provider.compute.images.list()

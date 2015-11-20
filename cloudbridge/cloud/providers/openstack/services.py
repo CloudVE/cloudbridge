@@ -1,6 +1,8 @@
 """
 Services implemented by the OpenStack provider.
 """
+import fnmatch
+import re
 from cinderclient.exceptions import NotFound as CinderNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
@@ -219,12 +221,17 @@ class OpenStackImageService(BaseImageService):
         except NovaNotFound:
             return None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for an image by a given list of attributes
         """
-        raise NotImplementedError(
-            'find_image not implemented by this provider')
+        regex = fnmatch.translate(name)
+        cb_images = [
+            OpenStackMachineImage(self.provider, img)
+            for img in self
+            if img.name and re.search(regex, img.name)]
+
+        return oshelpers.to_server_paged_list(self.provider, cb_images, limit)
 
     def list(self, limit=None, marker=None):
         """

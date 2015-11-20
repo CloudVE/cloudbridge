@@ -376,12 +376,17 @@ class AWSImageService(BaseImageService):
 
         return None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for an image by a given list of attributes
         """
-        raise NotImplementedError(
-            'find_image not implemented by this provider')
+        filters = {
+            'name': name
+        }
+        images = [AWSMachineImage(self.provider, image) for image in
+                  self.provider.ec2_conn.get_all_images(filters=filters)]
+        return ClientPagedResultList(self.provider, images,
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         """
