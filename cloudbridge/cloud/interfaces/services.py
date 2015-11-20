@@ -453,7 +453,7 @@ class ImageService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for an image by a given list of attributes
 
