@@ -14,6 +14,9 @@ matrix:
 install:
   - pip install tox
   - pip install coveralls
+  - pip install codecov
 script:
   - tox -e $TOX_ENV
-after_success: coveralls
+after_success:
+  - coveralls
+  - codecov 
