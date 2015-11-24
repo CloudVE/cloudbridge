@@ -235,12 +235,18 @@ class AWSVolumeService(BaseVolumeService):
         vols = self.provider.ec2_conn.get_all_volumes(volume_ids=[volume_id])
         return AWSVolume(self.provider, vols[0]) if vols else None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a volume by a given list of attributes.
         """
-        raise NotImplementedError(
-            'find_volume not implemented by this provider')
+        filtr = awshelpers.to_filter(self.provider, limit, marker)
+        filtr['name'] = name
+        aws_vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
+        cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
+        return ServerPagedResultList(aws_vols.is_truncated,
+                                     aws_vols.next_token,
+                                     False,
+                                     data=cb_vols)
 
     def list(self, limit=None, marker=None):
         """
@@ -284,12 +290,15 @@ class AWSSnapshotService(BaseSnapshotService):
             snapshot_ids=[snapshot_id])
         return AWSSnapshot(self.provider, snaps[0]) if snaps else None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a volume by a given list of attributes.
         """
-        raise NotImplementedError(
-            'find_volume not implemented by this provider')
+        filtr = {'name': name}
+        snaps = [AWSSnapshot(self.provider, snap) for snap in
+                 self.provider.ec2_conn.get_all_snapshots(filters=filtr)]
+        return ClientPagedResultList(self.provider, snaps,
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         """

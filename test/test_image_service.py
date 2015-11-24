@@ -73,7 +73,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 get_img = self.provider.compute.images.get(
                     test_image.id)
                 self.assertTrue(
-                    iter_images[0] == get_img == test_image,
+                    found_images[0] == iter_images[0] == get_img == test_image,
                     "Objects returned by list: {0} and get: {1} are not as "
                     " expected: {2}" .format(found_images[0].id,
                                              get_img.id,

@@ -301,12 +301,19 @@ class OpenStackVolumeService(BaseVolumeService):
         except CinderNotFound:
             return None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a volume by a given list of attributes.
         """
-        raise NotImplementedError(
-            'find_volume not implemented by this provider')
+        search_opts = {'name': name}
+        cb_vols = [
+            OpenStackVolume(self.provider, vol)
+            for vol in self.provider.cinder.volumes.list(
+                search_opts=search_opts,
+                limit=oshelpers.os_result_limit(self.provider, limit),
+                marker=marker)]
+
+        return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
     def list(self, limit=None, marker=None):
         """
@@ -350,12 +357,19 @@ class OpenStackSnapshotService(BaseSnapshotService):
         except CinderNotFound:
             return None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a volume by a given list of attributes.
         """
-        raise NotImplementedError(
-            'find_volume not implemented by this provider')
+        search_opts = {'name': name,
+                       'limit': oshelpers.os_result_limit(self.provider,
+                                                          limit),
+                       'marker': marker}
+        cb_snaps = [
+            OpenStackSnapshot(self.provider, snap) for
+            snap in self.provider.cinder.volume_snapshots.list(search_opts)]
+
+        return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
 
     def list(self, limit=None, marker=None):
         """

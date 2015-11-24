@@ -277,7 +277,7 @@ class VolumeService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a volume by a given list of attributes.
 
@@ -340,7 +340,7 @@ class SnapshotService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a snapshot by a given list of attributes.
 

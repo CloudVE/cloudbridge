@@ -37,34 +37,41 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 "repr(obj) should contain the object id so that the object"
                 " can be reconstructed, but does not. eval(repr(obj)) == obj")
             volumes = self.provider.block_store.volumes.list()
-            found_volumes = [vol for vol in volumes if vol.name == name]
+            list_volumes = [vol for vol in volumes if vol.name == name]
             self.assertTrue(
-                len(found_volumes) == 1,
+                len(list_volumes) == 1,
                 "List volumes does not return the expected volume %s" %
                 name)
 
             # check iteration
-            found_volumes = [vol for vol in self.provider.block_store.volumes
-                             if vol.name == name]
+            iter_volumes = [vol for vol in self.provider.block_store.volumes
+                            if vol.name == name]
             self.assertTrue(
-                len(found_volumes) == 1,
+                len(iter_volumes) == 1,
                 "Iter volumes does not return the expected volume %s" %
+                name)
+
+            # check find
+            find_volumes = self.provider.block_store.volumes.find(name=name)
+            self.assertTrue(
+                len(find_volumes) == 1,
+                "Find volumes does not return the expected volume %s" %
                 name)
 
             get_vol = self.provider.block_store.volumes.get(
                 test_vol.id)
             self.assertTrue(
-                found_volumes[0] ==
+                list_volumes[0] ==
                 get_vol == test_vol,
                 "Ids returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(found_volumes[0].id,
+                " expected: {2}" .format(list_volumes[0].id,
                                          get_vol.id,
                                          test_vol.id))
             self.assertTrue(
-                found_volumes[0].name ==
+                list_volumes[0].name ==
                 get_vol.name == test_vol.name,
                 "Names returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(found_volumes[0].name,
+                " expected: {2}" .format(list_volumes[0].name,
                                          get_vol.name,
                                          test_vol.name))
         volumes = self.provider.block_store.volumes.list()
@@ -133,36 +140,43 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     " can be reconstructed, but does not.")
 
                 snaps = self.provider.block_store.snapshots.list()
-                found_snaps = [snap for snap in snaps
-                               if snap.name == snap_name]
+                list_snaps = [snap for snap in snaps
+                              if snap.name == snap_name]
                 self.assertTrue(
-                    len(found_snaps) == 1,
+                    len(list_snaps) == 1,
                     "List snapshots does not return the expected volume %s" %
                     name)
 
                 # check iteration
-                found_snaps = [
+                iter_snaps = [
                     snap for snap in self.provider.block_store.snapshots
                     if snap.name == snap_name]
                 self.assertTrue(
-                    len(found_snaps) == 1,
+                    len(iter_snaps) == 1,
                     "Iter snapshots does not return the expected volume %s" %
+                    name)
+
+                # check find
+                find_snap = self.provider.block_store.snapshots.find(name=name)
+                self.assertTrue(
+                    len(find_snap) == 1,
+                    "Find snaps does not return the expected volume %s" %
                     name)
 
                 get_snap = self.provider.block_store.snapshots.get(
                     test_snap.id)
                 self.assertTrue(
-                    found_snaps[0] ==
+                    list_snaps[0] ==
                     get_snap == test_snap,
                     "Ids returned by list: {0} and get: {1} are not as "
-                    " expected: {2}" .format(found_snaps[0].id,
+                    " expected: {2}" .format(list_snaps[0].id,
                                              get_snap.id,
                                              test_snap.id))
                 self.assertTrue(
-                    found_snaps[0].name ==
+                    list_snaps[0].name ==
                     get_snap.name == test_snap.name,
                     "Names returned by list: {0} and get: {1} are not as "
-                    " expected: {2}" .format(found_snaps[0].name,
+                    " expected: {2}" .format(list_snaps[0].name,
                                              get_snap.name,
                                              test_snap.name))
             snaps = self.provider.block_store.snapshots.list()
