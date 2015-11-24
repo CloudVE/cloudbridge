@@ -39,24 +39,10 @@ that they return. Click on any object to drill down into its details.
 Installation
 ------------
 
-**Automatic installation**::
+The latest release can always be installed form PyPI. For other installation
+options, see the `installation page <topics/install.html>`_::
 
     pip install cloudbridge
-
-**Manual installation**::
-
-	$ git clone https://github.com/gvlproject/cloudbridge.git
-	$ cd cloudbridge
-	$ python setup.py install
-
-**Developer installation**::
-
-	pip install cloudbridge[dev]
-
-This will install additional libraries required by cloudbridge contributors, such as tox.
-
-**Prerequisites**: Cloudbridge runs on Python 2.7 and higher. Python 3 is recommended.
-
 
 Documentation
 -------------
@@ -65,6 +51,7 @@ Documentation
 
     concepts.rst
     getting_started.rst
+    topics/overview.rst
     api_docs/ref.rst
 
 Page index
