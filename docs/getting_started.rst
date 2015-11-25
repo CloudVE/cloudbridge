@@ -68,12 +68,12 @@ Next, we need to create a security group and add a rule to allow ssh access.
 Launch an instance
 ------------------
 Before we can launch an instance, we need to decide what image to use so let's
-get the default Ubuntu image ``ami-d05e75b8`` and launch an instance.
+get a base Ubuntu image ``ami-d85e75b0`` and launch an instance.
 
 .. code-block:: python
 
-    img = provider.compute.images.get('ami-d05e75b8')
-    inst_type = provider.compute.instance_types.list()[34]  # c3.large
+    img = provider.compute.images.get('ami-d85e75b0')
+    inst_type = provider.compute.instance_types.find(name='m1.small')
     inst = provider.compute.instances.create(
         name='Cloudbridge-intro', image=img, instance_type=inst_type,
         keypair=kp, security_groups=[sg])
@@ -84,7 +84,7 @@ get the default Ubuntu image ``ami-d05e75b8`` and launch an instance.
     inst.public_ips
     # [u'54.166.125.219']
 
-From the command prompt, we can now ssh into the instance
+From the command prompt, you can now ssh into the instance
 ``ssh -i cloudbridge_intro.pem ubuntu@54.166.125.219``.
 
 Cleanup
