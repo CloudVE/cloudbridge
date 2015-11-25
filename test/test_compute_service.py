@@ -35,34 +35,41 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
             all_instances = self.provider.compute.instances.list()
 
-            found_instances = [i for i in all_instances if i.name == name]
+            list_instances = [i for i in all_instances if i.name == name]
             self.assertTrue(
-                len(found_instances) == 1,
+                len(list_instances) == 1,
                 "List instances does not return the expected instance %s" %
                 name)
 
             # check iteration
-            found_instances = [i for i in self.provider.compute.instances
-                               if i.name == name]
+            iter_instances = [i for i in self.provider.compute.instances
+                              if i.name == name]
             self.assertTrue(
-                len(found_instances) == 1,
+                len(iter_instances) == 1,
                 "Iter instances does not return the expected instance %s" %
+                name)
+
+            # check find
+            find_instances = self.provider.compute.instances.find(name=name)
+            self.assertTrue(
+                len(find_instances) == 1,
+                "Find instances does not return the expected instance %s" %
                 name)
 
             get_inst = self.provider.compute.instances.get(
                 inst.id)
             self.assertTrue(
-                found_instances[0] ==
+                list_instances[0] ==
                 get_inst == inst,
                 "Objects returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(found_instances[0].id,
+                " expected: {2}" .format(list_instances[0].id,
                                          get_inst.id,
                                          inst.id))
             self.assertTrue(
-                found_instances[0].name ==
+                list_instances[0].name ==
                 get_inst.name == inst.name,
                 "Names returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(found_instances[0].name,
+                " expected: {2}" .format(list_instances[0].name,
                                          get_inst.name,
                                          inst.name))
         deleted_inst = self.provider.compute.instances.get(

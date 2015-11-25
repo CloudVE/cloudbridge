@@ -413,12 +413,17 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         else:
             return None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a bucket by a given list of attributes.
         """
-        raise NotImplementedError(
-            'ObjectStoreService.find not implemented by this provider')
+        _, container_list = self.provider.swift.get_account(
+            limit=oshelpers.os_result_limit(self.provider, limit),
+            marker=marker)
+        cb_buckets = [OpenStackBucket(self.provider, c)
+                      for c in container_list
+                      if name in c.get("name")]
+        return oshelpers.to_server_paged_list(self.provider, cb_buckets, limit)
 
     def list(self, limit=None, marker=None):
         """
@@ -594,12 +599,18 @@ class OpenStackInstanceService(BaseInstanceService):
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for an instance by a given list of attributes.
         """
-        raise NotImplementedError(
-            'find_instance not implemented by this provider')
+        search_opts = {'name': name}
+        cb_insts = [
+            OpenStackInstance(self.provider, inst)
+            for inst in self.provider.nova.servers.list(
+                search_opts=search_opts,
+                limit=oshelpers.os_result_limit(self.provider, limit),
+                marker=marker)]
+        return oshelpers.to_server_paged_list(self.provider, cb_insts, limit)
 
     def list(self, limit=None, marker=None):
         """

@@ -146,7 +146,7 @@ class AWSInstanceType(BaseInstanceType):
 
     @property
     def id(self):
-        return self._inst_dict['instance_type']
+        return str(self._inst_dict['instance_type'])
 
     @property
     def name(self):

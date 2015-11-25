@@ -32,7 +32,6 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
-from cloudbridge.cloud.providers.aws import helpers as awshelpers
 
 from .resources import AWSBucket
 from .resources import AWSInstance
@@ -239,26 +238,20 @@ class AWSVolumeService(BaseVolumeService):
         """
         Searches for a volume by a given list of attributes.
         """
-        filtr = awshelpers.to_filter(self.provider, limit, marker)
-        filtr['name'] = name
+        filtr = {'Name': name}
         aws_vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
         cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
-        return ServerPagedResultList(aws_vols.is_truncated,
-                                     aws_vols.next_token,
-                                     False,
-                                     data=cb_vols)
+        return ClientPagedResultList(self.provider, cb_vols,
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         """
         List all volumes.
         """
-        filtr = awshelpers.to_filter(self.provider, limit, marker)
-        aws_vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
+        aws_vols = self.provider.ec2_conn.get_all_volumes()
         cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
-        return ServerPagedResultList(aws_vols.is_truncated,
-                                     aws_vols.next_token,
-                                     False,
-                                     data=cb_vols)
+        return ClientPagedResultList(self.provider, cb_vols,
+                                     limit=limit, marker=marker)
 
     def create(self, name, size, zone, snapshot=None, description=None):
         """
@@ -294,7 +287,7 @@ class AWSSnapshotService(BaseSnapshotService):
         """
         Searches for a volume by a given list of attributes.
         """
-        filtr = {'name': name}
+        filtr = {'Name': name}
         snaps = [AWSSnapshot(self.provider, snap) for snap in
                  self.provider.ec2_conn.get_all_snapshots(filters=filtr)]
         return ClientPagedResultList(self.provider, snaps,
@@ -341,12 +334,15 @@ class AWSObjectStoreService(BaseObjectStoreService):
         else:
             return None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a bucket by a given list of attributes.
         """
-        raise NotImplementedError(
-            'ObjectStoreService.find not implemented by this provider.')
+        buckets = [AWSBucket(self.provider, bucket)
+                   for bucket in self.provider.s3_conn.get_all_buckets()
+                   if name in bucket.name]
+        return ClientPagedResultList(self.provider, buckets,
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         """
@@ -547,15 +543,24 @@ class AWSInstanceService(BaseInstanceService):
         else:
             return None
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for an instance by a given list of attributes.
 
         :rtype: ``object`` of :class:`.Instance`
         :return: an Instance object
         """
-        raise NotImplementedError(
-            'find_instance not implemented by this provider')
+        filtr = {'tag:Name': name}
+        reservations = self.provider.ec2_conn.get_all_reservations(
+            filters=filtr,
+            max_results=limit,
+            next_token=marker)
+        instances = [AWSInstance(self.provider, inst)
+                     for res in reservations
+                     for inst in res.instances]
+        return ServerPagedResultList(reservations.is_truncated,
+                                     reservations.next_token,
+                                     False, data=instances)
 
     def list(self, limit=None, marker=None):
         """

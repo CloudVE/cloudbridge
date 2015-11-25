@@ -26,27 +26,34 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
             buckets = self.provider.object_store.list()
 
-            found_buckets = [c for c in buckets if c.name == name]
+            list_buckets = [c for c in buckets if c.name == name]
             self.assertTrue(
-                len(found_buckets) == 1,
+                len(list_buckets) == 1,
                 "List buckets does not return the expected bucket %s" %
                 name)
 
             # check iteration
-            found_buckets = [c for c in self.provider.object_store
-                             if c.name == name]
+            iter_buckets = [c for c in self.provider.object_store
+                            if c.name == name]
             self.assertTrue(
-                len(found_buckets) == 1,
+                len(iter_buckets) == 1,
                 "Iter buckets does not return the expected bucket %s" %
+                name)
+
+            # check find
+            find_buckets = self.provider.object_store.find(name=name)
+            self.assertTrue(
+                len(find_buckets) == 1,
+                "Find buckets does not return the expected bucket %s" %
                 name)
 
             get_bucket = self.provider.object_store.get(
                 test_bucket.id)
             self.assertTrue(
-                found_buckets[0] ==
+                list_buckets[0] ==
                 get_bucket == test_bucket,
                 "Objects returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(found_buckets[0].id,
+                " expected: {2}" .format(list_buckets[0].id,
                                          get_bucket.id,
                                          test_bucket.name))
 
