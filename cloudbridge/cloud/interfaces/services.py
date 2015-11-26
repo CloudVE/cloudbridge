@@ -624,6 +624,25 @@ class KeyPairService(PageableObjectMixin, ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
+    def get(self, keypair_id):
+        """
+        Returns a KeyPair given its ID. Returns ``None`` if the KeyPair
+        does not exist. On some providers, such as AWS and Openstack,
+        the KeyPair id is the same as its name.
+
+        Example:
+
+        .. code-block:: python
+
+            keypair = provider.security.keypairs.get('my_keypair_id')
+            print(keypair.id, keypair.name)
+
+        :rtype: :class:`.KeyPair`
+        :return:  a KeyPair instance
+        """
+        pass
+
+    @abstractmethod
     def list(self, limit=None, marker=None):
         """
         List all key pairs associated with this account.
@@ -634,7 +653,7 @@ class KeyPairService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a key pair by a given list of attributes.
 
@@ -657,12 +676,12 @@ class KeyPairService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def delete(self, name):
+    def delete(self, keypair_id):
         """
         Delete an existing SecurityGroup.
 
-        :type name: str
-        :param name: The name of the key pair to be deleted.
+        :type keypair_id: str
+        :param keypair_id: The id of the key pair to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if the key does not exist, ``False`` otherwise. Note

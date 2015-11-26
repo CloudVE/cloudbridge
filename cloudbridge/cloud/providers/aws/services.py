@@ -79,6 +79,17 @@ class AWSKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(AWSKeyPairService, self).__init__(provider)
 
+    def get(self, keypair_id):
+        """
+        Returns a KeyPair given its id.
+        """
+        try:
+            kps = self.provider.ec2_conn.get_all_key_pairs(
+                keynames=[keypair_id])
+            return AWSKeyPair(self.provider, kps[0])
+        except EC2ResponseError:
+            return None
+
     def list(self, limit=None, marker=None):
         """
         List all key pairs associated with this account.
@@ -91,15 +102,18 @@ class AWSKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, key_pairs,
                                      limit=limit, marker=marker)
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a key pair by a given list of attributes.
         """
         try:
-            kp = self.provider.ec2_conn.get_all_key_pairs([name])[0]
-            return AWSKeyPair(self.provider, kp)
+            key_pairs = [
+                AWSKeyPair(self.provider, kp) for kp in
+                self.provider.ec2_conn.get_all_key_pairs(keynames=[name])]
         except EC2ResponseError:
-            return None
+            key_pairs = []
+        return ClientPagedResultList(self.provider, key_pairs,
+                                     limit=limit, marker=marker)
 
     def create(self, name):
         """
@@ -111,7 +125,7 @@ class AWSKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or None if one was not be created.
         """
-        kp = self.find(name=name)
+        kp = self.get(name)
         if kp:
             return kp
         kp = self.provider.ec2_conn.create_key_pair(name)

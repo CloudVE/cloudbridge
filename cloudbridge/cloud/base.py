@@ -719,19 +719,19 @@ class BaseKeyPairService(
     def __init__(self, provider):
         super(BaseKeyPairService, self).__init__(provider)
 
-    def delete(self, name):
+    def delete(self, keypair_id):
         """
         Delete an existing key pair.
 
-        :type name: str
-        :param name: The name of the key pair to be deleted.
+        :type keypair_id: str
+        :param keypair_id: The id of the key pair to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if the key does not exist. Note that this implies
                   that the key may not have been deleted by this method but
                   instead has not existed in the first place.
         """
-        kp = self.find(name=name)
+        kp = self.get(keypair_id)
         if kp:
             kp.delete()
         return True

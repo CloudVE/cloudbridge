@@ -15,29 +15,38 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(
             lambda:
-                self.provider.security.key_pairs.delete(name=kp.name)
+                self.provider.security.key_pairs.delete(kp.id)
         ):
             # test list method
             kpl = self.provider.security.key_pairs.list()
-            found_kpl = [i for i in kpl if i.name == name]
+            list_kpl = [i for i in kpl if i.name == name]
             self.assertTrue(
-                len(found_kpl) == 1,
+                len(list_kpl) == 1,
                 "List keypairs does not return the expected keypair %s" %
                 name)
 
             # check iteration
-            found_kpl = [i for i in self.provider.security.key_pairs
-                         if i.name == name]
+            iter_kpl = [i for i in self.provider.security.key_pairs
+                        if i.name == name]
             self.assertTrue(
-                len(found_kpl) == 1,
+                len(iter_kpl) == 1,
                 "Iter keypairs does not return the expected keypair %s" %
                 name)
 
-            found_kp = self.provider.security.key_pairs.find(name=name)
+            # check find
+            find_kp = self.provider.security.key_pairs.find(name=name)[0]
             self.assertTrue(
-                found_kp == kp,
+                find_kp == kp,
                 "Find key pair did not return the expected key {0}."
                 .format(name))
+
+            # check get
+            get_kp = self.provider.security.key_pairs.get(name)
+            self.assertTrue(
+                get_kp == kp,
+                "Get key pair did not return the expected key {0}."
+                .format(name))
+
             recreated_kp = self.provider.security.key_pairs.create(name=name)
             self.assertTrue(
                 recreated_kp == kp,
@@ -50,8 +59,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             "Key pair {0} should have been deleted but still exists."
             .format(name))
         no_kp = self.provider.security.key_pairs.find(name='bogus_kp')
-        self.assertTrue(
-            no_kp is None,
+        self.assertFalse(
+            no_kp,
             "Found a key pair {0} that should not exist?".format(no_kp))
 
     def test_key_pair(self):

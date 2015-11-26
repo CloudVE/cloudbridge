@@ -77,6 +77,16 @@ class OpenStackKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(OpenStackKeyPairService, self).__init__(provider)
 
+    def get(self, keypair_id):
+        """
+        Returns a KeyPair given its id.
+        """
+        try:
+            return OpenStackKeyPair(
+                self.provider, self.provider.nova.keypairs.get(keypair_id))
+        except NovaNotFound:
+            return None
+
     def list(self, limit=None, marker=None):
         """
         List all key pairs associated with this account.
@@ -91,15 +101,15 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a key pair by a given list of attributes.
         """
-        try:
-            kp = self.provider.nova.keypairs.find(name=name)
-            return OpenStackKeyPair(self.provider, kp)
-        except NovaNotFound:
-            return None
+        keypairs = self.provider.nova.keypairs.findall(name=name)
+        results = [OpenStackKeyPair(self.provider, kp)
+                   for kp in keypairs]
+        return ClientPagedResultList(self.provider, results,
+                                     limit=limit, marker=marker)
 
     def create(self, name):
         """
@@ -111,7 +121,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or ``None`` if one was not be created.
         """
-        kp = self.find(name=name)
+        kp = self.get(name)
         if kp:
             return kp
         kp = self.provider.nova.keypairs.create(name)
