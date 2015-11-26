@@ -190,8 +190,8 @@ class InstanceService(PageableObjectMixin, ProviderService):
 
         :type  marker: ``str``
         :param marker: The marker is an opaque identifier used to assist
-        in paging through very long lists of objects. It is returned on each
-        invocation of the list method.
+                       in paging through very long lists of objects. It is
+                       returned on each invocation of the list method.
 
         :rtype: ``ResultList`` of :class:`.Instance`
         :return: A ResultList object containing a list of Instances
