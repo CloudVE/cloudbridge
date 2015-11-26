@@ -12,6 +12,7 @@ from keystoneclient import session
 from keystoneclient.auth.identity import Password
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
+from novaclient import shell as nova_shell
 from swiftclient import client as swift_client
 
 from cloudbridge.cloud.base import BaseCloudProvider
@@ -116,10 +117,14 @@ class OpenStackCloudProvider(BaseCloudProvider):
             'nova_service_name',
             os.environ.get('NOVA_SERVICE_NAME', None))
 
+        if self.config.debug_mode:
+            nova_shell.OpenStackComputeShell().setup_debugging(True)
+
         return nova_client.Client(
             api_version, username=self.username, api_key=self.password,
             project_id=self.tenant_name, auth_url=self.auth_url,
-            region_name=self.region_name, service_name=service_name)
+            region_name=self.region_name, service_name=service_name,
+            http_log_debug=True if self.config.debug_mode else False)
 
     def _connect_keystone(self):
         """

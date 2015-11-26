@@ -90,7 +90,8 @@ class AWSCloudProvider(BaseCloudProvider):
             region=r,
             port=self.ec2_port,
             path=self.ec2_conn_path,
-            validate_certs=False)
+            validate_certs=False,
+            debug=2 if self.config.debug_mode else 0)
         return ec2_conn
 
     def _connect_s3(self):
