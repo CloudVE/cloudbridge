@@ -4,6 +4,7 @@ Implementation of common methods across cloud providers.
 
 import itertools
 import logging
+import os
 import time
 
 import six
@@ -13,6 +14,7 @@ from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
+from cloudbridge.cloud.interfaces.resources import Configuration
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
@@ -52,7 +54,7 @@ log = logging.getLogger(__name__)
 DEFAULT_RESULT_LIMIT = 50
 
 
-class BaseConfiguration(dict):
+class BaseConfiguration(Configuration):
 
     def __init__(self, user_config):
         self.update(user_config)
@@ -67,6 +69,21 @@ class BaseConfiguration(dict):
         :return: The maximum number of results to return
         """
         return self.get('result_limit', DEFAULT_RESULT_LIMIT)
+
+    @property
+    def debug_mode(self):
+        """
+        A flag indicating whether CloudBridge is in debug mode. Setting
+        this to True will cause the underlying provider's debug
+        output to be turned on.
+
+        The flag can be toggled by sending in the cb_debug value via
+        the config dictionary, or setting the CB_DEBUG environment variable.
+
+        :rtype: ``bool``
+        :return: Whether debug mode is on.
+        """
+        return self.get('cb_debug', os.environ.get('CB_DEBUG', False))
 
 
 class BaseCloudProvider(CloudProvider):

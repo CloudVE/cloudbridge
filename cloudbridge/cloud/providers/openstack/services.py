@@ -526,7 +526,7 @@ class OpenStackInstanceService(BaseInstanceService):
 
         os_instance = self.provider.nova.servers.create(
             name,
-            image_id,
+            None if self._has_root_device(launch_config) else image_id,
             instance_size,
             min_count=1,
             max_count=1,
@@ -546,16 +546,14 @@ class OpenStackInstanceService(BaseInstanceService):
         """
         bdm = []
         for device in launch_config.block_devices:
-            bdm_dict = {}
-
-            # Let openstack auto assign device name
-            bdm_dict['device_name'] = None
+            bdm_dict = dict()
 
             if device.is_volume:
                 bdm_dict['destination_type'] = 'volume'
 
                 if device.is_root:
                     bdm_dict['device_name'] = '/dev/sda'
+                    bdm_dict['boot_index'] = 0
 
                 if isinstance(device.source, Snapshot):
                     bdm_dict['source_type'] = 'snapshot'
@@ -581,6 +579,14 @@ class OpenStackInstanceService(BaseInstanceService):
                 bdm_dict['delete_on_termination'] = True
             bdm.append(bdm_dict)
         return bdm
+
+    def _has_root_device(self, launch_config):
+        if not launch_config:
+            return False
+        for device in launch_config.block_devices:
+            if device.is_root:
+                return True
+        return False
 
     def _format_nics(self, launch_config):
         """

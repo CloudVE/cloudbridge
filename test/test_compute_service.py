@@ -231,7 +231,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         lc = self.provider.compute.instances.create_launch_config()
 
         # Add a new blank volume
-        lc.add_volume_device(size=1, delete_on_terminate=True)
+#         lc.add_volume_device(size=1, delete_on_terminate=True)
 
         # Attach an existing volume
 #                 lc.add_volume_device(size=1, source=test_vol,

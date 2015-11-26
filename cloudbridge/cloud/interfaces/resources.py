@@ -68,6 +68,20 @@ class Configuration(dict):
         """
         pass
 
+    @abstractproperty
+    def debug_mode(self):
+        """
+        A flag indicating whether CloudBridge is in debug mode. Setting
+        this to True will cause the underlying provider's debug
+        output to be turned on.
+
+        The flag can be toggled by sending in the cb_debug value via
+        the config dictionary, or setting the CB_DEBUG environment variable.
+
+        :rtype: ``bool``
+        :return: Whether debug mode is on.
+        """
+
 
 class ObjectLifeCycleMixin(object):
 
@@ -539,7 +553,7 @@ class LaunchConfig(object):
         lc.add_network_interface(...)
 
         inst = provider.compute.instances.create(name, image, instance_type,
-                                               launch_configuration=lc)
+                                               launch_config=lc)
     """
 
     @abstractmethod
@@ -604,7 +618,7 @@ class LaunchConfig(object):
             lc.add_volume_device(source=snap)
 
             # 3. Create+attach a volume based on an image and set it as root
-            img = provider.images.get('<my_image_id>')
+            img = provider.compute.images.get('<my_image_id>')
             lc.add_volume_device(source=img, size=100, is_root=True)
 
         :type  source: ``Volume``, ``Snapshot``, ``Image`` or None.
