@@ -287,8 +287,8 @@ class AWSInstance(BaseInstance):
         # boto instance.groups field returns a ``Group`` object so need to
         # convert that into a ``SecurityGroup`` object before creating a
         # cloudbridge SecurityGroup object
-        names = [group.name for group in self._ec2_instance.groups]
-        return self._provider.security.security_groups.get(names)
+        return [self._provider.security.security_groups.get(group.id)
+                for group in self._ec2_instance.groups]
 
     @property
     def key_pair_name(self):

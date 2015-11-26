@@ -699,6 +699,24 @@ class SecurityGroupService(PageableObjectMixin, ProviderService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
+    def get(self, security_group_id):
+        """
+        Returns a SecurityGroup given its ID. Returns ``None`` if the
+        SecurityGroup does not exist.
+
+        Example:
+
+        .. code-block:: python
+
+            sg = provider.security.security_groups.get('my_sg_id')
+            print(sg.id, sg.name)
+
+        :rtype: :class:`.SecurityGroup`
+        :return:  a SecurityGroup instance
+        """
+        pass
+
+    @abstractmethod
     def list(self, limit=None, marker=None):
         """
         List all security groups associated with this account.
@@ -725,19 +743,12 @@ class SecurityGroupService(PageableObjectMixin, ProviderService):
         pass
 
     @abstractmethod
-    def get(self, group_names=None, group_ids=None):
+    def find(self, name, limit=None, marker=None):
         """
         Get all security groups associated with your account.
 
-        :type group_names: list
-        :param group_names: A list of the names of security groups to retrieve.
-                           If not provided, all security groups will be
-                           returned.
-
-        :type group_ids: list
-        :param group_ids: A list of IDs of security groups to retrieve.
-                          If not provided, all security groups will be
-                          returned.
+        :type name: str
+        :param name: The name of the security group to retrieve.
 
         :rtype: list of :class:`SecurityGroup`
         :return: A list of SecurityGroup objects or an empty list if none

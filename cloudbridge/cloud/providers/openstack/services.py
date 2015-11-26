@@ -133,6 +133,16 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
     def __init__(self, provider):
         super(OpenStackSecurityGroupService, self).__init__(provider)
 
+    def get(self, sg_id):
+        """
+        Returns a SecurityGroup given its id.
+        """
+        try:
+            return OpenStackSecurityGroup(
+                self.provider, self.provider.nova.security_groups.get(sg_id))
+        except NovaNotFound:
+            return None
+
     def list(self, limit=None, marker=None):
         """
         List all security groups associated with this account.
@@ -165,39 +175,15 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
             return OpenStackSecurityGroup(self.provider, sg)
         return None
 
-    def get(self, group_names=None, group_ids=None):
+    def find(self, name, limit=None, marker=None):
         """
         Get all security groups associated with your account.
-
-        :type group_names: list
-        :param group_names: A list of strings of the names of security groups
-                           to retrieve. If not provided, all security groups
-                           will be returned.
-
-        :type group_ids: list
-        :param group_ids: A list of string IDs of security groups to retrieve.
-                          If not provided, all security groups will be
-                          returned.
-
-        :rtype: list of :class:`SecurityGroup`
-        :return: A list of SecurityGroup objects or an empty list if none
-        found.
         """
-        if not group_names:
-            group_names = []
-        if not group_ids:
-            group_ids = []
-        security_groups = self.provider.nova.security_groups.list()
-        filtered = []
-        for sg in security_groups:
-            if sg.name in group_names:
-                filtered.append(sg)
-            if sg.id in group_ids:
-                filtered.append(sg)
-        # If a filter was specified, use the filtered list; otherwise, get all
-        return [OpenStackSecurityGroup(self.provider, sg)
-                for sg in (filtered
-                           if (group_names or group_ids) else security_groups)]
+        sgs = self.provider.nova.security_groups.findall(name=name)
+        results = [OpenStackSecurityGroup(self.provider, sg)
+                   for sg in sgs]
+        return ClientPagedResultList(self.provider, results,
+                                     limit=limit, marker=marker)
 
     def delete(self, group_id):
         """
@@ -212,9 +198,9 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
                   been deleted by this method but instead has not existed in
                   the first place.
         """
-        sg = self.get(group_ids=[group_id])
+        sg = self.get(group_id)
         if sg:
-            sg[0].delete()
+            sg.delete()
         return True
 
 

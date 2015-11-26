@@ -137,6 +137,17 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
     def __init__(self, provider):
         super(AWSSecurityGroupService, self).__init__(provider)
 
+    def get(self, sg_id):
+        """
+        Returns a SecurityGroup given its id.
+        """
+        try:
+            sgs = self.provider.ec2_conn.get_all_security_groups(
+                group_ids=[sg_id])
+            return AWSSecurityGroup(self.provider, sgs[0]) if sgs else None
+        except EC2ResponseError:
+            return None
+
     def list(self, limit=None, marker=None):
         """
         List all security groups associated with this account.
@@ -168,27 +179,13 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
             return AWSSecurityGroup(self.provider, sg)
         return None
 
-    def get(self, group_names=None, group_ids=None):
+    def find(self, name, limit=None, marker=None):
         """
         Get all security groups associated with your account.
-
-        :type group_names: list
-        :param group_names: A list of the names of security groups to retrieve.
-                           If not provided, all security groups will be
-                           returned.
-
-        :type group_ids: list
-        :param group_ids: A list of IDs of security groups to retrieve.
-                          If not provided, all security groups will be
-                          returned.
-
-        :rtype: list of :class:`SecurityGroup`
-        :return: A list of SecurityGroup objects or an empty list if none
-        found.
         """
         try:
             security_groups = self.provider.ec2_conn.get_all_security_groups(
-                groupnames=group_names, group_ids=group_ids)
+                groupnames=[name])
         except EC2ResponseError:
             security_groups = []
         return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
@@ -299,7 +296,7 @@ class AWSSnapshotService(BaseSnapshotService):
 
     def find(self, name, limit=None, marker=None):
         """
-        Searches for a volume by a given list of attributes.
+        Searches for a snapshot by a given list of attributes.
         """
         filtr = {'Name': name}
         snaps = [AWSSnapshot(self.provider, snap) for snap in

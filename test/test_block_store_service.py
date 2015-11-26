@@ -160,7 +160,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 find_snap = self.provider.block_store.snapshots.find(name=name)
                 self.assertTrue(
                     len(find_snap) == 1,
-                    "Find snaps does not return the expected volume %s" %
+                    "Find snaps does not return the expected snapshot %s" %
                     name)
 
                 get_snap = self.provider.block_store.snapshots.get(

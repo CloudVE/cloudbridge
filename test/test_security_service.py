@@ -116,14 +116,20 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "Iter security groups does not return the expected group %s" %
                 name)
 
-            sgl = self.provider.security.security_groups.get(
-                group_names=[
-                    sg.name])
-            found_sg = [g for g in sgl if g.name == name]
+            # check find
+            find_sg = self.provider.security.security_groups.find(name=sg.name)
             self.assertTrue(
-                len(found_sg) == 1,
-                "List security groups did not return the expected group {0}."
+                len(find_sg) == 1,
+                "List security groups returned {0} when expected was: {1}."
+                .format(find_sg, sg.name))
+
+            # check get
+            get_sg = self.provider.security.security_groups.get(sg.id)
+            self.assertTrue(
+                get_sg == sg,
+                "Get SecurityGroup did not return the expected key {0}."
                 .format(name))
+
             self.assertTrue(
                 sg.id in repr(sg),
                 "repr(obj) should contain the object id so that the object"
@@ -134,8 +140,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             len(found_sg) == 0,
             "Security group {0} should have been deleted but still exists."
             .format(name))
-        no_sg = self.provider.security.security_groups.get(
-            group_ids=['bogus_sg'])
+        no_sg = self.provider.security.security_groups.find(name='bogus_sg')
         self.assertTrue(
             len(no_sg) == 0,
             "Found a bogus security group?!?".format(no_sg))
