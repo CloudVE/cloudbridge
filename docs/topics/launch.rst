@@ -19,11 +19,14 @@ AWS so feel free to change it as desired.
 
 When launching an instance, you can also specify several optional arguments
 such as the security group, a key pair, or instance user data. To allow you to
-connect to the launched instances, we will also supply those parameters.
+connect to the launched instances, we will also supply those parameters (note
+that we're making an assumption here these resources exist; if you don't have
+those resources, take a look at the `Getting Started <../getting_started.html>`_
+guide).
 
 .. code-block:: python
 
-    kp = provider.security.key_pairs.find(name='cloudbridge_intro')
+    kp = provider.security.key_pairs.find(name='cloudbridge_intro')[0]
     sg = provider.security.security_groups.list()[0]
 
 Launch with classic networking
@@ -39,7 +42,7 @@ only needing to specify the basic parameters:
 
 Launch with private networking
 ------------------------------
-Before we can launch an instance into a private newtork, we need to supply a
+Before we can launch an instance into a private network, we need to supply a
 network into which the instance will get launched. To aggregate multiple such
 launch configuration options, we create a launch config object and supply it
 when launching an instance. Note that for the time being (Cloudbridge v0.1)
@@ -64,8 +67,8 @@ After an instance has launched, you can access it's properties:
 
 .. code-block:: python
 
-    # Refresh the state
-    inst.refresh()
+    # Wait until ready
+    inst.wait_till_ready()
     inst.state
     # 'running'
     inst.public_ips
