@@ -192,8 +192,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         instance_type_name = helpers.get_provider_test_data(
             self.provider,
             "instance_type")
-        inst_type = next(self.provider.compute.instance_types.find(
-            name=instance_type_name))
+        inst_type = self.provider.compute.instance_types.find(
+            name=instance_type_name)[0]
         for _ in range(inst_type.num_ephemeral_disks):
             lc.add_ephemeral_device()
 
@@ -259,8 +259,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         instance_type_name = helpers.get_provider_test_data(
             self.provider,
             "instance_type")
-        inst_type = next(self.provider.compute.instance_types.find(
-            name=instance_type_name))
+        inst_type = self.provider.compute.instance_types.find(
+            name=instance_type_name)[0]
         for _ in range(inst_type.num_ephemeral_disks):
             lc.add_ephemeral_device()
 

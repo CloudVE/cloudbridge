@@ -78,14 +78,14 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
         instance_type_name = helpers.get_provider_test_data(
             self.provider,
             "instance_type")
-        inst_type = next(self.provider.compute.instance_types.find(
-            name=instance_type_name))
+        inst_type = self.provider.compute.instance_types.find(
+            name=instance_type_name)[0]
         self.assertTrue(isinstance(inst_type, InstanceType),
                         "Find must return an InstanceType object")
 
-        with self.assertRaises(StopIteration):
-            inst_type = next(self.provider.compute.instance_types.find(
-                name="non_existent_instance_type"))
+        self.assertFalse(self.provider.compute.instance_types.find(
+            name="non_existent_instance_type"), "Searching for a non-existent"
+            " instance type must return an empty list")
 
         with self.assertRaises(TypeError):
             self.provider.compute.instance_types.find(

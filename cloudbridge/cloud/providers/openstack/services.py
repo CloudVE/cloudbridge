@@ -509,9 +509,8 @@ class OpenStackInstanceService(BaseInstanceService):
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else \
-            next(
-                self.provider.compute.instance_types.find(
-                    name=instance_type)).id
+            self.provider.compute.instance_types.find(
+                name=instance_type)[0].id
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         keypair_name = keypair.name if \
             isinstance(keypair, KeyPair) else keypair

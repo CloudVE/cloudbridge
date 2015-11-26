@@ -753,8 +753,7 @@ class BaseInstanceTypesService(
     def find(self, **kwargs):
         name = kwargs.get('name')
         if name:
-            return next((itype for itype in self.list() if itype.name == name),
-                        None)
+            return [itype for itype in self.list() if itype.name == name]
         else:
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
