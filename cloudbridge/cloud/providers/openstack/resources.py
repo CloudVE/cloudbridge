@@ -29,12 +29,12 @@ class OpenStackMachineImage(BaseMachineImage):
 
     # ref: http://docs.openstack.org/developer/glance/statuses.html
     IMAGE_STATE_MAP = {
-        'queued': MachineImageState.PENDING,
-        'saving': MachineImageState.PENDING,
-        'active': MachineImageState.AVAILABLE,
-        'killed': MachineImageState.ERROR,
-        'deleted': MachineImageState.ERROR,
-        'pending_delete': MachineImageState.ERROR
+        'QUEUED': MachineImageState.PENDING,
+        'SAVING': MachineImageState.PENDING,
+        'ACTIVE': MachineImageState.AVAILABLE,
+        'KILLED': MachineImageState.ERROR,
+        'DELETED': MachineImageState.ERROR,
+        'PENDING_DELETE': MachineImageState.ERROR
     }
 
     def __init__(self, provider, os_image):

@@ -15,7 +15,7 @@ Installation
 
     pip install cloudbridge[dev]
 
-This will install additional libraries required by cloudbridge contributors, such as tox.
+This will install additional libraries required by CloudBridge contributors, such as tox.
 
-**Prerequisites**: Cloudbridge runs on Python 2.7 and higher. Python 3 is recommended.
+**Prerequisites**: CloudBridge runs on Python 2.7 and higher. Python 3 is recommended.
 

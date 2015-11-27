@@ -34,7 +34,7 @@ that they return. Click on any object to drill down into its details.
 
 .. raw:: html
 
-   <object data="_static/object_relationships_detailed.svg" type="image/svg+xml"></object>
+   <object data="_images/object_relationships_detailed.svg" type="image/svg+xml"></object>
 
 Installation
 ------------

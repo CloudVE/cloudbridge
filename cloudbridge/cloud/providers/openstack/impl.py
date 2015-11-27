@@ -6,7 +6,6 @@ compatible clouds.
 import os
 
 from cinderclient import client as cinder_client
-from glanceclient import client as glance_client
 from keystoneclient import client as keystone_client
 from keystoneclient import session
 from keystoneclient.auth.identity import Password
@@ -66,11 +65,11 @@ class OpenStackCloudProvider(BaseCloudProvider):
             self._keystone = self._connect_keystone()
         return self._keystone
 
-    @property
-    def glance(self):
-        if not self._glance:
-            self._glance = self._connect_glance()
-        return self._glance
+#     @property
+#     def glance(self):
+#         if not self._glance:
+#             self._glance = self._connect_glance()
+#         return self._glance
 
     @property
     def cinder(self):
@@ -158,16 +157,16 @@ class OpenStackCloudProvider(BaseCloudProvider):
             api_version, username=self.username, api_key=self.password,
             project_id=self.tenant_name, auth_url=self.auth_url)
 
-    def _connect_glance(self):
-        """
-        Get an openstack glance client object for the given cloud.
-        """
-        api_version = self._get_config_value(
-            'os_image_api_version',
-            os.environ.get('OS_IMAGE_API_VERSION', 1))
-
-        return glance_client.Client(version=api_version,
-                                    session=self.keystone.session)
+#     def _connect_glance(self):
+#         """
+#         Get an openstack glance client object for the given cloud.
+#         """
+#         api_version = self._get_config_value(
+#             'os_image_api_version',
+#             os.environ.get('OS_IMAGE_API_VERSION', 1))
+#
+#         return glance_client.Client(version=api_version,
+#                                     session=self.keystone.session)
 
     def _connect_swift(self):
         """

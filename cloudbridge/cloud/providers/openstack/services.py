@@ -5,7 +5,6 @@ import fnmatch
 import re
 
 from cinderclient.exceptions import NotFound as CinderNotFound
-from glanceclient.exc import HTTPNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
 from cloudbridge.cloud.base import BaseBlockStoreService
@@ -215,8 +214,8 @@ class OpenStackImageService(BaseImageService):
         """
         try:
             return OpenStackMachineImage(
-                self.provider, self.provider.glance.images.get(image_id))
-        except HTTPNotFound:
+                self.provider, self.provider.nova.images.get(image_id))
+        except NovaNotFound:
             return None
 
     def find(self, name, limit=None, marker=None):
@@ -236,10 +235,10 @@ class OpenStackImageService(BaseImageService):
         List all images.
         """
         if marker is None:
-            os_images = self.provider.glance.images.list(
+            os_images = self.provider.nova.images.list(
                 limit=oshelpers.os_result_limit(self.provider, limit))
         else:
-            os_images = self.provider.glance.images.list(
+            os_images = self.provider.nova.images.list(
                 limit=oshelpers.os_result_limit(self.provider, limit),
                 marker=marker)
 

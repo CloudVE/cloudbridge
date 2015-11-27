@@ -15,7 +15,7 @@ AWS so feel free to change it as desired.
 .. code-block:: python
 
     img = provider.compute.images.get('ami-d85e75b0')
-    inst_type = provider.compute.instance_types.find(name='m1.small')
+    inst_type = provider.compute.instance_types.find(name='m1.small')[0]
 
 When launching an instance, you can also specify several optional arguments
 such as the security group, a key pair, or instance user data. To allow you to
@@ -61,9 +61,28 @@ For OpenStack, the process is the same and you only need to specify the
 appropriate network interface ID (e.g.,
 ``lc.add_network_interface('5820c766-75fe-4fc6-96ef-798f67623238')``).
 
-------------
+Block Device Mapping
+--------------------
+Optionally, you may want to provide a block device mapping at launch,
+specifying volume or ephemeral storage mappings for the instance. While volumes
+can also be attached and mapped after instance boot using the volume service,
+specifying block device mappings at launch time is especially useful when it is
+necessary to resize the root volume.
 
-After an instance has launched, you can access it's properties:
+The code below demonstrates how to resize the root volume. For more information,
+refer to :class:`.LaunchConfig`.
+
+.. code-block:: python
+
+    lc = provider.compute.instances.create_launch_config()
+    lc.add_volume_device(source=img, size=11, is_root=True)
+    inst = provider.compute.instances.create(
+        name='Cloudbridge-BDM', image=img,  instance_type=inst_type,
+        launch_config=lc, keypair=kp, security_groups=[sg])
+
+where img is the :class:`.Image` object to use for the root volume.
+
+After an instance has launched, you can access its properties:
 
 .. code-block:: python
 

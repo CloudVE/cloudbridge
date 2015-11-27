@@ -33,7 +33,7 @@ between services.
 
 .. raw:: html
 
-   <object data="_static/object_relationships_detailed.svg" type="image/svg+xml"></object>
+   <object data="_images/object_relationships_detailed.svg" type="image/svg+xml"></object>
 
 Some services are nested. For example, to access the instance service, you can
 use `provider.compute.instances`. Similarly, to get a list of all instances,
