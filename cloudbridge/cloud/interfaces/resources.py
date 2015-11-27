@@ -81,11 +81,37 @@ class Configuration(dict):
     @abstractproperty
     def default_result_limit(self):
         """
-        Get the maximum number of results to return for a
-        list method
+        Get the default maximum number of results to return for a
+        list method. The default limit will be applied to most list()
+        and find() methods whenever an explicit limit is not specified.
 
         :rtype: ``int``
         :return: The maximum number of results to return
+        """
+        pass
+
+    @property
+    def default_wait_timeout(self):
+        """
+        Gets the default wait timeout for LifeCycleObjects. The default
+        wait timeout is applied in wait_for() and wait_till_ready() methods
+        if no explicit timeout is specified.
+
+        :rtype: ``int``
+        :return: The maximum length of time (in seconds) to wait for the
+                 object to change to desired state.
+        """
+        pass
+
+    @property
+    def default_wait_interval(self):
+        """
+        Gets the default wait interval for LifeCycleObjects. The default
+        wait interval is applied in wait_for() and wait_till_ready() methods
+        if no explicit interval is specified.
+
+        :rtype: ``int``
+        :return: How frequently to poll the object's state
         """
         pass
 
@@ -151,8 +177,8 @@ class ObjectLifeCycleMixin(object):
         pass
 
     @abstractmethod
-    def wait_for(self, target_states, terminal_states=None, timeout=600,
-                 interval=5):
+    def wait_for(self, target_states, terminal_states=None, timeout=None,
+                 interval=None):
         """
         Wait for a specified timeout for an object to reach a set of desired
         target states. If the object does not reach the desired state within
@@ -168,8 +194,7 @@ class ObjectLifeCycleMixin(object):
 
             instance.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR],
-                interval=self.get_test_wait_interval())
+                terminal_states=[InstanceState.ERROR])
 
         :type target_states: ``list`` of states
         :param target_states: The list of target states to wait for.
@@ -181,11 +206,15 @@ class ObjectLifeCycleMixin(object):
 
         :type timeout: int
         :param timeout: The maximum length of time (in seconds) to wait for the
-                        object to become ready.
+                        object to changed to desired state. If no timeout is
+                        specified, the global default_wait_timeout defined in
+                        the provider config will apply.
 
         :type interval: int
-        :param interval: How frequently to poll the object's ready state (in
-                         seconds).
+        :param interval: How frequently to poll the object's state (in
+                         seconds). If no interval is specified, the global
+                         default_wait_interval defined in the provider config
+                         will apply.
 
         :rtype: ``True``
         :return: Returns ``True`` if successful. A ``WaitStateException``

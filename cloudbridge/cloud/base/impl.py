@@ -7,6 +7,8 @@ from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.resources import Configuration
 
 DEFAULT_RESULT_LIMIT = 50
+DEFAULT_WAIT_TIMEOUT = 600
+DEFAULT_WAIT_INTERVAL = 5
 
 
 class BaseConfiguration(Configuration):
@@ -24,6 +26,20 @@ class BaseConfiguration(Configuration):
         :return: The maximum number of results to return
         """
         return self.get('default_result_limit', DEFAULT_RESULT_LIMIT)
+
+    @property
+    def default_wait_timeout(self):
+        """
+        Gets the default wait timeout for LifeCycleObjects.
+        """
+        return self.get('default_wait_timeout', DEFAULT_WAIT_TIMEOUT)
+
+    @property
+    def default_wait_interval(self):
+        """
+        Gets the default wait interval for LifeCycleObjects.
+        """
+        return self.get('default_wait_interval', DEFAULT_WAIT_INTERVAL)
 
     @property
     def debug_mode(self):

@@ -81,20 +81,13 @@ def create_test_instance(
         launch_config=launch_config)
 
 
-def get_provider_wait_interval(provider):
-    if isinstance(provider, TestMockHelperMixin):
-        return 0
-    else:
-        return 1
-
-
 def get_test_instance(provider, name, keypair=None, security_groups=None):
     instance = create_test_instance(
         provider,
         name,
         keypair=keypair,
         security_groups=security_groups)
-    instance.wait_till_ready(interval=get_provider_wait_interval(provider))
+    instance.wait_till_ready()
     return instance
 
 
@@ -142,9 +135,6 @@ class ProviderTestBase(object):
         if isinstance(self.provider, TestMockHelperMixin):
             self.provider.tearDownMock()
 
-    def get_test_wait_interval(self):
-        return get_provider_wait_interval(self.provider)
-
 
 class ProviderTestCaseGenerator():
 
@@ -156,12 +146,20 @@ class ProviderTestCaseGenerator():
     def __init__(self, test_classes):
         self.all_test_classes = test_classes
 
+    def get_provider_wait_interval(self, provider_class):
+        if issubclass(provider_class, TestMockHelperMixin):
+            return 0
+        else:
+            return 1
+
     def create_provider_instance(self, provider_class):
         """
         Instantiate a default provider instance. All required connection
         settings are expected to be set as environment variables.
         """
-        return provider_class({})
+        config = {'default_wait_interval':
+                  self.get_provider_wait_interval(provider_class)}
+        return provider_class(config)
 
     def generate_new_test_class(self, name, testcase_class):
         """

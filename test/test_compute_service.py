@@ -27,11 +27,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             instance.terminate()
             instance.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR],
-                interval=self.get_test_wait_interval())
+                terminal_states=[InstanceState.ERROR])
 
         with helpers.cleanup_action(lambda: cleanup_inst(inst)):
-            inst.wait_till_ready(interval=self.get_test_wait_interval())
+            inst.wait_till_ready()
 
             all_instances = self.provider.compute.instances.list()
 
@@ -102,10 +101,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
         def cleanup(inst, kp, sg):
             inst.terminate()
-            inst.wait_for(
-                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR],
-                interval=self.get_test_wait_interval())
+            inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                          terminal_states=[InstanceState.ERROR])
             kp.delete()
             sg.delete()
 
@@ -213,7 +210,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 #             1,
 #             helpers.get_provider_test_data(self.provider, "placement"))
 #         with helpers.cleanup_action(lambda: test_vol.delete()):
-#             test_vol.wait_till_ready(interval=self.get_test_wait_interval())
+#             test_vol.wait_till_ready()
 #             test_snap = test_vol.create_snapshot(name=name,
 #                                                  description=name)
 #
@@ -221,12 +218,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 #                 snap.delete()
 #                 snap.wait_for(
 #                     [SnapshotState.UNKNOWN],
-#                     terminal_states=[SnapshotState.ERROR],
-#                     interval=self.get_test_wait_interval())
+#                     terminal_states=[SnapshotState.ERROR])
 #
 #             with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
-#                 test_snap.wait_till_ready(
-#                     interval=self.get_test_wait_interval())
+#                 test_snap.wait_till_ready()
 
         lc = self.provider.compute.instances.create_launch_config()
 
@@ -276,12 +271,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             instance.terminate()
             instance.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR],
-                interval=self.get_test_wait_interval())
+                terminal_states=[InstanceState.ERROR])
         with helpers.cleanup_action(lambda: cleanup(inst)):
             try:
-                inst.wait_till_ready(
-                    interval=self.get_test_wait_interval())
+                inst.wait_till_ready()
             except WaitStateException as e:
                 self.fail("The block device mapped launch did not "
                           " complete successfully: %s" % e)

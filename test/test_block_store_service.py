@@ -25,13 +25,11 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
         def cleanup_vol(vol):
             vol.delete()
-            vol.wait_for(
-                [VolumeState.DELETED, VolumeState.UNKNOWN],
-                terminal_states=[VolumeState.ERROR],
-                interval=self.get_test_wait_interval())
+            vol.wait_for([VolumeState.DELETED, VolumeState.UNKNOWN],
+                         terminal_states=[VolumeState.ERROR])
 
         with helpers.cleanup_action(lambda: cleanup_vol(test_vol)):
-            test_vol.wait_till_ready(interval=self.get_test_wait_interval())
+            test_vol.wait_till_ready()
             self.assertTrue(
                 test_vol.id in repr(test_vol),
                 "repr(obj) should contain the object id so that the object"
@@ -94,18 +92,15 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.placement_zone)
             with helpers.cleanup_action(lambda: test_vol.delete()):
-                test_vol.wait_till_ready(
-                    interval=self.get_test_wait_interval())
+                test_vol.wait_till_ready()
                 test_vol.attach(test_instance, '/dev/sda2')
                 test_vol.wait_for(
                     [VolumeState.IN_USE],
-                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED],
-                    interval=self.get_test_wait_interval())
+                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
                 test_vol.detach()
                 test_vol.wait_for(
                     [VolumeState.AVAILABLE],
-                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED],
-                    interval=self.get_test_wait_interval())
+                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
 
     def test_crud_snapshot(self):
         """
@@ -119,7 +114,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             1,
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
-            test_vol.wait_till_ready(interval=self.get_test_wait_interval())
+            test_vol.wait_till_ready()
             snap_name = "CBSnapshot-{0}".format(name)
             test_snap = test_vol.create_snapshot(name=snap_name,
                                                  description=snap_name)
@@ -128,12 +123,10 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 snap.delete()
                 snap.wait_for(
                     [SnapshotState.UNKNOWN],
-                    terminal_states=[SnapshotState.ERROR],
-                    interval=self.get_test_wait_interval())
+                    terminal_states=[SnapshotState.ERROR])
 
             with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
-                test_snap.wait_till_ready(
-                    interval=self.get_test_wait_interval())
+                test_snap.wait_till_ready()
                 self.assertTrue(
                     test_snap.id in repr(test_snap),
                     "repr(obj) should contain the object id so that the object"

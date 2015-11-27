@@ -54,8 +54,13 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
     method, since the desired ready states are object specific.
     """
 
-    def wait_for(self, target_states, terminal_states=None, timeout=600,
-                 interval=5):
+    def wait_for(self, target_states, terminal_states=None, timeout=None,
+                 interval=None):
+        if timeout is None:
+            timeout = self._provider.config.default_wait_timeout
+        if interval is None:
+            interval = self._provider.config.default_wait_interval
+
         assert timeout >= 0
         assert interval >= 0
         assert timeout >= interval
@@ -231,7 +236,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
                 self.private_ips == other.private_ips and
                 self.image_id == other.image_id)
 
-    def wait_till_ready(self, timeout=600, interval=5):
+    def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [InstanceState.RUNNING],
             terminal_states=[InstanceState.TERMINATED, InstanceState.ERROR],
@@ -324,7 +329,7 @@ class BaseMachineImage(
                 self.name == other.name and
                 self.description == other.description)
 
-    def wait_till_ready(self, timeout=600, interval=5):
+    def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [MachineImageState.AVAILABLE],
             terminal_states=[MachineImageState.ERROR],
@@ -350,7 +355,7 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
                 self.state == other.state and
                 self.name == other.name)
 
-    def wait_till_ready(self, timeout=600, interval=5):
+    def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [VolumeState.AVAILABLE],
             terminal_states=[VolumeState.ERROR, VolumeState.DELETED],
@@ -376,7 +381,7 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
                 self.state == other.state and
                 self.name == other.name)
 
-    def wait_till_ready(self, timeout=600, interval=5):
+    def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [SnapshotState.AVAILABLE],
             terminal_states=[SnapshotState.ERROR],

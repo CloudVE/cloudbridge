@@ -33,13 +33,11 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
             test_vol.wait_for([VolumeState.ERROR], timeout=10, interval=20)
 
         with helpers.cleanup_action(lambda: test_vol.delete()):
-            test_vol.wait_till_ready(interval=self.get_test_wait_interval())
+            test_vol.wait_till_ready()
             # Hitting a terminal state should raise an exception
             with self.assertRaises(WaitStateException):
-                test_vol.wait_for(
-                    [VolumeState.ERROR],
-                    terminal_states=[VolumeState.AVAILABLE],
-                    interval=self.get_test_wait_interval())
+                test_vol.wait_for([VolumeState.ERROR],
+                                  terminal_states=[VolumeState.AVAILABLE])
 
             # Hitting the timeout should raise an exception
             with self.assertRaises(WaitStateException):
