@@ -34,7 +34,7 @@ class CloudProvider(object):
         Returns the config object associated with this provider. This object
         is a subclass of :class:`dict` and will contain the properties
         provided at initialization time. In addition, it also contains extra
-        provider-wide properties such as the default result_limit for list()
+        provider-wide properties such as the default result limit for list()
         queries.
 
         Example:
@@ -44,9 +44,9 @@ class CloudProvider(object):
             config = { 'aws_access_key' : '<my_key>' }
             provider = factory.create_provider(ProviderList.AWS, config)
             print(provider.config.get('aws_access_key'))
-            print(provider.config.result_limit))
+            print(provider.config.default_result_limit))
             # change provider result limit
-            provider.config.result_limit = 100
+            provider.config.default_result_limit = 100
 
         :rtype: :class:`.Configuration`
         :return:  An object of class Configuration, which contains the values

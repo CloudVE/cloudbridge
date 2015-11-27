@@ -61,7 +61,7 @@ For OpenStack, the process is the same and you only need to specify the
 appropriate network interface ID (e.g.,
 ``lc.add_network_interface('5820c766-75fe-4fc6-96ef-798f67623238')``).
 
-Block Device Mapping
+Block device mapping
 --------------------
 Optionally, you may want to provide a block device mapping at launch,
 specifying volume or ephemeral storage mappings for the instance. While volumes

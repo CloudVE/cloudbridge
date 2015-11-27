@@ -29,15 +29,15 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         # Initialize cloud connection fields
         self.username = self._get_config_value(
-            'username', os.environ.get('OS_USERNAME', None))
+            'os_username', os.environ.get('OS_USERNAME', None))
         self.password = self._get_config_value(
-            'password', os.environ.get('OS_PASSWORD', None))
+            'os_password', os.environ.get('OS_PASSWORD', None))
         self.tenant_name = self._get_config_value(
-            'tenant_name', os.environ.get('OS_TENANT_NAME', None))
+            'os_tenant_name', os.environ.get('OS_TENANT_NAME', None))
         self.auth_url = self._get_config_value(
-            'auth_url', os.environ.get('OS_AUTH_URL', None))
+            'os_auth_url', os.environ.get('OS_AUTH_URL', None))
         self.region_name = self._get_config_value(
-            'region_name', os.environ.get('OS_REGION_NAME', None))
+            'os_region_name', os.environ.get('OS_REGION_NAME', None))
 
         # service connections, lazily initialized
         self._nova = None

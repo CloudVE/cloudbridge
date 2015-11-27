@@ -58,7 +58,7 @@ class Configuration(dict):
     """
 
     @abstractproperty
-    def result_limit(self):
+    def default_result_limit(self):
         """
         Get the maximum number of results to return for a
         list method

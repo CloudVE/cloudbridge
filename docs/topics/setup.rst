@@ -55,3 +55,41 @@ will override environment values.
     config = {'aws_access_key' : '<your_access_key>',
               'aws_secret_key' : '<your_secret_key>'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
+
+Some optional configuration values can only be provided through the config dictionary. These
+are listed below for each provider.
+
+**CloudBridge**
+
+====================  ==================
+Variable		      Description
+====================  ==================
+default_result_limit  Number of results that a .list() method should return. Defaults to 50.
+====================  ==================
+
+
+**Amazon**
+
+====================  ==================
+Variable		      Description
+====================  ==================
+is_secure			  True to use an SSL connection. Default is True.
+ec2_region_name		  Default region name
+ec2_region_endpoint   Endpoint to use. Defaults to us-east-1.
+ec2_port		      EC2 connection port. Does not need to be specified unless EC2 servie is running on an alternative port.
+ec2_conn_path	      Connection path. Defaults to /
+====================  ==================
+
+
+Other configuration variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In addition to the provider specific configuration variables above, there are some
+general configuration variables that apply to cloudbridge as a whole
+
+====================  ==================
+Variable		      Description
+====================  ==================
+CB_DEBUG			  Setting CB_DEBUG=True will cause detailed debug output to be printed for each provider (including HTTP traces).
+CB_USE_MOCK_PROVIDER  Setting this to True will cause the CloudBridge test suite to use mock drivers when available.
+CB_TEST_PROVIDER      Set this value to a valid :class:`.ProviderList` value such as ``aws``, to limit tests to that provider only.
+====================  ==================

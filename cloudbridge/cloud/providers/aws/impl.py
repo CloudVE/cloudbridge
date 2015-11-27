@@ -27,15 +27,16 @@ class AWSCloudProvider(BaseCloudProvider):
 
         # Initialize cloud connection fields
         self.a_key = self._get_config_value(
-            'access_key', os.environ.get('AWS_ACCESS_KEY', None))
+            'aws_access_key', os.environ.get('AWS_ACCESS_KEY', None))
         self.s_key = self._get_config_value(
-            'secret_key', os.environ.get('AWS_SECRET_KEY', None))
+            'aws_secret_key', os.environ.get('AWS_SECRET_KEY', None))
         self.is_secure = self._get_config_value('is_secure', True)
-        self.region_name = self._get_config_value('region_name', 'us-east-1')
+        self.region_name = self._get_config_value(
+            'ec2_region_name', 'us-east-1')
         self.region_endpoint = self._get_config_value(
-            'region_endpoint', 'ec2.us-east-1.amazonaws.com')
+            'ec2_region_endpoint', 'ec2.us-east-1.amazonaws.com')
         self.ec2_port = self._get_config_value('ec2_port', '')
-        self.ec2_conn_path = self._get_config_value('ec2_port', '/')
+        self.ec2_conn_path = self._get_config_value('ec2_conn_path', '/')
 
         # service connections, lazily initialized
         self._ec2_conn = None

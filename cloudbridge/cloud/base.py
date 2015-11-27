@@ -60,7 +60,7 @@ class BaseConfiguration(Configuration):
         self.update(user_config)
 
     @property
-    def result_limit(self):
+    def default_result_limit(self):
         """
         Get the maximum number of results to return for a
         list method
@@ -68,7 +68,7 @@ class BaseConfiguration(Configuration):
         :rtype: ``int``
         :return: The maximum number of results to return
         """
-        return self.get('result_limit', DEFAULT_RESULT_LIMIT)
+        return self.get('default_result_limit', DEFAULT_RESULT_LIMIT)
 
     @property
     def debug_mode(self):
@@ -237,7 +237,7 @@ class ClientPagedResultList(BaseResultList):
 
     def __init__(self, provider, objects, limit=None, marker=None):
         self._objects = objects
-        limit = limit or provider.config.result_limit
+        limit = limit or provider.config.default_result_limit
         total_size = len(objects)
         if marker:
             from_marker = itertools.dropwhile(
