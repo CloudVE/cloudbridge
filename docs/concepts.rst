@@ -1,7 +1,7 @@
 Concepts and Organisation
 =========================
 
-Conceptually, cloudbridge consists of the following types of objects.
+Conceptually, CloudBridge consists of the following types of objects.
 
 1. Providers - Represents a connection to a cloud provider, and is
 the gateway to using its services.
@@ -23,7 +23,7 @@ an instance. Similarly, VolumeService.create() will return a Volume object.
 
 .. image:: images/object_relationships_overview.svg
 
-The actual source code structure of cloudbridge also mirrors this organisation.
+The actual source code structure of CloudBridge also mirrors this organisation.
 
 Detailed class relationships
 ----------------------------
@@ -31,7 +31,9 @@ Detailed class relationships
 The following diagram shows a typical provider object graph and the relationship
 between services.
 
-.. figure:: images/object_relationships_detailed.svg
+.. raw:: html
+
+   <object data="_static/object_relationships_detailed.svg" type="image/svg+xml"></object>
 
 Some services are nested. For example, to access the instance service, you can
 use `provider.compute.instances`. Similarly, to get a list of all instances,

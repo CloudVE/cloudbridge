@@ -1,7 +1,7 @@
 Setup
 -----
 To initialize a connection to a cloud and get a provider object, you will
-need to provide the cloud's access credentials to Cloudbridge. These may
+need to provide the cloud's access credentials to CloudBridge. These may
 be provided in one of two ways:
 
 1. Environment variables
@@ -13,26 +13,25 @@ The following environment variables must be set, depending on the provider in us
 
 **Amazon**
 
-*Mandatory variables*::
-
-    AWS_ACCESS_KEY
-    AWS_SECRET_KEY
+===================  ==================
+Mandatory variables  Optional Variables
+===================  ==================
+AWS_ACCESS_KEY
+AWS_SECRET_KEY
+===================  ==================
 
 **Openstack**
 
-*Mandatory variables*::
+===================  ==================
+Mandatory variables  Optional Variables
+===================  ==================
+OS_AUTH_URL			 NOVA_SERVICE_NAME
+OS_USERNAME			 OS_COMPUTE_API_VERSION
+OS_PASSWORD			 OS_VOLUME_API_VERSION
+OS_TENANT_NAME
+OS_REGION_NAME
+===================  ==================
 
-    OS_AUTH_URL
-    OS_USERNAME
-    OS_PASSWORD
-    OS_TENANT_NAME
-    OS_REGION_NAME
-
-*Optional variables*::
-
-    NOVA_SERVICE_NAME
-    OS_COMPUTE_API_VERSION
-    OS_VOLUME_API_VERSION
 
 Once the environment variables are set, you can create a connection as follows:
 

@@ -1,8 +1,8 @@
 Getting Started
 ===============
-This getting started guide will provide a quick tour of some Cloudbridge
+This getting started guide will provide a quick tour of some CloudBridge
 features. For more details on individual features, see the
-`Using Cloudbridge <topics/overview.html>`_ section or the
+`Using CloudBridge <topics/overview.html>`_ section or the
 `API reference <api_docs/ref.html>`_.
 
 Installation
@@ -15,7 +15,7 @@ run::
 Create a provider
 -----------------
 To start, you will need to create a reference to a provider object. The
-provider object idetifies the cloud you want to work with and supplies your
+provider object identifies the cloud you want to work with and supplies your
 credentials. In this code snippet, we will be using AWS. For the details on
 other providers, take a look at the `Setup page <topics/setup.html>`_.
 
@@ -38,14 +38,14 @@ Once you have a reference to a provider, explore the cloud platform:
     provider.block_store.snapshots.list()
     provider.object_store.list()
 
-This will demonstrate the fact the library was properly installed and your
-provider object is setup corectly but it is not very interesting. Hence, let's
-create a new instance we can ssh into using a key pair.
+This will demonstrate the fact that the library was properly installed and your
+provider object is setup correctly but it is not very interesting. Therefore,
+let's create a new instance we can ssh into using a key pair.
 
 Create a key pair
 -----------------
 We'll create a new key pair and save the private portion of the key to a file
-on disc as a read-only file.
+on disk as a read-only file.
 
 .. code-block:: python
 
@@ -97,6 +97,6 @@ To wrap things up, let's clean up all the resources we have created
     sg.delete()
     kp.delete()
 
-And that's it - a full circle in a few lines of code. For homework, try to do
-the same but with a different provider. All you will need to change is the
+And that's it - a full circle in a few lines of code. You can now try
+the same with a different provider. All you will need to change is the
 cloud-specific data, namely the provider setup and the image ID.

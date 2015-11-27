@@ -3,17 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to cloudbridge's documentation!
+Welcome to CloudBridge's documentation!
 =======================================
 
-cloudbridge aims to provide a simple layer of abstraction over
+CloudBridge aims to provide a simple layer of abstraction over
 different cloud providers, reducing or eliminating the need to write
 conditional code for each cloud.
 
 Usage example
 -------------
 
-The simplest possible example for doing something useful with cloudbridge would
+The simplest possible example for doing something useful with CloudBridge would
 look like the following.
 
 .. code-block:: python
@@ -34,7 +34,7 @@ that they return. Click on any object to drill down into its details.
 
 .. raw:: html
 
-   <object data="_images/object_relationships_detailed.svg" type="image/svg+xml"></object>
+   <object data="_static/object_relationships_detailed.svg" type="image/svg+xml"></object>
 
 Installation
 ------------
