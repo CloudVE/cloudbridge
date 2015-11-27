@@ -24,6 +24,27 @@ class CloudProviderServiceType(object):
     OBJECTSTORE = 'object_store'
 
 
+class CloudResource(object):
+
+    """
+    Base interface for any Resource supported by a provider. This interface
+    has an  _provider property that can be used to access the provider
+    associated with the resource, which is only intended for use by subclasses.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def _provider(self):
+        """
+        Returns the provider instance associated with this resource. Intended
+        for use by subclasses only.
+
+        :rtype: :class:`.CloudProvider`
+        :return: a CloudProvider object
+        """
+        pass
+
+
 class CloudBridgeBaseException(Exception):
 
     """
@@ -99,6 +120,17 @@ class ObjectLifeCycleMixin(object):
     service provider.
     """
     __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def _provider(self):
+        """
+        Obtain the provider associated with this object. Used internally
+        to access the provider config and get default timeouts/intervals.
+
+        :rtype: :class:``.CloudProvider``
+        :return: The provider associated with this Resource
+        """
+        pass
 
     @abstractproperty
     def state(self):
@@ -357,7 +389,7 @@ class InstanceState(object):
     ERROR = "error"
 
 
-class Instance(ObjectLifeCycleMixin):
+class Instance(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -674,7 +706,7 @@ class LaunchConfig(object):
         pass
 
 
-class MachineImage(ObjectLifeCycleMixin):
+class MachineImage(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -743,7 +775,7 @@ class VolumeState(object):
     ERROR = "error"
 
 
-class Volume(ObjectLifeCycleMixin):
+class Volume(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -862,7 +894,7 @@ class SnapshotState(object):
     ERROR = "error"
 
 
-class Snapshot(ObjectLifeCycleMixin):
+class Snapshot(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -957,7 +989,7 @@ class Snapshot(ObjectLifeCycleMixin):
         pass
 
 
-class KeyPair(object):
+class KeyPair(CloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -1003,7 +1035,7 @@ class KeyPair(object):
         pass
 
 
-class Region(object):
+class Region(CloudResource):
 
     """
     Represents a cloud region, typically a separate geographic area and will
@@ -1042,7 +1074,7 @@ class Region(object):
         pass
 
 
-class PlacementZone(object):
+class PlacementZone(CloudResource):
 
     """
     Represents a placement zone. A placement zone is contained within a Region.
@@ -1080,7 +1112,7 @@ class PlacementZone(object):
         pass
 
 
-class InstanceType(object):
+class InstanceType(CloudResource):
 
     """
     An instance type object.
@@ -1181,7 +1213,7 @@ class InstanceType(object):
         pass
 
 
-class SecurityGroup(object):
+class SecurityGroup(CloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -1267,7 +1299,7 @@ class SecurityGroup(object):
         pass
 
 
-class SecurityGroupRule(object):
+class SecurityGroupRule(CloudResource):
 
     """
     Represents a security group rule.
@@ -1313,7 +1345,7 @@ class SecurityGroupRule(object):
         pass
 
 
-class BucketObject(object):
+class BucketObject(CloudResource):
 
     """
     Represents an object stored within a bucket.
@@ -1372,7 +1404,7 @@ class BucketObject(object):
         pass
 
 
-class Bucket(PageableObjectMixin):
+class Bucket(PageableObjectMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 

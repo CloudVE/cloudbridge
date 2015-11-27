@@ -14,6 +14,7 @@ from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
+from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import Configuration
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -35,13 +36,13 @@ from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.resources import WaitStateException
 from cloudbridge.cloud.interfaces.services import BlockStoreService
+from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import InstanceTypesService
 from cloudbridge.cloud.interfaces.services import KeyPairService
 from cloudbridge.cloud.interfaces.services import ObjectStoreService
-from cloudbridge.cloud.interfaces.services import ProviderService
 from cloudbridge.cloud.interfaces.services import RegionService
 from cloudbridge.cloud.interfaces.services import SecurityGroupService
 from cloudbridge.cloud.interfaces.services import SecurityService
@@ -135,6 +136,16 @@ class BaseCloudProvider(CloudProvider):
             return getattr(self.config, key) if hasattr(
                 self.config, key) and getattr(self.config, key) else \
                 default_value
+
+
+class BaseCloudResource(CloudResource):
+
+    def __init__(self, provider):
+        self.__provider = provider
+
+    @property
+    def _provider(self):
+        return self.__provider
 
 
 class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
@@ -285,10 +296,10 @@ class BasePageableObjectMixin(PageableObjectMixin):
                 yield result
 
 
-class BaseInstanceType(InstanceType):
+class BaseInstanceType(InstanceType, BaseCloudResource):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BaseInstanceType, self).__init__(provider)
 
     def __eq__(self, other):
         return (isinstance(other, InstanceType) and
@@ -305,10 +316,10 @@ class BaseInstanceType(InstanceType):
                                             self.name, self.id)
 
 
-class BaseInstance(BaseObjectLifeCycleMixin, Instance):
+class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BaseInstance, self).__init__(provider)
 
     def __eq__(self, other):
         return (isinstance(other, Instance) and
@@ -400,10 +411,11 @@ class BaseLaunchConfig(LaunchConfig):
         self.network_interfaces.append(net_id)
 
 
-class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
+class BaseMachineImage(
+        BaseCloudResource, BaseObjectLifeCycleMixin, MachineImage):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BaseMachineImage, self).__init__(provider)
 
     def __eq__(self, other):
         return (isinstance(other, MachineImage) and
@@ -427,10 +439,10 @@ class BaseMachineImage(BaseObjectLifeCycleMixin, MachineImage):
                                             self.name, self.id)
 
 
-class BaseVolume(BaseObjectLifeCycleMixin, Volume):
+class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BaseVolume, self).__init__(provider)
 
     def __eq__(self, other):
         return (isinstance(other, Volume) and
@@ -453,10 +465,10 @@ class BaseVolume(BaseObjectLifeCycleMixin, Volume):
                                             self.name, self.id)
 
 
-class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
+class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BaseSnapshot, self).__init__(provider)
 
     def __eq__(self, other):
         return (isinstance(other, Snapshot) and
@@ -479,10 +491,10 @@ class BaseSnapshot(BaseObjectLifeCycleMixin, Snapshot):
                                             self.name, self.id)
 
 
-class BaseKeyPair(KeyPair):
+class BaseKeyPair(KeyPair, BaseCloudResource):
 
     def __init__(self, provider, key_pair):
-        self._provider = provider
+        super(BaseKeyPair, self).__init__(provider)
         self._key_pair = key_pair
 
     def __eq__(self, other):
@@ -520,10 +532,10 @@ class BaseKeyPair(KeyPair):
         return "<CBKeyPair: {0}>".format(self.name)
 
 
-class BaseSecurityGroup(SecurityGroup):
+class BaseSecurityGroup(SecurityGroup, BaseCloudResource):
 
     def __init__(self, provider, security_group):
-        self._provider = provider
+        super(BaseSecurityGroup, self).__init__(provider)
         self._security_group = security_group
 
     def __eq__(self, other):
@@ -574,10 +586,10 @@ class BaseSecurityGroup(SecurityGroup):
                                       self.id)
 
 
-class BaseSecurityGroupRule(SecurityGroupRule):
+class BaseSecurityGroupRule(SecurityGroupRule, BaseCloudResource):
 
     def __init__(self, provider, rule, parent):
-        self._provider = provider
+        super(BaseSecurityGroupRule, self).__init__(provider)
         self._rule = rule
         self.parent = parent
 
@@ -606,10 +618,10 @@ class BaseSecurityGroupRule(SecurityGroupRule):
                                              self.group))
 
 
-class BasePlacementZone(PlacementZone):
+class BasePlacementZone(PlacementZone, BaseCloudResource):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BasePlacementZone, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
@@ -622,10 +634,10 @@ class BasePlacementZone(PlacementZone):
                 self.id == other.id)
 
 
-class BaseRegion(Region):
+class BaseRegion(Region, BaseCloudResource):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BaseRegion, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
@@ -638,10 +650,10 @@ class BaseRegion(Region):
                 self.id == other.id)
 
 
-class BaseBucketObject(BucketObject):
+class BaseBucketObject(BucketObject, BaseCloudResource):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BaseBucketObject, self).__init__(provider)
 
     def __eq__(self, other):
         return (isinstance(other, BucketObject) and
@@ -656,10 +668,10 @@ class BaseBucketObject(BucketObject):
                                       self.name)
 
 
-class BaseBucket(BasePageableObjectMixin, Bucket):
+class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
 
     def __init__(self, provider):
-        self._provider = provider
+        super(BaseBucket, self).__init__(provider)
 
     def __eq__(self, other):
         return (isinstance(other, Bucket) and
@@ -674,7 +686,7 @@ class BaseBucket(BasePageableObjectMixin, Bucket):
                                       self.name)
 
 
-class BaseProviderService(ProviderService):
+class BaseProviderService(CloudService):
 
     def __init__(self, provider):
         self._provider = provider

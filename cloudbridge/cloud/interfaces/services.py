@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 
 
-class ProviderService(object):
+class CloudService(object):
 
     """
     Base interface for any service supported by a provider. This interface
@@ -25,7 +25,7 @@ class ProviderService(object):
         pass
 
 
-class ComputeService(ProviderService):
+class ComputeService(CloudService):
     """
     The compute service interface is a collection of services that provides
     access to the underlying compute related services in a provider. For
@@ -124,7 +124,7 @@ class ComputeService(ProviderService):
         pass
 
 
-class InstanceService(PageableObjectMixin, ProviderService):
+class InstanceService(PageableObjectMixin, CloudService):
     """
     Provides access to instances in a provider, including creating,
     listing and deleting instances.
@@ -258,7 +258,7 @@ class InstanceService(PageableObjectMixin, ProviderService):
         pass
 
 
-class VolumeService(PageableObjectMixin, ProviderService):
+class VolumeService(PageableObjectMixin, CloudService):
 
     """
     Base interface for a Volume Service
@@ -321,7 +321,7 @@ class VolumeService(PageableObjectMixin, ProviderService):
         pass
 
 
-class SnapshotService(PageableObjectMixin, ProviderService):
+class SnapshotService(PageableObjectMixin, CloudService):
 
     """
     Base interface for a Snapshot Service
@@ -381,7 +381,7 @@ class SnapshotService(PageableObjectMixin, ProviderService):
         pass
 
 
-class BlockStoreService(ProviderService):
+class BlockStoreService(CloudService):
 
     """
     The Block Store Service interface provides access to block device services,
@@ -434,7 +434,7 @@ class BlockStoreService(ProviderService):
         pass
 
 
-class ImageService(PageableObjectMixin, ProviderService):
+class ImageService(PageableObjectMixin, CloudService):
 
     """
     Base interface for an Image Service
@@ -473,7 +473,7 @@ class ImageService(PageableObjectMixin, ProviderService):
         pass
 
 
-class ObjectStoreService(PageableObjectMixin, ProviderService):
+class ObjectStoreService(PageableObjectMixin, CloudService):
 
     """
     The Object Storage Service interface provides access to the underlying
@@ -563,7 +563,7 @@ class ObjectStoreService(PageableObjectMixin, ProviderService):
         pass
 
 
-class SecurityService(ProviderService):
+class SecurityService(CloudService):
 
     """
     The security service interface can be used to access security related
@@ -616,7 +616,7 @@ class SecurityService(ProviderService):
         pass
 
 
-class KeyPairService(PageableObjectMixin, ProviderService):
+class KeyPairService(PageableObjectMixin, CloudService):
 
     """
     Base interface for key pairs.
@@ -691,7 +691,7 @@ class KeyPairService(PageableObjectMixin, ProviderService):
         pass
 
 
-class SecurityGroupService(PageableObjectMixin, ProviderService):
+class SecurityGroupService(PageableObjectMixin, CloudService):
 
     """
     Base interface for security groups.
@@ -773,7 +773,7 @@ class SecurityGroupService(PageableObjectMixin, ProviderService):
         pass
 
 
-class InstanceTypesService(PageableObjectMixin, ProviderService):
+class InstanceTypesService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -797,7 +797,7 @@ class InstanceTypesService(PageableObjectMixin, ProviderService):
         pass
 
 
-class RegionService(PageableObjectMixin, ProviderService):
+class RegionService(PageableObjectMixin, CloudService):
 
     """
     Base interface for a Region service
