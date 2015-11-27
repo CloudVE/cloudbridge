@@ -3,9 +3,9 @@ Services
 
 .. contents:: :local:
 
-ProviderService
+CloudService
 ---------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.ProviderService
+.. autoclass:: cloudbridge.cloud.interfaces.services.CloudService
     :members:
 
 ComputeService
