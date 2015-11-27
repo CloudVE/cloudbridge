@@ -104,7 +104,7 @@ class BaseCloudProvider(CloudProvider):
         """
         Checks whether this provider supports a given service.
 
-        :type service_type: str or :class:``.CloudProviderServiceType``
+        :type service_type: str or :class:``.CloudServiceType``
         :param service_type: Type of service to check support for.
 
         :rtype: bool
@@ -686,7 +686,7 @@ class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
                                       self.name)
 
 
-class BaseProviderService(CloudService):
+class BaseCloudService(CloudService):
 
     def __init__(self, provider):
         self._provider = provider
@@ -696,54 +696,54 @@ class BaseProviderService(CloudService):
         return self._provider
 
 
-class BaseComputeService(ComputeService, BaseProviderService):
+class BaseComputeService(ComputeService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseComputeService, self).__init__(provider)
 
 
 class BaseVolumeService(
-        BasePageableObjectMixin, VolumeService, BaseProviderService):
+        BasePageableObjectMixin, VolumeService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseVolumeService, self).__init__(provider)
 
 
 class BaseSnapshotService(
-        BasePageableObjectMixin, SnapshotService, BaseProviderService):
+        BasePageableObjectMixin, SnapshotService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseSnapshotService, self).__init__(provider)
 
 
-class BaseBlockStoreService(BlockStoreService, BaseProviderService):
+class BaseBlockStoreService(BlockStoreService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseBlockStoreService, self).__init__(provider)
 
 
 class BaseImageService(
-        BasePageableObjectMixin, ImageService, BaseProviderService):
+        BasePageableObjectMixin, ImageService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseImageService, self).__init__(provider)
 
 
 class BaseObjectStoreService(
-        BasePageableObjectMixin, ObjectStoreService, BaseProviderService):
+        BasePageableObjectMixin, ObjectStoreService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseObjectStoreService, self).__init__(provider)
 
 
-class BaseSecurityService(SecurityService, BaseProviderService):
+class BaseSecurityService(SecurityService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseSecurityService, self).__init__(provider)
 
 
 class BaseKeyPairService(
-        BasePageableObjectMixin, KeyPairService, BaseProviderService):
+        BasePageableObjectMixin, KeyPairService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseKeyPairService, self).__init__(provider)
@@ -767,14 +767,14 @@ class BaseKeyPairService(
 
 
 class BaseSecurityGroupService(
-        BasePageableObjectMixin, SecurityGroupService, BaseProviderService):
+        BasePageableObjectMixin, SecurityGroupService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseSecurityGroupService, self).__init__(provider)
 
 
 class BaseInstanceTypesService(
-        BasePageableObjectMixin, InstanceTypesService, BaseProviderService):
+        BasePageableObjectMixin, InstanceTypesService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseInstanceTypesService, self).__init__(provider)
@@ -789,14 +789,14 @@ class BaseInstanceTypesService(
 
 
 class BaseInstanceService(
-        BasePageableObjectMixin, InstanceService, BaseProviderService):
+        BasePageableObjectMixin, InstanceService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseInstanceService, self).__init__(provider)
 
 
 class BaseRegionService(
-        BasePageableObjectMixin, RegionService, BaseProviderService):
+        BasePageableObjectMixin, RegionService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseRegionService, self).__init__(provider)

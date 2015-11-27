@@ -19,7 +19,7 @@ class CloudInterfaceTestCase(ProviderTestBase):
         has_service with a valid service type should return
         a boolean and raise no exceptions
         """
-        for key, value in interfaces.CloudProviderServiceType.__dict__.items():
+        for key, value in interfaces.CloudServiceType.__dict__.items():
             if not key.startswith("__"):
                 self.provider.has_service(value)
 

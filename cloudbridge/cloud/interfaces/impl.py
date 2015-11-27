@@ -63,12 +63,12 @@ class CloudProvider(object):
 
         .. code-block:: python
 
-            if provider.has_service(CloudProviderServiceType.OBJECT_STORE):
+            if provider.has_service(CloudServiceType.OBJECT_STORE):
                print("Provider supports object store services")
                provider.object_store.list()
 
 
-        :type service_type: :class:`.CloudProviderServiceType`
+        :type service_type: :class:`.CloudServiceType`
         :param service_type: Type of service to check support for.
 
         :rtype: :class:`bool`
@@ -155,7 +155,7 @@ class CloudProvider(object):
 
         .. code-block:: python
 
-            if provider.has_service(CloudProviderServiceType.OBJECT_STORE):
+            if provider.has_service(CloudServiceType.OBJECT_STORE):
                print("Provider supports object store services")
                print(provider.object_store.list())
 

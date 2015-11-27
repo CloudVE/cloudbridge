@@ -3,9 +3,9 @@ Resources
 
 .. contents:: :local:
 
-CloudProviderServiceType
+CloudServiceType
 ------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.CloudProviderServiceType
+.. autoclass:: cloudbridge.cloud.interfaces.resources.CloudServiceType
     :members:
 
 CloudBridgeBaseException

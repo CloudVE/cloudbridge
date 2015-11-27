@@ -4,7 +4,7 @@ Specifications for data objects exposed through a provider or service
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 
-class CloudProviderServiceType(object):
+class CloudServiceType(object):
 
     """
     Defines possible service types that are offered by providers.
@@ -12,7 +12,7 @@ class CloudProviderServiceType(object):
     Providers can implement the ``has_service`` method and clients can check
     for the availability of a service with::
 
-        if (provider.has_service(CloudProviderServiceTypes.OBJECTSTORE))
+        if (provider.has_service(CloudServiceTypes.OBJECTSTORE))
             ...
 
     """
