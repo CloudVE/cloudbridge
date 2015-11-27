@@ -1,7 +1,7 @@
 import itertools
 
-from cloudbridge.cloud.base import ClientPagedResultList
-from cloudbridge.cloud.base import ServerPagedResultList
+from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.resources import ServerPagedResultList
 from test.helpers import ProviderTestBase
 
 

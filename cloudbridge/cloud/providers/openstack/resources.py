@@ -6,18 +6,18 @@ import shutil
 import ipaddress
 from swiftclient.exceptions import ClientException
 
-from cloudbridge.cloud.base import BaseBucket
-from cloudbridge.cloud.base import BaseBucketObject
-from cloudbridge.cloud.base import BaseInstance
-from cloudbridge.cloud.base import BaseInstanceType
-from cloudbridge.cloud.base import BaseKeyPair
-from cloudbridge.cloud.base import BaseMachineImage
-from cloudbridge.cloud.base import BasePlacementZone
-from cloudbridge.cloud.base import BaseRegion
-from cloudbridge.cloud.base import BaseSecurityGroup
-from cloudbridge.cloud.base import BaseSecurityGroupRule
-from cloudbridge.cloud.base import BaseSnapshot
-from cloudbridge.cloud.base import BaseVolume
+from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketObject
+from cloudbridge.cloud.base.resources import BaseInstance
+from cloudbridge.cloud.base.resources import BaseInstanceType
+from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BaseMachineImage
+from cloudbridge.cloud.base.resources import BasePlacementZone
+from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseSecurityGroup
+from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
+from cloudbridge.cloud.base.resources import BaseSnapshot
+from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import SnapshotState

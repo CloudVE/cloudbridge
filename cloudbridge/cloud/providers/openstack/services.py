@@ -7,20 +7,20 @@ import re
 from cinderclient.exceptions import NotFound as CinderNotFound
 from novaclient.exceptions import NotFound as NovaNotFound
 
-from cloudbridge.cloud.base import BaseBlockStoreService
-from cloudbridge.cloud.base import BaseComputeService
-from cloudbridge.cloud.base import BaseImageService
-from cloudbridge.cloud.base import BaseInstanceService
-from cloudbridge.cloud.base import BaseInstanceTypesService
-from cloudbridge.cloud.base import BaseKeyPairService
-from cloudbridge.cloud.base import BaseLaunchConfig
-from cloudbridge.cloud.base import BaseObjectStoreService
-from cloudbridge.cloud.base import BaseRegionService
-from cloudbridge.cloud.base import BaseSecurityGroupService
-from cloudbridge.cloud.base import BaseSecurityService
-from cloudbridge.cloud.base import BaseSnapshotService
-from cloudbridge.cloud.base import BaseVolumeService
-from cloudbridge.cloud.base import ClientPagedResultList
+from cloudbridge.cloud.base.resources import BaseLaunchConfig
+from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.services import BaseBlockStoreService
+from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseImageService
+from cloudbridge.cloud.base.services import BaseInstanceService
+from cloudbridge.cloud.base.services import BaseInstanceTypesService
+from cloudbridge.cloud.base.services import BaseKeyPairService
+from cloudbridge.cloud.base.services import BaseObjectStoreService
+from cloudbridge.cloud.base.services import BaseRegionService
+from cloudbridge.cloud.base.services import BaseSecurityGroupService
+from cloudbridge.cloud.base.services import BaseSecurityService
+from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage

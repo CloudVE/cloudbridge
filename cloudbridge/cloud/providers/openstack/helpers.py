@@ -2,7 +2,7 @@
 Helper functions
 """
 import itertools
-from cloudbridge.cloud.base import ServerPagedResultList
+from cloudbridge.cloud.base.resources import ServerPagedResultList
 
 
 def os_result_limit(provider, requested_limit):

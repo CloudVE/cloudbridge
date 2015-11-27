@@ -1,21 +1,16 @@
 """
-Implementation of common methods across cloud providers.
+Base implementation for data objects exposed through a provider or service
 """
-
 import itertools
 import logging
-import os
 import time
-
 import six
 
-from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
-from cloudbridge.cloud.interfaces.resources import Configuration
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
@@ -35,107 +30,9 @@ from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.resources import WaitStateException
-from cloudbridge.cloud.interfaces.services import BlockStoreService
-from cloudbridge.cloud.interfaces.services import CloudService
-from cloudbridge.cloud.interfaces.services import ComputeService
-from cloudbridge.cloud.interfaces.services import ImageService
-from cloudbridge.cloud.interfaces.services import InstanceService
-from cloudbridge.cloud.interfaces.services import InstanceTypesService
-from cloudbridge.cloud.interfaces.services import KeyPairService
-from cloudbridge.cloud.interfaces.services import ObjectStoreService
-from cloudbridge.cloud.interfaces.services import RegionService
-from cloudbridge.cloud.interfaces.services import SecurityGroupService
-from cloudbridge.cloud.interfaces.services import SecurityService
-from cloudbridge.cloud.interfaces.services import SnapshotService
-from cloudbridge.cloud.interfaces.services import VolumeService
 
 
 log = logging.getLogger(__name__)
-
-DEFAULT_RESULT_LIMIT = 50
-
-
-class BaseConfiguration(Configuration):
-
-    def __init__(self, user_config):
-        self.update(user_config)
-
-    @property
-    def default_result_limit(self):
-        """
-        Get the maximum number of results to return for a
-        list method
-
-        :rtype: ``int``
-        :return: The maximum number of results to return
-        """
-        return self.get('default_result_limit', DEFAULT_RESULT_LIMIT)
-
-    @property
-    def debug_mode(self):
-        """
-        A flag indicating whether CloudBridge is in debug mode. Setting
-        this to True will cause the underlying provider's debug
-        output to be turned on.
-
-        The flag can be toggled by sending in the cb_debug value via
-        the config dictionary, or setting the CB_DEBUG environment variable.
-
-        :rtype: ``bool``
-        :return: Whether debug mode is on.
-        """
-        return self.get('cb_debug', os.environ.get('CB_DEBUG', False))
-
-
-class BaseCloudProvider(CloudProvider):
-
-    def __init__(self, config):
-        self._config = BaseConfiguration(config)
-
-    @property
-    def config(self):
-        return self._config
-
-    @property
-    def name(self):
-        return str(self.__class__.__name__)
-
-    def has_service(self, service_type):
-        """
-        Checks whether this provider supports a given service.
-
-        :type service_type: str or :class:``.CloudServiceType``
-        :param service_type: Type of service to check support for.
-
-        :rtype: bool
-        :return: ``True`` if the service type is supported.
-        """
-        try:
-            if getattr(self, service_type):
-                return True
-        except AttributeError:
-            pass  # Undefined service type
-        return False
-
-    def _get_config_value(self, key, default_value):
-        """
-        A convenience method to extract a configuration value.
-
-        :type key: str
-        :param key: a field to look for in the ``self.config`` field
-
-        :type default_value: anything
-        : param default_value: the default value to return if a value for the
-                               ``key`` is not available
-
-        :return: a configuration value for the supplied ``key``
-        """
-        if isinstance(self.config, dict):
-            return self.config.get(key, default_value)
-        else:
-            return getattr(self.config, key) if hasattr(
-                self.config, key) and getattr(self.config, key) else \
-                default_value
 
 
 class BaseCloudResource(CloudResource):
@@ -684,119 +581,3 @@ class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
                                       self.name)
-
-
-class BaseCloudService(CloudService):
-
-    def __init__(self, provider):
-        self._provider = provider
-
-    @property
-    def provider(self):
-        return self._provider
-
-
-class BaseComputeService(ComputeService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseComputeService, self).__init__(provider)
-
-
-class BaseVolumeService(
-        BasePageableObjectMixin, VolumeService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseVolumeService, self).__init__(provider)
-
-
-class BaseSnapshotService(
-        BasePageableObjectMixin, SnapshotService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseSnapshotService, self).__init__(provider)
-
-
-class BaseBlockStoreService(BlockStoreService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseBlockStoreService, self).__init__(provider)
-
-
-class BaseImageService(
-        BasePageableObjectMixin, ImageService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseImageService, self).__init__(provider)
-
-
-class BaseObjectStoreService(
-        BasePageableObjectMixin, ObjectStoreService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseObjectStoreService, self).__init__(provider)
-
-
-class BaseSecurityService(SecurityService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseSecurityService, self).__init__(provider)
-
-
-class BaseKeyPairService(
-        BasePageableObjectMixin, KeyPairService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseKeyPairService, self).__init__(provider)
-
-    def delete(self, keypair_id):
-        """
-        Delete an existing key pair.
-
-        :type keypair_id: str
-        :param keypair_id: The id of the key pair to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the key does not exist. Note that this implies
-                  that the key may not have been deleted by this method but
-                  instead has not existed in the first place.
-        """
-        kp = self.get(keypair_id)
-        if kp:
-            kp.delete()
-        return True
-
-
-class BaseSecurityGroupService(
-        BasePageableObjectMixin, SecurityGroupService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseSecurityGroupService, self).__init__(provider)
-
-
-class BaseInstanceTypesService(
-        BasePageableObjectMixin, InstanceTypesService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseInstanceTypesService, self).__init__(provider)
-
-    def find(self, **kwargs):
-        name = kwargs.get('name')
-        if name:
-            return [itype for itype in self.list() if itype.name == name]
-        else:
-            raise TypeError(
-                "Invalid parameters for search. Supported attributes: {name}")
-
-
-class BaseInstanceService(
-        BasePageableObjectMixin, InstanceService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseInstanceService, self).__init__(provider)
-
-
-class BaseRegionService(
-        BasePageableObjectMixin, RegionService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseRegionService, self).__init__(provider)
