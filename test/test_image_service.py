@@ -68,6 +68,14 @@ class CloudImageServiceTestCase(ProviderTestBase):
                     "Iter images does not return the expected image %s" %
                     name)
 
+                # check non-existent find
+                found_images = self.provider.compute.images.find(
+                    name="non_existent")
+                self.assertTrue(
+                    len(found_images) == 0,
+                    "Find() for a non-existent image returned %s" %
+                    found_images)
+
                 get_img = self.provider.compute.images.get(
                     test_image.id)
                 self.assertTrue(

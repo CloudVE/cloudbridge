@@ -55,6 +55,13 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "Find instances does not return the expected instance %s" %
                 name)
 
+            # check non-existent find
+            find_instances = self.provider.compute.instances.find(
+                name="non_existent")
+            self.assertTrue(
+                len(find_instances) == 0,
+                "Find() for a non-existent image returned %s" % find_instances)
+
             get_inst = self.provider.compute.instances.get(
                 inst.id)
             self.assertTrue(

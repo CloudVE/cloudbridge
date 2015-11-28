@@ -249,7 +249,7 @@ class AWSVolumeService(BaseVolumeService):
         """
         Searches for a volume by a given list of attributes.
         """
-        filtr = {'Name': name}
+        filtr = {'tag:Name': name}
         aws_vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
         cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
         return ClientPagedResultList(self.provider, cb_vols,
@@ -298,7 +298,7 @@ class AWSSnapshotService(BaseSnapshotService):
         """
         Searches for a snapshot by a given list of attributes.
         """
-        filtr = {'Name': name}
+        filtr = {'tag-value': name}
         snaps = [AWSSnapshot(self.provider, snap) for snap in
                  self.provider.ec2_conn.get_all_snapshots(filters=filtr)]
         return ClientPagedResultList(self.provider, snaps,
@@ -396,9 +396,7 @@ class AWSImageService(BaseImageService):
         """
         Searches for an image by a given list of attributes
         """
-        filters = {
-            'name': name
-        }
+        filters = {'tag:Name': name}
         images = [AWSMachineImage(self.provider, image) for image in
                   self.provider.ec2_conn.get_all_images(filters=filters)]
         return ClientPagedResultList(self.provider, images,

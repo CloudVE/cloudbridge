@@ -50,11 +50,20 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 name)
 
             # check find
-            find_volumes = self.provider.block_store.volumes.find(name=name)
+            find_vols = self.provider.block_store.volumes.find(name=name)
             self.assertTrue(
-                len(find_volumes) == 1,
+                len(find_vols) == 1,
                 "Find volumes does not return the expected volume %s" %
                 name)
+
+            # check non-existent find
+            # TODO: Moto has a bug with filters causing the following test
+            # to fail. Need to add tag based filtering support for volumes
+#             find_vols = self.provider.block_store.volumes.find(
+#                 name="non_existent_vol")
+#             self.assertTrue(
+#                 len(find_vols) == 0,
+#                 "Find() for a non-existent volume returned %s" % find_vols)
 
             get_vol = self.provider.block_store.volumes.get(
                 test_vol.id)
@@ -150,11 +159,22 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     name)
 
                 # check find
-                find_snap = self.provider.block_store.snapshots.find(name=name)
+                find_snap = self.provider.block_store.snapshots.find(
+                    name=snap_name)
                 self.assertTrue(
                     len(find_snap) == 1,
                     "Find snaps does not return the expected snapshot %s" %
                     name)
+
+                # check non-existent find
+                # TODO: Moto has a bug with filters causing the following test
+                # to fail. Need to add tag based filtering support for snaps
+#                 find_snap = self.provider.block_store.snapshots.find(
+#                     name="non_existent_snap")
+#                 self.assertTrue(
+#                     len(find_snap) == 0,
+#                     "Find() for a non-existent snap returned %s" %
+#                     find_snap)
 
                 get_snap = self.provider.block_store.snapshots.get(
                     test_snap.id)

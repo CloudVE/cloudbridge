@@ -356,13 +356,14 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         Searches for a volume by a given list of attributes.
         """
-        search_opts = {'name': name,
+        search_opts = {'name': name,  # TODO: Cinder is ignoring name
                        'limit': oshelpers.os_result_limit(self.provider,
                                                           limit),
                        'marker': marker}
         cb_snaps = [
             OpenStackSnapshot(self.provider, snap) for
-            snap in self.provider.cinder.volume_snapshots.list(search_opts)]
+            snap in self.provider.cinder.volume_snapshots.list(search_opts)
+            if snap.name == name]
 
         return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
 
