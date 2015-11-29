@@ -13,6 +13,7 @@ Operations, such as creating a new volume and listing the eixsting ones, are
 perfomed via the :class:`.VolumeService`.
 
 .. code-block:: python
+
     vol = provider.block_store.volumes.create('Cloudbridge-vol', 1, 'us-east-1a')
     vol.wait_till_ready()
     provider.block_store.volumes.list()
