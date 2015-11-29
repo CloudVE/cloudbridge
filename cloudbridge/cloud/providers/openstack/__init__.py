@@ -2,4 +2,4 @@
 Exports from this provider
 """
 
-from .impl import OpenStackCloudProvider  # noqa
+from .provider import OpenStackCloudProvider  # noqa
