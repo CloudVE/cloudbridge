@@ -396,7 +396,7 @@ class AWSImageService(BaseImageService):
         """
         Searches for an image by a given list of attributes
         """
-        filters = {'tag:Name': name}
+        filters = {'name': name}
         images = [AWSMachineImage(self.provider, image) for image in
                   self.provider.ec2_conn.get_all_images(filters=filters)]
         return ClientPagedResultList(self.provider, images,
