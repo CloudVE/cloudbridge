@@ -2,5 +2,5 @@
 Exports from this provider
 """
 
-from .impl import AWSCloudProvider  # noqa
-from .impl import MockAWSCloudProvider  # noqa
+from .provider import AWSCloudProvider  # noqa
+from .provider import MockAWSCloudProvider  # noqa

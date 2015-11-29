@@ -1,4 +1,4 @@
 """
 Public interface exports
 """
-from .impl import BaseCloudProvider  # noqa
+from .provider import BaseCloudProvider  # noqa

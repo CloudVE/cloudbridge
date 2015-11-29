@@ -1,7 +1,7 @@
 """
 Public interface exports
 """
-from .impl import CloudProvider  # noqa
+from .provider import CloudProvider  # noqa
 from .resources import CloudServiceType  # noqa
 from .resources import InstanceState  # noqa
 from .resources import InvalidConfigurationException  # noqa
