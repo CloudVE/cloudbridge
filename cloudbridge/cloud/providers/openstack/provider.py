@@ -24,6 +24,8 @@ from .services import OpenStackSecurityService
 
 class OpenStackCloudProvider(BaseCloudProvider):
 
+    SHORT_NAME = 'openstack'
+
     def __init__(self, config):
         super(OpenStackCloudProvider, self).__init__(config)
 

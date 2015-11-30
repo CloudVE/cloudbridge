@@ -1,10 +1,20 @@
+from collections import defaultdict
 import importlib
+import inspect
+import logging
+import pkgutil
+
+from cloudbridge.cloud import providers
+from cloudbridge.cloud.base.helpers import TestMockHelperMixin
+from cloudbridge.cloud.interfaces import CloudProvider
+
+
+log = logging.getLogger(__name__)
 
 
 class ProviderList(object):
     AWS = 'aws'
     OPENSTACK = 'openstack'
-    AZURE = 'azure'
 
 
 class CloudProviderFactory(object):
@@ -13,50 +23,80 @@ class CloudProviderFactory(object):
     Get info and handle on the available cloud provider implementations.
     """
 
+    def __init__(self):
+        self.provider_list = defaultdict(dict)
+
+    def register_provider_class(self, cls):
+        """
+        Registers a provider class with the factory. The class must
+        inherit from cloudbridge.cloud.interfaces.CloudProvider
+        and also have a class attribute named SHORT_NAME.
+
+        The SHORT_NAME is a user friendly short name for the cloud provider,
+        such as 'aws'. The SHORT_NAME must also be included in the
+        cloudbridge.factory.ProviderList.
+
+        :type  cls: class
+        :param cls: A class implementing the CloudProvider interface.
+                    Mock providers must also implement
+                    :py:class:`cloudbridge.cloud.base.helpers.
+                    TestMockHelperMixin`.
+        """
+        if isinstance(cls, type) and issubclass(cls, CloudProvider):
+            if hasattr(cls, "SHORT_NAME"):
+                short_name = getattr(cls, "SHORT_NAME")
+                if issubclass(cls, TestMockHelperMixin):
+                    if self.provider_list.get(short_name, {}).get(
+                            'mock_class'):
+                        log.warn("Mock provider with shortname: %s is already "
+                                 "registered. Overriding with class: %s",
+                                 short_name, cls)
+                    self.provider_list[short_name]['mock_class'] = cls
+                else:
+                    if self.provider_list.get(short_name, {}).get('class'):
+                        log.warn("Provider with shortname: %s is already "
+                                 "registered. Overriding with class: %s",
+                                 short_name, cls)
+                    self.provider_list[short_name]['class'] = cls
+            else:
+                log.warn("Provider class: %s implements CloudProvider but"
+                         " does not define SHORT_NAME. Ignoring...", cls)
+        else:
+            log.debug("Class: %s does not implement the CloudProvider"
+                      "  interface. Ignoring...", cls)
+
+    def discover_providers(self):
+        """
+        Discover all available providers within the
+        cloudbridge.cloud.providers package.
+        """
+        for _, modname, _ in pkgutil.iter_modules(providers.__path__):
+            module = importlib.import_module(
+                "{0}.{1}".format(providers.__name__,
+                                 modname))
+            classes = inspect.getmembers(module, inspect.isclass)
+            for _, cls in classes:
+                self.register_provider_class(cls)
+
     def list_providers(self):
         """
         Get a list of available providers.
 
-        (This function could eventually be implemented as a registry file
-        containing all available implementations, or alternatively, using
-        automatic discovery.)
+        It uses a simple automatic discovery system by iterating through all
+        submodules in cloudbridge.cloud.providers.
 
-        :rtype: list
-        :return: A list of available providers and their interface versions.
+        :rtype: dict
+        :return: A dict of available providers and their implementations in the
+                 following format::
+                 {'aws': {'class': aws.provider.AWSCloudProvider,
+                          'mock_class': aws.provider.MockAWSCloudProvider},
+                  'openstack': {'class': openstack.provider.OpenStackCloudProvi
+                                         der}
+                 }
         """
-        return [
-            {"name": ProviderList.OPENSTACK,
-             "class": "cloudbridge.cloud.providers.openstack.OpenStackCloud"
-                      "Provider"
-             },
-            {"name": ProviderList.AWS,
-             "class": "cloudbridge.cloud.providers.aws.AWSCloudProvider",
-             "mock_class": "cloudbridge.cloud.providers.aws.MockAWSCloud"
-                           "Provider"
-             }]
-
-    def find_provider_impl(self, name, get_mock=False):
-        """
-        Finds a provider implementation class given its name.
-
-        :type name: str
-        :param name: A name of the provider whose implementation to look for.
-
-        :type get_mock: ``bool``
-        :param get_mock: If True, returns a mock version of the provider
-        if available, or the real version if not.
-
-        :rtype: ``None`` or str
-        :return: If found, return a module (including class name) of the
-                 provider or ``None`` if the provider was not found.
-        """
-        for provider in self.list_providers():
-            if provider['name'] == name:
-                if get_mock and provider.get("mock_class"):
-                    return provider["mock_class"]
-                else:
-                    return provider["class"]
-        return None
+        if not self.provider_list:
+            self.discover_providers()
+        return self.provider_list
 
     def create_provider(self, name, config):
         """
@@ -76,19 +116,12 @@ class CloudProviderFactory(object):
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
         """
-        impl = self.find_provider_impl(name)
-        if impl is None:
+        provider_class = self.get_provider_class(name)
+        if provider_class is None:
             raise NotImplementedError(
                 'A provider with name {0} could not be'
                 ' found'.format(name))
-        provider_class = self._get_provider_class(impl)
         return provider_class(config)
-
-    def _get_provider_class(self, impl):
-        module_name, class_name = impl.rsplit(".", 1)
-        provider_class = getattr(importlib.import_module(module_name),
-                                 class_name)
-        return provider_class
 
     def get_provider_class(self, name, get_mock=False):
         """
@@ -102,12 +135,14 @@ class CloudProviderFactory(object):
         :return: A class corresponding to the requested provider or ``None``
                  if the provider was not found.
         """
-        provider_class = self.find_provider_impl(
-            name,
-            get_mock=get_mock)
-        if provider_class:
-            return self._get_provider_class(provider_class)
-        return None
+        impl = self.list_providers().get(name)
+        if impl:
+            if get_mock and impl.get("mock_class"):
+                return impl["mock_class"]
+            else:
+                return impl["class"]
+        else:
+            return None
 
     def get_all_provider_classes(self, get_mock=False):
         """
@@ -122,13 +157,9 @@ class CloudProviderFactory(object):
         if none found.
         """
         all_providers = []
-        for provider in self.list_providers():
-            if get_mock and provider.get("mock_class"):
-                all_providers.append(
-                    self._get_provider_class(
-                        provider["mock_class"]))
+        for impl in self.list_providers().values():
+            if get_mock and impl.get("mock_class"):
+                all_providers.append(impl["mock_class"])
             else:
-                all_providers.append(
-                    self._get_provider_class(
-                        provider["class"]))
+                all_providers.append(impl["class"])
         return all_providers

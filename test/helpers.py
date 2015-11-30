@@ -2,8 +2,10 @@ from contextlib import contextmanager
 import os
 import sys
 import unittest
+
 from six import reraise
 
+from cloudbridge.cloud.base.helpers import TestMockHelperMixin
 from cloudbridge.cloud.factory import CloudProviderFactory
 
 
@@ -89,29 +91,6 @@ def get_test_instance(provider, name, keypair=None, security_groups=None):
         security_groups=security_groups)
     instance.wait_till_ready()
     return instance
-
-
-class TestMockHelperMixin(object):
-    """
-    A helper class that providers mock drivers can use to be notified when a
-    test setup/teardown occurs. This is useful when activating libraries
-    like HTTPretty which take over socket communications.
-    """
-
-    def setUpMock(self):
-        """
-        Called before a test is started.
-        """
-        raise NotImplementedError(
-            'TestMockHelperMixin.setUpMock not implemented')
-
-    def tearDownMock(self):
-        """
-        Called before test teardown.
-        """
-        raise NotImplementedError(
-            'TestMockHelperMixin.tearDownMock not implemented by this'
-            ' provider')
 
 
 class ProviderTestBase(object):

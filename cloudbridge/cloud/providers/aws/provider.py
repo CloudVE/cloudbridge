@@ -11,7 +11,7 @@ from moto.ec2 import mock_ec2
 from moto.s3 import mock_s3
 
 from cloudbridge.cloud.base import BaseCloudProvider
-from test.helpers import TestMockHelperMixin
+from cloudbridge.cloud.base.helpers import TestMockHelperMixin
 
 from .services import AWSBlockStoreService
 from .services import AWSComputeService
@@ -20,6 +20,8 @@ from .services import AWSSecurityService
 
 
 class AWSCloudProvider(BaseCloudProvider):
+
+    SHORT_NAME = 'aws'
 
     def __init__(self, config):
         super(AWSCloudProvider, self).__init__(config)
