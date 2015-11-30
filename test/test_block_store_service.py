@@ -192,6 +192,17 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     " expected: {2}" .format(list_snaps[0].name,
                                              get_snap.name,
                                              test_snap.name))
+
+                # Create volume creation based on this snapshot
+                sv_name = "CBUnitTestSnapVol-{0}".format(uuid.uuid4())
+                snap_vol = self.provider.block_store.volumes.create(
+                    sv_name,
+                    1,
+                    helpers.get_provider_test_data(self.provider, "placement"),
+                    snapshot=test_snap)
+                with helpers.cleanup_action(lambda: snap_vol.delete()):
+                    snap_vol.wait_till_ready()
+
             snaps = self.provider.block_store.snapshots.list()
             found_snaps = [snap for snap in snaps
                            if snap.name == snap_name]

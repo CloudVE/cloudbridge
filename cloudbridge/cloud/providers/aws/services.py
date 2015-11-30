@@ -270,7 +270,7 @@ class AWSVolumeService(BaseVolumeService):
         """
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
-            zone, AWSSnapshot) and snapshot else snapshot
+            snapshot, AWSSnapshot) and snapshot else snapshot
 
         ec2_vol = self.provider.ec2_conn.create_volume(
             size,
