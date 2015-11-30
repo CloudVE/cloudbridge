@@ -838,13 +838,13 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def attach(self, instance_id, device):
+    def attach(self, instance, device):
         """
         Attach this volume to an instance.
 
-        :type instance_id: str
-        :param instance_id: The ID of the instance to which it will
-                            be attached.
+        :type instance: str or :class:``.Instance`` object
+        :param instance: The ID of an instance or an ``Instance`` object to
+                         which this volume will be attached.
 
         :type device: str
         :param device: The device on the instance through which the
