@@ -1,3 +1,4 @@
+import cloudbridge
 from cloudbridge.cloud import interfaces
 from test.helpers import ProviderTestBase
 
@@ -30,3 +31,10 @@ class CloudInterfaceTestCase(ProviderTestBase):
         self.assertFalse(
             self.provider.has_service("NON_EXISTENT_SERVICE"),
             "has_service should not return True for a non-existent service")
+
+    def test_library_version(self):
+        """
+        Check that the library version can be retrieved.
+        """
+        self.assertIsNotNone(cloudbridge.get_version(),
+                             "Did not get library version.")
