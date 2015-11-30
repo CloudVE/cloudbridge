@@ -328,7 +328,7 @@ class OpenStackVolumeService(BaseVolumeService):
         """
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
-            zone, OpenStackSnapshot) and snapshot else snapshot
+            snapshot, OpenStackSnapshot) and snapshot else snapshot
 
         os_vol = self.provider.cinder.volumes.create(
             size, name=name, description=description,
