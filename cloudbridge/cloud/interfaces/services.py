@@ -259,20 +259,18 @@ class InstanceService(PageableObjectMixin, CloudService):
 
 
 class VolumeService(PageableObjectMixin, CloudService):
-
     """
-    Base interface for a Volume Service
+    Base interface for a Volume Service.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def get(self, volume_id):
         """
-        Returns a volume given its id. Returns None if the volume
-        does not exist.
+        Returns a volume given its id.
 
         :rtype: ``object`` of :class:`.Volume`
-        :return: a Volume object
+        :return: a Volume object or ``None`` if the volume does not exist.
         """
         pass
 
@@ -282,7 +280,7 @@ class VolumeService(PageableObjectMixin, CloudService):
         Searches for a volume by a given list of attributes.
 
         :rtype: ``object`` of :class:`.Volume`
-        :return: a Volume object or ``None`` if not found
+        :return: a Volume object or ``None`` if not found.
         """
         pass
 
@@ -292,7 +290,7 @@ class VolumeService(PageableObjectMixin, CloudService):
         List all volumes.
 
         :rtype: ``list`` of :class:`.Volume`
-        :return: a list of Volume objects
+        :return: a list of Volume objects.
         """
         pass
 
@@ -302,21 +300,25 @@ class VolumeService(PageableObjectMixin, CloudService):
         Creates a new volume.
 
         :type  name: ``str``
-        :param name: The name of the volume
+        :param name: The name of the volume.
 
         :type  size: ``int``
-        :param size: The size of the volume (in GB)
+        :param size: The size of the volume (in GB).
 
-        :type  zone: ``str`` or ``PlacementZone``
+        :type  zone: ``str`` or :class:`.PlacementZone` object
         :param zone: The availability zone in which the Volume will be created.
+
+        :type  snapshot: ``str`` or :class:`.Snapshot` object
+        :param snapshot: An optional reference to a snapshot from which this
+                         volume should be created.
 
         :type  description: ``str``
         :param description: An optional description that may be supported by
-        some providers. Providers that do not support this property will return
-        None.
+                            some providers. Providers that do not support this
+                            property will return ``None``.
 
         :rtype: ``object`` of :class:`.Volume`
-        :return: a newly created Volume object
+        :return: a newly created Volume object.
         """
         pass
 
