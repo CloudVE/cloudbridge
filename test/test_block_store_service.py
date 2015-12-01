@@ -193,8 +193,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                              get_snap.name,
                                              test_snap.name))
 
-                # Create volume creation based on this snapshot
-                sv_name = "CBUnitTestSnapVol-{0}".format(uuid.uuid4())
+                # Test volume creation based on this snapshot
+                sv_name = "CBUnitTestSnapVol-{0}".format(name)
                 snap_vol = self.provider.block_store.volumes.create(
                     sv_name,
                     1,
@@ -210,3 +210,14 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 len(found_snaps) == 0,
                 "Snapshot %s should have been deleted but still exists." %
                 snap_name)
+
+            # Test creation of a snap via SnapshotService
+            snap_too_name = "CBSnapToo-{0}".format(name)
+            test_snap_too = self.provider.block_store.snapshots.create(
+                name=snap_too_name, volume=test_vol, description=snap_too_name)
+            with helpers.cleanup_action(lambda: cleanup_snap(test_snap_too)):
+                test_snap_too.wait_till_ready()
+                self.assertTrue(
+                    test_snap_too.id in repr(test_snap_too),
+                    "repr(obj) should contain the object id so that the object"
+                    " can be reconstructed, but does not.")

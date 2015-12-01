@@ -317,9 +317,7 @@ class AWSSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
-        volume_id = volume.volume_id if isinstance(
-            volume,
-            AWSVolume) else volume
+        volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
         ec2_snap = self.provider.ec2_conn.create_snapshot(
             volume_id,
