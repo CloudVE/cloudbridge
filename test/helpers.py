@@ -5,8 +5,8 @@ import unittest
 
 from six import reraise
 
-from cloudbridge.cloud.base.helpers import TestMockHelperMixin
 from cloudbridge.cloud.factory import CloudProviderFactory
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 
 def parse_bool(val):

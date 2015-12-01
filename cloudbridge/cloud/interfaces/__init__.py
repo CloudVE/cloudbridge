@@ -2,6 +2,7 @@
 Public interface exports
 """
 from .provider import CloudProvider  # noqa
+from .provider import TestMockHelperMixin  # noqa
 from .resources import CloudServiceType  # noqa
 from .resources import InstanceState  # noqa
 from .resources import InvalidConfigurationException  # noqa

@@ -5,8 +5,8 @@ import logging
 import pkgutil
 
 from cloudbridge.cloud import providers
-from cloudbridge.cloud.base.helpers import TestMockHelperMixin
 from cloudbridge.cloud.interfaces import CloudProvider
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 
 log = logging.getLogger(__name__)
@@ -30,10 +30,10 @@ class CloudProviderFactory(object):
         """
         Registers a provider class with the factory. The class must
         inherit from cloudbridge.cloud.interfaces.CloudProvider
-        and also have a class attribute named SHORT_NAME.
+        and also have a class attribute named PROVIDER_ID.
 
-        The SHORT_NAME is a user friendly short name for the cloud provider,
-        such as 'aws'. The SHORT_NAME must also be included in the
+        The PROVIDER_ID is a user friendly name for the cloud provider,
+        such as 'aws'. The PROVIDER_ID must also be included in the
         cloudbridge.factory.ProviderList.
 
         :type  cls: class
@@ -43,24 +43,24 @@ class CloudProviderFactory(object):
                     TestMockHelperMixin`.
         """
         if isinstance(cls, type) and issubclass(cls, CloudProvider):
-            if hasattr(cls, "SHORT_NAME"):
-                short_name = getattr(cls, "SHORT_NAME")
+            if hasattr(cls, "PROVIDER_ID"):
+                provider_id = getattr(cls, "PROVIDER_ID")
                 if issubclass(cls, TestMockHelperMixin):
-                    if self.provider_list.get(short_name, {}).get(
+                    if self.provider_list.get(provider_id, {}).get(
                             'mock_class'):
-                        log.warn("Mock provider with shortname: %s is already "
+                        log.warn("Mock provider with id: %s is already "
                                  "registered. Overriding with class: %s",
-                                 short_name, cls)
-                    self.provider_list[short_name]['mock_class'] = cls
+                                 provider_id, cls)
+                    self.provider_list[provider_id]['mock_class'] = cls
                 else:
-                    if self.provider_list.get(short_name, {}).get('class'):
-                        log.warn("Provider with shortname: %s is already "
+                    if self.provider_list.get(provider_id, {}).get('class'):
+                        log.warn("Provider with id: %s is already "
                                  "registered. Overriding with class: %s",
-                                 short_name, cls)
-                    self.provider_list[short_name]['class'] = cls
+                                 provider_id, cls)
+                    self.provider_list[provider_id]['class'] = cls
             else:
                 log.warn("Provider class: %s implements CloudProvider but"
-                         " does not define SHORT_NAME. Ignoring...", cls)
+                         " does not define PROVIDER_ID. Ignoring...", cls)
         else:
             log.debug("Class: %s does not implement the CloudProvider"
                       "  interface. Ignoring...", cls)
