@@ -519,8 +519,17 @@ class OpenStackSnapshot(BaseSnapshot):
         self._snapshot.delete()
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
-        raise NotImplementedError(
-            'create_volume not implemented by this provider')
+        """
+        Create a new Volume from this Snapshot.
+        """
+        vol_name = "Created from {0} ({1})".format(self.id, self.name)
+        size = size if size else self._snapshot.size
+        os_vol = self._provider.cinder.volumes.create(
+            size, name=vol_name, availability_zone=placement,
+            snapshot_id=self._snapshot.id)
+        cb_vol = OpenStackVolume(self._provider, os_vol)
+        cb_vol.name = vol_name
+        return cb_vol
 
 
 class OpenStackKeyPair(BaseKeyPair):

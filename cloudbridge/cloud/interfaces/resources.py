@@ -958,8 +958,8 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
         """
         Create a new Volume from this Snapshot.
 
-        :type zone: str
-        :param zone: The availability zone in which the Volume will be created.
+        :type placement: str
+        :param placement: The availability zone where to create the Volume.
 
         :type size: int
         :param size: The size of the new volume, in GiB (optional). Defaults to

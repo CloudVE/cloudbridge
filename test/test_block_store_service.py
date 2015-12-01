@@ -193,7 +193,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                              get_snap.name,
                                              test_snap.name))
 
-                # Test volume creation based on this snapshot
+                # Test volume creation from a snapshot (via VolumeService)
                 sv_name = "CBUnitTestSnapVol-{0}".format(name)
                 snap_vol = self.provider.block_store.volumes.create(
                     sv_name,
@@ -202,6 +202,12 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     snapshot=test_snap)
                 with helpers.cleanup_action(lambda: snap_vol.delete()):
                     snap_vol.wait_till_ready()
+
+                # Test volume creation from a snapshot (via Snapshot)
+                snap_vol2 = test_snap.create_volume(
+                    helpers.get_provider_test_data(self.provider, "placement"))
+                with helpers.cleanup_action(lambda: snap_vol2.delete()):
+                    snap_vol2.wait_till_ready()
 
             snaps = self.provider.block_store.snapshots.list()
             found_snaps = [snap for snap in snaps

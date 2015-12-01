@@ -488,8 +488,14 @@ class AWSSnapshot(BaseSnapshot):
         self._snapshot.delete()
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
-        raise NotImplementedError(
-            'create_volume not implemented by this provider')
+        """
+        Create a new Volume from this Snapshot.
+        """
+        ec2_vol = self._snapshot.create_volume(placement, size, volume_type,
+                                               iops)
+        cb_vol = AWSVolume(self._provider, ec2_vol)
+        cb_vol.name = "Created from {0} ({1})".format(self.id, self.name)
+        return cb_vol
 
 
 class AWSKeyPair(BaseKeyPair):
