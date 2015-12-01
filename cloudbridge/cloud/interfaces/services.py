@@ -324,20 +324,18 @@ class VolumeService(PageableObjectMixin, CloudService):
 
 
 class SnapshotService(PageableObjectMixin, CloudService):
-
     """
-    Base interface for a Snapshot Service
+    Base interface for a Snapshot Service.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
     def get(self, volume_id):
         """
-        Returns a snapshot given its id. Returns None if the snapshot
-        does not exist.
+        Returns a snapshot given its id.
 
         :rtype: ``object`` of :class:`.Snapshot`
-        :return: a Snapshot object
+        :return: a Snapshot object or ``None`` if the snapshot does not exist.
         """
         pass
 
@@ -346,8 +344,8 @@ class SnapshotService(PageableObjectMixin, CloudService):
         """
         Searches for a snapshot by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.Snapshot`
-        :return: a Snapshot object or ``None`` if not found
+        :rtype: list of :class:`.Snapshot`
+        :return: a Snapshot object or an empty list if none found.
         """
         pass
 
@@ -357,7 +355,7 @@ class SnapshotService(PageableObjectMixin, CloudService):
         List all snapshots.
 
         :rtype: ``list`` of :class:`.Snapshot`
-        :return: a list of Snapshot objects
+        :return: a list of Snapshot objects.
         """
         pass
 
@@ -374,11 +372,11 @@ class SnapshotService(PageableObjectMixin, CloudService):
 
         :type  description: ``str``
         :param description: An optional description that may be supported by
-        some providers. Providers that do not support this property will return
-        None.
+                            some providers. Providers that do not support this
+                            property will return None.
 
         :rtype: ``object`` of :class:`.Snapshot`
-        :return: a newly created Snapshot object
+        :return: a newly created Snapshot object.
         """
         pass
 
