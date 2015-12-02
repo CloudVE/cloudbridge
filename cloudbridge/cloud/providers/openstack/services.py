@@ -383,7 +383,8 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
-        volume_id = volume.id if isinstance(volume, OpenStackVolume) else volume
+        volume_id = (volume.id if isinstance(volume, OpenStackVolume)
+                     else volume)
 
         os_snap = self.provider.cinder.volume_snapshots.create(
             volume_id, name=name,

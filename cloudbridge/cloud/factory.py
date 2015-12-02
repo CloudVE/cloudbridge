@@ -71,12 +71,23 @@ class CloudProviderFactory(object):
         cloudbridge.cloud.providers package.
         """
         for _, modname, _ in pkgutil.iter_modules(providers.__path__):
-            module = importlib.import_module(
-                "{0}.{1}".format(providers.__name__,
-                                 modname))
-            classes = inspect.getmembers(module, inspect.isclass)
-            for _, cls in classes:
-                self.register_provider_class(cls)
+            try:
+                self._import_provider(modname)
+            except:
+                log.exception("Could not import providers from module: %s",
+                              modname)
+
+    def _import_provider(self, module_name):
+        """
+        Imports and registers providers from the given module name.
+        Raises an ImportError if the import does not succeed.
+        """
+        module = importlib.import_module(
+            "{0}.{1}".format(providers.__name__,
+                             module_name))
+        classes = inspect.getmembers(module, inspect.isclass)
+        for _, cls in classes:
+            self.register_provider_class(cls)
 
     def list_providers(self):
         """
