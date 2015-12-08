@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
+from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
@@ -35,6 +36,7 @@ from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
+from .resources import OpenStackNetwork
 from .resources import OpenStackRegion
 from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
@@ -633,3 +635,25 @@ class OpenStackInstanceService(BaseInstanceService):
             return OpenStackInstance(self.provider, os_instance)
         except NovaNotFound:
             return None
+
+
+class OpenStackNetworkService(BaseNetworkService):
+
+    def __init__(self, provider):
+        super(OpenStackNetworkService, self).__init__(provider)
+
+    def get(self, network_id):
+        network = (n for n in self.list() if n.id == network_id)
+        return next(network, None)
+
+    def list(self, limit=None, marker=None):
+        networks = [OpenStackNetwork(self.provider, network)
+                    for network in self.provider.neutron.list_networks()
+                    .get('networks', [])]
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
+
+    def create(self, name=''):
+        net_info = {'name': name}
+        network = self.provider.neutron.create_network({'network': net_info})
+        return OpenStackNetwork(self.provider, network.get('network'))

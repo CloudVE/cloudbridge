@@ -473,6 +473,66 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
 
+class NetworkService(PageableObjectMixin, CloudService):
+
+    """
+    Base interface for a Network Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, network_id):
+        """
+        Returns a Network given its ID or ``None`` if not found.
+
+        :type network_id: ``str``
+        :param network_id: The ID of the network to retrieve.
+
+        :rtype: ``object`` of :class:`.Network`
+        return: a Network object
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all networks.
+
+        :rtype: ``list`` of :class:`.Network`
+        :return: list of Network objects
+        """
+        pass
+
+    @abstractmethod
+    def create(self, name=None):
+        """
+        Create a new network.
+
+        :type name: ``str``
+        :param name: An optional network name. The name will be set if the
+                     provider supports it.
+
+        :rtype: ``object`` of :class:`.Network`
+        :return:  A Network object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, network_id):
+        """
+        Delete an existing Network.
+
+        :type network_id: ``str``
+        :param network_id: The ID of the network to be deleted.
+
+        :rtype: ``bool``
+        :return:  ``True`` if the network does not exist, ``False`` otherwise.
+                  Note that this implies that the network may not have been
+                  deleted by this method but instead has not existed at all.
+        """
+        pass
+
+
 class ObjectStoreService(PageableObjectMixin, CloudService):
 
     """

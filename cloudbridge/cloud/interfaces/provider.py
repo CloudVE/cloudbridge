@@ -111,6 +111,22 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
+    def network(self):
+        """
+        Provide access to all network related services in this provider.
+
+        Example:
+
+        .. code-block:: python
+
+            networks = provider.network.list()
+            network = provider.network.create(name="DevNet")
+
+        :rtype: :class:`.NetworkService`
+        :return:  a NetworkService object
+        """
+
+    @abstractproperty
     def security(self):
         """
         Provides access to keypair management and firewall control

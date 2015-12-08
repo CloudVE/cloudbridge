@@ -8,6 +8,7 @@ from .resources import InstanceState  # noqa
 from .resources import InvalidConfigurationException  # noqa
 from .resources import LaunchConfig  # noqa
 from .resources import MachineImageState  # noqa
+from .resources import NetworkState  # noqa
 from .resources import Region  # noqa
 from .resources import SnapshotState  # noqa
 from .resources import VolumeState  # noqa

@@ -13,6 +13,7 @@ from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
@@ -22,6 +23,7 @@ from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
@@ -703,3 +705,50 @@ class AWSRegion(BaseRegion):
         Accesss information about placement zones within this region.
         """
         pass
+
+
+class AWSNetwork(BaseNetwork):
+
+    # Ref:
+    # docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVpcs.html
+    _NETWORK_STATE_MAP = {
+        'pending': NetworkState.PENDING,
+        'available': VolumeState.AVAILABLE,
+    }
+
+    def __init__(self, provider, network):
+        super(AWSNetwork, self).__init__(provider)
+        self._vpc = network
+
+    @property
+    def id(self):
+        return self._vpc.id
+
+    @property
+    def name(self):
+        """
+        Get the network name.
+
+        .. note:: the network must have a (case sensitive) tag ``Name``
+        """
+        return self._vpc.tags.get('Name')
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the network name.
+        """
+        self._vpc.add_tag('Name', value)
+
+    @property
+    def state(self):
+        return AWSNetwork._NETWORK_STATE_MAP.get(
+            self._vpc.update(), NetworkState.UNKNOWN)
+
+    def delete(self):
+        return self._vpc.delete()
+
+    def subnets(self):
+        raise NotImplementedError(
+            'subnets not implemented by this provider.')

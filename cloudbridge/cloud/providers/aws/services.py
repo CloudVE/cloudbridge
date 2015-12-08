@@ -17,6 +17,7 @@ from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
+from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
@@ -28,6 +29,7 @@ from cloudbridge.cloud.interfaces.resources \
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
+# from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
@@ -38,6 +40,7 @@ from .resources import AWSInstance
 from .resources import AWSInstanceType
 from .resources import AWSKeyPair
 from .resources import AWSMachineImage
+from .resources import AWSNetwork
 from .resources import AWSRegion
 from .resources import AWSSecurityGroup
 from .resources import AWSSnapshot
@@ -627,3 +630,31 @@ class AWSRegionService(BaseRegionService):
                    for region in self.provider.ec2_conn.get_all_regions()]
         return ClientPagedResultList(self.provider, regions,
                                      limit=limit, marker=marker)
+
+
+class AWSNetworkService(BaseNetworkService):
+
+    def __init__(self, provider):
+        super(AWSNetworkService, self).__init__(provider)
+
+    def get(self, network_id):
+        network = self.provider.vpc_conn.get_all_vpcs(vpc_ids=[network_id])
+        if network:
+            return AWSNetwork(self.provider, network[0])
+        return None
+
+    def list(self, limit=None, marker=None):
+        networks = [AWSNetwork(self.provider, network)
+                    for network in self.provider.vpc_conn.get_all_vpcs()]
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
+
+    def create(self, name=None):
+        # AWS requried CIDR block to be specified when creating a network
+        # so set a default one and use the largest possible netmask.
+        default_cidr = '10.0.0.0/16'
+        network = self.provider.vpc_conn.create_vpc(cidr_block=default_cidr)
+        cb_network = AWSNetwork(self.provider, network)
+        if name:
+            cb_network.name = name
+        return cb_network

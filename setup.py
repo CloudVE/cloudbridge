@@ -1,4 +1,17 @@
+import ast
+import os
+import re
 from setuptools import setup, find_packages
+
+# Cannot use "from cloudbridge import get_version" because that would try to
+# import the six package which may not be installed yet.
+reg = re.compile(r'__version__\s*=\s*(.+)')
+with open(os.path.join('cloudbridge', '__init__.py')) as f:
+    for line in f:
+        m = reg.match(line)
+        if m:
+            version = ast.literal_eval(m.group(1))
+            break
 
 base_reqs = ['bunch>=1.00', 'six>=1.9.0', 'retrying']
 openstack_reqs = ['python-novaclient', 'python-glanceclient',
@@ -9,7 +22,7 @@ full_reqs = base_reqs + aws_reqs + openstack_reqs
 dev_reqs = ['tox', 'moto>=0.4.18', 'sphinx'] + full_reqs
 
 setup(name='cloudbridge',
-      version=0.1,
+      version=version,
       description='A simple layer of abstraction over multiple cloud'
       'providers.',
       author='Galaxy and GVL Projects',

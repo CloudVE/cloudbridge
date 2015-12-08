@@ -12,6 +12,7 @@ from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
@@ -20,6 +21,7 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
@@ -530,6 +532,51 @@ class OpenStackSnapshot(BaseSnapshot):
         cb_vol = OpenStackVolume(self._provider, os_vol)
         cb_vol.name = vol_name
         return cb_vol
+
+
+class OpenStackNetwork(BaseNetwork):
+
+    # Ref: https://github.com/openstack/neutron/blob/master/neutron/plugins/
+    #      common/constants.py
+    _NETWORK_STATE_MAP = {
+        'PENDING_CREATE': NetworkState.PENDING,
+        'PENDING_UPDATE': NetworkState.PENDING,
+        'PENDING_DELETE': NetworkState.PENDING,
+        'CREATED': NetworkState.PENDING,
+        'INACTIVE': NetworkState.PENDING,
+        'DOWN': NetworkState.DOWN,
+        'ERROR': NetworkState.ERROR,
+        'ACTIVE': NetworkState.AVAILABLE
+    }
+
+    def __init__(self, provider, network):
+        super(OpenStackNetwork, self).__init__(provider)
+        self._network = network
+
+    @property
+    def id(self):
+        return self._network.get('id', None)
+
+    @property
+    def name(self):
+        return self._network.get('name', None)
+
+    @property
+    def state(self):
+        return OpenStackNetwork._NETWORK_STATE_MAP.get(
+            self._network.get('status', None),
+            NetworkState.UNKNOWN)
+
+    def delete(self):
+        self._provider.neutron.delete_network(self.id)
+        # Adhear to the interface docs
+        if self.id not in self._provider.neutron.list_networks():
+            return True
+        return False
+
+    def subnets(self):
+        raise NotImplementedError(
+            'subnets not implemented by this provider.')
 
 
 class OpenStackKeyPair(BaseKeyPair):

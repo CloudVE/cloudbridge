@@ -8,6 +8,7 @@ from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import InstanceTypesService
 from cloudbridge.cloud.interfaces.services import KeyPairService
+from cloudbridge.cloud.interfaces.services import NetworkService
 from cloudbridge.cloud.interfaces.services import ObjectStoreService
 from cloudbridge.cloud.interfaces.services import RegionService
 from cloudbridge.cloud.interfaces.services import SecurityGroupService
@@ -131,3 +132,16 @@ class BaseRegionService(
 
     def __init__(self, provider):
         super(BaseRegionService, self).__init__(provider)
+
+
+class BaseNetworkService(
+        BasePageableObjectMixin, NetworkService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseNetworkService, self).__init__(provider)
+
+    def delete(self, network_id):
+        network = self.get(network_id)
+        if network:
+            network.delete()
+        return True

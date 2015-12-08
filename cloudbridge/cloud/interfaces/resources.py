@@ -781,6 +781,83 @@ class MachineImage(ObjectLifeCycleMixin, CloudResource):
         pass
 
 
+class NetworkState(object):
+
+    """
+    Standard states for a network.
+
+    :cvar UNKNOWN: Network state unknown.
+    :cvar PENDING: Network is being created.
+    :cvar AVAILABLE: Network is being available.
+    :cvar DOWN = Network is not operational.
+    :cvar ERROR = Network errored.
+    """
+    UNKNOWN = "unknown"
+    PENDING = "pending"
+    AVAILABLE = "available"
+    DOWN = "down"
+    ERROR = "error"
+
+
+class Network(CloudResource):
+    """
+    Represents a software-defined network, like the Virtual Private Cloud.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def id(self):
+        """
+        Get the network identifier.
+
+        :rtype: ``str``
+        :return: ID for this network. Will generally correspond to the cloud
+                 middleware's ID, but should be treated as an opaque value.
+        """
+        pass
+
+    @abstractproperty
+    def name(self):
+        """
+        Get the network name.
+
+        :rtype: ``str``
+        :return: Name for this network as returned by the cloud middleware.
+        """
+        pass
+
+    @abstractproperty
+    def state(self):
+        """
+        The state of the network.
+
+        :rtype: ``str``
+        :return: One of ``unknown``, ``pending``, ``available``, ``down`` or
+                 ``error``.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self):
+        """
+        Delete this network.
+
+        :rtype: ``bool``
+        :return: ``True`` is successful.
+        """
+        pass
+
+    @abstractmethod
+    def subnets(self):
+        """
+        The associated subnets.
+
+        :rtype: ``list`` of :class:`.Subnet`
+        :return: List of subnets associated with this network.
+        """
+        pass
+
+
 class VolumeState(object):
 
     """

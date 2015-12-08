@@ -18,6 +18,7 @@ from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import LaunchConfig
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -586,3 +587,19 @@ class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
                                       self.name)
+
+
+class BaseNetwork(Network, BaseCloudResource):
+
+    def __init__(self, provider):
+        super(BaseNetwork, self).__init__(provider)
+
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                           self.id, self.name)
+
+    def __eq__(self, other):
+        return (isinstance(other, Network) and
+                # pylint:disable=protected-access
+                self._provider == other._provider and
+                self.id == other.id)

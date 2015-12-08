@@ -15,6 +15,7 @@ from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 from .services import AWSBlockStoreService
 from .services import AWSComputeService
+from .services import AWSNetworkService
 from .services import AWSObjectStoreService
 from .services import AWSSecurityService
 
@@ -42,10 +43,12 @@ class AWSCloudProvider(BaseCloudProvider):
 
         # service connections, lazily initialized
         self._ec2_conn = None
+        self._vpc_conn = None
         self._s3_conn = None
 
         # Initialize provider services
         self._compute = AWSComputeService(self)
+        self._network = AWSNetworkService(self)
         self._security = AWSSecurityService(self)
         self._block_store = AWSBlockStoreService(self)
         self._object_store = AWSObjectStoreService(self)
@@ -57,6 +60,12 @@ class AWSCloudProvider(BaseCloudProvider):
         return self._ec2_conn
 
     @property
+    def vpc_conn(self):
+        if not self._vpc_conn:
+            self._vpc_conn = self._connect_vpc()
+        return self._vpc_conn
+
+    @property
     def s3_conn(self):
         if not self._s3_conn:
             self._s3_conn = self._connect_s3()
@@ -65,6 +74,10 @@ class AWSCloudProvider(BaseCloudProvider):
     @property
     def compute(self):
         return self._compute
+
+    @property
+    def network(self):
+        return self._network
 
     @property
     def security(self):
@@ -96,6 +109,25 @@ class AWSCloudProvider(BaseCloudProvider):
             validate_certs=False,
             debug=2 if self.config.debug_mode else 0)
         return ec2_conn
+
+    def _connect_vpc(self):
+        """
+        Get a boto VPC connection object.
+        """
+        r = RegionInfo(name=self.region_name, endpoint=self.region_endpoint)
+        vpc_conn = boto.connect_vpc(
+            aws_access_key_id=self.a_key,
+            aws_secret_access_key=self.s_key,
+            # api_version is needed for availability
+            # zone support for EC2
+            api_version='2012-06-01' if self.cloud_type == 'aws' else None,
+            is_secure=self.is_secure,
+            region=r,
+            port=self.ec2_port,
+            path=self.ec2_conn_path,
+            validate_certs=False,
+            debug=2 if self.config.debug_mode else 0)
+        return vpc_conn
 
     def _connect_s3(self):
         """

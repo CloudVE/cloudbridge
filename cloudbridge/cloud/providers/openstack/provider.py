@@ -18,6 +18,7 @@ from cloudbridge.cloud.base import BaseCloudProvider
 
 from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
+from .services import OpenStackNetworkService
 from .services import OpenStackObjectStoreService
 from .services import OpenStackSecurityService
 
@@ -51,6 +52,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         # Initialize provider services
         self._compute = OpenStackComputeService(self)
+        self._network = OpenStackNetworkService(self)
         self._security = OpenStackSecurityService(self)
         self._block_store = OpenStackBlockStoreService(self)
         self._object_store = OpenStackObjectStoreService(self)
@@ -94,6 +96,10 @@ class OpenStackCloudProvider(BaseCloudProvider):
     @property
     def compute(self):
         return self._compute
+
+    @property
+    def network(self):
+        return self._network
 
     @property
     def security(self):
