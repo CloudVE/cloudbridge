@@ -58,6 +58,11 @@ MachineImage
 .. autoclass:: cloudbridge.cloud.interfaces.resources.MachineImage
     :members:
 
+Network
+-------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.Network
+    :members:
+
 VolumeState
 -----------
 .. autoclass:: cloudbridge.cloud.interfaces.resources.VolumeState

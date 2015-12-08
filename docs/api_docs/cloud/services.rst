@@ -38,6 +38,11 @@ ImageService
 .. autoclass:: cloudbridge.cloud.interfaces.services.ImageService
     :members:
 
+NetworkService
+--------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.NetworkService
+    :members:
+
 ObjectStoreService
 ------------------
 .. autoclass:: cloudbridge.cloud.interfaces.services.ObjectStoreService
