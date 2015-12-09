@@ -63,6 +63,11 @@ Network
 .. autoclass:: cloudbridge.cloud.interfaces.resources.Network
     :members:
 
+Subnet
+------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.Subnet
+    :members:
+
 VolumeState
 -----------
 .. autoclass:: cloudbridge.cloud.interfaces.resources.VolumeState
