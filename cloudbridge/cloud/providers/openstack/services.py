@@ -40,6 +40,7 @@ from .resources import OpenStackNetwork
 from .resources import OpenStackRegion
 from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
+from .resources import OpenStackSubnet
 from .resources import OpenStackVolume
 
 
@@ -657,3 +658,25 @@ class OpenStackNetworkService(BaseNetworkService):
         net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})
         return OpenStackNetwork(self.provider, network.get('network'))
+
+    def list_subnets(self):
+        subnets = self.provider.neutron.list_subnets().get('subnets', [])
+        return [OpenStackSubnet(self.provider, subnet) for subnet in subnets]
+
+    def create_subnet(self, network, cidr_block, name=''):
+        network_id = (network.id if isinstance(network, OpenStackNetwork)
+                      else network)
+        subnet_info = {'name': name, 'network_id': network_id,
+                       'cidr': cidr_block, 'ip_version': 4}
+        subnet = (self.provider.neutron.create_subnet({'subnet': subnet_info})
+                  .get('subnet'))
+        return OpenStackSubnet(self.provider, subnet)
+
+    def delete_subnet(self, subnet):
+        subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
+                     else subnet)
+        self.provider.neutron.delete_subnet(subnet_id)
+        # Adhear to the interface docs
+        if subnet_id not in self.list():
+            return True
+        return False

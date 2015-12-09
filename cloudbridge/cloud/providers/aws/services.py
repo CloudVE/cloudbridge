@@ -44,6 +44,7 @@ from .resources import AWSNetwork
 from .resources import AWSRegion
 from .resources import AWSSecurityGroup
 from .resources import AWSSnapshot
+from .resources import AWSSubnet
 from .resources import AWSVolume
 
 
@@ -658,3 +659,19 @@ class AWSNetworkService(BaseNetworkService):
         if name:
             cb_network.name = name
         return cb_network
+
+    def list_subnets(self):
+        subnets = self.provider.vpc_conn.get_all_subnets()
+        return [AWSSubnet(self.provider, subnet) for subnet in subnets]
+
+    def create_subnet(self, network, cidr_block, name=None):
+        network_id = network.id if isinstance(network, AWSNetwork) else network
+        subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block)
+        cb_subnet = AWSSubnet(self.provider, subnet)
+        if name:
+            cb_subnet.name = name
+        return cb_subnet
+
+    def delete_subnet(self, subnet):
+        subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
+        return self.provider.vpc_conn.delete_subnet(subnet_id=subnet_id)

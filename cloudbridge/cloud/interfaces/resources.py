@@ -855,7 +855,7 @@ class Network(CloudResource):
         Delete this network.
 
         :rtype: ``bool``
-        :return: ``True`` is successful.
+        :return: ``True`` if successful.
         """
         pass
 
@@ -866,6 +866,82 @@ class Network(CloudResource):
 
         :rtype: ``list`` of :class:`.Subnet`
         :return: List of subnets associated with this network.
+        """
+        pass
+
+    @abstractmethod
+    def create_subnet(self, cidr_block, name=None):
+        """
+        Create a new network subnet and associate it with this Network.
+
+        :type cidr_block: ``str``
+        :param cidr_block: CIDR block within this Network to assign to the
+                           subnet.
+
+        :type name: ``str``
+        :param name: An optional subnet name. The name will be set if the
+                     provider supports it.
+
+        :rtype: ``object`` of :class:`.Subnet`
+        :return:  A Subnet object
+        """
+        pass
+
+
+class Subnet(CloudResource):
+    """
+    Represents a subnet, as part of a Network.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def id(self):
+        """
+        Get the subnet identifier.
+
+        :rtype: ``str``
+        :return: ID for this network. Will generally correspond to the cloud
+                 middleware's ID, but should be treated as an opaque value.
+        """
+        pass
+
+    @abstractproperty
+    def name(self):
+        """
+        Get the subnet name.
+
+        :rtype: ``str``
+        :return: Name for this subnet as returned by the cloud middleware.
+        """
+        pass
+
+    @abstractproperty
+    def cidr_block(self):
+        """
+        A CIDR block for this subnet.
+
+        :rtype: ``str``
+        :return: A CIDR block string.
+        """
+        pass
+
+    @abstractproperty
+    def network_id(self):
+        """
+        ID of the network associated with this this subnet.
+
+        :rtype: ``str``
+        :return: Network ID.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self):
+        """
+        Delete this subnet.
+
+        :rtype: ``bool``
+        :return: ``True`` if successful.
         """
         pass
 
@@ -1148,7 +1224,7 @@ class KeyPair(CloudResource):
         Delete this key pair.
 
         :rtype: bool
-        :return: ``True`` is successful.
+        :return: ``True`` if successful.
         """
         pass
 

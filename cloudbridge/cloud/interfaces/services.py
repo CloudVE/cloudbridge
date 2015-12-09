@@ -532,6 +532,52 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
+    @abstractmethod
+    def list_subnets(self):
+        """
+        List all subnets.
+
+        :rtype: list of :class:`.Subnet`
+        :return: A list of existing Subnet objects.
+        """
+        pass
+
+    @abstractmethod
+    def create_subnet(self, network, cidr_block, name=None):
+        """
+        Create a new network subnet.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID under which to create the subnet.
+
+        :type cidr_block: ``str``
+        :param cidr_block: CIDR block within the Network to assign to the
+                           subnet.
+
+        :type name: ``str``
+        :param name: An optional subnet name. The name will be set if the
+                     provider supports it.
+
+        :rtype: ``object`` of :class:`.Subnet`
+        :return:  A Subnet object
+        """
+        pass
+
+    @abstractmethod
+    def delete_subnet(self, subnet):
+        """
+        Delete a subnet.
+
+        :type network: :class:`.Subnet` object or ``str``
+        :param network: Subnet object or ID of the subnet to delete.
+
+        :rtype: ``bool``
+        :return:  ``True`` if the subnet does not exist, ``False`` otherwise.
+                  Note that this implies that the subnet may not have been
+                  deleted by this method but instead has not existed at all.
+        """
+        pass
+
 
 class ObjectStoreService(PageableObjectMixin, CloudService):
 

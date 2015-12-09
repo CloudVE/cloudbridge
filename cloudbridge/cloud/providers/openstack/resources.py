@@ -18,6 +18,7 @@ from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
+from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
@@ -580,8 +581,46 @@ class OpenStackNetwork(BaseNetwork):
         return False
 
     def subnets(self):
-        raise NotImplementedError(
-            'subnets not implemented by this provider.')
+        subnets = (self._provider.neutron.list_subnets(network_id=self.id)
+                   .get('subnets', []))
+        return [OpenStackSubnet(self._provider, subnet) for subnet in subnets]
+
+    def create_subnet(self, cidr_block, name=''):
+        subnet_info = {'name': name, 'network_id': self.id,
+                       'cidr': cidr_block, 'ip_version': 4}
+        subnet = (self._provider.neutron.create_subnet({'subnet': subnet_info})
+                  .get('subnet'))
+        return OpenStackSubnet(self._provider, subnet)
+
+
+class OpenStackSubnet(BaseSubnet):
+
+    def __init__(self, provider, subnet):
+        super(OpenStackSubnet, self).__init__(provider)
+        self._subnet = subnet
+
+    @property
+    def id(self):
+        return self._subnet.get('id', None)
+
+    @property
+    def name(self):
+        return self._subnet.get('name', None)
+
+    @property
+    def cidr_block(self):
+        return self._subnet.get('cidr', None)
+
+    @property
+    def network_id(self):
+        return self._subnet.get('network_id', None)
+
+    def delete(self):
+        self._provider.neutron.delete_subnet(self.id)
+        # Adhear to the interface docs
+        if self.id not in self._provider.neutron.list_subnets():
+            return True
+        return False
 
 
 class OpenStackKeyPair(BaseKeyPair):

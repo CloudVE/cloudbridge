@@ -28,6 +28,7 @@ from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.resources import WaitStateException
@@ -596,10 +597,26 @@ class BaseNetwork(Network, BaseCloudResource):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                           self.id, self.name)
+                                            self.id, self.name)
 
     def __eq__(self, other):
         return (isinstance(other, Network) and
+                # pylint:disable=protected-access
+                self._provider == other._provider and
+                self.id == other.id)
+
+
+class BaseSubnet(Subnet, BaseCloudResource):
+
+    def __init__(self, provider):
+        super(BaseSubnet, self).__init__(provider)
+
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.id, self.name)
+
+    def __eq__(self, other):
+        return (isinstance(other, Subnet) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)

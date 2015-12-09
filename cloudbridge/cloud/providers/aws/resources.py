@@ -19,6 +19,7 @@ from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
+from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -754,5 +755,52 @@ class AWSNetwork(BaseNetwork):
         return self._vpc.delete()
 
     def subnets(self):
-        raise NotImplementedError(
-            'subnets not implemented by this provider.')
+        flter = {'vpcId': self.id}
+        subnets = self._provider.vpc_conn.get_all_subnets(filters=flter)
+        return [AWSSubnet(self._provider, subnet) for subnet in subnets]
+
+    def create_subnet(self, cidr_block, name=None):
+        subnet = self._provider.vpc_conn.create_subnet(self.id, cidr_block)
+        cb_subnet = AWSSubnet(self._provider, subnet)
+        if name:
+            cb_subnet.name = name
+        return cb_subnet
+
+
+class AWSSubnet(BaseSubnet):
+
+    def __init__(self, provider, subnet):
+        super(AWSSubnet, self).__init__(provider)
+        self._subnet = subnet
+
+    @property
+    def id(self):
+        return self._subnet.id
+
+    @property
+    def name(self):
+        """
+        Get the subnet name.
+
+        .. note:: the subnet must have a (case sensitive) tag ``Name``
+        """
+        return self._subnet.tags.get('Name')
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the subnet name.
+        """
+        self._subnet.add_tag('Name', value)
+
+    @property
+    def cidr_block(self):
+        return self._subnet.cidr_block
+
+    @property
+    def network_id(self):
+        return self._subnet.vpc_id
+
+    def delete(self):
+        return self._provider.vpc_conn.delete_subnet(subnet_id=self.id)
