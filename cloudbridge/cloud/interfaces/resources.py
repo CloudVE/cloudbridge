@@ -837,6 +837,18 @@ class Network(CloudResource):
         """
         pass
 
+    @abstractproperty
+    def cidr_block(self):
+        """
+        A CIDR block for this network.
+
+        .. note:: OpenStack does not define a CIDR block for networks.
+
+        :rtype: ``str``
+        :return: A CIDR block string.
+        """
+        pass
+
     @abstractmethod
     def delete(self):
         """

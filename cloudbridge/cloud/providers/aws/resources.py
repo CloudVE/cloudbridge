@@ -746,6 +746,10 @@ class AWSNetwork(BaseNetwork):
         return AWSNetwork._NETWORK_STATE_MAP.get(
             self._vpc.update(), NetworkState.UNKNOWN)
 
+    @property
+    def cidr_block(self):
+        return self._vpc.cidr_block
+
     def delete(self):
         return self._vpc.delete()
 

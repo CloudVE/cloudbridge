@@ -567,6 +567,11 @@ class OpenStackNetwork(BaseNetwork):
             self._network.get('status', None),
             NetworkState.UNKNOWN)
 
+    @property
+    def cidr_block(self):
+        # OpenStack does not define a CIDR block for networks
+        return ''
+
     def delete(self):
         self._provider.neutron.delete_network(self.id)
         # Adhear to the interface docs
