@@ -11,8 +11,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             methodName=methodName, provider=provider)
 
     def test_crud_network_service(self):
-        name = 'cbtestnetwork-{0}'.format(uuid.uuid4())
-        subnet_name = 'cbtestsubnet-{0}'.format(uuid.uuid4())
+        name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4())
+        subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4())
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -61,3 +61,30 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             len(found_net) == 0,
             "Network {0} should have been deleted but still exists."
             .format(name))
+
+    def test_crud_network(self):
+        name = 'cbtestnetwork-{0}'.format(uuid.uuid4())
+        subnet_name = 'cbtestsubnet-{0}'.format(uuid.uuid4())
+        net = self.provider.network.create(name=name)
+        with helpers.cleanup_action(
+            lambda: net.delete()
+        ):
+            net.wait_till_ready()
+
+            self.assertTrue(
+                net.id in repr(net),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not.")
+
+            cidr = '10.0.1.0/24'
+            sn = net.create_subnet(cidr_block=cidr, name=subnet_name)
+            with helpers.cleanup_action(lambda: sn.delete()):
+                self.assertTrue(
+                    net.id in sn.network_id,
+                    "Network ID %s should be specified in the subnet's network"
+                    " id %s." % (net.id, sn.network_id))
+
+                self.assertTrue(
+                    cidr == sn.cidr_block,
+                    "Subnet's CIDR %s should match the specified one %s." % (
+                        sn.cidr_block, cidr))
