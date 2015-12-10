@@ -33,6 +33,7 @@ from test.test_compute_service import CloudComputeServiceTestCase
 from test.test_image_service import CloudImageServiceTestCase
 from test.test_instance_types_service import CloudInstanceTypesServiceTestCase
 from test.test_interface import CloudInterfaceTestCase
+from test.test_network_service import CloudNetworkServiceTestCase
 from test.test_object_life_cycle import CloudObjectLifeCycleTestCase
 from test.test_object_store_service import CloudObjectStoreServiceTestCase
 from test.test_region_service import CloudRegionServiceTestCase
@@ -44,6 +45,7 @@ PROVIDER_TESTS = [
     CloudInterfaceTestCase,
     CloudObjectLifeCycleTestCase,
     CloudSecurityServiceTestCase,
+    CloudNetworkServiceTestCase,
     CloudInstanceTypesServiceTestCase,
     CloudBlockStoreServiceTestCase,
     CloudObjectStoreServiceTestCase,
