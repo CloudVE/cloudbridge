@@ -766,6 +766,13 @@ class AWSNetwork(BaseNetwork):
             cb_subnet.name = name
         return cb_subnet
 
+    def refresh(self):
+        """
+        Refreshes the state of this instance by re-querying the cloud provider
+        for its latest state.
+        """
+        return self.state
+
 
 class AWSSubnet(BaseSubnet):
 

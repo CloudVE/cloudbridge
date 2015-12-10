@@ -19,6 +19,7 @@ from cloudbridge.cloud.interfaces.resources import LaunchConfig
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import Network
+from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -590,7 +591,7 @@ class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
                                       self.name)
 
 
-class BaseNetwork(Network, BaseCloudResource):
+class BaseNetwork(BaseCloudResource, Network, BaseObjectLifeCycleMixin):
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
@@ -598,6 +599,13 @@ class BaseNetwork(Network, BaseCloudResource):
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
                                             self.id, self.name)
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self.wait_for(
+            [NetworkState.AVAILABLE],
+            terminal_states=[NetworkState.ERROR],
+            timeout=timeout,
+            interval=interval)
 
     def __eq__(self, other):
         return (isinstance(other, Network) and

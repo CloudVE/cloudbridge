@@ -592,6 +592,13 @@ class OpenStackNetwork(BaseNetwork):
                   .get('subnet'))
         return OpenStackSubnet(self._provider, subnet)
 
+    def refresh(self):
+        """
+        Refreshes the state of this network by re-querying the cloud provider
+        for its latest state.
+        """
+        return self.state
+
 
 class OpenStackSubnet(BaseSubnet):
 
