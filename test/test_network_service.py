@@ -57,8 +57,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         netl = self.provider.network.list()
         found_net = [n for n in netl if n.name == name]
-        self.assertTrue(
-            len(found_net) == 0,
+        self.assertEqual(
+            len(found_net), 0,
             "Network {0} should have been deleted but still exists."
             .format(name))
 
@@ -70,21 +70,34 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             lambda: net.delete()
         ):
             net.wait_till_ready()
+            self.assertEqual(
+                net.refresh(), 'available',
+                "Network in state %s , yet should be 'available'" % net.state)
 
-            self.assertTrue(
-                net.id in repr(net),
+            self.assertIn(
+                net.id, repr(net),
                 "repr(obj) should contain the object id so that the object"
                 " can be reconstructed, but does not.")
+
+            self.assertIn(
+                net.cidr_block, ['', '10.0.0.0/16'],
+                "Network CIDR %s does not contain the expected value."
+                % net.cidr_block)
 
             cidr = '10.0.1.0/24'
             sn = net.create_subnet(cidr_block=cidr, name=subnet_name)
             with helpers.cleanup_action(lambda: sn.delete()):
-                self.assertTrue(
-                    net.id in sn.network_id,
+                self.assertIn(
+                    sn.id, net.subnets(),
+                    "Subnet ID %s should be listed in network subnets."
+                    % sn.id)
+
+                self.assertIn(
+                    net.id, sn.network_id,
                     "Network ID %s should be specified in the subnet's network"
                     " id %s." % (net.id, sn.network_id))
 
-                self.assertTrue(
-                    cidr == sn.cidr_block,
+                self.assertEqual(
+                    cidr, sn.cidr_block,
                     "Subnet's CIDR %s should match the specified one %s." % (
                         sn.cidr_block, cidr))
