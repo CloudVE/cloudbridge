@@ -755,7 +755,7 @@ class AWSNetwork(BaseNetwork):
         return self._vpc.delete()
 
     def subnets(self):
-        flter = {'vpcId': self.id}
+        flter = {'vpc-id': self.id}
         subnets = self._provider.vpc_conn.get_all_subnets(filters=flter)
         return [AWSSubnet(self._provider, subnet) for subnet in subnets]
 
