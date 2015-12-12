@@ -574,11 +574,11 @@ class OpenStackNetwork(BaseNetwork):
         return ''
 
     def delete(self):
-        self._provider.neutron.delete_network(self.id)
+        if self.id in str(self._provider.neutron.list_networks()):
+            self._provider.neutron.delete_network(self.id)
         # Adhear to the interface docs
-        if self.id not in self._provider.neutron.list_networks():
+        if self.id not in str(self._provider.neutron.list_networks()):
             return True
-        return False
 
     def subnets(self):
         subnets = (self._provider.neutron.list_subnets(network_id=self.id)
@@ -623,11 +623,11 @@ class OpenStackSubnet(BaseSubnet):
         return self._subnet.get('network_id', None)
 
     def delete(self):
-        self._provider.neutron.delete_subnet(self.id)
+        if self.id in str(self._provider.neutron.list_subnets()):
+            self._provider.neutron.delete_subnet(self.id)
         # Adhear to the interface docs
-        if self.id not in self._provider.neutron.list_subnets():
+        if self.id not in str(self._provider.neutron.list_subnets()):
             return True
-        return False
 
 
 class OpenStackKeyPair(BaseKeyPair):
