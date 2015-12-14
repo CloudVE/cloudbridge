@@ -690,12 +690,13 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         """
         if src_group:
             for protocol in ['tcp', 'udp']:
-                self._provider.nova.security_group_rules.create(
-                    parent_group_id=self._security_group.id,
-                    ip_protocol=protocol,
-                    from_port=1,
-                    to_port=65535,
-                    group_id=src_group.id)
+                if self._provider.nova.security_group_rules.create(
+                   parent_group_id=self._security_group.id,
+                   ip_protocol=protocol,
+                   from_port=1,
+                   to_port=65535,
+                   group_id=src_group.id):
+                    return True
         else:
             if self._provider.nova.security_group_rules.create(
                parent_group_id=self._security_group.id,
@@ -704,8 +705,6 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
                to_port=to_port,
                cidr=cidr_ip):
                 return True
-            else:
-                return False
 
 
 class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
