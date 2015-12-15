@@ -39,10 +39,10 @@ look like the following.
 
 .. code-block:: python
 
-	from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+  from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
 
-	provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
-	print(provider.security.key_pairs.list())
+  provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
+  print(provider.security.key_pairs.list())
 
 In the example above, the AWS_ACCESS_KEY and AWS_SECRET_KEY environment variables
 must be set to your AWS credentials.
@@ -102,7 +102,7 @@ Note that running the tests may create various cloud resources, for which you
 may incur costs. For the AWS cloud, there is also a mock provider that will
 simulate AWS resources. It is used by default when running the test suite. To
 disable it, set the following environment variable:
-``export CB_USE_MOCK_DRIVERS=No``.
+``export CB_USE_MOCK_PROVIDERS=No``.
 
 Testing philosophy
 ~~~~~~~~~~~~~~~~~~

@@ -87,10 +87,10 @@ In addition to the provider specific configuration variables above, there are
 some general configuration environment variables that apply to cloudbridge as
 a whole
 
-====================  ==================
-Variable		      Description
-====================  ==================
-CB_DEBUG              Setting ``CB_DEBUG=True`` will cause detailed debug output to be printed for each provider (including HTTP traces).
-CB_USE_MOCK_DRIVERS   Setting this to ``True`` will cause the CloudBridge test suite to use mock drivers when available.
-CB_TEST_PROVIDER      Set this value to a valid :class:`.ProviderList` value such as ``aws``, to limit tests to that provider only.
-====================  ==================
+=====================  ==================
+Variable		       Description
+=====================  ==================
+CB_DEBUG               Setting ``CB_DEBUG=True`` will cause detailed debug output to be printed for each provider (including HTTP traces).
+CB_USE_MOCK_PROVIDERS  Setting this to ``True`` will cause the CloudBridge test suite to use mock drivers when available.
+CB_TEST_PROVIDER       Set this value to a valid :class:`.ProviderList` value such as ``aws``, to limit tests to that provider only.
+=====================  ==================

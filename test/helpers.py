@@ -188,7 +188,7 @@ class ProviderTestCaseGenerator():
         """
         factory = CloudProviderFactory()
         use_mock_drivers = parse_bool(
-            os.environ.get("CB_USE_MOCK_DRIVERS", True))
+            os.environ.get("CB_USE_MOCK_PROVIDERS", True))
         provider_name = os.environ.get("CB_TEST_PROVIDER", None)
         if provider_name:
             provider_classes = [
