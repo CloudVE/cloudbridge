@@ -42,24 +42,34 @@ only needing to specify the basic parameters:
 
 Launch with private networking
 ------------------------------
-Before we can launch an instance into a private network, we need to supply a
-network into which the instance will get launched. To aggregate multiple such
-launch configuration options, we create a launch config object and supply it
-when launching an instance. Note that for the time being (Cloudbridge v0.1)
-there is no support for exploring the networking resources so it is necessary
-to get the network IDs via other means (e.g., native API, web dashboard).
+To start, we will create a private network and a corresponding subnet into
+which an instance will be launched. When creating the subnet, we need to
+set the address pool. For the AWS cloud, the subnet address pool needs to
+belong to the private network address space; for OpenStack, any address pool
+is acceptable. On AWS, we can obtain the private network address space via
+network object's ``cidr_block`` field (e.g., ``10.0.0.0/16``). Let's crate a
+subnet starting from the beginning of the block and allow up to 32 IP addresses
+into the subnet (``/27``):
+
+.. code-block:: python
+
+    net = provider.network.create(name="Cloudbridge-net")
+    net.cidr_block  # '10.0.0.0/16'
+    sn = net.create_subnet('10.0.0.1/27', "Cloudbridge-subnet")
+
+Once we hace created a private network, we'll define a launch configuration
+object to aggregate all the launch configuration options. The launch config
+can contain other launch options, such as the block storage mappings (see
+below). Finally, we can launch the instance:
 
 .. code-block:: python
 
     lc = provider.compute.instances.create_launch_config()
-    lc.add_network_interface('subnet-c24aeaff')
+    lc.add_network_interface(sn.id)
     inst = provider.compute.instances.create(
         name='Cloudbridge-VPC', image=img,  instance_type=inst_type,
         launch_config=lc, keypair=kp, security_groups=[sg])
 
-For OpenStack, the process is the same and you only need to specify the
-appropriate network interface ID (e.g.,
-``lc.add_network_interface('5820c766-75fe-4fc6-96ef-798f67623238')``).
 
 Block device mapping
 --------------------
