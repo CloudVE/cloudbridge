@@ -13,13 +13,17 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
             version = ast.literal_eval(m.group(1))
             break
 
-base_reqs = ['bunch>=1.00', 'six>=1.9.0', 'retrying']
-openstack_reqs = ['python-novaclient', 'python-glanceclient',
-                  'python-cinderclient', 'python-swiftclient',
-                  'python-neutronclient']
-aws_reqs = ['boto']
+base_reqs = ['bunch==1.0.1', 'six==1.10.0', 'retrying==1.3.3']
+openstack_reqs = ['python-novaclient==2.33.0',
+                  'python-glanceclient',
+                  'python-cinderclient==1.4.0',
+                  'python-swiftclient==2.6.0',
+                  'python-neutronclient==3.1.0',
+                  'python-keystoneclient==2.0.0']
+aws_reqs = ['boto==2.38.0']
 full_reqs = base_reqs + aws_reqs + openstack_reqs
-dev_reqs = ['httpretty==0.8.10', 'tox', 'moto>=0.4.18', 'sphinx'] + full_reqs
+dev_reqs = (['httpretty==0.8.10', 'tox==2.1.1', 'moto==0.4.18',
+             'sphinx==1.3.1'] + full_reqs)
 
 setup(name='cloudbridge',
       version=version,
