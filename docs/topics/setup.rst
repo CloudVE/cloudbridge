@@ -73,11 +73,17 @@ default_result_limit  Number of results that a ``.list()`` method should return.
 ====================  ==================
 Variable		      Description
 ====================  ==================
-is_secure             True to use an SSL connection. Default is ``True``.
-ec2_region_name       Default region name.
-ec2_region_endpoint   Endpoint to use. Defaults to ``us-east-1``.
+ec2_is_secure         True to use an SSL connection. Default is ``True``.
+ec2_region_name       Default region name. Defaults to ``us-east-1``.
+ec2_region_endpoint   Endpoint to use. Default is ``ec2.us-east-1.amazonaws.com``.
 ec2_port              EC2 connection port. Does not need to be specified unless EC2 service is running on an alternative port.
 ec2_conn_path	      Connection path. Defaults to ``/``.
+ec2_validate_certs     Whether to use SSL certificate verification. Default is ``False``.
+s3_is_secure          True to use an SSL connection. Default is ``True``.
+s3_host               Host connection endpoint. Default is ``s3.amazonaws.com``.
+s3_port               Host connection port. Does not need to be specified unless S3 service is running on an alternative port.
+s3_conn_path          Connection path. Defaults to ``/``.
+s3_validate_certs     Whether to use SSL certificate verification. Default is ``False``.
 ====================  ==================
 
 
