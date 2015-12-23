@@ -41,6 +41,23 @@ class OpenStackCloudProvider(BaseCloudProvider):
             'os_auth_url', os.environ.get('OS_AUTH_URL', None))
         self.region_name = self._get_config_value(
             'os_region_name', os.environ.get('OS_REGION_NAME', None))
+        # Allow individual service connections to have their own values but
+        # default to a the ones defined above.
+        self.swift_username = self._get_config_value(
+            'os_swift_username',
+            os.environ.get('OS_SWIFT_USERNAME', self.username))
+        self.swift_password = self._get_config_value(
+            'os_swift_password',
+            os.environ.get('OS_SWIFT_PASSWORD', self.password))
+        self.swift_tenant_name = self._get_config_value(
+            'os_swift_tenant_name',
+            os.environ.get('OS_SWIFT_TENANT_NAME', self.tenant_name))
+        self.swift_auth_url = self._get_config_value(
+            'os_swift_auth_url',
+            os.environ.get('OS_SWIFT_AUTH_URL', self.auth_url))
+        self.swift_region_name = self._get_config_value(
+            'os_swift_region_name',
+            os.environ.get('OS_SWIFT_REGION_NAME', self.region_name))
 
         # service connections, lazily initialized
         self._nova = None
@@ -180,10 +197,11 @@ class OpenStackCloudProvider(BaseCloudProvider):
         """
         Get an openstack swift client object for the given cloud.
         """
-        os_options = {'region_name': self.region_name}
+        os_options = {'region_name': self.swift_region_name}
         return swift_client.Connection(
-            authurl=self.auth_url, auth_version='2', user=self.username,
-            key=self.password, tenant_name=self.tenant_name,
+            authurl=self.swift_auth_url, auth_version='2',
+            user=self.swift_username, key=self.swift_password,
+            tenant_name=self.swift_tenant_name,
             os_options=os_options)
 
     def _connect_neutron(self):
