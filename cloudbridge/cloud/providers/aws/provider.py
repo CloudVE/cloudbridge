@@ -33,13 +33,23 @@ class AWSCloudProvider(BaseCloudProvider):
             'aws_access_key', os.environ.get('AWS_ACCESS_KEY', None))
         self.s_key = self._get_config_value(
             'aws_secret_key', os.environ.get('AWS_SECRET_KEY', None))
-        self.is_secure = self._get_config_value('is_secure', True)
+        # EC2 connection fields
+        self.ec2_is_secure = self._get_config_value('ec2_is_secure', True)
         self.region_name = self._get_config_value(
             'ec2_region_name', 'us-east-1')
         self.region_endpoint = self._get_config_value(
             'ec2_region_endpoint', 'ec2.us-east-1.amazonaws.com')
-        self.ec2_port = self._get_config_value('ec2_port', '')
+        self.ec2_port = self._get_config_value('ec2_port', None)
         self.ec2_conn_path = self._get_config_value('ec2_conn_path', '/')
+        self.ec2_validate_certs = self._get_config_value(
+            'ec2_validate_certs', False)
+        # S3 connection fields
+        self.s3_is_secure = self._get_config_value('s3_is_secure', True)
+        self.s3_host = self._get_config_value('s3_host', 's3.amazonaws.com')
+        self.s3_port = self._get_config_value('s3_port', None)
+        self.s3_conn_path = self._get_config_value('s3_conn_path', '/')
+        self.s3_validate_certs = self._get_config_value(
+            's3_validate_certs', False)
 
         # service connections, lazily initialized
         self._ec2_conn = None
@@ -102,11 +112,11 @@ class AWSCloudProvider(BaseCloudProvider):
             # api_version is needed for availability
             # zone support for EC2
             api_version='2012-06-01' if self.cloud_type == 'aws' else None,
-            is_secure=self.is_secure,
+            is_secure=self.ec2_is_secure,
             region=r,
             port=self.ec2_port,
             path=self.ec2_conn_path,
-            validate_certs=False,
+            validate_certs=self.ec2_validate_certs,
             debug=2 if self.config.debug_mode else 0)
         return ec2_conn
 
@@ -121,11 +131,11 @@ class AWSCloudProvider(BaseCloudProvider):
             # api_version is needed for availability
             # zone support for EC2
             api_version='2012-06-01' if self.cloud_type == 'aws' else None,
-            is_secure=self.is_secure,
+            is_secure=self.ec2_is_secure,
             region=r,
             port=self.ec2_port,
             path=self.ec2_conn_path,
-            validate_certs=False,
+            validate_certs=self.ec2_validate_certs,
             debug=2 if self.config.debug_mode else 0)
         return vpc_conn
 
@@ -134,7 +144,13 @@ class AWSCloudProvider(BaseCloudProvider):
         Get a boto S3 connection object.
         """
         s3_conn = boto.connect_s3(aws_access_key_id=self.a_key,
-                                  aws_secret_access_key=self.s_key)
+                                  aws_secret_access_key=self.s_key,
+                                  is_secure=self.s3_is_secure,
+                                  port=self.s3_port,
+                                  host=self.s3_host,
+                                  path=self.s3_conn_path,
+                                  validate_certs=self.s3_validate_certs,
+                                  debug=2 if self.config.debug_mode else 0)
         return s3_conn
 
 
