@@ -1,5 +1,5 @@
 """
-Provider implementation based on openstack python client for OpenStack
+Provider implementation based on OpenStack Python clients for OpenStack
 compatible clouds.
 """
 
@@ -59,7 +59,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             'os_swift_region_name',
             os.environ.get('OS_SWIFT_REGION_NAME', self.region_name))
 
-        # service connections, lazily initialized
+        # Service connections, lazily initialized
         self._nova = None
         self._keystone = None
         self._glance = None
@@ -132,7 +132,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def _connect_nova(self):
         """
-        Get an openstack nova client object for the given cloud.
+        Get an OpenStack Nova (compute) client object for the given cloud.
         """
         api_version = self._get_config_value(
             'os_compute_api_version',
@@ -152,14 +152,14 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def _connect_keystone(self):
         """
-        Get an openstack keystone client object for the given cloud.
+        Get an OpenStack Keystone (identity) client object for the given cloud.
         """
         auth = Password(self.auth_url, username=self.username,
                         password=self.password, tenant_name=self.tenant_name)
         # Wow, the internal keystoneV2 implementation is terribly buggy. It
         # needs both a separate Session object and the username, password again
         # for things to work correctly. Plus, a manual call to authenticate()
-        # is also required if the service  catalogue needs to be queried
+        # is also required if the service catalogue needs to be queried.
         keystone = keystone_client.Client(
             session=session.Session(auth=auth),
             auth_url=self.auth_url,
@@ -172,7 +172,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def _connect_cinder(self):
         """
-        Get an openstack cinder client object for the given cloud.
+        Get an OpenStack Cinder (block storage) client object for the given
+        cloud.
         """
         api_version = self._get_config_value(
             'os_volume_api_version',
@@ -184,7 +185,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
 #     def _connect_glance(self):
 #         """
-#         Get an openstack glance client object for the given cloud.
+#         Get an OpenStack Glance (VM images) client object for the given
+#         cloud.
 #         """
 #         api_version = self._get_config_value(
 #             'os_image_api_version',
@@ -195,7 +197,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def _connect_swift(self):
         """
-        Get an openstack swift client object for the given cloud.
+        Get an OpenStack Swift (object store) client object for the given
+        cloud.
         """
         os_options = {'region_name': self.swift_region_name}
         return swift_client.Connection(
