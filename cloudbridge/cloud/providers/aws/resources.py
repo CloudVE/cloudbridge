@@ -1,6 +1,8 @@
 """
 DataTypes used by this provider
 """
+import inspect
+import json
 import shutil
 
 from boto.exception import EC2ResponseError
@@ -564,6 +566,13 @@ class AWSSecurityGroup(BaseSecurityGroup):
             # pylint:disable=protected-access
             src_group=src_group._security_group if src_group else None)
 
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        json_rules = [r.to_json() for r in self.rules]
+        js['rules'] = [json.loads(r) for r in json_rules]
+        return json.dumps(js, sort_keys=True)
+
 
 class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
@@ -596,6 +605,13 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
                     groupnames=[self._rule.grants[0].name])[0]
                 return AWSSecurityGroup(self._provider, cg)
         return None
+
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        js['group'] = self.group.id if self.group else ''
+        js['parent'] = self.parent.id if self.parent else ''
+        return json.dumps(js, sort_keys=True)
 
 
 class AWSBucketObject(BaseBucketObject):

@@ -1,6 +1,8 @@
 """
 DataTypes used by this provider
 """
+import inspect
+import json
 import shutil
 
 import ipaddress
@@ -706,6 +708,13 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
                cidr=cidr_ip):
                 return True
 
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        json_rules = [r.to_json() for r in self.rules]
+        js['rules'] = [json.loads(r) for r in json_rules]
+        return json.dumps(js, sort_keys=True)
+
 
 class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
@@ -738,6 +747,13 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
                 if sg.name == cg:
                     return OpenStackSecurityGroup(self._provider, sg)
         return None
+
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        js['group'] = self.group.id if self.group else ''
+        js['parent'] = self.parent.id if self.parent else ''
+        return json.dumps(js, sort_keys=True)
 
 
 class OpenStackBucketObject(BaseBucketObject):
