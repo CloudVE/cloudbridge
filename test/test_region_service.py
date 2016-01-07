@@ -38,3 +38,8 @@ class CloudRegionServiceTestCase(ProviderTestBase):
             region.id in repr(region),
             "repr(obj) should contain the object id so that the object"
             " can be reconstructed, but does not.")
+
+        self.assertTrue(
+            region.name in region.to_json(),
+            "Region name {0} not in JSON representation {1}".format(
+                region.name, region.to_json()))

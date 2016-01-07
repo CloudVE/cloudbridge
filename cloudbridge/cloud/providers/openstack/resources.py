@@ -375,6 +375,12 @@ class OpenStackRegion(BaseRegion):
         # value requires Admin privileges
         return self._provider.nova.availability_zones.list(detailed=False)
 
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        js['zones'] = [z.zoneName for z in self.zones]
+        return json.dumps(js, sort_keys=True)
+
 
 class OpenStackVolume(BaseVolume):
 
