@@ -1,3 +1,4 @@
+import json
 import uuid
 
 from test.helpers import ProviderTestBase
@@ -83,6 +84,13 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 kp == kp,
                 "The same key pair should be equal to self.")
+            json_repr = json.dumps(
+                {"material": kp.material, "id": name, "name": name},
+                sort_keys=True)
+            self.assertEqual(
+                kp.to_json(), json_repr,
+                "JSON key pair representation {0} does not match expected {1}"
+                .format(kp.to_json(), json_repr))
         kpl = self.provider.security.key_pairs.list()
         found_kp = [k for k in kpl if k.name == name]
         self.assertTrue(
@@ -177,6 +185,16 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             self.assertFalse(
                 sg != sg,
                 "The same security groups should still be equal?")
+            json_repr = json.dumps(
+                {"description": name, "name": name, "id": sg.id, "rules":
+                 [{"from_port": 1111, "group": "", "cidr_ip": "0.0.0.0/0",
+                   "parent": sg.id, "to_port": 1111, "ip_protocol": "tcp"}]},
+                sort_keys=True)
+            self.assertTrue(
+                sg.to_json() == json_repr,
+                "JSON sec group representation {0} does not match expected {1}"
+                .format(sg.to_json(), json_repr))
+
         sgl = self.provider.security.security_groups.list()
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(

@@ -53,7 +53,7 @@ class BaseCloudResource(CloudResource):
         # Get all attributes but filter methods and private/magic ones
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
         js = {k: v for(k, v) in attr if not k.startswith('_')}
-        return json.dumps(js)
+        return json.dumps(js, sort_keys=True)
 
 
 class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
