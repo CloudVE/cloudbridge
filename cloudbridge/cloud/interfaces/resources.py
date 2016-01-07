@@ -44,6 +44,13 @@ class CloudResource(object):
         """
         pass
 
+    @abstractmethod
+    def to_json(self):
+        """
+        Returns a JSON representation of the CloudResource object.
+        """
+        pass
+
 
 class CloudBridgeBaseException(Exception):
 

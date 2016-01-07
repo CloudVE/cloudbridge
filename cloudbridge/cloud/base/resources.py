@@ -1,7 +1,9 @@
 """
 Base implementation for data objects exposed through a provider or service
 """
+import inspect
 import itertools
+import json
 import logging
 import time
 import six
@@ -46,6 +48,12 @@ class BaseCloudResource(CloudResource):
     @property
     def _provider(self):
         return self.__provider
+
+    def to_json(self):
+        # Get all attributes but filter methods and private/magic ones
+        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        return json.dumps(js)
 
 
 class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
