@@ -31,7 +31,7 @@ Example:
     if (rl.is_truncated)
         rl = provider.compute.instances.list(limit=100,
                                              marker=rl.marker)
-"""
+
 
 To ease development, CloudBridge also provides standard Python iterators that will page
 the results in for you automatically. Therefore, when you need to iterate through all
@@ -44,4 +44,3 @@ Example:
     # Iterate through all results
     for instance in provider.compute.instances:
         print("Instance Data: {0}", instance)
-"""
