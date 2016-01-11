@@ -200,7 +200,7 @@ class InstanceService(PageableObjectMixin, CloudService):
 
     @abstractmethod
     def create(self, name, image, instance_type, zone=None,
-               keypair=None, security_groups=None, user_data=None,
+               key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
         """
@@ -220,9 +220,9 @@ class InstanceService(PageableObjectMixin, CloudService):
         :type  zone: ``Zone`` or ``str``
         :param zone: The Zone or its name, where the instance should be placed.
 
-        :type  keypair: ``KeyPair`` or ``str``
-        :param keypair: The KeyPair object or its name, to set for the
-                        instance.
+        :type  key_pair: ``KeyPair`` or ``str``
+        :param key_pair: The KeyPair object or its name, to set for the
+                         instance.
 
         :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a
                                 list of ``str`` names
@@ -730,18 +730,19 @@ class KeyPairService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, keypair_id):
+    def get(self, key_pair_id):
         """
-        Returns a KeyPair given its ID. Returns ``None`` if the KeyPair
-        does not exist. On some providers, such as AWS and Openstack,
-        the KeyPair id is the same as its name.
+        Return a KeyPair given its ID or ``None`` if not found.
+
+        On some providers, such as AWS and Openstack, the KeyPair ID is
+        the same as its name.
 
         Example:
 
         .. code-block:: python
 
-            keypair = provider.security.keypairs.get('my_keypair_id')
-            print(keypair.id, keypair.name)
+            key_pair = provider.security.keypairs.get('my_key_pair_id')
+            print(key_pair.id, key_pair.name)
 
         :rtype: :class:`.KeyPair`
         :return:  a KeyPair instance
@@ -782,12 +783,12 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, keypair_id):
+    def delete(self, key_pair_id):
         """
         Delete an existing SecurityGroup.
 
-        :type keypair_id: str
-        :param keypair_id: The id of the key pair to be deleted.
+        :type key_pair_id: str
+        :param key_pair_id: The id of the key pair to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if the key does not exist, ``False`` otherwise. Note

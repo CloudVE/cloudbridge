@@ -103,7 +103,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             name=name, description=name)
 
         test_instance = helpers.get_test_instance(self.provider,
-                                                  name, keypair=kp,
+                                                  name, key_pair=kp,
                                                   security_groups=[sg])
 
         def cleanup(inst, kp, sg):

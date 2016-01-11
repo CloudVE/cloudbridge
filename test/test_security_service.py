@@ -16,14 +16,14 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(
             lambda:
-                self.provider.security.key_pairs.delete(kp.id)
+                self.provider.security.key_pairs.delete(key_pair_id=kp.id)
         ):
             # test list method
             kpl = self.provider.security.key_pairs.list()
             list_kpl = [i for i in kpl if i.name == name]
             self.assertTrue(
                 len(list_kpl) == 1,
-                "List keypairs does not return the expected keypair %s" %
+                "List key pairs does not return the expected key pair %s" %
                 name)
 
             # check iteration
@@ -31,7 +31,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                         if i.name == name]
             self.assertTrue(
                 len(iter_kpl) == 1,
-                "Iter keypairs does not return the expected keypair %s" %
+                "Iter key pairs does not return the expected key pair %s" %
                 name)
 
             # check find

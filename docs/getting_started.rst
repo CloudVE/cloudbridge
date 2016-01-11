@@ -76,7 +76,7 @@ get a base Ubuntu image ``ami-d85e75b0`` and launch an instance.
     inst_type = provider.compute.instance_types.find(name='m1.small')
     inst = provider.compute.instances.create(
         name='Cloudbridge-intro', image=img, instance_type=inst_type,
-        keypair=kp, security_groups=[sg])
+        key_pair=kp, security_groups=[sg])
     # Refresh the state
     inst.refresh()
     inst.state

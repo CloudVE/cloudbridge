@@ -38,7 +38,7 @@ only needing to specify the basic parameters:
 
     inst = provider.compute.instances.create(
         name='Cloudbridge-basic', image=img, instance_type=inst_type,
-        keypair=kp, security_groups=[sg])
+        key_pair=kp, security_groups=[sg])
 
 Launch with private networking
 ------------------------------
@@ -68,7 +68,7 @@ below). Finally, we can launch the instance:
     lc.add_network_interface(sn.id)
     inst = provider.compute.instances.create(
         name='Cloudbridge-VPC', image=img,  instance_type=inst_type,
-        launch_config=lc, keypair=kp, security_groups=[sg])
+        launch_config=lc, key_pair=kp, security_groups=[sg])
 
 
 Block device mapping
@@ -88,7 +88,7 @@ refer to :class:`.LaunchConfig`.
     lc.add_volume_device(source=img, size=11, is_root=True)
     inst = provider.compute.instances.create(
         name='Cloudbridge-BDM', image=img,  instance_type=inst_type,
-        launch_config=lc, keypair=kp, security_groups=[sg])
+        launch_config=lc, key_pair=kp, security_groups=[sg])
 
 where img is the :class:`.Image` object to use for the root volume.
 

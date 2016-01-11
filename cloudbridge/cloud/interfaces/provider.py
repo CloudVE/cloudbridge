@@ -129,7 +129,7 @@ class CloudProvider(object):
     @abstractproperty
     def security(self):
         """
-        Provides access to keypair management and firewall control
+        Provides access to key pair management and firewall control
 
         Example:
 

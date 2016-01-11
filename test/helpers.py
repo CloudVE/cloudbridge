@@ -72,22 +72,22 @@ def get_provider_test_data(provider, key):
 
 def create_test_instance(
         provider, instance_name, zone=None, launch_config=None,
-        keypair=None, security_groups=None):
+        key_pair=None, security_groups=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
         zone=zone,
-        keypair=keypair,
+        key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)
 
 
-def get_test_instance(provider, name, keypair=None, security_groups=None):
+def get_test_instance(provider, name, key_pair=None, security_groups=None):
     instance = create_test_instance(
         provider,
         name,
-        keypair=keypair,
+        key_pair=key_pair,
         security_groups=security_groups)
     instance.wait_till_ready()
     return instance

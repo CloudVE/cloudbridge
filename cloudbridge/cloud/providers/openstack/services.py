@@ -79,13 +79,13 @@ class OpenStackKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(OpenStackKeyPairService, self).__init__(provider)
 
-    def get(self, keypair_id):
+    def get(self, key_pair_id):
         """
         Returns a KeyPair given its id.
         """
         try:
             return OpenStackKeyPair(
-                self.provider, self.provider.nova.keypairs.get(keypair_id))
+                self.provider, self.provider.nova.keypairs.get(key_pair_id))
         except NovaNotFound:
             return None
 
@@ -115,13 +115,13 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
     def create(self, name):
         """
-        Create a new keypair or return an existing one by the same name.
+        Create a new key pair or return an existing one by the same name.
 
         :type name: str
         :param name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A keypair instance or ``None`` if one was not be created.
+        :return:  A key pair instance or ``None`` if one was not be created.
         """
         kp = self.get(name)
         if kp:
@@ -499,7 +499,7 @@ class OpenStackInstanceService(BaseInstanceService):
         super(OpenStackInstanceService, self).__init__(provider)
 
     def create(self, name, image, instance_type, zone=None,
-               keypair=None, security_groups=None, user_data=None,
+               key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
         """
@@ -511,8 +511,8 @@ class OpenStackInstanceService(BaseInstanceService):
             self.provider.compute.instance_types.find(
                 name=instance_type)[0].id
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-        keypair_name = keypair.name if \
-            isinstance(keypair, KeyPair) else keypair
+        key_pair_name = key_pair.name if \
+            isinstance(key_pair, KeyPair) else key_pair
         if security_groups:
             if isinstance(security_groups, list) and \
                     isinstance(security_groups[0], SecurityGroup):
@@ -534,7 +534,7 @@ class OpenStackInstanceService(BaseInstanceService):
             min_count=1,
             max_count=1,
             availability_zone=zone_id,
-            key_name=keypair_name,
+            key_name=key_pair_name,
             security_groups=security_groups_list,
             userdata=user_data,
             block_device_mapping_v2=bdm,

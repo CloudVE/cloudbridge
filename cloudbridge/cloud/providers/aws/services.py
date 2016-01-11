@@ -83,13 +83,13 @@ class AWSKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(AWSKeyPairService, self).__init__(provider)
 
-    def get(self, keypair_id):
+    def get(self, key_pair_id):
         """
-        Returns a KeyPair given its id.
+        Returns a KeyPair given its ID.
         """
         try:
             kps = self.provider.ec2_conn.get_all_key_pairs(
-                keynames=[keypair_id])
+                keynames=[key_pair_id])
             return AWSKeyPair(self.provider, kps[0])
         except EC2ResponseError:
             return None
@@ -121,13 +121,13 @@ class AWSKeyPairService(BaseKeyPairService):
 
     def create(self, name):
         """
-        Create a new keypair or return an existing one by the same name.
+        Create a new key pair or return an existing one by the same name.
 
         :type name: str
         :param name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A keypair instance or None if one was not be created.
+        :return:  A key pair instance or ``None`` if one was not be created.
         """
         kp = self.get(name)
         if kp:
@@ -446,7 +446,7 @@ class AWSInstanceService(BaseInstanceService):
         super(AWSInstanceService, self).__init__(provider)
 
     def create(self, name, image, instance_type, zone=None,
-               keypair=None, security_groups=None, user_data=None,
+               key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
         """
@@ -456,9 +456,9 @@ class AWSInstanceService(BaseInstanceService):
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-        keypair_name = keypair.name if isinstance(
-            keypair,
-            KeyPair) else keypair
+        key_pair_name = key_pair.name if isinstance(
+            key_pair,
+            KeyPair) else key_pair
         if security_groups:
             if isinstance(security_groups, list) and \
                     isinstance(security_groups[0], SecurityGroup):
@@ -476,7 +476,7 @@ class AWSInstanceService(BaseInstanceService):
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
             min_count=1, max_count=1, placement=zone_id,
-            key_name=keypair_name, security_groups=security_groups_list,
+            key_name=key_pair_name, security_groups=security_groups_list,
             user_data=user_data, block_device_map=bdm, subnet_id=net_id)
         if reservation:
             instance = AWSInstance(self.provider, reservation.instances[0])
