@@ -459,7 +459,7 @@ class OpenStackRegionService(BaseRegionService):
             for svc in self.provider.keystone.service_catalog.get_data()
             for endpoint in svc.get('endpoints', [])
         )
-        regions = (region for region in regions if region)
+        regions = set(region for region in regions if region)
         os_regions = [OpenStackRegion(self.provider, region)
                       for region in regions]
 

@@ -43,3 +43,11 @@ class CloudRegionServiceTestCase(ProviderTestBase):
             region.name in region.to_json(),
             "Region name {0} not in JSON representation {1}".format(
                 region.name, region.to_json()))
+
+    def test_regions_unique(self):
+        """
+        Regions should not return duplicate items
+        """
+        regions = self.provider.compute.regions.list()
+        unique_regions = set([region.id for region in regions])
+        self.assertTrue(len(regions) == len(list(unique_regions)))
