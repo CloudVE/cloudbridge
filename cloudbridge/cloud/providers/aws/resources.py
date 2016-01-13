@@ -104,13 +104,15 @@ class AWSMachineImage(BaseMachineImage):
 
 class AWSPlacementZone(BasePlacementZone):
 
-    def __init__(self, provider, zone):
+    def __init__(self, provider, zone, region):
         super(AWSPlacementZone, self).__init__(provider)
         if isinstance(zone, AWSPlacementZone):
             # pylint:disable=protected-access
             self._aws_zone = zone._aws_zone
+            self._aws_region = zone._aws_region
         else:
             self._aws_zone = zone
+            self._aws_region = region
 
     @property
     def id(self):
@@ -140,7 +142,7 @@ class AWSPlacementZone(BasePlacementZone):
         :rtype: ``str``
         :return: Name of this zone's region as returned by the cloud middleware
         """
-        return self._aws_zone.region_name
+        return self._aws_region
 
 
 class AWSInstanceType(BaseInstanceType):
@@ -282,7 +284,8 @@ class AWSInstance(BaseInstance):
         """
         Get the placement zone where this instance is running.
         """
-        return AWSPlacementZone(self._provider, self._ec2_instance.placement)
+        return AWSPlacementZone(self._provider, self._ec2_instance.placement,
+                                self._provider.region_name)
 
     @property
     def security_groups(self):
@@ -721,7 +724,19 @@ class AWSRegion(BaseRegion):
         """
         Accesss information about placement zones within this region.
         """
-        pass
+        if self.name == self._provider.region_name:  # optimisation
+            zones = self._provider.ec2_conn.get_all_zones()
+            return [AWSPlacementZone(self._provider, zone.name,
+                                     self._provider.region_name)
+                    for zone in zones]
+        else:
+            region = [region for region in
+                      self._provider.ec2_conn.get_all_regions()
+                      if self.name == region.name][0]
+            conn = self._provider._conect_ec2_region(region)
+            zones = conn.get_all_zones()
+            return [AWSPlacementZone(self._provider, zone.name, region.name)
+                    for zone in zones]
 
 
 class AWSNetwork(BaseNetwork):

@@ -453,7 +453,8 @@ class OpenStackRegionService(BaseRegionService):
         return next(region, None)
 
     def list(self, limit=None, marker=None):
-
+        # TODO: KeyStone V3 onwards will support directly listing regions
+        # but for now, this convoluted method is necessary
         regions = (
             endpoint.get('region') or endpoint.get('region_id')
             for svc in self.provider.keystone.service_catalog.get_data()

@@ -98,12 +98,14 @@ class OpenStackMachineImage(BaseMachineImage):
 
 class OpenStackPlacementZone(BasePlacementZone):
 
-    def __init__(self, provider, zone):
+    def __init__(self, provider, zone, region):
         super(OpenStackPlacementZone, self).__init__(provider)
         if isinstance(zone, OpenStackPlacementZone):
             self._os_zone = zone._os_zone  # pylint:disable=protected-access
+            self._os_region = zone._os_region
         else:
             self._os_zone = zone
+            self._os_region = region
 
     @property
     def id(self):
@@ -134,7 +136,7 @@ class OpenStackPlacementZone(BasePlacementZone):
         :rtype: ``str``
         :return: Name of this zone's region as returned by the cloud middleware
         """
-        return self._os_zone.region_name
+        return self._os_region
 
 
 class OpenStackInstanceType(BaseInstanceType):
@@ -297,7 +299,8 @@ class OpenStackInstance(BaseInstance):
         """
         return OpenStackPlacementZone(
             self._provider,
-            getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None))
+            getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None),
+            self._provider.region_name)
 
     @property
     def security_groups(self):
@@ -373,13 +376,15 @@ class OpenStackRegion(BaseRegion):
     def zones(self):
         # detailed must be set to ``False`` because the (default) ``True``
         # value requires Admin privileges
-        return self._provider.nova.availability_zones.list(detailed=False)
+        if self.name == self._provider.region_name:  # optimisation
+            zones = self._provider.nova.availability_zones.list(detailed=False)
+        else:
+            region_nova = self._provider._connect_nova_region(self.name)
+            zones = region_nova.availability_zones.list(detailed=False)
 
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
-        js['zones'] = [z.zoneName for z in self.zones]
-        return json.dumps(js, sort_keys=True)
+        return [OpenStackPlacementZone(self._provider, z.zoneName,
+                                       self._provider.region_name)
+                for z in zones]
 
 
 class OpenStackVolume(BaseVolume):

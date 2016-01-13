@@ -562,6 +562,12 @@ class BaseRegion(Region, BaseCloudResource):
                 self._provider == other._provider and
                 self.id == other.id)
 
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        js['zones'] = [z.name for z in self.zones]
+        return json.dumps(js, sort_keys=True)
+
 
 class BaseBucketObject(BucketObject, BaseCloudResource):
 

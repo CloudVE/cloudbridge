@@ -626,7 +626,6 @@ class AWSRegionService(BaseRegionService):
             return None
 
     def list(self, limit=None, marker=None):
-
         regions = [AWSRegion(self.provider, region)
                    for region in self.provider.ec2_conn.get_all_regions()]
         return ClientPagedResultList(self.provider, regions,

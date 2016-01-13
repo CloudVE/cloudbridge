@@ -131,6 +131,9 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._object_store
 
     def _connect_nova(self):
+        return self._connect_nova_region(self.region_name)
+
+    def _connect_nova_region(self, region_name):
         """
         Get an OpenStack Nova (compute) client object for the given cloud.
         """
@@ -147,7 +150,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return nova_client.Client(
             api_version, username=self.username, api_key=self.password,
             project_id=self.tenant_name, auth_url=self.auth_url,
-            region_name=self.region_name, service_name=service_name,
+            region_name=region_name, service_name=service_name,
             http_log_debug=True if self.config.debug_mode else False)
 
     def _connect_keystone(self):

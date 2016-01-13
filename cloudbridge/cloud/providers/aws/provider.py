@@ -106,6 +106,9 @@ class AWSCloudProvider(BaseCloudProvider):
         Get a boto ec2 connection object.
         """
         r = RegionInfo(name=self.region_name, endpoint=self.region_endpoint)
+        return self._conect_ec2_region(r)
+
+    def _conect_ec2_region(self, region):
         ec2_conn = boto.connect_ec2(
             aws_access_key_id=self.a_key,
             aws_secret_access_key=self.s_key,
@@ -113,7 +116,7 @@ class AWSCloudProvider(BaseCloudProvider):
             # zone support for EC2
             api_version='2012-06-01' if self.cloud_type == 'aws' else None,
             is_secure=self.ec2_is_secure,
-            region=r,
+            region=region,
             port=self.ec2_port,
             path=self.ec2_conn_path,
             validate_certs=self.ec2_validate_certs,
