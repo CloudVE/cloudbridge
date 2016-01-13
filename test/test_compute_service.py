@@ -147,6 +147,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address")
             self.assertIsInstance(test_instance.instance_type, InstanceType)
+            expected_type = helpers.get_provider_test_data(self.provider,
+                                                           'instance_type')
+            self.assertEqual(
+                test_instance.instance_type.name, expected_type,
+                "Instance type {0} does not match expected type {1}".format(
+                    test_instance.instance_type.name, expected_type))
 
     def test_block_device_mapping_launch_config(self):
         lc = self.provider.compute.instances.create_launch_config()

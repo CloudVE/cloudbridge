@@ -271,7 +271,9 @@ class OpenStackInstance(BaseInstance):
         """
         Get the instance type.
         """
-        return OpenStackInstanceType(self._provider, self._os_instance.flavor)
+        flavor = self._provider.nova.flavors.get(
+            self._os_instance.flavor.get('id'))
+        return OpenStackInstanceType(self._provider, flavor)
 
     def reboot(self):
         """
