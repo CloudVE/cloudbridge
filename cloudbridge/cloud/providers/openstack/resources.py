@@ -6,8 +6,6 @@ import json
 import shutil
 
 import ipaddress
-from swiftclient.exceptions import ClientException
-
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseInstance
@@ -28,6 +26,8 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
+import novaclient.exceptions as novaex
+import swiftclient.exceptions as swiftex
 
 
 class OpenStackMachineImage(BaseMachineImage):
@@ -385,8 +385,13 @@ class OpenStackRegion(BaseRegion):
         if self.name == self._provider.region_name:  # optimisation
             zones = self._provider.nova.availability_zones.list(detailed=False)
         else:
-            region_nova = self._provider._connect_nova_region(self.name)
-            zones = region_nova.availability_zones.list(detailed=False)
+            try:
+                region_nova = self._provider._connect_nova_region(self.name)
+                zones = region_nova.availability_zones.list(detailed=False)
+            except novaex.EndpointNotFound:
+                # This region may not have a compute endpoint. If so just
+                # return an empty list
+                zones = []
 
         return [OpenStackPlacementZone(self._provider, z.zoneName,
                                        self._provider.region_name)
@@ -818,7 +823,7 @@ class OpenStackBucketObject(BaseBucketObject):
         try:
             self._provider.swift.delete_object(self.cbcontainer.name,
                                                self.name)
-        except ClientException as err:
+        except swiftex.ClientException as err:
             if err.http_status == 404:
                 return True
         return False
