@@ -135,7 +135,7 @@ class AWSPlacementZone(BasePlacementZone):
         return self._aws_zone
 
     @property
-    def region(self):
+    def region_name(self):
         """
         Get the region that this zone belongs to.
 

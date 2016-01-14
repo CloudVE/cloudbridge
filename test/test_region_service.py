@@ -1,3 +1,5 @@
+import six
+
 from cloudbridge.cloud.interfaces import Region
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
@@ -65,7 +67,7 @@ class CloudRegionServiceTestCase(ProviderTestBase):
             for zone in region.zones:
                 self.assertTrue(zone.id)
                 self.assertTrue(zone.name)
-                self.assertTrue(zone.region)
+                self.assertIsInstance(zone.region_name, six.string_types)
                 if test_zone == zone.name:
                     zone_find_count += 1
         # TODO: Can't do a check for zone_find_count == 1 because Moto

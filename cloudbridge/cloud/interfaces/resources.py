@@ -1303,7 +1303,7 @@ class PlacementZone(CloudResource):
         pass
 
     @abstractproperty
-    def region(self):
+    def region_name(self):
         """
         A region this placement zone is associated with.
 
