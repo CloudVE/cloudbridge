@@ -90,3 +90,21 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
         with self.assertRaises(TypeError):
             self.provider.compute.instance_types.find(
                 non_existent_param="random_value")
+
+    def test_instance_types_get(self):
+        """
+        Searching for an instance by id should return an
+        InstanceType object and searching for a non-existent
+        object should return None
+        """
+        compute_svc = self.provider.compute
+        instance_type_name = helpers.get_provider_test_data(
+            self.provider,
+            "instance_type")
+        inst_type = self.provider.compute.instance_types.find(
+            name=instance_type_name)[0]
+        self.assertEqual(inst_type,
+                         compute_svc.instance_types.get(inst_type.id))
+        self.assertIsNone(compute_svc.instance_types.get("non_existent_id"),
+                          "Searching for a non-existent instance id must"
+                          " return None")

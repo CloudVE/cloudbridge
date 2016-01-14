@@ -884,6 +884,24 @@ class InstanceTypesService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
+    def get(self, instance_type_id):
+        """
+        Returns an InstanceType given its ID. Returns ``None`` if the
+        InstanceType does not exist.
+
+        Example:
+
+        .. code-block:: python
+
+            itype = provider.compute.instance_types.get('my_itype_id')
+            print(itype.id, itype.name)
+
+        :rtype: :class:`.InstanceType`
+        :return:  an InstanceType instance
+        """
+        pass
+
+    @abstractmethod
     def list(self, limit=None, marker=None):
         """
         List all instance types.

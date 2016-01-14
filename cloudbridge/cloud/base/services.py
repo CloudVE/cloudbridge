@@ -111,6 +111,10 @@ class BaseInstanceTypesService(
     def __init__(self, provider):
         super(BaseInstanceTypesService, self).__init__(provider)
 
+    def get(self, instance_type_id):
+        itype = (t for t in self.list() if t.id == instance_type_id)
+        return next(itype, None)
+
     def find(self, **kwargs):
         name = kwargs.get('name')
         if name:
