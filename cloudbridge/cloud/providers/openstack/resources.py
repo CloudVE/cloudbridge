@@ -292,7 +292,11 @@ class OpenStackInstance(BaseInstance):
         """
         Get the image ID for this instance.
         """
-        return self._os_instance.image.get("id")
+        # In OpenStack, the Machine Image of a running instance may
+        # be deleted, so make sure the image exists before attempting to
+        # retrieve its id
+        return (self._os_instance.image.get("id")
+                if self._os_instance.image else "")
 
     @property
     def placement_zone(self):

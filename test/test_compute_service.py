@@ -126,6 +126,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertEqual(test_instance.image_id, image_id,
                              "Image id {0} is not equal to the expected id"
                              " {1}".format(test_instance.image_id, image_id))
+            self.assertEqual(
+                test_instance.image_id,
+                helpers.get_provider_test_data(self.provider, "image"))
             self.assertIsInstance(test_instance.public_ips, list)
             self.assertIsInstance(test_instance.private_ips, list)
             self.assertEqual(
