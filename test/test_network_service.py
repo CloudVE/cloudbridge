@@ -41,7 +41,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     self.provider.network.subnets.delete(subnet=subnet)
             ):
                 # test list method
-                subnetl = self.provider.network.subnets.list()
+                subnetl = self.provider.network.subnets.list(network=net)
                 list_subnetl = [n for n in subnetl if n.name == subnet_name]
                 self.assertTrue(
                     len(list_subnetl) == 1,

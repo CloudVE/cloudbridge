@@ -567,7 +567,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         """
         Returns a Subnet given its ID or ``None`` if not found.
 
-        :type network_id: ``str``
+        :type network_id: :class:`.Network` object or ``str``
         :param network_id: The ID of the subnet to retrieve.
 
         :rtype: ``object`` of :class:`.Subnet`
@@ -576,11 +576,14 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, network=None, limit=None, marker=None):
         """
-        List all subnets.
+        List all subnets or filter them by the supplied network ID.
 
-        :rtype: ``list`` of :class:`.Network`
+        :type network: ``str``
+        :param network: Network object or ID with which to filter the subnets.
+
+        :rtype: ``list`` of :class:`.Subnet`
         :return: list of Subnet objects
         """
         pass

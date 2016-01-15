@@ -677,8 +677,13 @@ class AWSSubnetService(BaseSubnetService):
             return AWSSubnet(self.provider, subnets[0])
         return None
 
-    def list(self):
-        subnets = self.provider.vpc_conn.get_all_subnets()
+    def list(self, network=None):
+        fltr = None
+        if network:
+            network_id = (network.id if isinstance(network, AWSNetwork) else
+                          network)
+            fltr = {'vpc-id': network_id}
+        subnets = self.provider.vpc_conn.get_all_subnets(filters=fltr)
         return [AWSSubnet(self.provider, subnet) for subnet in subnets]
 
     def create(self, network, cidr_block, name=None):
