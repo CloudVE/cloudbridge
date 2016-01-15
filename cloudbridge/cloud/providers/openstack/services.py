@@ -21,6 +21,7 @@ from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
@@ -643,6 +644,7 @@ class OpenStackNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(OpenStackNetworkService, self).__init__(provider)
+        self._subnet_svc = OpenStackSubnetService(self.provider)
 
     def get(self, network_id):
         network = (n for n in self.list() if n.id == network_id)
@@ -660,11 +662,25 @@ class OpenStackNetworkService(BaseNetworkService):
         network = self.provider.neutron.create_network({'network': net_info})
         return OpenStackNetwork(self.provider, network.get('network'))
 
-    def list_subnets(self):
+    @property
+    def subnets(self):
+        return self._subnet_svc
+
+
+class OpenStackSubnetService(BaseSubnetService):
+
+    def __init__(self, provider):
+        super(OpenStackSubnetService, self).__init__(provider)
+
+    def get(self, subnet_id):
+        subnet = (s for s in self.list() if s.id == subnet_id)
+        return next(subnet, None)
+
+    def list(self):
         subnets = self.provider.neutron.list_subnets().get('subnets', [])
         return [OpenStackSubnet(self.provider, subnet) for subnet in subnets]
 
-    def create_subnet(self, network, cidr_block, name=''):
+    def create(self, network, cidr_block, name=''):
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
         subnet_info = {'name': name, 'network_id': network_id,
@@ -673,7 +689,7 @@ class OpenStackNetworkService(BaseNetworkService):
                   .get('subnet'))
         return OpenStackSubnet(self.provider, subnet)
 
-    def delete_subnet(self, subnet):
+    def delete(self, subnet):
         subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
                      else subnet)
         self.provider.neutron.delete_subnet(subnet_id)

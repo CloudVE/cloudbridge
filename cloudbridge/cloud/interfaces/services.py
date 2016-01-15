@@ -532,20 +532,63 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
-    @abstractmethod
-    def list_subnets(self):
+    @abstractproperty
+    def subnets(self):
         """
-        List all subnets.
+        Provides access to subnets.
 
-        :rtype: list of :class:`.Subnet`
-        :return: A list of existing Subnet objects.
+        Example:
+
+        .. code-block:: python
+
+            # Print all subnets
+            for s in provider.network.subnets:
+                print(s.id, s.name)
+
+            # Get subnet by ID
+            s = provider.network.subnets.get('subnet-id')
+            print(s.id, s.name)
+
+        :rtype: :class:`.SubnetService`
+        :return: a SubnetService object
+        """
+        pass
+
+
+class SubnetService(PageableObjectMixin, CloudService):
+
+    """
+    Base interface for a Subnet Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, subnet_id):
+        """
+        Returns a Subnet given its ID or ``None`` if not found.
+
+        :type network_id: ``str``
+        :param network_id: The ID of the subnet to retrieve.
+
+        :rtype: ``object`` of :class:`.Subnet`
+        return: a Subnet object
         """
         pass
 
     @abstractmethod
-    def create_subnet(self, network, cidr_block, name=None):
+    def list(self, limit=None, marker=None):
         """
-        Create a new network subnet.
+        List all subnets.
+
+        :rtype: ``list`` of :class:`.Network`
+        :return: list of Subnet objects
+        """
+        pass
+
+    @abstractmethod
+    def create(self, network_id, cidr_block, name=None):
+        """
+        Create a new subnet within the supplied network.
 
         :type network: :class:`.Network` object or ``str``
         :param network: Network object or ID under which to create the subnet.
@@ -564,12 +607,12 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete_subnet(self, subnet):
+    def delete(self, subnet):
         """
-        Delete a subnet.
+        Delete an existing Subnet.
 
-        :type network: :class:`.Subnet` object or ``str``
-        :param network: Subnet object or ID of the subnet to delete.
+        :type subnet: :class:`.Subnet` object or ``str``
+        :param subnet: Subnet object or ID of the subnet to delete.
 
         :rtype: ``bool``
         :return:  ``True`` if the subnet does not exist, ``False`` otherwise.

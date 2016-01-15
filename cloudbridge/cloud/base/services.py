@@ -14,6 +14,7 @@ from cloudbridge.cloud.interfaces.services import RegionService
 from cloudbridge.cloud.interfaces.services import SecurityGroupService
 from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
+from cloudbridge.cloud.interfaces.services import SubnetService
 from cloudbridge.cloud.interfaces.services import VolumeService
 from .resources import BasePageableObjectMixin
 
@@ -149,3 +150,10 @@ class BaseNetworkService(
         if network:
             network.delete()
         return True
+
+
+class BaseSubnetService(
+        BasePageableObjectMixin, SubnetService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseSubnetService, self).__init__(provider)

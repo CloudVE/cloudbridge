@@ -23,6 +23,7 @@ from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
@@ -636,6 +637,7 @@ class AWSNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(AWSNetworkService, self).__init__(provider)
+        self._subnet_svc = AWSSubnetService(self.provider)
 
     def get(self, network_id):
         network = self.provider.vpc_conn.get_all_vpcs(vpc_ids=[network_id])
@@ -659,11 +661,27 @@ class AWSNetworkService(BaseNetworkService):
             cb_network.name = name
         return cb_network
 
-    def list_subnets(self):
+    @property
+    def subnets(self):
+        return self._subnet_svc
+
+
+class AWSSubnetService(BaseSubnetService):
+
+    def __init__(self, provider):
+        super(AWSSubnetService, self).__init__(provider)
+
+    def get(self, subnet_id):
+        subnets = self.provider.vpc_conn.get_all_subnets([subnet_id])
+        if subnets:
+            return AWSSubnet(self.provider, subnets[0])
+        return None
+
+    def list(self):
         subnets = self.provider.vpc_conn.get_all_subnets()
         return [AWSSubnet(self.provider, subnet) for subnet in subnets]
 
-    def create_subnet(self, network, cidr_block, name=None):
+    def create(self, network, cidr_block, name=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block)
         cb_subnet = AWSSubnet(self.provider, subnet)
@@ -671,6 +689,6 @@ class AWSNetworkService(BaseNetworkService):
             cb_subnet.name = name
         return cb_subnet
 
-    def delete_subnet(self, subnet):
+    def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         return self.provider.vpc_conn.delete_subnet(subnet_id=subnet_id)

@@ -34,21 +34,21 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 .format(name))
 
             # check subnet
-            subnet = self.provider.network.create_subnet(
+            subnet = self.provider.network.subnets.create(
                 network=net, cidr_block="10.0.0.1/24", name=subnet_name)
             with helpers.cleanup_action(
                 lambda:
-                    self.provider.network.delete_subnet(subnet=subnet)
+                    self.provider.network.subnets.delete(subnet=subnet)
             ):
                 # test list method
-                subnetl = self.provider.network.list_subnets()
+                subnetl = self.provider.network.subnets.list()
                 list_subnetl = [n for n in subnetl if n.name == subnet_name]
                 self.assertTrue(
                     len(list_subnetl) == 1,
                     "List subnets does not return the expected subnet %s" %
                     subnet_name)
 
-            subnetl = self.provider.network.list_subnets()
+            subnetl = self.provider.network.subnets.list()
             found_subnet = [n for n in subnetl if n.name == subnet_name]
             self.assertTrue(
                 len(found_subnet) == 0,
