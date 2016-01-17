@@ -463,8 +463,10 @@ class OpenStackVolume(BaseVolume):
 
     @property
     def source(self):
-        return self._provider.block_store.snapshots.get(
-            self._volume.snapshot_id)
+        if self._volume.snapshot_id:
+            return self._provider.block_store.snapshots.get(
+                self._volume.snapshot_id)
+        return None
 
     @property
     def attachments(self):
