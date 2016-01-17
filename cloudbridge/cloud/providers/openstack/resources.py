@@ -557,8 +557,8 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        self._snapshot.add_tag('Name', value)
-        self._snapshot.update()
+        self._snapshot.name = value
+        self._snapshot.update(name=value)
 
     @property
     def description(self):
@@ -567,7 +567,7 @@ class OpenStackSnapshot(BaseSnapshot):
     @description.setter
     def description(self, value):
         self._snapshot.description = value
-        self._snapshot.update()
+        self._snapshot.update(description=value)
 
     @property
     def size(self):
