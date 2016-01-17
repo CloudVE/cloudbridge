@@ -295,8 +295,13 @@ class AWSSnapshotService(BaseSnapshotService):
         """
         Returns a snapshot given its id.
         """
-        snaps = self.provider.ec2_conn.get_all_snapshots(
-            snapshot_ids=[snapshot_id])
+        try:
+            snaps = self.provider.ec2_conn.get_all_snapshots(
+                snapshot_ids=[snapshot_id])
+        except EC2ResponseError as ec2e:
+            if ec2e.code == 'InvalidSnapshot.NotFound':
+                return None
+            raise ec2e
         return AWSSnapshot(self.provider, snaps[0]) if snaps else None
 
     def find(self, name, limit=None, marker=None):
