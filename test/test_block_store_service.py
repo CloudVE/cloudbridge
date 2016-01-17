@@ -155,8 +155,12 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(test_vol.attachments.device,
                                  "/dev/sda2")
                 test_vol.detach()
+                test_vol.name = 'newvolname1'
+                test_vol.description = 'newvoldesc1'
                 # Force a refresh before checking attachment status
                 test_vol.refresh()
+                self.assertEqual(test_vol.name, 'newvolname1')
+                self.assertEqual(test_vol.description, 'newvoldesc1')
                 self.assertIsNone(test_vol.attachments)
                 test_vol.wait_for(
                     [VolumeState.AVAILABLE],
@@ -314,3 +318,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     % test_vol.description)
                 self.assertEqual(test_vol.id, test_snap.volume_id)
                 self.assertIsNotNone(test_vol.create_time)
+                test_snap.name = 'snapnewname1'
+                test_snap.description = 'snapnewdescription1'
+                test_snap.refresh()
+                self.assertEqual(test_snap.name, 'snapnewname1')
+                self.assertEqual(test_snap.description, 'snapnewdescription1')

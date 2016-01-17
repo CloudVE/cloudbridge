@@ -438,7 +438,7 @@ class OpenStackVolume(BaseVolume):
         Set the volume name.
         """
         self._volume.name = value
-        self._volume.update()
+        self._volume.update(name=value)
 
     @property
     def description(self):
@@ -447,7 +447,7 @@ class OpenStackVolume(BaseVolume):
     @description.setter
     def description(self, value):
         self._volume.description = value
-        self._volume.update()
+        self._volume.update(description=value)
 
     @property
     def size(self):
