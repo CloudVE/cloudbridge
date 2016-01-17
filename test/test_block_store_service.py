@@ -1,5 +1,7 @@
 import uuid
 
+import six
+
 from cloudbridge.cloud.interfaces import SnapshotState
 from cloudbridge.cloud.interfaces import VolumeState
 from test.helpers import ProviderTestBase
@@ -107,6 +109,53 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     [VolumeState.IN_USE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
                 test_vol.detach()
+                test_vol.wait_for(
+                    [VolumeState.AVAILABLE],
+                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
+
+    def test_volume_properties(self):
+        """
+        Test volume properties
+        """
+        instance_name = "CBVolProps-{0}-{1}".format(
+            self.provider.name,
+            uuid.uuid4())
+        test_instance = helpers.get_test_instance(self.provider, instance_name)
+        with helpers.cleanup_action(lambda: test_instance.terminate()):
+            name = "CBUnitTestVolProps-{0}".format(uuid.uuid4())
+            test_vol = self.provider.block_store.volumes.create(
+                name, 1, test_instance.placement_zone)
+            with helpers.cleanup_action(lambda: test_vol.delete()):
+                test_vol.wait_till_ready()
+                self.assertTrue(
+                    isinstance(test_vol.size, six.integer_types) and
+                    test_vol.size >= 0,
+                    "Volume.size must be a positive number, but got %s"
+                    % test_vol.size)
+                self.assertTrue(
+                    test_vol.description is None or
+                    isinstance(test_vol.description, six.string_types),
+                    "Volume.description must be None or a string. Got: %s"
+                    % test_vol.description)
+                self.assertIsNone(test_vol.source)
+                self.assertIsNone(test_vol.source)
+                self.assertIsNotNone(test_vol.create_time)
+                self.assertIsNotNone(test_vol.zone_id)
+                self.assertIsNone(test_vol.attachments)
+                test_vol.attach(test_instance, '/dev/sda2')
+                test_vol.wait_for(
+                    [VolumeState.IN_USE],
+                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
+                self.assertIsNotNone(test_vol.attachments)
+                self.assertEqual(test_vol.attachments.volume, test_vol)
+                self.assertEqual(test_vol.attachments.instance_id,
+                                 test_instance.id)
+                self.assertEqual(test_vol.attachments.device,
+                                 "/dev/sda2")
+                test_vol.detach()
+                # Force a refresh before checking attachment status
+                test_vol.refresh()
+                self.assertIsNone(test_vol.attachments)
                 test_vol.wait_for(
                     [VolumeState.AVAILABLE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])

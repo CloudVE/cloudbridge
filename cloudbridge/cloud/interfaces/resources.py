@@ -953,6 +953,42 @@ class Subnet(CloudResource):
         pass
 
 
+class AttachmentInfo(object):
+    """
+    Contains attachment information for a volume.
+    """
+
+    @abstractproperty
+    def volume(self):
+        """
+        Get the volume instance related to this attachment.
+
+        :rtype: ``Volume``
+        :return: Volume object that this attachment info belongs to
+        """
+        pass
+
+    @abstractproperty
+    def instance_id(self):
+        """
+        Get the instance_id related to this attachment.
+
+        :rtype: ``str``
+        :return: Instance id that this attachment info belongs to
+        """
+        pass
+
+    @abstractproperty
+    def device(self):
+        """
+        Get the device the volume is mapped as.
+
+        :rtype: ``str``
+        :return: Device that the volume is mapped as
+        """
+        pass
+
+
 class VolumeState(object):
 
     """
@@ -1006,6 +1042,83 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
     def name(self, value):
         """
         Set the volume name.
+        """
+        pass
+
+    @abstractproperty
+    def description(self):
+        """
+        Get the volume description. Some cloud providers may not support this
+        property, and will return the volume name instead.
+
+        :rtype: ``str``
+        :return: Description for this volume as returned by the cloud
+        middleware.
+        """
+        pass
+
+    @description.setter
+    @abstractmethod
+    def description(self, value):
+        """
+        Set the volume description. Some cloud providers may not support this
+        property, and setting the description may have no effect. (Providers
+        that do not support this property will always return the volume name
+        as the description)
+        """
+        pass
+
+    @abstractproperty
+    def size(self):
+        """
+        Get the volume size (in GB).
+
+        :rtype: ``int``
+        :return: Size for this volume as returned by the cloud middleware.
+        """
+        pass
+
+    @abstractproperty
+    def create_time(self):
+        """
+        Get the creation data and time for this volume.
+
+        :rtype: ``DateTime``
+        :return: Creation time for this volume as returned by the cloud
+        middleware.
+        """
+        pass
+
+    @abstractproperty
+    def zone_id(self):
+        """
+        Get the placement zone id that this volume belongs to.
+
+        :rtype: ``str``
+        :return: PlacementZone for this volume as returned by the cloud
+        middleware.
+        """
+        pass
+
+    @abstractproperty
+    def source(self):
+        """
+        If available, get the source that this volume is based on (can be
+        a Snapshot or an Image). Returns None if no source.
+
+        :rtype: ``Snapshot`` or ``Image``
+        :return: Snapshot or Image source for this volume as returned by the
+        cloud middleware.
+        """
+        pass
+
+    @abstractproperty
+    def attachments(self):
+        """
+        Get attachment information for this volume.
+
+        :rtype: ``AttachmentInfo``
+        :return: Returns an AttachmentInfo object.
         """
         pass
 

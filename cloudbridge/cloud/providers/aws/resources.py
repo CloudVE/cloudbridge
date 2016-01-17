@@ -9,6 +9,7 @@ from boto.exception import EC2ResponseError
 from boto.s3.key import Key
 from retrying import retry
 
+from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseInstance
@@ -386,6 +387,40 @@ class AWSVolume(BaseVolume):
         Set the volume name.
         """
         self._volume.add_tag('Name', value)
+
+    @property
+    def description(self):
+        return self._volume.tags.get('Description')
+
+    @description.setter
+    def description(self, value):
+        self._volume.add_tag('Description', value)
+
+    @property
+    def size(self):
+        return self._volume.size
+
+    @property
+    def create_time(self):
+        return self._volume.create_time
+
+    @property
+    def zone_id(self):
+        return self._volume.zone
+
+    @property
+    def source(self):
+        return self._provider.block_store.snapshots.get(
+            self._volume.snapshot_id)
+
+    @property
+    def attachments(self):
+        if self._volume.attach_data and self._volume.attach_data.id:
+            return BaseAttachmentInfo(self,
+                                      self._volume.attach_data.instance_id,
+                                      self._volume.attach_data.device)
+        else:
+            return None
 
     def attach(self, instance, device):
         """

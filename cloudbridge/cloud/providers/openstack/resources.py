@@ -6,6 +6,8 @@ import json
 import shutil
 
 import ipaddress
+
+from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseInstance
@@ -437,6 +439,42 @@ class OpenStackVolume(BaseVolume):
         """
         self._volume.name = value
         self._volume.update()
+
+    @property
+    def description(self):
+        return self._volume.description
+
+    @description.setter
+    def description(self, value):
+        self._volume.description = value
+        self._volume.update()
+
+    @property
+    def size(self):
+        return self._volume.size
+
+    @property
+    def create_time(self):
+        return self._volume.created_at
+
+    @property
+    def zone_id(self):
+        return self._volume.availability_zone
+
+    @property
+    def source(self):
+        return self._provider.block_store.snapshots.get(
+            self._volume.snapshot_id)
+
+    @property
+    def attachments(self):
+        if self._volume.attachments:
+            return BaseAttachmentInfo(
+                self,
+                self._volume.attachments[0].get('server_id'),
+                self._volume.attachments[0].get('device'))
+        else:
+            return None
 
     def attach(self, instance, device):
         """

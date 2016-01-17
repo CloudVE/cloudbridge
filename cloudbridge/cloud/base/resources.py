@@ -10,6 +10,7 @@ import six
 
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
@@ -350,6 +351,26 @@ class BaseMachineImage(
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
                                             self.name, self.id)
+
+
+class BaseAttachmentInfo(AttachmentInfo):
+
+    def __init__(self, volume, instance_id, device):
+        self._volume = volume
+        self._instance_id = instance_id
+        self._device = device
+
+    @property
+    def volume(self):
+        return self._volume
+
+    @property
+    def instance_id(self):
+        return self._instance_id
+
+    @property
+    def device(self):
+        return self._device
 
 
 class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
