@@ -121,11 +121,12 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         instance_name = "CBVolProps-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
+        vol_desc = 'newvoldesc1'
         test_instance = helpers.get_test_instance(self.provider, instance_name)
         with helpers.cleanup_action(lambda: test_instance.terminate()):
             name = "CBUnitTestVolProps-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(
-                name, 1, test_instance.placement_zone)
+                name, 1, test_instance.placement_zone, description=vol_desc)
             with helpers.cleanup_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready()
                 self.assertTrue(
@@ -156,11 +157,10 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                  "/dev/sda2")
                 test_vol.detach()
                 test_vol.name = 'newvolname1'
-                test_vol.description = 'newvoldesc1'
                 # Force a refresh before checking attachment status
                 test_vol.refresh()
                 self.assertEqual(test_vol.name, 'newvolname1')
-                self.assertEqual(test_vol.description, 'newvoldesc1')
+                self.assertEqual(test_vol.description, vol_desc)
                 self.assertIsNone(test_vol.attachments)
                 test_vol.wait_for(
                     [VolumeState.AVAILABLE],

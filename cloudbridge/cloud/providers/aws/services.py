@@ -283,6 +283,8 @@ class AWSVolumeService(BaseVolumeService):
             snapshot=snapshot_id)
         cb_vol = AWSVolume(self.provider, ec2_vol)
         cb_vol.name = name
+        if description:
+            cb_vol.description = description
         return cb_vol
 
 
