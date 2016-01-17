@@ -508,6 +508,26 @@ class AWSSnapshot(BaseSnapshot):
         self._snapshot.add_tag('Name', value)
 
     @property
+    def description(self):
+        return self._snapshot.tags.get('Description')
+
+    @description.setter
+    def description(self, value):
+        self._snapshot.add_tag('Description', value)
+
+    @property
+    def size(self):
+        return self._snapshot.volume_size
+
+    @property
+    def volume_id(self):
+        return self._snapshot.volume_id
+
+    @property
+    def create_time(self):
+        return self._snapshot.start_time
+
+    @property
     def state(self):
         return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
             self._snapshot.status, SnapshotState.UNKNOWN)

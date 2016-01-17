@@ -4,6 +4,7 @@ import six
 
 from cloudbridge.cloud.interfaces import SnapshotState
 from cloudbridge.cloud.interfaces import VolumeState
+from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
@@ -147,6 +148,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     [VolumeState.IN_USE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
                 self.assertIsNotNone(test_vol.attachments)
+                self.assertIsInstance(test_vol.attachments, AttachmentInfo)
                 self.assertEqual(test_vol.attachments.volume, test_vol)
                 self.assertEqual(test_vol.attachments.instance_id,
                                  test_instance.id)
@@ -276,3 +278,39 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     test_snap_too.id in repr(test_snap_too),
                     "repr(obj) should contain the object id so that the object"
                     " can be reconstructed, but does not.")
+
+    def test_snapshot_properties(self):
+        """
+        Test snapshot properties
+        """
+        name = "CBTestSnapProp-{0}".format(uuid.uuid4())
+        test_vol = self.provider.block_store.volumes.create(
+            name,
+            1,
+            helpers.get_provider_test_data(self.provider, "placement"))
+        with helpers.cleanup_action(lambda: test_vol.delete()):
+            test_vol.wait_till_ready()
+            snap_name = "CBSnapProp-{0}".format(name)
+            test_snap = test_vol.create_snapshot(name=snap_name,
+                                                 description=snap_name)
+
+            def cleanup_snap(snap):
+                snap.delete()
+                snap.wait_for(
+                    [SnapshotState.UNKNOWN],
+                    terminal_states=[SnapshotState.ERROR])
+
+            with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
+                test_snap.wait_till_ready()
+                self.assertTrue(isinstance(test_vol.size, six.integer_types))
+                self.assertEqual(
+                    test_snap.size, test_vol.size,
+                    "Snapshot.size must match original volume's size: %s"
+                    " but is: %s" % (test_vol.size, test_snap.size))
+                self.assertTrue(
+                    test_vol.description is None or
+                    isinstance(test_vol.description, six.string_types),
+                    "Snapshot.description must be None or a string. Got: %s"
+                    % test_vol.description)
+                self.assertEqual(test_vol.id, test_snap.volume_id)
+                self.assertIsNotNone(test_vol.create_time)

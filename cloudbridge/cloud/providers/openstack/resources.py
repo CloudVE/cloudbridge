@@ -559,6 +559,27 @@ class OpenStackSnapshot(BaseSnapshot):
         self._snapshot.update()
 
     @property
+    def description(self):
+        return self._snapshot.description
+
+    @description.setter
+    def description(self, value):
+        self._snapshot.description = value
+        self._snapshot.update()
+
+    @property
+    def size(self):
+        return self._snapshot.size
+
+    @property
+    def volume_id(self):
+        return self._snapshot.volume_id
+
+    @property
+    def create_time(self):
+        return self._snapshot.created_at
+
+    @property
     def state(self):
         return OpenStackSnapshot.SNAPSHOT_STATE_MAP.get(
             self._snapshot.status, SnapshotState.UNKNOWN)

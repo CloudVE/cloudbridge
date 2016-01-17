@@ -1238,6 +1238,61 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
         """
         pass
 
+    @abstractproperty
+    def description(self):
+        """
+        Get the snapshot description. Some cloud providers may not support this
+        property, and will return the snapshot name instead.
+
+        :rtype: ``str``
+        :return: Description for this snapshot as returned by the cloud
+        middleware.
+        """
+        pass
+
+    @description.setter
+    @abstractmethod
+    def description(self, value):
+        """
+        Set the snapshot description. Some cloud providers may not support this
+        property, and setting the description may have no effect. (Providers
+        that do not support this property will always return the snapshot name
+        as the description)
+        """
+        pass
+
+    @abstractproperty
+    def size(self):
+        """
+        Get the snapshot size (in GB).
+
+        :rtype: ``int``
+        :return: Size for this snapshot as returned by the cloud middleware.
+        """
+        pass
+
+    @abstractproperty
+    def volume_id(self):
+        """
+        Get the id of the volume that this snapshot is based on.
+        May return None if the source volume no longer exists.
+
+        :rtype: ``int``
+        :return: Id of the volume that this snapshot is based on
+        """
+        pass
+
+    @abstractproperty
+    def create_time(self):
+        """
+        Get the creation data and time for this snapshot.
+
+        :rtype: ``DateTime``
+        :return: Creation time for this snapshot as returned by the cloud
+        middleware.
+        """
+        pass
+
     @abstractmethod
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
