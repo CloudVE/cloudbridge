@@ -468,6 +468,10 @@ class OpenStackRegionService(BaseRegionService):
         return ClientPagedResultList(self.provider, os_regions,
                                      limit=limit, marker=marker)
 
+    @property
+    def current(self):
+        return self.get(self._provider.region_name)
+
 
 class OpenStackComputeService(BaseComputeService):
 

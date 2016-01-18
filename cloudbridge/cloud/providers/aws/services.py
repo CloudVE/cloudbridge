@@ -639,6 +639,10 @@ class AWSRegionService(BaseRegionService):
         return ClientPagedResultList(self.provider, regions,
                                      limit=limit, marker=marker)
 
+    @property
+    def current(self):
+        return self.get(self._provider.region_name)
+
 
 class AWSNetworkService(BaseNetworkService):
 

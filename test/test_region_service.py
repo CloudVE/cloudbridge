@@ -55,6 +55,14 @@ class CloudRegionServiceTestCase(ProviderTestBase):
         unique_regions = set([region.id for region in regions])
         self.assertTrue(len(regions) == len(list(unique_regions)))
 
+    def test_current_region(self):
+        """
+        RegionService.current should return a valid region
+        """
+        current_region = self.provider.compute.regions.current
+        self.assertIsInstance(current_region, Region)
+        self.assertTrue(current_region in self.provider.compute.regions.list())
+
     def test_zones(self):
         """
         Test whether regions return the correct zone information

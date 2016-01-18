@@ -975,6 +975,17 @@ class RegionService(PageableObjectMixin, CloudService):
     """
     __metaclass__ = ABCMeta
 
+    @abstractproperty
+    def current(self):
+        """
+        Returns the current region that this provider is connected
+        to
+
+        :rtype: ``object`` of :class:`.Region`
+        :return:  a Region instance
+        """
+        pass
+
     @abstractmethod
     def get(self, region_id):
         """
