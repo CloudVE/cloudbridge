@@ -285,8 +285,7 @@ class AWSInstance(BaseInstance):
         """
         Get the placement zone where this instance is running.
         """
-        return AWSPlacementZone(self._provider, self._ec2_instance.placement,
-                                self._provider.region_name)
+        return self._ec2_instance.placement
 
     @property
     def security_groups(self):

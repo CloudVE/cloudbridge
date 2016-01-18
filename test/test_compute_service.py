@@ -1,7 +1,7 @@
 import uuid
 
 import ipaddress
-
+import six
 from cloudbridge.cloud.interfaces \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
@@ -126,6 +126,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertEqual(test_instance.image_id, image_id,
                              "Image id {0} is not equal to the expected id"
                              " {1}".format(test_instance.image_id, image_id))
+            self.assertIsInstance(test_instance.placement_zone,
+                                  six.string_types)
+            # FIXME: Moto is not returning the instance's placement zone
+#             find_zone = [zone for zone in
+#                          self.provider.compute.regions.current.zones
+#                          if zone.id == test_instance.placement_zone]
+#             self.assertEqual(len(find_zone), 1,
+#                              "Instance's placement zone could not be "
+#                              " found in zones list")
             self.assertEqual(
                 test_instance.image_id,
                 helpers.get_provider_test_data(self.provider, "image"))

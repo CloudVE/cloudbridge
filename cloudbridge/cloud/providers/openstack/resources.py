@@ -305,10 +305,7 @@ class OpenStackInstance(BaseInstance):
         """
         Get the placement zone where this instance is running.
         """
-        return OpenStackPlacementZone(
-            self._provider,
-            getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None),
-            self._provider.region_name)
+        return getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None)
 
     @property
     def security_groups(self):
