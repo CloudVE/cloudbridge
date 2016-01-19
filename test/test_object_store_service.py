@@ -1,6 +1,7 @@
 from io import BytesIO
 import uuid
 
+from cloudbridge.cloud.interfaces.resources import BucketObject
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
@@ -109,6 +110,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     "Objects returned by list: {0} are not as "
                     " expected: {1}" .format(found_objs[0].id,
                                              obj.id))
+
+                obj_too = test_bucket.get(obj_name)
+                self.assertTrue(
+                    isinstance(obj_too, BucketObject),
+                    "Did not get object {0} of expected type.".format(obj_too))
 
             objs = test_bucket.list()
             found_objs = [o for o in objs if o.name == obj_name]

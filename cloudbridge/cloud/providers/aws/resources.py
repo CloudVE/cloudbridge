@@ -748,8 +748,10 @@ class AWSBucket(BaseBucket):
         """
         Retrieve a given object from this bucket.
         """
-        raise NotImplementedError(
-            'Bucket.list not implemented by this provider')
+        key = Key(self._bucket, key)
+        if key.exists():
+            return AWSBucketObject(self._provider, key)
+        return None
 
     def list(self, limit=None, marker=None):
         """
