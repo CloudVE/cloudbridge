@@ -306,6 +306,13 @@ class AWSInstance(BaseInstance):
                 for group in self._ec2_instance.groups]
 
     @property
+    def security_group_ids(self):
+        """
+        Get the security groups IDs associated with this instance.
+        """
+        return [group.id for group in self._ec2_instance.groups]
+
+    @property
     def key_pair_name(self):
         """
         Get the name of the key pair associated with this instance.

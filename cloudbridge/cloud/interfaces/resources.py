@@ -562,6 +562,16 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractproperty
+    def security_group_ids(self):
+        """
+        Get the IDs of the security groups associated with this instance.
+
+        :rtype: list or :class:``str`
+        :return: A list of the SecurityGroup IDs associated with this instance.
+        """
+        pass
+
+    @abstractproperty
     def key_pair_name(self):
         """
         Get the name of the key pair associated with this instance.
