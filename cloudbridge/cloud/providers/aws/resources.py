@@ -7,6 +7,7 @@ import json
 from boto.exception import EC2ResponseError
 from boto.s3.key import Key
 from retrying import retry
+from slugify import slugify
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
@@ -652,6 +653,15 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         super(AWSSecurityGroupRule, self).__init__(provider, rule, parent)
 
     @property
+    def id(self):
+        """
+        AWS does not support rule IDs so compose one.
+        """
+        return slugify("sgr-{0}-{1}-{2}-{3}".format(
+            self.ip_protocol, self.from_port, self.to_port, self.cidr_ip),
+            to_lower=True)
+
+    @property
     def ip_protocol(self):
         return self._rule.ip_protocol
 
@@ -684,6 +694,16 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         js['group'] = self.group.id if self.group else ''
         js['parent'] = self.parent.id if self.parent else ''
         return json.dumps(js, sort_keys=True)
+
+    def delete(self):
+        if self.group:
+            # pylint:disable=protected-access
+            self.parent._security_group.revoke(
+                src_group=self.group._security_group)
+        else:
+            # pylint:disable=protected-access
+            self.parent._security_group.revoke(self.ip_protocol, self.from_port,
+                                               self.to_port, self.cidr_ip)
 
 
 class AWSBucketObject(BaseBucketObject):

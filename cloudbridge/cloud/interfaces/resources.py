@@ -1699,6 +1699,16 @@ class SecurityGroupRule(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
+    def id(self):
+        """
+        ID for this rule.
+
+        Note that this may be a Cloudbridge-specific ID if the underlying
+        provider does not support rule IDs.
+        """
+        pass
+
+    @abstractproperty
     def ip_protocol(self):
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
@@ -1733,6 +1743,13 @@ class SecurityGroupRule(CloudResource):
 
         :rtype: :class:``.SecurityGroup``
         :return: The Security Group with granting access.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self):
+        """
+        Delete this rule.
         """
         pass
 

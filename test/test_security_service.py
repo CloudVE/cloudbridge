@@ -176,9 +176,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 sg.rules[0].to_port)
             self.assertTrue(
                 all(str(key) in repr(sg.rules[0]) for key in object_keys),
-                "repr(obj) should contain ip_protocol, form_port and to_port"
-                " so that the object can be reconstructed, but does not."
-                " eval(repr(obj)) == obj")
+                "repr(obj) should contain ip_protocol, form_port, and to_port"
+                " so that the object can be reconstructed, but does not:"
+                " {0}; {1}".format(sg.rules[0], object_keys))
             self.assertTrue(
                 sg == sg,
                 "The same security groups should be equal?")
@@ -188,7 +188,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             json_repr = json.dumps(
                 {"description": name, "name": name, "id": sg.id, "rules":
                  [{"from_port": 1111, "group": "", "cidr_ip": "0.0.0.0/0",
-                   "parent": sg.id, "to_port": 1111, "ip_protocol": "tcp"}]},
+                   "parent": sg.id, "to_port": 1111, "ip_protocol": "tcp",
+                   "id": sg.rules[0].id}]},
                 sort_keys=True)
             self.assertTrue(
                 sg.to_json() == json_repr,
@@ -217,6 +218,12 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 sg.rules[0].group.name == name,
                 "Expected security group rule name {0}. Got {1}."
                 .format(name, sg.rules[0].group.name))
+            sg.rules[0].delete()
+            sg = self.provider.security.security_groups.get(sg.id)  # update
+            self.assertTrue(
+                len(sg.rules) == 0,
+                "Deleting SecurityGroupRule should delete it: {0}".format(
+                    sg.rules))
         sgl = self.provider.security.security_groups.list()
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(

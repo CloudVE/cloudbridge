@@ -817,6 +817,10 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
             provider, rule, parent)
 
     @property
+    def id(self):
+        return self._rule.get('id')
+
+    @property
     def ip_protocol(self):
         return self._rule.get('ip_protocol')
 
@@ -848,6 +852,9 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
         js['group'] = self.group.id if self.group else ''
         js['parent'] = self.parent.id if self.parent else ''
         return json.dumps(js, sort_keys=True)
+
+    def delete(self):
+        return self._provider.nova.security_group_rules.delete(self.id)
 
 
 class OpenStackBucketObject(BaseBucketObject):
