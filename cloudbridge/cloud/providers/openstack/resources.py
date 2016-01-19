@@ -393,7 +393,7 @@ class OpenStackRegion(BaseRegion):
                 zones = []
 
         return [OpenStackPlacementZone(self._provider, z.zoneName,
-                                       self._provider.region_name)
+                                       self._os_region)
                 for z in zones]
 
 

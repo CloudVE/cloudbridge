@@ -147,11 +147,13 @@ class OpenStackCloudProvider(BaseCloudProvider):
         if self.config.debug_mode:
             nova_shell.OpenStackComputeShell().setup_debugging(True)
 
-        return nova_client.Client(
+        nova = nova_client.Client(
             api_version, username=self.username, api_key=self.password,
             project_id=self.tenant_name, auth_url=self.auth_url,
             region_name=region_name, service_name=service_name,
             http_log_debug=True if self.config.debug_mode else False)
+        nova.authenticate()
+        return nova
 
     def _connect_keystone(self):
         """
