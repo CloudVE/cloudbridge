@@ -102,7 +102,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: test_instance.terminate()):
             name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(
-                name, 1, test_instance.placement_zone)
+                name, 1, test_instance.zone_id)
             with helpers.cleanup_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready()
                 test_vol.attach(test_instance, '/dev/sda2')
@@ -126,7 +126,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: test_instance.terminate()):
             name = "CBUnitTestVolProps-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(
-                name, 1, test_instance.placement_zone, description=vol_desc)
+                name, 1, test_instance.zone_id, description=vol_desc)
             with helpers.cleanup_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready()
                 self.assertTrue(

@@ -269,9 +269,16 @@ class OpenStackInstance(BaseInstance):
                 if ipaddress.ip_address(address).is_private]
 
     @property
+    def instance_type_id(self):
+        """
+        Get the instance type name.
+        """
+        return self._os_instance.flavor.get('id')
+
+    @property
     def instance_type(self):
         """
-        Get the instance type.
+        Get the instance type object.
         """
         flavor = self._provider.nova.flavors.get(
             self._os_instance.flavor.get('id'))
@@ -301,7 +308,7 @@ class OpenStackInstance(BaseInstance):
                 if self._os_instance.image else "")
 
     @property
-    def placement_zone(self):
+    def zone_id(self):
         """
         Get the placement zone where this instance is running.
         """

@@ -478,12 +478,25 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractproperty
+    def instance_type_id(self):
+        """
+        Get the instance type id for this instance. This will typically be a
+        string value like 'm1.large'. On OpenStack, this may be a number or
+        UUID. To get the full :class:``.InstanceType``
+        object, you can use the instance.instance_type property instead.
+
+        :rtype: :class:``str``
+        :return: Instance type name for this instance (e.g., ``m1.large``)
+        """
+        pass
+
+    @abstractproperty
     def instance_type(self):
         """
-        Get the instance type.
+        Retrieve full instance type information for this instance.
 
         :rtype: :class:``.InstanceType``
-        :return: API type of this instance (e.g., ``m1.large``)
+        :return: Instance type for this instance
         """
         pass
 
@@ -519,9 +532,9 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractproperty
-    def placement_zone(self):
+    def zone_id(self):
         """
-        Get the placement zone where this instance is running.
+        Get the placement zone ID where this instance is running.
 
         :rtype: str
         :return: Region/zone/placement where this instance is running.

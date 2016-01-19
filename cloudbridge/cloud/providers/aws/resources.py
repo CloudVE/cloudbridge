@@ -254,6 +254,13 @@ class AWSInstance(BaseInstance):
         return [self._ec2_instance.private_ip_address]
 
     @property
+    def instance_type_id(self):
+        """
+        Get the instance type name.
+        """
+        return self._ec2_instance.instance_type
+
+    @property
     def instance_type(self):
         """
         Get the instance type.
@@ -281,9 +288,9 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.image_id
 
     @property
-    def placement_zone(self):
+    def zone_id(self):
         """
-        Get the placement zone where this instance is running.
+        Get the placement zone id where this instance is running.
         """
         return self._ec2_instance.placement
 

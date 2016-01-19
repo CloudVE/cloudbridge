@@ -126,12 +126,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertEqual(test_instance.image_id, image_id,
                              "Image id {0} is not equal to the expected id"
                              " {1}".format(test_instance.image_id, image_id))
-            self.assertIsInstance(test_instance.placement_zone,
+            self.assertIsInstance(test_instance.zone_id,
                                   six.string_types)
             # FIXME: Moto is not returning the instance's placement zone
 #             find_zone = [zone for zone in
 #                          self.provider.compute.regions.current.zones
-#                          if zone.id == test_instance.placement_zone]
+#                          if zone.id == test_instance.zone_id]
 #             self.assertEqual(len(find_zone), 1,
 #                              "Instance's placement zone could not be "
 #                              " found in zones list")
@@ -158,13 +158,21 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address")
-            self.assertIsInstance(test_instance.instance_type, InstanceType)
+            self.assertIsInstance(test_instance.instance_type_id,
+                                  six.string_types)
+            itype = self.provider.compute.instance_types.get(
+                test_instance.instance_type_id)
+            self.assertEqual(
+                itype, test_instance.instance_type,
+                "Instance type {0} does not match expected type {1}".format(
+                    itype.name, test_instance.instance_type))
+            self.assertIsInstance(itype, InstanceType)
             expected_type = helpers.get_provider_test_data(self.provider,
                                                            'instance_type')
             self.assertEqual(
-                test_instance.instance_type.name, expected_type,
+                itype.name, expected_type,
                 "Instance type {0} does not match expected type {1}".format(
-                    test_instance.instance_type.name, expected_type))
+                    itype.name, expected_type))
 
     def test_block_device_mapping_launch_config(self):
         lc = self.provider.compute.instances.create_launch_config()
