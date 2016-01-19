@@ -1865,3 +1865,13 @@ class Bucket(PageableObjectMixin, CloudResource):
         :return: ``True`` if successful.
         """
         pass
+
+    @abstractmethod
+    def create_object(self, name):
+        """
+        Creates a new object within this bucket.
+
+        :rtype: :class:``.BucketObject``
+        :return: The newly created bucket object
+        """
+        pass

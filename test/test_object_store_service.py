@@ -105,10 +105,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     "List bucket objects does not return the expected"
                     " object %s" % obj_name)
 
+                get_bucket_obj = test_bucket.get(obj_name)
                 self.assertTrue(
-                    found_objs[0] == obj,
-                    "Objects returned by list: {0} are not as "
-                    " expected: {1}" .format(found_objs[0].id,
+                    found_objs[0] ==
+                    get_bucket_obj == obj,
+                    "Objects returned by list: {0} and get: {1} are not as "
+                    " expected: {2}" .format(found_objs[0].id,
+                                             get_bucket_obj.id,
                                              obj.id))
 
                 obj_too = test_bucket.get(obj_name)
