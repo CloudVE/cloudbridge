@@ -5,7 +5,9 @@ import inspect
 import itertools
 import json
 import logging
+import shutil
 import time
+
 import six
 
 from cloudbridge.cloud.interfaces.resources \
@@ -594,6 +596,13 @@ class BaseBucketObject(BucketObject, BaseCloudResource):
 
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
+
+    def save_content(self, target_stream):
+        """
+        Download this object and write its
+        contents to the target_stream.
+        """
+        shutil.copyfileobj(self.iter_content(), target_stream)
 
     def __eq__(self, other):
         return (isinstance(other, BucketObject) and

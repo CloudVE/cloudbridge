@@ -1765,12 +1765,21 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def download(self, target_stream):
+    def iter_content(self):
         """
-        Download this object and write its contents to the ``target_stream``.
+        Returns this object's content as an iterable.
 
-        :rtype: bool
-        :return: ``True`` if successful.
+        :rtype: Iterable
+        :return: An iterable of the file contents
+
+        """
+        pass
+
+    @abstractmethod
+    def save_content(self, target_stream):
+        """
+        Save this object and write its contents to the ``target_stream``.
+
         """
         pass
 

@@ -3,7 +3,7 @@ DataTypes used by this provider
 """
 import inspect
 import json
-import shutil
+
 
 import ipaddress
 
@@ -868,14 +868,14 @@ class OpenStackBucketObject(BaseBucketObject):
         """
         return self._obj.get("name")
 
-    def download(self, target_stream):
+    def iter_content(self):
         """
-        Download this object and write its
-        contents to the target_stream.
+        Returns this object's content as an
+        iterable.
         """
         _, content = self._provider.swift.get_object(
             self.cbcontainer.name, self.name, resp_chunk_size=65536)
-        shutil.copyfileobj(content, target_stream)
+        return content
 
     def upload(self, data):
         """

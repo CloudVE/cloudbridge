@@ -3,7 +3,6 @@ DataTypes used by this provider
 """
 import inspect
 import json
-import shutil
 
 from boto.exception import EC2ResponseError
 from boto.s3.key import Key
@@ -704,12 +703,12 @@ class AWSBucketObject(BaseBucketObject):
         """
         return self._key.name
 
-    def download(self, target_stream):
+    def iter_content(self):
         """
-        Download this object and write its
-        contents to the target_stream.
+        Returns this object's content as an
+        iterable.
         """
-        shutil.copyfileobj(self._key, target_stream)
+        return self._key
 
     def upload(self, data):
         """

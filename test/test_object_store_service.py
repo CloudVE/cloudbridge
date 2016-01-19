@@ -133,5 +133,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 # multiple methods like upload_from_file, from_stream etc.
                 obj.upload(content)
                 target_stream = BytesIO()
-                obj.download(target_stream)
+                obj.save_content(target_stream)
                 self.assertEqual(target_stream.getvalue(), content)
+                target_stream2 = BytesIO()
+                for data in obj.iter_content():
+                    target_stream2.write(data)
+                self.assertEqual(target_stream2.getvalue(), content)
