@@ -327,7 +327,7 @@ class OpenStackInstance(BaseInstance):
         """
         Get the security groups IDs associated with this instance.
         """
-        return [group['name'] for group in self._os_instance.security_groups]
+        return [group.id for group in self.security_groups]
 
     @property
     def key_pair_name(self):
