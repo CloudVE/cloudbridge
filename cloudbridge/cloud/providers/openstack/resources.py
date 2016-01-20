@@ -816,8 +816,8 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
             self._security_group)
         for rule in self._security_group.rules:
             if (rule['ip_protocol'] == ip_protocol and
-               str(rule['from_port']) == str(from_port) and
-               str(rule['to_port']) == str(to_port) and
+               rule['from_port'] == from_port and
+               rule['to_port'] == to_port and
                rule['ip_range'].get('cidr') == cidr_ip) or \
                (rule['group'].get('name') == src_group.name if src_group
                else False):
@@ -848,11 +848,11 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def from_port(self):
-        return self._rule.get('from_port')
+        return int(self._rule.get('from_port', 0))
 
     @property
     def to_port(self):
-        return self._rule.get('to_port')
+        return int(self._rule.get('to_port', 0))
 
     @property
     def cidr_ip(self):

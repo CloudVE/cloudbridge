@@ -1736,6 +1736,9 @@ class SecurityGroupRule(CloudResource):
 
         Note that this may be a Cloudbridge-specific ID if the underlying
         provider does not support rule IDs.
+
+        :rtype: str
+        :return: Role ID.
         """
         pass
 
@@ -1743,6 +1746,9 @@ class SecurityGroupRule(CloudResource):
     def ip_protocol(self):
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
+
+        :rtype: str
+        :return: Active protocol.
         """
         pass
 
@@ -1750,6 +1756,9 @@ class SecurityGroupRule(CloudResource):
     def from_port(self):
         """
         Lowest port number opened as part of this rule.
+
+        :rtype: int
+        :return: Lowest port number or 0 if not set.
         """
         pass
 
@@ -1757,6 +1766,9 @@ class SecurityGroupRule(CloudResource):
     def to_port(self):
         """
         Highest port number opened as part of this rule.
+
+        :rtype: int
+        :return: Highest port number or 0 if not set.
         """
         pass
 
@@ -1764,6 +1776,9 @@ class SecurityGroupRule(CloudResource):
     def cidr_ip(self):
         """
         CIDR block this security group is providing access to.
+
+        :rtype: str
+        :return: CIDR block.
         """
         pass
 

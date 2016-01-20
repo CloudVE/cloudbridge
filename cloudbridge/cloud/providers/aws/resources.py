@@ -648,8 +648,8 @@ class AWSSecurityGroup(BaseSecurityGroup):
                  cidr_ip=None, src_group=None):
         for rule in self._security_group.rules:
             if (rule.ip_protocol == ip_protocol and
-               str(rule.from_port) == str(from_port) and
-               str(rule.to_port) == str(to_port) and
+               rule.from_port == from_port and
+               rule.to_port == to_port and
                rule.grants[0].cidr_ip == cidr_ip) or \
                (rule.grants[0].name == src_group.name if src_group and
                hasattr(rule.grants[0], 'name') else False):
@@ -686,11 +686,15 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def from_port(self):
-        return self._rule.from_port
+        if str(self._rule.from_port).isdigit():
+            return int(self._rule.from_port)
+        return 0
 
     @property
     def to_port(self):
-        return self._rule.to_port
+        if str(self._rule.to_port).isdigit():
+            return int(self._rule.to_port)
+        return 0
 
     @property
     def cidr_ip(self):
