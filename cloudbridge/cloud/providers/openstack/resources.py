@@ -811,6 +811,9 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
+        # Update SG object; otherwise, recenlty added rules do now show
+        self._security_group = self._provider.nova.security_groups.get(
+            self._security_group)
         for rule in self._security_group.rules:
             if (rule['ip_protocol'] == ip_protocol and
                str(rule['from_port']) == str(from_port) and

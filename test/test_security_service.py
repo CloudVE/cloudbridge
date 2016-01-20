@@ -159,15 +159,12 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
         with helpers.cleanup_action(lambda: sg.delete()):
-            sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
-                        cidr_ip='0.0.0.0/0')
-            rule = sg.get_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
+            rule = sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
                                cidr_ip='0.0.0.0/0')
+            found_rule = sg.get_rule(ip_protocol='tcp', from_port=1111,
+                                     to_port=1111, cidr_ip='0.0.0.0/0')
             self.assertTrue(
-                (rule.ip_protocol == 'tcp' and
-                 rule.from_port == 1111 and
-                 rule.to_port == 1111 and
-                 rule.cidr_ip == '0.0.0.0/0'),
+                rule == found_rule,
                 "Expected rule {0} not found in security group: {0}".format(
                     rule, sg.rules))
 
@@ -188,8 +185,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "The same security groups should still be equal?")
             json_repr = json.dumps(
                 {"description": name, "name": name, "id": sg.id, "rules":
-                 [{"from_port": "1111", "group": "", "cidr_ip": "0.0.0.0/0",
-                   "parent": sg.id, "to_port": "1111", "ip_protocol": "tcp",
+                 [{"from_port": 1111, "group": "", "cidr_ip": "0.0.0.0/0",
+                   "parent": sg.id, "to_port": 1111, "ip_protocol": "tcp",
                    "id": sg.rules[0].id}]},
                 sort_keys=True)
             self.assertTrue(
@@ -214,12 +211,13 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 len(sg.rules) == 0,
                 "Expected no security group group rule. Got {0}."
                 .format(sg.rules))
-            rule = sg.add_rule(src_group=sg)
+            sg.add_rule(src_group=sg)
             self.assertTrue(
-                rule.group.name == name,
+                sg.rules[0].group.name == name,
                 "Expected security group rule name {0}. Got {1}."
-                .format(name, rule.group.name))
-            rule.delete()
+                .format(name, sg.rules[0].group.name))
+            for rule in sg.rules:
+                rule.delete()
             self.assertTrue(
                 len(sg.rules) == 0,
                 "Deleting SecurityGroupRule should delete it: {0}".format(
