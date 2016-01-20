@@ -1,14 +1,6 @@
 """
 DataTypes used by this provider
 """
-import inspect
-import json
-
-from boto.exception import EC2ResponseError
-from boto.s3.key import Key
-from retrying import retry
-from slugify import slugify
-
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
@@ -30,6 +22,13 @@ from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+import hashlib
+import inspect
+import json
+
+from boto.exception import EC2ResponseError
+from boto.s3.key import Key
+from retrying import retry
 
 
 class AWSMachineImage(BaseMachineImage):
@@ -657,9 +656,10 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         """
         AWS does not support rule IDs so compose one.
         """
-        return slugify("sgr-{0}-{1}-{2}-{3}".format(
-            self.ip_protocol, self.from_port, self.to_port, self.cidr_ip),
-            to_lower=True)
+        md5 = hashlib.md5()
+        md5.update("{0}-{1}-{2}-{3}".format(
+            self.ip_protocol, self.from_port, self.to_port, self.cidr_ip))
+        return md5.hexdigest()
 
     @property
     def ip_protocol(self):
@@ -702,8 +702,10 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
                 src_group=self.group._security_group)
         else:
             # pylint:disable=protected-access
-            self.parent._security_group.revoke(self.ip_protocol, self.from_port,
-                                               self.to_port, self.cidr_ip)
+            self.parent._security_group.revoke(self.ip_protocol,
+                                               self.from_port,
+                                               self.to_port,
+                                               self.cidr_ip)
 
 
 class AWSBucketObject(BaseBucketObject):

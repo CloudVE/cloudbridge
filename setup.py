@@ -13,8 +13,7 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
             version = ast.literal_eval(m.group(1))
             break
 
-base_reqs = ['bunch==1.0.1', 'six==1.10.0', 'retrying==1.3.3',
-             'awesome-slugify==1.6.5']
+base_reqs = ['bunch==1.0.1', 'six==1.10.0', 'retrying==1.3.3']
 openstack_reqs = ['python-novaclient==2.33.0',
                   'python-glanceclient',
                   'python-cinderclient==1.4.0',
