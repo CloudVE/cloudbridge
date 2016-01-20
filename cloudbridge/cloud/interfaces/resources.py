@@ -1666,7 +1666,7 @@ class SecurityGroup(CloudResource):
         Create a security group rule.
 
         You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
+        ``from_port``, ``to_port``, and ``cidr_ip``. In other words, either
         you are authorizing another group or you are authorizing some
         ip-based rule.
 
@@ -1685,8 +1685,39 @@ class SecurityGroup(CloudResource):
         :type src_group: :class:``.SecurityGroup``
         :param src_group: The Security Group object you are granting access to.
 
-        :rtype: bool
-        :return: ``True`` if successful.
+        :rtype: :class:``.SecurityGroupRule``
+        :return: Rule object if successful or ``None``.
+        """
+        pass
+
+    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
+                 cidr_ip=None, src_group=None):
+        """
+        Get a security group rule with the specified parameters.
+
+        You need to pass in either ``src_group`` OR ``ip_protocol``,
+        ``from_port``, ``to_port``, and ``cidr_ip``. Note that when retrieving
+        a group rule, this method will return only one rule although possibly
+        several rules exist for the group rule. In that case, use the
+        ``.rules`` property and filter the results as desired.
+
+        :type ip_protocol: str
+        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+
+        :type from_port: int
+        :param from_port: The beginning port number you are enabling.
+
+        :type to_port: int
+        :param to_port: The ending port number you are enabling.
+
+        :type cidr_ip: str or list of strings
+        :param cidr_ip: The CIDR block you are providing access to.
+
+        :type src_group: :class:``.SecurityGroup``
+        :param src_group: The Security Group object you are granting access to.
+
+        :rtype: :class:``.SecurityGroupRule``
+        :return: Role object if one can be found or ``None``.
         """
         pass
 

@@ -599,6 +599,9 @@ class AWSSecurityGroup(BaseSecurityGroup):
 
     @property
     def rules(self):
+        # Refresh the local object; otherwise get stale rules
+        self._security_group = self._provider.ec2_conn.get_all_security_groups(
+            group_ids=[self.id])[0]
         return [AWSSecurityGroupRule(self._provider, r, self)
                 for r in self._security_group.rules]
 
@@ -627,16 +630,31 @@ class AWSSecurityGroup(BaseSecurityGroup):
         :type src_group: ``object`` of :class:`.SecurityGroup`
         :param src_group: The Security Group you are granting access to.
 
-        :rtype: bool
-        :return: True if successful.
+        :rtype: :class:``.SecurityGroupRule``
+        :return: Rule object if successful or ``None``.
         """
-        return self._security_group.authorize(
-            ip_protocol=ip_protocol,
-            from_port=from_port,
-            to_port=to_port,
-            cidr_ip=cidr_ip,
-            # pylint:disable=protected-access
-            src_group=src_group._security_group if src_group else None)
+        if self._security_group.authorize(
+                ip_protocol=ip_protocol,
+                from_port=from_port,
+                to_port=to_port,
+                cidr_ip=cidr_ip,
+                # pylint:disable=protected-access
+                src_group=src_group._security_group if src_group else None):
+            return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
+                                 src_group)
+        return None
+
+    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
+                 cidr_ip=None, src_group=None):
+        for rule in self._security_group.rules:
+            if (rule.ip_protocol == ip_protocol and
+               str(rule.from_port) == str(from_port) and
+               str(rule.to_port) == str(to_port) and
+               rule.grants[0].cidr_ip == cidr_ip) or \
+               (rule.grants[0].name == src_group.name if src_group and
+               hasattr(rule.grants[0], 'name') else False):
+                return AWSSecurityGroupRule(self._provider, rule, self)
+        return None
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
