@@ -658,7 +658,8 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         """
         md5 = hashlib.md5()
         md5.update("{0}-{1}-{2}-{3}".format(
-            self.ip_protocol, self.from_port, self.to_port, self.cidr_ip))
+            self.ip_protocol, self.from_port, self.to_port, self.cidr_ip)
+            .encode('ascii'))
         return md5.hexdigest()
 
     @property
