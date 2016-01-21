@@ -1,12 +1,6 @@
 """
 DataTypes used by this provider
 """
-import inspect
-import json
-
-
-import ipaddress
-
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
@@ -28,6 +22,11 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
+import inspect
+import json
+
+import ipaddress
+
 import novaclient.exceptions as novaex
 import swiftclient.exceptions as swiftex
 
@@ -816,11 +815,11 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
             self._security_group)
         for rule in self._security_group.rules:
             if (rule['ip_protocol'] == ip_protocol and
-               rule['from_port'] == from_port and
-               rule['to_port'] == to_port and
-               rule['ip_range'].get('cidr') == cidr_ip) or \
+                rule['from_port'] == from_port and
+                rule['to_port'] == to_port and
+                rule['ip_range'].get('cidr') == cidr_ip) or \
                (rule['group'].get('name') == src_group.name if src_group
-               else False):
+                    else False):
                 return OpenStackSecurityGroupRule(self._provider, rule, self)
         return None
 
@@ -848,11 +847,11 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def from_port(self):
-        return int(self._rule.get('from_port', 0))
+        return int(self._rule.get('from_port') or 0)
 
     @property
     def to_port(self):
-        return int(self._rule.get('to_port', 0))
+        return int(self._rule.get('to_port') or 0)
 
     @property
     def cidr_ip(self):
