@@ -530,8 +530,9 @@ class BaseSecurityGroupRule(SecurityGroupRule, BaseCloudResource):
         self.parent = parent
 
     def __repr__(self):
-        return "<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}>".format(
-            self.ip_protocol, self.from_port, self.to_port)
+        return ("<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}; grp: {3}>"
+                .format(self.ip_protocol, self.from_port, self.to_port,
+                        self.group))
 
     def __eq__(self, other):
         return self.ip_protocol == other.ip_protocol and \
