@@ -1,12 +1,11 @@
+from cloudbridge.cloud import providers
+from cloudbridge.cloud.interfaces import CloudProvider
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from collections import defaultdict
 import importlib
 import inspect
 import logging
 import pkgutil
-
-from cloudbridge.cloud import providers
-from cloudbridge.cloud.interfaces import CloudProvider
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 
 log = logging.getLogger(__name__)
@@ -15,6 +14,7 @@ log = logging.getLogger(__name__)
 class ProviderList(object):
     AWS = 'aws'
     OPENSTACK = 'openstack'
+    GCE = 'gce'
 
 
 class CloudProviderFactory(object):
