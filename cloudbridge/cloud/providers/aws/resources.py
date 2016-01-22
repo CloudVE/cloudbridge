@@ -599,9 +599,6 @@ class AWSSecurityGroup(BaseSecurityGroup):
 
     @property
     def rules(self):
-        # Refresh the local object; otherwise get stale rules
-        self._security_group = self._provider.ec2_conn.get_all_security_groups(
-            group_ids=[self.id])[0]
         return [AWSSecurityGroupRule(self._provider, r, self)
                 for r in self._security_group.rules]
 
