@@ -52,6 +52,7 @@ Documentation
     concepts.rst
     getting_started.rst
     topics/overview.rst
+    topics/contributor_guide.rst
     api_docs/ref.rst
 
 Page index
