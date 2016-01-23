@@ -321,7 +321,8 @@ class AWSSnapshotService(BaseSnapshotService):
         List all snapshots.
         """
         snaps = [AWSSnapshot(self.provider, snap)
-                 for snap in self.provider.ec2_conn.get_all_snapshots()]
+                 for snap in self.provider.ec2_conn.get_all_snapshots(
+                 owner='self')]
         return ClientPagedResultList(self.provider, snaps,
                                      limit=limit, marker=marker)
 
@@ -336,6 +337,8 @@ class AWSSnapshotService(BaseSnapshotService):
             description=description)
         cb_snap = AWSSnapshot(self.provider, ec2_snap)
         cb_snap.name = name
+        if description:
+            cb_snap.description = description
         return cb_snap
 
 
