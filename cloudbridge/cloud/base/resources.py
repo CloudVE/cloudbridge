@@ -1,15 +1,6 @@
 """
 Base implementation for data objects exposed through a provider or service
 """
-import inspect
-import itertools
-import json
-import logging
-import shutil
-import time
-
-import six
-
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
@@ -38,6 +29,14 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.resources import WaitStateException
+import inspect
+import itertools
+import json
+import logging
+import shutil
+import time
+
+import six
 
 
 log = logging.getLogger(__name__)
@@ -465,7 +464,7 @@ class BaseKeyPair(KeyPair, BaseCloudResource):
         self._key_pair.delete()
 
     def __repr__(self):
-        return "<CBKeyPair: {0}>".format(self.name)
+        return "<CBKeyPair: {0} ({1})>".format(self.name, self.id)
 
 
 class BaseSecurityGroup(SecurityGroup, BaseCloudResource):
