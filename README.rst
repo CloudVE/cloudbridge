@@ -127,17 +127,21 @@ Testing philosophy
 Our testing goals are to:
 
 1. Write one set of tests that all provider implementations must pass.
+
 2. Make that set of tests a 'conformance' test suite, which validates that each
 implementation correctly implements the cloudbridge specification.
+
 3. Make the test suite comprehensive enough that a provider which passes all the
 tests can be used safely by an application with no additional testing. In other
 words, the cloudbridge specification and accompanying test suite must be
 comprehensive enough that no provider specific workarounds, code or testing is
 required.
+
 4. For development, mock providers may be used to speed up the feedback cycle,
 but providers must also pass the full suite of tests when run against actual
 cloud infrastructure to ensure that we are not testing against an idealised or
 imagined environment.
+
 5. Aim for 100% code coverage.
 
 .. _`tox`: https://tox.readthedocs.org/en/latest/
