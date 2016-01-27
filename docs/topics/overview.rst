@@ -11,3 +11,4 @@ Introductions to all the key parts of Cloudbridge you'll need to know:
     Object states and lifecycles <object_lifecycles.rst>
     Paging and iteration <paging_and_iteration.rst>
     Using block storage <block_storage.rst>
+    Testing <test.rst>
