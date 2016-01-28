@@ -22,6 +22,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+from datetime import datetime
 import hashlib
 import inspect
 import json
@@ -744,6 +745,21 @@ class AWSBucketObject(BaseBucketObject):
         Get this object's name.
         """
         return self._key.name
+
+    @property
+    def size(self):
+        """
+        Get this object's size.
+        """
+        return self._key.size
+
+    @property
+    def last_modified(self):
+        """
+        Get the date and time this object was last modified.
+        """
+        lm = datetime.strptime(self._key.last_modified, "%Y-%m-%dT%H:%M:%S.%fZ")
+        return lm.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):
         """

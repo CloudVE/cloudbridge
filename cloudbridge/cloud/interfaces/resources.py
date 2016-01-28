@@ -1827,6 +1827,26 @@ class BucketObject(CloudResource):
         """
         pass
 
+    @abstractproperty
+    def size(self):
+        """
+        Get this object's size.
+
+        :rtype: int
+        :return: Size of this object in bytes.
+        """
+        pass
+
+    @abstractproperty
+    def last_modified(self):
+        """
+        Get the date and time this object was last modified.
+
+        :rtype: str
+        :return: Date and time formatted string %Y-%m-%dT%H:%M:%S.%f
+        """
+        pass
+
     @abstractmethod
     def iter_content(self):
         """

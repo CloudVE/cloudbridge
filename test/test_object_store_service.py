@@ -1,3 +1,4 @@
+from datetime import datetime
 from io import BytesIO
 import uuid
 
@@ -94,6 +95,16 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 # the file content as a parameter.
                 obj.upload("dummy content")
                 objs = test_bucket.list()
+
+                self.assertTrue(
+                    isinstance(objs[0].size, int),
+                    "Object size property needs to be a int, not {0}".format(
+                        type(objs[0].size)))
+                self.assertTrue(
+                    datetime.strptime(objs[0].last_modified,
+                                      "%Y-%m-%dT%H:%M:%S.%f"),
+                    "Object's last_modified field format {0} not matching."
+                    .format(objs[0].last_modified))
 
                 # check iteration
                 iter_objs = list(test_bucket)

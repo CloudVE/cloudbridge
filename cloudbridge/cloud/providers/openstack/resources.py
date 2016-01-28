@@ -896,6 +896,14 @@ class OpenStackBucketObject(BaseBucketObject):
         """
         return self._obj.get("name")
 
+    @property
+    def size(self):
+        return self._obj.get("bytes")
+
+    @property
+    def last_modified(self):
+        return self._obj.get("last_modified")
+
     def iter_content(self):
         """
         Returns this object's content as an
