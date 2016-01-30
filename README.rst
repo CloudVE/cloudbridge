@@ -31,6 +31,17 @@ the Alpha state.
    :alt: Documentation Status
 
 
+Installation
+~~~~~~~~~~~~
+Install the latest release from PyPi:
+
+.. code-block:: shell
+
+  pip install cloudbridge
+
+For other installation options, see the `installation page`_ in
+the documentation.
+
 Usage example
 ~~~~~~~~~~~~~
 
@@ -102,8 +113,11 @@ defined interface. If adding a completely new provider, take a look at the
 `provider development page`_ in the documentation.
 
 
+.. _`installation page`: http://cloudbridge.readthedocs.org/en/
+   latest/topics/install.html
 .. _`get started`: http://cloudbridge.readthedocs.org/en/latest/
     getting_started.html
 .. _`PEP8 style guide`: https://www.python.org/dev/peps/pep-0008/
-.. _`provider development page`: http://cloudbridge.readthedocs.org/en/latest/
+.. _`provider development page`: http://cloudbridge.readthedocs.org/
+   en/latest/
     topics/provider_development.html
