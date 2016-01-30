@@ -1,0 +1,43 @@
+---
+engines:
+  duplication:
+    enabled: true
+    exclude_fingerprints:
+    - 3f76576c813e5e592f6ea1bc65ef9291
+    - f9ae8e1021c766dc0c2f353576fbcff7
+    - 49fc4b591037aff996ec0c998e402c5f
+    - 928d8aa915cd115ffe71cd78347390db
+    - 93bd0fc00f922563410152af13ef94cb
+    - 5a84f0e7b122136393d7895d4186568a
+    - 82e3773e63540ee70c4e5d2223b22ba5
+    - e334c778bcb258f7ea5ee7b4842f8439
+    - 4db6cfe08a809f77603390e57959bca4
+    - 12359446d14e41bd0b8056bc0ea3f500
+    - 7e1d5dbed1c3450da4b715a15a1712aa
+    - 6e2064d77fe1bad0f7ba4b4436fb6f58
+    - 8b984e10ad6b1c856eaf5b1c5f0cc771
+    - adff4c0fe5487d389ebad12f7fbf735b
+    - 395e33c8f74b14d7ed50826dc6f7e9ea
+    config:
+      languages:
+      - ruby
+      - javascript
+      - python
+      - php
+  fixme:
+    enabled: true
+  radon:
+    enabled: true
+    config: 
+      threshold: "C"
+ratings:
+  paths:
+  - "**.inc"
+  - "**.js"
+  - "**.jsx"
+  - "**.module"
+  - "**.php"
+  - "**.py"
+  - "**.rb"
+exclude_paths:
+- test/**/*
