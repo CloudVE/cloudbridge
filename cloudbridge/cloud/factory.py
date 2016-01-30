@@ -68,14 +68,11 @@ class CloudProviderFactory(object):
     def discover_providers(self):
         """
         Discover all available providers within the
-        cloudbridge.cloud.providers package.
+        ``cloudbridge.cloud.providers`` package.
+        Note that this methods does not guard against a failed import.
         """
         for _, modname, _ in pkgutil.iter_modules(providers.__path__):
-            try:
-                self._import_provider(modname)
-            except:
-                log.exception("Could not import providers from module: %s",
-                              modname)
+            self._import_provider(modname)
 
     def _import_provider(self, module_name):
         """

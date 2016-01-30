@@ -6,9 +6,14 @@ import os
 
 import boto
 from boto.ec2.regioninfo import RegionInfo
-from httpretty import HTTPretty
-from moto.ec2 import mock_ec2
-from moto.s3 import mock_s3
+try:
+    # These are installed only for the case of a dev instance
+    from httpretty import HTTPretty
+    from moto.ec2 import mock_ec2
+    from moto.s3 import mock_s3
+except ImportError:
+    # TODO: Once library logging is configured, change this
+    print("[aws provider] moto library not available!")
 
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
