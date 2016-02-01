@@ -67,14 +67,21 @@ The following states are defined for a CloudBridge Instance.
 ===================   =============   ==================
 State                 Category        Description
 ===================   =============   ==================
-UNKNOWN               actionable      Instance state is unknown. This means that the instance does not exist or CloudBridge does not know how to map this state.
+UNKNOWN               actionable      Instance state is unknown. This means
+                                      that the instance does not exist or
+                                      CloudBridge does not know how to map this
+                                      state.
 PENDING               informational   Instance is pending
-CONFIGURING           informational   Instance is being reconfigured in some way and may not be usable.
+CONFIGURING           informational   Instance is being reconfigured in some
+                                      way and may not be usable.
 RUNNING               actionable      Instance is running.
 REBOOTING             informational   Instance is rebooting.
-TERMINATED            actionable      Instance is terminated. No further operations possible.
-STOPPED               actionable      Instance is stopped. Instance can be resumed.
-ERROR                 actionable      Instance is in an error state. No further operations possible.
+TERMINATED            actionable      Instance is terminated. No further
+                                      operations possible.
+STOPPED               actionable      Instance is stopped. Instance can be
+                                      resumed.
+ERROR                 actionable      Instance is in an error state. No further
+                                      operations possible.
 ===================   =============   ==================
 
 
@@ -98,13 +105,18 @@ The following states are defined for a CloudBridge Volume.
 ===================   =============   ==================
 State                 Category        Description
 ===================   =============   ==================
-UNKNOWN               actionable      Volume state is unknown. This means that the volume does not exist or CloudBridge does not know how to map this state.
+UNKNOWN               actionable      Volume state is unknown. This means that
+                                      the volume does not exist or CloudBridge
+                                      does not know how to map this state.
 CREATING              informational   Volume is pending
-CONFIGURING           informational   Volume is being reconfigured in some way and may not be usable.
+CONFIGURING           informational   Volume is being reconfigured in some way
+                                      and may not be usable.
 AVAILABLE             actionable      Volume is unattached and available for use.
 IN_USE                informational   Volume is attached to an instance and in-use.
-DELETED               actionable      Volume has been deleted. No further operations possible.
-ERROR                 actionable      Volume is in an error state. No further operations possible.
+DELETED               actionable      Volume has been deleted. No further
+                                      operations possible.
+ERROR                 actionable      Volume is in an error state. No further
+                                      operations possible.
 ===================   =============   ==================
 
 The lifecycle diagram is as follows:
@@ -128,11 +140,16 @@ The following states are defined for a CloudBridge Snapshot.
 ===================   =============   ==================
 State                 Category        Description
 ===================   =============   ==================
-UNKNOWN               actionable      Snapshot state is unknown. This means that the snapshot does not exist or CloudBridge does not know how to map this state.
+UNKNOWN               actionable      Snapshot state is unknown. This means
+                                      that the snapshot does not exist or
+                                      CloudBridge does not know how to map this
+                                      state.
 PENDING               informational   Snapshot is pending
-CONFIGURING           informational   Snapshot is being reconfigured in some way and may not be usable.
+CONFIGURING           informational   Snapshot is being reconfigured in some
+                                      way and may not be usable.
 AVAILABLE             actionable      Snapshot is ready.
-ERROR                 actionable      Snapshot is in an error state. No further operations possible.
+ERROR                 actionable      Snapshot is in an error state. No further
+                                      operations possible.
 ===================   =============   ==================
 
 The lifecycle diagram is as follows:
@@ -154,10 +171,13 @@ The following states are defined for a CloudBridge Image.
 ===================   =============   ==================
 State                 Category        Description
 ===================   =============   ==================
-UNKNOWN               actionable      Image state is unknown. This means that the Image does not exist or CloudBridge does not know how to map this state.
+UNKNOWN               actionable      Image state is unknown. This means that
+                                      the Image does not exist or CloudBridge
+                                      does not know how to map this state.
 PENDING               informational   Image is pending
 AVAILABLE             actionable      Image is ready.
-ERROR                 actionable      Image is in an error state. No further operations possible.
+ERROR                 actionable      Image is in an error state. No further
+                                      operations possible.
 ===================   =============   ==================
 
 The lifecycle diagram is as follows:

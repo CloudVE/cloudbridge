@@ -1734,7 +1734,7 @@ class SecurityGroupRule(CloudResource):
         """
         ID for this rule.
 
-        Note that this may be a Cloudbridge-specific ID if the underlying
+        Note that this may be a CloudBridge-specific ID if the underlying
         provider does not support rule IDs.
 
         :rtype: str

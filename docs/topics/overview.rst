@@ -1,11 +1,11 @@
-Using Cloudbridge
+Using CloudBridge
 =================
-Introductions to all the key parts of Cloudbridge you'll need to know:
+Introductions to all the key parts of CloudBridge you'll need to know:
 
 .. toctree::
    :maxdepth: 1
 
-    How to install Cloudbridge <install.rst>
+    How to install CloudBridge <install.rst>
     Connection and authentication setup <setup.rst>
     Launching instances <launch.rst>
     Object states and lifecycles <object_lifecycles.rst>

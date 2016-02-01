@@ -10,7 +10,7 @@ the native cloud provider Python library, here
 ``pip install google-api-python-client``.
 
 2. Add a ``provider.py`` file. This file will contain the main implementation
-of the cloud provider and will be the entry point that cloudbridge uses for all
+of the cloud provider and will be the entry point that CloudBridge uses for all
 provider related services. You will need to subclass ``BaseCloudProvider`` and
 add a class variable named ``PROVIDER_ID``.
 
@@ -199,7 +199,7 @@ tests pass.
     is up to the implementor, a general design we have followed is to have the
     cloud connection globally available within the provider.
 
-To add the sdk, we edit cloudbridge's main ``setup.py`` and list the
+To add the sdk, we edit CloudBridge's main ``setup.py`` and list the
 dependencies.
 
 .. code-block:: python

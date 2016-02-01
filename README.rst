@@ -1,7 +1,7 @@
-cloudbridge
+CloudBridge
 ===========
 
-cloudbridge aims to provide a simple layer of abstraction over
+CloudBridge aims to provide a simple layer of abstraction over
 different cloud providers, reducing or eliminating the need to write
 conditional code for each cloud. It is currently under development and is in
 the Alpha state.
@@ -45,7 +45,7 @@ the documentation.
 Usage example
 ~~~~~~~~~~~~~
 
-To `get started`_ with cloudbridge, export your cloud access credentials
+To `get started`_ with CloudBridge, export your cloud access credentials
 (e.g., AWS_ACCESS_KEY and AWS_SECRET_KEY for your AWS credentials) and start
 exploring the API:
 
@@ -82,7 +82,7 @@ Design Goals
    The cloud infrastructure will very likely support block storage, although
    this is currently optional. It may optionally support object storage.
 
-4. Make the cloudbridge layer as thin as possible without compromising goal 1.
+4. Make the CloudBridge layer as thin as possible without compromising goal 1.
    By wrapping the cloud provider's native SDK and doing the minimal work
    necessary to adapt the interface, we can achieve greater development speed
    and reliability since the native provider SDK is most likely to have both

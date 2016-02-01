@@ -75,15 +75,16 @@ will override environment values.
               'aws_secret_key' : '<your_secret_key>'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
 
-Some optional configuration values can only be provided through the config dictionary. These
-are listed below for each provider.
+Some optional configuration values can only be provided through the config
+dictionary. These are listed below for each provider.
 
 **CloudBridge**
 
 ====================  ==================
 Variable		      Description
 ====================  ==================
-default_result_limit  Number of results that a ``.list()`` method should return. Defaults to 50.
+default_result_limit  Number of results that a ``.list()`` method should return.
+                      Defaults to 50.
 ====================  ==================
 
 
@@ -95,27 +96,35 @@ Variable		      Description
 ec2_is_secure         True to use an SSL connection. Default is ``True``.
 ec2_region_name       Default region name. Defaults to ``us-east-1``.
 ec2_region_endpoint   Endpoint to use. Default is ``ec2.us-east-1.amazonaws.com``.
-ec2_port              EC2 connection port. Does not need to be specified unless EC2 service is running on an alternative port.
+ec2_port              EC2 connection port. Does not need to be specified unless
+                      EC2 service is running on an alternative port.
 ec2_conn_path	      Connection path. Defaults to ``/``.
-ec2_validate_certs     Whether to use SSL certificate verification. Default is ``False``.
+ec2_validate_certs    Whether to use SSL certificate verification. Default is
+                      ``False``.
 s3_is_secure          True to use an SSL connection. Default is ``True``.
 s3_host               Host connection endpoint. Default is ``s3.amazonaws.com``.
-s3_port               Host connection port. Does not need to be specified unless S3 service is running on an alternative port.
+s3_port               Host connection port. Does not need to be specified unless
+                      S3 service is running on an alternative port.
 s3_conn_path          Connection path. Defaults to ``/``.
-s3_validate_certs     Whether to use SSL certificate verification. Default is ``False``.
+s3_validate_certs     Whether to use SSL certificate verification. Default is
+                      ``False``.
 ====================  ==================
 
 
 Other configuration variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In addition to the provider specific configuration variables above, there are
-some general configuration environment variables that apply to cloudbridge as
+some general configuration environment variables that apply to CloudBridge as
 a whole
 
 =====================  ==================
 Variable		       Description
 =====================  ==================
-CB_DEBUG               Setting ``CB_DEBUG=True`` will cause detailed debug output to be printed for each provider (including HTTP traces).
-CB_USE_MOCK_PROVIDERS  Setting this to ``True`` will cause the CloudBridge test suite to use mock drivers when available.
-CB_TEST_PROVIDER       Set this value to a valid :class:`.ProviderList` value such as ``aws``, to limit tests to that provider only.
+CB_DEBUG               Setting ``CB_DEBUG=True`` will cause detailed debug
+                       output to be printed for each provider (including HTTP
+                       traces).
+CB_USE_MOCK_PROVIDERS  Setting this to ``True`` will cause the CloudBridge test
+                       suite to use mock drivers when available.
+CB_TEST_PROVIDER       Set this value to a valid :class:`.ProviderList` value
+                       such as ``aws``, to limit tests to that provider only.
 =====================  ==================

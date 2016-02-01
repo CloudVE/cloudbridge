@@ -37,7 +37,7 @@ only needing to specify the basic parameters:
 .. code-block:: python
 
     inst = provider.compute.instances.create(
-        name='Cloudbridge-basic', image=img, instance_type=inst_type,
+        name='CloudBridge-basic', image=img, instance_type=inst_type,
         key_pair=kp, security_groups=[sg])
 
 Launch with private networking
@@ -53,9 +53,9 @@ into the subnet (``/27``):
 
 .. code-block:: python
 
-    net = provider.network.create(name="Cloudbridge-net")
+    net = provider.network.create(name="CloudBridge-net")
     net.cidr_block  # '10.0.0.0/16'
-    sn = net.create_subnet('10.0.0.1/27', "Cloudbridge-subnet")
+    sn = net.create_subnet('10.0.0.1/27', "CloudBridge-subnet")
 
 Once we hace created a private network, we'll define a launch configuration
 object to aggregate all the launch configuration options. The launch config
@@ -67,7 +67,7 @@ below). Finally, we can launch the instance:
     lc = provider.compute.instances.create_launch_config()
     lc.add_network_interface(sn.id)
     inst = provider.compute.instances.create(
-        name='Cloudbridge-VPC', image=img,  instance_type=inst_type,
+        name='CloudBridge-VPC', image=img,  instance_type=inst_type,
         launch_config=lc, key_pair=kp, security_groups=[sg])
 
 
@@ -87,7 +87,7 @@ refer to :class:`.LaunchConfig`.
     lc = provider.compute.instances.create_launch_config()
     lc.add_volume_device(source=img, size=11, is_root=True)
     inst = provider.compute.instances.create(
-        name='Cloudbridge-BDM', image=img,  instance_type=inst_type,
+        name='CloudBridge-BDM', image=img,  instance_type=inst_type,
         launch_config=lc, key_pair=kp, security_groups=[sg])
 
 where img is the :class:`.Image` object to use for the root volume.

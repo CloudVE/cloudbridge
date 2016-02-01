@@ -5,7 +5,7 @@ Overview
 --------
 Most provider services have list() methods, and all list methods accept a limit
 parameter which specifies the maximum number of results to return. If a limit
-is not specified, cloudbridge will default to the global configuration variable
+is not specified, CloudBridge will default to the global configuration variable
 `default_result_limit`, which can be modified through the provider config.
 
 Since the returned result list may have more records available, CloudBridge
@@ -33,9 +33,9 @@ Example:
                                              marker=rl.marker)
 
 
-To ease development, CloudBridge also provides standard Python iterators that will page
-the results in for you automatically. Therefore, when you need to iterate through all
-available objects, the following shorthand is recommended:
+To ease development, CloudBridge also provides standard Python iterators that
+will page the results in for you automatically. Therefore, when you need to
+iterate through all available objects, the following shorthand is recommended:
 
 Example:
 
