@@ -1,6 +1,3 @@
-CloudBridge
-===========
-
 CloudBridge aims to provide a simple layer of abstraction over
 different cloud providers, reducing or eliminating the need to write
 conditional code for each cloud. It is currently under development and is in
