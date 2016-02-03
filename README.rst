@@ -1,7 +1,7 @@
 CloudBridge aims to provide a simple layer of abstraction over
 different cloud providers, reducing or eliminating the need to write
 conditional code for each cloud. It is currently under development and is in
-the Alpha state.
+an Alpha state.
 
 .. image:: https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat
    :target: https://landscape.io/github/gvlproject/cloudbridge/master
@@ -19,7 +19,7 @@ the Alpha state.
    :target: https://codeclimate.com/github/gvlproject/cloudbridge
    :alt: Code Climate
 
-.. image:: https://img.shields.io/pypi/status/cloudbridge.svg
+.. image:: https://img.shields.io/pypi/v/cloudbridge.svg
    :target: https://pypi.python.org/pypi/cloudbridge/
    :alt: latest version available on PyPI
 
@@ -39,6 +39,7 @@ Install the latest release from PyPi:
 For other installation options, see the `installation page`_ in
 the documentation.
 
+
 Usage example
 ~~~~~~~~~~~~~
 
@@ -57,6 +58,16 @@ exploring the API:
 Documentation
 ~~~~~~~~~~~~~
 Documentation can be found at https://cloudbridge.readthedocs.org.
+
+
+Quick Reference
+~~~~~~~~~~~~~~~
+The following object graph shows how to access various provider services, and the resource
+that they return.
+
+.. image:: http://cloudbridge.readthedocs.org/en/latest/_images/object_relationships_detailed.svg
+   :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest#quick-reference
+   :alt: CloudBridge Quick Reference
 
 
 Design Goals
