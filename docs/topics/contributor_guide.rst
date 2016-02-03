@@ -7,4 +7,7 @@ CloudBridge Provider.
 .. toctree::
    :maxdepth: 1
 
+    Design Goals <design_goals.rst>
+    Testing <testing.rst>
     Provider development walkthrough <provider_development.rst>
+    

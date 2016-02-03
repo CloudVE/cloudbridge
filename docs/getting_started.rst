@@ -77,8 +77,9 @@ get a base Ubuntu image ``ami-d85e75b0`` and launch an instance.
     inst = provider.compute.instances.create(
         name='CloudBridge-intro', image=img, instance_type=inst_type,
         key_pair=kp, security_groups=[sg])
-    # Refresh the state
-    inst.refresh()
+    # Wait until ready
+    inst.wait_till_ready()
+    # Show instance state
     inst.state
     # 'running'
     inst.public_ips

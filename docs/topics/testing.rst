@@ -1,7 +1,7 @@
 Running tests
 =============
-In the spirit of the set library `design goals`_, the aim is to have through
-tests for the entire library. This page explains the testing philosopy and
+In the spirit of the library's :doc:`design_goals`, the aim is to have thorough
+tests for the entire library. This page explains the testing philosophy and
 shows how to run the tests locally.
 
 Testing philosophy
@@ -61,8 +61,8 @@ You can toggle the use of mock providers by setting an environment variable:
 ``CB_USE_MOCK_PROVIDERS`` to ``Yes`` or ``No``.
 
 
-.. _design goals: https://github.com/galaxyproject/galaxy-cloudman-playbook/
-   blob/master/README.md
+.. _design goals: https://github.com/gvlproject/cloudbridge/
+   blob/master/README.rst
 .. _tox: https://tox.readthedocs.org/en/latest/
 .. _ProviderList: https://github.com/gvlproject/cloudbridge/blob/master/
    cloudbridge/cloud/factory.py#L15
