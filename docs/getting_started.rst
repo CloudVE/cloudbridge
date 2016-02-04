@@ -10,14 +10,18 @@ Installation
 CloudBridge is available on PyPI so to install the latest available version,
 run::
 
-    pip install cloudbridge
+    pip install --upgrade cloudbridge
 
 Create a provider
 -----------------
 To start, you will need to create a reference to a provider object. The
 provider object identifies the cloud you want to work with and supplies your
-credentials. In this code snippet, we will be using AWS. For the details on
-other providers, take a look at the `Setup page <topics/setup.html>`_.
+credentials. The following two code snippets setup a necessary provider object,
+for AWS and OpenStack. For the details on other providers, take a look at the
+`Setup page <topics/setup.html>`_. The remainder of the code is the same for
+either provider.
+
+AWS:
 
 .. code-block:: python
 
@@ -26,6 +30,22 @@ other providers, take a look at the `Setup page <topics/setup.html>`_.
     config = {'aws_access_key': 'AKIAJW2XCYO4AF55XFEQ',
               'aws_secret_key': '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'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
+    image_id = 'ami-d85e75b0'  # Ubuntu 14.04
+
+OpenStack:
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    config = {'os_username': "username",
+              'os_password': "password",
+              'os_tenant_name': "tenant name",
+              'os_auth_url': "authentication URL",
+              'os_region_name': "region name")
+    provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
+                                                      config)
+    image_id = 'c1f4b7bc-a563-4feb-b439-a2e071d861aa'  # Ubuntu 14.04 @ NeCTAR
 
 List some resources
 -------------------
@@ -72,8 +92,8 @@ get a base Ubuntu image ``ami-d85e75b0`` and launch an instance.
 
 .. code-block:: python
 
-    img = provider.compute.images.get('ami-d85e75b0')
-    inst_type = provider.compute.instance_types.find(name='m1.small')
+    img = provider.compute.images.get(image_id)
+    inst_type = provider.compute.instance_types.find(name='m1.small')[0]
     inst = provider.compute.instances.create(
         name='CloudBridge-intro', image=img, instance_type=inst_type,
         key_pair=kp, security_groups=[sg])
