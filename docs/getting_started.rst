@@ -38,11 +38,11 @@ OpenStack:
 
     from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
 
-    config = {'os_username': "username",
-              'os_password': "password",
-              'os_tenant_name': "tenant name",
-              'os_auth_url': "authentication URL",
-              'os_region_name': "region name")
+    config = {'os_username': 'username',
+              'os_password': 'password',
+              'os_tenant_name': 'tenant name',
+              'os_auth_url': 'authentication URL',
+              'os_region_name': 'region name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
     image_id = 'c1f4b7bc-a563-4feb-b439-a2e071d861aa'  # Ubuntu 14.04 @ NeCTAR
