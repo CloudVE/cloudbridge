@@ -721,7 +721,7 @@ class OpenStackSubnetService(BaseSubnetService):
         subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
                      else subnet)
         self.provider.neutron.delete_subnet(subnet_id)
-        # Adhear to the interface docs
+        # Adhere to the interface docs
         if subnet_id not in self.list():
             return True
         return False

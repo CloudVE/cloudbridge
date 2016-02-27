@@ -39,7 +39,7 @@ class ComputeService(CloudService):
     def images(self):
         """
         Provides access to all Image related services in this provider.
-        (e.g. Glance in Openstack)
+        (e.g. Glance in OpenStack)
 
         Example:
 
@@ -639,7 +639,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
     def get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist. On some providers, such as AWS and Openstack,
+        does not exist. On some providers, such as AWS and OpenStack,
         the bucket id is the same as its name.
 
         Example:
@@ -780,7 +780,7 @@ class KeyPairService(PageableObjectMixin, CloudService):
         """
         Return a KeyPair given its ID or ``None`` if not found.
 
-        On some providers, such as AWS and Openstack, the KeyPair ID is
+        On some providers, such as AWS and OpenStack, the KeyPair ID is
         the same as its name.
 
         Example:

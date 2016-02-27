@@ -98,7 +98,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
     @property
     def _keystone_version(self):
         """
-        Return the numberic version of remote server Keystone.
+        Return the numeric version of remote Keystone server.
 
         :rtype: ``int``
         :return: Keystone version as an int (currently, 2 or 3).
@@ -227,7 +227,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             # Wow, the internal keystoneV2 implementation is terribly buggy. It
             # needs both a separate Session object and the username, password
             # again for things to work correctly. Plus, a manual call to
-            # authenticate() is also required if the service catalogue needs
+            # authenticate() is also required if the service catalog needs
             # to be queried.
             keystone = keystone_client.Client(
                 session=self._keystone_session,

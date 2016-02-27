@@ -157,7 +157,7 @@ class OpenStackInstanceType(BaseInstanceType):
 
     @property
     def family(self):
-        # TODO: This may not be standardised accross openstack
+        # TODO: This may not be standardised across OpenStack
         # but NeCTAR is using it this way
         return self.extra_data.get('flavor_class:name')
 
@@ -249,8 +249,8 @@ class OpenStackInstance(BaseInstance):
         """
         Get all the public IP addresses for this instance.
         """
-        # Openstack doesn't provide an easy way to figure our whether an ip is
-        # public or private, since the returned ips are grouped by an arbitrary
+        # OpenStack doesn't provide an easy way to figure our whether an IP is
+        # public or private, since the returned IPs are grouped by an arbitrary
         # network label. Therefore, it's necessary to parse the address and
         # determine whether it's public or private
         return [address
@@ -752,7 +752,7 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 
     @property
     def rules(self):
-        # Update SG object; otherwise, recenlty added rules do now show
+        # Update SG object; otherwise, recently added rules do now show
         self._security_group = self._provider.nova.security_groups.get(
             self._security_group)
         return [OpenStackSecurityGroupRule(self._provider, r, self)
@@ -813,7 +813,7 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        # Update SG object; otherwise, recenlty added rules do now show
+        # Update SG object; otherwise, recently added rules do now show
         self._security_group = self._provider.nova.security_groups.get(
             self._security_group)
         for rule in self._security_group.rules:
