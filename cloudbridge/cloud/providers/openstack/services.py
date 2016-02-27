@@ -454,29 +454,41 @@ class OpenStackRegionService(BaseRegionService):
         return next(region, None)
 
     def list(self, limit=None, marker=None):
-        # TODO: KeyStone V3 onwards will support directly listing regions
-        # but for now, this convoluted method is necessary
-        regions = (
-            endpoint.get('region') or endpoint.get('region_id')
-            for svc in self.provider.keystone.service_catalog.get_data()
-            for endpoint in svc.get('endpoints', [])
-        )
-        regions = set(region for region in regions if region)
-        os_regions = [OpenStackRegion(self.provider, region)
-                      for region in regions]
+        def keystone_v2():
+            # Keystone v3 onwards supports directly listing regions
+            # but for v2, this convoluted method is necessary.
+            regions = (
+                endpoint.get('region') or endpoint.get('region_id')
+                for svc in self.provider.keystone.service_catalog.get_data()
+                for endpoint in svc.get('endpoints', [])
+            )
+            regions = set(region for region in regions if region)
+            os_regions = [OpenStackRegion(self.provider, region)
+                          for region in regions]
 
-        return ClientPagedResultList(self.provider, os_regions,
-                                     limit=limit, marker=marker)
+            return ClientPagedResultList(self.provider, os_regions,
+                                         limit=limit, marker=marker)
+
+        def keystone_v3():
+            os_regions = [OpenStackRegion(self.provider, region)
+                          for region in self.provider.keystone.regions.list()]
+            return ClientPagedResultList(self.provider, os_regions,
+                                         limit=limit, marker=marker)
+
+        return keystone_v3() if self.provider._keystone_version == 3 else \
+            keystone_v2()  # pylint:disable=protected-access
 
     @property
     def current(self):
-        nova_region = [
-            endpoint.get('region') or endpoint.get('region_id')
-            for svc in self.provider.keystone.service_catalog.get_data()
-            for endpoint in svc.get('endpoints', [])
-            if endpoint.get('publicURL', None) ==
-            self.provider.nova.client.management_url]
-        return self.get(nova_region[0])
+        if self.provider.keystone.has_service_catalog():
+            nova_region = [
+                endpoint.get('region') or endpoint.get('region_id')
+                for svc in self.provider.keystone.service_catalog.get_data()
+                for endpoint in svc.get('endpoints', [])
+                if endpoint.get('publicURL', None) ==
+                self.provider.nova.client.management_url]
+            return self.get(nova_region[0])
+        return None
 
 
 class OpenStackComputeService(BaseComputeService):

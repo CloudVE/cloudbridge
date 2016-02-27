@@ -978,11 +978,12 @@ class RegionService(PageableObjectMixin, CloudService):
     @abstractproperty
     def current(self):
         """
-        Returns the current region that this provider is connected
-        to
+        Returns the current region that this provider is connected to.
+
+        If the current region cannot be discovered, return ``None``.
 
         :rtype: ``object`` of :class:`.Region`
-        :return:  a Region instance
+        :return:  a Region instance or ``None``
         """
         pass
 

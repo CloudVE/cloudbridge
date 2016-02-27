@@ -27,6 +27,7 @@ import json
 
 import ipaddress
 
+from keystoneclient.v3.regions import Region
 import novaclient.exceptions as novaex
 import swiftclient.exceptions as swiftex
 
@@ -384,11 +385,13 @@ class OpenStackRegion(BaseRegion):
 
     @property
     def id(self):
-        return self._os_region
+        return (self._os_region.id if type(self._os_region) == Region else
+                self._os_region)
 
     @property
     def name(self):
-        return self._os_region
+        return (self._os_region.id if type(self._os_region) == Region else
+                self._os_region)
 
     @property
     def zones(self):
