@@ -44,6 +44,9 @@ engines:
     - 39ecd11c13fc7eaead1ba87449b43e00
     - 315c7e088d37fe4ce0e06836bf5ac0fc
     - 34f0d22f0a660fa3d387db57c93ae142
+    - cbea9efa808e14c1dfa325d40cef496d
+    - f49f7714146a22266988d48fe07b7768
+    - 77f9e287b9d3fec73d1f36d81df46942
     config:
       languages:
       - ruby
