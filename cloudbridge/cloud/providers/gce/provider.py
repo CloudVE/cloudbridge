@@ -11,7 +11,7 @@ import time
 
 from googleapiclient import discovery
 import httplib2
-from oauth2client.client import SignedJwtAssertionCredentials
+from oauth2client.client import GoogleCredentials
 
 from .services import GCESecurityService
 
@@ -73,18 +73,10 @@ class GCECloudProvider(BaseCloudProvider):
 
     def _connect_gce_compute(self):
         if self.credentials_file:
-            with open(self.credentials_file) as f:
-                data = json.load(f)
-                credentials = SignedJwtAssertionCredentials(
-                    data['client_email'], data['private_key'],
-                    'https://www.googleapis.com/auth/compute')
+            credentials = GoogleCredentials.from_json(self.credentials_file)
         else:
-            credentials = SignedJwtAssertionCredentials(
-                self.client_email, self.private_key,
-                'https://www.googleapis.com/auth/compute')
-        http = httplib2.Http()
-        http = credentials.authorize(http)
-        return discovery.build('compute', 'v1', http=http)
+            credentials = GoogleCredentials.get_application_default()
+        return discovery.build('compute', 'v1', credentials=credentials)
 
     def wait_for_global_operation(self, operation):
         while True:
