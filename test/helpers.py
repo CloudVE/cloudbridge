@@ -58,6 +58,9 @@ TEST_DATA_CONFIG = {
                                 'a471339a-bd0e-41e2-9406-4f308267ed0f'),
         "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.tiny'),
         "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
+    },
+    "GCECloudProvider": {
+        "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'f1-micro'),
     }
 }
 
@@ -67,6 +70,8 @@ def get_provider_test_data(provider, key):
         return TEST_DATA_CONFIG.get("AWSCloudProvider").get(key)
     elif "OpenStackCloudProvider" in provider.name:
         return TEST_DATA_CONFIG.get("OpenStackCloudProvider").get(key)
+    elif "GCECloudProvider" in provider.name:
+        return TEST_DATA_CONFIG.get("GCECloudProvider").get(key)
     return None
 
 

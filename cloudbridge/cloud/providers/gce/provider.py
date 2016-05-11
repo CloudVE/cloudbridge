@@ -13,6 +13,7 @@ from googleapiclient import discovery
 import httplib2
 from oauth2client.client import GoogleCredentials
 
+from .services import GCEComputeService
 from .services import GCESecurityService
 
 
@@ -39,12 +40,12 @@ class GCECloudProvider(BaseCloudProvider):
         self._gce_compute = None
 
         # Initialize provider services
+        self._compute = GCEComputeService(self)
         self._security = GCESecurityService(self)
 
     @property
     def compute(self):
-        raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+        return self._compute
 
     @property
     def network(self):
