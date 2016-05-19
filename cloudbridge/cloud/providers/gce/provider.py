@@ -10,9 +10,10 @@ import os
 import time
 
 from googleapiclient import discovery
-import httplib2
-from oauth2client.client import SignedJwtAssertionCredentials
+from oauth2client.client import GoogleCredentials
+from oauth2client.service_account import ServiceAccountCredentials
 
+from .services import GCEComputeService
 from .services import GCESecurityService
 
 
@@ -26,8 +27,6 @@ class GCECloudProvider(BaseCloudProvider):
         # Initialize cloud connection fields
         self.client_email = self._get_config_value(
             'gce_client_email', os.environ.get('GCE_CLIENT_EMAIL'))
-        self.private_key = self._get_config_value(
-            'gce_private_key', os.environ.get('GCE_PRIVATE_KEY'))
         self.project_name = self._get_config_value(
             'gce_project_name', os.environ.get('GCE_PROJECT_NAME'))
         self.credentials_file = self._get_config_value(
@@ -39,12 +38,12 @@ class GCECloudProvider(BaseCloudProvider):
         self._gce_compute = None
 
         # Initialize provider services
+        self._compute = GCEComputeService(self)
         self._security = GCESecurityService(self)
 
     @property
     def compute(self):
-        raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+        return self._compute
 
     @property
     def network(self):
@@ -73,18 +72,11 @@ class GCECloudProvider(BaseCloudProvider):
 
     def _connect_gce_compute(self):
         if self.credentials_file:
-            with open(self.credentials_file) as f:
-                data = json.load(f)
-                credentials = SignedJwtAssertionCredentials(
-                    data['client_email'], data['private_key'],
-                    'https://www.googleapis.com/auth/compute')
+            credentials = ServiceAccountCredentials.from_json_keyfile_name(
+                self.credentials_file)
         else:
-            credentials = SignedJwtAssertionCredentials(
-                self.client_email, self.private_key,
-                'https://www.googleapis.com/auth/compute')
-        http = httplib2.Http()
-        http = credentials.authorize(http)
-        return discovery.build('compute', 'v1', http=http)
+            credentials = GoogleCredentials.get_application_default()
+        return discovery.build('compute', 'v1', credentials=credentials)
 
     def wait_for_global_operation(self, operation):
         while True:

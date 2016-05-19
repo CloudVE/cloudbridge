@@ -1,6 +1,7 @@
 """
 DataTypes used by this provider
 """
+from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
 
 
@@ -42,3 +43,48 @@ class GCEKeyPair(BaseKeyPair):
     @material.setter
     def material(self, value):
         self._kp_material = value
+
+
+class GCEInstanceType(BaseInstanceType):
+    def __init__(self, provider, instance_dict):
+        super(GCEInstanceType, self).__init__(provider)
+        self._inst_dict = instance_dict
+
+    @property
+    def id(self):
+        return str(self._inst_dict.get('id'))
+
+    @property
+    def name(self):
+        return self._inst_dict.get('name')
+
+    @property
+    def family(self):
+        return self._inst_dict.get('kind')
+
+    @property
+    def vcpus(self):
+        return self._inst_dict.get('guestCpus')
+
+    @property
+    def ram(self):
+        return self._inst_dict.get('memoryMb')
+
+    @property
+    def size_root_disk(self):
+        return 0
+
+    @property
+    def size_ephemeral_disks(self):
+        return int(self._inst_dict.get('maximumPersistentDisksSizeGb'))
+
+    @property
+    def num_ephemeral_disks(self):
+        return self._inst_dict.get('maximumPersistentDisks')
+
+    @property
+    def extra_data(self):
+        return {key: val for key, val in self._inst_dict.items()
+                if key not in ['id', 'name', 'kind', 'guestCpus', 'memoryMb',
+                               'maximumPersistentDisksSizeGb',
+                               'maximumPersistentDisks']}

@@ -1,4 +1,6 @@
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
@@ -9,6 +11,7 @@ import hashlib
 
 from retrying import retry
 
+from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 
 
@@ -185,3 +188,68 @@ class GCESecurityGroupService(BaseSecurityGroupService):
 
     def __init__(self, provider):
         super(GCESecurityGroupService, self).__init__(provider)
+
+
+class GCEInstanceTypesService(BaseInstanceTypesService):
+
+    def __init__(self, provider):
+        super(GCEInstanceTypesService, self).__init__(provider)
+
+    @property
+    def instance_data(self):
+        response = self.provider.gce_compute \
+                                .machineTypes() \
+                                .list(project=self.provider.project_name,
+                                      zone=self.provider.default_zone) \
+                                .execute()
+        return response['items']
+
+    def get(self, instance_type_id):
+        for inst_type in self.instance_data:
+            if inst_type.get('id') == instance_type_id:
+                return GCEInstanceType(self.provider, inst_type)
+        return None
+
+    def find(self, **kwargs):
+        matched_inst_types = []
+        for inst_type in self.instance_data:
+            is_match = True
+            for key, value in kwargs.iteritems():
+                if key not in inst_type:
+                    raise TypeError("The attribute key is not valid.")
+                if inst_type.get(key) != value:
+                    is_match = False
+                    break
+            if is_match:
+                matched_inst_types.append(
+                    GCEInstanceType(self.provider, inst_type))
+        return matched_inst_types
+
+    def list(self, limit=None, marker=None):
+        inst_types = [GCEInstanceType(self.provider, inst_type)
+                      for inst_type in self.instance_data]
+        return ClientPagedResultList(self.provider, inst_types,
+                                     limit=limit, marker=marker)
+
+
+class GCEComputeService(BaseComputeService):
+    # TODO: implement GCEComputeService
+    def __init__(self, provider):
+        super(GCEComputeService, self).__init__(provider)
+        self._instance_type_svc = GCEInstanceTypesService(self.provider)
+
+    @property
+    def images(self):
+        raise NotImplementedError("To be implemented")
+
+    @property
+    def instance_types(self):
+        return self._instance_type_svc
+
+    @property
+    def instances(self):
+        raise NotImplementedError("To be implemented")
+
+    @property
+    def regions(self):
+        raise NotImplementedError("To be implemented")
