@@ -4,7 +4,6 @@ from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.providers.gce import helpers
 from collections import namedtuple
 import hashlib
@@ -212,6 +211,7 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
         return None
 
     def find(self, **kwargs):
+        matched_inst_types = []
         for inst_type in self.instance_data:
             is_match = True
             for key, value in kwargs.iteritems():
@@ -221,8 +221,9 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
                     is_match = False
                     break
             if is_match:
-                return GCEInstanceType(self.provider, inst_type)
-        return None
+                matched_inst_types.append(
+                    GCEInstanceType(self.provider, inst_type))
+        return matched_inst_types
 
     def list(self, limit=None, marker=None):
         inst_types = [GCEInstanceType(self.provider, inst_type)

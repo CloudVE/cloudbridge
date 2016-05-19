@@ -79,13 +79,13 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
             self.provider,
             "instance_type")
         inst_type = self.provider.compute.instance_types.find(
-            name=instance_type_name)
+            name=instance_type_name)[0]
         self.assertTrue(isinstance(inst_type, InstanceType),
                         "Find must return an InstanceType object")
 
-        self.assertIsNone(self.provider.compute.instance_types.find(
+        self.assertFalse(self.provider.compute.instance_types.find(
             name="non_existent_instance_type"), "Searching for a non-existent"
-            " instance type must return None")
+            " instance type must return an empty list")
 
         with self.assertRaises(TypeError):
             self.provider.compute.instance_types.find(
@@ -102,7 +102,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
             self.provider,
             "instance_type")
         inst_type = self.provider.compute.instance_types.find(
-            name=instance_type_name)
+            name=instance_type_name)[0]
         self.assertEqual(inst_type,
                          compute_svc.instance_types.get(inst_type.id))
         self.assertIsNone(compute_svc.instance_types.get("non_existent_id"),

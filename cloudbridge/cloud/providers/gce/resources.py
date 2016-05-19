@@ -84,7 +84,7 @@ class GCEInstanceType(BaseInstanceType):
 
     @property
     def extra_data(self):
-        return {key: val for key, val in enumerate(self._inst_dict)
-                if key not in ['guestCpus', 'maximumPersistentDisksSizeGb',
-                               'kind', 'maximumPersistentDisks', 'memoryMb',
-                               'id']}
+        return {key: val for key, val in self._inst_dict.items()
+                if key not in ['id', 'name', 'kind', 'guestCpus', 'memoryMb',
+                               'maximumPersistentDisksSizeGb',
+                               'maximumPersistentDisks']}

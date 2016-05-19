@@ -10,8 +10,8 @@ import os
 import time
 
 from googleapiclient import discovery
-import httplib2
 from oauth2client.client import GoogleCredentials
+from oauth2client.service_account import ServiceAccountCredentials
 
 from .services import GCEComputeService
 from .services import GCESecurityService
@@ -27,8 +27,6 @@ class GCECloudProvider(BaseCloudProvider):
         # Initialize cloud connection fields
         self.client_email = self._get_config_value(
             'gce_client_email', os.environ.get('GCE_CLIENT_EMAIL'))
-        self.private_key = self._get_config_value(
-            'gce_private_key', os.environ.get('GCE_PRIVATE_KEY'))
         self.project_name = self._get_config_value(
             'gce_project_name', os.environ.get('GCE_PROJECT_NAME'))
         self.credentials_file = self._get_config_value(
@@ -74,7 +72,8 @@ class GCECloudProvider(BaseCloudProvider):
 
     def _connect_gce_compute(self):
         if self.credentials_file:
-            credentials = GoogleCredentials.from_json(self.credentials_file)
+            credentials = ServiceAccountCredentials.from_json_keyfile_name(
+                self.credentials_file)
         else:
             credentials = GoogleCredentials.get_application_default()
         return discovery.build('compute', 'v1', credentials=credentials)
