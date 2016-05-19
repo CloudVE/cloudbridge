@@ -960,10 +960,10 @@ class InstanceTypesService(PageableObjectMixin, CloudService):
     @abstractmethod
     def find(self, **kwargs):
         """
-        Searches for an instance by a given list of attributes.
+        Searches for instances by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.InstanceType`
-        :return: an Instance object
+        :rtype: ``list`` of :class:`.InstanceType`
+        :return: list of InstanceType objects
         """
         pass
 

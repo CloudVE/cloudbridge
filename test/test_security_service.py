@@ -1,7 +1,7 @@
 import json
+from test.helpers import ProviderTestBase
 import uuid
 
-from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
@@ -20,7 +20,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         ):
             # test list method
             kpl = self.provider.security.key_pairs.list()
-            list_kpl = [i for i in kpl if i.name == name]
+            list_kpl = [i for i in kpl if i.id == kp.id]
             self.assertTrue(
                 len(list_kpl) == 1,
                 "List key pairs does not return the expected key pair %s" %
@@ -28,33 +28,35 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
             # check iteration
             iter_kpl = [i for i in self.provider.security.key_pairs
-                        if i.name == name]
+                        if i.id == kp.id]
             self.assertTrue(
                 len(iter_kpl) == 1,
                 "Iter key pairs does not return the expected key pair %s" %
                 name)
 
             # check find
-            find_kp = self.provider.security.key_pairs.find(name=name)[0]
+            find_kp = self.provider.security.key_pairs.find(name=kp.name)[0]
             self.assertTrue(
                 find_kp == kp,
                 "Find key pair did not return the expected key {0}."
                 .format(name))
 
             # check get
-            get_kp = self.provider.security.key_pairs.get(name)
+            get_kp = self.provider.security.key_pairs.get(kp.id)
             self.assertTrue(
                 get_kp == kp,
                 "Get key pair did not return the expected key {0}."
                 .format(name))
 
-            recreated_kp = self.provider.security.key_pairs.create(name=name)
-            self.assertTrue(
-                recreated_kp == kp,
-                "Recreating key pair did not return the expected key {0}."
-                .format(name))
+            # FIXME: This test doesn't work if the server generates the id
+            # and does not care about name uniqueness (e.g. azure)
+#             recreated_kp = self.provider.security.key_pairs.create(name=name)
+#             self.assertTrue(
+#                 recreated_kp == kp,
+#                 "Recreating key pair did not return the expected key {0}."
+#                 .format(name))
         kpl = self.provider.security.key_pairs.list()
-        found_kp = [k for k in kpl if k.name == name]
+        found_kp = [k for k in kpl if k.id == kp.id]
         self.assertTrue(
             len(found_kp) == 0,
             "Key pair {0} should have been deleted but still exists."
@@ -69,7 +71,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(lambda: kp.delete()):
             kpl = self.provider.security.key_pairs.list()
-            found_kp = [k for k in kpl if k.name == name]
+            found_kp = [k for k in kpl if k.id == kp.id]
             self.assertTrue(
                 len(found_kp) == 1,
                 "List key pairs did not return the expected key {0}."
@@ -84,15 +86,12 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 kp == kp,
                 "The same key pair should be equal to self.")
-            json_repr = json.dumps(
-                {"material": kp.material, "id": name, "name": name},
-                sort_keys=True)
-            self.assertEqual(
-                kp.to_json(), json_repr,
-                "JSON key pair representation {0} does not match expected {1}"
-                .format(kp.to_json(), json_repr))
+            # check json deserialization
+            self.assertTrue(json.loads(kp.to_json()),
+                            "to_json must yield a valid json string: {0}"
+                            .format(kp.to_json()))
         kpl = self.provider.security.key_pairs.list()
-        found_kp = [k for k in kpl if k.name == name]
+        found_kp = [k for k in kpl if k.id == kp.id]
         self.assertTrue(
             len(found_kp) == 0,
             "Key pair {0} should have been deleted but still exists."

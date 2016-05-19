@@ -21,8 +21,9 @@ openstack_reqs = ['python-novaclient>=2.33.0',
                   'python-neutronclient>=3.1.0',
                   'python-keystoneclient>=2.0.0']
 aws_reqs = ['boto>=2.38.0']
-full_reqs = base_reqs + aws_reqs + openstack_reqs
-dev_reqs = (['tox>=2.1.1', 'moto>=0.4.20', 'sphinx>=1.3.1'] + full_reqs)
+gce_reqs = ['google-api-python-client>=1.4.2', "pycrypto"]
+full_reqs = base_reqs + aws_reqs + openstack_reqs + gce_reqs
+dev_reqs = (['tox>=2.1.1', 'moto>=0.4.18', 'sphinx>=1.3.1'] + full_reqs)
 
 setup(name='cloudbridge',
       version=version,
