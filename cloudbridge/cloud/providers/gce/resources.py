@@ -3,6 +3,8 @@ DataTypes used by this provider
 """
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BasePlacementZone
+from cloudbridge.cloud.base.resources import BaseRegion
 
 
 class GCEKeyPair(BaseKeyPair):
@@ -88,3 +90,75 @@ class GCEInstanceType(BaseInstanceType):
                 if key not in ['id', 'name', 'kind', 'guestCpus', 'memoryMb',
                                'maximumPersistentDisksSizeGb',
                                'maximumPersistentDisks']}
+
+
+class GCEPlacementZone(BasePlacementZone):
+
+    def __init__(self, provider, zone, region):
+        super(GCEPlacementZone, self).__init__(provider)
+        if isinstance(zone, GCEPlacementZone):
+            # pylint:disable=protected-access
+            self._gce_zone = zone._gce_zone
+            self._gce_region = zone._gce_region
+        else:
+            self._gce_zone = zone
+            self._gce_region = region
+
+    @property
+    def id(self):
+        """
+        Get the zone id
+        :rtype: ``str``
+        :return: ID for this zone as returned by the cloud middleware.
+        """
+        return self._gce_zone
+
+    @property
+    def name(self):
+        """
+        Get the zone name.
+        :rtype: ``str``
+        :return: Name for this zone as returned by the cloud middleware.
+        """
+        return self._gce_zone
+
+    @property
+    def region_name(self):
+        """
+        Get the region that this zone belongs to.
+        :rtype: ``str``
+        :return: Name of this zone's region as returned by the cloud middleware
+        """
+        return self._gce_region
+
+
+class GCERegion(BaseRegion):
+
+    def __init__(self, provider, gce_region):
+        super(GCERegion, self).__init__(provider)
+        self._gce_region = gce_region
+
+    @property
+    def id(self):
+        # In GCE API, region has an 'id' property, whose values are '1220',
+        # '1100', '1000', '1230', etc. Here we use 'name' property (such
+        # as 'asia-east1', 'europe-west1', 'us-central1', 'us-east1') as
+        # 'id' to represent the region for the consistency with AWS
+        # implementation and ease of use.
+        return self._gce_region['name']
+
+    @property
+    def name(self):
+        return self._gce_region['name']
+
+    @property
+    def zones(self):
+        """
+        Accesss information about placement zones within this region.
+        """
+        zones_response = self._provider.gce_compute.zones().list(
+            project=self._provider.project_name).execute()
+        zones = [zone for zone in zones_response['items']
+                 if zone['region'] == self._gce_region['selfLink']]
+        return [GCEPlacementZone(self._provider, zone['name'], self.name)
+                for zone in zones]

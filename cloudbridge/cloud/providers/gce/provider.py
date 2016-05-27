@@ -41,6 +41,8 @@ class GCECloudProvider(BaseCloudProvider):
                 self.credentials_dict = json.load(creds_file)
         self.default_zone = self._get_config_value(
             'gce_default_zone', os.environ.get('GCE_DEFAULT_ZONE'))
+        self.region_name = self._get_config_value(
+            'gce_region_name', 'us-central1')
 
         # service connections, lazily initialized
         self._gce_compute = None

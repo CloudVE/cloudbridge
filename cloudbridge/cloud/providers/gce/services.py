@@ -2,17 +2,19 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
+from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.providers.gce import helpers
 from collections import namedtuple
 import hashlib
-
+import googleapiclient
 
 from retrying import retry
 
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
+from .resources import GCERegion
 
 
 class GCESecurityService(BaseSecurityService):
@@ -232,11 +234,45 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
                                      limit=limit, marker=marker)
 
 
+class GCERegionService(BaseRegionService):
+
+    def __init__(self, provider):
+        super(GCERegionService, self).__init__(provider)
+
+    def get(self, region_id):
+        try:
+            region = self.provider.gce_compute \
+                                  .regions() \
+                                  .get(project=self.provider.project_name,
+                                       region=region_id) \
+                                  .execute()
+        # Handle the case when region_id is not valid
+        except googleapiclient.errors.HttpError:
+            return None
+        if region:
+            return GCERegion(self.provider, region)
+        else:
+            return None
+
+    def list(self, limit=None, marker=None):
+        regions_response = self.provider.gce_compute.regions().list(
+            project=self.provider.project_name).execute()
+        regions = [GCERegion(self.provider, region)
+                   for region in regions_response['items']]
+        return ClientPagedResultList(self.provider, regions,
+                                     limit=limit, marker=marker)
+
+    @property
+    def current(self):
+        return self.get(self.provider.region_name)
+
+
 class GCEComputeService(BaseComputeService):
     # TODO: implement GCEComputeService
     def __init__(self, provider):
         super(GCEComputeService, self).__init__(provider)
         self._instance_type_svc = GCEInstanceTypesService(self.provider)
+        self._region_svc = GCERegionService(self.provider)
 
     @property
     def images(self):
@@ -252,4 +288,4 @@ class GCEComputeService(BaseComputeService):
 
     @property
     def regions(self):
-        raise NotImplementedError("To be implemented")
+        return self._region_svc
