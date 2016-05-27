@@ -31,8 +31,18 @@ class GCECloudProvider(BaseCloudProvider):
             'gce_project_name', os.environ.get('GCE_PROJECT_NAME'))
         self.credentials_file = self._get_config_value(
             'gce_service_creds_file', os.environ.get('GCE_SERVICE_CREDS_FILE'))
+        self.credentials_dict = self._get_config_value(
+            'gce_service_creds_dict', {})
+        # If 'gce_service_creds_dict' is not passed in from config and
+        # self.credentials_file is available, read and parse the json file to
+        # self.credentials_dict.
+        if self.credentials_file and not self.credentials_dict:
+            with open(self.credentials_file) as creds_file:
+                self.credentials_dict = json.load(creds_file)
         self.default_zone = self._get_config_value(
             'gce_default_zone', os.environ.get('GCE_DEFAULT_ZONE'))
+        self.region_name = self._get_config_value(
+            'gce_region_name', 'us-central1')
 
         # service connections, lazily initialized
         self._gce_compute = None
@@ -71,9 +81,9 @@ class GCECloudProvider(BaseCloudProvider):
         return self._gce_compute
 
     def _connect_gce_compute(self):
-        if self.credentials_file:
-            credentials = ServiceAccountCredentials.from_json_keyfile_name(
-                self.credentials_file)
+        if self.credentials_dict:
+            credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+                self.credentials_dict)
         else:
             credentials = GoogleCredentials.get_application_default()
         return discovery.build('compute', 'v1', credentials=credentials)

@@ -61,6 +61,7 @@ TEST_DATA_CONFIG = {
     },
     "GCECloudProvider": {
         "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'f1-micro'),
+        "placement": os.environ.get('CB_PLACEMENT_GCE', 'us-central1-a'),
     }
 }
 
