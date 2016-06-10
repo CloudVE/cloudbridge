@@ -177,8 +177,7 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         self.s3mock.start()
         HTTPretty.register_uri(
             method="GET",
-            uri="https://swift.rc.nectar.org.au:8888/v1/"
-            "AUTH_377/cloud-bridge/aws/instance_data.json",
+            uri="https://cloudbridgelib.s3.amazonaws.com/aws_instance_data.json",
             body="""
 [
   {

@@ -598,8 +598,8 @@ class AWSInstanceService(BaseInstanceService):
                                      reservations.next_token,
                                      False, data=instances)
 
-AWS_INSTANCE_DATA_DEFAULT_URL = "https://swift.rc.nectar.org.au:8888/v1/" \
-                                "AUTH_377/cloud-bridge/aws/instance_data.json"
+AWS_INSTANCE_DATA_DEFAULT_URL = "https://cloudbridgelib.s3.amazonaws.com/" \
+                                "aws_instance_data.json"
 
 
 class AWSInstanceTypesService(BaseInstanceTypesService):
