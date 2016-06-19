@@ -87,6 +87,27 @@ class OpenStackSecurityService(BaseSecurityService):
                 return user_creds[0]
         return None
 
+    def get_ec2_endpoints(self):
+        """
+        A provider specific method than returns the ec2 endpoints if
+        available.
+        """
+        service_catalog = self.provider.keystone.service_catalog.get_data()
+        current_region = self.provider.compute.regions.current.id
+        ec2_url = [endpoint.get('publicURL')
+                   for svc in service_catalog
+                   for endpoint in svc.get('endpoints', [])
+                   if endpoint.get('region', None) ==
+                   current_region and svc.get('type', None) == 'ec2']
+        s3_url = [endpoint.get('publicURL')
+                  for svc in service_catalog
+                  for endpoint in svc.get('endpoints', [])
+                  if endpoint.get('region', None) ==
+                  current_region and svc.get('type', None) == 's3']
+
+        return {'ec2_endpoint': ec2_url[0] if ec2_url else None,
+                's3_endpoint': s3_url[0] if s3_url else None}
+
 
 class OpenStackKeyPairService(BaseKeyPairService):
 
