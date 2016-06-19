@@ -21,6 +21,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 import inspect
 import json
@@ -787,7 +788,17 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         :return: Rule object if successful or ``None``.
         """
         if src_group:
+            if not isinstance(src_group, SecurityGroup):
+                src_group = self._provider.security.security_groups.get(
+                                src_group)
             for protocol in ['udp', 'tcp']:
+                existing_rule = self.get_rule(ip_protocol=ip_protocol,
+                                              from_port=1,
+                                              to_port=65535,
+                                              src_group=src_group)
+                if existing_rule:
+                    return existing_rule
+
                 rule = self._provider.nova.security_group_rules.create(
                     parent_group_id=self._security_group.id,
                     ip_protocol=protocol,
@@ -800,6 +811,13 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
                 return OpenStackSecurityGroupRule(self._provider,
                                                   rule.to_dict(), self)
         else:
+            existing_rule = self.get_rule(ip_protocol=ip_protocol,
+                                          from_port=from_port,
+                                          to_port=to_port,
+                                          cidr_ip=cidr_ip)
+            if existing_rule:
+                return existing_rule
+
             rule = self._provider.nova.security_group_rules.create(
                 parent_group_id=self._security_group.id,
                 ip_protocol=ip_protocol,

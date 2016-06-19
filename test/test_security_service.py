@@ -48,8 +48,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "Get key pair did not return the expected key {0}."
                 .format(name))
 
+            # Recreating existing keypair should raise an exception
             with self.assertRaises(Exception):
-                recreated_kp = self.provider.security.key_pairs.create(name=name)
+                self.provider.security.key_pairs.create(name=name)
         kpl = self.provider.security.key_pairs.list()
         found_kp = [k for k in kpl if k.name == name]
         self.assertTrue(
@@ -188,7 +189,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 sort_keys=True)
             self.assertTrue(
                 sg.to_json() == json_repr,
-                "JSON sec group representation {0}\n does not match expected {1}"
+                "JSON sec group representation {0} does not match expected {1}"
                 .format(sg.to_json(), json_repr))
 
         sgl = self.provider.security.security_groups.list()
@@ -197,6 +198,22 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             len(found_sg) == 0,
             "Security group {0} should have been deleted but still exists."
             .format(name))
+
+    def test_security_group_rule_add_twice(self):
+        """Test whether adding the same rule twice succeeds."""
+        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
+        sg = self.provider.security.security_groups.create(
+            name=name, description=name)
+        with helpers.cleanup_action(lambda: sg.delete()):
+            rule = sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
+                               cidr_ip='0.0.0.0/0')
+            # attempting to add the same rule twice should succeed
+            same_rule = sg.add_rule(ip_protocol='tcp', from_port=1111,
+                                    to_port=1111, cidr_ip='0.0.0.0/0')
+            self.assertTrue(
+                rule == same_rule,
+                "Expected rule {0} not found in security group: {0}".format(
+                    same_rule, sg.rules))
 
     def test_security_group_group_rule(self):
         """Test for proper creation of a security group rule."""

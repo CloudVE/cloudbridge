@@ -17,6 +17,7 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -632,13 +633,18 @@ class AWSSecurityGroup(BaseSecurityGroup):
         :return: Rule object if successful or ``None``.
         """
         try:
+            if not isinstance(src_group, SecurityGroup):
+                src_group = self._provider.security.security_groups.get(
+                                src_group)
+
             if self._security_group.authorize(
                     ip_protocol=ip_protocol,
                     from_port=from_port,
                     to_port=to_port,
                     cidr_ip=cidr_ip,
                     # pylint:disable=protected-access
-                    src_group=src_group._security_group if src_group else None):
+                    src_group=src_group._security_group if src_group
+                    else None):
                 return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
                                      src_group)
         except EC2ResponseError as ec2e:
@@ -765,7 +771,8 @@ class AWSBucketObject(BaseBucketObject):
         """
         Get the date and time this object was last modified.
         """
-        lm = datetime.strptime(self._key.last_modified, "%Y-%m-%dT%H:%M:%S.%fZ")
+        lm = datetime.strptime(self._key.last_modified,
+                               "%Y-%m-%dT%H:%M:%S.%fZ")
         return lm.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):

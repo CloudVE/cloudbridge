@@ -1663,7 +1663,8 @@ class SecurityGroup(CloudResource):
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
         """
-        Create a security group rule.
+        Create a security group rule. If the rule already exists, simply
+        returns it.
 
         You need to pass in either ``src_group`` OR ``ip_protocol``,
         ``from_port``, ``to_port``, and ``cidr_ip``. In other words, either
