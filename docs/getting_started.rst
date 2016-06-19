@@ -93,7 +93,9 @@ get a base Ubuntu image ``ami-d85e75b0`` and launch an instance.
 .. code-block:: python
 
     img = provider.compute.images.get(image_id)
-    inst_type = provider.compute.instance_types.find(name='m1.small')[0]
+    inst_type = sorted([t for t in provider.compute.instance_types.list()
+                        if t.vcpus >= 2 and t.ram >= 4],
+                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
         name='CloudBridge-intro', image=img, instance_type=inst_type,
         key_pair=kp, security_groups=[sg])

@@ -39,7 +39,7 @@ class ComputeService(CloudService):
     def images(self):
         """
         Provides access to all Image related services in this provider.
-        (e.g. Glance in Openstack)
+        (e.g. Glance in OpenStack)
 
         Example:
 
@@ -639,7 +639,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
     def get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist. On some providers, such as AWS and Openstack,
+        does not exist. On some providers, such as AWS and OpenStack,
         the bucket id is the same as its name.
 
         Example:
@@ -780,7 +780,7 @@ class KeyPairService(PageableObjectMixin, CloudService):
         """
         Return a KeyPair given its ID or ``None`` if not found.
 
-        On some providers, such as AWS and Openstack, the KeyPair ID is
+        On some providers, such as AWS and OpenStack, the KeyPair ID is
         the same as its name.
 
         Example:
@@ -818,13 +818,13 @@ class KeyPairService(PageableObjectMixin, CloudService):
     @abstractmethod
     def create(self, name):
         """
-        Create a new keypair or return an existing one by the same name.
+        Create a new key pair or raise an exception if one already exists.
 
         :type name: str
         :param name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A keypair instance
+        :return:  A keypair instance or ``None``.
         """
         pass
 
@@ -978,11 +978,12 @@ class RegionService(PageableObjectMixin, CloudService):
     @abstractproperty
     def current(self):
         """
-        Returns the current region that this provider is connected
-        to
+        Returns the current region that this provider is connected to.
+
+        If the current region cannot be discovered, return ``None``.
 
         :rtype: ``object`` of :class:`.Region`
-        :return:  a Region instance
+        :return:  a Region instance or ``None``
         """
         pass
 

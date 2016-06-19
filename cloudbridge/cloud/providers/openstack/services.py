@@ -116,7 +116,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
     def create(self, name):
         """
-        Create a new key pair or return an existing one by the same name.
+        Create a new key pair or raise an exception if one already exists.
 
         :type name: str
         :param name: The name of the key pair to be created.
@@ -124,11 +124,10 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
-        kp = self.get(name)
-        if kp:
-            return kp
         kp = self.provider.nova.keypairs.create(name)
-        return OpenStackKeyPair(self.provider, kp)
+        if kp:
+            return OpenStackKeyPair(self.provider, kp)
+        return None
 
 
 class OpenStackSecurityGroupService(BaseSecurityGroupService):
@@ -454,29 +453,41 @@ class OpenStackRegionService(BaseRegionService):
         return next(region, None)
 
     def list(self, limit=None, marker=None):
-        # TODO: KeyStone V3 onwards will support directly listing regions
-        # but for now, this convoluted method is necessary
-        regions = (
-            endpoint.get('region') or endpoint.get('region_id')
-            for svc in self.provider.keystone.service_catalog.get_data()
-            for endpoint in svc.get('endpoints', [])
-        )
-        regions = set(region for region in regions if region)
-        os_regions = [OpenStackRegion(self.provider, region)
-                      for region in regions]
+        def keystone_v2():
+            # Keystone v3 onwards supports directly listing regions
+            # but for v2, this convoluted method is necessary.
+            regions = (
+                endpoint.get('region') or endpoint.get('region_id')
+                for svc in self.provider.keystone.service_catalog.get_data()
+                for endpoint in svc.get('endpoints', [])
+            )
+            regions = set(region for region in regions if region)
+            os_regions = [OpenStackRegion(self.provider, region)
+                          for region in regions]
 
-        return ClientPagedResultList(self.provider, os_regions,
-                                     limit=limit, marker=marker)
+            return ClientPagedResultList(self.provider, os_regions,
+                                         limit=limit, marker=marker)
+
+        def keystone_v3():
+            os_regions = [OpenStackRegion(self.provider, region)
+                          for region in self.provider.keystone.regions.list()]
+            return ClientPagedResultList(self.provider, os_regions,
+                                         limit=limit, marker=marker)
+
+        return keystone_v3() if self.provider._keystone_version == 3 else \
+            keystone_v2()  # pylint:disable=protected-access
 
     @property
     def current(self):
-        nova_region = [
-            endpoint.get('region') or endpoint.get('region_id')
-            for svc in self.provider.keystone.service_catalog.get_data()
-            for endpoint in svc.get('endpoints', [])
-            if endpoint.get('publicURL', None) ==
-            self.provider.nova.client.management_url]
-        return self.get(nova_region[0])
+        if self.provider.keystone.has_service_catalog():
+            nova_region = [
+                endpoint.get('region') or endpoint.get('region_id')
+                for svc in self.provider.keystone.service_catalog.get_data()
+                for endpoint in svc.get('endpoints', [])
+                if endpoint.get('publicURL', None) ==
+                self.provider.nova.client.management_url]
+            return self.get(nova_region[0])
+        return None
 
 
 class OpenStackComputeService(BaseComputeService):
@@ -709,7 +720,7 @@ class OpenStackSubnetService(BaseSubnetService):
         subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
                      else subnet)
         self.provider.neutron.delete_subnet(subnet_id)
-        # Adhear to the interface docs
+        # Adhere to the interface docs
         if subnet_id not in self.list():
             return True
         return False

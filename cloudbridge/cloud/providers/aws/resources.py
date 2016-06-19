@@ -631,15 +631,22 @@ class AWSSecurityGroup(BaseSecurityGroup):
         :rtype: :class:``.SecurityGroupRule``
         :return: Rule object if successful or ``None``.
         """
-        if self._security_group.authorize(
-                ip_protocol=ip_protocol,
-                from_port=from_port,
-                to_port=to_port,
-                cidr_ip=cidr_ip,
-                # pylint:disable=protected-access
-                src_group=src_group._security_group if src_group else None):
-            return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                 src_group)
+        try:
+            if self._security_group.authorize(
+                    ip_protocol=ip_protocol,
+                    from_port=from_port,
+                    to_port=to_port,
+                    cidr_ip=cidr_ip,
+                    # pylint:disable=protected-access
+                    src_group=src_group._security_group if src_group else None):
+                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
+                                     src_group)
+        except EC2ResponseError as ec2e:
+            if ec2e.code == "InvalidPermission.Duplicate":
+                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
+                                     src_group)
+            else:
+                raise EC2ResponseError
         return None
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,

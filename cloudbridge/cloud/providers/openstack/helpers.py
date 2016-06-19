@@ -7,7 +7,7 @@ from cloudbridge.cloud.base.resources import ServerPagedResultList
 
 def os_result_limit(provider, requested_limit):
     """
-    Calculates the limit for openstack.
+    Calculates the limit for OpenStack.
     """
     limit = requested_limit or provider.config.default_result_limit
     # fetch one more than the limit to help with paging.
@@ -19,7 +19,7 @@ def os_result_limit(provider, requested_limit):
 
 def to_server_paged_list(provider, objects, limit):
     """
-    A convenience function for wrapping a list of openstack native objects in
+    A convenience function for wrapping a list of OpenStack native objects in
     a ServerPagedResultList. OpenStack
     initial list of objects. Thereafter, the return list is wrapped in a
     BaseResultList, enabling extra properties like

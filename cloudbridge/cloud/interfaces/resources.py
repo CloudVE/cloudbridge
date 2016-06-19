@@ -142,11 +142,11 @@ class ObjectLifeCycleMixin(object):
     """
     A mixin for an object with a defined life-cycle, such as an Instance,
     Volume, Image or Snapshot. An object that supports ObjectLifeCycleMixin
-    will always have a state, defining which point in its lifecycle it is
+    will always have a state, defining which point in its life cycle it is
     currently at.
 
     It also defines a wait_till_ready operation, which indicates that the
-    object is in a state in its lifecycle where it is ready to be used by an
+    object is in a state in its life cycle where it is ready to be used by an
     end-user.
 
     A refresh operation allows the object to synchronise its state with the
@@ -506,7 +506,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         Reboot this instance (using the cloud middleware API).
 
         :rtype: bool
-        :return: ``True`` if the reboot was succesful; ``False`` otherwise.
+        :return: ``True`` if the reboot was successful; ``False`` otherwise.
         """
         pass
 
@@ -516,7 +516,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         Permanently terminate this instance.
 
         :rtype: bool
-        :return: ``True`` if the termination of the instance was succesfully
+        :return: ``True`` if the termination of the instance was successfully
                  initiated; ``False`` otherwise.
         """
         pass
@@ -524,7 +524,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
     @abstractproperty
     def image_id(self):
         """
-        Get the image ID for this insance.
+        Get the image ID for this instance.
 
         :rtype: str
         :return: Image ID (i.e., AMI) this instance is using.
@@ -756,7 +756,7 @@ class LaunchConfig(object):
         :type net_id: str
         :param net_id: Network ID to launch an instance into. This is a
                        preliminary implementation (pending full private cloud
-                       support within cloudbridge) so native network IDs need
+                       support within CloudBridge) so native network IDs need
                        to be supplied. For OpenStack, this is the Neutron
                        network ID. For AWS, this is a VPC subnet ID. For the
                        time being, only a single network interface can be
@@ -1280,7 +1280,7 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
         Set the snapshot description. Some cloud providers may not support this
         property, and setting the description may have no effect. (Providers
         that do not support this property will always return the snapshot name
-        as the description)
+        as the description).
         """
         pass
 
@@ -1458,7 +1458,7 @@ class Region(CloudResource):
     @abstractproperty
     def zones(self):
         """
-        Accesss information about placement zones within this region.
+        Access information about placement zones within this region.
 
         :rtype: iterable
         :return: Iterable of available placement zones in this region.
@@ -1545,7 +1545,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def ram(self):
         """
-        The amount of RAM (in mb) supported by this instance type.
+        The amount of RAM (in MB) supported by this instance type.
 
         :rtype: int
         :return: Total RAM (in MB).

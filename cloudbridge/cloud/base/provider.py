@@ -95,8 +95,8 @@ class BaseCloudProvider(CloudProvider):
         :param key: a field to look for in the ``self.config`` field
 
         :type default_value: anything
-        : param default_value: the default value to return if a value for the
-                               ``key`` is not available
+        :param default_value: the default value to return if a value for the
+                              ``key`` is not available
 
         :return: a configuration value for the supplied ``key``
         """
