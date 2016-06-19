@@ -74,6 +74,19 @@ class OpenStackSecurityService(BaseSecurityService):
         """
         return self._security_groups
 
+    def get_ec2_credentials(self):
+        """
+        A provider specific method than returns the ec2 credentials for the
+        current user.
+        """
+        keystone = self.provider.keystone
+        if hasattr(keystone, 'ec2'):
+            user_creds = [cred for cred in keystone.ec2.list(keystone.user_id)
+                          if cred.tenant_id == keystone.tenant_id]
+            if user_creds:
+                return user_creds[0]
+        return None
+
 
 class OpenStackKeyPairService(BaseKeyPairService):
 
