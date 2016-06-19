@@ -48,11 +48,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "Get key pair did not return the expected key {0}."
                 .format(name))
 
-            recreated_kp = self.provider.security.key_pairs.create(name=name)
-            self.assertTrue(
-                recreated_kp == kp,
-                "Recreating key pair did not return the expected key {0}."
-                .format(name))
+            with self.assertRaises(Exception):
+                recreated_kp = self.provider.security.key_pairs.create(name=name)
         kpl = self.provider.security.key_pairs.list()
         found_kp = [k for k in kpl if k.name == name]
         self.assertTrue(
@@ -191,7 +188,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 sort_keys=True)
             self.assertTrue(
                 sg.to_json() == json_repr,
-                "JSON sec group representation {0} does not match expected {1}"
+                "JSON sec group representation {0}\n does not match expected {1}"
                 .format(sg.to_json(), json_repr))
 
         sgl = self.provider.security.security_groups.list()
@@ -201,7 +198,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             "Security group {0} should have been deleted but still exists."
             .format(name))
 
-    def test_security_group_group_role(self):
+    def test_security_group_group_rule(self):
         """Test for proper creation of a security group rule."""
         name = 'cbtestsecuritygroupC-{0}'.format(uuid.uuid4())
         sg = self.provider.security.security_groups.create(
