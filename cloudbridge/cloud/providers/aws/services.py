@@ -122,7 +122,7 @@ class AWSKeyPairService(BaseKeyPairService):
 
     def create(self, name):
         """
-        Create a new key pair or return an existing one by the same name.
+        Create a new key pair or raise an exception if one already exists.
 
         :type name: str
         :param name: The name of the key pair to be created.
@@ -130,11 +130,10 @@ class AWSKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
-        kp = self.get(name)
-        if kp:
-            return kp
         kp = self.provider.ec2_conn.create_key_pair(name)
-        return AWSKeyPair(self.provider, kp)
+        if kp:
+            return AWSKeyPair(self.provider, kp)
+        return None
 
 
 class AWSSecurityGroupService(BaseSecurityGroupService):

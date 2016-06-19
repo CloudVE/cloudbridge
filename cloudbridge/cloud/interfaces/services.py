@@ -818,13 +818,13 @@ class KeyPairService(PageableObjectMixin, CloudService):
     @abstractmethod
     def create(self, name):
         """
-        Create a new keypair or return an existing one by the same name.
+        Create a new key pair or raise an exception if one already exists.
 
         :type name: str
         :param name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A keypair instance
+        :return:  A keypair instance or ``None``.
         """
         pass
 

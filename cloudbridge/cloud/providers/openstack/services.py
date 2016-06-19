@@ -116,7 +116,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
     def create(self, name):
         """
-        Create a new key pair or return an existing one by the same name.
+        Create a new key pair or raise an exception if one already exists.
 
         :type name: str
         :param name: The name of the key pair to be created.
@@ -124,11 +124,10 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
-        kp = self.get(name)
-        if kp:
-            return kp
         kp = self.provider.nova.keypairs.create(name)
-        return OpenStackKeyPair(self.provider, kp)
+        if kp:
+            return OpenStackKeyPair(self.provider, kp)
+        return None
 
 
 class OpenStackSecurityGroupService(BaseSecurityGroupService):
