@@ -469,29 +469,68 @@ class AWSInstanceService(BaseInstanceService):
         key_pair_name = key_pair.name if isinstance(
             key_pair,
             KeyPair) else key_pair
-        if security_groups:
-            if isinstance(security_groups, list) and \
-                    isinstance(security_groups[0], SecurityGroup):
-                security_groups_list = [sg.name for sg in security_groups]
-            else:
-                security_groups_list = security_groups
-        else:
-            security_groups_list = None
         if launch_config:
             bdm = self._process_block_device_mappings(launch_config, zone_id)
-            net_id = self._get_net_id(launch_config)
+            subnet_id = self._get_net_id(launch_config)
         else:
-            bdm = net_id = None
+            bdm = subnet_id = None
+
+        vpc_id = None  # Used during processing of security groups
+        if subnet_id:
+            # zone_id must match zone where the requested subnet lives
+            subnet = self.provider.vpc_conn.get_all_subnets(subnet_id)[0]
+            if zone_id and subnet.availability_zone != zone_id:
+                raise ValueError("Requested placement zone ({0}) must match "
+                                 "specified subnet's availability zone ({1})."
+                                 .format(zone_id, subnet.availability_zone))
+            vpc_id = subnet.vpc_id
+        security_group_ids = self._process_security_groups(security_groups,
+                                                           vpc_id)
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
             min_count=1, max_count=1, placement=zone_id,
-            key_name=key_pair_name, security_groups=security_groups_list,
-            user_data=user_data, block_device_map=bdm, subnet_id=net_id)
+            key_name=key_pair_name, security_group_ids=security_group_ids,
+            user_data=user_data, block_device_map=bdm, subnet_id=subnet_id)
         if reservation:
             instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
         return instance
+
+    def _process_security_groups(self, security_groups, vpc_id=None):
+        """
+        Process security groups to create a list of SG ID's for launching.
+
+        :type security_groups: A ``list`` of ``SecurityGroup`` objects or a
+                               list of ``str`` names
+        :param security_groups: A list of ``SecurityGroup`` objects or a list
+                                of ``SecurityGroup`` names, which should be
+                                assigned to this instance.
+
+        :type vpc_id: ``str``
+        :param vpc_id: A VPC ID within which the supplied security groups exist
+
+        :rtype: ``list``
+        :return: A list of security group IDs.
+        """
+        if security_groups:
+            if isinstance(security_groups, list) and \
+                    isinstance(security_groups[0], SecurityGroup):
+                sg_ids = [sg.id for sg in security_groups]
+            else:
+                # SG names were supplied, need to map them to SG IDs.
+                sg_ids = []
+                # If a VPC was specified, need to map to the SGs in the VPC.
+                flters = None
+                if vpc_id:
+                    flters = {'vpc_id': vpc_id}
+                sgs = self.provider.ec2_conn.get_all_security_groups(
+                    filters=flters)
+                sg_ids = [sg.id for sg in sgs if sg.name in security_groups]
+        else:
+            sg_ids = None
+
+        return sg_ids
 
     def _process_block_device_mappings(self, launch_config, zone=None):
         """
