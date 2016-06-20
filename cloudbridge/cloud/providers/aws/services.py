@@ -461,6 +461,10 @@ class AWSInstanceService(BaseInstanceService):
                **kwargs):
         """
         Creates a new virtual machine instance.
+
+        In no VPC/subnet was specified (via ``launch_config``), this method
+        will search for a default VPC and attempt to launch an instance into
+        that VPC.
         """
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
@@ -475,17 +479,11 @@ class AWSInstanceService(BaseInstanceService):
         else:
             bdm = subnet_id = None
 
-        vpc_id = None  # Used during processing of security groups
-        if subnet_id:
-            # zone_id must match zone where the requested subnet lives
-            subnet = self.provider.vpc_conn.get_all_subnets(subnet_id)[0]
-            if zone_id and subnet.availability_zone != zone_id:
-                raise ValueError("Requested placement zone ({0}) must match "
-                                 "specified subnet's availability zone ({1})."
-                                 .format(zone_id, subnet.availability_zone))
-            vpc_id = subnet.vpc_id
-        security_group_ids = self._process_security_groups(security_groups,
-                                                           vpc_id)
+        vpc_id, subnet_id, zone_id, security_group_ids = \
+            self._resolve_launch_options(subnet_id, zone_id, security_groups)
+        if not security_group_ids:
+            security_group_ids = self._process_security_groups(
+                security_groups, vpc_id)
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
@@ -496,6 +494,70 @@ class AWSInstanceService(BaseInstanceService):
             instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
         return instance
+
+    def _resolve_launch_options(self, subnet_id, zone_id, security_groups):
+        """
+        Resolve inter-dependent launch options.
+
+        With launching into VPC only, try to figure out a default
+        VPC to launch into, making placement decisions along the way that
+        are implied from the zone a subnet exists in.
+        """
+        def _deduce_subnet_and_zone(vpc, zone_id=None):
+            """
+            Figure out subnet ID from a VPC (and zone_id, if not supplied).
+            """
+            if zone_id:
+                # A placement zone was specified. Choose the default
+                # subnet in that zone.
+                for sn in vpc.subnets():
+                    if sn._subnet.availability_zone == zone_id:
+                        subnet_id = sn.id
+            else:
+                # No zone was requested, so just pick one subnet
+                sn = vpc.subnets()[0]
+                subnet_id = sn.id
+                zone_id = sn._subnet.availability_zone
+            return subnet_id, zone_id
+
+        vpc_id = None
+        security_group_ids = []
+        if subnet_id:
+            # Subnet was supplied - get the VPC so named SGs can be resolved
+            subnet = self.provider.vpc_conn.get_all_subnets(subnet_id)[0]
+            vpc_id = subnet.vpc_id
+            # zone_id must match zone where the requested subnet lives
+            if zone_id and subnet.availability_zone != zone_id:
+                raise ValueError("Requested placement zone ({0}) must match "
+                                 "specified subnet's availability zone ({1})."
+                                 .format(zone_id, subnet.availability_zone))
+        elif security_groups:
+            # No VPC/subnet was supplied but may be able to get a subnet via
+            # a specified SG. This will work only if the specified security
+            # group(s) are within a VPC (which is a prerequisite to launch
+            # into VPC anyhow).
+            sg_ids = self._process_security_groups(security_groups, None)
+            for sg_id in sg_ids:
+                sg = self.provider.security.security_groups.get(sg_id)
+                if sg._security_group.vpc_id:
+                    security_group_ids.append(sg_id)
+                    vpc = self.provider.network.get(sg._security_group.vpc_id)
+                    subnet_id, zone_id = _deduce_subnet_and_zone(vpc, zone_id)
+            if not subnet_id:
+                raise AttributeError("Supplied security group(s) ({0}) must "
+                                     "be associated with a VPC."
+                                     .format(security_groups))
+        else:
+            # No VPC/subnet was supplied, search for the default VPC.
+            for vpc in self.provider.network.list():
+                if vpc._vpc.is_default:
+                    vpc_id = vpc.id
+                    subnet_id, zone_id = _deduce_subnet_and_zone(vpc, zone_id)
+                else:
+                    raise AttributeError("No default VPC exists. Supply a "
+                                         "subnet to launch into (via "
+                                         "launch_config param).")
+        return vpc_id, subnet_id, zone_id, security_group_ids
 
     def _process_security_groups(self, security_groups, vpc_id=None):
         """
