@@ -193,8 +193,9 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         Get all security groups associated with your account.
         """
         try:
+            flters = {'group-name': name}
             security_groups = self.provider.ec2_conn.get_all_security_groups(
-                groupnames=[name])
+                filters=flters)
         except EC2ResponseError:
             security_groups = []
         return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
