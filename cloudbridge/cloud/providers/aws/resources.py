@@ -652,7 +652,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
                 return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
                                      src_group)
             else:
-                raise EC2ResponseError
+                raise ec2e
         return None
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
