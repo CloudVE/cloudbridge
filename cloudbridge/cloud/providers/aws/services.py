@@ -478,12 +478,8 @@ class AWSInstanceService(BaseInstanceService):
             subnet_id = self._get_net_id(launch_config)
         else:
             bdm = subnet_id = None
-
-        vpc_id, subnet_id, zone_id, security_group_ids = \
+        subnet_id, zone_id, security_group_ids = \
             self._resolve_launch_options(subnet_id, zone_id, security_groups)
-        if not security_group_ids:
-            security_group_ids = self._process_security_groups(
-                security_groups, vpc_id)
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
@@ -531,23 +527,35 @@ class AWSInstanceService(BaseInstanceService):
                 raise ValueError("Requested placement zone ({0}) must match "
                                  "specified subnet's availability zone ({1})."
                                  .format(zone_id, subnet.availability_zone))
-        elif security_groups:
-            # No VPC/subnet was supplied but may be able to get a subnet via
-            # a specified SG. This will work only if the specified security
-            # group(s) are within a VPC (which is a prerequisite to launch
-            # into VPC anyhow).
-            sg_ids = self._process_security_groups(security_groups, None)
-            for sg_id in sg_ids:
-                sg = self.provider.security.security_groups.get(sg_id)
-                if sg._security_group.vpc_id:
-                    security_group_ids.append(sg_id)
-                    vpc = self.provider.network.get(sg._security_group.vpc_id)
-                    subnet_id, zone_id = _deduce_subnet_and_zone(vpc, zone_id)
+        if security_groups:
+            # Try to get a subnet via specified SGs. This will work only if
+            # the specified SGs are within a VPC (which is a prerequisite to
+            # launch into VPC anyhow).
+            sg_ids = self._process_security_groups(security_groups, vpc_id)
+            # Must iterate through all the SGs here because a SG name may
+            # exist in a VPC or EC2-Classic so opt for the VPC SG. This
+            # applies in the case no subnet was specified.
+            if not subnet_id:
+                for sg_id in sg_ids:
+                    sg = self.provider.security.security_groups.get(sg_id)
+                    if sg._security_group.vpc_id:
+                        if security_group_ids and sg_id not in security_group_ids:
+                            raise ValueError("Multiple matches for VPC "
+                                             "security group(s) {0}."
+                                             .format(security_groups))
+                        else:
+                            security_group_ids.append(sg_id)
+                        vpc = self.provider.network.get(
+                            sg._security_group.vpc_id)
+                        subnet_id, zone_id = _deduce_subnet_and_zone(
+                            vpc, zone_id)
+            else:
+                security_group_ids = sg_ids
             if not subnet_id:
                 raise AttributeError("Supplied security group(s) ({0}) must "
                                      "be associated with a VPC."
                                      .format(security_groups))
-        else:
+        if not subnet_id and not security_groups:
             # No VPC/subnet was supplied, search for the default VPC.
             for vpc in self.provider.network.list():
                 if vpc._vpc.is_default:
@@ -557,7 +565,7 @@ class AWSInstanceService(BaseInstanceService):
                     raise AttributeError("No default VPC exists. Supply a "
                                          "subnet to launch into (via "
                                          "launch_config param).")
-        return vpc_id, subnet_id, zone_id, security_group_ids
+        return subnet_id, zone_id, security_group_ids
 
     def _process_security_groups(self, security_groups, vpc_id=None):
         """
@@ -575,22 +583,19 @@ class AWSInstanceService(BaseInstanceService):
         :rtype: ``list``
         :return: A list of security group IDs.
         """
-        if security_groups:
-            if isinstance(security_groups, list) and \
-                    isinstance(security_groups[0], SecurityGroup):
-                sg_ids = [sg.id for sg in security_groups]
-            else:
-                # SG names were supplied, need to map them to SG IDs.
-                sg_ids = []
-                # If a VPC was specified, need to map to the SGs in the VPC.
-                flters = None
-                if vpc_id:
-                    flters = {'vpc_id': vpc_id}
-                sgs = self.provider.ec2_conn.get_all_security_groups(
-                    filters=flters)
-                sg_ids = [sg.id for sg in sgs if sg.name in security_groups]
+        if isinstance(security_groups, list) and \
+                isinstance(security_groups[0], SecurityGroup):
+            sg_ids = [sg.id for sg in security_groups]
         else:
-            sg_ids = None
+            # SG names were supplied, need to map them to SG IDs.
+            sg_ids = []
+            # If a VPC was specified, need to map to the SGs in the VPC.
+            flters = None
+            if vpc_id:
+                flters = {'vpc_id': vpc_id}
+            sgs = self.provider.ec2_conn.get_all_security_groups(
+                filters=flters)
+            sg_ids = [sg.id for sg in sgs if sg.name in security_groups]
 
         return sg_ids
 
