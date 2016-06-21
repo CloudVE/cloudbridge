@@ -165,7 +165,7 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         return ClientPagedResultList(self.provider, sgs,
                                      limit=limit, marker=marker)
 
-    def create(self, name, description):
+    def create(self, name, description, network_id=None):
         """
         Create a new SecurityGroup.
 
@@ -175,10 +175,15 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         :type description: str
         :param description: The description of the new security group.
 
+        :type  network_id: ``str``
+        :param network_id: The ID of the VPC to create the security group in,
+                           if any.
+
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.
         """
-        sg = self.provider.ec2_conn.create_security_group(name, description)
+        sg = self.provider.ec2_conn.create_security_group(name, description,
+                                                          network_id)
         if sg:
             return AWSSecurityGroup(self.provider, sg)
         return None

@@ -193,7 +193,7 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         return ClientPagedResultList(self.provider, sgs,
                                      limit=limit, marker=marker)
 
-    def create(self, name, description):
+    def create(self, name, description, network_id=None):
         """
         Create a new security group under the current account.
 
@@ -202,6 +202,10 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
 
         :type description: str
         :param description: The description of the new security group.
+
+        :type  network_id: ``None``
+        :param network_id: Not applicable for OpenStack (yet) so any value is
+                           ignored.
 
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return: a SecurityGroup object
