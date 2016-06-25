@@ -709,7 +709,7 @@ class AWSInstanceService(BaseInstanceService):
                                      reservations.next_token,
                                      False, data=instances)
 
-AWS_INSTANCE_DATA_DEFAULT_URL = "https://cloudbridgelib.s3.amazonaws.com/" \
+AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
                                 "aws_instance_data.json"
 
 
