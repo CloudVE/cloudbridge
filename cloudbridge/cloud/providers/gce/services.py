@@ -15,6 +15,9 @@ from retrying import retry
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 from .resources import GCERegion
+from .resources import GCEFirewallsDelegate
+from .resources import GCESecurityGroup
+from .resources import GCESecurityGroupRule
 
 
 class GCESecurityService(BaseSecurityService):
@@ -24,6 +27,7 @@ class GCESecurityService(BaseSecurityService):
 
         # Initialize provider services
         self._key_pairs = GCEKeyPairService(provider)
+        self._security_groups = GCESecurityGroupService(provider)
 
     @property
     def key_pairs(self):
@@ -31,8 +35,7 @@ class GCESecurityService(BaseSecurityService):
 
     @property
     def security_groups(self):
-        raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+        return self._security_groups
 
 
 class GCEKeyPairService(BaseKeyPairService):
@@ -190,6 +193,33 @@ class GCESecurityGroupService(BaseSecurityGroupService):
 
     def __init__(self, provider):
         super(GCESecurityGroupService, self).__init__(provider)
+        self._delegate = GCEFirewallsDelegate.get_instance(provider)
+
+    def get(self, group_id):
+        tag = self._delegate.get_tag_from_id(group_id)
+        return GCESecurityGroup(self.provider, tag) if tag is not None else None
+
+    def list(self, limit=None, marker=None):
+        security_groups = [GCESecurityGroup(self.provider, x)
+                           for x in self._delegate.tags]
+        return ClientPagedResultList(self.provider, security_groups,
+                                     limit=limit, marker=marker)
+
+    def create(self, name, description):
+        return GCESecurityGroup(self.provider, name, description)
+
+    def find(self, name, limit=None, marker=None):
+        """
+        Finds a non-empty security group. If a security group with the given
+        name does not exist, or if it does not contain any rules, an empty list
+        is returned.
+        """
+        if self._delegate.has_tag(name):
+            return [GCESecurityGroup(self.provider, name)]
+        return []
+
+    def delete(self, group_id):
+        return self._delegate.delete_tag_with_id(group_id)
 
 
 class GCEInstanceTypesService(BaseInstanceTypesService):
