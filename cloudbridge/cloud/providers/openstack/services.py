@@ -725,6 +725,14 @@ class OpenStackNetworkService(BaseNetworkService):
     def subnets(self):
         return self._subnet_svc
 
+    def static_ips(self, network_id=None):
+        if network_id:
+            al = self.provider.neutron.list_floatingips(
+                floating_network_id=network_id)['floatingips']
+        else:
+            al = self.provider.neutron.list_floatingips()['floatingips']
+        return [a.get('floating_ip_address') for a in al]
+
 
 class OpenStackSubnetService(BaseSubnetService):
 

@@ -554,6 +554,19 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
+    @abstractproperty
+    def static_ips(self, network_id=None):
+        """
+        List static IP addresses.
+
+        :type: ``str``
+        :param: The ID of the network by which to filter the IPs.
+
+        :rtype: ``lsit`` of strings
+        :return: list of static IPs
+        """
+        pass
+
 
 class SubnetService(PageableObjectMixin, CloudService):
 
