@@ -171,27 +171,20 @@ class GCERegion(BaseRegion):
 
 
 class GCEFirewallsDelegate(object):
-
-    _instance = None
-   
+  
     def __init__(self, provider):
-        if GCEFirewallsDelegate._instance is not None:
-            raise Exception('Use GCEFirewalls.instance() to instanciate.')
         self._provider = provider
         self._list_response = None
-        GCEFirewallsDelegate._instance = self
 
-    @staticmethod
-    def get_instance(provider):
-        if GCEFirewallsDelegate._instance is None:
-            GCEFirewallsDelegate(provider)
-        return GCEFirewallsDelegate._instance
- 
     @staticmethod
     def tag_id(tag):
         md5 = hashlib.md5()
         md5.update(tag.encode('ascii'))
         return md5.hexdigest()
+
+    @property
+    def provider(self):
+        return self._provider
 
     @property
     def tags(self):
@@ -346,10 +339,10 @@ class GCEFirewallsDelegate(object):
 
 class GCESecurityGroup(BaseSecurityGroup):
 
-    def __init__(self, provider, tag, description=None):
-        super(GCESecurityGroup, self).__init__(provider, tag)
+    def __init__(self, delegate, tag, description=None):
+        super(GCESecurityGroup, self).__init__(delegate.provider, tag)
         self._description = description
-        self._delegate = GCEFirewallsDelegate.get_instance(provider)
+        self._delegate = delegate
 
     @property
     def id(self):
@@ -372,7 +365,7 @@ class GCESecurityGroup(BaseSecurityGroup):
     def rules(self):
         out = []
         for firewall in self._delegate.iter_firewalls(self._security_group):
-            out.append(GCESecurityGroupRule(self._provider, firewall['id']))
+            out.append(GCESecurityGroupRule(self._delegate, firewall['id']))
         return out
 
     @staticmethod
@@ -401,7 +394,7 @@ class GCESecurityGroup(BaseSecurityGroup):
                 self._security_group, ip_protocol, port, cidr_ip, src_tag)
         if firewall_id is None:
             return None
-        return GCESecurityGroupRule(self._provider, firewall_id)
+        return GCESecurityGroupRule(self._delegate, firewall_id)
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -417,16 +410,17 @@ class GCESecurityGroup(BaseSecurityGroup):
 
 class GCESecurityGroupRule(BaseSecurityGroupRule):
 
-    def __init__(self, provider, firewall_id):
-        super(GCESecurityGroupRule, self).__init__(provider, firewall_id, None)
-        self._delegate = GCEFirewallsDelegate.get_instance(provider)
+    def __init__(self, delegate, firewall_id):
+        super(GCESecurityGroupRule, self).__init__(
+                delegate.provider, firewall_id, None)
+        self._delegate = delegate
 
     @property
     def parent(self):
         info = self._delegate.get_firewall_info(self._rule)
         if info is None or 'target_tag' not in info:
             return None
-        return GCESecurityGroup(self._provider, info['target_tag'])
+        return GCESecurityGroup(self._delegate, info['target_tag'])
 
     @property
     def id(self):
@@ -481,7 +475,7 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
         info = self._delegate.get_firewall_info(self._rule)
         if info is None or 'source_tag' not in info:
             return None
-        return GCESecurityGroup(self._provider, info['source_tag'])
+        return GCESecurityGroup(self._delegate, info['source_tag'])
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))

@@ -193,20 +193,20 @@ class GCESecurityGroupService(BaseSecurityGroupService):
 
     def __init__(self, provider):
         super(GCESecurityGroupService, self).__init__(provider)
-        self._delegate = GCEFirewallsDelegate.get_instance(provider)
+        self._delegate = GCEFirewallsDelegate(provider)
 
     def get(self, group_id):
         tag = self._delegate.get_tag_from_id(group_id)
-        return GCESecurityGroup(self.provider, tag) if tag is not None else None
+        return None if tag is None else GCESecurityGroup(self._delegate, tag)
 
     def list(self, limit=None, marker=None):
-        security_groups = [GCESecurityGroup(self.provider, x)
+        security_groups = [GCESecurityGroup(self._delegate, x)
                            for x in self._delegate.tags]
         return ClientPagedResultList(self.provider, security_groups,
                                      limit=limit, marker=marker)
 
     def create(self, name, description):
-        return GCESecurityGroup(self.provider, name, description)
+        return GCESecurityGroup(self._delegate, name, description)
 
     def find(self, name, limit=None, marker=None):
         """
@@ -215,7 +215,7 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         is returned.
         """
         if self._delegate.has_tag(name):
-            return [GCESecurityGroup(self.provider, name)]
+            return [GCESecurityGroup(self._delegate, name)]
         return []
 
     def delete(self, group_id):
