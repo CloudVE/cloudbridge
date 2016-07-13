@@ -35,6 +35,7 @@ from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.resources import WaitStateException
@@ -670,6 +671,22 @@ class BaseSubnet(Subnet, BaseCloudResource):
 
     def __eq__(self, other):
         return (isinstance(other, Subnet) and
+                # pylint:disable=protected-access
+                self._provider == other._provider and
+                self.id == other.id)
+
+
+class BaseFloatingIP(FloatingIP, BaseCloudResource):
+
+    def __init__(self, provider):
+        super(BaseFloatingIP, self).__init__(provider)
+
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.id, self.public_ip)
+
+    def __eq__(self, other):
+        return (isinstance(other, FloatingIP) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)

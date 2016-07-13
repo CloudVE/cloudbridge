@@ -37,6 +37,7 @@ from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
 
 from .resources import AWSBucket
+from .resources import AWSFloatingIP
 from .resources import AWSInstance
 from .resources import AWSInstanceType
 from .resources import AWSKeyPair
@@ -795,7 +796,11 @@ class AWSNetworkService(BaseNetworkService):
         if network_id:
             fltrs = {'network-interface-id': network_id}
         al = self.provider.vpc_conn.get_all_addresses(filters=fltrs)
-        return [a.public_ip for a in al]
+        return [AWSFloatingIP(self.provider, a) for a in al]
+
+    def create_floating_ip(self):
+        ip = self.provider.ec2_conn.allocate_address(domain='vpc')
+        return AWSFloatingIP(self.provider, ip)
 
 
 class AWSSubnetService(BaseSubnetService):

@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
@@ -724,8 +725,36 @@ class OpenStackSubnet(BaseSubnet):
     def delete(self):
         if self.id in str(self._provider.neutron.list_subnets()):
             self._provider.neutron.delete_subnet(self.id)
-        # Adhear to the interface docs
+        # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_subnets()):
+            return True
+
+
+class OpenStackFloatingIP(BaseFloatingIP):
+
+    def __init__(self, provider, floating_ip):
+        super(OpenStackFloatingIP, self).__init__(provider)
+        self._ip = floating_ip
+
+    @property
+    def id(self):
+        return self._ip.get('id', None)
+
+    @property
+    def public_ip(self):
+        return self._ip.get('floating_ip_address', None)
+
+    @property
+    def private_ip(self):
+        return self._ip.get('fixed_ip_address', None)
+
+    def in_use(self):
+        return True if self._ip.get('status', None) == 'ACTIVE' else False
+
+    def delete(self):
+        self._provider.neutron.delete_floatingip(self.id)
+        # Adhere to the interface docs
+        if self.id not in str(self._provider.neutron.list_floatingips()):
             return True
 
 

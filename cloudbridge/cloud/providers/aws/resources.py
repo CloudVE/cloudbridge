@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
@@ -985,3 +986,28 @@ class AWSSubnet(BaseSubnet):
 
     def delete(self):
         return self._provider.vpc_conn.delete_subnet(subnet_id=self.id)
+
+
+class AWSFloatingIP(BaseFloatingIP):
+
+    def __init__(self, provider, floating_ip):
+        super(AWSFloatingIP, self).__init__(provider)
+        self._ip = floating_ip
+
+    @property
+    def id(self):
+        return self._ip.allocation_id
+
+    @property
+    def public_ip(self):
+        return self._ip.public_ip
+
+    @property
+    def private_ip(self):
+        return self._ip.private_ip_address
+
+    def in_use(self):
+        return True if self._ip.instance_id else False
+
+    def delete(self):
+        return self._ip.delete()

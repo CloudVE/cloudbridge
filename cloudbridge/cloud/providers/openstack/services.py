@@ -5,7 +5,6 @@ import fnmatch
 import re
 
 from cinderclient.exceptions import NotFound as CinderNotFound
-from novaclient.exceptions import NotFound as NovaNotFound
 
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -32,7 +31,10 @@ from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
+from novaclient.exceptions import NotFound as NovaNotFound
+
 from .resources import OpenStackBucket
+from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
 from .resources import OpenStackKeyPair
@@ -731,7 +733,16 @@ class OpenStackNetworkService(BaseNetworkService):
                 floating_network_id=network_id)['floatingips']
         else:
             al = self.provider.neutron.list_floatingips()['floatingips']
-        return [a.get('floating_ip_address') for a in al]
+        return [OpenStackFloatingIP(self.provider, a) for a in al]
+
+    def create_floating_ip(self):
+        # OpenStack requires a floating IP to be associated with a pool,
+        # so just choose the first one available...
+        ip_pool_name = self.provider.nova.floating_ip_pools.list()[0].name
+        ip = self.provider.nova.floating_ips.create(ip_pool_name)
+        # Nova returns a different object than Neutron so fetch the Neutron one
+        ip = self.provider.neutron.list_floatingips(id=ip.id)['floatingips'][0]
+        return OpenStackFloatingIP(self.provider, ip)
 
 
 class OpenStackSubnetService(BaseSubnetService):

@@ -2,6 +2,7 @@
 Specifications for services available through a provider
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 
 
@@ -559,11 +560,25 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         List floating (i.e., static) IP addresses.
 
-        :type: ``str``
-        :param: The ID of the network by which to filter the IPs.
+        :type network_id: ``str``
+        :param network_id: The ID of the network by which to filter the IPs.
 
-        :rtype: ``list`` of strings
-        :return: list of static IPs
+        :rtype: ``list`` of :class:`FloatingIP`
+        :return: list of floating IP objects
+        """
+        pass
+
+    @abstractmethod
+    def create_floating_ip(self):
+        """
+        Allocate a new floating (i.e., static) IP address.
+
+        :type network_id: ``str``
+        :param network_id: The ID of the network with which to associate the
+                           new IP address.
+
+        :rtype: :class:`FloatingIP`
+        :return: floating IP object
         """
         pass
 

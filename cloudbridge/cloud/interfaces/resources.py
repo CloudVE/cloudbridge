@@ -976,6 +976,64 @@ class Subnet(CloudResource):
         pass
 
 
+class FloatingIP(CloudResource):
+    """
+    Represents a floating (i.e., static) IP address.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def id(self):
+        """
+        Get the address identifier.
+
+        :rtype: ``str``
+        :return: ID for this network. Will generally correspond to the cloud
+                 middleware's ID, but should be treated as an opaque value.
+        """
+        pass
+
+    @abstractproperty
+    def public_ip(self):
+        """
+        Public IP address.
+
+        :rtype: ``str``
+        :return: IP address.
+        """
+        pass
+
+    @abstractproperty
+    def private_ip(self):
+        """
+        Private IP address this address is attached to.
+
+        :rtype: ``str``
+        :return: IP address or ``None``.
+        """
+        pass
+
+    @abstractmethod
+    def in_use(self):
+        """
+        Whether the address is in use or not.
+
+        :rtype: ``bool``
+        :return: ``True`` if the address is attached to an instance.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self):
+        """
+        Delete this address.
+
+        :rtype: ``bool``
+        :return: ``True`` if successful.
+        """
+        pass
+
+
 class AttachmentInfo(object):
     """
     Contains attachment information for a volume.
