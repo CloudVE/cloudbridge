@@ -554,15 +554,15 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
-    @abstractproperty
-    def static_ips(self, network_id=None):
+    @abstractmethod
+    def floating_ips(self, network_id=None):
         """
-        List static IP addresses.
+        List floating (i.e., static) IP addresses.
 
         :type: ``str``
         :param: The ID of the network by which to filter the IPs.
 
-        :rtype: ``lsit`` of strings
+        :rtype: ``list`` of strings
         :return: list of static IPs
         """
         pass

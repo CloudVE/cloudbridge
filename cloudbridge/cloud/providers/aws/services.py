@@ -468,9 +468,9 @@ class AWSInstanceService(BaseInstanceService):
         """
         Creates a new virtual machine instance.
 
-        In no VPC/subnet was specified (via ``launch_config``), this method
-        will search for a default VPC and attempt to launch an instance into
-        that VPC.
+        If no VPC/subnet was specified (via ``launch_config`` parameter), this
+        method will search for a default VPC and attempt to launch an instance
+        into that VPC.
         """
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
@@ -790,7 +790,7 @@ class AWSNetworkService(BaseNetworkService):
     def subnets(self):
         return self._subnet_svc
 
-    def static_ips(self, network_id=None):
+    def floating_ips(self, network_id=None):
         fltrs = None
         if network_id:
             fltrs = {'network-interface-id': network_id}
