@@ -1,7 +1,6 @@
-import uuid
-
-from test.helpers import ProviderTestBase
 import test.helpers as helpers
+import uuid
+from test.helpers import ProviderTestBase
 
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
@@ -54,6 +53,32 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 len(found_subnet) == 0,
                 "Subnet {0} should have been deleted but still exists."
                 .format(subnet_name))
+
+            # Check floating IP address
+            ip = self.provider.network.create_floating_ip()
+            ip_id = ip.id
+            with helpers.cleanup_action(lambda: ip.delete()):
+                ipl = self.provider.network.floating_ips()
+                self.assertTrue(
+                    ip in ipl,
+                    "Floating IP address {0} should exist in the list {1}"
+                    .format(ip.id, ipl))
+                self.assertIn(
+                    ip.public_ip, repr(ip),
+                    "repr(obj) should contain the address public IP value.")
+                self.assertFalse(
+                    ip.private_ip,
+                    "Floating IP should not have a private IP value ({0})."
+                    .format(ip.private_ip))
+                self.assertFalse(
+                    ip.in_use(),
+                    "Newly created floating IP address should not be in use.")
+            ipl = self.provider.network.floating_ips()
+            found_ip = [a for a in ipl if a.id == ip_id]
+            self.assertTrue(
+                len(found_ip) == 0,
+                "Floating IP {0} should have been deleted but still exists."
+                .format(ip_id))
 
         netl = self.provider.network.list()
         found_net = [n for n in netl if n.name == name]
