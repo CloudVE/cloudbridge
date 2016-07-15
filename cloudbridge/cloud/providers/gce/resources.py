@@ -7,7 +7,12 @@ from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
-from sets import Set
+
+# Older versions of Python do not have a built-in set data-structure.
+try:
+    set
+except NameError:
+    from sets import Set as set
 
 import hashlib
 import inspect
@@ -188,7 +193,7 @@ class GCEFirewallsDelegate(object):
 
     @property
     def tags(self):
-        out = Set()
+        out = set()
         for firewall in self.iter_firewalls():
             out.add(firewall['targetTags'][0])
         return out
