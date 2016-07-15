@@ -15,11 +15,11 @@ specific tag. So, to add GCE support to CloudBridge, we simulate security groups
 by tags.
 
 To make this more clear, let us consider the example of adding a rule to a
-security group. When you add a security group rule from the CloudBridge API to a
-security group ``sg``, what really happens, when the cloud provider is GCE, is
-that a firewall with one rule is created whose ``targetTags`` is ``[sg]``. This
-makes sure that the rule applies to all instances that have ``sg`` as a tag (in
-CloudBridge language instances belonging to the security group ``sg``).
+security group. When you add a security group rule from the CloudBridge API to
+a security group ``sg``, what really happens is that a firewall with one rule
+is created whose ``targetTags`` is ``[sg]``. This makes sure that the rule
+applies to all instances that have ``sg`` as a tag (in CloudBridge language
+instances belonging to the security group ``sg``).
 
 **Note**: This implementation does not take advantage of the full power of GCE
 firewall format and only creates firewalls with one rule and only can find or
