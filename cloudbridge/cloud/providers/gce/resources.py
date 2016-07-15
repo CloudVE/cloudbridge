@@ -220,6 +220,10 @@ class GCEFirewallsDelegate(object):
         if self.find_firewall(tag, ip_protocol, port, source_range,
                               source_tag) is not None:
             return True
+        # Do not let the user accidentally open traffic from the world by not
+        # explicitly specifying the source.
+        if source_tag is None and source_range is None:
+            return False
         firewall_number = 1
         suffixes = []
         for firewall in self.iter_firewalls(tag):
