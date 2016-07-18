@@ -6,7 +6,6 @@ import string
 from boto.ec2.blockdevicemapping import BlockDeviceMapping
 from boto.ec2.blockdevicemapping import BlockDeviceType
 from boto.exception import EC2ResponseError
-import requests
 
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -25,9 +24,9 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 # from cloudbridge.cloud.interfaces.resources import Network
@@ -35,6 +34,8 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
+
+import requests
 
 from .resources import AWSBucket
 from .resources import AWSFloatingIP
@@ -524,7 +525,7 @@ class AWSInstanceService(BaseInstanceService):
             return subnet_id, zone_id
 
         vpc_id = None
-        security_group_ids = []
+        sg_ids = []
         if subnet_id:
             # Subnet was supplied - get the VPC so named SGs can be resolved
             subnet = self.provider.vpc_conn.get_all_subnets(subnet_id)[0]
@@ -546,18 +547,18 @@ class AWSInstanceService(BaseInstanceService):
                 for sg_id in sg_ids:
                     sg = self.provider.security.security_groups.get(sg_id)
                     if sg._security_group.vpc_id:
-                        if security_group_ids and sg_id not in security_group_ids:
+                        if sg_ids and sg_id not in sg_ids:
                             raise ValueError("Multiple matches for VPC "
                                              "security group(s) {0}."
                                              .format(security_groups))
                         else:
-                            security_group_ids.append(sg_id)
+                            sg_ids.append(sg_id)
                         vpc = self.provider.network.get(
                             sg._security_group.vpc_id)
                         subnet_id, zone_id = _deduce_subnet_and_zone(
                             vpc, zone_id)
             else:
-                security_group_ids = sg_ids
+                sg_ids = sg_ids
             if not subnet_id:
                 raise AttributeError("Supplied security group(s) ({0}) must "
                                      "be associated with a VPC."
@@ -572,7 +573,7 @@ class AWSInstanceService(BaseInstanceService):
                     raise AttributeError("No default VPC exists. Supply a "
                                          "subnet to launch into (via "
                                          "launch_config param).")
-        return subnet_id, zone_id, security_group_ids
+        return subnet_id, zone_id, sg_ids
 
     def _process_security_groups(self, security_groups, vpc_id=None):
         """
