@@ -3,8 +3,12 @@ DataTypes used by this provider
 """
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.interfaces.resources import MachineImageState
+
+import googleapiclient
 
 
 class GCEKeyPair(BaseKeyPair):
@@ -162,3 +166,79 @@ class GCERegion(BaseRegion):
                  if zone['region'] == self._gce_region['selfLink']]
         return [GCEPlacementZone(self._provider, zone['name'], self.name)
                 for zone in zones]
+
+
+class GCEMachineImage(BaseMachineImage):
+
+    IMAGE_STATE_MAP = {
+        'PENDING': MachineImageState.PENDING,
+        'READY': MachineImageState.AVAILABLE,
+        'FAILED': MachineImageState.ERROR
+    }
+
+    def __init__(self, provider, image):
+        super(GCEMachineImage, self).__init__(provider)
+        if isinstance(image, GCEMachineImage):
+            # pylint:disable=protected-access
+            self._gce_image = image._gce_image
+        else:
+            self._gce_image = image
+
+    @property
+    def id(self):
+        """
+        Get the image identifier.
+        :rtype: ``str``
+        :return: ID for this instance as returned by the cloud middleware.
+        """
+        return self._gce_image['id']
+
+    @property
+    def name(self):
+        """
+        Get the image name.
+        :rtype: ``str``
+        :return: Name for this image as returned by the cloud middleware.
+        """
+        return self._gce_image['name']
+
+    @property
+    def description(self):
+        """
+        Get the image description.
+        :rtype: ``str``
+        :return: Description for this image as returned by the cloud middleware
+        """
+        return self._gce_image['description']
+
+    def delete(self):
+        """
+        Delete this image
+        """
+        request = self._provider.gce_compute.images().delete(
+            project=self._provider.project_name, image=self.name)
+        request.execute()
+
+    @property
+    def state(self):
+        return GCEMachineImage.IMAGE_STATE_MAP.get(
+            self._gce_image['status'], MachineImageState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this instance by re-querying the cloud provider
+        for its latest state.
+        """
+        try:
+            response = self._provider.gce_compute \
+                                  .images() \
+                                  .get(project=self._provider.project_name,
+                                       image=self.name) \
+                                  .execute()
+            if response:
+                # pylint:disable=protected-access
+                self._gce_image = response
+        except googleapiclient.errors.HttpError as http_error:
+            # image no longer exists
+            print("googleapiclient.errors.HttpError: {0}".format(http_error))
+            self._gce_image['status'] = "unknown"

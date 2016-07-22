@@ -1,5 +1,6 @@
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseRegionService
@@ -12,6 +13,7 @@ import googleapiclient
 
 from retrying import retry
 
+from .resources import GCEMachineImage
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 from .resources import GCERegion
@@ -267,16 +269,84 @@ class GCERegionService(BaseRegionService):
         return self.get(self.provider.region_name)
 
 
+class GCEImageService(BaseImageService):
+
+    def __init__(self, provider):
+        super(GCEImageService, self).__init__(provider)
+
+    def get(self, image_name):
+        """
+        Returns an Image given its name
+        """
+        try:
+            image = self.provider.gce_compute \
+                                  .images() \
+                                  .get(project=self.provider.project_name,
+                                       image=image_name) \
+                                  .execute()
+            if image:
+                return GCEMachineImage(self.provider, image)
+        except TypeError as type_error:
+            # The API will throw an TypeError, if parameter `image` does not
+            # match the pattern "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?".
+            print("TypeError: {0}".format(type_error))
+            return None
+        except googleapiclient.errors.HttpError as http_error:
+            print("googleapiclient.errors.HttpError: {0}".format(http_error))
+            return None
+
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for an image by a given list of attributes
+        """
+        filters = {'name': name}
+        try:
+            response = self.provider.gce_compute \
+                                    .images() \
+                                  .list(project=self.provider.project_name) \
+                                  .execute()
+        except googleapiclient.errors.HttpError as http_error:
+            print("googleapiclient.errors.HttpError: {0}".format(http_error))
+            return []
+        if 'items' not in response:
+            return []
+        images = [GCEMachineImage(self.provider, image) for image
+                  in response['items']
+                  if 'name' in image and image['name'] == filters['name']]
+        return ClientPagedResultList(self.provider, images,
+                                     limit=limit, marker=marker)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all images.
+        """
+        try:
+            response = self.provider.gce_compute \
+                                  .images() \
+                                  .list(project=self.provider.project_name) \
+                                  .execute()
+        except googleapiclient.errors.HttpError as http_error:
+            print("googleapiclient.errors.HttpError: {0}".format(http_error))
+            return []
+        if 'items' not in response:
+            return []
+        images = [GCEMachineImage(self.provider, image) for image
+                  in response['items']]
+        return ClientPagedResultList(self.provider, images,
+                                     limit=limit, marker=marker)
+
+
 class GCEComputeService(BaseComputeService):
     # TODO: implement GCEComputeService
     def __init__(self, provider):
         super(GCEComputeService, self).__init__(provider)
         self._instance_type_svc = GCEInstanceTypesService(self.provider)
         self._region_svc = GCERegionService(self.provider)
+        self._images_svc = GCEImageService(self.provider)
 
     @property
     def images(self):
-        raise NotImplementedError("To be implemented")
+        return self._images_svc
 
     @property
     def instance_types(self):
