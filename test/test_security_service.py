@@ -1,5 +1,6 @@
 import json
 from test.helpers import ProviderTestBase
+import time
 import uuid
 
 import test.helpers as helpers
@@ -12,7 +13,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             methodName=methodName, provider=provider)
 
     def test_crud_key_pair_service(self):
-        name = 'cbtestkeypairA-{0}'.format(uuid.uuid4())
+        name = 'cbtestkeypair-a'
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -67,7 +68,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             "Found a key pair {0} that should not exist?".format(no_kp))
 
     def test_key_pair(self):
-        name = 'cbtestkeypairB-{0}'.format(uuid.uuid4())
+        name = 'cbtestkeypair-b'
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(lambda: kp.delete()):
             kpl = self.provider.security.key_pairs.list()
@@ -98,9 +99,11 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             .format(name))
 
     def test_crud_security_group_service(self):
-        name = 'cbtestsecuritygroupA-{0}'.format(uuid.uuid4())
+        name = 'cbtestsecuritygroup-a'
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
+        #Empty security groups don't exist in GCE. Let's add a dummy rule.
+        sg.add_rule(ip_protocol='tcp')
         with helpers.cleanup_action(
             lambda:
                 self.provider.security.security_groups.delete(group_id=sg.id)
@@ -154,7 +157,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     def test_security_group(self):
         """Test for proper creation of a security group."""
-        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
+        name = 'cbtestsecuritygroup-b'
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
         with helpers.cleanup_action(lambda: sg.delete()):
@@ -202,15 +205,16 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     def test_security_group_group_role(self):
         """Test for proper creation of a security group rule."""
-        name = 'cbtestsecuritygroupC-{0}'.format(uuid.uuid4())
+        name = 'cbtestsecuritygroup-c'
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
-        with helpers.cleanup_action(lambda: sg.delete()):
+        with helpers.cleanup_action(
+                lambda: None if sg is None else sg.delete()):
             self.assertTrue(
                 len(sg.rules) == 0,
                 "Expected no security group group rule. Got {0}."
                 .format(sg.rules))
-            rule = sg.add_rule(src_group=sg)
+            rule = sg.add_rule(ip_protocol='tcp', src_group=sg)
             self.assertTrue(
                 rule.group.name == name,
                 "Expected security group rule name {0}. Got {1}."
@@ -219,9 +223,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 r.delete()
             sg = self.provider.security.security_groups.get(sg.id)  # update
             self.assertTrue(
-                len(sg.rules) == 0,
+                sg is None or len(sg.rules) == 0,
                 "Deleting SecurityGroupRule should delete it: {0}".format(
-                    sg.rules))
+                    [] if sg is None else sg.rules))
         sgl = self.provider.security.security_groups.list()
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(

@@ -526,7 +526,7 @@ class BaseSecurityGroupRule(SecurityGroupRule, BaseCloudResource):
     def __init__(self, provider, rule, parent):
         super(BaseSecurityGroupRule, self).__init__(provider)
         self._rule = rule
-        self.parent = parent
+        self._parent = parent
 
     def __repr__(self):
         return ("<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}; grp: {3}>"
@@ -552,6 +552,10 @@ class BaseSecurityGroupRule(SecurityGroupRule, BaseCloudResource):
         return hash("{0}{1}{2}{3}{4}".format(self.ip_protocol, self.from_port,
                                              self.to_port, self.cidr_ip,
                                              self.group))
+
+    @property
+    def parent(self):
+        return self._parent
 
 
 class BasePlacementZone(PlacementZone, BaseCloudResource):
