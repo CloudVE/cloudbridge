@@ -289,12 +289,25 @@ class OpenStackCloudProvider(BaseCloudProvider):
         Get an OpenStack Swift (object store) client object for the given
         cloud.
         """
-        os_options = {'region_name': self.swift_region_name}
-        return swift_client.Connection(
-            authurl=self.swift_auth_url, auth_version='2',
-            user=self.swift_username, key=self.swift_password,
-            tenant_name=self.swift_tenant_name,
-            os_options=os_options)
+        def connect_v2():
+            os_options = {'region_name': self.swift_region_name}
+            return swift_client.Connection(
+                authurl=self.swift_auth_url, auth_version='2',
+                user=self.swift_username, key=self.swift_password,
+                tenant_name=self.swift_tenant_name,
+                os_options=os_options)
+
+        def connect_v3():
+            os_options = {'region_name': self.swift_region_name,
+                          'user_domain_name': self.user_domain_name,
+                          'project_domain_name': self.project_domain_name,
+                          'project_name': self.project_name}
+            return swift_client.Connection(
+                authurl=self.swift_auth_url, auth_version='3',
+                user=self.swift_username, key=self.swift_password,
+                os_options=os_options)
+
+        return connect_v3() if self._keystone_version == 3 else connect_v2()
 
     def _connect_neutron(self):
         """
