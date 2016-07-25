@@ -118,15 +118,15 @@ class OpenStackCloudProvider(BaseCloudProvider):
         :return: A Keystone session object.
         """
         def connect_v2():
-            from keystoneclient.auth.identity import Password as password_v2
-            auth = password_v2(self.auth_url, username=self.username,
+            from keystoneclient.auth.identity import Password as Password_v2
+            auth = Password_v2(self.auth_url, username=self.username,
                                password=self.password,
                                tenant_name=self.tenant_name)
             return session.Session(auth=auth)
 
         def connect_v3():
-            from keystoneclient.auth.identity.v3 import Password as password_v3
-            auth = password_v3(auth_url=self.auth_url,
+            from keystoneclient.auth.identity.v3 import Password as Password_v3
+            auth = Password_v3(auth_url=self.auth_url,
                                username=self.username,
                                password=self.password,
                                user_domain_name=self.user_domain_name,
