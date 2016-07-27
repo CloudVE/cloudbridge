@@ -723,6 +723,9 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
         """
         Create a new bucket.
 
+        If a bucket with the specified name already exists, return a reference
+        to that bucket.
+
         Example:
 
         .. code-block:: python
