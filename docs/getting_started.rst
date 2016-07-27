@@ -32,7 +32,7 @@ AWS:
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
     image_id = 'ami-d85e75b0'  # Ubuntu 14.04
 
-OpenStack:
+OpenStack (with Keystone authentication v2):
 
 .. code-block:: python
 
@@ -46,6 +46,22 @@ OpenStack:
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
     image_id = 'c1f4b7bc-a563-4feb-b439-a2e071d861aa'  # Ubuntu 14.04 @ NeCTAR
+
+OpenStack (with Keystone authentication v3):
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    config = {'os_username': 'username',
+              'os_password': 'password',
+              'os_auth_url': 'authentication URL',
+              'os_user_domain_name': 'domain name',
+              'os_project_domain_name': 'project domain name',
+              'os_project_name': 'project name'}
+    provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
+                                                      config)
+    image_id = '97755049-ee4f-4515-b92f-ca00991ee99a'  # Ubuntu 14.04 @ Jetstream
 
 List some resources
 -------------------
@@ -87,8 +103,8 @@ Next, we need to create a security group and add a rule to allow ssh access.
 
 Launch an instance
 ------------------
-Before we can launch an instance, we need to decide what image to use so let's
-get a base Ubuntu image ``ami-d85e75b0`` and launch an instance.
+We can now launch an instance using the created key pair and security group.
+We will launch an instance type that has at least 2 CPUs and 4GB RAM.
 
 .. code-block:: python
 
