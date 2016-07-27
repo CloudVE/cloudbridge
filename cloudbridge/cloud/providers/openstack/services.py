@@ -448,7 +448,9 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         _, container_list = self.provider.swift.get_account(
             prefix=bucket_id)
         if container_list:
-            return OpenStackBucket(self.provider, container_list[0])
+            return OpenStackBucket(self.provider,
+                                   next((c for c in container_list
+                                         if c['name'] == bucket_id), None))
         else:
             return None
 
