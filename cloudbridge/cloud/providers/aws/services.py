@@ -494,6 +494,7 @@ class AWSInstanceService(BaseInstanceService):
             min_count=1, max_count=1, placement=zone_id,
             key_name=key_pair_name, security_group_ids=security_group_ids,
             user_data=user_data, block_device_map=bdm, subnet_id=subnet_id)
+        instance = None
         if reservation:
             instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
@@ -569,10 +570,10 @@ class AWSInstanceService(BaseInstanceService):
                 if vpc._vpc.is_default:
                     vpc_id = vpc.id
                     subnet_id, zone_id = _deduce_subnet_and_zone(vpc, zone_id)
-                else:
-                    raise AttributeError("No default VPC exists. Supply a "
-                                         "subnet to launch into (via "
-                                         "launch_config param).")
+            if not vpc_id:
+                raise AttributeError("No default VPC exists. Supply a "
+                                     "subnet to launch into (via "
+                                     "launch_config param).")
         return subnet_id, zone_id, sg_ids
 
     def _process_security_groups(self, security_groups, vpc_id=None):
