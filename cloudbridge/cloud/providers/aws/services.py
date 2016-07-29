@@ -540,12 +540,12 @@ class AWSInstanceService(BaseInstanceService):
             # Try to get a subnet via specified SGs. This will work only if
             # the specified SGs are within a VPC (which is a prerequisite to
             # launch into VPC anyhow).
-            sg_ids = self._process_security_groups(security_groups, vpc_id)
+            _sg_ids = self._process_security_groups(security_groups, vpc_id)
             # Must iterate through all the SGs here because a SG name may
             # exist in a VPC or EC2-Classic so opt for the VPC SG. This
             # applies in the case no subnet was specified.
             if not subnet_id:
-                for sg_id in sg_ids:
+                for sg_id in _sg_ids:
                     sg = self.provider.security.security_groups.get(sg_id)
                     if sg._security_group.vpc_id:
                         if sg_ids and sg_id not in sg_ids:
