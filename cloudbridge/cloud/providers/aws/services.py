@@ -7,7 +7,6 @@ from boto.ec2.blockdevicemapping import BlockDeviceMapping
 from boto.ec2.blockdevicemapping import BlockDeviceType
 from boto.exception import EC2ResponseError
 
-from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService
@@ -42,6 +41,7 @@ from .resources import AWSFloatingIP
 from .resources import AWSInstance
 from .resources import AWSInstanceType
 from .resources import AWSKeyPair
+from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
 from .resources import AWSNetwork
 from .resources import AWSRegion
@@ -665,7 +665,7 @@ class AWSInstanceService(BaseInstanceService):
                 else None)
 
     def create_launch_config(self):
-        return BaseLaunchConfig(self.provider)
+        return AWSLaunchConfig(self.provider)
 
     def get(self, instance_id):
         """

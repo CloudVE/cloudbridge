@@ -7,6 +7,7 @@ from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
@@ -636,7 +637,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
         try:
             if not isinstance(src_group, SecurityGroup):
                 src_group = self._provider.security.security_groups.get(
-                                src_group)
+                    src_group)
 
             if self._security_group.authorize(
                     ip_protocol=ip_protocol,
@@ -1011,3 +1012,23 @@ class AWSFloatingIP(BaseFloatingIP):
 
     def delete(self):
         return self._ip.delete()
+
+
+class AWSLaunchConfig(BaseLaunchConfig):
+
+    def __init__(self, provider):
+        super(AWSLaunchConfig, self).__init__(provider)
+
+    def add_network_interface(self, net_id):
+        """
+        Extract a subnet within the network identified by ``net_id``.
+
+        AWS requires a subnet ID to be supplied vs. a network (i.e., VPC) ID
+        so just pull out one subnet within the network (currently, the first
+        one).
+        """
+        net = self.provider.network.get(net_id)
+        sns = net.subnets()
+        if sns:
+            sn = sns[0]
+        self.network_interfaces.append(sn.id)
