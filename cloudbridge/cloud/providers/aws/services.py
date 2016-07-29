@@ -1,6 +1,7 @@
 """
 Services implemented by the AWS provider.
 """
+import time
 import string
 
 from boto.ec2.blockdevicemapping import BlockDeviceMapping
@@ -494,6 +495,7 @@ class AWSInstanceService(BaseInstanceService):
             min_count=1, max_count=1, placement=zone_id,
             key_name=key_pair_name, security_group_ids=security_group_ids,
             user_data=user_data, block_device_map=bdm, subnet_id=subnet_id)
+        time.sleep(2)  # The instance does not always get created fast enough
         instance = None
         if reservation:
             instance = AWSInstance(self.provider, reservation.instances[0])
@@ -784,6 +786,7 @@ class AWSNetworkService(BaseNetworkService):
         # so set a default one and use the largest possible netmask.
         default_cidr = '10.0.0.0/16'
         network = self.provider.vpc_conn.create_vpc(cidr_block=default_cidr)
+        time.sleep(2)  # The net does not always get created fast enough
         cb_network = AWSNetwork(self.provider, network)
         if name:
             cb_network.name = name
