@@ -6,6 +6,7 @@ import unittest
 from six import reraise
 
 from cloudbridge.cloud.factory import CloudProviderFactory
+from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 
@@ -70,6 +71,25 @@ def get_provider_test_data(provider, key):
     return None
 
 
+def create_test_network(provider, name):
+    """
+    Create a network with one subnet, returning the network and subnet objects.
+    """
+    net = provider.network.create(name=name)
+    cidr_block = net.cidr_block or '10.0.0.1'
+    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block, name=name))
+    return net, sn
+
+
+def delete_test_network(network):
+    """
+    Delete the supplied network, first deleting any contained subnets.
+    """
+    for sn in network.subnets():
+        sn.delete()
+    network.delete()
+
+
 def create_test_instance(
         provider, instance_name, zone=None, launch_config=None,
         key_pair=None, security_groups=None):
@@ -83,14 +103,35 @@ def create_test_instance(
         launch_config=launch_config)
 
 
-def get_test_instance(provider, name, key_pair=None, security_groups=None):
+def get_test_instance(provider, name, key_pair=None, security_groups=None,
+                      network=None):
+    launch_config = None
+    if network:
+        launch_config = provider.compute.instances.create_launch_config()
+        launch_config.add_network_interface(network.id)
     instance = create_test_instance(
         provider,
         name,
         key_pair=key_pair,
-        security_groups=security_groups)
+        security_groups=security_groups,
+        launch_config=launch_config)
     instance.wait_till_ready()
     return instance
+
+
+def cleanup_test_resources(instance=None, network=None, security_group=None,
+                           key_pair=None):
+    if instance:
+        instance.terminate()
+        instance.wait_for(
+            [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+            terminal_states=[InstanceState.ERROR])
+    if security_group:
+        security_group.delete()
+    if key_pair:
+        key_pair.delete()
+    if network:
+        delete_test_network(network)
 
 
 class ProviderTestBase(object):
