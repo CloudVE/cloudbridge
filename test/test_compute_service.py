@@ -133,14 +133,13 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 test_instance.key_pair_name,
                 kp.name)
             self.assertIsInstance(test_instance.security_groups, list)
-            # EA FIXME: diff sg gets assigned than supplied?!?
-            # self.assertEqual(
-            #     test_instance.security_groups[0],
-            #     sg)
+            self.assertEqual(
+                test_instance.security_groups[0],
+                sg)
             self.assertIsInstance(test_instance.security_group_ids, list)
-            # self.assertEqual(
-            #     test_instance.security_group_ids[0],
-            #     sg.id)
+            self.assertEqual(
+                test_instance.security_group_ids[0],
+                sg.id)
             # Must have either a public or a private ip
             ip_private = test_instance.private_ips[0] \
                 if test_instance.private_ips else None

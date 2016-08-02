@@ -561,7 +561,7 @@ class AWSInstanceService(BaseInstanceService):
                         subnet_id, zone_id = _deduce_subnet_and_zone(
                             vpc, zone_id)
             else:
-                sg_ids = sg_ids
+                sg_ids = _sg_ids
             if not subnet_id:
                 raise AttributeError("Supplied security group(s) ({0}) must "
                                      "be associated with a VPC."

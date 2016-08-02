@@ -68,6 +68,12 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     ip in ipl,
                     "Floating IP address {0} should exist in the list {1}"
                     .format(ip.id, ipl))
+                # 2016-08: address filtering not implemented in moto
+                # empty_ipl = self.provider.network.floating_ips('dummy-net')
+                # self.assertFalse(
+                #     empty_ipl,
+                #     "Bogus network should not have any floating IPs: {0}"
+                #     .format(empty_ipl))
                 self.assertIn(
                     ip.public_ip, repr(ip),
                     "repr(obj) should contain the address public IP value.")
