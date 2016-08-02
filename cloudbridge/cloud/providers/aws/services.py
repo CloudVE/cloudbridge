@@ -495,9 +495,9 @@ class AWSInstanceService(BaseInstanceService):
             min_count=1, max_count=1, placement=zone_id,
             key_name=key_pair_name, security_group_ids=security_group_ids,
             user_data=user_data, block_device_map=bdm, subnet_id=subnet_id)
-        time.sleep(2)  # The instance does not always get created fast enough
         instance = None
         if reservation:
+            time.sleep(2)  # The instance does not always get created in time
             instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
         return instance
@@ -786,9 +786,9 @@ class AWSNetworkService(BaseNetworkService):
         # so set a default one and use the largest possible netmask.
         default_cidr = '10.0.0.0/16'
         network = self.provider.vpc_conn.create_vpc(cidr_block=default_cidr)
-        time.sleep(2)  # The net does not always get created fast enough
         cb_network = AWSNetwork(self.provider, network)
         if name:
+            time.sleep(2)  # The net does not always get created fast enough
             cb_network.name = name
         return cb_network
 
@@ -833,6 +833,7 @@ class AWSSubnetService(BaseSubnetService):
         subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block)
         cb_subnet = AWSSubnet(self.provider, subnet)
         if name:
+            time.sleep(2)  # The subnet does not always get created in time
             cb_subnet.name = name
         return cb_subnet
 

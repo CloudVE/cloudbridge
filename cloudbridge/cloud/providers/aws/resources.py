@@ -338,7 +338,12 @@ class AWSInstance(BaseInstance):
         """
         Add an elastic IP address to this instance.
         """
-        return self._ec2_instance.use_ip(ip_address)
+        if self._ec2_instance.vpc_id:
+            aid = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
+            return self._provider._ec2_conn.associate_address(
+                self._ec2_instance.id, allocation_id=aid.allocation_id)
+        else:
+            return self._ec2_instance.use_ip(ip_address)
 
     def remove_floating_ip(self, ip_address):
         """
