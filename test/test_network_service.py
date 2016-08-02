@@ -46,6 +46,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     len(list_subnetl) == 1,
                     "List subnets does not return the expected subnet %s" %
                     subnet_name)
+                # test get method
+                sn = self.provider.network.subnets.get(subnet.id)
+                self.assertTrue(
+                    subnet.id == sn.id,
+                    "GETting subnet should return the same subnet")
 
             subnetl = self.provider.network.subnets.list()
             found_subnet = [n for n in subnetl if n.name == subnet_name]
