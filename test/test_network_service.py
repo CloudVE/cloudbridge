@@ -1,6 +1,7 @@
 import test.helpers as helpers
 import uuid
 from test.helpers import ProviderTestBase
+from cloudbridge.cloud.interfaces.resources import RouterState
 
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
@@ -137,3 +138,36 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     cidr, sn.cidr_block,
                     "Subnet's CIDR %s should match the specified one %s." % (
                         sn.cidr_block, cidr))
+
+    def test_crud_router(self):
+        name = 'cbtestrouter-{0}'.format(uuid.uuid4())
+        router = self.provider.network.create_router(name=name)
+        with helpers.cleanup_action(
+            lambda: router.delete()
+        ):
+            self.assertIn(
+                router, self.provider.network.routers(),
+                "Router {0} should exist in the router list {1}.".format(
+                    router.id, self.provider.network.routers()))
+            self.assertIn(
+                router.id, repr(router),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not.")
+            self.assertEqual(
+                router.name, name,
+                "Router {0} name should be {1}.".format(router.name, name))
+            self.assertEqual(
+                router.state, RouterState.DETACHED,
+                "Router {0} state {1} should be {2}.".format(
+                    router.id, router.state, RouterState.DETACHED))
+            self.assertFalse(
+                router.network_id,
+                "Router {0} should not be assoc. with a network {1}".format(
+                    router.id, router.network_id))
+
+        routerl = self.provider.network.routers()
+        found_router = [r for r in routerl if r.name == name]
+        self.assertEqual(
+            len(found_router), 0,
+            "Router {0} should have been deleted but still exists."
+            .format(name))
