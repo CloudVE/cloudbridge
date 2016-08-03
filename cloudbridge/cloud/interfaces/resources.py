@@ -1034,6 +1034,79 @@ class FloatingIP(CloudResource):
         pass
 
 
+class RouterState(object):
+
+    """
+    Standard states for a router.
+
+    :cvar UNKNOWN: Router state unknown.
+    :cvar ATTACHED: Router is attached to a network and should be operational.
+    :cvar DETACHED: Router is detached from a network.
+
+    """
+    UNKNOWN = "unknown"
+    ATTACHED = "attached"
+    DETACHED = "detached"
+
+
+class Router(CloudResource):
+    """
+    Represents a private network router.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def id(self):
+        """
+        Get the router identifier.
+
+        :rtype: ``str``
+        :return: ID for this router. Will generally correspond to the cloud
+                 middleware's ID, but should be treated as an opaque value.
+        """
+        pass
+
+    @abstractproperty
+    def name(self):
+        """
+        Get the router name, if available.
+
+        :rtype: ``str``
+        :return: Name for this router.
+        """
+        pass
+
+    @abstractproperty
+    def state(self):
+        """
+        Router state: attached or detached to a network.
+
+        :rtype: ``str``
+        :return: ``attached`` or ``detached``.
+        """
+        pass
+
+    @abstractproperty
+    def network_id(self):
+        """
+        ID of the network to which the router is attached.
+
+        :rtype: ``str``
+        :return: ID for the attached network or ``None``.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self):
+        """
+        Delete this router.
+
+        :rtype: ``bool``
+        :return: ``True`` if successful.
+        """
+        pass
+
+
 class AttachmentInfo(object):
     """
     Contains attachment information for a volume.

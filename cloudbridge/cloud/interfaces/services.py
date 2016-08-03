@@ -582,6 +582,30 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
+    @abstractmethod
+    def routers(self):
+        """
+        Get a list of available routers.
+
+        :rtype: ``list`` of :class: `Router`
+        :return: list of routers
+        """
+        pass
+
+    @abstractmethod
+    def create_router(self, name=None):
+        """
+        Create a new router/gateway.
+
+        :type name: ``str``
+        :param name: An optional router name. The name will be set if the
+                     provider supports it.
+
+        :rtype: :class:`Router`
+        :return: a newly created router object
+        """
+        pass
+
 
 class SubnetService(PageableObjectMixin, CloudService):
 

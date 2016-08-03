@@ -12,6 +12,7 @@ from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
@@ -23,6 +24,7 @@ from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
+from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from datetime import datetime
@@ -1017,6 +1019,50 @@ class AWSFloatingIP(BaseFloatingIP):
 
     def delete(self):
         return self._ip.delete()
+
+
+class AWSRouter(BaseRouter):
+
+    def __init__(self, provider, router):
+        super(AWSRouter, self).__init__(provider)
+        self._router = router
+
+    @property
+    def id(self):
+        return self._router.id
+
+    @property
+    def name(self):
+        """
+        Get the router name.
+
+        .. note:: the router must have a (case sensitive) tag ``Name``
+        """
+        return self._router.tags.get('Name')
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the router name.
+        """
+        self._router.add_tag('Name', value)
+
+    @property
+    def state(self):
+        if self._router.attachments and \
+           self._router.attachments[0].state == 'available':
+            return RouterState.ATTACHED
+        return RouterState.DETACHED
+
+    @property
+    def network_id(self):
+        if self.state == RouterState.ATTACHED:
+            return self._router.attachments[0].vpc_id
+        return None
+
+    def delete(self):
+        return self._provider._vpc_conn.delete_internet_gateway(self.id)
 
 
 class AWSLaunchConfig(BaseLaunchConfig):

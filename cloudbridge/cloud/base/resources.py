@@ -29,6 +29,7 @@ from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Region
+from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.resources import ResultList
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
@@ -687,6 +688,22 @@ class BaseFloatingIP(FloatingIP, BaseCloudResource):
 
     def __eq__(self, other):
         return (isinstance(other, FloatingIP) and
+                # pylint:disable=protected-access
+                self._provider == other._provider and
+                self.id == other.id)
+
+
+class BaseRouter(Router, BaseCloudResource):
+
+    def __init__(self, provider):
+        super(BaseRouter, self).__init__(provider)
+
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,
+                                            self.name)
+
+    def __eq__(self, other):
+        return (isinstance(other, Router) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)

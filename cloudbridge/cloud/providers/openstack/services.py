@@ -41,6 +41,7 @@ from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
 from .resources import OpenStackNetwork
 from .resources import OpenStackRegion
+from .resources import OpenStackRouter
 from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
 from .resources import OpenStackSubnet
@@ -745,6 +746,15 @@ class OpenStackNetworkService(BaseNetworkService):
         # Nova returns a different object than Neutron so fetch the Neutron one
         ip = self.provider.neutron.list_floatingips(id=ip.id)['floatingips'][0]
         return OpenStackFloatingIP(self.provider, ip)
+
+    def routers(self):
+        routers = self.provider.neutron.list_routers().get('routers')
+        return [OpenStackRouter(self.provider, r) for r in routers]
+
+    def create_router(self, name=None):
+        router = self.provider.neutron.create_router(
+            {'router': {'name': name}})
+        return OpenStackRouter(self.provider, router.get('router'))
 
 
 class OpenStackSubnetService(BaseSubnetService):

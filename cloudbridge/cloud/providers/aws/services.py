@@ -46,6 +46,7 @@ from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
 from .resources import AWSNetwork
 from .resources import AWSRegion
+from .resources import AWSRouter
 from .resources import AWSSecurityGroup
 from .resources import AWSSnapshot
 from .resources import AWSSubnet
@@ -806,6 +807,18 @@ class AWSNetworkService(BaseNetworkService):
     def create_floating_ip(self):
         ip = self.provider.ec2_conn.allocate_address(domain='vpc')
         return AWSFloatingIP(self.provider, ip)
+
+    def routers(self):
+        routers = self.provider.vpc_conn.get_all_internet_gateways()
+        return [AWSRouter(self.provider, r) for r in routers]
+
+    def create_router(self, name=None):
+        router = self.provider.vpc_conn.create_internet_gateway()
+        cb_router = AWSRouter(self.provider, router)
+        if name:
+            time.sleep(2)  # Some time is required
+            cb_router.name = name
+        return cb_router
 
 
 class AWSSubnetService(BaseSubnetService):

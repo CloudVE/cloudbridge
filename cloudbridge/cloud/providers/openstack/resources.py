@@ -11,6 +11,7 @@ from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
@@ -20,6 +21,7 @@ from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
+from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
@@ -758,6 +760,40 @@ class OpenStackFloatingIP(BaseFloatingIP):
             return True
 
 
+class OpenStackRouter(BaseRouter):
+
+    def __init__(self, provider, router):
+        super(OpenStackRouter, self).__init__(provider)
+        self._router = router
+
+    @property
+    def id(self):
+        return self._router.get('id', None)
+
+    @property
+    def name(self):
+        return self._router.get('name', None)
+
+    @property
+    def state(self):
+        if self._router.get('external_gateway_info'):
+            return RouterState.ATTACHED
+        return RouterState.DETACHED
+
+    @property
+    def network_id(self):
+        if self.state == RouterState.ATTACHED:
+            return self._router.get('external_gateway_info', {}).get(
+                'network_id', None)
+        return None
+
+    def delete(self):
+        self._provider.neutron.delete_router(self.id)
+        # Adhere to the interface docs
+        if self.id not in str(self._provider.neutron.list_routers()):
+            return True
+
+
 class OpenStackKeyPair(BaseKeyPair):
 
     def __init__(self, provider, key_pair):
@@ -819,7 +855,7 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         if src_group:
             if not isinstance(src_group, SecurityGroup):
                 src_group = self._provider.security.security_groups.get(
-                                src_group)
+                    src_group)
             for protocol in ['udp', 'tcp']:
                 existing_rule = self.get_rule(ip_protocol=ip_protocol,
                                               from_port=1,
