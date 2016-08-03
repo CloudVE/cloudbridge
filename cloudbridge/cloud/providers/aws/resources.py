@@ -1048,6 +1048,10 @@ class AWSRouter(BaseRouter):
         """
         self._router.add_tag('Name', value)
 
+    def refresh(self):
+        self._router = self._provider.vpc_conn.get_all_internet_gateways(
+            [self.id])[0]
+
     @property
     def state(self):
         if self._router.attachments and \
@@ -1063,6 +1067,14 @@ class AWSRouter(BaseRouter):
 
     def delete(self):
         return self._provider._vpc_conn.delete_internet_gateway(self.id)
+
+    def attach(self, network_id):
+        return self._provider.vpc_conn.attach_internet_gateway(
+            self.id, network_id)
+
+    def detach(self):
+        return self._provider.vpc_conn.detach_internet_gateway(
+            self.id, self.network_id)
 
 
 class AWSLaunchConfig(BaseLaunchConfig):

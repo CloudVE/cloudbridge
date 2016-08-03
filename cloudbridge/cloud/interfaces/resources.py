@@ -1076,6 +1076,13 @@ class Router(CloudResource):
         """
         pass
 
+    @abstractmethod
+    def refresh(self):
+        """
+        Update this object.
+        """
+        pass
+
     @abstractproperty
     def state(self):
         """
@@ -1100,6 +1107,29 @@ class Router(CloudResource):
     def delete(self):
         """
         Delete this router.
+
+        :rtype: ``bool``
+        :return: ``True`` if successful.
+        """
+        pass
+
+    @abstractmethod
+    def attach(self, network_id):
+        """
+        Attach this router to a network.
+
+        :type network_id: ``str``
+        :param instance: The ID of a network to which to attach this router.
+
+        :rtype: ``bool``
+        :return: ``True`` if successful.
+        """
+        pass
+
+    @abstractmethod
+    def detach(self):
+        """
+        Detach this router from a network.
 
         :rtype: ``bool``
         :return: ``True`` if successful.

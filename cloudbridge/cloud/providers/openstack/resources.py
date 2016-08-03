@@ -774,6 +774,9 @@ class OpenStackRouter(BaseRouter):
     def name(self):
         return self._router.get('name', None)
 
+    def refresh(self):
+        self._router = self._provider.neutron.show_router(self.id)['router']
+
     @property
     def state(self):
         if self._router.get('external_gateway_info'):
@@ -792,6 +795,20 @@ class OpenStackRouter(BaseRouter):
         # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_routers()):
             return True
+
+    def attach(self, network_id):
+        self._router = self._provider.neutron.add_gateway_router(
+            self.id, {'network_id': network_id}).get('router', self._router)
+        if self.network_id and self.network_id == network_id:
+            return True
+        return False
+
+    def detach(self):
+        self._router = self._provider.neutron.remove_gateway_router(
+            self.id).get('router', self._router)
+        if not self.network_id:
+            return True
+        return False
 
 
 class OpenStackKeyPair(BaseKeyPair):
