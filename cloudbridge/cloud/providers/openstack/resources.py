@@ -796,17 +796,25 @@ class OpenStackRouter(BaseRouter):
         if self.id not in str(self._provider.neutron.list_routers()):
             return True
 
-    def attach(self, network_id):
+    def attach_network(self, network_id):
         self._router = self._provider.neutron.add_gateway_router(
             self.id, {'network_id': network_id}).get('router', self._router)
         if self.network_id and self.network_id == network_id:
             return True
         return False
 
-    def detach(self):
+    def detach_network(self):
         self._router = self._provider.neutron.remove_gateway_router(
             self.id).get('router', self._router)
         if not self.network_id:
+            return True
+        return False
+
+    def add_route(self, subnet_id):
+        router_interface = {'subnet_id': subnet_id}
+        ret = self._provider.neutron.add_interface_router(
+            self.id, router_interface)
+        if subnet_id in ret.get('subnet_ids', ""):
             return True
         return False
 

@@ -1114,12 +1114,12 @@ class Router(CloudResource):
         pass
 
     @abstractmethod
-    def attach(self, network_id):
+    def attach_network(self, network_id):
         """
         Attach this router to a network.
 
         :type network_id: ``str``
-        :param instance: The ID of a network to which to attach this router.
+        :param network_id: The ID of a network to which to attach this router.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
@@ -1127,9 +1127,22 @@ class Router(CloudResource):
         pass
 
     @abstractmethod
-    def detach(self):
+    def detach_network(self):
         """
         Detach this router from a network.
+
+        :rtype: ``bool``
+        :return: ``True`` if successful.
+        """
+        pass
+
+    @abstractmethod
+    def add_route(self, subnet_id):
+        """
+        Add a route to this router.
+
+        :type subnet_id: ``str``
+        :param subnet_id: The ID of a subnet to attach to this router.
 
         :rtype: ``bool``
         :return: ``True`` if successful.

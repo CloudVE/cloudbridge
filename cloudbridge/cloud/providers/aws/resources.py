@@ -1054,6 +1054,7 @@ class AWSRouter(BaseRouter):
 
     @property
     def state(self):
+        self.refresh()  # Explicitly refresh the local object
         if self._router.attachments and \
            self._router.attachments[0].state == 'available':
             return RouterState.ATTACHED
@@ -1068,13 +1069,21 @@ class AWSRouter(BaseRouter):
     def delete(self):
         return self._provider._vpc_conn.delete_internet_gateway(self.id)
 
-    def attach(self, network_id):
+    def attach_network(self, network_id):
         return self._provider.vpc_conn.attach_internet_gateway(
             self.id, network_id)
 
-    def detach(self):
+    def detach_network(self):
         return self._provider.vpc_conn.detach_internet_gateway(
             self.id, self.network_id)
+
+    def add_route(self, subnet_id):
+        # For AWS, routes are added to a route table. A route table is assoc.
+        # with a network vs. a subnet so we don't use the supplied subnet.
+        rt = self._provider.vpc_conn.get_all_route_tables(
+            filters={'vpc-id': self.network_id})[0]
+        return self._provider.vpc_conn.create_route(
+            rt.id, '0.0.0.0/0', self.id)
 
 
 class AWSLaunchConfig(BaseLaunchConfig):
