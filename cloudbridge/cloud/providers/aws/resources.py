@@ -1115,7 +1115,7 @@ class AWSRouter(BaseRouter):
             sn = self._provider.vpc_conn.get_all_subnets([subnet_id])[0]
             self._route_table = self._provider.vpc_conn.get_all_route_tables(
                 filters={'vpc-id': sn.vpc_id})[0]
-        return self._provider.vpc_conn.remove_route(
+        return self._provider.vpc_conn.delete_route(
             self._route_table.id, self._ROUTE_CIDR)
 
 

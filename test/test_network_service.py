@@ -140,11 +140,21 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                         sn.cidr_block, cidr))
 
     def test_crud_router(self):
+
+        def _cleanup(net, subnet, router):
+            router.remove_route(subnet.id)
+            router.detach_network()
+            router.delete()
+            subnet.delete()
+            net.delete()
+
         name = 'cbtestrouter-{0}'.format(uuid.uuid4())
         router = self.provider.network.create_router(name=name)
-        with helpers.cleanup_action(
-            lambda: router.delete()
-        ):
+        net = self.provider.network.create(name=name)
+        cidr = '10.0.1.0/24'
+        sn = net.create_subnet(cidr_block=cidr, name=name)
+        with helpers.cleanup_action(lambda: _cleanup(net, sn, router)):
+            # Check basic router properties
             self.assertIn(
                 router, self.provider.network.routers(),
                 "Router {0} should exist in the router list {1}.".format(
@@ -164,6 +174,25 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 router.network_id,
                 "Router {0} should not be assoc. with a network {1}".format(
                     router.id, router.network_id))
+
+            # Check router connectivity
+            # On OpenStack only one network is external and on AWS every
+            # network is external, yet we need to use the one we've created?!
+            if self.provider.PROVIDER_ID == 'openstack':
+                for n in self.provider.networks.list():
+                    if n.external:
+                        external_net = n
+                        break
+            else:
+                external_net = net
+            router.attach_network(external_net.id)
+            router.refresh()
+            self.assertEqual(
+                router.network_id, external_net.id,
+                "Router should be attached to network {0}, not {1}".format(
+                    external_net.id, router.network_id))
+            router.add_route(sn.id)
+            # TODO: add a check for routes after that's been implemented
 
         routerl = self.provider.network.routers()
         found_router = [r for r in routerl if r.name == name]
