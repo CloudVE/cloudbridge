@@ -160,7 +160,7 @@ class ObjectLifeCycleMixin(object):
         Obtain the provider associated with this object. Used internally
         to access the provider config and get default timeouts/intervals.
 
-        :rtype: :class:``.CloudProvider``
+        :rtype: :class:`.CloudProvider`
         :return: The provider associated with this Resource
         """
         pass
@@ -208,16 +208,17 @@ class ObjectLifeCycleMixin(object):
 
         :type terminal_states: ``list`` of states
         :param terminal_states: A list of terminal states after which the
-        object will not transition into a target state. A WaitStateException
-        will be raised if the object transition into a terminal state.
+                                object will not transition into a target state.
+                                A WaitStateException will be raised if the
+                                object transition into a terminal state.
 
-        :type timeout: int
+        :type timeout: ``int``
         :param timeout: The maximum length of time (in seconds) to wait for the
                         object to changed to desired state. If no timeout is
                         specified, the global default_wait_timeout defined in
                         the provider config will apply.
 
-        :type interval: int
+        :type interval: ``int``
         :param interval: How frequently to poll the object's state (in
                          seconds). If no interval is specified, the global
                          default_wait_interval defined in the provider config
@@ -240,11 +241,11 @@ class ObjectLifeCycleMixin(object):
         Will throw a ``WaitStateException`` if the object is not ready within
         the specified timeout.
 
-        :type timeout: int
+        :type timeout: ``int``
         :param timeout: The maximum length of time (in seconds) to wait for the
                         object to become ready.
 
-        :type interval: int
+        :type interval: ``int``
         :param interval: How frequently to poll the object's ready state (in
                          seconds).
 
@@ -434,7 +435,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get the instance identifier.
 
-        :rtype: str
+        :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
         pass
@@ -444,7 +445,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get the instance name.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Name for this instance as returned by the cloud middleware.
         """
         pass
@@ -462,7 +463,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get all the public IP addresses for this instance.
 
-        :rtype: list
+        :rtype: ``list``
         :return: A list of public IP addresses associated with this instance.
         """
         pass
@@ -472,7 +473,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get all the private IP addresses for this instance.
 
-        :rtype: list
+        :rtype: ``list``
         :return: A list of private IP addresses associated with this instance.
         """
         pass
@@ -485,7 +486,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         UUID. To get the full :class:``.InstanceType``
         object, you can use the instance.instance_type property instead.
 
-        :rtype: :class:``str``
+        :rtype: ``str``
         :return: Instance type name for this instance (e.g., ``m1.large``)
         """
         pass
@@ -495,7 +496,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Retrieve full instance type information for this instance.
 
-        :rtype: :class:``.InstanceType``
+        :rtype: :class:`.InstanceType`
         :return: Instance type for this instance
         """
         pass
@@ -505,7 +506,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Reboot this instance (using the cloud middleware API).
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if the reboot was successful; ``False`` otherwise.
         """
         pass
@@ -515,7 +516,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Permanently terminate this instance.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if the termination of the instance was successfully
                  initiated; ``False`` otherwise.
         """
@@ -526,7 +527,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get the image ID for this instance.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Image ID (i.e., AMI) this instance is using.
         """
         pass
@@ -536,7 +537,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get the placement zone ID where this instance is running.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Region/zone/placement where this instance is running.
         """
         pass
@@ -556,7 +557,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get the security groups associated with this instance.
 
-        :rtype: list or :class:``SecurityGroup`` objects
+        :rtype: list or :class:`.SecurityGroup` objects
         :return: A list of SecurityGroup objects associated with this instance.
         """
         pass
@@ -566,7 +567,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get the IDs of the security groups associated with this instance.
 
-        :rtype: list or :class:``str`
+        :rtype: list or :class:``str``
         :return: A list of the SecurityGroup IDs associated with this instance.
         """
         pass
@@ -576,7 +577,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Get the name of the key pair associated with this instance.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Name of the ssh key pair associated with this instance.
         """
         pass
@@ -596,7 +597,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Add a public IP address to this instance.
 
-        :type ip_address: str
+        :type ip_address: ``str``
         :param ip_address: The IP address to associate with the instance.
         """
         pass
@@ -606,7 +607,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Remove a public IP address from this instance.
 
-        :type ip_address: str
+        :type ip_address: ``str``
         :param ip_address: The IP address to remove from the instance.
         """
         pass
@@ -753,7 +754,7 @@ class LaunchConfig(object):
             # 2. Add a network ID for use with OpenStack
             lc.add_network_interface('5820c766-75fe-4fc6-96ef-798f67623238')
 
-        :type net_id: str
+        :type net_id: ``str``
         :param net_id: Network ID to launch an instance into. This is a
                        preliminary implementation (pending full private cloud
                        support within CloudBridge) so native network IDs need
@@ -1266,7 +1267,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
 
         :rtype: ``str``
         :return: Description for this volume as returned by the cloud
-        middleware.
+                 middleware.
         """
         pass
 
@@ -1298,7 +1299,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
 
         :rtype: ``DateTime``
         :return: Creation time for this volume as returned by the cloud
-        middleware.
+                 middleware.
         """
         pass
 
@@ -1309,7 +1310,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
 
         :rtype: ``str``
         :return: PlacementZone for this volume as returned by the cloud
-        middleware.
+                 middleware.
         """
         pass
 
@@ -1319,9 +1320,9 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
         If available, get the source that this volume is based on (can be
         a Snapshot or an Image). Returns None if no source.
 
-        :rtype: ``Snapshot`` or ``Image``
+        :rtype: ``Snapshot` or ``Image``
         :return: Snapshot or Image source for this volume as returned by the
-        cloud middleware.
+                 cloud middleware.
         """
         pass
 
@@ -1340,15 +1341,15 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
         """
         Attach this volume to an instance.
 
-        :type instance: str or :class:``.Instance`` object
+        :type instance: ``str`` or :class:`.Instance` object
         :param instance: The ID of an instance or an ``Instance`` object to
                          which this volume will be attached.
 
-        :type device: str
+        :type device: ``str``
         :param device: The device on the instance through which the
                        volume will be exposed (e.g. /dev/sdh).
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
@@ -1358,7 +1359,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
         """
         Detach this volume from an instance.
 
-        :type force: bool
+        :type force: ``bool``
         :param force: Forces detachment if the previous detachment attempt
                       did not occur cleanly. This option is supported on select
                       clouds only. This option can lead to data loss or a
@@ -1369,7 +1370,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
                       use this option, you must perform file system check and
                       repair procedures.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
@@ -1379,14 +1380,14 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
         """
         Create a snapshot of this Volume.
 
-        :type name: str
+        :type name: ``str``
         :param name: The name of this snapshot.
 
-        :type description: str
+        :type description: ``str``
         :param description: A description of the snapshot.
                             Limited to 256 characters.
 
-        :rtype: :class:``.Snapshot``
+        :rtype: :class:`.Snapshot`
         :return: The created Snapshot object.
         """
         pass
@@ -1396,7 +1397,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
         """
         Delete this volume.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
@@ -1447,7 +1448,7 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
     @abstractmethod
     def name(self, value):
         """
-        set the snapshot name.
+        Set the snapshot name.
         """
         pass
 
@@ -1459,7 +1460,7 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
 
         :rtype: ``str``
         :return: Description for this snapshot as returned by the cloud
-        middleware.
+                 middleware.
         """
         pass
 
@@ -1467,10 +1468,14 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
     @abstractmethod
     def description(self, value):
         """
-        Set the snapshot description. Some cloud providers may not support this
-        property, and setting the description may have no effect. (Providers
-        that do not support this property will always return the snapshot name
-        as the description).
+        Set the snapshot description.
+
+        Some cloud providers may not support this property, and setting the
+        description may have no effect (providers that do not support this
+        property will always return the snapshot name as the description).
+
+        :type value: ``str``
+        :param value: The value for the snapshot description.
         """
         pass
 
@@ -1502,7 +1507,7 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
 
         :rtype: ``DateTime``
         :return: Creation time for this snapshot as returned by the cloud
-        middleware.
+                 middleware.
         """
         pass
 
@@ -1511,18 +1516,18 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
         """
         Create a new Volume from this Snapshot.
 
-        :type placement: str
+        :type placement: ``str``
         :param placement: The availability zone where to create the Volume.
 
-        :type size: int
+        :type size: ``int``
         :param size: The size of the new volume, in GiB (optional). Defaults to
                      the size of the snapshot.
 
-        :type volume_type: str
+        :type volume_type: ``str``
         :param volume_type: The type of the volume (optional). Availability and
                             valid values depend on the provider.
 
-        :type iops: int
+        :type iops: ``int``
         :param iops: The provisioned IOPs you want to associate with
                      this volume (optional). Availability depends on the
                      provider.
@@ -1565,7 +1570,7 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
         """
         Delete this snapshot.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
@@ -1591,7 +1596,7 @@ class KeyPair(CloudResource):
         """
         Return the name of this key pair.
 
-        :rtype: str
+        :rtype: ``str``
         :return: A name of this ssh key pair.
         """
         pass
@@ -1601,7 +1606,7 @@ class KeyPair(CloudResource):
         """
         Unencrypted private key.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Unencrypted private key or ``None`` if not available.
         """
         pass
@@ -1611,7 +1616,7 @@ class KeyPair(CloudResource):
         """
         Delete this key pair.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
@@ -1630,7 +1635,7 @@ class Region(CloudResource):
         """
         The id for this region
 
-        :rtype: str
+        :rtype: ``str``
         :return: ID of the region.
         """
         pass
@@ -1640,7 +1645,7 @@ class Region(CloudResource):
         """
         Name of the region.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Name of the region.
         """
         pass
@@ -1650,7 +1655,7 @@ class Region(CloudResource):
         """
         Access information about placement zones within this region.
 
-        :rtype: iterable
+        :rtype: Iterable
         :return: Iterable of available placement zones in this region.
         """
         pass
@@ -1668,7 +1673,7 @@ class PlacementZone(CloudResource):
         """
         Name of the placement zone.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Name of the placement zone.
         """
         pass
@@ -1678,7 +1683,7 @@ class PlacementZone(CloudResource):
         """
         Name of the placement zone.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Name of the placement zone.
         """
         pass
@@ -1688,7 +1693,7 @@ class PlacementZone(CloudResource):
         """
         A region this placement zone is associated with.
 
-        :rtype: str
+        :rtype: ``str``
         :return: The name of the region the zone is associated with.
         """
         pass
@@ -1717,7 +1722,7 @@ class InstanceType(CloudResource):
         For example, General Purpose Instances or High-Memory Instances. If
         the provider does not support such a grouping, it may return ``None``.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Name of the instance family or ``None``.
         """
         pass
@@ -1727,7 +1732,7 @@ class InstanceType(CloudResource):
         """
         The number of VCPUs supported by this instance type.
 
-        :rtype: int
+        :rtype: ``int``
         :return: Number of VCPUs.
         """
         pass
@@ -1737,7 +1742,7 @@ class InstanceType(CloudResource):
         """
         The amount of RAM (in MB) supported by this instance type.
 
-        :rtype: int
+        :rtype: ``int``
         :return: Total RAM (in MB).
         """
         pass
@@ -1747,7 +1752,7 @@ class InstanceType(CloudResource):
         """
         The size of this instance types's root disk (in GB).
 
-        :rtype: int
+        :rtype: ``int``
         :return: Size of root disk (in GB).
         """
         pass
@@ -1757,7 +1762,7 @@ class InstanceType(CloudResource):
         """
         The size of this instance types's total ephemeral storage (in GB).
 
-        :rtype: int
+        :rtype: ``int``
         :return: Size of ephemeral disks (in GB).
         """
         pass
@@ -1767,7 +1772,7 @@ class InstanceType(CloudResource):
         """
         The total number of ephemeral disks on this instance type.
 
-        :rtype: int
+        :rtype: ``int``
         :return: Number of ephemeral disks available.
         """
         pass
@@ -1778,7 +1783,7 @@ class InstanceType(CloudResource):
         The total disk space available on this instance type
         (root_disk + ephemeral).
 
-        :rtype: int
+        :rtype: ``int``
         :return: Size of total disk space (in GB).
         """
         pass
@@ -1789,7 +1794,7 @@ class InstanceType(CloudResource):
         A dictionary of extra data about this instance. May contain
         nested dictionaries, but all key value pairs are strings or integers.
 
-        :rtype: dict
+        :rtype: ``dict``
         :return: Extra attributes for this instance type.
         """
         pass
@@ -1804,7 +1809,7 @@ class SecurityGroup(CloudResource):
         """
         Get the ID of this security group.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Security group ID.
         """
         pass
@@ -1814,7 +1819,7 @@ class SecurityGroup(CloudResource):
         """
         Return the name of this security group.
 
-        :rtype: str
+        :rtype: ``str``
         :return: A name of this security group.
         """
         pass
@@ -1824,7 +1829,7 @@ class SecurityGroup(CloudResource):
         """
         Return the description of this security group.
 
-        :rtype: str
+        :rtype: ``str``
         :return: A description of this security group.
         """
         pass
@@ -1834,7 +1839,7 @@ class SecurityGroup(CloudResource):
         """
         Get the list of rules for this security group.
 
-        :rtype: list of :class:``.SecurityGroupRule``
+        :rtype: list of :class:`.SecurityGroupRule`
         :return: A list of security group rule objects.
         """
         pass
@@ -1844,7 +1849,7 @@ class SecurityGroup(CloudResource):
         """
         Delete this security group.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
@@ -1861,22 +1866,22 @@ class SecurityGroup(CloudResource):
         you are authorizing another group or you are authorizing some
         ip-based rule.
 
-        :type ip_protocol: str
+        :type ip_protocol: ``str``
         :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
-        :type from_port: int
+        :type from_port: ``int``
         :param from_port: The beginning port number you are enabling.
 
-        :type to_port: int
+        :type to_port: ``int``
         :param to_port: The ending port number you are enabling.
 
-        :type cidr_ip: str or list of strings
+        :type cidr_ip: ``str`` or list of ``str``
         :param cidr_ip: The CIDR block you are providing access to.
 
-        :type src_group: :class:``.SecurityGroup``
+        :type src_group: :class:`.SecurityGroup`
         :param src_group: The Security Group object you are granting access to.
 
-        :rtype: :class:``.SecurityGroupRule``
+        :rtype: :class:`.SecurityGroupRule`
         :return: Rule object if successful or ``None``.
         """
         pass
@@ -1892,22 +1897,22 @@ class SecurityGroup(CloudResource):
         several rules exist for the group rule. In that case, use the
         ``.rules`` property and filter the results as desired.
 
-        :type ip_protocol: str
+        :type ip_protocol: ``str``
         :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
-        :type from_port: int
+        :type from_port: ``int``
         :param from_port: The beginning port number you are enabling.
 
-        :type to_port: int
+        :type to_port: ``int``
         :param to_port: The ending port number you are enabling.
 
-        :type cidr_ip: str or list of strings
+        :type cidr_ip: ``str`` or list of ``str``
         :param cidr_ip: The CIDR block you are providing access to.
 
-        :type src_group: :class:``.SecurityGroup``
+        :type src_group: :class:`.SecurityGroup`
         :param src_group: The Security Group object you are granting access to.
 
-        :rtype: :class:``.SecurityGroupRule``
+        :rtype: :class:`.SecurityGroupRule`
         :return: Role object if one can be found or ``None``.
         """
         pass
@@ -1928,7 +1933,7 @@ class SecurityGroupRule(CloudResource):
         Note that this may be a CloudBridge-specific ID if the underlying
         provider does not support rule IDs.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Role ID.
         """
         pass
@@ -1938,7 +1943,7 @@ class SecurityGroupRule(CloudResource):
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Active protocol.
         """
         pass
@@ -1948,7 +1953,7 @@ class SecurityGroupRule(CloudResource):
         """
         Lowest port number opened as part of this rule.
 
-        :rtype: int
+        :rtype: ``int``
         :return: Lowest port number or 0 if not set.
         """
         pass
@@ -1958,7 +1963,7 @@ class SecurityGroupRule(CloudResource):
         """
         Highest port number opened as part of this rule.
 
-        :rtype: int
+        :rtype: ``int``
         :return: Highest port number or 0 if not set.
         """
         pass
@@ -1968,7 +1973,7 @@ class SecurityGroupRule(CloudResource):
         """
         CIDR block this security group is providing access to.
 
-        :rtype: str
+        :rtype: ``str``
         :return: CIDR block.
         """
         pass
@@ -2003,7 +2008,7 @@ class BucketObject(CloudResource):
         """
         Get this object's id.
 
-        :rtype: id
+        :rtype: ``str``
         :return: id of this object as returned by the cloud middleware.
         """
         pass
@@ -2013,7 +2018,7 @@ class BucketObject(CloudResource):
         """
         Get this object's name.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Name of this object as returned by the cloud middleware.
         """
         pass
@@ -2023,7 +2028,7 @@ class BucketObject(CloudResource):
         """
         Get this object's size.
 
-        :rtype: int
+        :rtype: ``int``
         :return: Size of this object in bytes.
         """
         pass
@@ -2033,7 +2038,7 @@ class BucketObject(CloudResource):
         """
         Get the date and time this object was last modified.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Date and time formatted string %Y-%m-%dT%H:%M:%S.%f
         """
         pass
@@ -2053,7 +2058,6 @@ class BucketObject(CloudResource):
     def save_content(self, target_stream):
         """
         Save this object and write its contents to the ``target_stream``.
-
         """
         pass
 
@@ -2063,7 +2067,7 @@ class BucketObject(CloudResource):
         Set the contents of this object to the data read from the source
         stream.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
@@ -2073,7 +2077,7 @@ class BucketObject(CloudResource):
         """
         Delete this object.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
@@ -2088,8 +2092,8 @@ class Bucket(PageableObjectMixin, CloudResource):
         """
         Get this bucket's id.
 
-        :rtype: id
-        :return: id of this bucket as returned by the cloud middleware.
+        :rtype: ``str``
+        :return: ID of this bucket as returned by the cloud middleware.
         """
         pass
 
@@ -2098,7 +2102,7 @@ class Bucket(PageableObjectMixin, CloudResource):
         """
         Get this bucket's name.
 
-        :rtype: str
+        :rtype: ``str``
         :return: Name of this bucket as returned by the cloud middleware.
         """
         pass
@@ -2108,7 +2112,7 @@ class Bucket(PageableObjectMixin, CloudResource):
         """
         Retrieve a given object from this bucket.
 
-        :type key: str
+        :type key: ``str``
         :param key: the identifier of the object to retrieve
 
         :rtype: :class:``.BucketObject``
@@ -2131,11 +2135,11 @@ class Bucket(PageableObjectMixin, CloudResource):
         """
         Delete this bucket.
 
-        :type delete_contents: bool
+        :type delete_contents: ``bool``
         :param delete_contents: If ``True``, all objects within the bucket
                                 will be deleted.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: ``True`` if successful.
         """
         pass
