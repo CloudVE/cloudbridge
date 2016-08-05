@@ -926,6 +926,14 @@ class AWSNetwork(BaseNetwork):
         self._vpc.add_tag('Name', value)
 
     @property
+    def external(self):
+        """
+        For AWS, all VPC networks can be connected to the Internet so always
+        return ``True``.
+        """
+        return True
+
+    @property
     def state(self):
         return AWSNetwork._NETWORK_STATE_MAP.get(
             self._vpc.update(), NetworkState.UNKNOWN)

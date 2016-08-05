@@ -665,6 +665,10 @@ class OpenStackNetwork(BaseNetwork):
         return self._network.get('name', None)
 
     @property
+    def external(self):
+        return self._network.get('router:external', False)
+
+    @property
     def state(self):
         return OpenStackNetwork._NETWORK_STATE_MAP.get(
             self._network.get('status', None),
@@ -678,7 +682,7 @@ class OpenStackNetwork(BaseNetwork):
     def delete(self):
         if self.id in str(self._provider.neutron.list_networks()):
             self._provider.neutron.delete_network(self.id)
-        # Adhear to the interface docs
+        # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_networks()):
             return True
 

@@ -858,6 +858,16 @@ class Network(CloudResource):
         pass
 
     @abstractproperty
+    def external(self):
+        """
+        A flag to indicate if this network is capable of Internet-connectivity.
+
+        :rtype: ``bool``
+        :return: ``True`` if the network can be connected to the Internet.
+        """
+        pass
+
+    @abstractproperty
     def state(self):
         """
         The state of the network.
