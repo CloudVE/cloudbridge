@@ -1141,8 +1141,24 @@ class Router(CloudResource):
         """
         Add a route to this router.
 
+        Note that a router must be attached to a network (to which the supplied
+        subnet belongs to) before a route can be added.
+
         :type subnet_id: ``str``
-        :param subnet_id: The ID of a subnet to attach to this router.
+        :param subnet_id: The ID of a subnet to add to this router.
+
+        :rtype: ``bool``
+        :return: ``True`` if successful.
+        """
+        pass
+
+    @abstractmethod
+    def remove_route(self, subnet_id):
+        """
+        Remove a route from this router.
+
+        :type subnet_id: ``str``
+        :param subnet_id: The ID of a subnet to remove to this router.
 
         :rtype: ``bool``
         :return: ``True`` if successful.

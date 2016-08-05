@@ -818,6 +818,14 @@ class OpenStackRouter(BaseRouter):
             return True
         return False
 
+    def remove_route(self, subnet_id):
+        router_interface = {'subnet_id': subnet_id}
+        ret = self._provider.neutron.remove_interface_router(
+            self.id, router_interface)
+        if subnet_id in ret.get('subnet_ids', ""):
+            return True
+        return False
+
 
 class OpenStackKeyPair(BaseKeyPair):
 
