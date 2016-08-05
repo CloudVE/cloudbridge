@@ -897,7 +897,7 @@ class AWSNetwork(BaseNetwork):
     # docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVpcs.html
     _NETWORK_STATE_MAP = {
         'pending': NetworkState.PENDING,
-        'available': VolumeState.AVAILABLE,
+        'available': NetworkState.AVAILABLE,
     }
 
     def __init__(self, provider, network):
