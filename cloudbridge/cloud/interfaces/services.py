@@ -490,7 +490,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         :param network_id: The ID of the network to retrieve.
 
         :rtype: ``object`` of :class:`.Network`
-        return: a Network object
+        :return: a Network object
         """
         pass
 
@@ -965,7 +965,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
 
         :rtype: list of :class:`SecurityGroup`
         :return: A list of SecurityGroup objects or an empty list if none
-        found.
+                 found.
         """
         pass
 
