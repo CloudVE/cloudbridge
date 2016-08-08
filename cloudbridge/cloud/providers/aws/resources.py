@@ -1034,8 +1034,25 @@ class AWSRouter(BaseRouter):
     def __init__(self, provider, router):
         super(AWSRouter, self).__init__(provider)
         self._router = router
-        self._route_table = None
         self._ROUTE_CIDR = '0.0.0.0/0'
+
+    def _route_table(self, subnet_id):
+        """
+        Get the route table for the VPC to which the supplied subnet belongs.
+
+        Note that only the first route table will be returned in case more
+        exist.
+
+        :type subnet_id: ``str``
+        :param subnet_id: Filter the route table by the network in which the
+                          given subnet belongs.
+
+        :rtype: :class:`boto.vpc.routetable.RouteTable`
+        :return: A RouteTable object.
+        """
+        sn = self._provider.vpc_conn.get_all_subnets([subnet_id])[0]
+        return self._provider.vpc_conn.get_all_route_tables(
+            filters={'vpc-id': sn.vpc_id})[0]
 
     @property
     def id(self):
@@ -1099,11 +1116,9 @@ class AWSRouter(BaseRouter):
         Further, only a single route can be added, targeting the Internet
         (i.e., destination CIDR block ``0.0.0.0/0``).
         """
-        sn = self._provider.vpc_conn.get_all_subnets([subnet_id])[0]
-        self._route_table = self._provider.vpc_conn.get_all_route_tables(
-            filters={'vpc-id': sn.vpc_id})[0]
+        rt = self._route_table(subnet_id)
         return self._provider.vpc_conn.create_route(
-            self._route_table.id, self._ROUTE_CIDR, self.id)
+            rt.id, self._ROUTE_CIDR, self.id)
 
     def remove_route(self, subnet_id):
         """
@@ -1111,12 +1126,8 @@ class AWSRouter(BaseRouter):
 
         .. seealso:: ``add_route`` method
         """
-        if not self._route_table:
-            sn = self._provider.vpc_conn.get_all_subnets([subnet_id])[0]
-            self._route_table = self._provider.vpc_conn.get_all_route_tables(
-                filters={'vpc-id': sn.vpc_id})[0]
-        return self._provider.vpc_conn.delete_route(
-            self._route_table.id, self._ROUTE_CIDR)
+        rt = self._route_table(subnet_id)
+        return self._provider.vpc_conn.delete_route(rt.id, self._ROUTE_CIDR)
 
 
 class AWSLaunchConfig(BaseLaunchConfig):
