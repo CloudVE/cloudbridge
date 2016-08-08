@@ -51,6 +51,10 @@ into the subnet (``/27``):
     net.cidr_block  # '10.0.0.0/16'
     sn = net.create_subnet('10.0.0.1/27', "CloudBridge-subnet")
 
+Note that it may be necessary to also create a route for this new network. If
+that's the case, take a look at the
+`Getting Started <../getting_started.html>`_ document for an example.
+
 Retrieve an existing private network
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 If you already have existing networks, we can simply reuse an existing one:
@@ -58,8 +62,8 @@ If you already have existing networks, we can simply reuse an existing one:
 .. code-block:: python
 
     provider.network.list()  # Find a desired network ID
-    net = provider.network.get('network ID')
-    sn = net.subnets()[0]  # Get a handle on desired subnet
+    net = provider.network.get('desired network ID')
+    sn = net.subnets()[0]  # Get a handle on a desired subnet
 
 Launch an instance
 ------------------
@@ -71,19 +75,19 @@ below). Finally, we can launch the instance:
 .. code-block:: python
 
     lc = provider.compute.instances.create_launch_config()
-    lc.add_network_interface(sn.id)
+    lc.add_network_interface(net.id)
     inst = provider.compute.instances.create(
         name='CloudBridge-VPC', image=img,  instance_type=inst_type,
         launch_config=lc, key_pair=kp, security_groups=[sg])
 
 .. warning::
 
-    There is still a problem with network abstractions in CloudBridge between
-    AWS and OpenStack providers. AWS takes a subnet ID for it's launch config
-    while OpenStack takes a network ID. For the time being, the user needs to
-    make this distinction in their code and supply the correct value.
-    For example, for OpenStack, above code needs to look like the following:
-    ``lc.add_network_interface(net.id)``.
+    CloudBridge version 0.1.0 does not uniformly deal with network abstractions
+    for AWS and OpenStack providers. AWS takes a subnet ID for it's launch
+    config while OpenStack takes a network ID. As a result, the user needs to
+    make this distinction in their code and supply the correct value. For
+    example, for AWS, above code needs to look like the following:
+    ``lc.add_network_interface(sn.id)``. This has been corrected in newer code.
 
 Launch with default networking
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -130,11 +134,9 @@ After an instance has launched, you can access its properties:
 .. code-block:: python
 
     # Wait until ready
-    inst.wait_till_ready()
+    inst.wait_till_ready()  # This is a blocking call
     inst.state
     # 'running'
-    inst.public_ips
-    # [u'54.166.125.219']
 
 Depending on the provider's networking setup, it may be necessary to explicitly
 assign a floating IP address to your instance. This can be done as follows:
@@ -143,5 +145,8 @@ assign a floating IP address to your instance. This can be done as follows:
 
     # List all the IP addresses and find the desired one
     provider.network.floating_ips()
-    # Assign the IP to the instance
+    # Assign the desired IP to the instance
     inst.add_floating_ip('149.165.168.143')
+    inst.refresh()
+    inst.public_ips
+    # [u'149.165.168.143']
