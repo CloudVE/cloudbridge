@@ -22,8 +22,11 @@ class CloudImageServiceTestCase(ProviderTestBase):
         instance_name = "CBImageTest-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        test_instance = helpers.get_test_instance(self.provider, instance_name)
-        with helpers.cleanup_action(lambda: test_instance.terminate()):
+        net, _ = helpers.create_test_network(self.provider, instance_name)
+        test_instance = helpers.get_test_instance(self.provider, instance_name,
+                                                  network=net)
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                test_instance, net)):
             name = "CBUnitTestListImg-{0}".format(uuid.uuid4())
             test_image = test_instance.create_image(name)
 

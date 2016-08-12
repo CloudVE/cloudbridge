@@ -117,9 +117,6 @@ class AWSCloudProvider(BaseCloudProvider):
         ec2_conn = boto.connect_ec2(
             aws_access_key_id=self.a_key,
             aws_secret_access_key=self.s_key,
-            # api_version is needed for availability
-            # zone support for EC2
-            api_version='2012-06-01' if self.cloud_type == 'aws' else None,
             is_secure=self.ec2_is_secure,
             region=region,
             port=self.ec2_port,
@@ -136,9 +133,6 @@ class AWSCloudProvider(BaseCloudProvider):
         vpc_conn = boto.connect_vpc(
             aws_access_key_id=self.a_key,
             aws_secret_access_key=self.s_key,
-            # api_version is needed for availability
-            # zone support for EC2
-            api_version='2012-06-01' if self.cloud_type == 'aws' else None,
             is_secure=self.ec2_is_secure,
             region=r,
             port=self.ec2_port,
@@ -177,8 +171,7 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         self.s3mock.start()
         HTTPretty.register_uri(
             method="GET",
-            uri="https://swift.rc.nectar.org.au:8888/v1/"
-            "AUTH_377/cloud-bridge/aws/instance_data.json",
+            uri="https://d168wakzal7fp0.cloudfront.net/aws_instance_data.json",
             body="""
 [
   {

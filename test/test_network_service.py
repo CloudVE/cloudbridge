@@ -1,7 +1,7 @@
-import uuid
-
-from test.helpers import ProviderTestBase
 import test.helpers as helpers
+import uuid
+from test.helpers import ProviderTestBase
+from cloudbridge.cloud.interfaces.resources import RouterState
 
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
@@ -47,6 +47,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     len(list_subnetl) == 1,
                     "List subnets does not return the expected subnet %s" %
                     subnet_name)
+                # test get method
+                sn = self.provider.network.subnets.get(subnet.id)
+                self.assertTrue(
+                    subnet.id == sn.id,
+                    "GETting subnet should return the same subnet")
 
             subnetl = self.provider.network.subnets.list()
             found_subnet = [n for n in subnetl if n.name == subnet_name]
@@ -54,6 +59,38 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 len(found_subnet) == 0,
                 "Subnet {0} should have been deleted but still exists."
                 .format(subnet_name))
+
+            # Check floating IP address
+            ip = self.provider.network.create_floating_ip()
+            ip_id = ip.id
+            with helpers.cleanup_action(lambda: ip.delete()):
+                ipl = self.provider.network.floating_ips()
+                self.assertTrue(
+                    ip in ipl,
+                    "Floating IP address {0} should exist in the list {1}"
+                    .format(ip.id, ipl))
+                # 2016-08: address filtering not implemented in moto
+                # empty_ipl = self.provider.network.floating_ips('dummy-net')
+                # self.assertFalse(
+                #     empty_ipl,
+                #     "Bogus network should not have any floating IPs: {0}"
+                #     .format(empty_ipl))
+                self.assertIn(
+                    ip.public_ip, repr(ip),
+                    "repr(obj) should contain the address public IP value.")
+                self.assertFalse(
+                    ip.private_ip,
+                    "Floating IP should not have a private IP value ({0})."
+                    .format(ip.private_ip))
+                self.assertFalse(
+                    ip.in_use(),
+                    "Newly created floating IP address should not be in use.")
+            ipl = self.provider.network.floating_ips()
+            found_ip = [a for a in ipl if a.id == ip_id]
+            self.assertTrue(
+                len(found_ip) == 0,
+                "Floating IP {0} should have been deleted but still exists."
+                .format(ip_id))
 
         netl = self.provider.network.list()
         found_net = [n for n in netl if n.name == name]
@@ -101,3 +138,65 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     cidr, sn.cidr_block,
                     "Subnet's CIDR %s should match the specified one %s." % (
                         sn.cidr_block, cidr))
+
+    def test_crud_router(self):
+
+        def _cleanup(net, subnet, router):
+            router.remove_route(subnet.id)
+            router.detach_network()
+            router.delete()
+            subnet.delete()
+            net.delete()
+
+        name = 'cbtestrouter-{0}'.format(uuid.uuid4())
+        router = self.provider.network.create_router(name=name)
+        net = self.provider.network.create(name=name)
+        cidr = '10.0.1.0/24'
+        sn = net.create_subnet(cidr_block=cidr, name=name)
+        with helpers.cleanup_action(lambda: _cleanup(net, sn, router)):
+            # Check basic router properties
+            self.assertIn(
+                router, self.provider.network.routers(),
+                "Router {0} should exist in the router list {1}.".format(
+                    router.id, self.provider.network.routers()))
+            self.assertIn(
+                router.id, repr(router),
+                "repr(obj) should contain the object id so that the object"
+                " can be reconstructed, but does not.")
+            self.assertEqual(
+                router.name, name,
+                "Router {0} name should be {1}.".format(router.name, name))
+            self.assertEqual(
+                router.state, RouterState.DETACHED,
+                "Router {0} state {1} should be {2}.".format(
+                    router.id, router.state, RouterState.DETACHED))
+            self.assertFalse(
+                router.network_id,
+                "Router {0} should not be assoc. with a network {1}".format(
+                    router.id, router.network_id))
+
+            # Check router connectivity
+            # On OpenStack only one network is external and on AWS every
+            # network is external, yet we need to use the one we've created?!
+            if self.provider.PROVIDER_ID == 'openstack':
+                for n in self.provider.network.list():
+                    if n.external:
+                        external_net = n
+                        break
+            else:
+                external_net = net
+            router.attach_network(external_net.id)
+            router.refresh()
+            self.assertEqual(
+                router.network_id, external_net.id,
+                "Router should be attached to network {0}, not {1}".format(
+                    external_net.id, router.network_id))
+            router.add_route(sn.id)
+            # TODO: add a check for routes after that's been implemented
+
+        routerl = self.provider.network.routers()
+        found_router = [r for r in routerl if r.name == name]
+        self.assertEqual(
+            len(found_router), 0,
+            "Router {0} should have been deleted but still exists."
+            .format(name))

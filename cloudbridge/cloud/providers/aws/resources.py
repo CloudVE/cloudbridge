@@ -7,19 +7,24 @@ from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
+from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from datetime import datetime
@@ -335,7 +340,12 @@ class AWSInstance(BaseInstance):
         """
         Add an elastic IP address to this instance.
         """
-        return self._ec2_instance.use_ip(ip_address)
+        if self._ec2_instance.vpc_id:
+            aid = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
+            return self._provider._ec2_conn.associate_address(
+                self._ec2_instance.id, allocation_id=aid.allocation_id)
+        else:
+            return self._ec2_instance.use_ip(ip_address)
 
     def remove_floating_ip(self, ip_address):
         """
@@ -631,15 +641,27 @@ class AWSSecurityGroup(BaseSecurityGroup):
         :rtype: :class:``.SecurityGroupRule``
         :return: Rule object if successful or ``None``.
         """
-        if self._security_group.authorize(
-                ip_protocol=ip_protocol,
-                from_port=from_port,
-                to_port=to_port,
-                cidr_ip=cidr_ip,
-                # pylint:disable=protected-access
-                src_group=src_group._security_group if src_group else None):
-            return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                 src_group)
+        try:
+            if not isinstance(src_group, SecurityGroup):
+                src_group = self._provider.security.security_groups.get(
+                    src_group)
+
+            if self._security_group.authorize(
+                    ip_protocol=ip_protocol,
+                    from_port=from_port,
+                    to_port=to_port,
+                    cidr_ip=cidr_ip,
+                    # pylint:disable=protected-access
+                    src_group=src_group._security_group if src_group
+                    else None):
+                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
+                                     src_group)
+        except EC2ResponseError as ec2e:
+            if ec2e.code == "InvalidPermission.Duplicate":
+                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
+                                     src_group)
+            else:
+                raise ec2e
         return None
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
@@ -758,7 +780,8 @@ class AWSBucketObject(BaseBucketObject):
         """
         Get the date and time this object was last modified.
         """
-        lm = datetime.strptime(self._key.last_modified, "%Y-%m-%dT%H:%M:%S.%fZ")
+        lm = datetime.strptime(self._key.last_modified,
+                               "%Y-%m-%dT%H:%M:%S.%fZ")
         return lm.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):
@@ -874,7 +897,7 @@ class AWSNetwork(BaseNetwork):
     # docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVpcs.html
     _NETWORK_STATE_MAP = {
         'pending': NetworkState.PENDING,
-        'available': VolumeState.AVAILABLE,
+        'available': NetworkState.AVAILABLE,
     }
 
     def __init__(self, provider, network):
@@ -901,6 +924,14 @@ class AWSNetwork(BaseNetwork):
         Set the network name.
         """
         self._vpc.add_tag('Name', value)
+
+    @property
+    def external(self):
+        """
+        For AWS, all VPC networks can be connected to the Internet so always
+        return ``True``.
+        """
+        return True
 
     @property
     def state(self):
@@ -971,3 +1002,149 @@ class AWSSubnet(BaseSubnet):
 
     def delete(self):
         return self._provider.vpc_conn.delete_subnet(subnet_id=self.id)
+
+
+class AWSFloatingIP(BaseFloatingIP):
+
+    def __init__(self, provider, floating_ip):
+        super(AWSFloatingIP, self).__init__(provider)
+        self._ip = floating_ip
+
+    @property
+    def id(self):
+        return self._ip.allocation_id
+
+    @property
+    def public_ip(self):
+        return self._ip.public_ip
+
+    @property
+    def private_ip(self):
+        return self._ip.private_ip_address
+
+    def in_use(self):
+        return True if self._ip.instance_id else False
+
+    def delete(self):
+        return self._ip.delete()
+
+
+class AWSRouter(BaseRouter):
+
+    def __init__(self, provider, router):
+        super(AWSRouter, self).__init__(provider)
+        self._router = router
+        self._ROUTE_CIDR = '0.0.0.0/0'
+
+    def _route_table(self, subnet_id):
+        """
+        Get the route table for the VPC to which the supplied subnet belongs.
+
+        Note that only the first route table will be returned in case more
+        exist.
+
+        :type subnet_id: ``str``
+        :param subnet_id: Filter the route table by the network in which the
+                          given subnet belongs.
+
+        :rtype: :class:`boto.vpc.routetable.RouteTable`
+        :return: A RouteTable object.
+        """
+        sn = self._provider.vpc_conn.get_all_subnets([subnet_id])[0]
+        return self._provider.vpc_conn.get_all_route_tables(
+            filters={'vpc-id': sn.vpc_id})[0]
+
+    @property
+    def id(self):
+        return self._router.id
+
+    @property
+    def name(self):
+        """
+        Get the router name.
+
+        .. note:: the router must have a (case sensitive) tag ``Name``
+        """
+        return self._router.tags.get('Name')
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the router name.
+        """
+        self._router.add_tag('Name', value)
+
+    def refresh(self):
+        self._router = self._provider.vpc_conn.get_all_internet_gateways(
+            [self.id])[0]
+
+    @property
+    def state(self):
+        self.refresh()  # Explicitly refresh the local object
+        if self._router.attachments and \
+           self._router.attachments[0].state == 'available':
+            return RouterState.ATTACHED
+        return RouterState.DETACHED
+
+    @property
+    def network_id(self):
+        if self.state == RouterState.ATTACHED:
+            return self._router.attachments[0].vpc_id
+        return None
+
+    def delete(self):
+        return self._provider._vpc_conn.delete_internet_gateway(self.id)
+
+    def attach_network(self, network_id):
+        return self._provider.vpc_conn.attach_internet_gateway(
+            self.id, network_id)
+
+    def detach_network(self):
+        return self._provider.vpc_conn.detach_internet_gateway(
+            self.id, self.network_id)
+
+    def add_route(self, subnet_id):
+        """
+        Add a default route to this router.
+
+        For AWS, routes are added to a route table. A route table is assoc.
+        with a network vs. a subnet so we retrieve the network via the subnet.
+        Note that the subnet must belong to the same network as the router
+        is attached to.
+
+        Further, only a single route can be added, targeting the Internet
+        (i.e., destination CIDR block ``0.0.0.0/0``).
+        """
+        rt = self._route_table(subnet_id)
+        return self._provider.vpc_conn.create_route(
+            rt.id, self._ROUTE_CIDR, self.id)
+
+    def remove_route(self, subnet_id):
+        """
+        Remove the default Internet route from this router.
+
+        .. seealso:: ``add_route`` method
+        """
+        rt = self._route_table(subnet_id)
+        return self._provider.vpc_conn.delete_route(rt.id, self._ROUTE_CIDR)
+
+
+class AWSLaunchConfig(BaseLaunchConfig):
+
+    def __init__(self, provider):
+        super(AWSLaunchConfig, self).__init__(provider)
+
+    def add_network_interface(self, net_id):
+        """
+        Extract a subnet within the network identified by ``net_id``.
+
+        AWS requires a subnet ID to be supplied vs. a network (i.e., VPC) ID
+        so just pull out one subnet within the network (currently, the first
+        one).
+        """
+        net = self.provider.network.get(net_id)
+        sns = net.subnets()
+        if sns:
+            sn = sns[0]
+        self.network_interfaces.append(sn.id)

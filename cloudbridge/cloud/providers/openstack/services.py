@@ -5,7 +5,6 @@ import fnmatch
 import re
 
 from cinderclient.exceptions import NotFound as CinderNotFound
-from novaclient.exceptions import NotFound as NovaNotFound
 
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -32,13 +31,17 @@ from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
+from novaclient.exceptions import NotFound as NovaNotFound
+
 from .resources import OpenStackBucket
+from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
 from .resources import OpenStackNetwork
 from .resources import OpenStackRegion
+from .resources import OpenStackRouter
 from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
 from .resources import OpenStackSubnet
@@ -73,6 +76,40 @@ class OpenStackSecurityService(BaseSecurityService):
         :return: a SecurityGroupService object
         """
         return self._security_groups
+
+    def get_ec2_credentials(self):
+        """
+        A provider specific method than returns the ec2 credentials for the
+        current user.
+        """
+        keystone = self.provider.keystone
+        if hasattr(keystone, 'ec2'):
+            user_creds = [cred for cred in keystone.ec2.list(keystone.user_id)
+                          if cred.tenant_id == keystone.tenant_id]
+            if user_creds:
+                return user_creds[0]
+        return None
+
+    def get_ec2_endpoints(self):
+        """
+        A provider specific method than returns the ec2 endpoints if
+        available.
+        """
+        service_catalog = self.provider.keystone.service_catalog.get_data()
+        current_region = self.provider.compute.regions.current.id
+        ec2_url = [endpoint.get('publicURL')
+                   for svc in service_catalog
+                   for endpoint in svc.get('endpoints', [])
+                   if endpoint.get('region', None) ==
+                   current_region and svc.get('type', None) == 'ec2']
+        s3_url = [endpoint.get('publicURL')
+                  for svc in service_catalog
+                  for endpoint in svc.get('endpoints', [])
+                  if endpoint.get('region', None) ==
+                  current_region and svc.get('type', None) == 's3']
+
+        return {'ec2_endpoint': ec2_url[0] if ec2_url else None,
+                's3_endpoint': s3_url[0] if s3_url else None}
 
 
 class OpenStackKeyPairService(BaseKeyPairService):
@@ -116,7 +153,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
     def create(self, name):
         """
-        Create a new key pair or return an existing one by the same name.
+        Create a new key pair or raise an exception if one already exists.
 
         :type name: str
         :param name: The name of the key pair to be created.
@@ -124,11 +161,10 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
-        kp = self.get(name)
-        if kp:
-            return kp
         kp = self.provider.nova.keypairs.create(name)
-        return OpenStackKeyPair(self.provider, kp)
+        if kp:
+            return OpenStackKeyPair(self.provider, kp)
+        return None
 
 
 class OpenStackSecurityGroupService(BaseSecurityGroupService):
@@ -160,7 +196,7 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         return ClientPagedResultList(self.provider, sgs,
                                      limit=limit, marker=marker)
 
-    def create(self, name, description):
+    def create(self, name, description, network_id=None):
         """
         Create a new security group under the current account.
 
@@ -169,6 +205,10 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
 
         :type description: str
         :param description: The description of the new security group.
+
+        :type  network_id: ``None``
+        :param network_id: Not applicable for OpenStack (yet) so any value is
+                           ignored.
 
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return: a SecurityGroup object
@@ -409,7 +449,9 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         _, container_list = self.provider.swift.get_account(
             prefix=bucket_id)
         if container_list:
-            return OpenStackBucket(self.provider, container_list[0])
+            return OpenStackBucket(self.provider,
+                                   next((c for c in container_list
+                                         if c['name'] == bucket_id), None))
         else:
             return None
 
@@ -687,6 +729,32 @@ class OpenStackNetworkService(BaseNetworkService):
     @property
     def subnets(self):
         return self._subnet_svc
+
+    def floating_ips(self, network_id=None):
+        if network_id:
+            al = self.provider.neutron.list_floatingips(
+                floating_network_id=network_id)['floatingips']
+        else:
+            al = self.provider.neutron.list_floatingips()['floatingips']
+        return [OpenStackFloatingIP(self.provider, a) for a in al]
+
+    def create_floating_ip(self):
+        # OpenStack requires a floating IP to be associated with a pool,
+        # so just choose the first one available...
+        ip_pool_name = self.provider.nova.floating_ip_pools.list()[0].name
+        ip = self.provider.nova.floating_ips.create(ip_pool_name)
+        # Nova returns a different object than Neutron so fetch the Neutron one
+        ip = self.provider.neutron.list_floatingips(id=ip.id)['floatingips'][0]
+        return OpenStackFloatingIP(self.provider, ip)
+
+    def routers(self):
+        routers = self.provider.neutron.list_routers().get('routers')
+        return [OpenStackRouter(self.provider, r) for r in routers]
+
+    def create_router(self, name=None):
+        router = self.provider.neutron.create_router(
+            {'router': {'name': name}})
+        return OpenStackRouter(self.provider, router.get('router'))
 
 
 class OpenStackSubnetService(BaseSubnetService):

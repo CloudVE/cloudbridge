@@ -21,17 +21,11 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         name = "CBInstCrud-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        inst = helpers.create_test_instance(self.provider, name)
+        net, _ = helpers.create_test_network(self.provider, name)
+        inst = helpers.get_test_instance(self.provider, name, network=net)
 
-        def cleanup_inst(instance):
-            instance.terminate()
-            instance.wait_for(
-                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR])
-
-        with helpers.cleanup_action(lambda: cleanup_inst(inst)):
-            inst.wait_till_ready()
-
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                inst, net)):
             all_instances = self.provider.compute.instances.list()
 
             list_instances = [i for i in all_instances if i.name == name]
@@ -98,22 +92,17 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
+        net, _ = helpers.create_test_network(self.provider, name)
         kp = self.provider.security.key_pairs.create(name=name)
         sg = self.provider.security.security_groups.create(
-            name=name, description=name)
-
+            name=name, description=name, network_id=net.id)
         test_instance = helpers.get_test_instance(self.provider,
                                                   name, key_pair=kp,
-                                                  security_groups=[sg])
+                                                  security_groups=[sg],
+                                                  network=net)
 
-        def cleanup(inst, kp, sg):
-            inst.terminate()
-            inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                          terminal_states=[InstanceState.ERROR])
-            kp.delete()
-            sg.delete()
-
-        with helpers.cleanup_action(lambda: cleanup(test_instance, kp, sg)):
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                test_instance, net, sg, kp)):
             self.assertTrue(
                 test_instance.id in repr(test_instance),
                 "repr(obj) should contain the object id so that the object"
@@ -155,7 +144,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             ip_private = test_instance.private_ips[0] \
                 if test_instance.private_ips else None
             ip_address = test_instance.public_ips[0] \
-                if test_instance.public_ips else ip_private
+                if test_instance.public_ips and test_instance.public_ips[0] \
+                else ip_private
             self.assertIsNotNone(
                 ip_address,
                 "Instance must have either a public IP or a private IP")
@@ -296,6 +286,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         for _ in range(inst_type.num_ephemeral_disks):
             lc.add_ephemeral_device()
 
+        net, _ = helpers.create_test_network(self.provider, name)
+        lc.add_network_interface(net.id)
+
         inst = helpers.create_test_instance(
             self.provider,
             name,
@@ -304,12 +297,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 'placement'),
             launch_config=lc)
 
-        def cleanup(instance):
+        def cleanup(instance, net):
             instance.terminate()
             instance.wait_for(
                 [InstanceState.TERMINATED, InstanceState.UNKNOWN],
                 terminal_states=[InstanceState.ERROR])
-        with helpers.cleanup_action(lambda: cleanup(inst)):
+            helpers.delete_test_network(net)
+
+        with helpers.cleanup_action(lambda: cleanup(inst, net)):
             try:
                 inst.wait_till_ready()
             except WaitStateException as e:
