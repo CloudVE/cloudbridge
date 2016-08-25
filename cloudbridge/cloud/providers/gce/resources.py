@@ -17,6 +17,7 @@ except NameError:
 import hashlib
 import inspect
 import json
+import re
 
 class GCEKeyPair(BaseKeyPair):
 
@@ -176,49 +177,61 @@ class GCERegion(BaseRegion):
 
 
 class GCEFirewallsDelegate(object):
+    NETWORK_URL_PREFIX = 'global/networks/'
+    DEFAULT_NETWORK = 'default'
   
     def __init__(self, provider):
         self._provider = provider
         self._list_response = None
 
     @staticmethod
-    def tag_id(tag):
+    def tagnet_id(tag, network):
         md5 = hashlib.md5()
-        md5.update(tag.encode('ascii'))
+        md5.update("{0}-{1}".format(tag, network).encode('ascii'))
         return md5.hexdigest()
+
+    @staticmethod
+    def network(firewall):
+        if 'network' not in firewall:
+            return GCEFirewallsDelegate.DEFAULT_NETWORK
+        match = re.search(
+                GCEFirewallsDelegate.NETWORK_URL_PREFIX + '([^/]*)$',
+                firewall['network'])
+        if match and len(match.groups()) == 1:
+            return match.group(1)
+        return None
 
     @property
     def provider(self):
         return self._provider
 
     @property
-    def tags(self):
+    def tagnets(self):
         out = set()
         for firewall in self.iter_firewalls():
-            out.add(firewall['targetTags'][0])
+            network = GCEFirewallsDelegate.network(firewall)
+            if network is not None:
+                out.add((firewall['targetTags'][0], network))
         return out
             
-    def get_tag_from_id(self, tag_id):
-        for tag in self.tags:
-            if GCEFirewallsDelegate.tag_id(tag) == tag_id:
-                return tag
-        return None
+    def get_tagnet_from_id(self, tagnet_id):
+        for tag, network in self.tagnets:
+            if GCEFirewallsDelegate.tagnet_id(tag, network) == tagnet_id:
+                return (tag, network)
+        return (None, None)
 
-    def has_tag(self, tag):
-        return tag in self.tags
-
-    def delete_tag_with_id(self, tag_id):
-        tag = self.get_tag_from_id(tag_id)
+    def delete_tagnet_with_id(self, tagnet_id):
+        tag, network = self.get_tagnet_from_id(tagnet_id)
         if tag is None:
             return
-        for firewall in self.iter_firewalls(tag):
+        for firewall in self.iter_firewalls(tag, network):
             self._delete_firewall(firewall)
         self._update_list_response()
 
     def add_firewall(self, tag, ip_protocol, port, source_range, source_tag,
-                     description):
+                     description, network):
         if self.find_firewall(tag, ip_protocol, port, source_range,
-                              source_tag) is not None:
+                              source_tag, network) is not None:
             return True
         # Do not let the user accidentally open traffic from the world by not
         # explicitly specifying the source.
@@ -226,16 +239,18 @@ class GCEFirewallsDelegate(object):
             return False
         firewall_number = 1
         suffixes = []
-        for firewall in self.iter_firewalls(tag):
+        for firewall in self.iter_firewalls(tag, network):
             suffix = firewall['name'].split('-')[-1]
             if suffix.isdigit():
                 suffixes.append(int(suffix))
         for suffix in sorted(suffixes):
             if firewall_number == suffix:
                 firewall_number += 1
-        firewall = {'name': '%s-rule-%d' % (tag, firewall_number),
-                    'allowed': [{'IPProtocol': str(ip_protocol)}],
-                    'targetTags': [tag]}
+        firewall = {
+            'name': '%s-%s-rule-%d' % (network, tag, firewall_number),
+            'network': GCEFirewallsDelegate.NETWORK_URL_PREFIX + network,
+            'allowed': [{'IPProtocol': str(ip_protocol)}],
+            'targetTags': [tag]}
         if description is not None:
             firewall['description'] = description
         if port is not None:
@@ -259,10 +274,11 @@ class GCEFirewallsDelegate(object):
         finally:
             self._update_list_response()
 
-    def find_firewall(self, tag, ip_protocol, port, source_range, source_tag):
+    def find_firewall(self, tag, ip_protocol, port, source_range, source_tag,
+                      network):
         if source_range is None and source_tag is None:
             source_range = '0.0.0.0/0'
-        for firewall in self.iter_firewalls(tag):
+        for firewall in self.iter_firewalls(tag, network):
             if firewall['allowed'][0]['IPProtocol'] != ip_protocol:
                 continue
             if not self._check_list_in_dict(firewall['allowed'][0], 'ports',
@@ -293,6 +309,7 @@ class GCEFirewallsDelegate(object):
             if ('ports' in firewall['allowed'][0] and
                 len(firewall['allowed'][0]['ports']) == 1):
                 info['port'] = firewall['allowed'][0]['ports'][0]
+            info['network'] = GCEFirewallsDelegate.network(firewall)
             return info
         return info
 
@@ -302,7 +319,7 @@ class GCEFirewallsDelegate(object):
                 self._delete_firewall(firewall)
         self._update_list_response()
 
-    def iter_firewalls(self, tag=None):
+    def iter_firewalls(self, tag=None, network=None):
         if self._list_response is None:
             self._update_list_response()
         if 'items' not in self._list_response:
@@ -312,7 +329,13 @@ class GCEFirewallsDelegate(object):
                 continue
             if 'allowed' not in firewall or len(firewall['allowed']) != 1:
                 continue
-            if tag is None or firewall['targetTags'][0] == tag:
+            if tag is not None and firewall['targetTags'][0] != tag:
+                continue
+            if network is None:
+                yield firewall
+                continue
+            firewall_network = GCEFirewallsDelegate.network(firewall)
+            if firewall_network == network:
                 yield firewall
 
     def _delete_firewall(self, firewall):
@@ -348,14 +371,20 @@ class GCEFirewallsDelegate(object):
 
 class GCESecurityGroup(BaseSecurityGroup):
 
-    def __init__(self, delegate, tag, description=None):
+    def __init__(self, delegate, tag,
+                 network=GCEFirewallsDelegate.DEFAULT_NETWORK,
+                 description=None):
         super(GCESecurityGroup, self).__init__(delegate.provider, tag)
         self._description = description
         self._delegate = delegate
+        self._network = network
+        if self._network is None:
+            self._network = GCEFirewallsDelegate.DEFAULT_NETWORK 
 
     @property
     def id(self):
-        return GCEFirewallsDelegate.tag_id(self._security_group)
+        return GCEFirewallsDelegate.tagnet_id(self._security_group,
+                                              self.network)
 
     @property
     def name(self):
@@ -365,7 +394,8 @@ class GCESecurityGroup(BaseSecurityGroup):
     def description(self):
         if self._description is not None:
             return self._description
-        for firewall in self._delegate.iter_firewalls(self._security_group):
+        for firewall in self._delegate.iter_firewalls(self._security_group,
+                                                      self.network):
             if 'description' in firewall:
                 return firewall['description']
         return None
@@ -373,9 +403,14 @@ class GCESecurityGroup(BaseSecurityGroup):
     @property
     def rules(self):
         out = []
-        for firewall in self._delegate.iter_firewalls(self._security_group):
+        for firewall in self._delegate.iter_firewalls(self._security_group,
+                                                      self.network):
             out.append(GCESecurityGroupRule(self._delegate, firewall['id']))
         return out
+
+    @property
+    def network(self):
+        return self._network
 
     @staticmethod
     def to_port_range(from_port, to_port):
@@ -391,7 +426,8 @@ class GCESecurityGroup(BaseSecurityGroup):
         port = GCESecurityGroup.to_port_range(from_port, to_port)
         src_tag = src_group.name if src_group is not None else None
         self._delegate.add_firewall(self._security_group, ip_protocol, port,
-                                    cidr_ip, src_tag, self.description)
+                                    cidr_ip, src_tag, self.description,
+                                    self.network)
         return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
                              src_group)
 
@@ -400,7 +436,8 @@ class GCESecurityGroup(BaseSecurityGroup):
         port = GCESecurityGroup.to_port_range(from_port, to_port)
         src_tag = src_group.name if src_group is not None else None
         firewall_id = self._delegate.find_firewall(
-                self._security_group, ip_protocol, port, cidr_ip, src_tag)
+                self._security_group, ip_protocol, port, cidr_ip, src_tag,
+                self.network)
         if firewall_id is None:
             return None
         return GCESecurityGroupRule(self._delegate, firewall_id)
@@ -427,9 +464,10 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
     @property
     def parent(self):
         info = self._delegate.get_firewall_info(self._rule)
-        if info is None or 'target_tag' not in info:
+        if info is None or 'target_tag' not in info or info['network'] is None:
             return None
-        return GCESecurityGroup(self._delegate, info['target_tag'])
+        return GCESecurityGroup(self._delegate, info['target_tag'],
+                                info['network'])
 
     @property
     def id(self):
@@ -482,9 +520,10 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
     @property
     def group(self):
         info = self._delegate.get_firewall_info(self._rule)
-        if info is None or 'source_tag' not in info:
+        if info is None or 'source_tag' not in info or info['network'] is None:
             return None
-        return GCESecurityGroup(self._delegate, info['source_tag'])
+        return GCESecurityGroup(self._delegate, info['source_tag'],
+                                info['network'])
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))

@@ -163,7 +163,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                                      to_port=1111, cidr_ip='0.0.0.0/0')
             self.assertTrue(
                 rule == found_rule,
-                "Expected rule {0} not found in security group: {0}".format(
+                "Expected rule {0} not found in security group: {1}".format(
                     rule, sg.rules))
 
             object_keys = (
@@ -212,7 +212,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                                     to_port=1111, cidr_ip='0.0.0.0/0')
             self.assertTrue(
                 rule == same_rule,
-                "Expected rule {0} not found in security group: {0}".format(
+                "Expected rule {0} not found in security group: {1}".format(
                     same_rule, sg.rules))
 
     def test_security_group_group_rule(self):

@@ -196,17 +196,19 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         self._delegate = GCEFirewallsDelegate(provider)
 
     def get(self, group_id):
-        tag = self._delegate.get_tag_from_id(group_id)
-        return None if tag is None else GCESecurityGroup(self._delegate, tag)
+        tag, network = self._delegate.get_tagnet_from_id(group_id)
+        if tag is None:
+            return None
+        return GCESecurityGroup(self._delegate, tag, network)
 
     def list(self, limit=None, marker=None):
-        security_groups = [GCESecurityGroup(self._delegate, x)
-                           for x in self._delegate.tags]
+        security_groups = [GCESecurityGroup(self._delegate, x, y)
+                           for x, y in self._delegate.tagnets]
         return ClientPagedResultList(self.provider, security_groups,
                                      limit=limit, marker=marker)
 
-    def create(self, name, description):
-        return GCESecurityGroup(self._delegate, name, description)
+    def create(self, name, description, network_id=None):
+        return GCESecurityGroup(self._delegate, name, network_id, description)
 
     def find(self, name, limit=None, marker=None):
         """
@@ -214,12 +216,14 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         name does not exist, or if it does not contain any rules, an empty list
         is returned.
         """
-        if self._delegate.has_tag(name):
-            return [GCESecurityGroup(self._delegate, name)]
-        return []
+        out = []
+        for tag, network in self._delegate.tagnets:
+            if tag == name:
+                out.append(GCESecurityGroup(self._delegate, name, network))
+        return out
 
     def delete(self, group_id):
-        return self._delegate.delete_tag_with_id(group_id)
+        return self._delegate.delete_tagnet_with_id(group_id)
 
 
 class GCEInstanceTypesService(BaseInstanceTypesService):
