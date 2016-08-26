@@ -273,11 +273,33 @@ class GCEImageService(BaseImageService):
 
     def __init__(self, provider):
         super(GCEImageService, self).__init__(provider)
+        self._public_images = None
+
+    PUBLIC_IMAGE_PROJECTS = ['centos-cloud', 'coreos-cloud', 'debian-cloud',
+                             'opensuse-cloud', 'ubuntu-os-cloud']
+
+    def _retrieve_public_images(self):
+        self._public_images = []
+        for project in GCEImageService.PUBLIC_IMAGE_PROJECTS:
+            try:
+                response = self.provider.gce_compute \
+                                        .images() \
+                                        .list(project=project) \
+                                        .execute()
+            except googleapiclient.errors.HttpError as http_error:
+                print("googleapiclient.errors.HttpError: {0}".format(
+                    http_error))
+            if 'items' in response:
+                self._public_images.extend(
+                    [GCEMachineImage(self.provider, image) for image
+                     in response['items']])
 
     def get(self, image_name):
         """
         Returns an Image given its name
         """
+        if self._public_images == None:
+            self._retrieve_public_images()
         try:
             image = self.provider.gce_compute \
                                   .images() \
@@ -290,29 +312,33 @@ class GCEImageService(BaseImageService):
             # The API will throw an TypeError, if parameter `image` does not
             # match the pattern "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?".
             print("TypeError: {0}".format(type_error))
-            return None
         except googleapiclient.errors.HttpError as http_error:
             print("googleapiclient.errors.HttpError: {0}".format(http_error))
-            return None
+        for public_image in self._public_images:
+            if public_image.name == image_name:
+                return public_image
+        return None
 
     def find(self, name, limit=None, marker=None):
         """
         Searches for an image by a given list of attributes
         """
+        if self._public_images == None:
+            self._retrieve_public_images()
         filters = {'name': name}
+        images = []
         try:
             response = self.provider.gce_compute \
                                     .images() \
                                   .list(project=self.provider.project_name) \
                                   .execute()
+            if 'items' in response:
+                images = [GCEMachineImage(self.provider, image) for image
+                          in response['items']]
         except googleapiclient.errors.HttpError as http_error:
             print("googleapiclient.errors.HttpError: {0}".format(http_error))
-            return []
-        if 'items' not in response:
-            return []
-        images = [GCEMachineImage(self.provider, image) for image
-                  in response['items']
-                  if 'name' in image and image['name'] == filters['name']]
+        images.extend(self._public_images)
+        images = [image for image in images if image.name == filters['name']]
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
 
@@ -320,18 +346,20 @@ class GCEImageService(BaseImageService):
         """
         List all images.
         """
+        if self._public_images == None:
+            self._retrieve_public_images()
+        images = []
         try:
             response = self.provider.gce_compute \
                                   .images() \
                                   .list(project=self.provider.project_name) \
                                   .execute()
+            if 'items' in response:
+                images = [GCEMachineImage(self.provider, image) for image
+                          in response['items']]
         except googleapiclient.errors.HttpError as http_error:
             print("googleapiclient.errors.HttpError: {0}".format(http_error))
-            return []
-        if 'items' not in response:
-            return []
-        images = [GCEMachineImage(self.provider, image) for image
-                  in response['items']]
+        images.extend(self._public_images)
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
 

@@ -9,7 +9,7 @@ from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 
 import googleapiclient
-
+import re
 
 class GCEKeyPair(BaseKeyPair):
 
@@ -229,10 +229,18 @@ class GCEMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
+        resource_link = self._gce_image['selfLink']
+        project_pattern = 'projects/(.*?)/'
+        match = re.search(project_pattern, resource_link)
+        if match:
+            project = match.group(1)
+        else:
+            print("Project name is not found.")
+            return
         try:
             response = self._provider.gce_compute \
                                   .images() \
-                                  .get(project=self._provider.project_name,
+                                  .get(project=project,
                                        image=self.name) \
                                   .execute()
             if response:
