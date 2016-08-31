@@ -1,6 +1,4 @@
-"""
-Services implemented by the AWS provider.
-"""
+"""Services implemented by the AWS provider."""
 import time
 import string
 
@@ -52,6 +50,9 @@ from .resources import AWSSnapshot
 from .resources import AWSSubnet
 from .resources import AWSVolume
 
+import cloudbridge as cb
+# Uncomment to enable logging by default for this module
+# cb.set_stream_logger(__name__)
 
 class AWSSecurityService(BaseSecurityService):
 
@@ -106,6 +107,7 @@ class AWSKeyPairService(BaseKeyPairService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
+        cb.log.debug("Listing AWS key pairs.")
         key_pairs = [AWSKeyPair(self.provider, kp)
                      for kp in self.provider.ec2_conn.get_all_key_pairs()]
         return ClientPagedResultList(self.provider, key_pairs,
