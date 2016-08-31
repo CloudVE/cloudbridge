@@ -32,6 +32,20 @@ class NullHandler(logging.Handler):
         """Don't emit a log."""
         pass
 
+TRACE = 5  # Lower than debug which is 10
+
+
+class CBLogger(logging.Logger):
+    """
+    A custom logger, adds logging level below debug.
+
+    Add a ``trace`` log level, numeric value 5: ``log.trace("Log message")``
+    """
+
+    def trace(self, msg, *args, **kwargs):
+        """Add ``trace`` log level."""
+        self.log(TRACE, msg, *args, **kwargs)
+
 # By default, do not force any logging by the library. If you want to see the
 # log messages in your scripts, add the following to the top of your script:
 #   import cloudbridge
@@ -40,6 +54,8 @@ class NullHandler(logging.Handler):
 #   cloudbridge.set_file_logger(__name__, '/tmp/cb.log')
 
 default_format_string = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+logging.setLoggerClass(CBLogger)
+logging.addLevelName(TRACE, "TRACE")
 log = logging.getLogger('cloudbridge')
 log.addHandler(NullHandler())
 
@@ -52,7 +68,7 @@ log.addHandler(NullHandler())
 #   cloudbridge.set_file_logger(__name__, '/tmp/cb.log')
 
 
-def set_stream_logger(name, level=logging.DEBUG, format_string=None):
+def set_stream_logger(name, level=TRACE, format_string=None):
     """A convenience method to set the global logger to stream."""
     global log
     if not format_string:

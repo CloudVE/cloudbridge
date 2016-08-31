@@ -107,7 +107,7 @@ class AWSKeyPairService(BaseKeyPairService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-        cb.log.debug("Listing AWS key pairs.")
+        cb.log.trace("Listing AWS key pairs.")
         key_pairs = [AWSKeyPair(self.provider, kp)
                      for kp in self.provider.ec2_conn.get_all_key_pairs()]
         return ClientPagedResultList(self.provider, key_pairs,
