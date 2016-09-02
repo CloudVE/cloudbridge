@@ -177,25 +177,31 @@ class GCERegion(BaseRegion):
 
 
 class GCEFirewallsDelegate(object):
-    NETWORK_URL_PREFIX = 'global/networks/'
     DEFAULT_NETWORK = 'default'
+    _NETWORK_URL_PREFIX = 'global/networks/'
   
     def __init__(self, provider):
         self._provider = provider
         self._list_response = None
 
     @staticmethod
-    def tagnet_id(tag, network):
+    def tag_network_id(tag, network):
+        """
+        Generate an ID for a (tag, network) pair.
+        """
         md5 = hashlib.md5()
         md5.update("{0}-{1}".format(tag, network).encode('ascii'))
         return md5.hexdigest()
 
     @staticmethod
     def network(firewall):
+        """
+        Extract the network name of a firewall.
+        """
         if 'network' not in firewall:
             return GCEFirewallsDelegate.DEFAULT_NETWORK
         match = re.search(
-                GCEFirewallsDelegate.NETWORK_URL_PREFIX + '([^/]*)$',
+                GCEFirewallsDelegate._NETWORK_URL_PREFIX + '([^/]*)$',
                 firewall['network'])
         if match and len(match.groups()) == 1:
             return match.group(1)
@@ -206,7 +212,10 @@ class GCEFirewallsDelegate(object):
         return self._provider
 
     @property
-    def tagnets(self):
+    def tag_networks(self):
+        """
+        List all (tag, network) pairs that are used in at least one firewall.
+        """
         out = set()
         for firewall in self.iter_firewalls():
             network = GCEFirewallsDelegate.network(firewall)
@@ -214,14 +223,21 @@ class GCEFirewallsDelegate(object):
                 out.add((firewall['targetTags'][0], network))
         return out
             
-    def get_tagnet_from_id(self, tagnet_id):
-        for tag, network in self.tagnets:
-            if GCEFirewallsDelegate.tagnet_id(tag, network) == tagnet_id:
+    def get_tag_network_from_id(self, tag_network_id):
+        """
+        Map an ID back to the (tag, network) pair.
+        """
+        for tag, network in self.tag_networks:
+            current_id = GCEFirewallsDelegate.tag_network_id(tag, network)
+            if current_id == tag_network_id:
                 return (tag, network)
         return (None, None)
 
-    def delete_tagnet_with_id(self, tagnet_id):
-        tag, network = self.get_tagnet_from_id(tagnet_id)
+    def delete_tag_network_with_id(self, tag_network_id):
+        """
+        Delete all firewalls in a given network with a specific target tag.
+        """
+        tag, network = self.get_tag_network_from_id(tag_network_id)
         if tag is None:
             return
         for firewall in self.iter_firewalls(tag, network):
@@ -230,6 +246,9 @@ class GCEFirewallsDelegate(object):
 
     def add_firewall(self, tag, ip_protocol, port, source_range, source_tag,
                      description, network):
+        """
+        Create a new firewall.
+        """
         if self.find_firewall(tag, ip_protocol, port, source_range,
                               source_tag, network) is not None:
             return True
@@ -248,7 +267,7 @@ class GCEFirewallsDelegate(object):
                 firewall_number += 1
         firewall = {
             'name': '%s-%s-rule-%d' % (network, tag, firewall_number),
-            'network': GCEFirewallsDelegate.NETWORK_URL_PREFIX + network,
+            'network': GCEFirewallsDelegate._NETWORK_URL_PREFIX + network,
             'allowed': [{'IPProtocol': str(ip_protocol)}],
             'targetTags': [tag]}
         if description is not None:
@@ -276,6 +295,9 @@ class GCEFirewallsDelegate(object):
 
     def find_firewall(self, tag, ip_protocol, port, source_range, source_tag,
                       network):
+        """
+        Find a firewall with give parameters.
+        """
         if source_range is None and source_tag is None:
             source_range = '0.0.0.0/0'
         for firewall in self.iter_firewalls(tag, network):
@@ -293,6 +315,9 @@ class GCEFirewallsDelegate(object):
         return None
 
     def get_firewall_info(self, firewall_id):
+        """
+        Extract firewall properties to into a dictionary for easy of use.
+        """
         info = {}
         for firewall in self.iter_firewalls():
             if firewall['id'] != firewall_id:
@@ -314,12 +339,19 @@ class GCEFirewallsDelegate(object):
         return info
 
     def delete_firewall_id(self, firewall_id):
+        """
+        Delete a firewall with a given ID.
+        """
         for firewall in self.iter_firewalls():
             if firewall['id'] == firewall_id:
                 self._delete_firewall(firewall)
         self._update_list_response()
 
     def iter_firewalls(self, tag=None, network=None):
+        """
+        Iterate through all firewalls. Can optionally iterate through firewalls
+        with a given tag and/or in a network.
+        """
         if self._list_response is None:
             self._update_list_response()
         if 'items' not in self._list_response:
@@ -339,6 +371,9 @@ class GCEFirewallsDelegate(object):
                 yield firewall
 
     def _delete_firewall(self, firewall):
+        """
+        Delete a given firewall.
+        """
         project_name = self._provider.project_name
         try:
             response = (self._provider.gce_compute
@@ -353,6 +388,9 @@ class GCEFirewallsDelegate(object):
             return False
 
     def _update_list_response(self):
+        """
+        Sync the local cache of all firewalls with the server.
+        """
         self._list_response = (
                 self._provider.gce_compute
                               .firewalls()
@@ -360,6 +398,9 @@ class GCEFirewallsDelegate(object):
                               .execute())
 
     def _check_list_in_dict(self, dictionary, field_name, value):
+        """
+        Verify that a given field in a dictionary is a singlton list [value].
+        """
         if field_name not in dictionary:
             return value is None
         if (value is None or
@@ -383,15 +424,30 @@ class GCESecurityGroup(BaseSecurityGroup):
 
     @property
     def id(self):
-        return GCEFirewallsDelegate.tagnet_id(self._security_group,
-                                              self.network)
+        """
+        Return the ID of this security group which is determined based on the
+        network and the target tag corresponding to this security group.
+        """
+        return GCEFirewallsDelegate.tag_network_id(self._security_group,
+                                                   self.network)
 
     @property
     def name(self):
+        """
+        Return the name of the security group which is the same as the
+        corresponding tag name.
+        """
         return self._security_group
 
     @property
     def description(self):
+        """
+        The description of the security group is even explicitly given when the
+        group is created or is determined from a firewall in the group.
+
+        If the firewalls are created using this API, they all have the same
+        description.
+        """
         if self._description is not None:
             return self._description
         for firewall in self._delegate.iter_firewalls(self._security_group,
@@ -463,6 +519,9 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def parent(self):
+        """
+        Return the security group to which this rule belongs.
+        """
         info = self._delegate.get_firewall_info(self._rule)
         if info is None or 'target_tag' not in info or info['network'] is None:
             return None
@@ -512,6 +571,9 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def cidr_ip(self):
+        """
+        Return the IP of machines from which this rule allows traffic.
+        """
         info = self._delegate.get_firewall_info(self._rule)
         if info is None or 'source_range' not in info:
             return None
@@ -519,6 +581,9 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def group(self):
+        """
+        Return the security group from which this rule allows traffic.
+        """
         info = self._delegate.get_firewall_info(self._rule)
         if info is None or 'source_tag' not in info or info['network'] is None:
             return None

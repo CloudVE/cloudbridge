@@ -26,8 +26,6 @@ firewall format and only creates firewalls with one rule and only can find or
 list firewalls with one rule. This should be OK as long as all firewalls are
 created through the CloudBridge API.
 
-**Note**: The current implementation adds firewalls to the ``default`` network.
-
 .. _`Google Cloud Platform`: https://cloud.google.com/
 .. _`Google Compute Engine`: https://cloud.google.com/compute/docs
 .. _`Google Cloud Storage`: https://cloud.google.com/storage/docs

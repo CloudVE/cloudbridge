@@ -196,14 +196,14 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         self._delegate = GCEFirewallsDelegate(provider)
 
     def get(self, group_id):
-        tag, network = self._delegate.get_tagnet_from_id(group_id)
+        tag, network = self._delegate.get_tag_network_from_id(group_id)
         if tag is None:
             return None
         return GCESecurityGroup(self._delegate, tag, network)
 
     def list(self, limit=None, marker=None):
         security_groups = [GCESecurityGroup(self._delegate, x, y)
-                           for x, y in self._delegate.tagnets]
+                           for x, y in self._delegate.tag_networks]
         return ClientPagedResultList(self.provider, security_groups,
                                      limit=limit, marker=marker)
 
@@ -217,13 +217,13 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         is returned.
         """
         out = []
-        for tag, network in self._delegate.tagnets:
+        for tag, network in self._delegate.tag_networks:
             if tag == name:
                 out.append(GCESecurityGroup(self._delegate, name, network))
         return out
 
     def delete(self, group_id):
-        return self._delegate.delete_tagnet_with_id(group_id)
+        return self._delegate.delete_tag_network_with_id(group_id)
 
 
 class GCEInstanceTypesService(BaseInstanceTypesService):
