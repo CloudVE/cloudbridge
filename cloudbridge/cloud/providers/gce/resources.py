@@ -7,6 +7,7 @@ from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+import cloudbridge as cb
 
 import googleapiclient
 import re
@@ -235,7 +236,7 @@ class GCEMachineImage(BaseMachineImage):
         if match:
             project = match.group(1)
         else:
-            print("Project name is not found.")
+            cb.log.warning("Project name is not found.")
             return
         try:
             response = self._provider.gce_compute \
@@ -248,5 +249,6 @@ class GCEMachineImage(BaseMachineImage):
                 self._gce_image = response
         except googleapiclient.errors.HttpError as http_error:
             # image no longer exists
-            print("googleapiclient.errors.HttpError: {0}".format(http_error))
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
             self._gce_image['status'] = "unknown"

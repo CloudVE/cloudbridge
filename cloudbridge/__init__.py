@@ -19,3 +19,6 @@ def init_logging():
     """
     logging.basicConfig(stream=sys.stdout)
     logging.getLogger(__name__).setLevel(logging.DEBUG)
+
+log = logging.getLogger('cloudbridge')
+log.addHandler(logging.StreamHandler())

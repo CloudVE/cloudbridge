@@ -7,6 +7,8 @@ from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.providers.gce import helpers
+import cloudbridge as cb
+
 from collections import namedtuple
 import hashlib
 import googleapiclient
@@ -17,7 +19,6 @@ from .resources import GCEMachineImage
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 from .resources import GCERegion
-
 
 class GCESecurityService(BaseSecurityService):
 
@@ -289,7 +290,7 @@ class GCEImageService(BaseImageService):
                                         .list(project=project) \
                                         .execute()
             except googleapiclient.errors.HttpError as http_error:
-                print("googleapiclient.errors.HttpError: {0}".format(
+                cb.log.warning("googleapiclient.errors.HttpError: {0}".format(
                     http_error))
             if 'items' in response:
                 self._public_images.extend(
@@ -312,14 +313,15 @@ class GCEImageService(BaseImageService):
         except TypeError as type_error:
             # The API will throw an TypeError, if parameter `image` does not
             # match the pattern "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?".
-            print("TypeError: {0}".format(type_error))
+            cb.log.warning("TypeError: {0}".format(type_error))
         except googleapiclient.errors.HttpError as http_error:
             # If the image is not found in project-specific private images,
             # look for this image in public images.
             for public_image in self._public_images:
                 if public_image.name == image_name:
                     return public_image
-            print("googleapiclient.errors.HttpError: {0}".format(http_error))
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
         return None
 
     def find(self, name, limit=None, marker=None):
@@ -341,7 +343,7 @@ class GCEImageService(BaseImageService):
                     images = [GCEMachineImage(self.provider, image) for image
                               in response['items']]
             except googleapiclient.errors.HttpError as http_error:
-                print(
+                cb.log.warning(
                     "googleapiclient.errors.HttpError: {0}".format(http_error))
         images.extend(self._public_images)
         images = [image for image in images if image.name == filters['name']]
@@ -366,7 +368,7 @@ class GCEImageService(BaseImageService):
                     images = [GCEMachineImage(self.provider, image) for image
                               in response['items']]
             except googleapiclient.errors.HttpError as http_error:
-                print(
+                cb.log.warning(
                     "googleapiclient.errors.HttpError: {0}".format(http_error))
         images.extend(self._public_images)
         return ClientPagedResultList(self.provider, images,
