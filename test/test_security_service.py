@@ -99,7 +99,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         sg = self.provider.security.security_groups.create(
             name=name, description=name)
         #Empty security groups don't exist in GCE. Let's add a dummy rule.
-        sg.add_rule(ip_protocol='tcp')
+        sg.add_rule(ip_protocol='tcp', cidr_ip='0.0.0.0/0')
         with helpers.cleanup_action(
             lambda:
                 self.provider.security.security_groups.delete(group_id=sg.id)

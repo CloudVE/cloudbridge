@@ -429,7 +429,7 @@ class GCESecurityGroup(BaseSecurityGroup):
         network and the target tag corresponding to this security group.
         """
         return GCEFirewallsDelegate.tag_network_id(self._security_group,
-                                                   self.network)
+                                                   self._network)
 
     @property
     def name(self):
@@ -451,7 +451,7 @@ class GCESecurityGroup(BaseSecurityGroup):
         if self._description is not None:
             return self._description
         for firewall in self._delegate.iter_firewalls(self._security_group,
-                                                      self.network):
+                                                      self._network):
             if 'description' in firewall:
                 return firewall['description']
         return None
@@ -460,13 +460,9 @@ class GCESecurityGroup(BaseSecurityGroup):
     def rules(self):
         out = []
         for firewall in self._delegate.iter_firewalls(self._security_group,
-                                                      self.network):
+                                                      self._network):
             out.append(GCESecurityGroupRule(self._delegate, firewall['id']))
         return out
-
-    @property
-    def network(self):
-        return self._network
 
     @staticmethod
     def to_port_range(from_port, to_port):
@@ -483,7 +479,7 @@ class GCESecurityGroup(BaseSecurityGroup):
         src_tag = src_group.name if src_group is not None else None
         self._delegate.add_firewall(self._security_group, ip_protocol, port,
                                     cidr_ip, src_tag, self.description,
-                                    self.network)
+                                    self._network)
         return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
                              src_group)
 
@@ -493,7 +489,7 @@ class GCESecurityGroup(BaseSecurityGroup):
         src_tag = src_group.name if src_group is not None else None
         firewall_id = self._delegate.find_firewall(
                 self._security_group, ip_protocol, port, cidr_ip, src_tag,
-                self.network)
+                self._network)
         if firewall_id is None:
             return None
         return GCESecurityGroupRule(self._delegate, firewall_id)
