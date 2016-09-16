@@ -14,6 +14,7 @@ import hashlib
 import googleapiclient
 
 from retrying import retry
+import sys
 
 from .resources import GCEMachineImage
 from .resources import GCEInstanceType
@@ -301,7 +302,6 @@ class GCEImageService(BaseImageService):
         """
         Returns an Image given its name
         """
-        self._retrieve_public_images()
         try:
             image = self.provider.gce_compute \
                                   .images() \
@@ -317,6 +317,7 @@ class GCEImageService(BaseImageService):
         except googleapiclient.errors.HttpError as http_error:
             # If the image is not found in project-specific private images,
             # look for this image in public images.
+            self._retrieve_public_images()
             for public_image in self._public_images:
                 if public_image.name == image_name:
                     return public_image
@@ -328,24 +329,9 @@ class GCEImageService(BaseImageService):
         """
         Searches for an image by a given list of attributes
         """
-        self._retrieve_public_images()
         filters = {'name': name}
-        images = []
-        if (self.provider.project_name not in
-            GCEImageService._PUBLIC_IMAGE_PROJECTS):
-            try:
-                response = self.provider \
-                               .gce_compute \
-                               .images() \
-                               .list(project=self.provider.project_name) \
-                               .execute()
-                if 'items' in response:
-                    images = [GCEMachineImage(self.provider, image) for image
-                              in response['items']]
-            except googleapiclient.errors.HttpError as http_error:
-                cb.log.warning(
-                    "googleapiclient.errors.HttpError: {0}".format(http_error))
-        images.extend(self._public_images)
+        # Retrieve all available images by setting limit to sys.maxsize
+        images = self.list(limit=sys.maxsize, marker=marker)
         images = [image for image in images if image.name == filters['name']]
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)

@@ -210,7 +210,7 @@ class GCEMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        return self._gce_image['description']
+        return self._gce_image.get('description', '')
 
     def delete(self):
         """
