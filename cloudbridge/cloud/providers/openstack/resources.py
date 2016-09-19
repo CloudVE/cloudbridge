@@ -11,16 +11,20 @@ from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
+from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 import inspect
 import json
@@ -661,6 +665,10 @@ class OpenStackNetwork(BaseNetwork):
         return self._network.get('name', None)
 
     @property
+    def external(self):
+        return self._network.get('router:external', False)
+
+    @property
     def state(self):
         return OpenStackNetwork._NETWORK_STATE_MAP.get(
             self._network.get('status', None),
@@ -674,7 +682,7 @@ class OpenStackNetwork(BaseNetwork):
     def delete(self):
         if self.id in str(self._provider.neutron.list_networks()):
             self._provider.neutron.delete_network(self.id)
-        # Adhear to the interface docs
+        # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_networks()):
             return True
 
@@ -723,9 +731,104 @@ class OpenStackSubnet(BaseSubnet):
     def delete(self):
         if self.id in str(self._provider.neutron.list_subnets()):
             self._provider.neutron.delete_subnet(self.id)
-        # Adhear to the interface docs
+        # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_subnets()):
             return True
+
+
+class OpenStackFloatingIP(BaseFloatingIP):
+
+    def __init__(self, provider, floating_ip):
+        super(OpenStackFloatingIP, self).__init__(provider)
+        self._ip = floating_ip
+
+    @property
+    def id(self):
+        return self._ip.get('id', None)
+
+    @property
+    def public_ip(self):
+        return self._ip.get('floating_ip_address', None)
+
+    @property
+    def private_ip(self):
+        return self._ip.get('fixed_ip_address', None)
+
+    def in_use(self):
+        return True if self._ip.get('status', None) == 'ACTIVE' else False
+
+    def delete(self):
+        self._provider.neutron.delete_floatingip(self.id)
+        # Adhere to the interface docs
+        if self.id not in str(self._provider.neutron.list_floatingips()):
+            return True
+
+
+class OpenStackRouter(BaseRouter):
+
+    def __init__(self, provider, router):
+        super(OpenStackRouter, self).__init__(provider)
+        self._router = router
+
+    @property
+    def id(self):
+        return self._router.get('id', None)
+
+    @property
+    def name(self):
+        return self._router.get('name', None)
+
+    def refresh(self):
+        self._router = self._provider.neutron.show_router(self.id)['router']
+
+    @property
+    def state(self):
+        if self._router.get('external_gateway_info'):
+            return RouterState.ATTACHED
+        return RouterState.DETACHED
+
+    @property
+    def network_id(self):
+        if self.state == RouterState.ATTACHED:
+            return self._router.get('external_gateway_info', {}).get(
+                'network_id', None)
+        return None
+
+    def delete(self):
+        self._provider.neutron.delete_router(self.id)
+        # Adhere to the interface docs
+        if self.id not in str(self._provider.neutron.list_routers()):
+            return True
+
+    def attach_network(self, network_id):
+        self._router = self._provider.neutron.add_gateway_router(
+            self.id, {'network_id': network_id}).get('router', self._router)
+        if self.network_id and self.network_id == network_id:
+            return True
+        return False
+
+    def detach_network(self):
+        self._router = self._provider.neutron.remove_gateway_router(
+            self.id).get('router', self._router)
+        if not self.network_id:
+            return True
+        return False
+
+    def add_route(self, subnet_id):
+        router_interface = {'subnet_id': subnet_id}
+        ret = self._provider.neutron.add_interface_router(
+            self.id, router_interface)
+        if subnet_id in ret.get('subnet_ids', ""):
+            return True
+        return False
+
+    def remove_route(self, subnet_id):
+        router_interface = {'subnet_id': subnet_id}
+        ret = self._provider.neutron.remove_interface_router(
+            self.id, router_interface)
+        if subnet_id in ret.get('subnet_ids', ""):
+            return True
+        return False
 
 
 class OpenStackKeyPair(BaseKeyPair):
@@ -787,7 +890,17 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         :return: Rule object if successful or ``None``.
         """
         if src_group:
+            if not isinstance(src_group, SecurityGroup):
+                src_group = self._provider.security.security_groups.get(
+                    src_group)
             for protocol in ['udp', 'tcp']:
+                existing_rule = self.get_rule(ip_protocol=ip_protocol,
+                                              from_port=1,
+                                              to_port=65535,
+                                              src_group=src_group)
+                if existing_rule:
+                    return existing_rule
+
                 rule = self._provider.nova.security_group_rules.create(
                     parent_group_id=self._security_group.id,
                     ip_protocol=protocol,
@@ -800,6 +913,13 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
                 return OpenStackSecurityGroupRule(self._provider,
                                                   rule.to_dict(), self)
         else:
+            existing_rule = self.get_rule(ip_protocol=ip_protocol,
+                                          from_port=from_port,
+                                          to_port=to_port,
+                                          cidr_ip=cidr_ip)
+            if existing_rule:
+                return existing_rule
+
             rule = self._provider.nova.security_group_rules.create(
                 parent_group_id=self._security_group.id,
                 ip_protocol=ip_protocol,

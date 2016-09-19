@@ -2,6 +2,7 @@
 Specifications for services available through a provider
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 
 
@@ -489,7 +490,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         :param network_id: The ID of the network to retrieve.
 
         :rtype: ``object`` of :class:`.Network`
-        return: a Network object
+        :return: a Network object
         """
         pass
 
@@ -551,6 +552,57 @@ class NetworkService(PageableObjectMixin, CloudService):
 
         :rtype: :class:`.SubnetService`
         :return: a SubnetService object
+        """
+        pass
+
+    @abstractmethod
+    def floating_ips(self, network_id=None):
+        """
+        List floating (i.e., static) IP addresses.
+
+        :type network_id: ``str``
+        :param network_id: The ID of the network by which to filter the IPs.
+
+        :rtype: ``list`` of :class:`FloatingIP`
+        :return: list of floating IP objects
+        """
+        pass
+
+    @abstractmethod
+    def create_floating_ip(self):
+        """
+        Allocate a new floating (i.e., static) IP address.
+
+        :type network_id: ``str``
+        :param network_id: The ID of the network with which to associate the
+                           new IP address.
+
+        :rtype: :class:`FloatingIP`
+        :return: floating IP object
+        """
+        pass
+
+    @abstractmethod
+    def routers(self):
+        """
+        Get a list of available routers.
+
+        :rtype: ``list`` of :class: `Router`
+        :return: list of routers
+        """
+        pass
+
+    @abstractmethod
+    def create_router(self, name=None):
+        """
+        Create a new router/gateway.
+
+        :type name: ``str``
+        :param name: An optional router name. The name will be set if the
+                     provider supports it.
+
+        :rtype: :class:`Router`
+        :return: a newly created router object
         """
         pass
 
@@ -695,6 +747,9 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
         """
         Create a new bucket.
 
+        If a bucket with the specified name already exists, return a reference
+        to that bucket.
+
         Example:
 
         .. code-block:: python
@@ -818,13 +873,13 @@ class KeyPairService(PageableObjectMixin, CloudService):
     @abstractmethod
     def create(self, name):
         """
-        Create a new keypair or return an existing one by the same name.
+        Create a new key pair or raise an exception if one already exists.
 
         :type name: str
         :param name: The name of the key pair to be created.
 
         :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A keypair instance
+        :return:  A keypair instance or ``None``.
         """
         pass
 
@@ -880,7 +935,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, description):
+    def create(self, name, description, network_id=None):
         """
         Create a new SecurityGroup.
 
@@ -889,6 +944,11 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
 
         :type description: str
         :param description: The description of the new security group.
+
+        :type  network_id: ``str``
+        :param network_id: An optional network ID under which to create the
+                           security group that may be supported by some
+                           providers.
 
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.
@@ -905,7 +965,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
 
         :rtype: list of :class:`SecurityGroup`
         :return: A list of SecurityGroup objects or an empty list if none
-        found.
+                 found.
         """
         pass
 

@@ -7,7 +7,8 @@ for CloudBridge.
 1. We start off by creating a new folder for the provider within the
 ``cloudbridge/cloud/providers`` folder. In this case: ``gce``. Further, install
 the native cloud provider Python library, here
-``pip install google-api-python-client``.
+``pip install google-api-python-client==1.4.2`` and a couple of its requirements
+``oauth2client==1.5.2`` and ``pycrypto==2.6.1``.
 
 2. Add a ``provider.py`` file. This file will contain the main implementation
 of the cloud provider and will be the entry point that CloudBridge uses for all

@@ -1,14 +1,13 @@
 """
 Services implemented by the AWS provider.
 """
+import time
 import string
 
 from boto.ec2.blockdevicemapping import BlockDeviceMapping
 from boto.ec2.blockdevicemapping import BlockDeviceType
 from boto.exception import EC2ResponseError
-import requests
 
-from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService
@@ -25,9 +24,9 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources \
     import InvalidConfigurationException
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 # from cloudbridge.cloud.interfaces.resources import Network
@@ -36,13 +35,18 @@ from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
 
+import requests
+
 from .resources import AWSBucket
+from .resources import AWSFloatingIP
 from .resources import AWSInstance
 from .resources import AWSInstanceType
 from .resources import AWSKeyPair
+from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
 from .resources import AWSNetwork
 from .resources import AWSRegion
+from .resources import AWSRouter
 from .resources import AWSSecurityGroup
 from .resources import AWSSnapshot
 from .resources import AWSSubnet
@@ -122,7 +126,7 @@ class AWSKeyPairService(BaseKeyPairService):
 
     def create(self, name):
         """
-        Create a new key pair or return an existing one by the same name.
+        Create a new key pair or raise an exception if one already exists.
 
         :type name: str
         :param name: The name of the key pair to be created.
@@ -130,11 +134,10 @@ class AWSKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
-        kp = self.get(name)
-        if kp:
-            return kp
         kp = self.provider.ec2_conn.create_key_pair(name)
-        return AWSKeyPair(self.provider, kp)
+        if kp:
+            return AWSKeyPair(self.provider, kp)
+        return None
 
 
 class AWSSecurityGroupService(BaseSecurityGroupService):
@@ -166,7 +169,7 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         return ClientPagedResultList(self.provider, sgs,
                                      limit=limit, marker=marker)
 
-    def create(self, name, description):
+    def create(self, name, description, network_id=None):
         """
         Create a new SecurityGroup.
 
@@ -176,10 +179,15 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         :type description: str
         :param description: The description of the new security group.
 
+        :type  network_id: ``str``
+        :param network_id: The ID of the VPC to create the security group in,
+                           if any.
+
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.
         """
-        sg = self.provider.ec2_conn.create_security_group(name, description)
+        sg = self.provider.ec2_conn.create_security_group(name, description,
+                                                          network_id)
         if sg:
             return AWSSecurityGroup(self.provider, sg)
         return None
@@ -189,8 +197,9 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         Get all security groups associated with your account.
         """
         try:
+            flters = {'group-name': name}
             security_groups = self.provider.ec2_conn.get_all_security_groups(
-                groupnames=[name])
+                filters=flters)
         except EC2ResponseError:
             security_groups = []
         return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
@@ -462,6 +471,10 @@ class AWSInstanceService(BaseInstanceService):
                **kwargs):
         """
         Creates a new virtual machine instance.
+
+        If no VPC/subnet was specified (via ``launch_config`` parameter), this
+        method will search for a default VPC and attempt to launch an instance
+        into that VPC.
         """
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
@@ -470,29 +483,133 @@ class AWSInstanceService(BaseInstanceService):
         key_pair_name = key_pair.name if isinstance(
             key_pair,
             KeyPair) else key_pair
-        if security_groups:
-            if isinstance(security_groups, list) and \
-                    isinstance(security_groups[0], SecurityGroup):
-                security_groups_list = [sg.name for sg in security_groups]
-            else:
-                security_groups_list = security_groups
-        else:
-            security_groups_list = None
         if launch_config:
             bdm = self._process_block_device_mappings(launch_config, zone_id)
-            net_id = self._get_net_id(launch_config)
+            subnet_id = self._get_net_id(launch_config)
         else:
-            bdm = net_id = None
+            bdm = subnet_id = None
+        subnet_id, zone_id, security_group_ids = \
+            self._resolve_launch_options(subnet_id, zone_id, security_groups)
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
             min_count=1, max_count=1, placement=zone_id,
-            key_name=key_pair_name, security_groups=security_groups_list,
-            user_data=user_data, block_device_map=bdm, subnet_id=net_id)
+            key_name=key_pair_name, security_group_ids=security_group_ids,
+            user_data=user_data, block_device_map=bdm, subnet_id=subnet_id)
+        instance = None
         if reservation:
+            time.sleep(2)  # The instance does not always get created in time
             instance = AWSInstance(self.provider, reservation.instances[0])
             instance.name = name
         return instance
+
+    def _resolve_launch_options(self, subnet_id, zone_id, security_groups):
+        """
+        Resolve inter-dependent launch options.
+
+        With launching into VPC only, try to figure out a default
+        VPC to launch into, making placement decisions along the way that
+        are implied from the zone a subnet exists in.
+        """
+        def _deduce_subnet_and_zone(vpc, zone_id=None):
+            """
+            Figure out subnet ID from a VPC (and zone_id, if not supplied).
+            """
+            if zone_id:
+                # A placement zone was specified. Choose the default
+                # subnet in that zone.
+                for sn in vpc.subnets():
+                    if sn._subnet.availability_zone == zone_id:
+                        subnet_id = sn.id
+            else:
+                # No zone was requested, so just pick one subnet
+                sn = vpc.subnets()[0]
+                subnet_id = sn.id
+                zone_id = sn._subnet.availability_zone
+            return subnet_id, zone_id
+
+        vpc_id = None
+        sg_ids = []
+        if subnet_id:
+            # Subnet was supplied - get the VPC so named SGs can be resolved
+            subnet = self.provider.vpc_conn.get_all_subnets(subnet_id)[0]
+            vpc_id = subnet.vpc_id
+            # zone_id must match zone where the requested subnet lives
+            if zone_id and subnet.availability_zone != zone_id:
+                raise ValueError("Requested placement zone ({0}) must match "
+                                 "specified subnet's availability zone ({1})."
+                                 .format(zone_id, subnet.availability_zone))
+        if security_groups:
+            # Try to get a subnet via specified SGs. This will work only if
+            # the specified SGs are within a VPC (which is a prerequisite to
+            # launch into VPC anyhow).
+            _sg_ids = self._process_security_groups(security_groups, vpc_id)
+            # Must iterate through all the SGs here because a SG name may
+            # exist in a VPC or EC2-Classic so opt for the VPC SG. This
+            # applies in the case no subnet was specified.
+            if not subnet_id:
+                for sg_id in _sg_ids:
+                    sg = self.provider.security.security_groups.get(sg_id)
+                    if sg._security_group.vpc_id:
+                        if sg_ids and sg_id not in sg_ids:
+                            raise ValueError("Multiple matches for VPC "
+                                             "security group(s) {0}."
+                                             .format(security_groups))
+                        else:
+                            sg_ids.append(sg_id)
+                        vpc = self.provider.network.get(
+                            sg._security_group.vpc_id)
+                        subnet_id, zone_id = _deduce_subnet_and_zone(
+                            vpc, zone_id)
+            else:
+                sg_ids = _sg_ids
+            if not subnet_id:
+                raise AttributeError("Supplied security group(s) ({0}) must "
+                                     "be associated with a VPC."
+                                     .format(security_groups))
+        if not subnet_id and not security_groups:
+            # No VPC/subnet was supplied, search for the default VPC.
+            for vpc in self.provider.network.list():
+                if vpc._vpc.is_default:
+                    vpc_id = vpc.id
+                    subnet_id, zone_id = _deduce_subnet_and_zone(vpc, zone_id)
+            if not vpc_id:
+                raise AttributeError("No default VPC exists. Supply a "
+                                     "subnet to launch into (via "
+                                     "launch_config param).")
+        return subnet_id, zone_id, sg_ids
+
+    def _process_security_groups(self, security_groups, vpc_id=None):
+        """
+        Process security groups to create a list of SG ID's for launching.
+
+        :type security_groups: A ``list`` of ``SecurityGroup`` objects or a
+                               list of ``str`` names
+        :param security_groups: A list of ``SecurityGroup`` objects or a list
+                                of ``SecurityGroup`` names, which should be
+                                assigned to this instance.
+
+        :type vpc_id: ``str``
+        :param vpc_id: A VPC ID within which the supplied security groups exist
+
+        :rtype: ``list``
+        :return: A list of security group IDs.
+        """
+        if isinstance(security_groups, list) and \
+                isinstance(security_groups[0], SecurityGroup):
+            sg_ids = [sg.id for sg in security_groups]
+        else:
+            # SG names were supplied, need to map them to SG IDs.
+            sg_ids = []
+            # If a VPC was specified, need to map to the SGs in the VPC.
+            flters = None
+            if vpc_id:
+                flters = {'vpc_id': vpc_id}
+            sgs = self.provider.ec2_conn.get_all_security_groups(
+                filters=flters)
+            sg_ids = [sg.id for sg in sgs if sg.name in security_groups]
+
+        return sg_ids
 
     def _process_block_device_mappings(self, launch_config, zone=None):
         """
@@ -551,7 +668,7 @@ class AWSInstanceService(BaseInstanceService):
                 else None)
 
     def create_launch_config(self):
-        return BaseLaunchConfig(self.provider)
+        return AWSLaunchConfig(self.provider)
 
     def get(self, instance_id):
         """
@@ -598,8 +715,8 @@ class AWSInstanceService(BaseInstanceService):
                                      reservations.next_token,
                                      False, data=instances)
 
-AWS_INSTANCE_DATA_DEFAULT_URL = "https://swift.rc.nectar.org.au:8888/v1/" \
-                                "AUTH_377/cloud-bridge/aws/instance_data.json"
+AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
+                                "aws_instance_data.json"
 
 
 class AWSInstanceTypesService(BaseInstanceTypesService):
@@ -672,12 +789,36 @@ class AWSNetworkService(BaseNetworkService):
         network = self.provider.vpc_conn.create_vpc(cidr_block=default_cidr)
         cb_network = AWSNetwork(self.provider, network)
         if name:
+            time.sleep(2)  # The net does not always get created fast enough
             cb_network.name = name
         return cb_network
 
     @property
     def subnets(self):
         return self._subnet_svc
+
+    def floating_ips(self, network_id=None):
+        fltrs = None
+        if network_id:
+            fltrs = {'network-interface-id': network_id}
+        al = self.provider.vpc_conn.get_all_addresses(filters=fltrs)
+        return [AWSFloatingIP(self.provider, a) for a in al]
+
+    def create_floating_ip(self):
+        ip = self.provider.ec2_conn.allocate_address(domain='vpc')
+        return AWSFloatingIP(self.provider, ip)
+
+    def routers(self):
+        routers = self.provider.vpc_conn.get_all_internet_gateways()
+        return [AWSRouter(self.provider, r) for r in routers]
+
+    def create_router(self, name=None):
+        router = self.provider.vpc_conn.create_internet_gateway()
+        cb_router = AWSRouter(self.provider, router)
+        if name:
+            time.sleep(2)  # Some time is required
+            cb_router.name = name
+        return cb_router
 
 
 class AWSSubnetService(BaseSubnetService):
@@ -705,6 +846,7 @@ class AWSSubnetService(BaseSubnetService):
         subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block)
         cb_subnet = AWSSubnet(self.provider, subnet)
         if name:
+            time.sleep(2)  # The subnet does not always get created in time
             cb_subnet.name = name
         return cb_subnet
 
