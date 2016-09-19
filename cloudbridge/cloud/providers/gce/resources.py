@@ -192,7 +192,7 @@ class GCEMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        return self._gce_image['id']
+        return self._gce_image['name']
 
     @property
     def name(self):

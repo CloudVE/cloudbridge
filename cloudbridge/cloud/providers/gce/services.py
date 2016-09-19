@@ -298,15 +298,15 @@ class GCEImageService(BaseImageService):
                     [GCEMachineImage(self.provider, image) for image
                      in response['items']])
 
-    def get(self, image_name):
+    def get(self, image_id):
         """
-        Returns an Image given its name
+        Returns an Image given its id
         """
         try:
             image = self.provider.gce_compute \
                                   .images() \
                                   .get(project=self.provider.project_name,
-                                       image=image_name) \
+                                       image=image_id) \
                                   .execute()
             if image:
                 return GCEMachineImage(self.provider, image)
@@ -319,7 +319,7 @@ class GCEImageService(BaseImageService):
             # look for this image in public images.
             self._retrieve_public_images()
             for public_image in self._public_images:
-                if public_image.name == image_name:
+                if public_image.id == image_id:
                     return public_image
             cb.log.warning(
                 "googleapiclient.errors.HttpError: {0}".format(http_error))
@@ -331,8 +331,7 @@ class GCEImageService(BaseImageService):
         """
         filters = {'name': name}
         # Retrieve all available images by setting limit to sys.maxsize
-        images = self.list(limit=sys.maxsize, marker=marker)
-        images = [image for image in images if image.name == filters['name']]
+        images = [image for image in self if image.name == filters['name']]
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
 
