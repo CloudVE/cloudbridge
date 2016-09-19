@@ -1,24 +1,28 @@
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.providers.gce import helpers
+import cloudbridge as cb
+
 from collections import namedtuple
 import hashlib
 import googleapiclient
 
 from retrying import retry
+import sys
 
+from .resources import GCEMachineImage
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 from .resources import GCERegion
 from .resources import GCEFirewallsDelegate
 from .resources import GCESecurityGroup
 from .resources import GCESecurityGroupRule
-
 
 class GCESecurityService(BaseSecurityService):
 
@@ -301,16 +305,106 @@ class GCERegionService(BaseRegionService):
         return self.get(self.provider.region_name)
 
 
+class GCEImageService(BaseImageService):
+
+    def __init__(self, provider):
+        super(GCEImageService, self).__init__(provider)
+        self._public_images = None
+
+    _PUBLIC_IMAGE_PROJECTS = ['centos-cloud', 'coreos-cloud', 'debian-cloud',
+                             'opensuse-cloud', 'ubuntu-os-cloud']
+
+    def _retrieve_public_images(self):
+        if self._public_images is not None:
+            return
+        self._public_images = []
+        for project in GCEImageService._PUBLIC_IMAGE_PROJECTS:
+            try:
+                response = self.provider.gce_compute \
+                                        .images() \
+                                        .list(project=project) \
+                                        .execute()
+            except googleapiclient.errors.HttpError as http_error:
+                cb.log.warning("googleapiclient.errors.HttpError: {0}".format(
+                    http_error))
+            if 'items' in response:
+                self._public_images.extend(
+                    [GCEMachineImage(self.provider, image) for image
+                     in response['items']])
+
+    def get(self, image_id):
+        """
+        Returns an Image given its id
+        """
+        try:
+            image = self.provider.gce_compute \
+                                  .images() \
+                                  .get(project=self.provider.project_name,
+                                       image=image_id) \
+                                  .execute()
+            if image:
+                return GCEMachineImage(self.provider, image)
+        except TypeError as type_error:
+            # The API will throw an TypeError, if parameter `image` does not
+            # match the pattern "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?".
+            cb.log.warning("TypeError: {0}".format(type_error))
+        except googleapiclient.errors.HttpError as http_error:
+            # If the image is not found in project-specific private images,
+            # look for this image in public images.
+            self._retrieve_public_images()
+            for public_image in self._public_images:
+                if public_image.id == image_id:
+                    return public_image
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
+        return None
+
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for an image by a given list of attributes
+        """
+        filters = {'name': name}
+        # Retrieve all available images by setting limit to sys.maxsize
+        images = [image for image in self if image.name == filters['name']]
+        return ClientPagedResultList(self.provider, images,
+                                     limit=limit, marker=marker)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all images.
+        """
+        self._retrieve_public_images()
+        images = []
+        if (self.provider.project_name not in
+            GCEImageService._PUBLIC_IMAGE_PROJECTS):
+            try:
+                response = self.provider \
+                               .gce_compute \
+                               .images() \
+                               .list(project=self.provider.project_name) \
+                               .execute()
+                if 'items' in response:
+                    images = [GCEMachineImage(self.provider, image) for image
+                              in response['items']]
+            except googleapiclient.errors.HttpError as http_error:
+                cb.log.warning(
+                    "googleapiclient.errors.HttpError: {0}".format(http_error))
+        images.extend(self._public_images)
+        return ClientPagedResultList(self.provider, images,
+                                     limit=limit, marker=marker)
+
+
 class GCEComputeService(BaseComputeService):
     # TODO: implement GCEComputeService
     def __init__(self, provider):
         super(GCEComputeService, self).__init__(provider)
         self._instance_type_svc = GCEInstanceTypesService(self.provider)
         self._region_svc = GCERegionService(self.provider)
+        self._images_svc = GCEImageService(self.provider)
 
     @property
     def images(self):
-        raise NotImplementedError("To be implemented")
+        return self._images_svc
 
     @property
     def instance_types(self):
