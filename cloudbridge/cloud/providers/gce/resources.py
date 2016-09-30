@@ -8,6 +8,7 @@ from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
+from cloudbridge.cloud.interfaces.resources import MachineImageState
 
 # Older versions of Python do not have a built-in set data-structure.
 try:
