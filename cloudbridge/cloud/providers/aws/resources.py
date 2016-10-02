@@ -27,6 +27,7 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+from cloudbridge.cloud.interfaces.services import VolumeService
 from datetime import datetime
 import hashlib
 import inspect
@@ -535,7 +536,10 @@ class AWSSnapshot(BaseSnapshot):
 
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        return self._snapshot.tags.get('Name')
+        for tag in self._snapshot.tags or list():
+            if tag.get('Key') == 'Name':
+                return tag.get('Value')
+        return None
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -543,15 +547,19 @@ class AWSSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        self._snapshot.add_tag('Name', value)
+        self._snapshot.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def description(self):
-        return self._snapshot.tags.get('Description')
+        for tag in self._snapshot.tags or list():
+            if tag.get('Key') == 'Description':
+                return tag.get('Value')
+        return None
 
     @description.setter
     def description(self, value):
-        self._snapshot.add_tag('Description', value)
+        self._snapshot.create_tags(Tags=[{
+            'Key': 'Description', 'Value': value}])
 
     @property
     def size(self):
@@ -568,7 +576,7 @@ class AWSSnapshot(BaseSnapshot):
     @property
     def state(self):
         return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
-            self._snapshot.status, SnapshotState.UNKNOWN)
+            self._snapshot.state, SnapshotState.UNKNOWN)
 
     def refresh(self):
         """
@@ -576,7 +584,7 @@ class AWSSnapshot(BaseSnapshot):
         for its latest state.
         """
         try:
-            self._snapshot.update(validate=True)
+            self._snapshot.reload()
         except (EC2ResponseError, ValueError):
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -592,9 +600,12 @@ class AWSSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        ec2_vol = self._snapshot.create_volume(placement, size, volume_type,
-                                               iops)
-        cb_vol = AWSVolume(self._provider, ec2_vol)
+        cb_vol = VolumeService(self._provider).create(
+            name=self.name,
+            size=size,
+            zone=placement,
+            iops=iops,
+            snapshot=self._snapshot)
         cb_vol.name = "Created from {0} ({1})".format(self.id, self.name)
         return cb_vol
 

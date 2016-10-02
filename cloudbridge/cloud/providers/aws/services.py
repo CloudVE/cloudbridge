@@ -271,22 +271,20 @@ class AWSVolumeService(BaseVolumeService):
         """Searches for a volume by name"""
         return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
 
-    def create(self, name, size, zone, snapshot=None, description=None):
+    def create(self, name, size, zone,
+               snapshot=None, iops=None, description=None):
         """Creates a volume"""
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, AWSSnapshot) and snapshot else snapshot
         res = self.iface.create('create_volume',
                                 Size=size,
+                                Iops=iops,
                                 AvailabilityZone=zone_id,
                                 SnapshotId=snapshot_id)
-        res.create_tags(Tags=[{
-            'Key': 'Name',
-            'Value': name
-        }, {
-            'Key': 'Description',
-            'Value': description
-        }])
+        res.name = name
+        if res.description:
+            res.description = description
         return res
 
     def delete(self, name):
@@ -298,54 +296,34 @@ class AWSSnapshotService(BaseSnapshotService):
 
     def __init__(self, provider):
         super(AWSSnapshotService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'snapshots', AWSSnapshot)
 
-    def get(self, snapshot_id):
-        """
-        Returns a snapshot given its id.
-        """
-        try:
-            snaps = self.provider.ec2_conn.get_all_snapshots(
-                snapshot_ids=[snapshot_id])
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidSnapshot.NotFound':
-                return None
-            raise ec2e
-        return AWSSnapshot(self.provider, snaps[0]) if snaps else None
-
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a snapshot by a given list of attributes.
-        """
-        filtr = {'tag-value': name}
-        snaps = [AWSSnapshot(self.provider, snap) for snap in
-                 self.provider.ec2_conn.get_all_snapshots(filters=filtr)]
-        return ClientPagedResultList(self.provider, snaps,
-                                     limit=limit, marker=marker)
+    def get(self, vid):
+        """Returns a snapshot given its ID"""
+        return self.iface.get(vid, 'snapshot-id')
 
     def list(self, limit=None, marker=None):
-        """
-        List all snapshots.
-        """
-        snaps = [AWSSnapshot(self.provider, snap)
-                 for snap in self.provider.ec2_conn.get_all_snapshots(
-                 owner='self')]
-        return ClientPagedResultList(self.provider, snaps,
-                                     limit=limit, marker=marker)
+        """List all snapshots associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        """Searches for a snapshot by name"""
+        return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
 
     def create(self, name, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
+        """Creates a snapshot"""
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
+        res = self.iface.create('create_snapshot',
+                                VolumeId=volume_id)
+        res.name = name
+        if res.description:
+            res.description = description
+        return res
 
-        ec2_snap = self.provider.ec2_conn.create_snapshot(
-            volume_id,
-            description=description)
-        cb_snap = AWSSnapshot(self.provider, ec2_snap)
-        cb_snap.name = name
-        if description:
-            cb_snap.description = description
-        return cb_snap
+    def delete(self, name):
+        """Deletes a snapshot by name"""
+        return self.iface.delete(name, 'tag:Name')
 
 
 class AWSObjectStoreService(BaseObjectStoreService):
