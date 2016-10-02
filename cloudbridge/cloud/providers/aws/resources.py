@@ -401,7 +401,10 @@ class AWSVolume(BaseVolume):
 
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        return self._volume.tags.get('Name')
+        for tag in self._volume.tags or list():
+            if tag.get('Key') == 'Name':
+                return tag.get('Value')
+        return None
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -409,15 +412,18 @@ class AWSVolume(BaseVolume):
         """
         Set the volume name.
         """
-        self._volume.add_tag('Name', value)
+        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def description(self):
-        return self._volume.tags.get('Description')
+        for tag in self._volume.tags or list():
+            if tag.get('Key') == 'Description':
+                return tag.get('Value')
+        return None
 
     @description.setter
     def description(self, value):
-        self._volume.add_tag('Description', value)
+        self._volume.create_tags(Tags=[{'Key': 'Description', 'Value': value}])
 
     @property
     def size(self):
@@ -429,7 +435,7 @@ class AWSVolume(BaseVolume):
 
     @property
     def zone_id(self):
-        return self._volume.zone
+        return self._volume.availability_zone
 
     @property
     def source(self):
@@ -440,12 +446,12 @@ class AWSVolume(BaseVolume):
 
     @property
     def attachments(self):
-        if self._volume.attach_data and self._volume.attach_data.id:
-            return BaseAttachmentInfo(self,
-                                      self._volume.attach_data.instance_id,
-                                      self._volume.attach_data.device)
-        else:
-            return None
+        return [
+            BaseAttachmentInfo(self,
+                               x.InstanceId,
+                               x.Device)
+            for x in self._volume.attachments
+        ] if self._volume.attachments else None
 
     def attach(self, instance, device):
         """
@@ -454,13 +460,20 @@ class AWSVolume(BaseVolume):
         instance_id = instance.id if isinstance(
             instance,
             AWSInstance) else instance
-        self._volume.attach(instance_id, device)
+        self._volume.attach_to_instance(InstanceId=instance_id,
+                                        Device=device)
 
-    def detach(self, force=False):
+    def detach(self, instance, device, force=False):
         """
         Detach this volume from an instance.
         """
-        self._volume.detach()
+        instance_id = instance.id if isinstance(
+            instance,
+            AWSInstance) else instance
+        self._volume.detach_from_instance(
+            InstanceId=instance_id,
+            Device=device,
+            Force=force)
 
     def create_snapshot(self, name, description=None):
         """
@@ -469,7 +482,7 @@ class AWSVolume(BaseVolume):
         snap = AWSSnapshot(
             self._provider,
             self._volume.create_snapshot(
-                description=description))
+                Description=description))
         snap.name = name
         return snap
 
@@ -482,7 +495,7 @@ class AWSVolume(BaseVolume):
     @property
     def state(self):
         return AWSVolume.VOLUME_STATE_MAP.get(
-            self._volume.status, VolumeState.UNKNOWN)
+            self._volume.state, VolumeState.UNKNOWN)
 
     def refresh(self):
         """
@@ -490,7 +503,7 @@ class AWSVolume(BaseVolume):
         for its latest state.
         """
         try:
-            self._volume.update(validate=True)
+            self._volume.reload()
         except (EC2ResponseError, ValueError):
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -609,9 +622,16 @@ class AWSSecurityGroup(BaseSecurityGroup):
         super(AWSSecurityGroup, self).__init__(provider, security_group)
 
     @property
+    def name(self):
+        """
+        Return the name of this security group.
+        """
+        return self._security_group.group_name
+
+    @property
     def rules(self):
         return [AWSSecurityGroupRule(self._provider, r, self)
-                for r in self._security_group.rules]
+                for r in self._security_group.ip_permissions]
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
@@ -646,14 +666,14 @@ class AWSSecurityGroup(BaseSecurityGroup):
                 src_group = self._provider.security.security_groups.get(
                     src_group)
 
-            if self._security_group.authorize(
-                    ip_protocol=ip_protocol,
-                    from_port=from_port,
-                    to_port=to_port,
-                    cidr_ip=cidr_ip,
+            if self._security_group.authorize_ingress(
+                    IpProtocol=ip_protocol,
+                    FromPort=from_port,
+                    ToPort=to_port,
+                    CidrIp=cidr_ip,
                     # pylint:disable=protected-access
-                    src_group=src_group._security_group if src_group
-                    else None):
+                    SourceSecurityGroupName=src_group._security_group.group_name
+                    if src_group else None):
                 return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
                                      src_group)
         except EC2ResponseError as ec2e:
@@ -666,13 +686,15 @@ class AWSSecurityGroup(BaseSecurityGroup):
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        for rule in self._security_group.rules:
-            if (rule.ip_protocol == ip_protocol and
-               rule.from_port == from_port and
-               rule.to_port == to_port and
-               rule.grants[0].cidr_ip == cidr_ip) or \
-               (rule.grants[0].name == src_group.name if src_group and
-               hasattr(rule.grants[0], 'name') else False):
+        for rule in self._security_group.ip_permissions:
+            if (rule['IpProtocol'] == ip_protocol and
+                    rule['IpProtocol'] == from_port and
+                    rule['FromPort'] == to_port and
+                    rule['IpRanges'][0]['CidrIp'] == cidr_ip) or \
+                    (rule['UserIdGroupPairs'][0]['GroupName'] == src_group.name
+                     if src_group and
+                     hasattr(rule['UserIdGroupPairs'][0], 'GroupName')
+                     else False):
                 return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 
@@ -697,58 +719,56 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         md5 = hashlib.md5()
         md5.update("{0}-{1}-{2}-{3}".format(
             self.ip_protocol, self.from_port, self.to_port, self.cidr_ip)
-            .encode('ascii'))
+                   .encode('ascii'))
         return md5.hexdigest()
 
     @property
     def ip_protocol(self):
-        return self._rule.ip_protocol
+        return self._rule.get('IpProtocol')
 
     @property
     def from_port(self):
-        if str(self._rule.from_port).isdigit():
-            return int(self._rule.from_port)
-        return 0
+        return self._rule.get('FromPort', 0)
 
     @property
     def to_port(self):
-        if str(self._rule.to_port).isdigit():
-            return int(self._rule.to_port)
-        return 0
+        return self._rule.get('ToPort', 0)
 
     @property
     def cidr_ip(self):
-        if len(self._rule.grants) > 0:
-            return self._rule.grants[0].cidr_ip
+        if len(self._rule.IpRanges) > 0:
+            return self._rule['IpRanges'][0].get('CidrIp')
         return None
 
     @property
     def group(self):
-        if len(self._rule.grants) > 0:
-            if self._rule.grants[0].name:
-                cg = self._provider.ec2_conn.get_all_security_groups(
-                    groupnames=[self._rule.grants[0].name])[0]
-                return AWSSecurityGroup(self._provider, cg)
+        if len(self._rule['UserIdGroupPairs']) > 0:
+            if self._rule['UserIdGroupPairs'][0]['GroupId']:
+                return AWSSecurityGroup(
+                    self._provider,
+                    self._provider.ec2_conn.SecurityGroup(
+                        self._rule['UserIdGroupPairs'][0]['GroupId']))
         return None
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
-        js['group'] = self.group.id if self.group else ''
-        js['parent'] = self.parent.id if self.parent else ''
-        return json.dumps(js, sort_keys=True)
+        attr = inspect.getmembers(self, lambda a: not inspect.isroutine(a))
+        _js = {k: v for(k, v) in attr if not k.startswith('_')}
+        _js['group'] = self.group.id if self.group else ''
+        _js['parent'] = self.parent.id if self.parent else ''
+        return json.dumps(_js, sort_keys=True)
 
     def delete(self):
         if self.group:
             # pylint:disable=protected-access
-            self.parent._security_group.revoke(
-                src_group=self.group._security_group)
+            self.parent._security_group.revoke_ingress(
+                SourceSecurityGroupName=self.group._security_group.group_name)
         else:
             # pylint:disable=protected-access
-            self.parent._security_group.revoke(self.ip_protocol,
-                                               self.from_port,
-                                               self.to_port,
-                                               self.cidr_ip)
+            self.parent._security_group.revoke_ingress(
+                IpProtocol=self.ip_protocol,
+                FromPort=self.from_port,
+                ToPort=self.to_port,
+                CidrIp=self.cidr_ip)
 
 
 class AWSBucketObject(BaseBucketObject):

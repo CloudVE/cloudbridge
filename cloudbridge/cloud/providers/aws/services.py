@@ -4,7 +4,7 @@ import string
 
 from boto.ec2.blockdevicemapping import BlockDeviceMapping
 from boto.ec2.blockdevicemapping import BlockDeviceType
-from boto.exception import EC2ResponseError
+from botocore.exceptions import ClientError as EC2ResponseError
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
@@ -33,6 +33,8 @@ from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
 
+import cloudbridge as cb
+
 import requests
 
 from .resources import AWSBucket
@@ -50,9 +52,100 @@ from .resources import AWSSnapshot
 from .resources import AWSSubnet
 from .resources import AWSVolume
 
-import cloudbridge as cb
 # Uncomment to enable logging by default for this module
 # cb.set_stream_logger(__name__)
+
+
+class EC2ServiceFilter(object):
+    '''
+        Generic AWS EC2 service filter interface
+
+    :param AWSCloudProvider provider: AWS EC2 provider interface
+    :param str service: Name of the EC2 service to use
+    :param BaseCloudResource cb_iface: CloudBridge class to use
+    '''
+    def __init__(self, provider, service, cb_iface):
+        self.provider = provider
+        self.service = getattr(self.provider.ec2_conn, service)
+        self.iface = cb_iface
+
+    def get(self, val, filter_name, wrapper=True):
+        '''
+            Returns a single resource by filter
+
+        :param str val: Value to filter with
+        :param str filter_name: Name of the filter to use
+        :param bool wrapper: If True, wraps the resulting Boto
+            object in a CloudBridge object
+        :returns: Boto resource object or CloudBridge object or None
+        '''
+        try:
+            objs = self.service.filter(Filter=[{
+                'Name': filter_name,
+                'Values': [val]
+            }]).limit(1)
+            obj = objs[0] if objs else None
+            if wrapper:
+                return self.iface(self.provider, obj) if obj else None
+            return obj
+        except EC2ResponseError:
+            return None
+
+    def list(self, limit=None, marker=None):
+        '''Returns a list of resources'''
+        try:
+            objs = [self.iface(self.provider, obj)
+                    for obj in self.service.all()]
+        except EC2ResponseError:
+            objs = list()
+        return ClientPagedResultList(self.provider, objs,
+                                     limit=limit, marker=marker)
+
+    def find(self, val, filter_name, limit=None, marker=None):
+        '''
+            Returns a list of resources by filter
+
+        :param str val: Value to filter with
+        :param str filter_name: Name of the filter to use
+        '''
+        try:
+            objs = self.service.filter(Filter=[{
+                'Name': filter_name,
+                'Values': [val]
+            }])
+        except EC2ResponseError:
+            objs = list()
+        return ClientPagedResultList(self.provider, objs,
+                                     limit=limit, marker=marker)
+
+    def create(self, method, **kwargs):
+        '''
+            Creates a resource
+
+        :param str method: Service method to invoke
+        :param object kwargs: Arguments to be passed as-is to
+            the service method
+        '''
+        res = getattr(self.provider.ec2_conn, method)(**kwargs)
+        return self.iface(self.provider, res) if res else None
+
+    def delete(self, val, filter_name):
+        '''
+            Deletes a resource by filter
+
+        :param str val: Value to filter with
+        :param str filter_name: Name of the filter to use
+        :returns: False on error, True if the resource
+            does not exist or was deleted successfully
+        '''
+        res = self.iface.get(val, filter_name, wrapper=False)
+        if res:
+            try:
+                res.delete()
+            except EC2ResponseError:
+                return False
+        return True
+
 
 class AWSSecurityService(BaseSecurityService):
 
@@ -88,147 +181,57 @@ class AWSKeyPairService(BaseKeyPairService):
 
     def __init__(self, provider):
         super(AWSKeyPairService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider, 'key_pairs', AWSKeyPair)
 
-    def get(self, key_pair_id):
-        """
-        Returns a KeyPair given its ID.
-        """
-        try:
-            kps = self.provider.ec2_conn.get_all_key_pairs(
-                keynames=[key_pair_id])
-            return AWSKeyPair(self.provider, kps[0])
-        except EC2ResponseError:
-            return None
+    def get(self, name):
+        """Returns a key pair given its name"""
+        return self.iface.get(name, 'key-name')
 
     def list(self, limit=None, marker=None):
-        """
-        List all key pairs associated with this account.
-
-        :rtype: ``list`` of :class:`.KeyPair`
-        :return:  list of KeyPair objects
-        """
-        cb.log.trace("Listing AWS key pairs.")
-        key_pairs = [AWSKeyPair(self.provider, kp)
-                     for kp in self.provider.ec2_conn.get_all_key_pairs()]
-        return ClientPagedResultList(self.provider, key_pairs,
-                                     limit=limit, marker=marker)
+        """List all key pairs associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
-        """
-        Searches for a key pair by a given list of attributes.
-        """
-        try:
-            key_pairs = [
-                AWSKeyPair(self.provider, kp) for kp in
-                self.provider.ec2_conn.get_all_key_pairs(keynames=[name])]
-        except EC2ResponseError:
-            key_pairs = []
-        return ClientPagedResultList(self.provider, key_pairs,
-                                     limit=limit, marker=marker)
+        """Searches for a key pair by name"""
+        return self.iface.find(name, 'key-name', limit=limit, marker=marker)
 
     def create(self, name):
-        """
-        Create a new key pair or raise an exception if one already exists.
+        """Creates a new key pair"""
+        return self.iface.create('create_key_pair', KeyName=name)
 
-        :type name: str
-        :param name: The name of the key pair to be created.
-
-        :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A key pair instance or ``None`` if one was not be created.
-        """
-        kp = self.provider.ec2_conn.create_key_pair(name)
-        if kp:
-            return AWSKeyPair(self.provider, kp)
-        return None
+    def delete(self, name):
+        """Deletes a key pair by name"""
+        return self.iface.delete(name, 'key-name')
 
 
 class AWSSecurityGroupService(BaseSecurityGroupService):
 
     def __init__(self, provider):
         super(AWSSecurityGroupService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'security_groups', AWSSecurityGroup)
 
-    def get(self, sg_id):
-        """
-        Returns a SecurityGroup given its id.
-        """
-        try:
-            sgs = self.provider.ec2_conn.get_all_security_groups(
-                group_ids=[sg_id])
-            return AWSSecurityGroup(self.provider, sgs[0]) if sgs else None
-        except EC2ResponseError:
-            return None
+    def get(self, gid):
+        """Returns a security group given its ID"""
+        return self.iface.get(gid, 'group-id')
 
     def list(self, limit=None, marker=None):
-        """
-        List all security groups associated with this account.
-
-        :rtype: ``list`` of :class:`.SecurityGroup`
-        :return:  list of SecurityGroup objects
-        """
-        sgs = [AWSSecurityGroup(self.provider, sg)
-               for sg in self.provider.ec2_conn.get_all_security_groups()]
-
-        return ClientPagedResultList(self.provider, sgs,
-                                     limit=limit, marker=marker)
-
-    def create(self, name, description, network_id=None):
-        """
-        Create a new SecurityGroup.
-
-        :type name: str
-        :param name: The name of the new security group.
-
-        :type description: str
-        :param description: The description of the new security group.
-
-        :type  network_id: ``str``
-        :param network_id: The ID of the VPC to create the security group in,
-                           if any.
-
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return:  A SecurityGroup instance or ``None`` if one was not created.
-        """
-        sg = self.provider.ec2_conn.create_security_group(name, description,
-                                                          network_id)
-        if sg:
-            return AWSSecurityGroup(self.provider, sg)
-        return None
+        """List all security groups associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
-        """
-        Get all security groups associated with your account.
-        """
-        try:
-            flters = {'group-name': name}
-            security_groups = self.provider.ec2_conn.get_all_security_groups(
-                filters=flters)
-        except EC2ResponseError:
-            security_groups = []
-        return [AWSSecurityGroup(self.provider, sg) for sg in security_groups]
+        """Searches for a security group by name"""
+        return self.iface.find(name, 'group-name', limit=limit, marker=marker)
 
-    def delete(self, group_id):
-        """
-        Delete an existing SecurityGroup.
+    def create(self, name, description, network_id=None):
+        """Creates a security group pair"""
+        return self.iface.create('create_security_group',
+                                 GroupName=name,
+                                 Description=description)
 
-        :type group_id: str
-        :param group_id: The security group ID to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the security group does not exist, ``False``
-                  otherwise. Note that this implies that the group may not have
-                  been deleted by this method but instead has not existed in
-                  the first place.
-        """
-        try:
-            for sg in self.provider.ec2_conn.get_all_security_groups(
-                    group_ids=[group_id]):
-                try:
-                    sg.delete()
-                except EC2ResponseError:
-                    return False
-        except EC2ResponseError:
-            pass
-        return True
+    def delete(self, name):
+        """Deletes a security group by name"""
+        return self.iface.delete(name, 'group-name')
 
 
 class AWSBlockStoreService(BaseBlockStoreService):
@@ -253,50 +256,42 @@ class AWSVolumeService(BaseVolumeService):
 
     def __init__(self, provider):
         super(AWSVolumeService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'volumes', AWSVolume)
 
-    def get(self, volume_id):
-        """
-        Returns a volume given its id.
-        """
-        vols = self.provider.ec2_conn.get_all_volumes(volume_ids=[volume_id])
-        return AWSVolume(self.provider, vols[0]) if vols else None
-
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a volume by a given list of attributes.
-        """
-        filtr = {'tag:Name': name}
-        aws_vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
-        cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
-        return ClientPagedResultList(self.provider, cb_vols,
-                                     limit=limit, marker=marker)
+    def get(self, vid):
+        """Returns a volume given its ID"""
+        return self.iface.get(vid, 'volume-id')
 
     def list(self, limit=None, marker=None):
-        """
-        List all volumes.
-        """
-        aws_vols = self.provider.ec2_conn.get_all_volumes()
-        cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
-        return ClientPagedResultList(self.provider, cb_vols,
-                                     limit=limit, marker=marker)
+        """List all volumes associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        """Searches for a volume by name"""
+        return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
 
     def create(self, name, size, zone, snapshot=None, description=None):
-        """
-        Creates a new volume.
-        """
+        """Creates a volume"""
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, AWSSnapshot) and snapshot else snapshot
+        res = self.iface.create('create_volume',
+                                Size=size,
+                                AvailabilityZone=zone_id,
+                                SnapshotId=snapshot_id)
+        res.create_tags(Tags=[{
+            'Key': 'Name',
+            'Value': name
+        }, {
+            'Key': 'Description',
+            'Value': description
+        }])
+        return res
 
-        ec2_vol = self.provider.ec2_conn.create_volume(
-            size,
-            zone_id,
-            snapshot=snapshot_id)
-        cb_vol = AWSVolume(self.provider, ec2_vol)
-        cb_vol.name = name
-        if description:
-            cb_vol.description = description
-        return cb_vol
+    def delete(self, name):
+        """Deletes a volume by name"""
+        return self.iface.delete(name, 'tag:Name')
 
 
 class AWSSnapshotService(BaseSnapshotService):
