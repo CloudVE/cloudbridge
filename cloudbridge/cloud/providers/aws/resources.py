@@ -517,6 +517,7 @@ class AWSSnapshot(BaseSnapshot):
     # ApiReference-cmd-DescribeSnapshots.html
     SNAPSHOT_STATE_MAP = {
         'pending': SnapshotState.PENDING,
+        'deleting': SnapshotState.PENDING,
         'completed': SnapshotState.AVAILABLE,
         'error': SnapshotState.ERROR
     }
@@ -624,7 +625,7 @@ class AWSKeyPair(BaseKeyPair):
         :return: Unencrypted private key or ``None`` if not available.
 
         """
-        return self._key_pair.material
+        return self._key_pair.key_material
 
 
 class AWSSecurityGroup(BaseSecurityGroup):
