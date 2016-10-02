@@ -88,7 +88,7 @@ class AWSMachineImage(BaseMachineImage):
         """
         Delete this image
         """
-        self._ec2_image.deregister(delete_snapshot=True)
+        self._ec2_image.deregister()
 
     @property
     def state(self):
