@@ -95,7 +95,7 @@ class EC2ServiceFilter(object):
         '''Returns a list of resources'''
         try:
             objs = [self.iface(self.provider, obj)
-                    for obj in self.service.all()]
+                    for obj in self.service.limit(limit)]
         except EC2ResponseError:
             objs = list()
         return ClientPagedResultList(self.provider, objs,
@@ -109,10 +109,13 @@ class EC2ServiceFilter(object):
         :param str filter_name: Name of the filter to use
         '''
         try:
-            objs = self.service.filter(Filter=[{
-                'Name': filter_name,
-                'Values': [val]
-            }])
+            objs = [
+                self.iface(self.provider, obj)
+                for obj in self.service.filter(Filters=[{
+                    'Name': filter_name,
+                    'Values': [val]
+                }])
+            ]
         except EC2ResponseError:
             objs = list()
         return ClientPagedResultList(self.provider, objs,
@@ -375,38 +378,20 @@ class AWSImageService(BaseImageService):
 
     def __init__(self, provider):
         super(AWSImageService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'images', AWSMachineImage)
 
-    def get(self, image_id):
-        """
-        Returns an Image given its id
-        """
-        try:
-            image = self.provider.ec2_conn.get_image(image_id)
-            if image:
-                return AWSMachineImage(self.provider, image)
-        except EC2ResponseError:
-            pass
-
-        return None
-
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for an image by a given list of attributes
-        """
-        filters = {'name': name}
-        images = [AWSMachineImage(self.provider, image) for image in
-                  self.provider.ec2_conn.get_all_images(filters=filters)]
-        return ClientPagedResultList(self.provider, images,
-                                     limit=limit, marker=marker)
+    def get(self, vid):
+        """Returns a image given its ID"""
+        return self.iface.get(vid, 'image-id')
 
     def list(self, limit=None, marker=None):
-        """
-        List all images.
-        """
-        images = [AWSMachineImage(self.provider, image)
-                  for image in self.provider.ec2_conn.get_all_images()]
-        return ClientPagedResultList(self.provider, images,
-                                     limit=limit, marker=marker)
+        """List all images associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        """Searches for a image by name"""
+        return self.iface.find(name, 'name', limit=limit, marker=marker)
 
 
 class AWSComputeService(BaseComputeService):
