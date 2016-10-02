@@ -280,11 +280,15 @@ class AWSVolumeService(BaseVolumeService):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, AWSSnapshot) and snapshot else snapshot
-        res = self.iface.create('create_volume',
-                                Size=size,
-                                Iops=iops,
-                                AvailabilityZone=zone_id,
-                                SnapshotId=snapshot_id)
+        params = {
+            'Size': size,
+            'AvailabilityZone': zone_id
+        }
+        if iops:
+            params['Iops'] = iops
+        if snapshot_id:
+            params['SnapshotId'] = snapshot_id
+        res = self.iface.create('create_volume', **params)
         res.name = name
         if res.description:
             res.description = description
