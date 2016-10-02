@@ -674,20 +674,12 @@ class AWSSecurityGroup(BaseSecurityGroup):
         :return: Rule object if successful or ``None``.
         """
         try:
-            if not isinstance(src_group, SecurityGroup):
-                src_group = self._provider.security.security_groups.get(
-                    src_group)
-
             if self._security_group.authorize_ingress(
                     IpProtocol=ip_protocol,
                     FromPort=from_port,
                     ToPort=to_port,
-                    CidrIp=cidr_ip,
-                    # pylint:disable=protected-access
-                    SourceSecurityGroupName=src_group._security_group.group_name
-                    if src_group else None):
-                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                     src_group)
+                    CidrIp=cidr_ip):
+                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip)
         except EC2ResponseError as ec2e:
             if ec2e.code == "InvalidPermission.Duplicate":
                 return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
@@ -699,15 +691,16 @@ class AWSSecurityGroup(BaseSecurityGroup):
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
         for rule in self._security_group.ip_permissions:
-            if (rule['IpProtocol'] == ip_protocol and
-                    rule['IpProtocol'] == from_port and
-                    rule['FromPort'] == to_port and
-                    rule['IpRanges'][0]['CidrIp'] == cidr_ip) or \
-                    (rule['UserIdGroupPairs'][0]['GroupName'] == src_group.name
-                     if src_group and
-                     hasattr(rule['UserIdGroupPairs'][0], 'GroupName')
-                     else False):
-                return AWSSecurityGroupRule(self._provider, rule, self)
+            if ip_protocol and rule['IpProtocol'] != ip_protocol:
+                continue
+            elif from_port and rule['FromPort'] != from_port:
+                continue
+            elif to_port and rule['ToPort'] != to_port:
+                continue
+            elif cidr_ip:
+                if cidr_ip not in [x['CidrIp'] for x in rule['IpRanges']]:
+                    continue
+            return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 
     def to_json(self):
@@ -748,12 +741,14 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def cidr_ip(self):
-        if len(self._rule.IpRanges) > 0:
+        if len(self._rule.get('IpRanges', list())) > 0:
             return self._rule['IpRanges'][0].get('CidrIp')
         return None
 
     @property
     def group(self):
+        if self.parent:
+            return self.parent._security_group
         if len(self._rule['UserIdGroupPairs']) > 0:
             if self._rule['UserIdGroupPairs'][0]['GroupId']:
                 return AWSSecurityGroup(

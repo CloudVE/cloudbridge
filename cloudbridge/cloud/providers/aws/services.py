@@ -80,10 +80,10 @@ class EC2ServiceFilter(object):
         :returns: Boto resource object or CloudBridge object or None
         '''
         try:
-            objs = self.service.filter(Filter=[{
+            objs = list(self.service.filter(Filters=[{
                 'Name': filter_name,
                 'Values': [val]
-            }]).limit(1)
+            }]).limit(1))
             obj = objs[0] if objs else None
             if wrapper:
                 return self.iface(self.provider, obj) if obj else None
