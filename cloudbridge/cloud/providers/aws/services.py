@@ -1,42 +1,39 @@
 """Services implemented by the AWS provider."""
-import string
 import time
+import string
 
 from boto.ec2.blockdevicemapping import BlockDeviceMapping
 from boto.ec2.blockdevicemapping import BlockDeviceType
-from boto.exception import EC2ResponseError, S3ResponseError
+from botocore.exceptions import ClientError as EC2ResponseError
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
-from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
-from cloudbridge.cloud.base.services import BaseRouterService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.exceptions \
-    import InvalidConfigurationException
-from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
+from cloudbridge.cloud.interfaces.resources \
+    import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
-from cloudbridge.cloud.interfaces.resources import NetworkState
+# from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
-from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import Volume
+
+import cloudbridge as cb
 
 import requests
 
@@ -44,7 +41,6 @@ from .resources import AWSBucket
 from .resources import AWSFloatingIP
 from .resources import AWSInstance
 from .resources import AWSInstanceType
-from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
@@ -57,8 +53,98 @@ from .resources import AWSSubnet
 from .resources import AWSVolume
 
 # Uncomment to enable logging by default for this module
-# import cloudbridge as cb
 # cb.set_stream_logger(__name__)
+
+
+class EC2ServiceFilter(object):
+    '''
+        Generic AWS EC2 service filter interface
+
+    :param AWSCloudProvider provider: AWS EC2 provider interface
+    :param str service: Name of the EC2 service to use
+    :param BaseCloudResource cb_iface: CloudBridge class to use
+    '''
+    def __init__(self, provider, service, cb_iface):
+        self.provider = provider
+        self.service = getattr(self.provider.ec2_conn, service)
+        self.iface = cb_iface
+
+    def get(self, val, filter_name, wrapper=True):
+        '''
+            Returns a single resource by filter
+
+        :param str val: Value to filter with
+        :param str filter_name: Name of the filter to use
+        :param bool wrapper: If True, wraps the resulting Boto
+            object in a CloudBridge object
+        :returns: Boto resource object or CloudBridge object or None
+        '''
+        try:
+            objs = self.service.filter(Filter=[{
+                'Name': filter_name,
+                'Values': [val]
+            }]).limit(1)
+            obj = objs[0] if objs else None
+            if wrapper:
+                return self.iface(self.provider, obj) if obj else None
+            return obj
+        except EC2ResponseError:
+            return None
+
+    def list(self, limit=None, marker=None):
+        '''Returns a list of resources'''
+        try:
+            objs = [self.iface(self.provider, obj)
+                    for obj in self.service.all()]
+        except EC2ResponseError:
+            objs = list()
+        return ClientPagedResultList(self.provider, objs,
+                                     limit=limit, marker=marker)
+
+    def find(self, val, filter_name, limit=None, marker=None):
+        '''
+            Returns a list of resources by filter
+
+        :param str val: Value to filter with
+        :param str filter_name: Name of the filter to use
+        '''
+        try:
+            objs = self.service.filter(Filter=[{
+                'Name': filter_name,
+                'Values': [val]
+            }])
+        except EC2ResponseError:
+            objs = list()
+        return ClientPagedResultList(self.provider, objs,
+                                     limit=limit, marker=marker)
+
+    def create(self, method, **kwargs):
+        '''
+            Creates a resource
+
+        :param str method: Service method to invoke
+        :param object kwargs: Arguments to be passed as-is to
+            the service method
+        '''
+        res = getattr(self.provider.ec2_conn, method)(**kwargs)
+        return self.iface(self.provider, res) if res else None
+
+    def delete(self, val, filter_name):
+        '''
+            Deletes a resource by filter
+
+        :param str val: Value to filter with
+        :param str filter_name: Name of the filter to use
+        :returns: False on error, True if the resource
+            does not exist or was deleted successfully
+        '''
+        res = self.iface.get(val, filter_name, wrapper=False)
+        if res:
+            try:
+                res.delete()
+            except EC2ResponseError:
+                return False
+        return True
 
 
 class AWSSecurityService(BaseSecurityService):
@@ -95,159 +181,57 @@ class AWSKeyPairService(BaseKeyPairService):
 
     def __init__(self, provider):
         super(AWSKeyPairService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider, 'key_pairs', AWSKeyPair)
 
-    def get(self, key_pair_id):
-        """
-        Returns a KeyPair given its ID.
-        """
-        try:
-            kps = self.provider.ec2_conn.get_all_key_pairs(
-                keynames=[key_pair_id])
-            return AWSKeyPair(self.provider, kps[0])
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidKeyPair.NotFound':
-                return None
-            elif ec2e.code == 'InvalidParameterValue':
-                return None
-            else:
-                raise ec2e
+    def get(self, name):
+        """Returns a key pair given its name"""
+        return self.iface.get(name, 'key-name')
 
     def list(self, limit=None, marker=None):
-        """
-        List all key pairs associated with this account.
-
-        :rtype: ``list`` of :class:`.KeyPair`
-        :return:  list of KeyPair objects
-        """
-        key_pairs = [AWSKeyPair(self.provider, kp)
-                     for kp in self.provider.ec2_conn.get_all_key_pairs()]
-        return ClientPagedResultList(self.provider, key_pairs,
-                                     limit=limit, marker=marker)
+        """List all key pairs associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
-        """
-        Searches for a key pair by a given list of attributes.
-        """
-        try:
-            key_pairs = [
-                AWSKeyPair(self.provider, kp) for kp in
-                self.provider.ec2_conn.get_all_key_pairs(keynames=[name])]
-            return ClientPagedResultList(self.provider, key_pairs,
-                                         limit=limit, marker=marker)
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidKeyPair.NotFound':
-                return []
-            elif ec2e.code == 'InvalidParameterValue':
-                return []
-            else:
-                raise ec2e
+        """Searches for a key pair by name"""
+        return self.iface.find(name, 'key-name', limit=limit, marker=marker)
 
     def create(self, name):
-        """
-        Create a new key pair or raise an exception if one already exists.
+        """Creates a new key pair"""
+        return self.iface.create('create_key_pair', KeyName=name)
 
-        :type name: str
-        :param name: The name of the key pair to be created.
-
-        :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A key pair instance or ``None`` if one was not be created.
-        """
-        AWSKeyPair.assert_valid_resource_name(name)
-
-        kp = self.provider.ec2_conn.create_key_pair(name)
-        if kp:
-            return AWSKeyPair(self.provider, kp)
-        return None
+    def delete(self, name):
+        """Deletes a key pair by name"""
+        return self.iface.delete(name, 'key-name')
 
 
 class AWSSecurityGroupService(BaseSecurityGroupService):
 
     def __init__(self, provider):
         super(AWSSecurityGroupService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'security_groups', AWSSecurityGroup)
 
-    def get(self, sg_id):
-        """
-        Returns a SecurityGroup given its id.
-        """
-        try:
-            sgs = self.provider.ec2_conn.get_all_security_groups(
-                group_ids=[sg_id])
-            return AWSSecurityGroup(self.provider, sgs[0]) if sgs else None
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidGroup.NotFound':
-                return None
-            elif ec2e.code == 'InvalidGroupId.Malformed':
-                return None
-            else:
-                raise ec2e
+    def get(self, gid):
+        """Returns a security group given its ID"""
+        return self.iface.get(gid, 'group-id')
 
     def list(self, limit=None, marker=None):
-        """
-        List all security groups associated with this account.
-
-        :rtype: ``list`` of :class:`.SecurityGroup`
-        :return:  list of SecurityGroup objects
-        """
-        sgs = [AWSSecurityGroup(self.provider, sg)
-               for sg in self.provider.ec2_conn.get_all_security_groups()]
-
-        return ClientPagedResultList(self.provider, sgs,
-                                     limit=limit, marker=marker)
-
-    def create(self, name, description, network_id):
-        """
-        Create a new SecurityGroup.
-
-        :type name: str
-        :param name: The name of the new security group.
-
-        :type description: str
-        :param description: The description of the new security group.
-
-        :type  network_id: ``str``
-        :param network_id: The ID of the VPC under which to create the security
-                           group.
-
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return:  A SecurityGroup instance or ``None`` if one was not created.
-        """
-        AWSSecurityGroup.assert_valid_resource_name(name)
-
-        sg = self.provider.ec2_conn.create_security_group(name, description,
-                                                          network_id)
-        if sg:
-            return AWSSecurityGroup(self.provider, sg)
-        return None
+        """List all security groups associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
-        """
-        Get all security groups associated with your account.
-        """
-        flters = {'group-name': name}
-        ec2_sgs = self.provider.ec2_conn.get_all_security_groups(
-            filters=flters)
-        sgs = [AWSSecurityGroup(self.provider, sg) for sg in ec2_sgs]
-        return ClientPagedResultList(self.provider, sgs,
-                                     limit=limit, marker=marker)
+        """Searches for a security group by name"""
+        return self.iface.find(name, 'group-name', limit=limit, marker=marker)
 
-    def delete(self, group_id):
-        """
-        Delete an existing SecurityGroup.
+    def create(self, name, description, network_id=None):
+        """Creates a security group pair"""
+        return self.iface.create('create_security_group',
+                                 GroupName=name,
+                                 Description=description)
 
-        :type group_id: str
-        :param group_id: The security group ID to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the security group does not exist, ``False``
-                  otherwise. Note that this implies that the group may not have
-                  been deleted by this method but instead has not existed in
-                  the first place.
-        """
-        sg = self.get(group_id)
-        if sg:
-            sg.delete()
-            return True
-        return False
+    def delete(self, name):
+        """Deletes a security group by name"""
+        return self.iface.delete(name, 'group-name')
 
 
 class AWSBlockStoreService(BaseBlockStoreService):
@@ -272,61 +256,42 @@ class AWSVolumeService(BaseVolumeService):
 
     def __init__(self, provider):
         super(AWSVolumeService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'volumes', AWSVolume)
 
-    def get(self, volume_id):
-        """
-        Returns a volume given its id.
-        """
-        try:
-            vols = self.provider.ec2_conn.get_all_volumes(
-                volume_ids=[volume_id])
-            return AWSVolume(self.provider, vols[0]) if vols else None
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidVolume.NotFound':
-                return None
-            elif ec2e.code == 'InvalidParameterValue':
-                # Occurs if volume_id does not start with 'vol-...'
-                return None
-            raise ec2e
-
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a volume by a given list of attributes.
-        """
-        filtr = {'tag:Name': name}
-        aws_vols = self.provider.ec2_conn.get_all_volumes(filters=filtr)
-        cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
-        return ClientPagedResultList(self.provider, cb_vols,
-                                     limit=limit, marker=marker)
+    def get(self, vid):
+        """Returns a volume given its ID"""
+        return self.iface.get(vid, 'volume-id')
 
     def list(self, limit=None, marker=None):
-        """
-        List all volumes.
-        """
-        aws_vols = self.provider.ec2_conn.get_all_volumes()
-        cb_vols = [AWSVolume(self.provider, vol) for vol in aws_vols]
-        return ClientPagedResultList(self.provider, cb_vols,
-                                     limit=limit, marker=marker)
+        """List all volumes associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        """Searches for a volume by name"""
+        return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
 
     def create(self, name, size, zone, snapshot=None, description=None):
-        """
-        Creates a new volume.
-        """
-        AWSVolume.assert_valid_resource_name(name)
-
+        """Creates a volume"""
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, AWSSnapshot) and snapshot else snapshot
+        res = self.iface.create('create_volume',
+                                Size=size,
+                                AvailabilityZone=zone_id,
+                                SnapshotId=snapshot_id)
+        res.create_tags(Tags=[{
+            'Key': 'Name',
+            'Value': name
+        }, {
+            'Key': 'Description',
+            'Value': description
+        }])
+        return res
 
-        ec2_vol = self.provider.ec2_conn.create_volume(
-            size,
-            zone_id,
-            snapshot=snapshot_id)
-        cb_vol = AWSVolume(self.provider, ec2_vol)
-        cb_vol.name = name
-        if description:
-            cb_vol.description = description
-        return cb_vol
+    def delete(self, name):
+        """Deletes a volume by name"""
+        return self.iface.delete(name, 'tag:Name')
 
 
 class AWSSnapshotService(BaseSnapshotService):
@@ -341,14 +306,11 @@ class AWSSnapshotService(BaseSnapshotService):
         try:
             snaps = self.provider.ec2_conn.get_all_snapshots(
                 snapshot_ids=[snapshot_id])
-            return AWSSnapshot(self.provider, snaps[0]) if snaps else None
         except EC2ResponseError as ec2e:
             if ec2e.code == 'InvalidSnapshot.NotFound':
                 return None
-            elif ec2e.code == 'InvalidParameterValue':
-                # Occurs if snapshot_id does not start with 'snap-...'
-                return None
             raise ec2e
+        return AWSSnapshot(self.provider, snaps[0]) if snaps else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -374,8 +336,6 @@ class AWSSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
-        AWSSnapshot.assert_valid_resource_name(name)
-
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
         ec2_snap = self.provider.ec2_conn.create_snapshot(
@@ -398,26 +358,11 @@ class AWSObjectStoreService(BaseObjectStoreService):
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        try:
-            # Make a call to make sure the bucket exists. While this would
-            # normally return a Bucket instance, there's an edge case where a
-            # 403 response can occur when the bucket exists but the
-            # user simply does not have permissions to access it. See below.
-            bucket = self.provider.s3_conn.get_bucket(bucket_id)
+        bucket = self.provider.s3_conn.lookup(bucket_id)
+        if bucket:
             return AWSBucket(self.provider, bucket)
-        except S3ResponseError as e:
-            # If 403, it means the bucket exists, but the user does not have
-            # permissions to access the bucket. However, limited operations
-            # may be permitted (with a session token for example), so return a
-            # Bucket instance to allow further operations.
-            # http://stackoverflow.com/questions/32331456/using-boto-upload-file-to-s3-
-            # sub-folder-when-i-have-no-permissions-on-listing-fo
-            if e.status == 403:
-                bucket = self.provider.s3_conn.get_bucket(bucket_id,
-                                                          validate=False)
-                return AWSBucket(self.provider, bucket)
-        # For all other responses, it's assumed that the bucket does not exist.
-        return None
+        else:
+            return None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -442,8 +387,6 @@ class AWSObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket.
         """
-        AWSBucket.assert_valid_resource_name(name)
-
         bucket = self.provider.s3_conn.create_bucket(
             name,
             location=location if location else '')
@@ -461,14 +404,12 @@ class AWSImageService(BaseImageService):
         """
         try:
             image = self.provider.ec2_conn.get_image(image_id)
-            return AWSMachineImage(self.provider, image) if image else None
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidAMIID.NotFound':
-                return None
-            elif ec2e.code == 'InvalidAMIID.Malformed':
-                # Occurs if image_id does not start with 'ami-...'
-                return None
-            raise ec2e
+            if image:
+                return AWSMachineImage(self.provider, image)
+        except EC2ResponseError:
+            pass
+
+        return None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -521,27 +462,31 @@ class AWSInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AWSInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet, zone=None,
+    def create(self, name, image, instance_type, zone=None,
                key_pair=None, security_groups=None, user_data=None,
-               launch_config=None, **kwargs):
-        AWSInstance.assert_valid_resource_name(name)
+               launch_config=None,
+               **kwargs):
+        """
+        Creates a new virtual machine instance.
 
+        If no VPC/subnet was specified (via ``launch_config`` parameter), this
+        method will search for a default VPC and attempt to launch an instance
+        into that VPC.
+        """
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
-        subnet = (self.provider.networking.subnets.get(subnet)
-                  if isinstance(subnet, str) else subnet)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if isinstance(
             key_pair,
             KeyPair) else key_pair
         if launch_config:
             bdm = self._process_block_device_mappings(launch_config, zone_id)
+            subnet_id = self._get_net_id(launch_config)
         else:
-            bdm = None
-
+            bdm = subnet_id = None
         subnet_id, zone_id, security_group_ids = \
-            self._resolve_launch_options(subnet, zone_id, security_groups)
+            self._resolve_launch_options(subnet_id, zone_id, security_groups)
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
@@ -550,45 +495,118 @@ class AWSInstanceService(BaseInstanceService):
             user_data=user_data, block_device_map=bdm, subnet_id=subnet_id)
         instance = None
         if reservation:
+            time.sleep(2)  # The instance does not always get created in time
             instance = AWSInstance(self.provider, reservation.instances[0])
-            instance.wait_for(
-                [InstanceState.PENDING, InstanceState.RUNNING],
-                terminal_states=[InstanceState.TERMINATED,
-                                 InstanceState.ERROR])
             instance.name = name
         return instance
 
-    def _resolve_launch_options(self, subnet=None, zone_id=None,
-                                security_groups=None):
+    def _resolve_launch_options(self, subnet_id, zone_id, security_groups):
         """
-        Work out interdependent launch options.
+        Resolve inter-dependent launch options.
 
-        Some launch options are required and interdependent so make sure
-        they conform to the interface contract.
-
-        :type subnet: ``Subnet``
-        :param subnet: Subnet object within which to launch.
-
-        :type zone_id: ``str``
-        :param zone_id: ID of the zone where the launch should happen.
-
-        :type security_groups: ``list`` of ``id``
-        :param zone_id: List of security group IDs.
-
-        :rtype: triplet of ``str``
-        :return: Subnet ID, zone ID and security group IDs for launch.
-
-        :raise ValueError: In case a conflicting combination is found.
+        With launching into VPC only, try to figure out a default
+        VPC to launch into, making placement decisions along the way that
+        are implied from the zone a subnet exists in.
         """
-        if subnet:
-            # subnet's zone takes precedence
-            zone_id = subnet.zone.id
-        if isinstance(security_groups, list) and isinstance(
-                security_groups[0], SecurityGroup):
-            security_group_ids = [sg.id for sg in security_groups]
+        def _deduce_subnet_and_zone(vpc, zone_id=None):
+            """
+            Figure out subnet ID from a VPC (and zone_id, if not supplied).
+            """
+            if zone_id:
+                # A placement zone was specified. Choose the default
+                # subnet in that zone.
+                for sn in vpc.subnets():
+                    if sn._subnet.availability_zone == zone_id:
+                        subnet_id = sn.id
+            else:
+                # No zone was requested, so just pick one subnet
+                sn = vpc.subnets()[0]
+                subnet_id = sn.id
+                zone_id = sn._subnet.availability_zone
+            return subnet_id, zone_id
+
+        vpc_id = None
+        sg_ids = []
+        if subnet_id:
+            # Subnet was supplied - get the VPC so named SGs can be resolved
+            subnet = self.provider.vpc_conn.get_all_subnets(subnet_id)[0]
+            vpc_id = subnet.vpc_id
+            # zone_id must match zone where the requested subnet lives
+            if zone_id and subnet.availability_zone != zone_id:
+                raise ValueError("Requested placement zone ({0}) must match "
+                                 "specified subnet's availability zone ({1})."
+                                 .format(zone_id, subnet.availability_zone))
+        if security_groups:
+            # Try to get a subnet via specified SGs. This will work only if
+            # the specified SGs are within a VPC (which is a prerequisite to
+            # launch into VPC anyhow).
+            _sg_ids = self._process_security_groups(security_groups, vpc_id)
+            # Must iterate through all the SGs here because a SG name may
+            # exist in a VPC or EC2-Classic so opt for the VPC SG. This
+            # applies in the case no subnet was specified.
+            if not subnet_id:
+                for sg_id in _sg_ids:
+                    sg = self.provider.security.security_groups.get(sg_id)
+                    if sg._security_group.vpc_id:
+                        if sg_ids and sg_id not in sg_ids:
+                            raise ValueError("Multiple matches for VPC "
+                                             "security group(s) {0}."
+                                             .format(security_groups))
+                        else:
+                            sg_ids.append(sg_id)
+                        vpc = self.provider.network.get(
+                            sg._security_group.vpc_id)
+                        subnet_id, zone_id = _deduce_subnet_and_zone(
+                            vpc, zone_id)
+            else:
+                sg_ids = _sg_ids
+            if not subnet_id:
+                raise AttributeError("Supplied security group(s) ({0}) must "
+                                     "be associated with a VPC."
+                                     .format(security_groups))
+        if not subnet_id and not security_groups:
+            # No VPC/subnet was supplied, search for the default VPC.
+            for vpc in self.provider.network.list():
+                if vpc._vpc.is_default:
+                    vpc_id = vpc.id
+                    subnet_id, zone_id = _deduce_subnet_and_zone(vpc, zone_id)
+            if not vpc_id:
+                raise AttributeError("No default VPC exists. Supply a "
+                                     "subnet to launch into (via "
+                                     "launch_config param).")
+        return subnet_id, zone_id, sg_ids
+
+    def _process_security_groups(self, security_groups, vpc_id=None):
+        """
+        Process security groups to create a list of SG ID's for launching.
+
+        :type security_groups: A ``list`` of ``SecurityGroup`` objects or a
+                               list of ``str`` names
+        :param security_groups: A list of ``SecurityGroup`` objects or a list
+                                of ``SecurityGroup`` names, which should be
+                                assigned to this instance.
+
+        :type vpc_id: ``str``
+        :param vpc_id: A VPC ID within which the supplied security groups exist
+
+        :rtype: ``list``
+        :return: A list of security group IDs.
+        """
+        if isinstance(security_groups, list) and \
+                isinstance(security_groups[0], SecurityGroup):
+            sg_ids = [sg.id for sg in security_groups]
         else:
-            security_group_ids = security_groups
-        return subnet.id, zone_id, security_group_ids
+            # SG names were supplied, need to map them to SG IDs.
+            sg_ids = []
+            # If a VPC was specified, need to map to the SGs in the VPC.
+            flters = None
+            if vpc_id:
+                flters = {'vpc_id': vpc_id}
+            sgs = self.provider.ec2_conn.get_all_security_groups(
+                filters=flters)
+            sg_ids = [sg.id for sg in sgs if sg.name in security_groups]
+
+        return sg_ids
 
     def _process_block_device_mappings(self, launch_config, zone=None):
         """
@@ -641,6 +659,11 @@ class AWSInstanceService(BaseInstanceService):
 
         return bdm
 
+    def _get_net_id(self, launch_config):
+        return (launch_config.network_interfaces[0]
+                if len(launch_config.network_interfaces) > 0
+                else None)
+
     def create_launch_config(self):
         return AWSLaunchConfig(self.provider)
 
@@ -649,18 +672,12 @@ class AWSInstanceService(BaseInstanceService):
         Returns an instance given its id. Returns None
         if the object does not exist.
         """
-        try:
-            reservation = self.provider.ec2_conn.get_all_reservations(
-                instance_ids=[instance_id])
-            return (AWSInstance(self.provider, reservation[0].instances[0])
-                    if reservation else None)
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidInstanceID.NotFound':
-                return None
-            elif ec2e.code == 'InvalidParameterValue':
-                # Occurs if id does not start with 'inst-...'
-                return None
-            raise ec2e
+        reservation = self.provider.ec2_conn.get_all_reservations(
+            instance_ids=[instance_id])
+        if reservation:
+            return AWSInstance(self.provider, reservation[0].instances[0])
+        else:
+            return None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -695,6 +712,9 @@ class AWSInstanceService(BaseInstanceService):
                                      reservations.next_token,
                                      False, data=instances)
 
+AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
+                                "aws_instance_data.json"
+
 
 class AWSInstanceTypesService(BaseInstanceTypesService):
 
@@ -704,20 +724,10 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
     @property
     def instance_data(self):
         """
-        Fetch info about the available instances.
-
-        To update this information, update the file pointed to by the
-        ``provider.AWS_INSTANCE_DATA_DEFAULT_URL`` above. The content for this
-        file should be obtained from this repo:
-        https://github.com/powdahound/ec2instances.info (in particular, this
-        file: https://raw.githubusercontent.com/powdahound/ec2instances.info/
-        master/www/instances.json).
-
         TODO: Needs a caching function with timeout
         """
         r = requests.get(self.provider.config.get(
-            "aws_instance_info_url",
-            self.provider.AWS_INSTANCE_DATA_DEFAULT_URL))
+            "aws_instance_info_url", AWS_INSTANCE_DATA_DEFAULT_URL))
         return r.json()
 
     def list(self, limit=None, marker=None):
@@ -733,9 +743,10 @@ class AWSRegionService(BaseRegionService):
         super(AWSRegionService, self).__init__(provider)
 
     def get(self, region_id):
-        region = [r for r in self if r.id == region_id]
+        region = self.provider.ec2_conn.get_all_regions(
+            region_names=[region_id])
         if region:
-            return region[0]
+            return AWSRegion(self.provider, region[0])
         else:
             return None
 
@@ -750,47 +761,17 @@ class AWSRegionService(BaseRegionService):
         return self.get(self._provider.region_name)
 
 
-class AWSNetworkingService(BaseNetworkingService):
-    def __init__(self, provider):
-        super(AWSNetworkingService, self).__init__(provider)
-        self._network_service = AWSNetworkService(self.provider)
-        self._subnet_service = AWSSubnetService(self.provider)
-        self._router_service = AWSRouterService(self.provider)
-        self._gateway_service = AWSGatewayService(self.provider)
-
-    @property
-    def networks(self):
-        return self._network_service
-
-    @property
-    def subnets(self):
-        return self._subnet_service
-
-    @property
-    def routers(self):
-        return self._router_service
-
-    @property
-    def gateways(self):
-        return self._gateway_service
-
-
 class AWSNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(AWSNetworkService, self).__init__(provider)
+        self._subnet_svc = AWSSubnetService(self.provider)
 
     def get(self, network_id):
-        try:
-            network = self.provider.vpc_conn.get_all_vpcs(vpc_ids=[network_id])
-            return AWSNetwork(self.provider, network[0]) if network else None
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidVpcID.NotFound':
-                return None
-            elif ec2e.code == 'InvalidParameterValue':
-                # Occurs if id does not start with 'vpc-...'
-                return None
-            raise ec2e
+        network = self.provider.vpc_conn.get_all_vpcs(vpc_ids=[network_id])
+        if network:
+            return AWSNetwork(self.provider, network[0])
+        return None
 
     def list(self, limit=None, marker=None):
         networks = [AWSNetwork(self.provider, network)
@@ -798,37 +779,43 @@ class AWSNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        filtr = {'tag:Name': name}
-        networks = [AWSNetwork(self.provider, network)
-                    for network in self.provider.vpc_conn.get_all_vpcs(
-                filters=filtr)]
-        return ClientPagedResultList(self.provider, networks,
-                                     limit=limit, marker=marker)
-
-    def create(self, name, cidr_block):
-        AWSNetwork.assert_valid_resource_name(name)
-
-        network = self.provider.vpc_conn.create_vpc(cidr_block=cidr_block)
+    def create(self, name=None):
+        # AWS requried CIDR block to be specified when creating a network
+        # so set a default one and use the largest possible netmask.
+        default_cidr = '10.0.0.0/16'
+        network = self.provider.vpc_conn.create_vpc(cidr_block=default_cidr)
         cb_network = AWSNetwork(self.provider, network)
         if name:
-            cb_network.wait_for(
-                [NetworkState.PENDING, NetworkState.AVAILABLE],
-                terminal_states=[NetworkState.ERROR])
+            time.sleep(2)  # The net does not always get created fast enough
             cb_network.name = name
         return cb_network
 
     @property
-    def floating_ips(self):
-        # fltrs = None
-        # if network_id:
-        #     fltrs = {'network-interface-id': network_id}
-        al = self.provider.vpc_conn.get_all_addresses()
+    def subnets(self):
+        return self._subnet_svc
+
+    def floating_ips(self, network_id=None):
+        fltrs = None
+        if network_id:
+            fltrs = {'network-interface-id': network_id}
+        al = self.provider.vpc_conn.get_all_addresses(filters=fltrs)
         return [AWSFloatingIP(self.provider, a) for a in al]
 
     def create_floating_ip(self):
         ip = self.provider.ec2_conn.allocate_address(domain='vpc')
         return AWSFloatingIP(self.provider, ip)
+
+    def routers(self):
+        routers = self.provider.vpc_conn.get_all_internet_gateways()
+        return [AWSRouter(self.provider, r) for r in routers]
+
+    def create_router(self, name=None):
+        router = self.provider.vpc_conn.create_internet_gateway()
+        cb_router = AWSRouter(self.provider, router)
+        if name:
+            time.sleep(2)  # Some time is required
+            cb_router.name = name
+        return cb_router
 
 
 class AWSSubnetService(BaseSubnetService):
@@ -837,129 +824,29 @@ class AWSSubnetService(BaseSubnetService):
         super(AWSSubnetService, self).__init__(provider)
 
     def get(self, subnet_id):
-        try:
-            subnets = self.provider.vpc_conn.get_all_subnets([subnet_id])
-            return AWSSubnet(self.provider, subnets[0]) if subnets else None
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidSubnetID.NotFound':
-                return None
-            elif ec2e.code == 'InvalidParameterValue':
-                # Occurs if id does not start with 'subnet-...'
-                return None
-            raise ec2e
+        subnets = self.provider.vpc_conn.get_all_subnets([subnet_id])
+        if subnets:
+            return AWSSubnet(self.provider, subnets[0])
+        return None
 
-    def list(self, network=None, limit=None, marker=None):
+    def list(self, network=None):
         fltr = None
         if network:
             network_id = (network.id if isinstance(network, AWSNetwork) else
                           network)
             fltr = {'vpc-id': network_id}
-        subnets = [AWSSubnet(self.provider, subnet) for subnet in
-                   self.provider.vpc_conn.get_all_subnets(filters=fltr)]
-        return ClientPagedResultList(self.provider, subnets,
-                                     limit=limit, marker=marker)
+        subnets = self.provider.vpc_conn.get_all_subnets(filters=fltr)
+        return [AWSSubnet(self.provider, subnet) for subnet in subnets]
 
-    def create(self, name, network, cidr_block, zone=None):
-        AWSSubnet.assert_valid_resource_name(name)
-
+    def create(self, network, cidr_block, name=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
-        subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block,
-                                                      availability_zone=zone)
+        subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block)
         cb_subnet = AWSSubnet(self.provider, subnet)
         if name:
-            cb_subnet.wait_for(
-                [SubnetState.PENDING, SubnetState.AVAILABLE],
-                terminal_states=[SubnetState.ERROR])
+            time.sleep(2)  # The subnet does not always get created in time
             cb_subnet.name = name
         return cb_subnet
-
-    def get_or_create_default(self, zone=None):
-        filtr = {'availabilityZone': zone} if zone else None
-        sns = self.provider.vpc_conn.get_all_subnets(filters=filtr)
-        for sn in sns:
-            if sn.defaultForAz:
-                return AWSSubnet(self.provider, sn)
-        # No provider-default Subnet exists, look for a library-default one
-        for sn in sns:
-            if sn.tags.get('Name') == AWSSubnet.CB_DEFAULT_SUBNET_NAME:
-                return AWSSubnet(self.provider, sn)
-        # No provider-default Subnet exists, try to create it (net + subnets)
-        default_net = self.provider.networking.networks.create(
-            name=AWSNetwork.CB_DEFAULT_NETWORK_NAME, cidr_block='10.0.0.0/16')
-        # Create a subnet in each of the region's zones
-        region = self.provider.compute.regions.get(
-            self.provider.vpc_conn.region.name)
-        default_sn = None
-        for i, z in enumerate(region.zones):
-            sn = self.create(AWSSubnet.CB_DEFAULT_SUBNET_NAME, default_net,
-                             '10.0.{0}.0/24'.format(i), z.name)
-            if zone and zone == z.name:
-                default_sn = sn
-        # No specific zone was supplied; return the last created subnet
-        if not default_sn:
-            default_sn = sn
-        return default_sn
 
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         return self.provider.vpc_conn.delete_subnet(subnet_id=subnet_id)
-
-
-class AWSRouterService(BaseRouterService):
-    """For AWS, a CloudBridge router corresponds to an AWS Route Table."""
-
-    def __init__(self, provider):
-        super(AWSRouterService, self).__init__(provider)
-
-    def get(self, router_id):
-        try:
-            routers = self.provider.vpc_conn.get_all_route_tables([router_id])
-            return AWSRouter(self.provider, routers[0]) if routers else None
-        except EC2ResponseError as ec2e:
-            if ec2e.code == 'InvalidRouteTableID.NotFound':
-                return None
-            elif ec2e.code == 'InvalidParameterValue':
-                # Occurs if id does not start with 'rtb-...'
-                return None
-            raise ec2e
-
-    def find(self, name, limit=None, marker=None):
-        filtr = {'tag:Name': name}
-        routers = self.provider.vpc_conn.get_all_route_tables(filters=filtr)
-        aws_routers = [AWSRouter(self.provider, r) for r in routers]
-        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
-                                     marker=marker)
-
-    def list(self, limit=None, marker=None):
-        routers = self.provider.vpc_conn.get_all_route_tables()
-        aws_routers = [AWSRouter(self.provider, r) for r in routers]
-        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
-                                     marker=marker)
-
-    def create(self, name, network):
-        AWSRouter.assert_valid_resource_name(name)
-
-        network_id = network.id if isinstance(network, AWSNetwork) else network
-        router = self.provider.vpc_conn.create_route_table(vpc_id=network_id)
-        cb_router = AWSRouter(self.provider, router)
-        if name:
-            time.sleep(2)  # Some time is required
-            cb_router.name = name
-        return cb_router
-
-
-class AWSGatewayService(BaseGatewayService):
-    def __init__(self, provider):
-        super(AWSGatewayService, self).__init__(provider)
-
-    def get_or_create_inet_gateway(self, name):
-        AWSInternetGateway.assert_valid_resource_name(name)
-
-        gateway = self.provider.vpc_conn.create_internet_gateway()
-        cb_gateway = AWSInternetGateway(self.provider, gateway)
-        cb_gateway.wait_till_ready()
-        cb_gateway.name = name
-        return cb_gateway
-
-    def delete(self, gateway):
-        gateway.delete()
