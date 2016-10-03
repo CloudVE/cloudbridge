@@ -737,18 +737,33 @@ class AWSNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(AWSNetworkService, self).__init__(provider)
         self._subnet_svc = AWSSubnetService(self.provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'vpcs', AWSNetwork)
+        self.iface_vips = EC2ServiceFilter(self.provider,
+                                           'vpc_addresses', AWSFloatingIP)
+        self.iface_igws = EC2ServiceFilter(self.provider,
+                                           'internet_gateways', AWSRouter)
 
-    def get(self, network_id):
-        network = self.provider.vpc_conn.get_all_vpcs(vpc_ids=[network_id])
-        if network:
-            return AWSNetwork(self.provider, network[0])
-        return None
+    def get(self, nid):
+        """Returns a network given its ID"""
+        return self.iface.get(nid, 'vpc-id')
 
     def list(self, limit=None, marker=None):
-        networks = [AWSNetwork(self.provider, network)
-                    for network in self.provider.vpc_conn.get_all_vpcs()]
-        return ClientPagedResultList(self.provider, networks,
-                                     limit=limit, marker=marker)
+        """List all networks associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        """Searches for a network by name"""
+        return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
+
+    def floating_ips(self, network_id=None):
+        return [
+            x for x in self.iface_vips.list()
+            if not network_id or x.network_interface_id == network_id
+        ]
+
+    def routers(self):
+        return self.iface_igws.list()
 
     def create(self, name=None):
         # AWS requried CIDR block to be specified when creating a network
@@ -765,20 +780,9 @@ class AWSNetworkService(BaseNetworkService):
     def subnets(self):
         return self._subnet_svc
 
-    def floating_ips(self, network_id=None):
-        fltrs = None
-        if network_id:
-            fltrs = {'network-interface-id': network_id}
-        al = self.provider.vpc_conn.get_all_addresses(filters=fltrs)
-        return [AWSFloatingIP(self.provider, a) for a in al]
-
     def create_floating_ip(self):
         ip = self.provider.ec2_conn.allocate_address(domain='vpc')
         return AWSFloatingIP(self.provider, ip)
-
-    def routers(self):
-        routers = self.provider.vpc_conn.get_all_internet_gateways()
-        return [AWSRouter(self.provider, r) for r in routers]
 
     def create_router(self, name=None):
         router = self.provider.vpc_conn.create_internet_gateway()
@@ -793,31 +797,33 @@ class AWSSubnetService(BaseSubnetService):
 
     def __init__(self, provider):
         super(AWSSubnetService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'subnets', AWSSubnet)
 
-    def get(self, subnet_id):
-        subnets = self.provider.vpc_conn.get_all_subnets([subnet_id])
-        if subnets:
-            return AWSSubnet(self.provider, subnets[0])
-        return None
+    def get(self, snid):
+        """Returns a subnet given its ID"""
+        return self.iface.get(snid, 'subnet-id')
 
-    def list(self, network=None):
-        fltr = None
-        if network:
-            network_id = (network.id if isinstance(network, AWSNetwork) else
-                          network)
-            fltr = {'vpc-id': network_id}
-        subnets = self.provider.vpc_conn.get_all_subnets(filters=fltr)
-        return [AWSSubnet(self.provider, subnet) for subnet in subnets]
+    def list(self, network=None, limit=None, marker=None):
+        """List all subnets associated with this account"""
+        network_id = network.id if isinstance(network, AWSNetwork) else network
+        return [
+            x for x in self.iface.list(limit=limit, marker=marker)
+            if not network_id or x.network_id == network_id
+        ]
+
+    def find(self, name, limit=None, marker=None):
+        """Searches for a subnet by name"""
+        return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
 
     def create(self, network, cidr_block, name=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
-        subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block)
-        cb_subnet = AWSSubnet(self.provider, subnet)
-        if name:
-            time.sleep(2)  # The subnet does not always get created in time
-            cb_subnet.name = name
-        return cb_subnet
+        res = self.iface.create('create_subnet',
+                                VpcId=network_id,
+                                CidrBlock=cidr_block)
+        res.name = name
+        return res
 
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
-        return self.provider.vpc_conn.delete_subnet(subnet_id=subnet_id)
+        return self.iface.delete(subnet_id, 'subnet-id')
