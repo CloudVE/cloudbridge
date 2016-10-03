@@ -710,22 +710,26 @@ class AWSRegionService(BaseRegionService):
         super(AWSRegionService, self).__init__(provider)
 
     def get(self, region_id):
-        region = self.provider.ec2_conn.get_all_regions(
-            region_names=[region_id])
-        if region:
-            return AWSRegion(self.provider, region[0])
-        else:
-            return None
+        region = self.provider.ec2_conn.meta.client.describe_regions(
+            Filters=[{
+                'Name': 'region-name',
+                'Values': [region_id]
+            }]
+        ).get('Regions', list())
+        return AWSRegion(self.provider, region[0]) if len(region) else None
 
     def list(self, limit=None, marker=None):
-        regions = [AWSRegion(self.provider, region)
-                   for region in self.provider.ec2_conn.get_all_regions()]
+        regions = [
+            AWSRegion(self.provider, x) for x in
+            self.provider.ec2_conn.meta.client.describe_regions()
+            .get('Regions', list())
+        ]
         return ClientPagedResultList(self.provider, regions,
                                      limit=limit, marker=marker)
 
     @property
     def current(self):
-        return self.get(self._provider.region_name)
+        return self.get(self.provider.session.region_name)
 
 
 class AWSNetworkService(BaseNetworkService):

@@ -747,8 +747,10 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def group(self):
+        # If there's a parent security group, use it
         if self.parent:
-            return self.parent._security_group
+            return self.parent
+        # If not, fall-back to checking rule group pairs
         if len(self._rule['UserIdGroupPairs']) > 0:
             if self._rule['UserIdGroupPairs'][0]['GroupId']:
                 return AWSSecurityGroup(
@@ -765,17 +767,8 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         return json.dumps(_js, sort_keys=True)
 
     def delete(self):
-        if self.group:
-            # pylint:disable=protected-access
-            self.parent._security_group.revoke_ingress(
-                SourceSecurityGroupName=self.group._security_group.group_name)
-        else:
-            # pylint:disable=protected-access
-            self.parent._security_group.revoke_ingress(
-                IpProtocol=self.ip_protocol,
-                FromPort=self.from_port,
-                ToPort=self.to_port,
-                CidrIp=self.cidr_ip)
+        self.group._security_group.revoke_ingress(
+            SourceSecurityGroupName=self.group.name)
 
 
 class AWSBucketObject(BaseBucketObject):
@@ -892,30 +885,30 @@ class AWSRegion(BaseRegion):
 
     @property
     def id(self):
-        return self._aws_region.name
+        return self.name
 
     @property
     def name(self):
-        return self._aws_region.name
+        return self._aws_region.get('RegionName')
 
     @property
     def zones(self):
         """
         Accesss information about placement zones within this region.
         """
-        if self.name == self._provider.region_name:  # optimisation
-            zones = self._provider.ec2_conn.get_all_zones()
-            return [AWSPlacementZone(self._provider, zone.name,
-                                     self._provider.region_name)
-                    for zone in zones]
-        else:
-            region = [region for region in
-                      self._provider.ec2_conn.get_all_regions()
-                      if self.name == region.name][0]
-            conn = self._provider._conect_ec2_region(region)
-            zones = conn.get_all_zones()
-            return [AWSPlacementZone(self._provider, zone.name, region.name)
-                    for zone in zones]
+        return [
+            AWSPlacementZone(
+                self._provider,
+                x['ZoneName'],
+                x['RegionName']
+            ) for x in
+            self._provider.ec2_conn.meta.client.describe_availability_zones(
+                Filters=[{
+                    'Name': 'region-name',
+                    'Values': [self.name]
+                }]
+            ).get('AvailabilityZones', list())
+        ]
 
 
 class AWSNetwork(BaseNetwork):
