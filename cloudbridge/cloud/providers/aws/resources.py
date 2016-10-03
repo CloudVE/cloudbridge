@@ -935,7 +935,10 @@ class AWSNetwork(BaseNetwork):
 
         .. note:: the network must have a (case sensitive) tag ``Name``
         """
-        return self._vpc.tags.get('Name')
+        for tag in self._vpc.tags or list():
+            if tag.get('Key') == 'Name':
+                return tag.get('Value')
+        return None
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -943,7 +946,7 @@ class AWSNetwork(BaseNetwork):
         """
         Set the network name.
         """
-        self._vpc.add_tag('Name', value)
+        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def external(self):
@@ -956,7 +959,7 @@ class AWSNetwork(BaseNetwork):
     @property
     def state(self):
         return AWSNetwork._NETWORK_STATE_MAP.get(
-            self._vpc.update(), NetworkState.UNKNOWN)
+            self._vpc.state, NetworkState.UNKNOWN)
 
     @property
     def cidr_block(self):
@@ -966,16 +969,14 @@ class AWSNetwork(BaseNetwork):
         return self._vpc.delete()
 
     def subnets(self):
-        flter = {'vpc-id': self.id}
-        subnets = self._provider.vpc_conn.get_all_subnets(filters=flter)
-        return [AWSSubnet(self._provider, subnet) for subnet in subnets]
+        return [AWSSubnet(self._provider, x) for x in self._vpc.subnets.all()]
 
     def create_subnet(self, cidr_block, name=None):
-        subnet = self._provider.vpc_conn.create_subnet(self.id, cidr_block)
-        cb_subnet = AWSSubnet(self._provider, subnet)
-        if name:
-            cb_subnet.name = name
-        return cb_subnet
+        subnet = AWSSubnet(
+            self._provider,
+            self._vpc.create_subnet(CidrBlock=cidr_block))
+        subnet.name = name
+        return subnet
 
     def refresh(self):
         """
@@ -1002,7 +1003,10 @@ class AWSSubnet(BaseSubnet):
 
         .. note:: the subnet must have a (case sensitive) tag ``Name``
         """
-        return self._subnet.tags.get('Name')
+        for tag in self._subnet.tags or list():
+            if tag.get('Key') == 'Name':
+                return tag.get('Value')
+        return None
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -1010,7 +1014,7 @@ class AWSSubnet(BaseSubnet):
         """
         Set the subnet name.
         """
-        self._subnet.add_tag('Name', value)
+        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def cidr_block(self):
@@ -1021,7 +1025,7 @@ class AWSSubnet(BaseSubnet):
         return self._subnet.vpc_id
 
     def delete(self):
-        return self._provider.vpc_conn.delete_subnet(subnet_id=self.id)
+        return self._subnet.delete()
 
 
 class AWSFloatingIP(BaseFloatingIP):
@@ -1046,7 +1050,7 @@ class AWSFloatingIP(BaseFloatingIP):
         return True if self._ip.instance_id else False
 
     def delete(self):
-        return self._ip.delete()
+        return self._ip.release()
 
 
 class AWSRouter(BaseRouter):
@@ -1070,9 +1074,14 @@ class AWSRouter(BaseRouter):
         :rtype: :class:`boto.vpc.routetable.RouteTable`
         :return: A RouteTable object.
         """
-        sn = self._provider.vpc_conn.get_all_subnets([subnet_id])[0]
-        return self._provider.vpc_conn.get_all_route_tables(
-            filters={'vpc-id': sn.vpc_id})[0]
+        return self._provider.ec2_conn.route_tables.filter(
+            Filters=[{
+                'Name': 'vpc-id',
+                'Values': [
+                    self._provider.ec2_conn.Subnet(subnet_id).vpc_id
+                ]
+            }]
+        )[0]
 
     @property
     def id(self):
@@ -1085,7 +1094,10 @@ class AWSRouter(BaseRouter):
 
         .. note:: the router must have a (case sensitive) tag ``Name``
         """
-        return self._router.tags.get('Name')
+        for tag in self._router.tags or list():
+            if tag.get('Key') == 'Name':
+                return tag.get('Value')
+        return None
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -1093,36 +1105,33 @@ class AWSRouter(BaseRouter):
         """
         Set the router name.
         """
-        self._router.add_tag('Name', value)
+        self._router.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     def refresh(self):
-        self._router = self._provider.vpc_conn.get_all_internet_gateways(
-            [self.id])[0]
+        self._router.reload()
 
     @property
     def state(self):
         self.refresh()  # Explicitly refresh the local object
         if self._router.attachments and \
-           self._router.attachments[0].state == 'available':
+           self._router.attachments[0]['State'] == 'available':
             return RouterState.ATTACHED
         return RouterState.DETACHED
 
     @property
     def network_id(self):
         if self.state == RouterState.ATTACHED:
-            return self._router.attachments[0].vpc_id
+            return self._router.attachments[0]['VpcId']
         return None
 
     def delete(self):
-        return self._provider._vpc_conn.delete_internet_gateway(self.id)
+        return self._router.delete()
 
     def attach_network(self, network_id):
-        return self._provider.vpc_conn.attach_internet_gateway(
-            self.id, network_id)
+        return self._router.attach_to_vpc(VpcId=network_id)
 
     def detach_network(self):
-        return self._provider.vpc_conn.detach_internet_gateway(
-            self.id, self.network_id)
+        return self._router.detach_from_vpc(VpcId=network_id)
 
     def add_route(self, subnet_id):
         """
@@ -1136,9 +1145,9 @@ class AWSRouter(BaseRouter):
         Further, only a single route can be added, targeting the Internet
         (i.e., destination CIDR block ``0.0.0.0/0``).
         """
-        rt = self._route_table(subnet_id)
-        return self._provider.vpc_conn.create_route(
-            rt.id, self._ROUTE_CIDR, self.id)
+        return self._route_table(subnet_id).create_route(
+            DestinationCidrBlock=self._ROUTE_CIDR,
+            GatewayId=self.id)
 
     def remove_route(self, subnet_id):
         """
@@ -1146,9 +1155,9 @@ class AWSRouter(BaseRouter):
 
         .. seealso:: ``add_route`` method
         """
-        rt = self._route_table(subnet_id)
-        return self._provider.vpc_conn.delete_route(rt.id, self._ROUTE_CIDR)
-
+        for route in self._route_table(subnet_id).routes or list():
+            if route.gateway_id == self.id:
+                route.delete()
 
 class AWSLaunchConfig(BaseLaunchConfig):
 
