@@ -141,13 +141,41 @@ class EC2ServiceFilter(object):
         :returns: False on error, True if the resource
             does not exist or was deleted successfully
         '''
-        res = self.iface.get(val, filter_name, wrapper=False)
+        res = self.get(val, filter_name, wrapper=False)
         if res:
             try:
                 res.delete()
             except EC2ResponseError:
                 return False
         return True
+
+    def wait_for_create(self, val, filter_name, timeout=15):
+        '''
+            Simple test for resource creation
+
+        :returns: True on success, False on timeout, None if the
+            object does not implement the refresh() method.
+        '''
+        while timeout > 0:
+            time.sleep(2)
+            obj = self.get(val, filter_name)
+            if obj:
+                if hasattr(obj, 'refresh') and callable(obj.refresh):
+                    obj.refresh()
+                    return True
+                else:
+                    return None
+            timeout = timeout - 1
+        return False
+
+    def wait_for_delete(self, val, filter_name, timeout=15):
+        '''Simple test for resource deletion'''
+        while timeout > 0:
+            time.sleep(2)
+            if not self.get(val, filter_name):
+                return True
+            timeout = timeout - 1
+        return False
 
 
 class AWSSecurityService(BaseSecurityService):
@@ -186,9 +214,9 @@ class AWSKeyPairService(BaseKeyPairService):
         super(AWSKeyPairService, self).__init__(provider)
         self.iface = EC2ServiceFilter(self.provider, 'key_pairs', AWSKeyPair)
 
-    def get(self, name):
+    def get(self, key_pair_id):
         """Returns a key pair given its name"""
-        return self.iface.get(name, 'key-name')
+        return self.iface.get(key_pair_id, 'key-name')
 
     def list(self, limit=None, marker=None):
         """List all key pairs associated with this account"""
@@ -202,9 +230,9 @@ class AWSKeyPairService(BaseKeyPairService):
         """Creates a new key pair"""
         return self.iface.create('create_key_pair', KeyName=name)
 
-    def delete(self, name):
+    def delete(self, key_pair_id):
         """Deletes a key pair by name"""
-        return self.iface.delete(name, 'key-name')
+        return self.iface.delete(key_pair_id, 'key-name')
 
 
 class AWSSecurityGroupService(BaseSecurityGroupService):
@@ -214,9 +242,9 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         self.iface = EC2ServiceFilter(self.provider,
                                       'security_groups', AWSSecurityGroup)
 
-    def get(self, gid):
+    def get(self, group_id):
         """Returns a security group given its ID"""
-        return self.iface.get(gid, 'group-id')
+        return self.iface.get(group_id, 'group-id')
 
     def list(self, limit=None, marker=None):
         """List all security groups associated with this account"""
@@ -228,13 +256,21 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
 
     def create(self, name, description, network_id=None):
         """Creates a security group pair"""
-        return self.iface.create('create_security_group',
-                                 GroupName=name,
-                                 Description=description)
+        res = self.iface.create('create_security_group',
+                                GroupName=name,
+                                Description=description)
+        if not self.iface.wait_for_create(res.id, 'group-id'):
+            return None
+        return res
 
-    def delete(self, name):
+    def delete(self, group_id):
         """Deletes a security group by name"""
-        return self.iface.delete(name, 'group-name')
+        res = self.iface.find(group_id, 'tag:Name')
+        if res:
+            res = res[0]
+            self.iface.delete(res.id, 'group-name')
+            return self.iface.wait_for_delete(res.id, 'group-name')
+        return None
 
 
 class AWSBlockStoreService(BaseBlockStoreService):
@@ -262,9 +298,9 @@ class AWSVolumeService(BaseVolumeService):
         self.iface = EC2ServiceFilter(self.provider,
                                       'volumes', AWSVolume)
 
-    def get(self, vid):
+    def get(self, volume_id):
         """Returns a volume given its ID"""
-        return self.iface.get(vid, 'volume-id')
+        return self.iface.get(volume_id, 'volume-id')
 
     def list(self, limit=None, marker=None):
         """List all volumes associated with this account"""
@@ -289,6 +325,8 @@ class AWSVolumeService(BaseVolumeService):
         if snapshot_id:
             params['SnapshotId'] = snapshot_id
         res = self.iface.create('create_volume', **params)
+        if not self.iface.wait_for_create(res.id, 'volume-id'):
+            return None
         res.name = name
         if res.description:
             res.description = description
@@ -296,8 +334,12 @@ class AWSVolumeService(BaseVolumeService):
 
     def delete(self, name):
         """Deletes a volume by name"""
-        return self.iface.delete(name, 'tag:Name')
-
+        res = self.iface.find(name, 'tag:Name')
+        if res:
+            res = res[0]
+            self.iface.delete(res.id, 'volume-id')
+            return self.iface.wait_for_delete(res.id, 'volume-id')
+        return None
 
 class AWSSnapshotService(BaseSnapshotService):
 
@@ -306,9 +348,9 @@ class AWSSnapshotService(BaseSnapshotService):
         self.iface = EC2ServiceFilter(self.provider,
                                       'snapshots', AWSSnapshot)
 
-    def get(self, vid):
+    def get(self, volume_id):
         """Returns a snapshot given its ID"""
-        return self.iface.get(vid, 'snapshot-id')
+        return self.iface.get(volume_id, 'snapshot-id')
 
     def list(self, limit=None, marker=None):
         """List all snapshots associated with this account"""
@@ -323,6 +365,8 @@ class AWSSnapshotService(BaseSnapshotService):
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
         res = self.iface.create('create_snapshot',
                                 VolumeId=volume_id)
+        if not self.iface.wait_for_create(res.id, 'snapshot-id'):
+            return None
         res.name = name
         if res.description:
             res.description = description
@@ -330,7 +374,12 @@ class AWSSnapshotService(BaseSnapshotService):
 
     def delete(self, name):
         """Deletes a snapshot by name"""
-        return self.iface.delete(name, 'tag:Name')
+        res = self.iface.find(name, 'tag:Name')
+        if res:
+            res = res[0]
+            self.iface.delete(res.id, 'snapshot-id')
+            return self.iface.wait_for_delete(res.id, 'snapshot-id')
+        return None
 
 
 class AWSObjectStoreService(BaseObjectStoreService):
@@ -385,9 +434,9 @@ class AWSImageService(BaseImageService):
         self.iface = EC2ServiceFilter(self.provider,
                                       'images', AWSMachineImage)
 
-    def get(self, vid):
+    def get(self, image_id):
         """Returns a image given its ID"""
-        return self.iface.get(vid, 'image-id')
+        return self.iface.get(image_id, 'image-id')
 
     def list(self, limit=None, marker=None):
         """List all images associated with this account"""
@@ -744,9 +793,9 @@ class AWSNetworkService(BaseNetworkService):
         self.iface_igws = EC2ServiceFilter(self.provider,
                                            'internet_gateways', AWSRouter)
 
-    def get(self, nid):
+    def get(self, network_id):
         """Returns a network given its ID"""
-        return self.iface.get(nid, 'vpc-id')
+        return self.iface.get(network_id, 'vpc-id')
 
     def list(self, limit=None, marker=None):
         """List all networks associated with this account"""
@@ -769,28 +818,32 @@ class AWSNetworkService(BaseNetworkService):
         # AWS requried CIDR block to be specified when creating a network
         # so set a default one and use the largest possible netmask.
         default_cidr = '10.0.0.0/16'
-        network = self.provider.vpc_conn.create_vpc(cidr_block=default_cidr)
-        cb_network = AWSNetwork(self.provider, network)
+        res = self.iface.create('create_vpc', CidrBlock=default_cidr)
+        if not wait_for_load(res):
+            return None
         if name:
-            time.sleep(2)  # The net does not always get created fast enough
-            cb_network.name = name
-        return cb_network
+            res.name = name
+        return res
 
     @property
     def subnets(self):
         return self._subnet_svc
 
     def create_floating_ip(self):
-        ip = self.provider.ec2_conn.allocate_address(domain='vpc')
-        return AWSFloatingIP(self.provider, ip)
+        return AWSFloatingIP(
+            self.provider,
+            self.provider.ec2_conn.VpcAddress(
+                self.provider.ec2_conn.meta.client.allocate_address(
+                    Domain='vpc')['AllocationId']))
 
     def create_router(self, name=None):
-        router = self.provider.vpc_conn.create_internet_gateway()
-        cb_router = AWSRouter(self.provider, router)
+        timeout = 10
+        res = self.iface.create('create_internet_gateway')
+        if not wait_for_load(res):
+            return None
         if name:
-            time.sleep(2)  # Some time is required
-            cb_router.name = name
-        return cb_router
+            res.name = name
+        return res
 
 
 class AWSSubnetService(BaseSubnetService):
@@ -800,9 +853,9 @@ class AWSSubnetService(BaseSubnetService):
         self.iface = EC2ServiceFilter(self.provider,
                                       'subnets', AWSSubnet)
 
-    def get(self, snid):
+    def get(self, subnet_id):
         """Returns a subnet given its ID"""
-        return self.iface.get(snid, 'subnet-id')
+        return self.iface.get(subnet_id, 'subnet-id')
 
     def list(self, network=None, limit=None, marker=None):
         """List all subnets associated with this account"""
@@ -821,7 +874,8 @@ class AWSSubnetService(BaseSubnetService):
         res = self.iface.create('create_subnet',
                                 VpcId=network_id,
                                 CidrBlock=cidr_block)
-        res.name = name
+        if name:
+            res.name = name
         return res
 
     def delete(self, subnet):
