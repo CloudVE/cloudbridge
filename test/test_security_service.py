@@ -183,7 +183,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "The same security groups should still be equal?")
             json_repr = json.dumps(
                 {"description": name, "name": name, "id": sg.id, "rules":
-                 [{"from_port": 1111, "group": "", "cidr_ip": "0.0.0.0/0",
+                 [{"from_port": 1111, "group": sg.id, "cidr_ip": "0.0.0.0/0",
                    "parent": sg.id, "to_port": 1111, "ip_protocol": "tcp",
                    "id": sg.rules[0].id}]},
                 sort_keys=True)

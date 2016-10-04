@@ -1,4 +1,5 @@
 import uuid
+import unittest
 
 import ipaddress
 import six
@@ -11,6 +12,7 @@ from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
+@unittest.skip("Skipping Compute tests")
 class CloudComputeServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):

@@ -1,12 +1,14 @@
 from datetime import datetime
 from io import BytesIO
 import uuid
+import unittest
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
+@unittest.skip("Skipping Object Store tests")
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):

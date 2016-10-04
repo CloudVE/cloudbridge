@@ -505,10 +505,12 @@ class AWSVolume(BaseVolume):
         """
         try:
             self._volume.reload()
+            return True
         except (EC2ResponseError, ValueError):
-            # The volume no longer exists and cannot be refreshed.
+            # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
             self._volume.status = 'unknown'
+            return False
 
 
 class AWSSnapshot(BaseSnapshot):
@@ -586,10 +588,12 @@ class AWSSnapshot(BaseSnapshot):
         """
         try:
             self._snapshot.reload()
+            return True
         except (EC2ResponseError, ValueError):
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
             self._snapshot.status = 'unknown'
+            return False
 
     def delete(self):
         """
@@ -702,6 +706,19 @@ class AWSSecurityGroup(BaseSecurityGroup):
                     continue
             return AWSSecurityGroupRule(self._provider, rule, self)
         return None
+
+    def refresh(self):
+        """
+        Refreshes the state of this instance by re-querying the cloud provider
+        for its latest state.
+        """
+        try:
+            self._security_group.reload()
+            return True
+        except (EC2ResponseError, ValueError):
+            # The snapshot no longer exists and cannot be refreshed.
+            # set the status to unknown
+            return False
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -975,7 +992,8 @@ class AWSNetwork(BaseNetwork):
         subnet = AWSSubnet(
             self._provider,
             self._vpc.create_subnet(CidrBlock=cidr_block))
-        subnet.name = name
+        if name:
+            subnet.name = name
         return subnet
 
     def refresh(self):
@@ -983,7 +1001,13 @@ class AWSNetwork(BaseNetwork):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        return self.state
+        try:
+            self._vpc.reload()
+            return True
+        except (EC2ResponseError, ValueError):
+            # The snapshot no longer exists and cannot be refreshed.
+            # set the status to unknown
+            return False
 
 
 class AWSSubnet(BaseSubnet):
@@ -1108,7 +1132,13 @@ class AWSRouter(BaseRouter):
         self._router.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     def refresh(self):
-        self._router.reload()
+        try:
+            self._router.reload()
+            return True
+        except (EC2ResponseError, ValueError):
+            # The snapshot no longer exists and cannot be refreshed.
+            # set the status to unknown
+            return False
 
     @property
     def state(self):
@@ -1158,6 +1188,7 @@ class AWSRouter(BaseRouter):
         for route in self._route_table(subnet_id).routes or list():
             if route.gateway_id == self.id:
                 route.delete()
+
 
 class AWSLaunchConfig(BaseLaunchConfig):
 
