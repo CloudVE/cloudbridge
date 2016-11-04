@@ -719,13 +719,11 @@ class GCENetwork(BaseNetwork):
                     .delete(project=self._provider.project_name,
                             network=self.name)
                     .execute())
-            print('delete response: %s' % response)
             if 'error' in response:
                 return False
             self._provider.wait_for_global_operation(response)
             return True
-        except Exception as e:
-            print('delete exception: %s' % e)
+        except:
             return False
 
     def subnets(self):
