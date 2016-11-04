@@ -4,6 +4,7 @@ DataTypes used by this provider
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
@@ -682,3 +683,56 @@ class GCEMachineImage(BaseMachineImage):
             cb.log.warning(
                 "googleapiclient.errors.HttpError: {0}".format(http_error))
             self._gce_image['status'] = "unknown"
+
+
+class GCENetwork(BaseNetwork):
+
+    def __init__(self, provider, network):
+        super(GCENetwork, self).__init__(provider)
+        self._network = network
+
+    @property
+    def id(self):
+        return self._network['id']
+
+    @property
+    def name(self):
+        return self._network['name']
+
+    @property
+    def external(self):
+        raise NotImplementedError("To be implemented")
+
+    @property
+    def state(self):
+        raise NotImplementedError("To be implemented")
+
+    @property
+    def cidr_block(self):
+        return self._network['IPv4Range']
+
+    def delete(self):
+        try:
+            response = (self._provider
+                    .gce_compute
+                    .networks()
+                    .delete(project=self._provider.project_name,
+                            network=self.name)
+                    .execute())
+            print('delete response: %s' % response)
+            if 'error' in response:
+                return False
+            self._provider.wait_for_global_operation(response)
+            return True
+        except Exception as e:
+            print('delete exception: %s' % e)
+            return False
+
+    def subnets(self):
+        raise NotImplementedError("To be implemented")
+
+    def create_subnet(self, cidr_block, name=None):
+        raise NotImplementedError("To be implemented")
+
+    def refresh(self):
+        return self.state
