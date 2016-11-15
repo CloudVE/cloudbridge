@@ -3,6 +3,7 @@ from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
+from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
@@ -16,11 +17,12 @@ import googleapiclient
 from retrying import retry
 import sys
 
+from .resources import GCEFirewallsDelegate
 from .resources import GCEMachineImage
+from .resources import GCENetwork
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 from .resources import GCERegion
-from .resources import GCEFirewallsDelegate
 from .resources import GCESecurityGroup
 from .resources import GCESecurityGroupRule
 
@@ -417,3 +419,59 @@ class GCEComputeService(BaseComputeService):
     @property
     def regions(self):
         return self._region_svc
+
+
+class GCENetworkService(BaseNetworkService):
+
+    def __init__(self, provider):
+        super(GCENetworkService, self).__init__(provider)
+
+    def get(self, network_id):
+        networks = self.list(filter='id eq %s' % network_id)
+        return None if len(networks) == 0 else networks[0]
+
+    def list(self, limit=None, marker=None, filter=None):
+        try:
+            response = (self.provider.gce_compute
+                                     .networks()
+                                     .list(project=self.provider.project_name,
+                                           filter=filter)
+                                     .execute())
+            networks = []
+            if 'items' in response:
+                for network in response['items']:
+                    networks.append(GCENetwork(self.provider, network))
+            return networks
+        except:
+            return []
+
+    def create(self, name):
+        try:
+            response = (self.provider.gce_compute
+                                     .networks()
+                                     .insert(project=self.provider.project_name,
+                                             body={'name': name})
+                                     .execute())
+            if 'error' in response:
+                return None
+            self.provider.wait_for_global_operation(response)
+            networks = self.list(filter='name eq %s' % name)
+            return None if len(networks) == 0 else networks[0]
+        except Exception as e:
+            return None
+
+    @property
+    def subnets(self):
+        raise NotImplementedError('To be implemented')
+
+    def floating_ips(self, network_id=None):
+        raise NotImplementedError('To be implemented')
+
+    def create_floating_ip(self):
+        raise NotImplementedError('To be implemented')
+
+    def routers(self):
+        raise NotImplementedError('To be implemented')
+
+    def create_router(self, name=None):
+        raise NotImplementedError('To be implemented')
