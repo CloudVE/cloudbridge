@@ -609,6 +609,10 @@ class AWSSecurityGroup(BaseSecurityGroup):
         super(AWSSecurityGroup, self).__init__(provider, security_group)
 
     @property
+    def network_id(self):
+        return self._security_group.vpc_id
+
+    @property
     def rules(self):
         return [AWSSecurityGroupRule(self._provider, r, self)
                 for r in self._security_group.rules]

@@ -854,6 +854,15 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         super(OpenStackSecurityGroup, self).__init__(provider, security_group)
 
     @property
+    def network_id(self):
+        """
+        OpenStack does not associate a SG with a network so default to None.
+
+        :return: Always return ``None``.
+        """
+        return None
+
+    @property
     def rules(self):
         # Update SG object; otherwise, recently added rules do now show
         self._security_group = self._provider.nova.security_groups.get(

@@ -1845,6 +1845,16 @@ class SecurityGroup(CloudResource):
         pass
 
     @abstractproperty
+    def network_id(self):
+        """
+        Network ID with which this security group is associated.
+
+        :rtype: ``str``
+        :return: Provider-supplied network ID or ``None`` is not available.
+        """
+        pass
+
+    @abstractproperty
     def rules(self):
         """
         Get the list of rules for this security group.
