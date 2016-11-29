@@ -935,7 +935,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, description, network_id=None):
+    def create(self, name, description, network_id):
         """
         Create a new SecurityGroup.
 
@@ -946,9 +946,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
         :param description: The description of the new security group.
 
         :type  network_id: ``str``
-        :param network_id: An optional network ID under which to create the
-                           security group that may be supported by some
-                           providers.
+        :param network_id: Network ID under which to create the security group.
 
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.

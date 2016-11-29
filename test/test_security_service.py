@@ -1,3 +1,4 @@
+"""Test cloudbridge.security modules."""
 import json
 import uuid
 
@@ -96,14 +97,16 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             "Key pair {0} should have been deleted but still exists."
             .format(name))
 
+    def cleanup_sg(self, sg, net):
+        self.provider.security.security_groups.delete(group_id=sg.id)
+        self.provider.network.delete(network_id=net.id)
+
     def test_crud_security_group_service(self):
         name = 'cbtestsecuritygroupA-{0}'.format(uuid.uuid4())
+        net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
-            name=name, description=name)
-        with helpers.cleanup_action(
-            lambda:
-                self.provider.security.security_groups.delete(group_id=sg.id)
-        ):
+            name=name, description=name, network_id=net.id)
+        with helpers.cleanup_action(lambda: self.cleanup_sg(sg, net)):
             self.assertEqual(name, sg.description)
 
             # test list method
@@ -154,9 +157,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_security_group(self):
         """Test for proper creation of a security group."""
         name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
+        net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
-            name=name, description=name)
-        with helpers.cleanup_action(lambda: sg.delete()):
+            name=name, description=name, network_id=net.id)
+        with helpers.cleanup_action(lambda: self.cleanup_sg(sg, net)):
             rule = sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
                                cidr_ip='0.0.0.0/0')
             found_rule = sg.get_rule(ip_protocol='tcp', from_port=1111,
@@ -202,9 +206,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_security_group_rule_add_twice(self):
         """Test whether adding the same rule twice succeeds."""
         name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
+        net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
-            name=name, description=name)
-        with helpers.cleanup_action(lambda: sg.delete()):
+            name=name, description=name, network_id=net.id)
+        with helpers.cleanup_action(lambda: self.cleanup_sg(sg, net)):
             rule = sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
                                cidr_ip='0.0.0.0/0')
             # attempting to add the same rule twice should succeed
@@ -218,14 +223,16 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_security_group_group_rule(self):
         """Test for proper creation of a security group rule."""
         name = 'cbtestsecuritygroupC-{0}'.format(uuid.uuid4())
+        net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
-            name=name, description=name)
-        with helpers.cleanup_action(lambda: sg.delete()):
+            name=name, description=name, network_id=net.id)
+        with helpers.cleanup_action(lambda: self.cleanup_sg(sg, net)):
             self.assertTrue(
                 len(sg.rules) == 0,
                 "Expected no security group group rule. Got {0}."
                 .format(sg.rules))
-            rule = sg.add_rule(src_group=sg)
+            rule = sg.add_rule(src_group=sg, ip_protocol='tcp', from_port=0,
+                               to_port=65535)
             self.assertTrue(
                 rule.group.name == name,
                 "Expected security group rule name {0}. Got {1}."

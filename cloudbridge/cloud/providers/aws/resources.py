@@ -675,8 +675,8 @@ class AWSSecurityGroup(BaseSecurityGroup):
                rule.from_port == from_port and
                rule.to_port == to_port and
                rule.grants[0].cidr_ip == cidr_ip) or \
-               (rule.grants[0].name == src_group.name if src_group and
-               hasattr(rule.grants[0], 'name') else False):
+               (rule.grants[0].group_id == src_group.id if src_group and
+               hasattr(rule.grants[0], 'group_id') else False):
                 return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 
@@ -685,6 +685,8 @@ class AWSSecurityGroup(BaseSecurityGroup):
         js = {k: v for(k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
         js['rules'] = [json.loads(r) for r in json_rules]
+        if js.get('network_id'):
+            js.pop('network_id')  # Omit for consistency across cloud providers
         return json.dumps(js, sort_keys=True)
 
 
@@ -729,9 +731,9 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
     @property
     def group(self):
         if len(self._rule.grants) > 0:
-            if self._rule.grants[0].name:
+            if self._rule.grants[0].group_id:
                 cg = self._provider.ec2_conn.get_all_security_groups(
-                    groupnames=[self._rule.grants[0].name])[0]
+                    group_ids=[self._rule.grants[0].group_id])[0]
                 return AWSSecurityGroup(self._provider, cg)
         return None
 
@@ -746,6 +748,9 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         if self.group:
             # pylint:disable=protected-access
             self.parent._security_group.revoke(
+                ip_protocol=self.ip_protocol,
+                from_port=self.from_port,
+                to_port=self.to_port,
                 src_group=self.group._security_group)
         else:
             # pylint:disable=protected-access
