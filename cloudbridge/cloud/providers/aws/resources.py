@@ -1,6 +1,11 @@
 """
 DataTypes used by this provider
 """
+from datetime import datetime
+import hashlib
+import inspect
+import json
+
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
@@ -20,7 +25,6 @@ from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -28,12 +32,8 @@ from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.services import VolumeService
-from datetime import datetime
-import hashlib
-import inspect
-import json
 
-from boto.exception import EC2ResponseError
+from botocore.exceptions import ClientError as EC2ResponseError
 from boto.s3.key import Key
 from retrying import retry
 
@@ -678,33 +678,45 @@ class AWSSecurityGroup(BaseSecurityGroup):
         :return: Rule object if successful or ``None``.
         """
         try:
-            if self._security_group.authorize_ingress(
+            # Preference source group specificity
+            if src_group:
+                self._security_group.authorize_ingress(
+                    SourceSecurityGroupName=src_group.name)
+            else:
+                self._security_group.authorize_ingress(
                     IpProtocol=ip_protocol,
                     FromPort=from_port,
                     ToPort=to_port,
-                    CidrIp=cidr_ip):
-                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip)
-        except EC2ResponseError as ec2e:
-            if ec2e.code == "InvalidPermission.Duplicate":
-                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                     src_group)
-            else:
-                raise ec2e
+                    CidrIp=cidr_ip)
+            # If we made it this far, no exceptions were raised
+            return self.get_rule(ip_protocol,
+                                 from_port, to_port,
+                                 cidr_ip, src_group)
+        except EC2ResponseError as exc:
+            if exc.response['Error']['Code'] == "InvalidPermission.Duplicate":
+                return self.get_rule(
+                    ip_protocol, from_port, to_port, cidr_ip, src_group)
+            raise exc
         return None
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
         for rule in self._security_group.ip_permissions:
-            if ip_protocol and rule['IpProtocol'] != ip_protocol:
-                continue
-            elif from_port and rule['FromPort'] != from_port:
-                continue
-            elif to_port and rule['ToPort'] != to_port:
-                continue
-            elif cidr_ip:
-                if cidr_ip not in [x['CidrIp'] for x in rule['IpRanges']]:
+            if src_group:
+                for group_pair in rule.get('UserIdGroupPairs', list()):
+                    if group_pair.get('GroupId') == src_group.id:
+                        return AWSSecurityGroupRule(self._provider, rule, self)
+            else:
+                if ip_protocol and rule['IpProtocol'] != ip_protocol:
                     continue
-            return AWSSecurityGroupRule(self._provider, rule, self)
+                elif from_port and rule['FromPort'] != from_port:
+                    continue
+                elif to_port and rule['ToPort'] != to_port:
+                    continue
+                elif cidr_ip:
+                    if cidr_ip not in [x['CidrIp'] for x in rule['IpRanges']]:
+                        continue
+                return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 
     def refresh(self):
