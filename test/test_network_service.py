@@ -1,9 +1,11 @@
 import test.helpers as helpers
+import unittest
 import uuid
 from test.helpers import ProviderTestBase
 from cloudbridge.cloud.interfaces.resources import RouterState
 
 
+@unittest.skip("Skipping Network tests")
 class CloudNetworkServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):

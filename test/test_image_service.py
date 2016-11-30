@@ -1,4 +1,5 @@
 import uuid
+import unittest
 
 import six
 
@@ -7,6 +8,7 @@ from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
+@unittest.skip("Skipping Image tests")
 class CloudImageServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):

@@ -264,12 +264,11 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         return res
 
     def delete(self, group_id):
-        """Deletes a security group by name"""
-        res = self.iface.find(group_id, 'tag:Name')
+        """Deletes a security group by ID"""
+        res = self.iface.get(group_id, 'group-id')
         if res:
-            res = res[0]
-            self.iface.delete(res.id, 'group-name')
-            return self.iface.wait_for_delete(res.id, 'group-name')
+            self.iface.delete(res.id, 'group-id')
+            return self.iface.wait_for_delete(res.id, 'group-id')
         return None
 
 

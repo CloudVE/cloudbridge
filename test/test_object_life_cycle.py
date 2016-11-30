@@ -1,4 +1,5 @@
 import uuid
+import unittest
 
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import WaitStateException
@@ -6,6 +7,7 @@ from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
+@unittest.skip("Skipping Object Lifecycle tests")
 class CloudObjectLifeCycleTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
