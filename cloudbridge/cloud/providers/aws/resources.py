@@ -2,6 +2,7 @@
 DataTypes used by this provider
 """
 from datetime import datetime
+from time import sleep
 import hashlib
 import inspect
 import json
@@ -31,7 +32,6 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
-from cloudbridge.cloud.interfaces.services import VolumeService
 
 from botocore.exceptions import ClientError as EC2ResponseError
 from boto.s3.key import Key
@@ -42,8 +42,12 @@ class AWSMachineImage(BaseMachineImage):
 
     IMAGE_STATE_MAP = {
         'pending': MachineImageState.PENDING,
+        'transient': MachineImageState.PENDING,
         'available': MachineImageState.AVAILABLE,
-        'failed': MachineImageState.ERROR
+        'deregistered': MachineImageState.ERROR,
+        'failed': MachineImageState.ERROR,
+        'error': MachineImageState.ERROR,
+        'invalid': MachineImageState.ERROR
     }
 
     def __init__(self, provider, image):
@@ -71,8 +75,12 @@ class AWSMachineImage(BaseMachineImage):
 
         :rtype: ``str``
         :return: Name for this image as returned by the cloud middleware.
+                 Returns `None` if the image is deregistered.
         """
-        return self._ec2_image.name
+        try:
+            return self._ec2_image.name
+        except AttributeError:
+            return None
 
     @property
     def description(self):
@@ -80,9 +88,13 @@ class AWSMachineImage(BaseMachineImage):
         Get the image description.
 
         :rtype: ``str``
-        :return: Description for this image as returned by the cloud middleware
+        :return: Description for this image as returned by the cloud middleware.
+                 Returns `None` if the image is deregistered.
         """
-        return self._ec2_image.description
+        try:
+            return self._ec2_image.description
+        except AttributeError:
+            return None
 
     def delete(self):
         """
@@ -92,21 +104,18 @@ class AWSMachineImage(BaseMachineImage):
 
     @property
     def state(self):
-        return AWSMachineImage.IMAGE_STATE_MAP.get(
-            self._ec2_image.state, MachineImageState.UNKNOWN)
+        try:
+            return AWSMachineImage.IMAGE_STATE_MAP.get(
+                self._ec2_image.state, MachineImageState.UNKNOWN)
+        except AttributeError:
+            return MachineImageState.UNKNOWN
 
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        image = self._provider.compute.images.get(self.id)
-        if image:
-            # pylint:disable=protected-access
-            self._ec2_image = image._ec2_image
-        else:
-            # image no longer exists
-            self._ec2_image.state = "unknown"
+        self._ec2_image.reload()
 
 
 class AWSPlacementZone(BasePlacementZone):
@@ -235,7 +244,10 @@ class AWSInstance(BaseInstance):
 
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        return self._ec2_instance.tags.get('Name')
+        for tag in self._ec2_instance.tags or list():
+            if tag.get('Key') == 'Name':
+                return tag.get('Value')
+        return None
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -243,14 +255,14 @@ class AWSInstance(BaseInstance):
         """
         Set the instance name.
         """
-        self._ec2_instance.add_tag('Name', value)
+        self._ec2_instance.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def public_ips(self):
         """
         Get all the public IP addresses for this instance.
         """
-        return [self._ec2_instance.ip_address]
+        return [self._ec2_instance.public_ip_address]
 
     @property
     def private_ips(self):
@@ -279,12 +291,22 @@ class AWSInstance(BaseInstance):
         Reboot this instance (using the cloud middleware API).
         """
         self._ec2_instance.reboot()
+        # Wait for the system to go down
+        timeout_total = 300
+        timeout_ival = 15
+        while self.state == InstanceState.RUNNING and timeout_total > 0:
+            sleep(timeout_ival)
+            timeout_total = timeout_total - timeout_ival
+            self.refresh()
+        # Wait for the system to be running
+        self._ec2_instance.wait_until_running()
 
     def terminate(self):
         """
         Permanently terminate this instance.
         """
         self._ec2_instance.terminate()
+        self._ec2_instance.wait_until_terminated()
 
     @property
     def image_id(self):
@@ -298,7 +320,7 @@ class AWSInstance(BaseInstance):
         """
         Get the placement zone id where this instance is running.
         """
-        return self._ec2_instance.placement
+        return self._ec2_instance.placement.get('AvailabilityZone')
 
     @property
     def security_groups(self):
@@ -308,15 +330,20 @@ class AWSInstance(BaseInstance):
         # boto instance.groups field returns a ``Group`` object so need to
         # convert that into a ``SecurityGroup`` object before creating a
         # cloudbridge SecurityGroup object
-        return [self._provider.security.security_groups.get(group.id)
-                for group in self._ec2_instance.groups]
+        return [
+            self._provider.security.security_groups.get(group_id)
+            for group_id in self.security_group_ids
+        ]
 
     @property
     def security_group_ids(self):
         """
         Get the security groups IDs associated with this instance.
         """
-        return [group.id for group in self._ec2_instance.groups]
+        return set([
+            group.get('GroupId') for group in
+            self._ec2_instance.security_groups
+        ])
 
     @property
     def key_pair_name(self):
@@ -329,36 +356,57 @@ class AWSInstance(BaseInstance):
         """
         Create a new image based on this instance.
         """
-        image_id = self._ec2_instance.create_image(name)
-        # Sometimes, the image takes a while to register, so retry a few times
-        # if the image cannot be found
-        retry_decorator = retry(retry_on_result=lambda result: result is None,
-                                stop_max_attempt_number=3, wait_fixed=1000)
-        image = retry_decorator(self._provider.compute.images.get)(image_id)
+        image = AWSMachineImage(self._provider,
+                                self._ec2_instance.create_image(Name=name))
+        # Wait for the image to exist
+        self._provider.ec2_conn.meta.client.get_waiter('image_exists').wait(
+            ImageIds=[image.id])
+        # Return the image
+        image.refresh()
         return image
 
     def add_floating_ip(self, ip_address):
         """
         Add an elastic IP address to this instance.
         """
-        if self._ec2_instance.vpc_id:
-            aid = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
-            return self._provider._ec2_conn.associate_address(
-                self._ec2_instance.id, allocation_id=aid.allocation_id)
-        else:
-            return self._ec2_instance.use_ip(ip_address)
+        return self._provider.ec2_conn.meta.client.associate_address(**{
+            k: v for k, v in {
+                'InstanceId': self.id,
+                'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
+                'AllocationId':
+                    None if not self._ec2_instance.vpc_id else
+                    ip_address.id if isinstance(ip_address, 'FloatingIP') else
+                    [
+                        x for x in
+                        self._provider.network.floating_ips()
+                        if x.public_ip == ip_address
+                    ][0].id
+            }.items() if v is not None
+        })
 
     def remove_floating_ip(self, ip_address):
         """
         Remove a elastic IP address from this instance.
         """
-        raise NotImplementedError(
-            'remove_floating_ip not implemented by this provider.')
+        return self._provider.ec2_conn.meta.client.disassociate_address(**{
+            k: v for k, v in {
+                'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
+                'AssociationId':
+                    None if not self._ec2_instance.vpc_id else
+                    ip_address.association_id
+                    if isinstance(ip_address, 'FloatingIP') else
+                    [
+                        x for x in
+                        self._provider.network.floating_ips()
+                        if x.public_ip == ip_address
+                    ][0].association_id
+            }.items() if v is not None
+        })
 
     @property
     def state(self):
         return AWSInstance.INSTANCE_STATE_MAP.get(
-            self._ec2_instance.state, InstanceState.UNKNOWN)
+            self._ec2_instance.state['Name'], InstanceState.UNKNOWN)
 
     def refresh(self):
         """
@@ -366,11 +414,13 @@ class AWSInstance(BaseInstance):
         for its latest state.
         """
         try:
-            self._ec2_instance.update(validate=True)
+            self._ec2_instance.reload()
         except (EC2ResponseError, ValueError):
-            # The volume no longer exists and cannot be refreshed.
-            # set the status to unknown
-            self._ec2_instance.status = 'unknown'
+            # Silently fail for now
+            return
+
+    def wait_until_exists(self, timeout=None, interval=None):
+        self._ec2_instance.wait_until_running()
 
 
 class AWSVolume(BaseVolume):
@@ -605,7 +655,7 @@ class AWSSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        cb_vol = VolumeService(self._provider).create(
+        cb_vol = self._provider.block_store.volumes.create(
             name=self.name,
             size=size,
             zone=placement,
@@ -733,11 +783,11 @@ class AWSSecurityGroup(BaseSecurityGroup):
             return False
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        attr = inspect.getmembers(self, lambda a: not inspect.isroutine(a))
+        _js = {k: v for(k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
-        js['rules'] = [json.loads(r) for r in json_rules]
-        return json.dumps(js, sort_keys=True)
+        _js['rules'] = [json.loads(r) for r in json_rules]
+        return json.dumps(_js, sort_keys=True)
 
 
 class AWSSecurityGroupRule(BaseSecurityGroupRule):
@@ -1000,10 +1050,9 @@ class AWSNetwork(BaseNetwork):
     def subnets(self):
         return [AWSSubnet(self._provider, x) for x in self._vpc.subnets.all()]
 
-    def create_subnet(self, cidr_block, name=None):
-        subnet = AWSSubnet(
-            self._provider,
-            self._vpc.create_subnet(CidrBlock=cidr_block))
+    def create_subnet(self, cidr_block, name=None, zone=None):
+        subnet = self._provider.network.subnets.create(
+            self.id, cidr_block, name=name, zone=zone)
         if name:
             subnet.name = name
         return subnet
@@ -1057,6 +1106,11 @@ class AWSSubnet(BaseSubnet):
         return self._subnet.cidr_block
 
     @property
+    def availability_zone(self):
+        '''Returns availability / placement zone ID'''
+        return self._subnet.availability_zone
+
+    @property
     def network_id(self):
         return self._subnet.vpc_id
 
@@ -1073,6 +1127,10 @@ class AWSFloatingIP(BaseFloatingIP):
     @property
     def id(self):
         return self._ip.allocation_id
+
+    @property
+    def association_id(self):
+        return self._ip.association_id
 
     @property
     def public_ip(self):
@@ -1110,14 +1168,14 @@ class AWSRouter(BaseRouter):
         :rtype: :class:`boto.vpc.routetable.RouteTable`
         :return: A RouteTable object.
         """
-        return self._provider.ec2_conn.route_tables.filter(
+        return list(self._provider.ec2_conn.route_tables.filter(
             Filters=[{
                 'Name': 'vpc-id',
                 'Values': [
                     self._provider.ec2_conn.Subnet(subnet_id).vpc_id
                 ]
             }]
-        )[0]
+        ).limit(1))[0]
 
     @property
     def id(self):
@@ -1172,7 +1230,7 @@ class AWSRouter(BaseRouter):
     def attach_network(self, network_id):
         return self._router.attach_to_vpc(VpcId=network_id)
 
-    def detach_network(self):
+    def detach_network(self, network_id):
         return self._router.detach_from_vpc(VpcId=network_id)
 
     def add_route(self, subnet_id):
@@ -1218,5 +1276,4 @@ class AWSLaunchConfig(BaseLaunchConfig):
         net = self.provider.network.get(net_id)
         sns = net.subnets()
         if sns:
-            sn = sns[0]
-        self.network_interfaces.append(sn.id)
+            self.network_interfaces.append(sns[0].id)
