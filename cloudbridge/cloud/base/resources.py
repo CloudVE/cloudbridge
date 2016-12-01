@@ -353,8 +353,12 @@ class BaseMachineImage(
             interval=interval)
 
     def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
+        try:
+            return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                                self.name, self.id)
+        except AttributeError:
+            return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                                'UNKNOWN', 'UNKNOWN')
 
 
 class BaseAttachmentInfo(AttachmentInfo):

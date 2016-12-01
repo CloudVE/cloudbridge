@@ -1,11 +1,9 @@
 import test.helpers as helpers
-import unittest
 import uuid
 from test.helpers import ProviderTestBase
 from cloudbridge.cloud.interfaces.resources import RouterState
 
 
-@unittest.skip("Skipping Network tests")
 class CloudNetworkServiceTestCase(ProviderTestBase):
 
     def __init__(self, methodName, provider):
@@ -39,8 +37,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             subnet = self.provider.network.subnets.create(
                 network=net, cidr_block="10.0.0.1/24", name=subnet_name)
             with helpers.cleanup_action(
-                lambda:
-                    self.provider.network.subnets.delete(subnet=subnet)
+                lambda: self.provider.network.subnets.delete(subnet=subnet)
             ):
                 # test list method
                 subnetl = self.provider.network.subnets.list(network=net)
@@ -50,9 +47,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     "List subnets does not return the expected subnet %s" %
                     subnet_name)
                 # test get method
-                sn = self.provider.network.subnets.get(subnet.id)
+                snet = self.provider.network.subnets.get(subnet.id)
                 self.assertTrue(
-                    subnet.id == sn.id,
+                    subnet.id == snet.id,
                     "GETting subnet should return the same subnet")
 
             subnetl = self.provider.network.subnets.list()
@@ -63,14 +60,14 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 .format(subnet_name))
 
             # Check floating IP address
-            ip = self.provider.network.create_floating_ip()
-            ip_id = ip.id
-            with helpers.cleanup_action(lambda: ip.delete()):
+            ipaddr = self.provider.network.create_floating_ip()
+            ip_id = ipaddr.id
+            with helpers.cleanup_action(lambda: ipaddr.delete()):
                 ipl = self.provider.network.floating_ips()
                 self.assertTrue(
-                    ip in ipl,
+                    ipaddr in ipl,
                     "Floating IP address {0} should exist in the list {1}"
-                    .format(ip.id, ipl))
+                    .format(ipaddr.id, ipl))
                 # 2016-08: address filtering not implemented in moto
                 # empty_ipl = self.provider.network.floating_ips('dummy-net')
                 # self.assertFalse(
@@ -78,14 +75,14 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 #     "Bogus network should not have any floating IPs: {0}"
                 #     .format(empty_ipl))
                 self.assertIn(
-                    ip.public_ip, repr(ip),
+                    ipaddr.public_ip, repr(ipaddr),
                     "repr(obj) should contain the address public IP value.")
                 self.assertFalse(
-                    ip.private_ip,
+                    ipaddr.private_ip,
                     "Floating IP should not have a private IP value ({0})."
-                    .format(ip.private_ip))
+                    .format(ipaddr.private_ip))
                 self.assertFalse(
-                    ip.in_use(),
+                    ipaddr.in_use(),
                     "Newly created floating IP address should not be in use.")
             ipl = self.provider.network.floating_ips()
             found_ip = [a for a in ipl if a.id == ip_id]
@@ -109,8 +106,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             lambda: net.delete()
         ):
             net.wait_till_ready()
+            net.refresh()
             self.assertEqual(
-                net.refresh(), 'available',
+                net.state, 'available',
                 "Network in state %s , yet should be 'available'" % net.state)
 
             self.assertIn(
@@ -145,7 +143,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def _cleanup(net, subnet, router):
             router.remove_route(subnet.id)
-            router.detach_network()
+            router.detach_network(net.id)
             router.delete()
             subnet.delete()
             net.delete()

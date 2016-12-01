@@ -807,7 +807,7 @@ class OpenStackRouter(BaseRouter):
             return True
         return False
 
-    def detach_network(self):
+    def detach_network(self, network_id=None):
         self._router = self._provider.neutron.remove_gateway_router(
             self.id).get('router', self._router)
         if not self.network_id:

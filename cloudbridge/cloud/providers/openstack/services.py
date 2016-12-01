@@ -776,7 +776,7 @@ class OpenStackSubnetService(BaseSubnetService):
         subnets = self.provider.neutron.list_subnets().get('subnets', [])
         return [OpenStackSubnet(self.provider, subnet) for subnet in subnets]
 
-    def create(self, network, cidr_block, name=''):
+    def create(self, network, cidr_block, name='', zone=None):
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
         subnet_info = {'name': name, 'network_id': network_id,

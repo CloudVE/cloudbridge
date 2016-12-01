@@ -2,12 +2,9 @@
 import time
 import string
 
-from boto.ec2.blockdevicemapping import BlockDeviceMapping
-from boto.ec2.blockdevicemapping import BlockDeviceType
 from botocore.exceptions import ClientError as EC2ResponseError
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
@@ -23,8 +20,6 @@ from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import InstanceType
-from cloudbridge.cloud.interfaces.resources \
-    import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 # from cloudbridge.cloud.interfaces.resources import Network
@@ -32,8 +27,6 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Volume
-
-import cloudbridge as cb
 
 import requests
 
@@ -130,6 +123,8 @@ class EC2ServiceFilter(object):
             the service method
         '''
         res = getattr(self.provider.ec2_conn, method)(**kwargs)
+        if isinstance(res, list):
+            return [self.iface(self.provider, x) if x else None for x in res]
         return self.iface(self.provider, res) if res else None
 
     def delete(self, val, filter_name):
@@ -476,6 +471,20 @@ class AWSInstanceService(BaseInstanceService):
 
     def __init__(self, provider):
         super(AWSInstanceService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider,
+                                      'instances', AWSInstance)
+
+    def get(self, instance_id):
+        """Returns an instance given its ID"""
+        return self.iface.get(instance_id, 'instance-id')
+
+    def list(self, limit=None, marker=None):
+        """List all instances associated with this account"""
+        return self.iface.list(limit=limit, marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        """Searches for an instance by name"""
+        return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
 
     def create(self, name, image, instance_type, zone=None,
                key_pair=None, security_groups=None, user_data=None,
@@ -488,110 +497,52 @@ class AWSInstanceService(BaseInstanceService):
         method will search for a default VPC and attempt to launch an instance
         into that VPC.
         """
+        # Get the images to use
         image_id = image.id if isinstance(image, MachineImage) else image
+        # Get the flavor / size
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
+        # Get the availability zone
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+        # Get the key pair
         key_pair_name = key_pair.name if isinstance(
-            key_pair,
-            KeyPair) else key_pair
+            key_pair, KeyPair) else key_pair
+        # Process other launch items
+        dev_mappings = list()
+        sec_group_ids = list()
+        subnet_id = None
         if launch_config:
-            bdm = self._process_block_device_mappings(launch_config, zone_id)
-            subnet_id = self._get_net_id(launch_config)
-        else:
-            bdm = subnet_id = None
-        subnet_id, zone_id, security_group_ids = \
-            self._resolve_launch_options(subnet_id, zone_id, security_groups)
+            dev_mappings = \
+                self._parse_device_mappings(launch_config.block_devices)
+            sec_group_ids = self._parse_security_groups(security_groups)
+            subnet_id = launch_config.network_interfaces[0] \
+                if len(launch_config.network_interfaces) > 0 else None
+        # Create the instance
+        ress = self.iface.create('create_instances', **{
+            k: v for k, v in {
+                'ImageId': image_id,
+                'MinCount': 1,
+                'MaxCount': 1,
+                'KeyName': key_pair_name,
+                'SecurityGroupIds': sec_group_ids or None,
+                'UserData': user_data,
+                'InstanceType': instance_size,
+                'Placement': {
+                    'AvailabilityZone': zone_id or AWSSubnetService(
+                        self.provider).get(subnet_id).availability_zone
+                } if zone_id or subnet_id else None,
+                'BlockDeviceMappings': dev_mappings or None,
+                'SubnetId': subnet_id
+            }.items() if v is not None
+        })
+        if ress and len(ress) == 1:
+            # Wait until the resource exists
+            ress[0].wait_until_exists()
+            return ress[0]
+        raise ValueError(
+            'Expected a single object response, got a list: %s' % ress)
 
-        reservation = self.provider.ec2_conn.run_instances(
-            image_id=image_id, instance_type=instance_size,
-            min_count=1, max_count=1, placement=zone_id,
-            key_name=key_pair_name, security_group_ids=security_group_ids,
-            user_data=user_data, block_device_map=bdm, subnet_id=subnet_id)
-        instance = None
-        if reservation:
-            time.sleep(2)  # The instance does not always get created in time
-            instance = AWSInstance(self.provider, reservation.instances[0])
-            instance.name = name
-        return instance
-
-    def _resolve_launch_options(self, subnet_id, zone_id, security_groups):
-        """
-        Resolve inter-dependent launch options.
-
-        With launching into VPC only, try to figure out a default
-        VPC to launch into, making placement decisions along the way that
-        are implied from the zone a subnet exists in.
-        """
-        def _deduce_subnet_and_zone(vpc, zone_id=None):
-            """
-            Figure out subnet ID from a VPC (and zone_id, if not supplied).
-            """
-            if zone_id:
-                # A placement zone was specified. Choose the default
-                # subnet in that zone.
-                for sn in vpc.subnets():
-                    if sn._subnet.availability_zone == zone_id:
-                        subnet_id = sn.id
-            else:
-                # No zone was requested, so just pick one subnet
-                sn = vpc.subnets()[0]
-                subnet_id = sn.id
-                zone_id = sn._subnet.availability_zone
-            return subnet_id, zone_id
-
-        vpc_id = None
-        sg_ids = []
-        if subnet_id:
-            # Subnet was supplied - get the VPC so named SGs can be resolved
-            subnet = self.provider.vpc_conn.get_all_subnets(subnet_id)[0]
-            vpc_id = subnet.vpc_id
-            # zone_id must match zone where the requested subnet lives
-            if zone_id and subnet.availability_zone != zone_id:
-                raise ValueError("Requested placement zone ({0}) must match "
-                                 "specified subnet's availability zone ({1})."
-                                 .format(zone_id, subnet.availability_zone))
-        if security_groups:
-            # Try to get a subnet via specified SGs. This will work only if
-            # the specified SGs are within a VPC (which is a prerequisite to
-            # launch into VPC anyhow).
-            _sg_ids = self._process_security_groups(security_groups, vpc_id)
-            # Must iterate through all the SGs here because a SG name may
-            # exist in a VPC or EC2-Classic so opt for the VPC SG. This
-            # applies in the case no subnet was specified.
-            if not subnet_id:
-                for sg_id in _sg_ids:
-                    sg = self.provider.security.security_groups.get(sg_id)
-                    if sg._security_group.vpc_id:
-                        if sg_ids and sg_id not in sg_ids:
-                            raise ValueError("Multiple matches for VPC "
-                                             "security group(s) {0}."
-                                             .format(security_groups))
-                        else:
-                            sg_ids.append(sg_id)
-                        vpc = self.provider.network.get(
-                            sg._security_group.vpc_id)
-                        subnet_id, zone_id = _deduce_subnet_and_zone(
-                            vpc, zone_id)
-            else:
-                sg_ids = _sg_ids
-            if not subnet_id:
-                raise AttributeError("Supplied security group(s) ({0}) must "
-                                     "be associated with a VPC."
-                                     .format(security_groups))
-        if not subnet_id and not security_groups:
-            # No VPC/subnet was supplied, search for the default VPC.
-            for vpc in self.provider.network.list():
-                if vpc._vpc.is_default:
-                    vpc_id = vpc.id
-                    subnet_id, zone_id = _deduce_subnet_and_zone(vpc, zone_id)
-            if not vpc_id:
-                raise AttributeError("No default VPC exists. Supply a "
-                                     "subnet to launch into (via "
-                                     "launch_config param).")
-        return subnet_id, zone_id, sg_ids
-
-    def _process_security_groups(self, security_groups, vpc_id=None):
+    def _parse_security_groups(self, security_groups):
         """
         Process security groups to create a list of SG ID's for launching.
 
@@ -600,132 +551,63 @@ class AWSInstanceService(BaseInstanceService):
         :param security_groups: A list of ``SecurityGroup`` objects or a list
                                 of ``SecurityGroup`` names, which should be
                                 assigned to this instance.
-
-        :type vpc_id: ``str``
-        :param vpc_id: A VPC ID within which the supplied security groups exist
-
         :rtype: ``list``
         :return: A list of security group IDs.
         """
-        if isinstance(security_groups, list) and \
-                isinstance(security_groups[0], SecurityGroup):
-            sg_ids = [sg.id for sg in security_groups]
-        else:
-            # SG names were supplied, need to map them to SG IDs.
-            sg_ids = []
-            # If a VPC was specified, need to map to the SGs in the VPC.
-            flters = None
-            if vpc_id:
-                flters = {'vpc_id': vpc_id}
-            sgs = self.provider.ec2_conn.get_all_security_groups(
-                filters=flters)
-            sg_ids = [sg.id for sg in sgs if sg.name in security_groups]
-
+        sg_ids = list()
+        if not security_groups:
+            return list()
+        for secgroup in security_groups:
+            if isinstance(secgroup, SecurityGroup):
+                sg_ids.append(secgroup.id)
+            else:
+                sec_obj = AWSSecurityGroupService(self.provider).get(secgroup)
+                if not sec_obj:
+                    raise ValueError('Could not find launch_options '
+                                     'security group: %s <%s>' %
+                                     (secgroup, type(secgroup)))
+                sg_ids.append(sec_obj.id)
         return sg_ids
 
-    def _process_block_device_mappings(self, launch_config, zone=None):
+    @staticmethod
+    def _parse_device_mappings(block_devices):
         """
         Processes block device mapping information
         and returns a Boto BlockDeviceMapping object. If new volumes
         are requested (source is None and destination is VOLUME), they will be
         created and the relevant volume ids included in the mapping.
         """
-        bdm = BlockDeviceMapping()
+        bdml = list()
+        bdm = dict()
+        if not block_devices:
+            return list()
         # Assign letters from f onwards
         # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html
         next_letter = iter(list(string.ascii_lowercase[6:]))
         # assign ephemeral devices from 0 onwards
         ephemeral_counter = 0
-        for device in launch_config.block_devices:
-            bd_type = BlockDeviceType()
-
-            if device.is_volume:
-                if device.is_root:
-                    bdm['/dev/sda1'] = bd_type
-                else:
-                    bdm['sd' + next(next_letter)] = bd_type
-
-                if isinstance(device.source, Snapshot):
-                    bd_type.snapshot_id = device.source.id
-                elif isinstance(device.source, Volume):
-                    bd_type.volume_id = device.source.id
-                elif isinstance(device.source, MachineImage):
-                    # Not supported
-                    pass
-                else:
-                    # source is None, but destination is volume, therefore
-                    # create a blank volume. If the Zone is None, this
-                    # could fail since the volume and instance may be created
-                    # in two different zones.
-                    if not zone:
-                        raise InvalidConfigurationException(
-                            "A zone must be specified when launching with a"
-                            " new blank volume block device mapping.")
-                    new_vol = self.provider.block_store.volumes.create(
-                        '',
-                        device.size,
-                        zone)
-                    bd_type.volume_id = new_vol.id
-                bd_type.delete_on_terminate = device.delete_on_terminate
-                if device.size:
-                    bd_type.size = device.size
+        for dev in block_devices:
+            if dev.is_volume:
+                # Generate the device path
+                bdm['DeviceName'] = \
+                    'dev/sd' + 'a1' if dev.is_root else next(next_letter)
+                bdm['Ebs'] = {
+                    'SnapshotId':
+                        dev.source.id
+                        if isinstance(dev.source, Snapshot) or
+                        isinstance(dev.source, Volume) else None,
+                    'VolumeSize': dev.size,
+                    'DeleteOnTerminate': dev.delete_on_terminate
+                }
             else:  # device is ephemeral
-                bd_type.ephemeral_name = 'ephemeral%s' % ephemeral_counter
-
-        return bdm
-
-    def _get_net_id(self, launch_config):
-        return (launch_config.network_interfaces[0]
-                if len(launch_config.network_interfaces) > 0
-                else None)
+                bdm['VirtualName'] = 'ephemeral%s' % ephemeral_counter
+            # Append the config
+            bdml.append(bdm)
+        return bdml
 
     def create_launch_config(self):
         return AWSLaunchConfig(self.provider)
 
-    def get(self, instance_id):
-        """
-        Returns an instance given its id. Returns None
-        if the object does not exist.
-        """
-        reservation = self.provider.ec2_conn.get_all_reservations(
-            instance_ids=[instance_id])
-        if reservation:
-            return AWSInstance(self.provider, reservation[0].instances[0])
-        else:
-            return None
-
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for an instance by a given list of attributes.
-
-        :rtype: ``object`` of :class:`.Instance`
-        :return: an Instance object
-        """
-        filtr = {'tag:Name': name}
-        reservations = self.provider.ec2_conn.get_all_reservations(
-            filters=filtr,
-            max_results=limit,
-            next_token=marker)
-        instances = [AWSInstance(self.provider, inst)
-                     for res in reservations
-                     for inst in res.instances]
-        return ServerPagedResultList(reservations.is_truncated,
-                                     reservations.next_token,
-                                     False, data=instances)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all instances.
-        """
-        reservations = self.provider.ec2_conn.get_all_reservations(
-            max_results=limit,
-            next_token=marker)
-        instances = [AWSInstance(self.provider, inst)
-                     for res in reservations
-                     for inst in res.instances]
-        return ServerPagedResultList(reservations.is_truncated,
-                                     reservations.next_token,
-                                     False, data=instances)
 
 AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
                                 "aws_instance_data.json"
@@ -817,8 +699,9 @@ class AWSNetworkService(BaseNetworkService):
         # AWS requried CIDR block to be specified when creating a network
         # so set a default one and use the largest possible netmask.
         default_cidr = '10.0.0.0/16'
-        res = self.iface.create('create_vpc', CidrBlock=default_cidr)
-        if not wait_for_load(res):
+        res = self.iface.create('create_vpc',
+                                CidrBlock=default_cidr)
+        if not self.iface.wait_for_create(res.id, 'vpc-id'):
             return None
         if name:
             res.name = name
@@ -836,9 +719,8 @@ class AWSNetworkService(BaseNetworkService):
                     Domain='vpc')['AllocationId']))
 
     def create_router(self, name=None):
-        timeout = 10
-        res = self.iface.create('create_internet_gateway')
-        if not wait_for_load(res):
+        res = self.iface_igws.create('create_internet_gateway')
+        if not self.iface_igws.wait_for_create(res.id, 'internet-gateway-id'):
             return None
         if name:
             res.name = name
@@ -868,11 +750,14 @@ class AWSSubnetService(BaseSubnetService):
         """Searches for a subnet by name"""
         return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
 
-    def create(self, network, cidr_block, name=None):
+    def create(self, network, cidr_block, name=None, zone=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
-        res = self.iface.create('create_subnet',
-                                VpcId=network_id,
-                                CidrBlock=cidr_block)
+        res = self.iface.create('create_subnet', **{
+            k: v for k, v in {
+                'VpcId': network_id,
+                'CidrBlock': cidr_block,
+                'AvailabilityZone': zone,
+            }.items() if v is not None})
         if name:
             res.name = name
         return res

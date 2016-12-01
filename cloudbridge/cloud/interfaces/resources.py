@@ -1138,9 +1138,11 @@ class Router(CloudResource):
         pass
 
     @abstractmethod
-    def detach_network(self):
+    def detach_network(self, network_id=None):
         """
         Detach this router from a network.
+
+        :warn: `network_id` is currently *required* for AWS resources.
 
         :rtype: ``bool``
         :return: ``True`` if successful.

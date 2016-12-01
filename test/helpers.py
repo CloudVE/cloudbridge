@@ -49,9 +49,9 @@ def cleanup_action(cleanup_func):
 
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
-        "image": os.environ.get('CB_IMAGE_AWS', 'ami-d85e75b0'),
+        "image": os.environ.get('CB_IMAGE_AWS', 'ami-6d1c2007'),
         "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS',
-                                        't1.micro'),
+                                        't2.micro'),
         "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     "OpenStackCloudProvider": {
@@ -77,16 +77,19 @@ def create_test_network(provider, name):
     """
     net = provider.network.create(name=name)
     cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
-    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block, name=name))
-    return net, sn
+    subnet = net.create_subnet(
+        cidr_block='%s/28' % cidr_block,
+        name=name,
+        zone=get_provider_test_data(provider, 'placement'))
+    return net, subnet
 
 
 def delete_test_network(network):
     """
     Delete the supplied network, first deleting any contained subnets.
     """
-    for sn in network.subnets():
-        sn.delete()
+    for subnet in network.subnets():
+        subnet.delete()
     network.delete()
 
 
@@ -97,7 +100,7 @@ def create_test_instance(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
-        zone=zone,
+        zone=zone or get_provider_test_data(provider, 'placement'),
         key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)
