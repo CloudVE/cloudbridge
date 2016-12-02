@@ -274,7 +274,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             # TODO: This should be greater than the ami size or tests
             # will fail on actual infrastructure. Needs an image.size
             # method
-            size=2,
+            size=8,
             delete_on_terminate=True)
 
         # Add all available ephemeral devices

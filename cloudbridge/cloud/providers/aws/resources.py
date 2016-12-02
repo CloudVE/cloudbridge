@@ -340,10 +340,10 @@ class AWSInstance(BaseInstance):
         """
         Get the security groups IDs associated with this instance.
         """
-        return set([
+        return list(set([
             group.get('GroupId') for group in
             self._ec2_instance.security_groups
-        ])
+        ]))
 
     @property
     def key_pair_name(self):
@@ -419,8 +419,11 @@ class AWSInstance(BaseInstance):
             # Silently fail for now
             return
 
-    def wait_until_exists(self, timeout=None, interval=None):
+    def wait_till_ready(self, timeout=None, interval=None):
         self._ec2_instance.wait_until_running()
+
+    def wait_till_exists(self, timeout=None, interval=None):
+        self._ec2_instance.wait_until_exists()
 
 
 class AWSVolume(BaseVolume):
@@ -562,6 +565,14 @@ class AWSVolume(BaseVolume):
             self._volume.status = 'unknown'
             return False
 
+    def wait_till_ready(self, timeout=None, interval=None):
+        self._provider.ec2_conn.meta.client.get_waiter('volume_available').wait(
+            VolumeIds=[self.id])
+        self.refresh()
+
+    def wait_till_deleted(self, timeout=None, interval=None):
+        self._provider.ec2_conn.meta.client.get_waiter('volume_deleted').wait(
+            VolumeIds=[self.id])
 
 class AWSSnapshot(BaseSnapshot):
 
@@ -664,6 +675,10 @@ class AWSSnapshot(BaseSnapshot):
         cb_vol.name = "Created from {0} ({1})".format(self.id, self.name)
         return cb_vol
 
+    def wait_till_ready(self, timeout=None, interval=None):
+        self._provider.ec2_conn.meta.client.get_waiter('snapshot_completed').wait(
+            SnapshotIds=[self.id])
+        self.refresh()
 
 class AWSKeyPair(BaseKeyPair):
 
@@ -1066,9 +1081,13 @@ class AWSNetwork(BaseNetwork):
             self._vpc.reload()
             return True
         except (EC2ResponseError, ValueError):
-            # The snapshot no longer exists and cannot be refreshed.
-            # set the status to unknown
+            # The network no longer exists and cannot be refreshed.
             return False
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self._provider.ec2_conn.meta.client.get_waiter('vpc_available').wait(
+            VpcIds=[self.id])
+        self.refresh()
 
 
 class AWSSubnet(BaseSubnet):
@@ -1116,6 +1135,19 @@ class AWSSubnet(BaseSubnet):
 
     def delete(self):
         return self._subnet.delete()
+
+    def refresh(self):
+        try:
+            self._subnet.reload()
+            return True
+        except (EC2ResponseError, ValueError):
+            # The resource no longer exists and cannot be refreshed.
+            return False
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self._provider.ec2_conn.meta.client.get_waiter('subnet_available').wait(
+            SubnetIds=[self.id])
+        self.refresh()
 
 
 class AWSFloatingIP(BaseFloatingIP):
@@ -1206,8 +1238,7 @@ class AWSRouter(BaseRouter):
             self._router.reload()
             return True
         except (EC2ResponseError, ValueError):
-            # The snapshot no longer exists and cannot be refreshed.
-            # set the status to unknown
+            # The resource no longer exists and cannot be refreshed.
             return False
 
     @property

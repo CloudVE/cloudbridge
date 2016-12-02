@@ -35,8 +35,6 @@ class CloudImageServiceTestCase(ProviderTestBase):
                     [MachineImageState.UNKNOWN, MachineImageState.ERROR])
 
             with helpers.cleanup_action(lambda: cleanup_img(test_image)):
-                test_image.wait_till_ready()
-
                 self.assertTrue(
                     test_instance.id in repr(test_instance),
                     "repr(obj) should contain the object id so that the object"

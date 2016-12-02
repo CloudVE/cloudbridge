@@ -251,9 +251,12 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
 
     def create(self, name, description, network_id=None):
         """Creates a security group pair"""
-        res = self.iface.create('create_security_group',
-                                GroupName=name,
-                                Description=description)
+        res = self.iface.create('create_security_group', **{
+            k: v for k, v in {
+                'GroupName': name,
+                'Description': description,
+                'VpcId': network_id,
+            }.items() if v is not None})
         if not self.iface.wait_for_create(res.id, 'group-id'):
             return None
         return res
@@ -319,8 +322,8 @@ class AWSVolumeService(BaseVolumeService):
         if snapshot_id:
             params['SnapshotId'] = snapshot_id
         res = self.iface.create('create_volume', **params)
-        if not self.iface.wait_for_create(res.id, 'volume-id'):
-            return None
+        # Wait until ready to tag instance
+        res.wait_till_ready()
         res.name = name
         if res.description:
             res.description = description
@@ -332,7 +335,8 @@ class AWSVolumeService(BaseVolumeService):
         if res:
             res = res[0]
             self.iface.delete(res.id, 'volume-id')
-            return self.iface.wait_for_delete(res.id, 'volume-id')
+            # Wait until the volume is deleted
+            res.wait_till_deleted()
         return None
 
 class AWSSnapshotService(BaseSnapshotService):
@@ -359,8 +363,8 @@ class AWSSnapshotService(BaseSnapshotService):
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
         res = self.iface.create('create_snapshot',
                                 VolumeId=volume_id)
-        if not self.iface.wait_for_create(res.id, 'snapshot-id'):
-            return None
+        # Wait until ready to tag instance
+        res.wait_till_ready()
         res.name = name
         if res.description:
             res.description = description
@@ -537,7 +541,9 @@ class AWSInstanceService(BaseInstanceService):
         })
         if ress and len(ress) == 1:
             # Wait until the resource exists
-            ress[0].wait_until_exists()
+            ress[0].wait_till_exists()
+            # Tag the instance w/ the name
+            ress[0].name = name
             return ress[0]
         raise ValueError(
             'Expected a single object response, got a list: %s' % ress)
@@ -590,19 +596,19 @@ class AWSInstanceService(BaseInstanceService):
             if dev.is_volume:
                 # Generate the device path
                 bdm['DeviceName'] = \
-                    'dev/sd' + 'a1' if dev.is_root else next(next_letter)
-                bdm['Ebs'] = {
+                    '/dev/sd' + 'a1' if dev.is_root else next(next_letter)
+                bdm['Ebs'] = {k: v for k, v in {
                     'SnapshotId':
                         dev.source.id
                         if isinstance(dev.source, Snapshot) or
                         isinstance(dev.source, Volume) else None,
                     'VolumeSize': dev.size,
-                    'DeleteOnTerminate': dev.delete_on_terminate
-                }
+                    'DeleteOnTermination': dev.delete_on_terminate
+                }.items() if v is not None}
             else:  # device is ephemeral
                 bdm['VirtualName'] = 'ephemeral%s' % ephemeral_counter
             # Append the config
-            bdml.append(bdm)
+            bdml.append({k: v for k, v in bdm.items() if v is not None})
         return bdml
 
     def create_launch_config(self):
@@ -701,8 +707,8 @@ class AWSNetworkService(BaseNetworkService):
         default_cidr = '10.0.0.0/16'
         res = self.iface.create('create_vpc',
                                 CidrBlock=default_cidr)
-        if not self.iface.wait_for_create(res.id, 'vpc-id'):
-            return None
+        # Wait until ready to tag instance
+        res.wait_till_ready()
         if name:
             res.name = name
         return res
@@ -758,6 +764,9 @@ class AWSSubnetService(BaseSubnetService):
                 'CidrBlock': cidr_block,
                 'AvailabilityZone': zone,
             }.items() if v is not None})
+        # The resource must be "available" before tagging
+        # Wait until ready to tag instance
+        # res.wait_till_ready()
         if name:
             res.name = name
         return res
