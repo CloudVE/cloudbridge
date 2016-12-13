@@ -1,7 +1,10 @@
-"""
-Base implementation of a provider interface
-"""
+"""Base implementation of a provider interface."""
 import os
+try:
+    from config_config_parser import SafeConfigParser
+except ImportError:  # Python 2
+    from ConfigParser import SafeConfigParser
+from os.path import expanduser
 
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.resources import Configuration
@@ -9,6 +12,12 @@ from cloudbridge.cloud.interfaces.resources import Configuration
 DEFAULT_RESULT_LIMIT = 50
 DEFAULT_WAIT_TIMEOUT = 600
 DEFAULT_WAIT_INTERVAL = 5
+
+# By default, use two locations for CloudBridge configuration
+CloudBridgeConfigPath = '/etc/cloudbridge.ini'
+CloudBridgeConfigLocations = [CloudBridgeConfigPath]
+UserConfigPath = os.path.join(expanduser('~'), '.cloudbridge')
+CloudBridgeConfigLocations.append(UserConfigPath)
 
 
 class BaseConfiguration(Configuration):
@@ -61,6 +70,8 @@ class BaseCloudProvider(CloudProvider):
 
     def __init__(self, config):
         self._config = BaseConfiguration(config)
+        self._config_parser = SafeConfigParser()
+        self._config_parser.read(CloudBridgeConfigLocations)
 
     @property
     def config(self):
@@ -100,9 +111,11 @@ class BaseCloudProvider(CloudProvider):
 
         :return: a configuration value for the supplied ``key``
         """
-        if isinstance(self.config, dict):
+        if isinstance(self.config, dict) and self.config.get(key):
             return self.config.get(key, default_value)
-        else:
-            return getattr(self.config, key) if hasattr(
-                self.config, key) and getattr(self.config, key) else \
-                default_value
+        elif hasattr(self.config, key) and getattr(self.config, key):
+            return getattr(self.config, key)
+        elif (self._config_parser.has_option(self.PROVIDER_ID, key) and
+              self._config_parser.get(self.PROVIDER_ID, key)):
+            return self._config_parser.get(self.PROVIDER_ID, key)
+        return default_value

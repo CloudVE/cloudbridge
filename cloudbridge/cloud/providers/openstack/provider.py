@@ -52,7 +52,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             'os_identity_api_version',
             os.environ.get('OS_IDENTITY_API_VERSION', None))
         # Allow individual service connections to have their own values but
-        # default to a the ones defined above.
+        # default to the ones defined above.
         self.swift_username = self._get_config_value(
             'os_swift_username',
             os.environ.get('OS_SWIFT_USERNAME', self.username))
