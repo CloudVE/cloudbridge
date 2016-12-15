@@ -1,7 +1,7 @@
 """Base implementation of a provider interface."""
 import os
 try:
-    from config_config_parser import SafeConfigParser
+    from configparser import SafeConfigParser
 except ImportError:  # Python 2
     from ConfigParser import SafeConfigParser
 from os.path import expanduser
