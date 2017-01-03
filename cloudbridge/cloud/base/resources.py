@@ -520,8 +520,8 @@ class BaseSecurityGroup(SecurityGroup, BaseCloudResource):
         return self._security_group.delete()
 
     def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.id)
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.id, self.name)
 
 
 class BaseSecurityGroupRule(SecurityGroupRule, BaseCloudResource):
