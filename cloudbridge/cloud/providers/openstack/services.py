@@ -522,15 +522,8 @@ class OpenStackRegionService(BaseRegionService):
 
     @property
     def current(self):
-        if self.provider.keystone.has_service_catalog():
-            nova_region = [
-                endpoint.get('region') or endpoint.get('region_id')
-                for svc in self.provider.keystone.service_catalog.get_data()
-                for endpoint in svc.get('endpoints', [])
-                if endpoint.get('publicURL', None) ==
-                self.provider.nova.client.management_url]
-            return self.get(nova_region[0])
-        return None
+        nova_region = self.provider.nova.client.region_name
+        return self.get(nova_region) if nova_region else None
 
 
 class OpenStackComputeService(BaseComputeService):
