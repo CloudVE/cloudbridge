@@ -1,13 +1,10 @@
-"""
-Provider implementation based on OpenStack Python clients for OpenStack
-compatible clouds.
-"""
+"""Provider implementation based on OpenStack Python clients for OpenStack."""
 
 import os
 
 from cinderclient import client as cinder_client
+from keystoneauth1 import session
 from keystoneclient import client as keystone_client
-from keystoneclient import session
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from novaclient import shell as nova_shell
@@ -23,6 +20,7 @@ from .services import OpenStackSecurityService
 
 
 class OpenStackCloudProvider(BaseCloudProvider):
+    """OpenStack provider implementation."""
 
     PROVIDER_ID = 'openstack'
 
@@ -52,7 +50,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             'os_identity_api_version',
             os.environ.get('OS_IDENTITY_API_VERSION', None))
         # Allow individual service connections to have their own values but
-        # default to a the ones defined above.
+        # default to the ones defined above.
         self.swift_username = self._get_config_value(
             'os_swift_username',
             os.environ.get('OS_SWIFT_USERNAME', self.username))
@@ -114,18 +112,18 @@ class OpenStackCloudProvider(BaseCloudProvider):
         """
         Connect to Keystone and return a session object.
 
-        :rtype: :class:`keystoneclient.session.Session`
+        :rtype: :class:`keystoneauth1.session.Session`
         :return: A Keystone session object.
         """
         def connect_v2():
-            from keystoneclient.auth.identity import Password as Password_v2
+            from keystoneauth1.identity.v2 import Password as Password_v2
             auth = Password_v2(self.auth_url, username=self.username,
                                password=self.password,
                                tenant_name=self.tenant_name)
             return session.Session(auth=auth)
 
         def connect_v3():
-            from keystoneclient.auth.identity.v3 import Password as Password_v3
+            from keystoneauth1.identity.v3 import Password as Password_v3
             auth = Password_v3(auth_url=self.auth_url,
                                username=self.username,
                                password=self.password,
@@ -184,13 +182,9 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._connect_nova_region(self.region_name)
 
     def _connect_nova_region(self, region_name):
-        """
-        Get an OpenStack Nova (compute) client object for the given cloud.
-        """
+        """Get an OpenStack Nova (compute) client object."""
         def connect_pwd():
-            """
-            Connect using username and password parameters.
-            """
+            """Connect using username and password parameters."""
             nova = nova_client.Client(
                 api_version, username=self.username, api_key=self.password,
                 project_id=self.tenant_name, auth_url=self.auth_url,
@@ -200,9 +194,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             return nova
 
         def connect_sess():
-            """
-            Connect using a Keystone session object.
-            """
+            """Connect using a Keystone session object."""
             return nova_client.Client(
                 api_version, session=self._keystone_session,
                 service_name=service_name,
@@ -221,9 +213,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return connect_sess() if self._keystone_version == 3 else connect_pwd()
 
     def _connect_keystone(self):
-        """
-        Get an OpenStack Keystone (identity) client object for the given cloud.
-        """
+        """Get an OpenStack Keystone (identity) client object."""
         def connect_v2():
             # Wow, the internal keystoneV2 implementation is terribly buggy. It
             # needs both a separate Session object and the username, password
@@ -247,22 +237,15 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return connect_v3() if self._keystone_version == 3 else connect_v2()
 
     def _connect_cinder(self):
-        """
-        Get an OpenStack Cinder (block storage) client object for the given
-        cloud.
-        """
+        """Get an OpenStack Cinder (block storage) client object."""
         def connect_pwd():
-            """
-            Connect using username and password parameters.
-            """
+            """Connect using username and password parameters."""
             return cinder_client.Client(
                 api_version, username=self.username, api_key=self.password,
                 project_id=self.tenant_name, auth_url=self.auth_url)
 
         def connect_sess():
-            """
-            Connect using a Keystone session object.
-            """
+            """Connect using a Keystone session object."""
             return cinder_client.Client(
                 api_version, session=self._keystone_session)
 
@@ -285,10 +268,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
 #                                     session=self.keystone.session)
 
     def _connect_swift(self):
-        """
-        Get an OpenStack Swift (object store) client object for the given
-        cloud.
-        """
+        """Get an OpenStack Swift (object store) client object cloud."""
         def connect_v2():
             os_options = {'region_name': self.swift_region_name}
             return swift_client.Connection(
@@ -310,22 +290,15 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return connect_v3() if self._keystone_version == 3 else connect_v2()
 
     def _connect_neutron(self):
-        """
-        Get an OpenStack Neutron (networking) client object for the given
-        cloud.
-        """
+        """Get an OpenStack Neutron (networking) client object cloud."""
         def connect_pwd():
-            """
-            Connect using username and password parameters.
-            """
+            """Connect using username and password parameters."""
             return neutron_client.Client(
                 username=self.username, password=self.password,
                 tenant_name=self.tenant_name, auth_url=self.auth_url)
 
         def connect_sess():
-            """
-            Connect using a Keystone session object.
-            """
+            """Connect using a Keystone session object."""
             return neutron_client.Client(session=self._keystone_session)
 
         return connect_sess() if self._keystone_version == 3 else connect_pwd()

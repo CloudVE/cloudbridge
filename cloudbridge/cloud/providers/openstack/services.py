@@ -196,7 +196,7 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         return ClientPagedResultList(self.provider, sgs,
                                      limit=limit, marker=marker)
 
-    def create(self, name, description, network_id=None):
+    def create(self, name, description, network_id):
         """
         Create a new security group under the current account.
 
