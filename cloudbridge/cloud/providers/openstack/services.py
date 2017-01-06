@@ -496,7 +496,13 @@ class OpenStackRegionService(BaseRegionService):
         return next(region, None)
 
     def list(self, limit=None, marker=None):
-        def keystone_v2():
+        # pylint:disable=protected-access
+        if self.provider._keystone_version == 3:
+            os_regions = [OpenStackRegion(self.provider, region)
+                          for region in self.provider.keystone.regions.list()]
+            return ClientPagedResultList(self.provider, os_regions,
+                                         limit=limit, marker=marker)
+        else:
             # Keystone v3 onwards supports directly listing regions
             # but for v2, this convoluted method is necessary.
             regions = (
@@ -510,15 +516,6 @@ class OpenStackRegionService(BaseRegionService):
 
             return ClientPagedResultList(self.provider, os_regions,
                                          limit=limit, marker=marker)
-
-        def keystone_v3():
-            os_regions = [OpenStackRegion(self.provider, region)
-                          for region in self.provider.keystone.regions.list()]
-            return ClientPagedResultList(self.provider, os_regions,
-                                         limit=limit, marker=marker)
-
-        return keystone_v3() if self.provider._keystone_version == 3 else \
-            keystone_v2()  # pylint:disable=protected-access
 
     @property
     def current(self):
