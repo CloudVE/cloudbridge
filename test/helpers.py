@@ -85,9 +85,9 @@ def delete_test_network(network):
     """
     Delete the supplied network, first deleting any contained subnets.
     """
-    for sn in network.subnets():
-        sn.delete()
-    network.delete()
+    with cleanup_action(lambda: network.delete()):
+        for sn in network.subnets():
+            sn.delete()
 
 
 def create_test_instance(
@@ -121,17 +121,13 @@ def get_test_instance(provider, name, key_pair=None, security_groups=None,
 
 def cleanup_test_resources(instance=None, network=None, security_group=None,
                            key_pair=None):
-    if instance:
-        instance.terminate()
-        instance.wait_for(
-            [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-            terminal_states=[InstanceState.ERROR])
-    if security_group:
-        security_group.delete()
-    if key_pair:
-        key_pair.delete()
-    if network:
-        delete_test_network(network)
+    with cleanup_action(lambda: delete_test_network(network)):
+        with cleanup_action(lambda: key_pair.delete()):
+            with cleanup_action(lambda: security_group.delete()):
+                instance.terminate()
+                instance.wait_for(
+                    [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                    terminal_states=[InstanceState.ERROR])
 
 
 class ProviderTestBase(object):
