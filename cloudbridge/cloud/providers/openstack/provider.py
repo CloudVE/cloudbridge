@@ -184,6 +184,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         nova = nova_client.Client(
                 api_version, session=self._keystone_session,
+                auth_url=self.auth_url,
                 region_name=region_name,
                 service_name=service_name,
                 http_log_debug=True if self.config.debug_mode else False)
@@ -217,6 +218,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             os.environ.get('OS_VOLUME_API_VERSION', 2))
 
         return cinder_client.Client(api_version,
+                                    auth_url=self.auth_url,
                                     session=self._keystone_session,
                                     region_name=self.region_name)
 
@@ -234,9 +236,11 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def _connect_swift(self):
         """Get an OpenStack Swift (object store) client object cloud."""
-        return swift_client.Connection(session=self._keystone_session)
+        return swift_client.Connection(authurl=self.auth_url,
+                                       session=self._keystone_session)
 
     def _connect_neutron(self):
         """Get an OpenStack Neutron (networking) client object cloud."""
-        return neutron_client.Client(session=self._keystone_session,
+        return neutron_client.Client(auth_url=self.auth_url,
+                                     session=self._keystone_session,
                                      region_name=self.region_name)
