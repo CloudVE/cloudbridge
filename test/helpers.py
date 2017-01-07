@@ -44,7 +44,10 @@ def cleanup_action(cleanup_func):
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
         reraise(ex_class, ex_val, ex_traceback)
-    cleanup_func()
+    try:
+        cleanup_func()
+    except Exception as e:
+        print("Error during cleanup: {0}".format(e))
 
 
 TEST_DATA_CONFIG = {
