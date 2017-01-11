@@ -109,12 +109,10 @@ def create_test_instance(
 def get_test_instance(provider, name, key_pair=None, security_groups=None,
                       network=None):
     launch_config = None
-    if network:
-        launch_config = provider.compute.instances.create_launch_config()
-        launch_config.add_network_interface(network.id)
     instance = create_test_instance(
         provider,
         name,
+        network=network,
         key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)

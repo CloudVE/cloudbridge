@@ -270,7 +270,6 @@ class BaseLaunchConfig(LaunchConfig):
     def __init__(self, provider):
         self.provider = provider
         self.block_devices = []
-        self.network_interfaces = []
 
     class BlockDeviceMapping(object):
         """
@@ -325,9 +324,6 @@ class BaseLaunchConfig(LaunchConfig):
         return BaseLaunchConfig.BlockDeviceMapping(
             is_volume=True, source=source, is_root=is_root, size=size,
             delete_on_terminate=delete_on_terminate)
-
-    def add_network_interface(self, net_id):
-        self.network_interfaces.append(net_id)
 
 
 class BaseMachineImage(

@@ -632,9 +632,11 @@ class MachineImageState(object):
 
 class LaunchConfig(object):
     """
-    Represents an advanced launch configuration object, containing
-    information such as BlockDeviceMappings, NetworkInterface configurations,
-    and other advanced options which may be useful when launching an instance.
+    Represents an advanced launch configuration object.
+
+    Theis object can contain information such as BlockDeviceMappings
+    configurations, and other advanced options which may be useful when
+    launching an instance.
 
     Example:
 
@@ -642,10 +644,9 @@ class LaunchConfig(object):
 
         lc = provider.compute.instances.create_launch_config()
         lc.add_block_device(...)
-        lc.add_network_interface(...)
 
         inst = provider.compute.instances.create(name, image, instance_type,
-                                               launch_config=lc)
+                                                 network, launch_config=lc)
     """
 
     @abstractmethod
@@ -734,34 +735,6 @@ class LaunchConfig(object):
         :type  delete_on_terminate: ``bool``
         :param delete_on_terminate: Determines whether to delete or keep the
                                     volume on instance termination.
-        """
-        pass
-
-    @abstractmethod
-    def add_network_interface(self, net_id):
-        """
-        Add a private network info to the launch configuration.
-
-        Example:
-
-        .. code-block:: python
-
-            lc = provider.compute.instances.create_launch_config()
-
-            # 1. Add a VPC subnet for use with AWS
-            lc.add_network_interface('subnet-c24aeaff')
-
-            # 2. Add a network ID for use with OpenStack
-            lc.add_network_interface('5820c766-75fe-4fc6-96ef-798f67623238')
-
-        :type net_id: ``str``
-        :param net_id: Network ID to launch an instance into. This is a
-                       preliminary implementation (pending full private cloud
-                       support within CloudBridge) so native network IDs need
-                       to be supplied. For OpenStack, this is the Neutron
-                       network ID. For AWS, this is a VPC subnet ID. For the
-                       time being, only a single network interface can be
-                       supplied.
         """
         pass
 

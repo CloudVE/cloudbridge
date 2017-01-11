@@ -287,11 +287,11 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             lc.add_ephemeral_device()
 
         net, _ = helpers.create_test_network(self.provider, name)
-        lc.add_network_interface(net.id)
 
         inst = helpers.create_test_instance(
             self.provider,
             name,
+            network=net,
             zone=helpers.get_provider_test_data(
                 self.provider,
                 'placement'),

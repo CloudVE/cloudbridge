@@ -1143,17 +1143,3 @@ class AWSLaunchConfig(BaseLaunchConfig):
 
     def __init__(self, provider):
         super(AWSLaunchConfig, self).__init__(provider)
-
-    def add_network_interface(self, net_id):
-        """
-        Extract a subnet within the network identified by ``net_id``.
-
-        AWS requires a subnet ID to be supplied vs. a network (i.e., VPC) ID
-        so just pull out one subnet within the network (currently, the first
-        one).
-        """
-        net = self.provider.network.get(net_id)
-        sns = net.subnets()
-        if sns:
-            sn = sns[0]
-        self.network_interfaces.append(sn.id)
