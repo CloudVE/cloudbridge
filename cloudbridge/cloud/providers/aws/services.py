@@ -629,7 +629,7 @@ class AWSInstanceService(BaseInstanceService):
             sn_id, _ = _get_potential_subnets(flters, exc)
         elif vpc_id:
             flters = {'state': 'available', 'vpcId': vpc_id}
-            exc = "No subnets found for network {1}.".format(vpc_id)
+            exc = "No subnets found for network {0}.".format(vpc_id)
             sn_id, zone_id = _get_potential_subnets(flters, exc)
             sg_ids = None
         elif zone_id:
