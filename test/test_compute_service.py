@@ -292,9 +292,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.provider,
             name,
             network=net,
-            zone=helpers.get_provider_test_data(
-                self.provider,
-                'placement'),
+            # We don't have a way to match the test net placement and this zone
+            # zone=helpers.get_provider_test_data(self.provider, 'placement'),
             launch_config=lc)
 
         def cleanup(instance, net):

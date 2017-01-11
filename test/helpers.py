@@ -52,9 +52,8 @@ def cleanup_action(cleanup_func):
 
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
-        "image": os.environ.get('CB_IMAGE_AWS', 'ami-d85e75b0'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS',
-                                        't1.micro'),
+        "image": os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
+        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS', 't2.micro'),
         "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     "OpenStackCloudProvider": {
@@ -94,12 +93,13 @@ def delete_test_network(network):
 
 
 def create_test_instance(
-        provider, instance_name, zone=None, launch_config=None,
+        provider, instance_name, network, zone=None, launch_config=None,
         key_pair=None, security_groups=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
+        network=network,
         zone=zone,
         key_pair=key_pair,
         security_groups=security_groups,
