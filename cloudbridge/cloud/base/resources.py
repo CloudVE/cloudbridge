@@ -5,6 +5,7 @@ import inspect
 import itertools
 import json
 import logging
+import os
 import shutil
 import time
 
@@ -639,6 +640,9 @@ class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
 
 
 class BaseNetwork(BaseCloudResource, Network, BaseObjectLifeCycleMixin):
+
+    CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
+                                             'CloudBridgeNet')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)

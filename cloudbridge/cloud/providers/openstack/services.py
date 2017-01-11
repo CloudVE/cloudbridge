@@ -554,13 +554,11 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, zone=None,
+    def create(self, name, image, instance_type, network=None, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
-        """
-        Creates a new virtual machine instance.
-        """
+        """Create a new virtual machine instance."""
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else \
