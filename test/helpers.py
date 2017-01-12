@@ -53,7 +53,7 @@ def cleanup_action(cleanup_func):
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
         "image": os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS', 't2.micro'),
+        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS', 't2.nano'),
         "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     "OpenStackCloudProvider": {

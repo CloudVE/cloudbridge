@@ -806,6 +806,15 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
     @property
     def instance_data(self):
         """
+        Fetch info about the available instances.
+
+        To update this information, update the file pointed to by the
+        ``AWS_INSTANCE_DATA_DEFAULT_URL`` above. The content for this file
+        should be obtained from this repo
+        https://github.com/powdahound/ec2instances.info (in particular, this
+        file: https://raw.githubusercontent.com/powdahound/ec2instances.info/
+        master/www/instances.json).
+
         TODO: Needs a caching function with timeout
         """
         r = requests.get(self.provider.config.get(
