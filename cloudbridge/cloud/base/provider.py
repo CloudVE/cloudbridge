@@ -8,6 +8,7 @@ from os.path import expanduser
 
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.resources import Configuration
+from cloudbridge.cloud.interfaces.resources import ProviderConnectionException
 
 DEFAULT_RESULT_LIMIT = 50
 DEFAULT_WAIT_TIMEOUT = 600
@@ -80,6 +81,19 @@ class BaseCloudProvider(CloudProvider):
     @property
     def name(self):
         return str(self.__class__.__name__)
+
+    def authenticate(self):
+        """
+        A basic implementation which simply runs a low impact command to
+        check whether cloud credentials work. Providers should override with
+        more efficient implementations.
+        """
+        try:
+            self.security.key_pairs.list()
+            return True
+        except Exception as e:
+            raise ProviderConnectionException(
+                "Authentication with cloud provider failed: %s" % (e,))
 
     def has_service(self, service_type):
         """

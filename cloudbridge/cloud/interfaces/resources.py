@@ -80,6 +80,17 @@ class InvalidConfigurationException(CloudBridgeBaseException):
     pass
 
 
+class ProviderConnectionException(CloudBridgeBaseException):
+
+    """
+    Marker interface for connection errors to a cloud provider.
+    Thrown when cloudbridge is unable to connect with a provider,
+    for example, when credentials are incorrect, or connection
+    settings are invalid.
+    """
+    pass
+
+
 class Configuration(dict):
     """
     Represents a cloudbridge configuration object
