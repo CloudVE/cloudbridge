@@ -1,6 +1,10 @@
+import unittest
 import cloudbridge
 from cloudbridge.cloud import interfaces
 from test.helpers import ProviderTestBase
+from cloudbridge.cloud.interfaces.resources import ProviderConnectionException
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
+from cloudbridge.cloud.factory import CloudProviderFactory
 
 
 class CloudInterfaceTestCase(ProviderTestBase):
@@ -38,3 +42,25 @@ class CloudInterfaceTestCase(ProviderTestBase):
         """
         self.assertIsNotNone(cloudbridge.get_version(),
                              "Did not get library version.")
+
+    def test_authenticate_success(self):
+        self.assertTrue(self.provider.authenticate())
+
+    def test_authenticate_failure(self):
+        if isinstance(self.provider, TestMockHelperMixin):
+            raise unittest.SkipTest(
+                "Mock providers are not expected to"
+                " authenticate correctly")
+
+        cloned_provider = CloudProviderFactory().create_provider(
+            self.provider.PROVIDER_ID, self.provider.config)
+
+        with self.assertRaises(ProviderConnectionException):
+            # Mock up test by clearing credentials on a per provider basis
+            if cloned_provider.PROVIDER_ID == 'aws':
+                cloned_provider.a_key = "dummy_a_key"
+                cloned_provider.s_key = "dummy_s_key"
+            elif cloned_provider.PROVIDER_ID == 'openstack':
+                cloned_provider.username = "cb_dummy"
+                cloned_provider.password = "cb_dummy"
+            cloned_provider.authenticate()
