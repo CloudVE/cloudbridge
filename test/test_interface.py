@@ -2,7 +2,7 @@ import unittest
 import cloudbridge
 from cloudbridge.cloud import interfaces
 from test.helpers import ProviderTestBase
-from cloudbridge.cloud.interfaces.resources import ProviderConnectionException
+from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.factory import CloudProviderFactory
 

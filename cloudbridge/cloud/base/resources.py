@@ -11,7 +11,7 @@ import time
 
 import six
 
-from cloudbridge.cloud.interfaces.resources \
+from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -40,7 +40,7 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
-from cloudbridge.cloud.interfaces.resources import WaitStateException
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
 
 log = logging.getLogger(__name__)

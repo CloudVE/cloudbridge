@@ -8,7 +8,7 @@ from os.path import expanduser
 
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.resources import Configuration
-from cloudbridge.cloud.interfaces.resources import ProviderConnectionException
+from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 
 DEFAULT_RESULT_LIMIT = 50
 DEFAULT_WAIT_TIMEOUT = 600

@@ -6,7 +6,7 @@ from cloudbridge.cloud.interfaces \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
-from cloudbridge.cloud.interfaces.resources import WaitStateException
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
