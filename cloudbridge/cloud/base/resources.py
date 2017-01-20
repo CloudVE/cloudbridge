@@ -1,7 +1,17 @@
 """
 Base implementation for data objects exposed through a provider or service
 """
-from cloudbridge.cloud.interfaces.resources \
+import inspect
+import itertools
+import json
+import logging
+import os
+import shutil
+import time
+
+import six
+
+from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -30,15 +40,7 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
-from cloudbridge.cloud.interfaces.resources import WaitStateException
-import inspect
-import itertools
-import json
-import logging
-import shutil
-import time
-
-import six
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
 
 log = logging.getLogger(__name__)
@@ -268,7 +270,6 @@ class BaseLaunchConfig(LaunchConfig):
     def __init__(self, provider):
         self.provider = provider
         self.block_devices = []
-        self.network_interfaces = []
 
     class BlockDeviceMapping(object):
         """
@@ -323,9 +324,6 @@ class BaseLaunchConfig(LaunchConfig):
         return BaseLaunchConfig.BlockDeviceMapping(
             is_volume=True, source=source, is_root=is_root, size=size,
             delete_on_terminate=delete_on_terminate)
-
-    def add_network_interface(self, net_id):
-        self.network_interfaces.append(net_id)
 
 
 class BaseMachineImage(
@@ -519,8 +517,8 @@ class BaseSecurityGroup(SecurityGroup, BaseCloudResource):
         return self._security_group.delete()
 
     def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.id)
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.id, self.name)
 
 
 class BaseSecurityGroupRule(SecurityGroupRule, BaseCloudResource):
@@ -642,6 +640,9 @@ class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
 
 
 class BaseNetwork(BaseCloudResource, Network, BaseObjectLifeCycleMixin):
+
+    CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
+                                             'CloudBridgeNet')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)

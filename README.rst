@@ -55,6 +55,15 @@ exploring the API:
   print(provider.security.key_pairs.list())
 
 
+Citation
+~~~~~~~~
+
+N. Goonasekera, A. Lonie, J. Taylor, and E. Afgan,
+"CloudBridge: a Simple Cross-Cloud Python Library,"
+presented at the Proceedings of the XSEDE16 Conference on Diversity, Big Data, and Science at Scale, Miami, USA, 2016.
+DOI: http://dx.doi.org/10.1145/2949550.2949648
+
+
 Documentation
 ~~~~~~~~~~~~~
 Documentation can be found at https://cloudbridge.readthedocs.org.

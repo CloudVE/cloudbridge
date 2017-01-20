@@ -1,7 +1,7 @@
 import uuid
 
 from cloudbridge.cloud.interfaces import VolumeState
-from cloudbridge.cloud.interfaces.resources import WaitStateException
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
