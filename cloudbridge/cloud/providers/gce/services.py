@@ -202,19 +202,24 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         self._delegate = GCEFirewallsDelegate(provider)
 
     def get(self, group_id):
-        tag, network = self._delegate.get_tag_network_from_id(group_id)
+        tag, network_name = self._delegate.get_tag_network_from_id(group_id)
         if tag is None:
             return None
+        network = self.provider.network.get_by_name(network_name)
         return GCESecurityGroup(self._delegate, tag, network)
 
     def list(self, limit=None, marker=None):
-        security_groups = [GCESecurityGroup(self._delegate, x, y)
-                           for x, y in self._delegate.tag_networks]
+        security_groups = []
+        for tag, network_name in self._delegate.tag_networks:
+            network = self.provider.network.get_by_name(network_name)
+            security_group = GCESecurityGroup(self._delegate, tag, network)
+            security_groups.append(security_group)
         return ClientPagedResultList(self.provider, security_groups,
                                      limit=limit, marker=marker)
 
     def create(self, name, description, network_id=None):
-        return GCESecurityGroup(self._delegate, name, network_id, description)
+        network = self.provider.network.get(network_id)
+        return GCESecurityGroup(self._delegate, name, network, description)
 
     def find(self, name, limit=None, marker=None):
         """
@@ -223,8 +228,9 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         is returned.
         """
         out = []
-        for tag, network in self._delegate.tag_networks:
+        for tag, network_name in self._delegate.tag_networks:
             if tag == name:
+                network = self.provider.network.get_by_name(network_name)
                 out.append(GCESecurityGroup(self._delegate, name, network))
         return out
 
@@ -427,7 +433,22 @@ class GCENetworkService(BaseNetworkService):
         super(GCENetworkService, self).__init__(provider)
 
     def get(self, network_id):
-        networks = self.list(filter='id eq %s' % network_id)
+        if network_id is None:
+            return None
+        # networks = self.list(filter='id eq %s' % network_id) would be better.
+        # But, there is a GCE API bug that causes an error if the network_id
+        # has more than 19 digits. So, we list all networks and filter
+        # ourselves.
+        networks = self.list()
+        for network in networks:
+            if network.id == network_id:
+                return network
+        return None
+
+    def get_by_name(self, network_name):
+        if network_name is None:
+            return None
+        networks = self.list(filter='name eq %s' % network_name)
         return None if len(networks) == 0 else networks[0]
 
     def list(self, limit=None, marker=None, filter=None):
@@ -447,6 +468,10 @@ class GCENetworkService(BaseNetworkService):
 
     def create(self, name):
         try:
+            networks = self.list(filter='name eq %s' % name)
+            if len(networks) > 0:
+                return networks[0]
+
             response = (self.provider.gce_compute
                                      .networks()
                                      .insert(project=self.provider.project_name,
@@ -457,7 +482,7 @@ class GCENetworkService(BaseNetworkService):
             self.provider.wait_for_global_operation(response)
             networks = self.list(filter='name eq %s' % name)
             return None if len(networks) == 0 else networks[0]
-        except Exception as e:
+        except:
             return None
 
     @property

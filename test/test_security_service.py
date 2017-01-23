@@ -14,7 +14,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             methodName=methodName, provider=provider)
 
     def test_crud_key_pair_service(self):
-        name = 'cbtestkeypair-a'
+        name = 'cbtestkeypairA-{0}'.format(uuid.uuid4()).lower()
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -65,7 +65,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             "Found a key pair {0} that should not exist?".format(no_kp))
 
     def test_key_pair(self):
-        name = 'cbtestkeypair-b'
+        name = 'cbtestkeypairB-{0}'.format(uuid.uuid4()).lower()
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(lambda: kp.delete()):
             kpl = self.provider.security.key_pairs.list()
@@ -101,7 +101,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             self.provider.security.security_groups.delete(group_id=sg.id)
 
     def test_crud_security_group_service(self):
-        name = 'cbtestsecuritygroup-a'
+        name = 'cbtestsecuritygroupA-{0}'.format(uuid.uuid4()).lower()
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
@@ -157,7 +157,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     def test_security_group(self):
         """Test for proper creation of a security group."""
-        name = 'cbtestsecuritygroup-b'
+        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4()).lower()
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
@@ -207,7 +207,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     def test_security_group_rule_add_twice(self):
         """Test whether adding the same rule twice succeeds."""
-        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
+        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4()).lower()
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
@@ -224,7 +224,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     def test_security_group_group_rule(self):
         """Test for proper creation of a security group rule."""
-        name = 'cbtestsecuritygroup-c'
+        name = 'cbtestsecuritygroupC-{0}'.format(uuid.uuid4()).lower()
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
