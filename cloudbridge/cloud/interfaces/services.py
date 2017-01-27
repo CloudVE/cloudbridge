@@ -200,7 +200,7 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, image, instance_type, zone=None,
+    def create(self, name, image, instance_type, network=None, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -217,6 +217,20 @@ class InstanceService(PageableObjectMixin, CloudService):
         :type  instance_type: ``InstanceType`` or ``str``
         :param instance_type: The InstanceType or name, specifying the size of
                               the instance to boot into
+
+        :type  network:  ``Network`` or ``str``
+        :param network:  The Network or an ID with which the instance should
+                         be associated. If no network was specified, this
+                         method will attempt to find a 'default' one and launch
+                         the instance using that network. A 'default' network
+                         is one tagged as such by the native API. If such tag
+                         or functionality does not exist, an attempt to create
+                         a new network (by default called 'CloudBridgeNet')
+                         will be made. If that falls through, an attempt will
+                         be made to launch the instance without specifying the
+                         network parameter (this is under the assumption the
+                         private networking functionality is not available on
+                         the provider).
 
         :type  zone: ``Zone`` or ``str``
         :param zone: The Zone or its name, where the instance should be placed.
@@ -238,7 +252,7 @@ class InstanceService(PageableObjectMixin, CloudService):
         :type  launch_config: ``LaunchConfig`` object
         :param launch_config: A ``LaunchConfig`` object which
                describes advanced launch configuration options for an instance.
-               This includes block_device_mappings and network_interfaces. To
+               Currently, this includes only block_device_mappings. To
                construct a launch configuration object, call
                provider.compute.instances.create_launch_config()
 
@@ -935,7 +949,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, description, network_id=None):
+    def create(self, name, description, network_id):
         """
         Create a new SecurityGroup.
 
@@ -946,9 +960,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
         :param description: The description of the new security group.
 
         :type  network_id: ``str``
-        :param network_id: An optional network ID under which to create the
-                           security group that may be supported by some
-                           providers.
+        :param network_id: Network ID under which to create the security group.
 
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.

@@ -44,14 +44,16 @@ def cleanup_action(cleanup_func):
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
         reraise(ex_class, ex_val, ex_traceback)
-    cleanup_func()
+    try:
+        cleanup_func()
+    except Exception as e:
+        print("Error during cleanup: {0}".format(e))
 
 
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
-        "image": os.environ.get('CB_IMAGE_AWS', 'ami-d85e75b0'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS',
-                                        't1.micro'),
+        "image": os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
+        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS', 't2.nano'),
         "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     "OpenStackCloudProvider": {
@@ -91,18 +93,19 @@ def delete_test_network(network):
     """
     Delete the supplied network, first deleting any contained subnets.
     """
-    for sn in network.subnets():
-        sn.delete()
-    network.delete()
+    with cleanup_action(lambda: network.delete()):
+        for sn in network.subnets():
+            sn.delete()
 
 
 def create_test_instance(
-        provider, instance_name, zone=None, launch_config=None,
+        provider, instance_name, network, zone=None, launch_config=None,
         key_pair=None, security_groups=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
+        network=network,
         zone=zone,
         key_pair=key_pair,
         security_groups=security_groups,
@@ -112,12 +115,10 @@ def create_test_instance(
 def get_test_instance(provider, name, key_pair=None, security_groups=None,
                       network=None):
     launch_config = None
-    if network:
-        launch_config = provider.compute.instances.create_launch_config()
-        launch_config.add_network_interface(network.id)
     instance = create_test_instance(
         provider,
         name,
+        network=network,
         key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)
@@ -127,17 +128,13 @@ def get_test_instance(provider, name, key_pair=None, security_groups=None,
 
 def cleanup_test_resources(instance=None, network=None, security_group=None,
                            key_pair=None):
-    if instance:
-        instance.terminate()
-        instance.wait_for(
-            [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-            terminal_states=[InstanceState.ERROR])
-    if security_group:
-        security_group.delete()
-    if key_pair:
-        key_pair.delete()
-    if network:
-        delete_test_network(network)
+    with cleanup_action(lambda: delete_test_network(network)):
+        with cleanup_action(lambda: key_pair.delete()):
+            with cleanup_action(lambda: security_group.delete()):
+                instance.terminate()
+                instance.wait_for(
+                    [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                    terminal_states=[InstanceState.ERROR])
 
 
 class ProviderTestBase(object):

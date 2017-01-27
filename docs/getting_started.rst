@@ -40,9 +40,9 @@ OpenStack (with Keystone authentication v2):
 
     config = {'os_username': 'username',
               'os_password': 'password',
-              'os_tenant_name': 'tenant name',
               'os_auth_url': 'authentication URL',
-              'os_region_name': 'region name'}
+              'os_region_name': 'region name',
+              'os_project_name': 'project name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
     image_id = 'c1f4b7bc-a563-4feb-b439-a2e071d861aa'  # Ubuntu 14.04 @ NeCTAR
@@ -56,9 +56,9 @@ OpenStack (with Keystone authentication v3):
     config = {'os_username': 'username',
               'os_password': 'password',
               'os_auth_url': 'authentication URL',
-              'os_user_domain_name': 'domain name',
+              'os_project_name': 'project name',
               'os_project_domain_name': 'project domain name',
-              'os_project_name': 'project name'}
+              'os_user_domain_name': 'domain name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
     image_id = '97755049-ee4f-4515-b92f-ca00991ee99a'  # Ubuntu 14.04 @ Jetstream
@@ -91,23 +91,6 @@ on disk as a read-only file.
     import os
     os.chmod('cloudbridge_intro.pem', 0400)
 
-Configure a private network
----------------------------
-We want to provision our instance into a private network to give us flexibility
-in the future. Also, providers these days are increasingly requiring use of
-private networks. Setting up a private network requires several steps:
-(1) create a network; (2) create a subnet within the network; (3) create a
-router; (4) attach the router to an external network; and (5) add a route to
-the router that links with with a subnet.
-
-.. code-block:: python
-
-    net = provider.network.create('cloudbridge_intro')
-    sn = net.create_subnet('10.0.0.1/28', 'cloudbridge-intro')
-    router = provider.network.create_router('cloudbridge-intro')
-    router.attach_network(net.id)
-    router.add_route(sn.id)
-
 Create a security group
 -----------------------
 Next, we need to create a security group and add a rule to allow ssh access.
@@ -130,11 +113,9 @@ also add the network interface as a launch argument.
     inst_type = sorted([t for t in provider.compute.instance_types.list()
                         if t.vcpus >= 2 and t.ram >= 4],
                        key=lambda x: x.vcpus*x.ram)[0]
-    lc = provider.compute.instances.create_launch_config()
-    lc.add_network_interface(net.id)
     inst = provider.compute.instances.create(
         name='CloudBridge-intro', image=img, instance_type=inst_type,
-        key_pair=kp, security_groups=[sg], launch_config=lc)
+        key_pair=kp, security_groups=[sg])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
@@ -146,6 +127,8 @@ Assign a public IP address
 To access the instance, let's assign a public IP address to the instance. For
 this step, we'll first need to allocate a floating IP address for our account
 and then associate it with the instance.
+
+.. code-block:: python
 
     fip = provider.network.create_floating_ip()
     inst.add_floating_ip(fip.public_ip)

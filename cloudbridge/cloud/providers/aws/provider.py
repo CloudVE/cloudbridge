@@ -178,29 +178,27 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
     "family": "General Purpose",
     "enhanced_networking": false,
     "vCPU": 1,
-    "generation": "previous",
+    "generation": "current",
     "ebs_iops": 0,
     "network_performance": "Low",
     "ebs_throughput": 0,
     "vpc": {
-      "ips_per_eni": 4,
+      "ips_per_eni": 2,
       "max_enis": 2
     },
     "arch": [
-      "i386",
       "x86_64"
     ],
-    "linux_virtualization_types": [],
+    "linux_virtualization_types": [
+        "HVM"
+    ],
     "ebs_optimized": false,
-    "storage": {
-      "ssd": false,
-      "devices": 1,
-      "size": 160
-    },
+    "storage": null,
     "max_bandwidth": 0,
-    "instance_type": "t1.micro",
-    "ECU": 1.0,
-    "memory": 1.7
+    "instance_type": "t2.nano",
+    "ECU": "variable,
+    "memory": 0.5,
+    "ebs_max_bandwidth": 0
   }
 ]
 """
