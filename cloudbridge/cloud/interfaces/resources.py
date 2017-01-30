@@ -1826,8 +1826,8 @@ class SecurityGroup(CloudResource):
         Create a security group rule. If the rule already exists, simply
         returns it.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``. In other words, either
+        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
         you are authorizing another group or you are authorizing some
         ip-based rule.
 
@@ -1856,7 +1856,7 @@ class SecurityGroup(CloudResource):
         """
         Get a security group rule with the specified parameters.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
+        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
         ``from_port``, ``to_port``, and ``cidr_ip``. Note that when retrieving
         a group rule, this method will return only one rule although possibly
         several rules exist for the group rule. In that case, use the

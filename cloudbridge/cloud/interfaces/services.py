@@ -970,7 +970,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
     @abstractmethod
     def find(self, name, limit=None, marker=None):
         """
-        Get all security groups associated with your account.
+        Get security groups associated with your account filtered by name.
 
         :type name: str
         :param name: The name of the security group to retrieve.

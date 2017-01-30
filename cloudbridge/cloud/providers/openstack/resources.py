@@ -875,8 +875,8 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         """
         Create a security group rule.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
+        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        ``from_port``, ``to_port``, ``cidr_ip``.  In other words, either
         you are authorizing another group or you are authorizing some
         ip-based rule.
 
@@ -902,20 +902,19 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
             if not isinstance(src_group, SecurityGroup):
                 src_group = self._provider.security.security_groups.get(
                     src_group)
-            for protocol in ['udp', 'tcp']:
-                existing_rule = self.get_rule(ip_protocol=ip_protocol,
-                                              from_port=1,
-                                              to_port=65535,
-                                              src_group=src_group)
-                if existing_rule:
-                    return existing_rule
+            existing_rule = self.get_rule(ip_protocol=ip_protocol,
+                                          from_port=from_port,
+                                          to_port=to_port,
+                                          src_group=src_group)
+            if existing_rule:
+                return existing_rule
 
-                rule = self._provider.nova.security_group_rules.create(
-                    parent_group_id=self._security_group.id,
-                    ip_protocol=protocol,
-                    from_port=1,
-                    to_port=65535,
-                    group_id=src_group.id)
+            rule = self._provider.nova.security_group_rules.create(
+                parent_group_id=self._security_group.id,
+                ip_protocol=ip_protocol,
+                from_port=from_port,
+                to_port=to_port,
+                group_id=src_group.id)
             if rule:
                 # We can only return one Rule so default to TCP (ie, last in
                 # the for loop above).
@@ -942,16 +941,16 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        # Update SG object; otherwise, recently added rules do now show
+        # Update SG object; otherwise, recently added rules do not show
         self._security_group = self._provider.nova.security_groups.get(
             self._security_group)
         for rule in self._security_group.rules:
             if (rule['ip_protocol'] == ip_protocol and
                 rule['from_port'] == from_port and
                 rule['to_port'] == to_port and
-                rule['ip_range'].get('cidr') == cidr_ip) or \
-               (rule['group'].get('name') == src_group.name if src_group
-                    else False):
+                (rule['ip_range'].get('cidr') == cidr_ip or
+                 (rule['group'].get('name') == src_group.name if src_group
+                  else False))):
                 return OpenStackSecurityGroupRule(self._provider, rule, self)
         return None
 
