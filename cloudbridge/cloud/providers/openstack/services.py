@@ -81,10 +81,10 @@ class OpenStackSecurityService(BaseSecurityService):
         """
         return self._security_groups
 
-    def get_ec2_credentials(self):
+    def get_or_create_ec2_credentials(self):
         """
         A provider specific method than returns the ec2 credentials for the
-        current user.
+        current user, or creates a new pair if one doesn't exist.
         """
         keystone = self.provider.keystone
         if hasattr(keystone, 'ec2'):
@@ -92,6 +92,10 @@ class OpenStackSecurityService(BaseSecurityService):
                           if cred.tenant_id == keystone.tenant_id]
             if user_creds:
                 return user_creds[0]
+            else:
+                return keystone.ec2.create(keystone.user_id,
+                                           keystone.tenant_id)
+
         return None
 
     def get_ec2_endpoints(self):
