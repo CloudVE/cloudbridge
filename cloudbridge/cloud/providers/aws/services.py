@@ -606,8 +606,11 @@ class AWSInstanceService(BaseInstanceService):
             """
             if isinstance(security_groups, list) and \
                isinstance(security_groups[0], SecurityGroup):
-                return [sg._security_group if obj else sg.id
-                        for sg in security_groups]
+                # Update the ref to the objects not to get stale info
+                sg_ids = [sg.id for sg in security_groups]
+                sgs = self.provider.ec2_conn.get_all_security_groups(
+                    group_ids=sg_ids)
+                return list(set([sg if obj else sg.id for sg in sgs]))
             else:
                 flters = {'group_name': security_groups}
                 if vpc_id:
@@ -625,7 +628,8 @@ class AWSInstanceService(BaseInstanceService):
             sg_ids = _get_security_groups(security_groups, vpc_id)
         elif vpc_id and security_groups:
             sg_ids = _get_security_groups(security_groups, vpc_id)
-            exc = "No subnets found in network {0}.".format(vpc_id)
+            exc = "No subnets found in network {0} with SGs {1}.".format(
+                vpc_id, sg_ids)
             flters = {'state': 'available', 'vpcId': vpc_id}
             sn_id, zone_id = _get_potential_subnets(flters, exc)
         elif vpc_id and zone_id:
