@@ -28,28 +28,9 @@ Mandatory variables  Optional Variables
 OS_AUTH_URL			 NOVA_SERVICE_NAME
 OS_USERNAME			 OS_COMPUTE_API_VERSION
 OS_PASSWORD			 OS_VOLUME_API_VERSION
-OS_TENANT_NAME
+OS_PROJECT_NAME
 OS_REGION_NAME
 ===================  ==================
-
-If you'd like, you can specify service-specific variables for OpenStack.
-This can be used to create a multi-cloud provider object for example where
-the compute service is using one cloud while the object store service uses
-another. This can be useful is a given cloud does not supply all the desired
-services. If these variables are not supplied, the default ones from above
-are used across all OpenStack services.
-
-=================================== ==============
-Optional service-specific variables Example values
------------------------------------ --------------
-Swift service
-==================================================
-OS_SWIFT_AUTH_URL                   https://keystone.rc.nectar.org.au:5000/v2.0/
-OS_SWIFT_USERNAME                   your.name@example.com
-OS_SWIFT_PASSWORD                   GcsGgcbsdilcbUIYGcsdc
-OS_SWIFT_REGION_NAME                RegionOne
-OS_SWIFT_TENANT_NAME                GalaxyProject
-=================================== ==============
 
 
 Once the environment variables are set, you can create a connection as follows:

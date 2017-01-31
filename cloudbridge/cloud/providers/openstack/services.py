@@ -2,6 +2,7 @@
 Services implemented by the OpenStack provider.
 """
 import fnmatch
+import logging
 import re
 
 from cinderclient.exceptions import NotFound as CinderNotFound
@@ -25,6 +26,7 @@ from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
@@ -46,6 +48,8 @@ from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
 from .resources import OpenStackSubnet
 from .resources import OpenStackVolume
+
+log = logging.getLogger(__name__)
 
 
 class OpenStackSecurityService(BaseSecurityService):
@@ -196,7 +200,7 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         return ClientPagedResultList(self.provider, sgs,
                                      limit=limit, marker=marker)
 
-    def create(self, name, description, network_id=None):
+    def create(self, name, description, network_id):
         """
         Create a new security group under the current account.
 
@@ -496,7 +500,13 @@ class OpenStackRegionService(BaseRegionService):
         return next(region, None)
 
     def list(self, limit=None, marker=None):
-        def keystone_v2():
+        # pylint:disable=protected-access
+        if self.provider._keystone_version == 3:
+            os_regions = [OpenStackRegion(self.provider, region)
+                          for region in self.provider.keystone.regions.list()]
+            return ClientPagedResultList(self.provider, os_regions,
+                                         limit=limit, marker=marker)
+        else:
             # Keystone v3 onwards supports directly listing regions
             # but for v2, this convoluted method is necessary.
             regions = (
@@ -511,26 +521,10 @@ class OpenStackRegionService(BaseRegionService):
             return ClientPagedResultList(self.provider, os_regions,
                                          limit=limit, marker=marker)
 
-        def keystone_v3():
-            os_regions = [OpenStackRegion(self.provider, region)
-                          for region in self.provider.keystone.regions.list()]
-            return ClientPagedResultList(self.provider, os_regions,
-                                         limit=limit, marker=marker)
-
-        return keystone_v3() if self.provider._keystone_version == 3 else \
-            keystone_v2()  # pylint:disable=protected-access
-
     @property
     def current(self):
-        if self.provider.keystone.has_service_catalog():
-            nova_region = [
-                endpoint.get('region') or endpoint.get('region_id')
-                for svc in self.provider.keystone.service_catalog.get_data()
-                for endpoint in svc.get('endpoints', [])
-                if endpoint.get('publicURL', None) ==
-                self.provider.nova.client.management_url]
-            return self.get(nova_region[0])
-        return None
+        nova_region = self.provider.nova.client.region_name
+        return self.get(nova_region) if nova_region else None
 
 
 class OpenStackComputeService(BaseComputeService):
@@ -564,18 +558,17 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, zone=None,
+    def create(self, name, image, instance_type, network=None, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
-        """
-        Creates a new virtual machine instance.
-        """
+        """Create a new virtual machine instance."""
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else \
             self.provider.compute.instance_types.find(
                 name=instance_type)[0].id
+        network_id = network.id if isinstance(network, Network) else network
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
@@ -587,11 +580,10 @@ class OpenStackInstanceService(BaseInstanceService):
                 security_groups_list = security_groups
         else:
             security_groups_list = None
+        bdm = None
         if launch_config:
             bdm = self._to_block_device_mapping(launch_config)
-            nics = self._format_nics(launch_config)
-        else:
-            bdm = nics = None
+        net = self._get_network(network_id)
 
         os_instance = self.provider.nova.servers.create(
             name,
@@ -604,7 +596,7 @@ class OpenStackInstanceService(BaseInstanceService):
             security_groups=security_groups_list,
             userdata=user_data,
             block_device_mapping_v2=bdm,
-            nics=nics)
+            nics=net)
         return OpenStackInstance(self.provider, os_instance)
 
     def _to_block_device_mapping(self, launch_config):
@@ -657,14 +649,42 @@ class OpenStackInstanceService(BaseInstanceService):
                 return True
         return False
 
-    def _format_nics(self, launch_config):
+    def _get_network(self, network_id=None):
         """
-        Format network IDs for the API call.
+        Format the network ID for the API call, figuring out a default network.
+
+        If a network_id is not supplied, figure out which is the default
+        network and use it. A default network is either marked as such by the
+        provider or matches the default network name defined within this
+        library (by default CloudBridgeNet). If a default network cannot be
+        found, attempt to create a new one.
         """
-        nics = []
-        for net_id in launch_config.network_interfaces:
-            nics.append({'net-id': net_id})
-        return nics
+        if network_id:
+            return [{'net-id': network_id}]
+        for net in self.provider.network.list():
+            if net.name == OpenStackNetwork.CB_DEFAULT_NETWORK_NAME:
+                return [{'net-id': net.id}]
+        try:
+            # Try to create a complete, Internet-connected new network
+            net = self.provider.network.create(
+                name=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
+            sn = net.create_subnet('10.0.0.0/16', '{0}Subnet'.format(
+                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME))
+            router = self.provider.network.create_router('{0}Router'.format(
+                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME))
+            for n in self.provider.network.list():
+                if n.external:
+                    external_net = n
+                    break
+            router.attach_network(external_net.id)
+            router.add_route(sn.id)
+            return [{'net-id': net.id}]
+        except Exception as exc:
+            # At this point we assume the provider does support user-defined
+            # networks so return None
+            log.warn("Exception occurred trying to create a default "
+                     "CloudBridge network: {0}".format(exc))
+            return None
 
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)

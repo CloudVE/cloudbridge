@@ -55,6 +55,32 @@ class CloudProvider(object):
         """
 
     @abstractmethod
+    def authenticate(self):
+        """
+        Checks whether a provider can be successfully authenticated with the
+        configured settings. Clients are *not* required to call this method
+        prior to accessing provider services, as most cloud connections are
+        initialized lazily. The authenticate() method will return True if
+        cloudbridge can establish a successful connection to the provider.
+        It will raise an exception with the appropriate error details
+        otherwise.
+
+        Example:
+
+        .. code-block:: python
+
+            try:
+                if provider.authenticate():
+                   print("Provider connection successful")
+            except ProviderConnectionException as e:
+                print("Could not authenticate with provider: %s" % (e, ))
+
+        :rtype: :class:`bool`
+        :return: ``True`` if authentication is successful.
+        """
+        pass
+
+    @abstractmethod
     def has_service(self, service_type):
         """
         Checks whether this provider supports a given service.

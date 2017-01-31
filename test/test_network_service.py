@@ -12,7 +12,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     def test_crud_network_service(self):
         name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4())
-        subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4())
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -33,7 +32,21 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Get network did not return the expected network {0}."
                 .format(name))
 
-            # check subnet
+        netl = self.provider.network.list()
+        found_net = [n for n in netl if n.name == name]
+        self.assertEqual(
+            len(found_net), 0,
+            "Network {0} should have been deleted but still exists."
+            .format(name))
+
+    def test_crud_subnet_service(self):
+        name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4())
+        subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4())
+        net = self.provider.network.create(name=name)
+        with helpers.cleanup_action(
+            lambda:
+                self.provider.network.delete(network_id=net.id)
+        ):
             subnet = self.provider.network.subnets.create(
                 network=net, cidr_block="10.0.0.1/24", name=subnet_name)
             with helpers.cleanup_action(
@@ -60,44 +73,44 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Subnet {0} should have been deleted but still exists."
                 .format(subnet_name))
 
-            # Check floating IP address
-            ip = self.provider.network.create_floating_ip()
-            ip_id = ip.id
-            with helpers.cleanup_action(lambda: ip.delete()):
-                ipl = self.provider.network.floating_ips()
-                self.assertTrue(
-                    ip in ipl,
-                    "Floating IP address {0} should exist in the list {1}"
-                    .format(ip.id, ipl))
-                # 2016-08: address filtering not implemented in moto
-                # empty_ipl = self.provider.network.floating_ips('dummy-net')
-                # self.assertFalse(
-                #     empty_ipl,
-                #     "Bogus network should not have any floating IPs: {0}"
-                #     .format(empty_ipl))
-                self.assertIn(
-                    ip.public_ip, repr(ip),
-                    "repr(obj) should contain the address public IP value.")
-                self.assertFalse(
-                    ip.private_ip,
-                    "Floating IP should not have a private IP value ({0})."
-                    .format(ip.private_ip))
-                self.assertFalse(
-                    ip.in_use(),
-                    "Newly created floating IP address should not be in use.")
-            ipl = self.provider.network.floating_ips()
-            found_ip = [a for a in ipl if a.id == ip_id]
-            self.assertTrue(
-                len(found_ip) == 0,
-                "Floating IP {0} should have been deleted but still exists."
-                .format(ip_id))
-
         netl = self.provider.network.list()
         found_net = [n for n in netl if n.name == name]
         self.assertEqual(
             len(found_net), 0,
             "Network {0} should have been deleted but still exists."
             .format(name))
+
+    def test_crud_ip(self):
+        ip = self.provider.network.create_floating_ip()
+        ip_id = ip.id
+        with helpers.cleanup_action(lambda: ip.delete()):
+            ipl = self.provider.network.floating_ips()
+            self.assertTrue(
+                ip in ipl,
+                "Floating IP address {0} should exist in the list {1}"
+                .format(ip.id, ipl))
+            # 2016-08: address filtering not implemented in moto
+            # empty_ipl = self.provider.network.floating_ips('dummy-net')
+            # self.assertFalse(
+            #     empty_ipl,
+            #     "Bogus network should not have any floating IPs: {0}"
+            #     .format(empty_ipl))
+            self.assertIn(
+                ip.public_ip, repr(ip),
+                "repr(obj) should contain the address public IP value.")
+            self.assertFalse(
+                ip.private_ip,
+                "Floating IP should not have a private IP value ({0})."
+                .format(ip.private_ip))
+            self.assertFalse(
+                ip.in_use(),
+                "Newly created floating IP address should not be in use.")
+        ipl = self.provider.network.floating_ips()
+        found_ip = [a for a in ipl if a.id == ip_id]
+        self.assertTrue(
+            len(found_ip) == 0,
+            "Floating IP {0} should have been deleted but still exists."
+            .format(ip_id))
 
     def test_crud_network(self):
         name = 'cbtestnetwork-{0}'.format(uuid.uuid4())

@@ -146,6 +146,8 @@ class BaseNetworkService(
         super(BaseNetworkService, self).__init__(provider)
 
     def delete(self, network_id):
+        if network_id is None:
+            return True
         network = self.get(network_id)
         if network:
             network.delete()
