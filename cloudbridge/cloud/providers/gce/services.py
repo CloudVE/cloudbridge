@@ -1,11 +1,13 @@
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
+from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.gce import helpers
 import cloudbridge as cb
 
@@ -17,6 +19,7 @@ from retrying import retry
 import sys
 
 from .resources import GCEMachineImage
+from .resources import GCEInstance
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 from .resources import GCERegion
@@ -394,10 +397,133 @@ class GCEImageService(BaseImageService):
                                      limit=limit, marker=marker)
 
 
+class GCEInstanceService(BaseInstanceService):
+
+    def __init__(self, provider):
+        super(GCEInstanceService, self).__init__(provider)
+
+    def create(self, name, image, instance_type, zone=None,
+               key_pair=None, security_groups=None, user_data=None,
+               launch_config=None,
+               **kwargs):
+        """
+        Creates a new virtual machine instance.
+        """
+        if zone is None:
+            zone = self.provider.default_zone
+        if launch_config is None:
+            config = {
+                'name': name,
+                'machineType': instance_type.resource_url,
+                'disks': [{'boot': True,
+                           'autoDelete': False,
+                           'initializeParams': {
+                               'sourceImage': image.resource_url,
+                           }
+                       }],
+                'networkInterfaces': [
+                    {'network': 'global/networks/default',
+                     'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
+                                        'name': 'External NAT'}]
+                 }],
+            }
+            if (security_groups is not None and
+                isinstance(security_groups, list) and
+                len(security_groups) > 0):
+                sg_names = []
+                if isinstance(security_groups[0], SecurityGroup):
+                    sg_namess = [sg.name for sg in security_groups]
+                elif isinstance(security_groups[0], str):
+                    sg_names = security_groups
+                if len(sg_names) > 0:
+                    config['tags'] = {}
+                    config['tags']['items'] = sg_names
+        else:
+            config = launch_config
+        response = self.provider.gce_compute \
+                                .instances() \
+                                .insert(
+                                    project=self.provider.project_name,
+                                    zone=self.provider.default_zone,
+                                    body=config) \
+                                .execute()
+
+    def get(self, instance_name):
+        """
+        Returns an instance given its name. Returns None
+        if the object does not exist.
+
+        GCE client API only supports returning the specified Instance resource
+        by its name (not by its id).
+        """
+        try:
+            response = self.provider.gce_compute\
+                               .instances() \
+                               .get(project=self.provider.project_name,
+                                    zone=self.provider.default_zone,
+                                    instance=instance_name) \
+                               .execute()
+            if response:
+                return GCEInstance(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            # If the instance is not found, the API will raise
+            # googleapiclient.errors.HttpError.
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
+        return None
+
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for instances by instance name.
+        :return: a list of Instance objects
+        """
+        instances = []
+        for instance in self.list():
+            if instance.name == name:
+                instances.append(instance)
+        if limit and len(instances) > limit:
+            instances = instances[:limit]
+        return instances
+
+    def list(self, limit=None, marker=None):
+        """
+        List all instances.
+        """
+        if limit is None or limit > 500:
+            # For GCE API, Acceptable values are 0 to 500, inclusive.
+            # (Default: 500). If the number of available results is larger
+            # than maxResults, Compute Engine returns a nextPageToken that
+            # can be used to get the next page of results in subsequent
+            # list requests.
+            max_result = 500
+        else:
+            max_result = limit
+        request = self.provider.gce_compute \
+                               .instances() \
+                               .list(project=self.provider.project_name,
+                                     zone=self.provider.default_zone,
+                                     maxResults=max_result)
+        instances = []
+        while request is not None:
+            response = request.execute()
+            instances.extend([GCEInstance(self.provider, inst)
+                              for inst in response['items']])
+            if limit and len(instances) >= limit:
+                break
+            request = self.provider.gce_compute \
+                                   .instances() \
+                                   .list_next(previous_request=request,
+                                              previous_response=response)
+        if limit and len(instances) > limit:
+            instances = instances[:limit]
+        return instances
+
+
 class GCEComputeService(BaseComputeService):
     # TODO: implement GCEComputeService
     def __init__(self, provider):
         super(GCEComputeService, self).__init__(provider)
+        self._instance_svc = GCEInstanceService(self.provider)
         self._instance_type_svc = GCEInstanceTypesService(self.provider)
         self._region_svc = GCERegionService(self.provider)
         self._images_svc = GCEImageService(self.provider)
@@ -412,7 +538,7 @@ class GCEComputeService(BaseComputeService):
 
     @property
     def instances(self):
-        raise NotImplementedError("To be implemented")
+        return self._instance_svc
 
     @property
     def regions(self):

@@ -1,6 +1,7 @@
 """
 DataTypes used by this provider
 """
+from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
@@ -8,6 +9,8 @@ from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
+from cloudbridge.cloud.interfaces.resources import InstanceState
+from cloudbridge.cloud.interfaces.resources import MachineImageState
 
 # Older versions of Python do not have a built-in set data-structure.
 try:
@@ -64,6 +67,10 @@ class GCEInstanceType(BaseInstanceType):
     def __init__(self, provider, instance_dict):
         super(GCEInstanceType, self).__init__(provider)
         self._inst_dict = instance_dict
+
+    @property
+    def resource_url(self):
+        return self._inst_dict.get('selfLink')
 
     @property
     def id(self):
@@ -615,6 +622,10 @@ class GCEMachineImage(BaseMachineImage):
             self._gce_image = image
 
     @property
+    def resource_url(self):
+        return self._gce_image.get('selfLink')
+
+    @property
     def id(self):
         """
         Get the image identifier.
@@ -681,3 +692,242 @@ class GCEMachineImage(BaseMachineImage):
             cb.log.warning(
                 "googleapiclient.errors.HttpError: {0}".format(http_error))
             self._gce_image['status'] = "unknown"
+
+
+class GCEInstance(BaseInstance):
+    # https://cloud.google.com/compute/docs/reference/latest/instances
+    # The status of the instance. One of the following values:
+    # PROVISIONING, STAGING, RUNNING, STOPPING, SUSPENDING, SUSPENDED,
+    # and TERMINATED.
+    INSTANCE_STATE_MAP = {
+        'PROVISIONING': InstanceState.PENDING,
+        'STAGING': InstanceState.PENDING,
+        'RUNNING': InstanceState.RUNNING,
+        'STOPPING': InstanceState.CONFIGURING,
+        'TERMINATED': InstanceState.TERMINATED,
+        'SUSPENDING': InstanceState.CONFIGURING,
+        'SUSPENDED': InstanceState.STOPPED
+    }
+
+    def __init__(self, provider, gce_instance):
+        super(GCEInstance, self).__init__(provider)
+        self._gce_instance = gce_instance
+
+    @property
+    def resource_url(self):
+        return self._gce_instance.get('selfLink')
+
+    @property
+    def id(self):
+        """
+        Get the instance identifier.
+        """
+        return self._gce_instance['id']
+
+    @property
+    def name(self):
+        """
+        Get the instance name.
+        """
+        return self._gce_instance['name']
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the instance name.
+        """
+        response = self._provider.gce_compute \
+                                 .instances() \
+                                 .setTags(project=self._provider.project_name,
+                                          zone=self._provider.default_zone,
+                                          instance=self.name,
+                                          body={"items": [value]}) \
+                                 .execute()
+
+    @property
+    def public_ips(self):
+        """
+        Get all the public IP addresses for this instance.
+        """
+        network_interfaces = self._gce_instance.get('networkInterfaces')
+        if network_interfaces is None or len(network_interfaces) == 0:
+            return []
+        access_configs = network_interfaces[0].get('accessConfigs')
+        if access_configs is None or len(access_configs) == 0:
+            return []
+        # https://cloud.google.com/compute/docs/reference/beta/instances
+        # An array of configurations for this interface. Currently, only one
+        # access config, ONE_TO_ONE_NAT, is supported. If there are no
+        # accessConfigs specified, then this instance will have no external
+        # internet access.
+        access_config = access_configs[0]
+        if 'natIP' in access_config:
+            return [access_config['natIP']]
+        else:
+            return []
+
+    @property
+    def private_ips(self):
+        """
+        Get all the private IP addresses for this instance.
+        """
+        network_interfaces = self._gce_instance.get('networkInterfaces')
+        if network_interfaces is None or len(network_interfaces) == 0:
+            return []
+        if 'networkIP' in network_interfaces[0]:
+            return [network_interfaces[0]['networkIP']]
+        else:
+            return []
+
+    @property
+    def instance_type_id(self):
+        """
+        Get the instance type name.
+        """
+        machine_type_uri = self._gce_instance.get('machineType')
+        if machine_type_uri is None:
+            return None
+        instance_type = self._provider.get_gce_resource_data(machine_type_uri)
+        return instance_type.get('name', None)
+
+    @property
+    def instance_type(self):
+        """
+        Get the instance type.
+        """
+        machine_type_uri = self._gce_instance.get('machineType')
+        if machine_type_uri is None:
+            return None
+        instance_type = self._provider.get_gce_resource_data(machine_type_uri)
+        return GCEInstanceType(self._provider, instance_type)
+
+    def reboot(self):
+        """
+        Reboot this instance.
+        """
+        if self.state == InstanceState.TERMINATED:
+            self._provider.gce_compute \
+                          .instances() \
+                          .start(project=self._provider.project_name,
+                                 zone=self._provider.default_zone,
+                                 instance=self.name) \
+                          .execute()
+        else:
+            self._provider.gce_compute \
+                          .instances() \
+                          .reset(project=self._provider.project_name,
+                                 zone=self._provider.default_zone,
+                                 instance=self.name) \
+                          .execute()
+
+    def terminate(self):
+        """
+        Permanently terminate this instance.
+        """
+        self._provider.gce_compute \
+                      .instances() \
+                      .stop(project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            instance=self.name) \
+                      .execute()
+
+    def delete(self):
+        """
+        Permanently delete this instance.
+        """
+        self._provider.gce_compute \
+                      .instances() \
+                      .delete(project=self._provider.project_name,
+                              zone=self._provider.default_zone,
+                              instance=self.name) \
+                      .execute()
+
+    @property
+    def image_id(self):
+        """
+        Get the image ID for this insance.
+        """
+        raise NotImplementedError(
+            'To be implemented after GCEVolumeService.')
+        return None
+
+    @property
+    def zone_id(self):
+        """
+        Get the placement zone id where this instance is running.
+        """
+        zone_uri = self._gce_instance.get('zone')
+        if zone_uri is None:
+            return None
+        zone = self._provider.get_gce_resource_data(zone_uri)
+        return zone.get('name', None)
+
+    @property
+    def security_groups(self):
+        """
+        Get the security groups associated with this instance.
+        """
+        sg_service = self._provider.security.security_groups
+        sg_names = [sg.name for sg in sg_service.list()]
+        tags = self._gce_instance['tags']['items']
+        if len(tags) == 0 or len(sg_names) == 0:
+            return []
+        common_tags = set(sg_names) & set(tags)
+        sgs = []
+        for tag in common_tags:
+            result = sg_service.find(tag)
+            if len(result) > 0:
+                sgs.append(result[0])
+        return sgs
+
+    @property
+    def security_group_ids(self):
+        """
+        Get the security groups IDs associated with this instance.
+        """
+        sg_ids = []
+        for sg in self.security_groups:
+            sg_ids.append(sg.id)
+        return sg_ids
+
+    @property
+    def key_pair_name(self):
+        """
+        Get the name of the key pair associated with this instance.
+        """
+        return self._provider.security.key_pairs.name
+
+    def create_image(self, name):
+        """
+        Create a new image based on this instance.
+        """
+        raise NotImplementedError(
+            'To be implemented after GCEVolumeService.')
+
+    def add_floating_ip(self, ip_address):
+        """
+        Add an elastic IP address to this instance.
+        """
+        raise NotImplementedError(
+            'To be implemented after GCENetworkService.')
+
+    def remove_floating_ip(self, ip_address):
+        """
+        Remove a elastic IP address from this instance.
+        """
+        raise NotImplementedError(
+            'To be implemented after GCENetworkService.')
+
+    @property
+    def state(self):
+        return GCEInstance.INSTANCE_STATE_MAP.get(
+            self._gce_instance['status'], InstanceState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this instance by re-querying the cloud provider
+        for its latest state.
+        """
+        self._gce_instance = self._provider.get_gce_resource_data(
+            self._gce_instance.get('selfLink'))
