@@ -807,6 +807,25 @@ class AWSBucketObject(BaseBucketObject):
         """
         self._key.set_contents_from_string(data)
 
+
+    def upload_from_file(self, path):
+        """
+        Stores the contents of the file pointed by the "path" variable.
+        :param path: Absolute path to the file to be uploaded to S3.
+        :return: void
+        """
+        self._key.set_contents_from_filename(path)
+
+    def upload_from_large_file(self, path):
+        """
+        Stores the contents of the large file pointed by the "path" variable.
+        This function split the file in smaller chunks, and uploads chunks
+        in turn.
+        :param path: Absolute path to the large file to be uploaded to S3.
+        :return: void
+        """
+        raise NotImplementedError("This functionality is not implemented yet.")
+
     def delete(self):
         """
         Delete this object.

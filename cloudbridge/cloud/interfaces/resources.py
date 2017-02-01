@@ -2038,6 +2038,26 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
+    def upload_from_file(self, path):
+        """
+        Stores the contents of the file pointed by the "path" variable.
+        :param path: Absolute path to the file to be uploaded to S3.
+        :return: void
+        """
+        pass
+
+    @abstractmethod
+    def upload_from_large_file(self, path):
+        """
+        Stores the contents of the large file pointed by the "path" variable.
+        This function split the file in smaller chunks, and uploads chunks
+        in turn.
+        :param path: Absolute path to the large file to be uploaded to S3.
+        :return: void
+        """
+        pass
+
+    @abstractmethod
     def delete(self):
         """
         Delete this object.

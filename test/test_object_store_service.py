@@ -137,6 +137,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 "Object %s should have been deleted but still exists." %
                 obj_name)
 
+
     def test_upload_download_bucket_content(self):
 
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
@@ -145,9 +146,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
             obj = test_bucket.create_object(obj_name)
+            content = b"Hello World. Here's some content."
 
             with helpers.cleanup_action(lambda: obj.delete()):
-                content = b"Hello World. Here's some content."
                 # TODO: Upload and download methods accept different parameter
                 # types. Need to make this consistent - possibly provider
                 # multiple methods like upload_from_file, from_stream etc.
@@ -159,3 +160,18 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 for data in obj.iter_content():
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
+
+
+            obj_name = "hello_upload_download.txt"
+            obj = test_bucket.create_object(obj_name)
+            with helpers.cleanup_action(lambda: obj.delete):
+                with open("hello_upload_download.txt", "w+") as tmpFile:
+                    tmpFile.write(content)
+                    obj.upload_from_file(tmpFile.name)
+                    target_stream = BytesIO()
+                    obj.save_content(target_stream)
+                    self.assertEqual(target_stream.getvalue(), content)
+                    target_stream2 = BytesIO()
+                    for data in obj.iter_content():
+                        target_stream2.write(data)
+                    self.assertEqual(target_stream2.getvalue(), content)
