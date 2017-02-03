@@ -710,7 +710,7 @@ class GCEInstance(BaseInstance):
         'STAGING': InstanceState.PENDING,
         'RUNNING': InstanceState.RUNNING,
         'STOPPING': InstanceState.CONFIGURING,
-        'TERMINATED': InstanceState.TERMINATED,
+        'TERMINATED': InstanceState.STOPPED,
         'SUSPENDING': InstanceState.CONFIGURING,
         'SUSPENDED': InstanceState.STOPPED
     }
@@ -743,13 +743,10 @@ class GCEInstance(BaseInstance):
         """
         Set the instance name.
         """
-        response = self._provider.gce_compute \
-                                 .instances() \
-                                 .setTags(project=self._provider.project_name,
-                                          zone=self._provider.default_zone,
-                                          instance=self.name,
-                                          body={"items": [value]}) \
-                                 .execute()
+        # In GCE, the name of the instance is provided by the client when
+        # initially creating the resource. The name cannot be changed after
+        # the instance is created.
+        raise NotImplementedError("Not implemented by this provider.")
 
     @property
     def public_ips(self):
@@ -812,7 +809,7 @@ class GCEInstance(BaseInstance):
         """
         Reboot this instance.
         """
-        if self.state == InstanceState.TERMINATED:
+        if self.state == InstanceState.STOPPED:
             self._provider.gce_compute \
                           .instances() \
                           .start(project=self._provider.project_name,
@@ -833,20 +830,20 @@ class GCEInstance(BaseInstance):
         """
         self._provider.gce_compute \
                       .instances() \
-                      .stop(project=self._provider.project_name,
-                            zone=self._provider.default_zone,
-                            instance=self.name) \
-                      .execute()
-
-    def delete(self):
-        """
-        Permanently delete this instance.
-        """
-        self._provider.gce_compute \
-                      .instances() \
                       .delete(project=self._provider.project_name,
                               zone=self._provider.default_zone,
                               instance=self.name) \
+                      .execute()
+
+    def stop(self):
+        """
+        Stop this instance.
+        """
+        self._provider.gce_compute \
+                      .instances() \
+                      .stop(project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            instance=self.name) \
                       .execute()
 
     @property
@@ -880,6 +877,8 @@ class GCEInstance(BaseInstance):
         if len(tags) == 0 or len(sg_names) == 0:
             return []
         common_tags = set(sg_names) & set(tags)
+        # We have a list of the security group names, now get the
+        # GCESecurityGroup objects.
         sgs = []
         for tag in common_tags:
             result = sg_service.find(tag)

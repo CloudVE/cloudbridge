@@ -417,14 +417,14 @@ class GCEInstanceService(BaseInstanceService):
         """
         Creates a new virtual machine instance.
         """
-        if zone is None:
+        if not zone:
             zone = self.provider.default_zone
-        if launch_config is None:
+        if not launch_config:
             config = {
                 'name': name,
                 'machineType': instance_type.resource_url,
                 'disks': [{'boot': True,
-                           'autoDelete': False,
+                           'autoDelete': True,
                            'initializeParams': {
                                'sourceImage': image.resource_url,
                            }
@@ -435,12 +435,12 @@ class GCEInstanceService(BaseInstanceService):
                                         'name': 'External NAT'}]
                  }],
             }
-            if (security_groups is not None and
+            if (security_groups and
                 isinstance(security_groups, list) and
                 len(security_groups) > 0):
                 sg_names = []
                 if isinstance(security_groups[0], SecurityGroup):
-                    sg_namess = [sg.name for sg in security_groups]
+                    sg_names = [sg.name for sg in security_groups]
                 elif isinstance(security_groups[0], str):
                     sg_names = security_groups
                 if len(sg_names) > 0:
@@ -485,10 +485,8 @@ class GCEInstanceService(BaseInstanceService):
         Searches for instances by instance name.
         :return: a list of Instance objects
         """
-        instances = []
-        for instance in self.list():
-            if instance.name == name:
-                instances.append(instance)
+        instances = [instance for instance in self.list()
+                     if instance.name == name]
         if limit and len(instances) > limit:
             instances = instances[:limit]
         return instances
@@ -497,12 +495,12 @@ class GCEInstanceService(BaseInstanceService):
         """
         List all instances.
         """
+        # For GCE API, Acceptable values are 0 to 500, inclusive.
+        # (Default: 500). If the number of available results is larger
+        # than maxResults, Compute Engine returns a nextPageToken that
+        # can be used to get the next page of results in subsequent
+        # list requests.
         if limit is None or limit > 500:
-            # For GCE API, Acceptable values are 0 to 500, inclusive.
-            # (Default: 500). If the number of available results is larger
-            # than maxResults, Compute Engine returns a nextPageToken that
-            # can be used to get the next page of results in subsequent
-            # list requests.
             max_result = 500
         else:
             max_result = limit
