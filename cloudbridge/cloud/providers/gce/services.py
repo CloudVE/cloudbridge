@@ -240,6 +240,23 @@ class GCESecurityGroupService(BaseSecurityGroupService):
     def delete(self, group_id):
         return self._delegate.delete_tag_network_with_id(group_id)
 
+    def find_by_network_and_tags(self, network_name, tags):
+        """
+        Finds non-empty security groups by network name and security group
+        names (tags). If no matching security group is found, an empty list
+        is returned.
+        """
+        security_groups = []
+        for tag, net_name in self._delegate.tag_networks:
+            if network_name != net_name:
+                continue
+            if tag not in tags:
+                continue
+            network = self.provider.network.get_by_name(net_name)
+            security_groups.append(
+                GCESecurityGroup(self._delegate, tag, network))
+        return security_groups
+
 
 class GCEInstanceTypesService(BaseInstanceTypesService):
 
@@ -410,16 +427,20 @@ class GCEInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(GCEInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, zone=None,
+    def create(self, name, image, instance_type, network=None, zone=None,
                key_pair=None, security_groups=None, user_data=None,
-               launch_config=None,
-               **kwargs):
+               launch_config=None, **kwargs):
         """
         Creates a new virtual machine instance.
         """
         if not zone:
             zone = self.provider.default_zone
         if not launch_config:
+            if network:
+                network_url = (network.resource_url
+                               if isinstance(network, Network) else network)
+            else:
+                network_url = 'global/networks/default'
             config = {
                 'name': name,
                 'machineType': instance_type.resource_url,
@@ -430,14 +451,12 @@ class GCEInstanceService(BaseInstanceService):
                            }
                        }],
                 'networkInterfaces': [
-                    {'network': 'global/networks/default',
+                    {'network': network_url,
                      'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
                                         'name': 'External NAT'}]
                  }],
             }
-            if (security_groups and
-                isinstance(security_groups, list) and
-                len(security_groups) > 0):
+            if security_groups and isinstance(security_groups, list):
                 sg_names = []
                 if isinstance(security_groups[0], SecurityGroup):
                     sg_names = [sg.name for sg in security_groups]

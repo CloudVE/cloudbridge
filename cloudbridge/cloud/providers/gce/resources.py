@@ -746,7 +746,8 @@ class GCEInstance(BaseInstance):
         # In GCE, the name of the instance is provided by the client when
         # initially creating the resource. The name cannot be changed after
         # the instance is created.
-        raise NotImplementedError("Not implemented by this provider.")
+        cb.log.warning("Setting instance name after it is created is not "
+                       "supported by this provider.")
 
     @property
     def public_ips(self):
@@ -871,19 +872,18 @@ class GCEInstance(BaseInstance):
         """
         Get the security groups associated with this instance.
         """
-        sg_service = self._provider.security.security_groups
-        sg_names = [sg.name for sg in sg_service.list()]
-        tags = self._gce_instance['tags']['items']
-        if len(tags) == 0 or len(sg_names) == 0:
+        network_url = self._gce_instance.get('networkInterfaces')[0].get(
+            'network')
+        network_name = GCEFirewallsDelegate.network_name(
+            {'network': network_url})
+        if 'items' not in self._gce_instance['tags']:
             return []
-        common_tags = set(sg_names) & set(tags)
-        # We have a list of the security group names, now get the
-        # GCESecurityGroup objects.
-        sgs = []
-        for tag in common_tags:
-            result = sg_service.find(tag)
-            if len(result) > 0:
-                sgs.append(result[0])
+        tags = self._gce_instance['tags']['items']
+        # Tags are mapped to non-empty security groups under the instance
+        # network. Unmatched tags are ignored.
+        sgs = (self._provider.security
+               .security_groups.find_by_network_and_tags(
+                   network_name, tags))
         return sgs
 
     @property
@@ -942,6 +942,10 @@ class GCENetwork(BaseNetwork):
     def __init__(self, provider, network):
         super(GCENetwork, self).__init__(provider)
         self._network = network
+
+    @property
+    def resource_url(self):
+        return self._network['selfLink']
 
     @property
     def id(self):
