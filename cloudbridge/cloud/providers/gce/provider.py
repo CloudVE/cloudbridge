@@ -5,6 +5,7 @@ for GCE.
 
 
 from cloudbridge.cloud.base import BaseCloudProvider
+import cloudbridge as cb
 import json
 import os
 import time
@@ -81,6 +82,10 @@ class GCECloudProvider(BaseCloudProvider):
             self._gce_compute = self._connect_gce_compute()
         return self._gce_compute
 
+    @staticmethod
+    def parse_url(url):
+        return {}
+
     def _connect_gce_compute(self):
         if self.credentials_dict:
             credentials = ServiceAccountCredentials.from_json_keyfile_dict(
@@ -89,15 +94,24 @@ class GCECloudProvider(BaseCloudProvider):
             credentials = GoogleCredentials.get_application_default()
         return discovery.build('compute', 'v1', credentials=credentials)
 
-    def wait_for_global_operation(self, operation):
+    def wait_for_operation(self, operation, region=None, zone=None):
+        args = {'project': self.project_name, 'operation': operation['name']}
+        if not region and not zone:
+            operations = self.gce_compute.globalOperations()
+        elif region:
+            args['region'] = region
+            operations = self.gce_compute.regionOperations()
+        else:
+            args['zone'] = zone
+            operations = self.gce_compute.zoneOperations()
         while True:
-            result = self.gce_compute.globalOperations().get(
-                project=self.project_name,
-                operation=operation['name']).execute()
-
+            result = operations.get(**args).execute()
             if result['status'] == 'DONE':
                 if 'error' in result:
                     raise Exception(result['error'])
                 return result
 
             time.sleep(0.5)
+
+    def get_url(self, url):
+        return {'kind': 'error'}

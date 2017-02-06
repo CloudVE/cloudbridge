@@ -1,6 +1,7 @@
 """
 DataTypes used by this provider
 """
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
@@ -10,6 +11,8 @@ from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+
+import cloudbridge as cb
 
 # Older versions of Python do not have a built-in set data-structure.
 try:
@@ -280,7 +283,7 @@ class GCEFirewallsDelegate(object):
                                       .insert(project=project_name,
                                               body=firewall)
                                       .execute())
-            self._provider.wait_for_global_operation(response)
+            self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
             return True
         except:
@@ -376,7 +379,7 @@ class GCEFirewallsDelegate(object):
                                       .delete(project=project_name,
                                               firewall=firewall['name'])
                                       .execute())
-            self._provider.wait_for_global_operation(response)
+            self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
             return True
         except:
@@ -726,7 +729,7 @@ class GCENetwork(BaseNetwork):
                     .execute())
             if 'error' in response:
                 return False
-            self._provider.wait_for_global_operation(response)
+            self._provider.wait_for_operation(response)
             return True
         except:
             return False
@@ -739,3 +742,75 @@ class GCENetwork(BaseNetwork):
 
     def refresh(self):
         return self.state
+
+class GCEFloatingIP(BaseFloatingIP):
+
+    def __init__(self, provider, floating_ip):
+        super(GCEFloatingIP, self).__init__(provider)
+        self._ip = floating_ip
+
+        # We use regional IPs to simulate floating IPs not global IPs because
+        # global IPs can be forwarded only to load balancing resources, not to
+        # a specific instance. Find out the region to which the IP belongs.
+        parsed_url = GCECloudProvider.parse_url(self._ip['region'])
+        if 'regions' in parsed_url:
+            self._region = parsed_url['regions']
+        else:
+            self._region = provider.region_name
+
+        # Check if the address is used by a resource.
+        self._rule = None
+        self._target_instance = None
+        if 'users' in floating_ip and len(floating_ip['users']) > 0:
+            if len(floating_ip['users']) > 1:
+                cb.log.warning('IP is in user by more than one resource')
+            resource = provider.get_url(floating_ip['users'][0])
+            if resource['kind'] == 'compute#instance':
+                self._target_instance = resource
+            elif resource['kind'] == 'compute#forwardingRule':
+                self._rule = resource
+                target = provider.get_url(resource['target'])
+                if target['kind'] == 'compute#targetInstance':
+                    self._target_instance = provider.get_url(target['instance'])
+                else:
+                    cb.log.warning('IP is forwarded to a %s' % target['kind'])
+            else:
+                cb.log.warning('IP in use by a %s' % resource['kind'])
+
+    @property
+    def id(self):
+        return self._ip['id']
+
+    @property
+    def public_ip(self):
+        return self._ip['address']
+
+    @property
+    def private_ip(self):
+        if not self._target_instance:
+            return None
+        return self._target_instance['networkInterfaces'][0]['networkIP']
+
+    def in_use(self):
+        return True if self._target_instance else False
+
+    def delete(self):
+       project_name = self._provider.project_name
+       # First, delete the forwarding rule, if there is any.
+       if self._rule:
+           response = (self._provider.gce_compute
+                                     .forwarding_rules()
+                                     .delete(project=project_name,
+                                             region=self._region,
+                                             forwardingRule=self._rule['name'])
+                                     .execute())
+           self._provider.wait_forion(response, region=self._region)
+
+       # Release the address.
+       response = (self._provider.gce_compute
+                                 .addresses()
+                                 .delete(project=project_name,
+                                         region=self._region,
+                                         address=self._ip['name'])
+                                 .execute())
+       self._provider.wait_for_operation(response, region=self._region)
