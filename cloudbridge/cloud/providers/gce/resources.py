@@ -26,6 +26,95 @@ import json
 import re
 import uuid
 
+
+class GCPResourceType(object):
+
+    def __init__(self, platform, resource_type):
+        self.platform = platform
+        self.resource_type = resource_type
+
+    @property
+    def kind(self):
+        return '%s#%s' % (self.platform, self.resource_type)
+
+    @property
+    def url_field_name(self):
+        return '%ss' % self.resource_type
+
+
+# GCP resource types we are interested in
+FORWARDING_RULE_TYPE = GCPResourceType('compute', 'forwardingRule')
+INSTANCE_TYPE = GCPResourceType('compute', 'instance')
+NETWORK_TYPE = GCPResourceType('compute', 'network')
+REGION_TYPE = GCPResourceType('compute', 'region')
+TARGET_INSTANCE_TYPE = GCPResourceType('compute', 'targetInstance')
+
+ALL_RESOURCE_TYPES = [FORWARDING_RULE_TYPE,
+                      INSTANCE_TYPE,
+                      NETWORK_TYPE,
+                      REGION_TYPE,
+                      TARGET_INSTANCE_TYPE]
+
+
+class GCPResourceUrl(GCPResourceType):
+
+    def __init__(self, platform, resource_type, project=None, region=None,
+                 zone=None, name=None, connection=None):
+        super(GCPResourceUrl, self).__init__(platform, resource_type)
+        self.project = project
+        self.region = region
+        self.zone = zone
+        self.name = name
+        self.connection = connection
+
+    @staticmethod
+    def parse_url(url, provider=None):
+        parts = url.split('/')
+        out = None
+        for resource_type in ALL_RESOURCE_TYPES:
+            if parts[-2] == resource_type.url_field_name:
+                out = GCPResourceUrl(resource_type.platform,
+                                     resource_type.resource_type)
+        if not out:
+            return out
+        out.name = parts[-1]
+
+        # If a cloud provider is given, set the connection.
+        if provider:
+            if out.platform == 'compute':
+                out.connection = provider.gce_compute
+            elif out.platform == 'storage':
+                out.connection = provider.gcp_storage
+
+        # Set region, zone, and project fields.
+        i = 0
+        while i < len(parts) - 2:
+            if parts[i] == 'regions':
+                out.region = parts[i + 1]
+                i += 2
+            elif parts[i] == 'zones':
+                out.zone = parts[i + 1]
+                i += 2
+            elif parts[i] == 'projects':
+                out.project = parts[i + 1]
+                i += 2
+            else:
+                i += 1
+        return out
+
+    @property
+    def discovery_object(self):
+        if not self.connection:
+            raise Exception('Connection is not set, yet')
+        return getattr(self.connection, self.url_field_name)()
+
+    def get(self):
+        args = {'project': self.project, self.resource_type: self.name}
+        if self.region: args['region'] = self.region
+        if self.zone: args['zone'] = self.zone
+        return self.discovery_object.get(**args).execute()
+
+
 class GCEKeyPair(BaseKeyPair):
 
     def __init__(self, provider, kp_id, kp_name, kp_material=None):
@@ -207,12 +296,7 @@ class GCEFirewallsDelegate(object):
         """
         if 'network' not in firewall:
             return GCEFirewallsDelegate.DEFAULT_NETWORK
-        match = re.search(
-                GCEFirewallsDelegate._NETWORK_URL_PREFIX + '([^/]*)$',
-                firewall['network'])
-        if match and len(match.groups()) == 1:
-            return match.group(1)
-        return None
+        return GCPResourceUrl.parse_url(firewall['network']).name
 
     @property
     def provider(self):
@@ -752,11 +836,7 @@ class GCEFloatingIP(BaseFloatingIP):
         # We use regional IPs to simulate floating IPs not global IPs because
         # global IPs can be forwarded only to load balancing resources, not to
         # a specific instance. Find out the region to which the IP belongs.
-        parsed_url = GCECloudProvider.parse_url(self._ip['region'])
-        if 'regions' in parsed_url:
-            self._region = parsed_url['regions']
-        else:
-            self._region = provider.region_name
+        self._region = GCPResourceUrl.parse_url(self._ip['region']).name
 
         # Check if the address is used by a resource.
         self._rule = None
@@ -764,14 +844,15 @@ class GCEFloatingIP(BaseFloatingIP):
         if 'users' in floating_ip and len(floating_ip['users']) > 0:
             if len(floating_ip['users']) > 1:
                 cb.log.warning('IP is in user by more than one resource')
-            resource = provider.get_url(floating_ip['users'][0])
-            if resource['kind'] == 'compute#instance':
-                self._target_instance = resource
-            elif resource['kind'] == 'compute#forwardingRule':
+            url = GCPResourceUrl.parse_url(floating_ip['users'][0], provider)
+            resource = url.get()
+            if resource['kind'] == FORWARDING_RULE_TYPE.kind:
                 self._rule = resource
-                target = provider.get_url(resource['target'])
-                if target['kind'] == 'compute#targetInstance':
-                    self._target_instance = provider.get_url(target['instance'])
+                url = GCPResourceUrl.parse_url(resource['target'], provider)
+                target = url.get()
+                if target['kind'] == TARGET_INSTANCE_TYPE.kind:
+                    url = GCPResourceUrl.parse_url(target['instance'], provider)
+                    self._target_instance = url.get()
                 else:
                     cb.log.warning('IP is forwarded to a %s' % target['kind'])
             else:
@@ -799,12 +880,12 @@ class GCEFloatingIP(BaseFloatingIP):
        # First, delete the forwarding rule, if there is any.
        if self._rule:
            response = (self._provider.gce_compute
-                                     .forwarding_rules()
+                                     .forwardingRules()
                                      .delete(project=project_name,
                                              region=self._region,
                                              forwardingRule=self._rule['name'])
                                      .execute())
-           self._provider.wait_forion(response, region=self._region)
+           self._provider.wait_for_operation(response, region=self._region)
 
        # Release the address.
        response = (self._provider.gce_compute

@@ -82,9 +82,9 @@ class GCECloudProvider(BaseCloudProvider):
             self._gce_compute = self._connect_gce_compute()
         return self._gce_compute
 
-    @staticmethod
-    def parse_url(url):
-        return {}
+    @property
+    def gcp_storage(self):
+        raise NotImplementedError("To be implemented")
 
     def _connect_gce_compute(self):
         if self.credentials_dict:
@@ -98,12 +98,13 @@ class GCECloudProvider(BaseCloudProvider):
         args = {'project': self.project_name, 'operation': operation['name']}
         if not region and not zone:
             operations = self.gce_compute.globalOperations()
-        elif region:
-            args['region'] = region
-            operations = self.gce_compute.regionOperations()
-        else:
-            args['zone'] = zone
+        elif zone:
             operations = self.gce_compute.zoneOperations()
+            args['zone'] = zone
+        else:
+            operations = self.gce_compute.regionOperations()
+            args['region'] = region
+
         while True:
             result = operations.get(**args).execute()
             if result['status'] == 'DONE':
@@ -112,6 +113,3 @@ class GCECloudProvider(BaseCloudProvider):
                 return result
 
             time.sleep(0.5)
-
-    def get_url(self, url):
-        return {'kind': 'error'}

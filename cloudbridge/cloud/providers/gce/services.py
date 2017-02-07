@@ -29,6 +29,7 @@ from .resources import GCERegion
 from .resources import GCESecurityGroup
 from .resources import GCESecurityGroupRule
 
+
 class GCESecurityService(BaseSecurityService):
 
     def __init__(self, provider):
