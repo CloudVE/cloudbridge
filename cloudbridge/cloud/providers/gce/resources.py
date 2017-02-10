@@ -27,94 +27,6 @@ import re
 import uuid
 
 
-class GCPResourceType(object):
-
-    def __init__(self, platform, resource_type):
-        self.platform = platform
-        self.resource_type = resource_type
-
-    @property
-    def kind(self):
-        return '%s#%s' % (self.platform, self.resource_type)
-
-    @property
-    def url_field_name(self):
-        return '%ss' % self.resource_type
-
-
-# GCP resource types we are interested in
-FORWARDING_RULE_TYPE = GCPResourceType('compute', 'forwardingRule')
-INSTANCE_TYPE = GCPResourceType('compute', 'instance')
-NETWORK_TYPE = GCPResourceType('compute', 'network')
-REGION_TYPE = GCPResourceType('compute', 'region')
-TARGET_INSTANCE_TYPE = GCPResourceType('compute', 'targetInstance')
-
-ALL_RESOURCE_TYPES = [FORWARDING_RULE_TYPE,
-                      INSTANCE_TYPE,
-                      NETWORK_TYPE,
-                      REGION_TYPE,
-                      TARGET_INSTANCE_TYPE]
-
-
-class GCPResourceUrl(GCPResourceType):
-
-    def __init__(self, platform, resource_type, project=None, region=None,
-                 zone=None, name=None, connection=None):
-        super(GCPResourceUrl, self).__init__(platform, resource_type)
-        self.project = project
-        self.region = region
-        self.zone = zone
-        self.name = name
-        self.connection = connection
-
-    @staticmethod
-    def parse_url(url, provider=None):
-        parts = url.split('/')
-        out = None
-        for resource_type in ALL_RESOURCE_TYPES:
-            if parts[-2] == resource_type.url_field_name:
-                out = GCPResourceUrl(resource_type.platform,
-                                     resource_type.resource_type)
-        if not out:
-            return out
-        out.name = parts[-1]
-
-        # If a cloud provider is given, set the connection.
-        if provider:
-            if out.platform == 'compute':
-                out.connection = provider.gce_compute
-            elif out.platform == 'storage':
-                out.connection = provider.gcp_storage
-
-        # Set region, zone, and project fields.
-        i = 0
-        while i < len(parts) - 2:
-            if parts[i] == 'regions':
-                out.region = parts[i + 1]
-                i += 2
-            elif parts[i] == 'zones':
-                out.zone = parts[i + 1]
-                i += 2
-            elif parts[i] == 'projects':
-                out.project = parts[i + 1]
-                i += 2
-            else:
-                i += 1
-        return out
-
-    @property
-    def discovery_object(self):
-        if not self.connection:
-            raise Exception('Connection is not set, yet')
-        return getattr(self.connection, self.url_field_name)()
-
-    def get(self):
-        args = {'project': self.project, self.resource_type: self.name}
-        if self.region: args['region'] = self.region
-        if self.zone: args['zone'] = self.zone
-        return self.discovery_object.get(**args).execute()
-
-
 class GCEKeyPair(BaseKeyPair):
 
     def __init__(self, provider, kp_id, kp_name, kp_material=None):
@@ -289,15 +201,6 @@ class GCEFirewallsDelegate(object):
         md5.update("{0}-{1}".format(tag, network_name).encode('ascii'))
         return md5.hexdigest()
 
-    @staticmethod
-    def network_name(firewall):
-        """
-        Extract the network name of a firewall.
-        """
-        if 'network' not in firewall:
-            return GCEFirewallsDelegate.DEFAULT_NETWORK
-        return GCPResourceUrl.parse_url(firewall['network']).name
-
     @property
     def provider(self):
         return self._provider
@@ -309,11 +212,20 @@ class GCEFirewallsDelegate(object):
         """
         out = set()
         for firewall in self.iter_firewalls():
-            network_name = GCEFirewallsDelegate.network_name(firewall)
+            network_name = self.network_name(firewall)
             if network_name is not None:
                 out.add((firewall['targetTags'][0], network_name))
         return out
             
+    def network_name(self, firewall):
+        """
+        Extract the network name of a firewall.
+        """
+        if 'network' not in firewall:
+            return GCEFirewallsDelegate.DEFAULT_NETWORK
+        url = self._provider.parse_url(firewall['network'])
+        return url.parameters['network']
+
     def get_tag_network_from_id(self, tag_network_id):
         """
         Map an ID back to the (tag, network name) pair.
@@ -416,7 +328,7 @@ class GCEFirewallsDelegate(object):
             if ('ports' in firewall['allowed'][0] and
                 len(firewall['allowed'][0]['ports']) == 1):
                 info['port'] = firewall['allowed'][0]['ports'][0]
-            info['network_name'] = GCEFirewallsDelegate.network_name(firewall)
+            info['network_name'] = self.network_name(firewall)
             return info
         return info
 
@@ -448,7 +360,7 @@ class GCEFirewallsDelegate(object):
             if network_name is None:
                 yield firewall
                 continue
-            firewall_network_name = GCEFirewallsDelegate.network_name(firewall)
+            firewall_network_name = self.network_name(firewall)
             if firewall_network_name == network_name:
                 yield firewall
 
@@ -836,27 +748,29 @@ class GCEFloatingIP(BaseFloatingIP):
         # We use regional IPs to simulate floating IPs not global IPs because
         # global IPs can be forwarded only to load balancing resources, not to
         # a specific instance. Find out the region to which the IP belongs.
-        self._region = GCPResourceUrl.parse_url(self._ip['region']).name
+        url = provider.parse_url(self._ip['region'])
+        self._region = url.parameters['region']
 
         # Check if the address is used by a resource.
         self._rule = None
         self._target_instance = None
         if 'users' in floating_ip and len(floating_ip['users']) > 0:
             if len(floating_ip['users']) > 1:
-                cb.log.warning('IP is in user by more than one resource')
-            url = GCPResourceUrl.parse_url(floating_ip['users'][0], provider)
-            resource = url.get()
-            if resource['kind'] == FORWARDING_RULE_TYPE.kind:
+                cb.log.warning('Address "%s" in use by more than one resource',
+                               floating_ip['address'])
+            resource = provider.parse_url(floating_ip['users'][0]).get()
+            if resource['kind'] == 'compute#forwardingRule':
                 self._rule = resource
-                url = GCPResourceUrl.parse_url(resource['target'], provider)
-                target = url.get()
-                if target['kind'] == TARGET_INSTANCE_TYPE.kind:
-                    url = GCPResourceUrl.parse_url(target['instance'], provider)
+                target = provider.parse_url(resource['target']).get()
+                if target['kind'] == 'compute#targetInstance':
+                    url = provider.parse_url(target['instance'])
                     self._target_instance = url.get()
                 else:
-                    cb.log.warning('IP is forwarded to a %s' % target['kind'])
+                    cb.log.warning('Address "%s" is forwarded to a %s',
+                                   floating_ip['address'], target['kind'])
             else:
-                cb.log.warning('IP in use by a %s' % resource['kind'])
+                cb.log.warning('Address "%s" in use by a %s',
+                               floating_ip['address'], resource['kind'])
 
     @property
     def id(self):
