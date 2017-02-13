@@ -247,6 +247,7 @@ class PageableObjectMixin(object):
 
     @abstractmethod
     def list(self, limit=None, marker=None):
+        # type: (object, object) -> object
         """
         Returns a list of objects up to a maximum limit.
 
@@ -2064,6 +2065,17 @@ class BucketObject(CloudResource):
 
         :rtype: ``bool``
         :return: ``True`` if successful.
+        """
+        pass
+
+    @abstractmethod
+    def generate_url(self, expires_in):
+        """
+        Generates a URL to this object. If the object is public, `expires_in`
+        argument is not necessary, but if the object is private, the life time
+        of URL is set using `expires_in` argument.
+        :param expires_in: time to live of the generated URL in seconds.
+        :return: A URL to access the object.
         """
         pass
 

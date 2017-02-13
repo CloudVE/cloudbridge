@@ -1,6 +1,8 @@
 from datetime import datetime
 from io import BytesIO
 import uuid
+import urllib
+import os
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from test.helpers import ProviderTestBase
@@ -80,7 +82,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         self.assertEqual([], objects)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
-            obj_name = "hello_world.txt"
+            obj_name_prefix = "hello"
+            obj_name = obj_name_prefix + "_world.txt"
             obj = test_bucket.create_object(obj_name)
 
             self.assertTrue(
@@ -130,6 +133,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     isinstance(obj_too, BucketObject),
                     "Did not get object {0} of expected type.".format(obj_too))
 
+                prefix_filtered_list = test_bucket.list(prefix=obj_name_prefix)
+                self.assertTrue(
+                    len(objs) == len(prefix_filtered_list) == 1,
+                    'The number of objects returned by list function, '
+                    'with and without a prefix, are expected to be equal, '
+                    'but its detected otherwise.')
+
             objs = test_bucket.list()
             found_objs = [o for o in objs if o.name == obj_name]
             self.assertTrue(
@@ -137,16 +147,14 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 "Object %s should have been deleted but still exists." %
                 obj_name)
 
-
     def test_upload_download_bucket_content(self):
-
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
             obj = test_bucket.create_object(obj_name)
-            content = b"Hello World. Here's some content."
+            content = "Hello World. Here's some content."
 
             with helpers.cleanup_action(lambda: obj.delete()):
                 # TODO: Upload and download methods accept different parameter
@@ -160,9 +168,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 for data in obj.iter_content():
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
+                url = obj.generate_url(100)
+                urllib.urlretrieve(url, "Downloaded_" + obj.name)
+                with open("Downloaded_" + obj.name) as tmpFile:
+                    for line in tmpFile:
+                        self.assertEqual(line, content)
+                os.remove("Downloaded_" + obj.name)
 
-
-            obj_name = "hello_upload_download.txt"
             obj = test_bucket.create_object(obj_name)
             with helpers.cleanup_action(lambda: obj.delete):
                 with open("hello_upload_download.txt", "w+") as tmpFile:
