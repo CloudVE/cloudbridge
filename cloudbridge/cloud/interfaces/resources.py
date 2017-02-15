@@ -247,7 +247,6 @@ class PageableObjectMixin(object):
 
     @abstractmethod
     def list(self, limit=None, marker=None):
-        # type: (object, object) -> object
         """
         Returns a list of objects up to a maximum limit.
 
@@ -2118,9 +2117,9 @@ class Bucket(PageableObjectMixin, CloudResource):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit=None, marker=None, prefix=None):
         """
-        List all objects within this bucket.
+        List all objects, or those adhere to the prefix criterion, within this bucket.
 
         :rtype: :class:``.BucketObject``
         :return: List of all available BucketObjects within this bucket.
@@ -2148,5 +2147,14 @@ class Bucket(PageableObjectMixin, CloudResource):
 
         :rtype: :class:``.BucketObject``
         :return: The newly created bucket object
+        """
+        pass
+
+    @abstractmethod
+    def exists(self, key):
+        """
+        Determines if an object with given key exists in this bucket.
+        :param key: The key to be searched in the bucket.
+        :return: Boolean: True if the key exists, False, if it does not.
         """
         pass

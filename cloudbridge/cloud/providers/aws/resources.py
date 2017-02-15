@@ -38,6 +38,7 @@ from retrying import retry
 
 
 class AWSMachineImage(BaseMachineImage):
+
     IMAGE_STATE_MAP = {
         'pending': MachineImageState.PENDING,
         'available': MachineImageState.AVAILABLE,
@@ -108,6 +109,7 @@ class AWSMachineImage(BaseMachineImage):
 
 
 class AWSPlacementZone(BasePlacementZone):
+
     def __init__(self, provider, zone, region):
         super(AWSPlacementZone, self).__init__(provider)
         if isinstance(zone, AWSPlacementZone):
@@ -150,6 +152,7 @@ class AWSPlacementZone(BasePlacementZone):
 
 
 class AWSInstanceType(BaseInstanceType):
+
     def __init__(self, provider, instance_dict):
         super(AWSInstanceType, self).__init__(provider)
         self._inst_dict = instance_dict
@@ -201,6 +204,7 @@ class AWSInstanceType(BaseInstanceType):
 
 
 class AWSInstance(BaseInstance):
+
     # ref:
     # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html
     INSTANCE_STATE_MAP = {
@@ -369,6 +373,7 @@ class AWSInstance(BaseInstance):
 
 
 class AWSVolume(BaseVolume):
+
     # Ref:
     # http://docs.aws.amazon.com/AWSEC2/latest/CommandLineReference/
     # ApiReference-cmd-DescribeVolumes.html
@@ -493,6 +498,7 @@ class AWSVolume(BaseVolume):
 
 
 class AWSSnapshot(BaseSnapshot):
+
     # Ref: http://docs.aws.amazon.com/AWSEC2/latest/CommandLineReference/
     # ApiReference-cmd-DescribeSnapshots.html
     SNAPSHOT_STATE_MAP = {
@@ -581,6 +587,7 @@ class AWSSnapshot(BaseSnapshot):
 
 
 class AWSKeyPair(BaseKeyPair):
+
     def __init__(self, provider, key_pair):
         super(AWSKeyPair, self).__init__(provider, key_pair)
 
@@ -597,6 +604,7 @@ class AWSKeyPair(BaseKeyPair):
 
 
 class AWSSecurityGroup(BaseSecurityGroup):
+
     def __init__(self, provider, security_group):
         super(AWSSecurityGroup, self).__init__(provider, security_group)
 
@@ -683,6 +691,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
 
 
 class AWSSecurityGroupRule(BaseSecurityGroupRule):
+
     def __init__(self, provider, rule, parent):
         super(AWSSecurityGroupRule, self).__init__(provider, rule, parent)
 
@@ -694,7 +703,7 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         md5 = hashlib.md5()
         md5.update("{0}-{1}-{2}-{3}".format(
             self.ip_protocol, self.from_port, self.to_port, self.cidr_ip)
-                   .encode('ascii'))
+            .encode('ascii'))
         return md5.hexdigest()
 
     @property
@@ -752,6 +761,7 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
 
 class AWSBucketObject(BaseBucketObject):
+
     def __init__(self, provider, key):
         super(AWSBucketObject, self).__init__(provider)
         self._key = key
@@ -836,6 +846,7 @@ class AWSBucketObject(BaseBucketObject):
 
 
 class AWSBucket(BaseBucket):
+
     def __init__(self, provider, bucket):
         super(AWSBucket, self).__init__(provider)
         self._bucket = bucket
@@ -867,12 +878,8 @@ class AWSBucket(BaseBucket):
         :rtype: BucketObject
         :return: List of all available BucketObjects within this bucket.
         """
-        if prefix:
-            objects = [AWSBucketObject(self._provider, obj)
-                       for obj in self._bucket.list(prefix=prefix)]
-        else:
-            objects = [AWSBucketObject(self._provider, obj)
-                       for obj in self._bucket.list()]
+        objects = [AWSBucketObject(self._provider, obj)
+                   for obj in self._bucket.list(prefix=prefix)]
 
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
@@ -900,6 +907,7 @@ class AWSBucket(BaseBucket):
 
 
 class AWSRegion(BaseRegion):
+
     def __init__(self, provider, aws_region):
         super(AWSRegion, self).__init__(provider)
         self._aws_region = aws_region
@@ -933,6 +941,7 @@ class AWSRegion(BaseRegion):
 
 
 class AWSNetwork(BaseNetwork):
+
     # Ref:
     # docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVpcs.html
     _NETWORK_STATE_MAP = {
@@ -1006,6 +1015,7 @@ class AWSNetwork(BaseNetwork):
 
 
 class AWSSubnet(BaseSubnet):
+
     def __init__(self, provider, subnet):
         super(AWSSubnet, self).__init__(provider)
         self._subnet = subnet
@@ -1044,6 +1054,7 @@ class AWSSubnet(BaseSubnet):
 
 
 class AWSFloatingIP(BaseFloatingIP):
+
     def __init__(self, provider, floating_ip):
         super(AWSFloatingIP, self).__init__(provider)
         self._ip = floating_ip
@@ -1068,6 +1079,7 @@ class AWSFloatingIP(BaseFloatingIP):
 
 
 class AWSRouter(BaseRouter):
+
     def __init__(self, provider, router):
         super(AWSRouter, self).__init__(provider)
         self._router = router
@@ -1168,5 +1180,6 @@ class AWSRouter(BaseRouter):
 
 
 class AWSLaunchConfig(BaseLaunchConfig):
+
     def __init__(self, provider):
         super(AWSLaunchConfig, self).__init__(provider)
