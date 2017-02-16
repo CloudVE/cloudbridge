@@ -37,14 +37,42 @@ class GCPResources(object):
     def __init__(self, connection):
         self._connection = connection
 
-        # Sorry, but the most reliable source of resource descriptions is the
-        # internal _resourceDesc field of the connection.
+        # Resource descriptions are already pulled into the internal
+        # _resourceDesc field of the connection.
         #
         # TODO: We could fetch compute resource descriptions from
         # https://www.googleapis.com/discovery/v1/apis/compute/v1/rest and
         # storage resource descriptions from
         # https://www.googleapis.com/discovery/v1/apis/storage/v1/rest
         # ourselves.
+        #
+        # Resource descriptions are in JSON format which are then parsed into a
+        # Python dictionary. The main fields we are interested are:
+        #
+        # {
+        #   "rootUrl": "https://www.googleapis.com/",
+        #   "servicePath": COMPUTE OR STORAGE SERVICE PATH
+        #   "resources": {
+        #     RESOURCE_NAME: {
+        #       "methods": {
+        #         "get": {
+        #           "path": RESOURCE PATH PATTERN
+        #           "parameters": {
+        #             PARAMETER: {
+        #               "pattern": REGEXP FOR VALID VALUES
+        #               ...
+        #             },
+        #             ...
+        #           },
+        #           "parameterOrder": [LIST OF PARAMETERS]
+        #         },
+        #         ...
+        #       }
+        #     },
+        #     ...
+        #   }
+        #   ...
+        # }
         desc = connection._resourceDesc
         self._root_url = desc['rootUrl']
         self._service_path = desc['servicePath']
@@ -76,6 +104,11 @@ class GCPResources(object):
                                          'pattern': re.compile(pattern)}
 
     def parse_url(self, url):
+        """
+        Build a GCPResourceUrl from a resource's URL string. One can then call
+        the get() method on the returned object to fetch resource details from
+        GCP servers.
+        """
         url = url.strip()
         if url.startswith(self._root_url): url = url[len(self._root_url):]
         if url.startswith(self._service_path):
@@ -128,8 +161,7 @@ class GCECloudProvider(BaseCloudProvider):
         self._network = GCENetworkService(self)
 
         self._compute_resources = GCPResources(self.gce_compute)
-        # Enable when the storage 
-        # self._storage_resources = GCPResources(self.gcp_storage)
+        self._storage_resources = GCPResources(self.gcp_storage)
 
     @property
     def compute(self):
@@ -161,7 +193,7 @@ class GCECloudProvider(BaseCloudProvider):
 
     @property
     def gcp_storage(self):
-        if not self._gcp_storae:
+        if not self._gcp_storage:
             self._gcp_storage = self._connect_gcp_storage()
         return self._gcp_storage
 
