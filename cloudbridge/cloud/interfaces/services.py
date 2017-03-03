@@ -187,7 +187,12 @@ class InstanceService(PageableObjectMixin, CloudService):
                 print("Instance Data: {0}", instance)
 
         :type  limit: ``int``
-        :param limit: The maximum number of objects to return
+        :param limit: The maximum number of objects to return. Note that the
+                      maximum is not guaranteed to be honoured, and a lower
+                      maximum may be enforced depending on the provider. In
+                      such a case, the returned ResultList's is_truncated
+                      property can be used to determine whether more records
+                      are available.
 
         :type  marker: ``str``
         :param marker: The marker is an opaque identifier used to assist
