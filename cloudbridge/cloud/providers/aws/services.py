@@ -875,7 +875,7 @@ class AWSNetworkService(BaseNetworkService):
         # possibly not work in future requests when the zone for the
         # only existing subnet and a target launch zone don't match.
         region = self.provider.compute.regions.get(
-            self.provider.vpc_conn.DefaultRegionName)
+            self.provider.vpc_conn.region.name)
         for i, zone in enumerate(region.zones):
             self.provider.vpc_conn.create_subnet(
                 default_vpc.id, '10.0.{0}.0/24'.format(i),
