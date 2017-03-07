@@ -540,32 +540,10 @@ class AWSInstanceService(BaseInstanceService):
             :rtype: ``str``
             :return: Default VPC ID.
             """
-            default_vpc = None
             for vpc in vpcs:
                 if vpc.is_default:
-                    default_vpc = vpc.id
-                    break
-            if not default_vpc:
-                for vpc in self.provider.vpc_conn.get_all_vpcs():
-                    if vpc.tags.get('Name', '') == \
-                       AWSNetwork.CB_DEFAULT_NETWORK_NAME:
-                        default_vpc = vpc.id
-                        break
-            if not default_vpc:
-                net = self.provider.network.create(
-                    name=AWSNetwork.CB_DEFAULT_NETWORK_NAME)
-                default_vpc = net.id
-                # Create a subnet in each of the region's zones
-                # Otherwise, a CloudBridge-default network will exist but
-                # possibly not work in future requests when the zone for the
-                # only existing subnet and a target launch zone don't match.
-                region = self.provider.compute.regions.get(
-                    self.provider.vpc_conn.DefaultRegionName)
-                for i, zone in enumerate(region.zones):
-                    self.provider.vpc_conn.create_subnet(
-                        net.id, '10.0.{0}.0/24'.format(i),
-                        availability_zone=zone.name)
-            return default_vpc
+                    return vpc.id
+            return self.provider.network.get_or_create_default().id
 
         def _get_potential_subnets(filters, exc):
             """
@@ -878,19 +856,30 @@ class AWSNetworkService(BaseNetworkService):
             return AWSNetwork(self.provider, network[0])
         return None
 
-    def get_default(self):
+    def get_or_create_default(self):
         default_vpc = None
         vpcs = self.provider.vpc_conn.get_all_vpcs()
         for vpc in vpcs:
             if vpc.is_default:
-                default_vpc = AWSNetwork(self.provider, vpc)
-                break
+                return AWSNetwork(self.provider, vpc)
         if not default_vpc:
             for vpc in vpcs:
                 if vpc.tags.get('Name', '') == \
                    AWSNetwork.CB_DEFAULT_NETWORK_NAME:
-                    default_vpc = AWSNetwork(self.provider, vpc)
-                    break
+                    return AWSNetwork(self.provider, vpc)
+        # No default network exists; create one.
+        default_vpc = self.provider.network.create(
+            name=AWSNetwork.CB_DEFAULT_NETWORK_NAME)
+        # Create a subnet in each of the region's zones
+        # Otherwise, a CloudBridge-default network will exist but
+        # possibly not work in future requests when the zone for the
+        # only existing subnet and a target launch zone don't match.
+        region = self.provider.compute.regions.get(
+            self.provider.vpc_conn.DefaultRegionName)
+        for i, zone in enumerate(region.zones):
+            self.provider.vpc_conn.create_subnet(
+                default_vpc.id, '10.0.{0}.0/24'.format(i),
+                availability_zone=zone.name)
         return default_vpc
 
     def list(self, limit=None, marker=None):

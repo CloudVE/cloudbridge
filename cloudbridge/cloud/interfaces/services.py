@@ -514,12 +514,14 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def get_default(self):
+    def get_or_create_default(self):
         """
-        Return a default network for the account or ``None`` if not found.
+        Return a default network for the account or create one if not found.
 
         A default network is one marked as such by the provider or matches the
         default network name used by this library (e.g., CloudBridgeNet).
+        In addition to creating a subnet, this will create subnet(s) within
+        the network.
 
         :rtype: ``object`` of :class:`.Network`
         :return: a Network object
