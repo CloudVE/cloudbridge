@@ -94,9 +94,13 @@ on disk as a read-only file.
 Create a security group
 -----------------------
 Next, we need to create a security group and add a rule to allow ssh access.
+A security group needs to be associated with a private network, so we'll also
+need to fetch it.
 
 .. code-block:: python
 
+    provider.network.list()  # Find a desired network ID
+    net = provider.network.get('desired network ID')
     sg = provider.security.security_groups.create(
         'cloudbridge_intro', 'A security group used by CloudBridge', net.id)
     sg.add_rule('tcp', 22, 22, '0.0.0.0/0')
@@ -115,7 +119,7 @@ also add the network interface as a launch argument.
                        key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
         name='CloudBridge-intro', image=img, instance_type=inst_type,
-        key_pair=kp, security_groups=[sg])
+        network=net, key_pair=kp, security_groups=[sg])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
