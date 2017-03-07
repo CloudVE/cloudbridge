@@ -738,6 +738,12 @@ class OpenStackNetworkService(BaseNetworkService):
         network = (n for n in self.list() if n.id == network_id)
         return next(network, None)
 
+    def get_default(self):
+        for net in self.list():
+            if net.name == OpenStackNetwork.CB_DEFAULT_NETWORK_NAME:
+                return net
+        return None
+
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks()

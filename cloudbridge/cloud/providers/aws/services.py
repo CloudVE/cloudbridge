@@ -868,6 +868,21 @@ class AWSNetworkService(BaseNetworkService):
             return AWSNetwork(self.provider, network[0])
         return None
 
+    def get_default(self):
+        default_vpc = None
+        vpcs = self.provider.vpc_conn.get_all_vpcs()
+        for vpc in vpcs:
+            if vpc.is_default:
+                default_vpc = AWSNetwork(self.provider, vpc)
+                break
+        if not default_vpc:
+            for vpc in vpcs:
+                if vpc.tags.get('Name', '') == \
+                   AWSNetwork.CB_DEFAULT_NETWORK_NAME:
+                    default_vpc = AWSNetwork(self.provider, vpc)
+                    break
+        return default_vpc
+
     def list(self, limit=None, marker=None):
         networks = [AWSNetwork(self.provider, network)
                     for network in self.provider.vpc_conn.get_all_vpcs()]

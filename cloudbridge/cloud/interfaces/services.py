@@ -514,6 +514,19 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
+    def get_default(self):
+        """
+        Return a default network for the account or ``None`` if not found.
+
+        A default network is one marked as such by the provider or matches the
+        default network name used by this library (e.g., CloudBridgeNet).
+
+        :rtype: ``object`` of :class:`.Network`
+        :return: a Network object
+        """
+        pass
+
+    @abstractmethod
     def list(self, limit=None, marker=None):
         """
         List all networks.
