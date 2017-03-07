@@ -2,10 +2,11 @@ Setup
 -----
 To initialize a connection to a cloud and get a provider object, you will
 need to provide the cloud's access credentials to CloudBridge. These may
-be provided in one of two ways:
+be provided in one of following ways:
 
 1. Environment variables
 2. A dictionary
+3. Configuration file
 
 Providing access credentials through environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -90,6 +91,31 @@ s3_conn_path          Connection path. Defaults to ``/``.
 s3_validate_certs     Whether to use SSL certificate verification. Default is
                       ``False``.
 ====================  ==================
+
+
+Providing access credentials in a file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CloudBridge can also read credentials from a file on your local file system.
+The file should be placed in one of two locations: ``/etc/cloudbridge.ini`` or
+``~/.cloudbridge``. Each set of credentials should be delineated with the
+provider ID (e.g., ``openstack``, ``aws``) with the necessary credentials
+being supplied in YAML format. Note that only one set of credentials per
+cloud provider type can be supplied (i.e., via this method, it is not possible
+to provide credentials for two different OpenStack clouds).
+
+.. code-block:: bash
+
+    [openstack]
+    os_username: username
+    os_password: password
+    os_auth_url: auth url
+    os_user_domain_name: user domain name
+    os_project_domain_name: project domain name
+    os_project_name: project name
+
+    [aws]
+    aws_access_key: access key
+    aws_secret_key: secret key
 
 
 Other configuration variables
