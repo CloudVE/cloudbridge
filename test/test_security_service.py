@@ -233,7 +233,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 len(sg.rules) == 0,
                 "Expected no security group group rule. Got {0}."
                 .format(sg.rules))
-            rule = sg.add_rule(src_group=sg, ip_protocol='tcp', from_port=0,
+            rule = sg.add_rule(src_group=sg, ip_protocol='tcp', from_port=1,
                                to_port=65535)
             self.assertTrue(
                 rule.group.name == name,
