@@ -646,7 +646,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
         :return: Rule object if successful or ``None``.
         """
         try:
-            if not isinstance(src_group, SecurityGroup):
+            if src_group and not isinstance(src_group, SecurityGroup):
                 src_group = self._provider.security.security_groups.get(
                     src_group)
 
