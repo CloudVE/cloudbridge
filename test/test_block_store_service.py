@@ -1,3 +1,4 @@
+from unittest import skip
 import uuid
 
 import six
@@ -5,6 +6,7 @@ import six
 from cloudbridge.cloud.interfaces import SnapshotState
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
+
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
@@ -91,6 +93,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             "Volume %s should have been deleted but still exists." %
             name)
 
+    @skip("Until Moto supports 'state' for DescribeSubnets filter")
     def test_attach_detach_volume(self):
         """
         Create a new volume, and attempt to attach it to an instance
@@ -117,6 +120,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     [VolumeState.AVAILABLE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
 
+    @skip("Until Moto supports 'state' for DescribeSubnets filter")
     def test_volume_properties(self):
         """
         Test volume properties
