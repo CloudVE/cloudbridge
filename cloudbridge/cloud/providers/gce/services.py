@@ -1,12 +1,15 @@
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
+from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.gce import helpers
 import cloudbridge as cb
 
@@ -21,10 +24,11 @@ import uuid
 
 from .resources import GCEFirewallsDelegate
 from .resources import GCEFloatingIP
-from .resources import GCEMachineImage
-from .resources import GCENetwork
+from .resources import GCEInstance
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
+from .resources import GCEMachineImage
+from .resources import GCENetwork
 from .resources import GCERegion
 from .resources import GCESecurityGroup
 from .resources import GCESecurityGroupRule
@@ -241,6 +245,23 @@ class GCESecurityGroupService(BaseSecurityGroupService):
     def delete(self, group_id):
         return self._delegate.delete_tag_network_with_id(group_id)
 
+    def find_by_network_and_tags(self, network_name, tags):
+        """
+        Finds non-empty security groups by network name and security group
+        names (tags). If no matching security group is found, an empty list
+        is returned.
+        """
+        security_groups = []
+        for tag, net_name in self._delegate.tag_networks:
+            if network_name != net_name:
+                continue
+            if tag not in tags:
+                continue
+            network = self.provider.network.get_by_name(net_name)
+            security_groups.append(
+                GCESecurityGroup(self._delegate, tag, network))
+        return security_groups
+
 
 class GCEInstanceTypesService(BaseInstanceTypesService):
 
@@ -406,10 +427,112 @@ class GCEImageService(BaseImageService):
                                      limit=limit, marker=marker)
 
 
+class GCEInstanceService(BaseInstanceService):
+
+    def __init__(self, provider):
+        super(GCEInstanceService, self).__init__(provider)
+
+    def create(self, name, image, instance_type, network=None, zone=None,
+               key_pair=None, security_groups=None, user_data=None,
+               launch_config=None, **kwargs):
+        """
+        Creates a new virtual machine instance.
+        """
+        if not zone:
+            zone = self.provider.default_zone
+        if not launch_config:
+            if network:
+                network_url = (network.resource_url
+                               if isinstance(network, Network) else network)
+            else:
+                network_url = 'global/networks/default'
+            config = {
+                'name': name,
+                'machineType': instance_type.resource_url,
+                'disks': [{'boot': True,
+                           'autoDelete': True,
+                           'initializeParams': {
+                               'sourceImage': image.resource_url,
+                           }
+                       }],
+                'networkInterfaces': [
+                    {'network': network_url,
+                     'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
+                                        'name': 'External NAT'}]
+                 }],
+            }
+            if security_groups and isinstance(security_groups, list):
+                sg_names = []
+                if isinstance(security_groups[0], SecurityGroup):
+                    sg_names = [sg.name for sg in security_groups]
+                elif isinstance(security_groups[0], str):
+                    sg_names = security_groups
+                if len(sg_names) > 0:
+                    config['tags'] = {}
+                    config['tags']['items'] = sg_names
+        else:
+            config = launch_config
+        response = self.provider.gce_compute \
+                                .instances() \
+                                .insert(
+                                    project=self.provider.project_name,
+                                    zone=self.provider.default_zone,
+                                    body=config) \
+                                .execute()
+
+    def get(self, instance_id):
+        """
+        Returns an instance given its name. Returns None
+        if the object does not exist.
+
+        A GCE instance is uniquely identified by its selfLink, which is used
+        as its id.
+        """
+        try:
+            response = self.provider.get_gce_resource_data(instance_id)
+            if response:
+                return GCEInstance(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            # If the instance is not found, the API will raise
+            # googleapiclient.errors.HttpError.
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
+        return None
+
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for instances by instance name.
+        :return: a list of Instance objects
+        """
+        instances = [instance for instance in self.list()
+                     if instance.name == name]
+        if limit and len(instances) > limit:
+            instances = instances[:limit]
+        return instances
+
+    def list(self, limit=None, marker=None):
+        """
+        List all instances.
+        """
+        # For GCE API, Acceptable values are 0 to 500, inclusive.
+        # (Default: 500).
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = self.provider.gce_compute.instances().list(
+            project=self.provider.project_name,
+            zone=self.provider.default_zone,
+            maxResults=max_result,
+            pageToken=marker).execute()
+        instances = [GCEInstance(self.provider, inst)
+                     for inst in response['items']]
+        return ServerPagedResultList(len(instances) > max_result,
+                                     response.get('nextPageToken'),
+                                     False, data=instances)
+
 class GCEComputeService(BaseComputeService):
     # TODO: implement GCEComputeService
     def __init__(self, provider):
         super(GCEComputeService, self).__init__(provider)
+        self._instance_svc = GCEInstanceService(self.provider)
         self._instance_type_svc = GCEInstanceTypesService(self.provider)
         self._region_svc = GCERegionService(self.provider)
         self._images_svc = GCEImageService(self.provider)
@@ -424,7 +547,7 @@ class GCEComputeService(BaseComputeService):
 
     @property
     def instances(self):
-        raise NotImplementedError("To be implemented")
+        return self._instance_svc
 
     @property
     def regions(self):

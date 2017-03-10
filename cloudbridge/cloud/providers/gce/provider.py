@@ -5,6 +5,7 @@ for GCE.
 
 
 from cloudbridge.cloud.base import BaseCloudProvider
+import httplib2
 import json
 import os
 import re
@@ -12,6 +13,7 @@ from string import Template
 import time
 
 from googleapiclient import discovery
+import googleapiclient.http
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -204,6 +206,30 @@ class GCECloudProvider(BaseCloudProvider):
                 self.credentials_dict)
         else:
             return GoogleCredentials.get_application_default()
+
+    def get_gce_resource_data(self, uri):
+        """
+        Retrieves GCE resoure data given its resource URI.
+        """
+        http = httplib2.Http()
+        http = self._credentials.authorize(http)
+        def _postproc(*kwargs):
+            if len(kwargs) >= 2:
+                # The first argument is request, and the second is response.
+                resource_dict = json.loads(kwargs[1])
+                return resource_dict
+        request = googleapiclient.http.HttpRequest(http=http,
+                                                   postproc=_postproc,
+                                                   uri=uri)
+        # The response is a dict representing the GCE resource data.
+        response = request.execute()
+        return response
+
+    def wait_for_global_operation(self, operation):
+        while True:
+            result = self.gce_compute.globalOperations().get(
+                project=self.project_name,
+                operation=operation['name']).execute()
 
     def _connect_gcp_storage(self):
         return discovery.build('storage', 'v1', credentials=self._credentials)
