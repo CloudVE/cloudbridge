@@ -1,4 +1,5 @@
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -475,21 +476,16 @@ class GCEInstanceService(BaseInstanceService):
                                     body=config) \
                                 .execute()
 
-    def get(self, instance_name):
+    def get(self, instance_id):
         """
         Returns an instance given its name. Returns None
         if the object does not exist.
 
-        GCE client API only supports returning the specified Instance resource
-        by its name (not by its id).
+        A GCE instance is uniquely identified by its selfLink, which is used
+        as its id.
         """
         try:
-            response = self.provider.gce_compute\
-                               .instances() \
-                               .get(project=self.provider.project_name,
-                                    zone=self.provider.default_zone,
-                                    instance=instance_name) \
-                               .execute()
+            response = self.provider.get_gce_resource_data(instance_id)
             if response:
                 return GCEInstance(self.provider, response)
         except googleapiclient.errors.HttpError as http_error:
@@ -515,34 +511,18 @@ class GCEInstanceService(BaseInstanceService):
         List all instances.
         """
         # For GCE API, Acceptable values are 0 to 500, inclusive.
-        # (Default: 500). If the number of available results is larger
-        # than maxResults, Compute Engine returns a nextPageToken that
-        # can be used to get the next page of results in subsequent
-        # list requests.
-        if limit is None or limit > 500:
-            max_result = 500
-        else:
-            max_result = limit
-        request = self.provider.gce_compute \
-                               .instances() \
-                               .list(project=self.provider.project_name,
-                                     zone=self.provider.default_zone,
-                                     maxResults=max_result)
-        instances = []
-        while request is not None:
-            response = request.execute()
-            instances.extend([GCEInstance(self.provider, inst)
-                              for inst in response['items']])
-            if limit and len(instances) >= limit:
-                break
-            request = self.provider.gce_compute \
-                                   .instances() \
-                                   .list_next(previous_request=request,
-                                              previous_response=response)
-        if limit and len(instances) > limit:
-            instances = instances[:limit]
-        return instances
-
+        # (Default: 500).
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = self.provider.gce_compute.instances().list(
+            project=self.provider.project_name,
+            zone=self.provider.default_zone,
+            maxResults=max_result,
+            pageToken=marker).execute()
+        instances = [GCEInstance(self.provider, inst)
+                     for inst in response['items']]
+        return ServerPagedResultList(len(instances) > max_result,
+                                     response.get('nextPageToken'),
+                                     False, data=instances)
 
 class GCEComputeService(BaseComputeService):
     # TODO: implement GCEComputeService

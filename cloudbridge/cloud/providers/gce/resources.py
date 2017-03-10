@@ -727,8 +727,11 @@ class GCEInstance(BaseInstance):
     def id(self):
         """
         Get the instance identifier.
+
+        A GCE instance is uniquely identified by its selfLink, which is used
+        as its id.
         """
-        return self._gce_instance['id']
+        return self._gce_instance.get('selfLink')
 
     @property
     def name(self):
