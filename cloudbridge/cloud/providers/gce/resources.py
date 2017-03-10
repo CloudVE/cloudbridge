@@ -1,6 +1,7 @@
 """
 DataTypes used by this provider
 """
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -13,6 +14,8 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 
+import cloudbridge as cb
+
 # Older versions of Python do not have a built-in set data-structure.
 try:
     set
@@ -24,6 +27,7 @@ import inspect
 import json
 import re
 import uuid
+
 
 class GCEKeyPair(BaseKeyPair):
 
@@ -203,20 +207,6 @@ class GCEFirewallsDelegate(object):
         md5.update("{0}-{1}".format(tag, network_name).encode('ascii'))
         return md5.hexdigest()
 
-    @staticmethod
-    def network_name(firewall):
-        """
-        Extract the network name of a firewall.
-        """
-        if 'network' not in firewall:
-            return GCEFirewallsDelegate.DEFAULT_NETWORK
-        match = re.search(
-                GCEFirewallsDelegate._NETWORK_URL_PREFIX + '([^/]*)$',
-                firewall['network'])
-        if match and len(match.groups()) == 1:
-            return match.group(1)
-        return None
-
     @property
     def provider(self):
         return self._provider
@@ -228,11 +218,20 @@ class GCEFirewallsDelegate(object):
         """
         out = set()
         for firewall in self.iter_firewalls():
-            network_name = GCEFirewallsDelegate.network_name(firewall)
+            network_name = self.network_name(firewall)
             if network_name is not None:
                 out.add((firewall['targetTags'][0], network_name))
         return out
             
+    def network_name(self, firewall):
+        """
+        Extract the network name of a firewall.
+        """
+        if 'network' not in firewall:
+            return GCEFirewallsDelegate.DEFAULT_NETWORK
+        url = self._provider.parse_url(firewall['network'])
+        return url.parameters['network']
+
     def get_tag_network_from_id(self, tag_network_id):
         """
         Map an ID back to the (tag, network name) pair.
@@ -286,7 +285,7 @@ class GCEFirewallsDelegate(object):
                                       .insert(project=project_name,
                                               body=firewall)
                                       .execute())
-            self._provider.wait_for_global_operation(response)
+            self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
             return True
         except:
@@ -335,7 +334,7 @@ class GCEFirewallsDelegate(object):
             if ('ports' in firewall['allowed'][0] and
                 len(firewall['allowed'][0]['ports']) == 1):
                 info['port'] = firewall['allowed'][0]['ports'][0]
-            info['network_name'] = GCEFirewallsDelegate.network_name(firewall)
+            info['network_name'] = self.network_name(firewall)
             return info
         return info
 
@@ -367,7 +366,7 @@ class GCEFirewallsDelegate(object):
             if network_name is None:
                 yield firewall
                 continue
-            firewall_network_name = GCEFirewallsDelegate.network_name(firewall)
+            firewall_network_name = self.network_name(firewall)
             if firewall_network_name == network_name:
                 yield firewall
 
@@ -382,7 +381,7 @@ class GCEFirewallsDelegate(object):
                                       .delete(project=project_name,
                                               firewall=firewall['name'])
                                       .execute())
-            self._provider.wait_for_global_operation(response)
+            self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
             return True
         except:
@@ -877,8 +876,8 @@ class GCEInstance(BaseInstance):
         """
         network_url = self._gce_instance.get('networkInterfaces')[0].get(
             'network')
-        network_name = GCEFirewallsDelegate.network_name(
-            {'network': network_url})
+        url = self._provider.parse_url(network_url)
+        network_name = url.parameters['network']
         if 'items' not in self._gce_instance['tags']:
             return []
         tags = self._gce_instance['tags']['items']
@@ -980,7 +979,7 @@ class GCENetwork(BaseNetwork):
                     .execute())
             if 'error' in response:
                 return False
-            self._provider.wait_for_global_operation(response)
+            self._provider.wait_for_operation(response)
             return True
         except:
             return False
@@ -993,3 +992,74 @@ class GCENetwork(BaseNetwork):
 
     def refresh(self):
         return self.state
+
+class GCEFloatingIP(BaseFloatingIP):
+
+    def __init__(self, provider, floating_ip):
+        super(GCEFloatingIP, self).__init__(provider)
+        self._ip = floating_ip
+
+        # We use regional IPs to simulate floating IPs not global IPs because
+        # global IPs can be forwarded only to load balancing resources, not to
+        # a specific instance. Find out the region to which the IP belongs.
+        url = provider.parse_url(self._ip['region'])
+        self._region = url.parameters['region']
+
+        # Check if the address is used by a resource.
+        self._rule = None
+        self._target_instance = None
+        if 'users' in floating_ip and len(floating_ip['users']) > 0:
+            if len(floating_ip['users']) > 1:
+                cb.log.warning('Address "%s" in use by more than one resource',
+                               floating_ip['address'])
+            resource = provider.parse_url(floating_ip['users'][0]).get()
+            if resource['kind'] == 'compute#forwardingRule':
+                self._rule = resource
+                target = provider.parse_url(resource['target']).get()
+                if target['kind'] == 'compute#targetInstance':
+                    url = provider.parse_url(target['instance'])
+                    self._target_instance = url.get()
+                else:
+                    cb.log.warning('Address "%s" is forwarded to a %s',
+                                   floating_ip['address'], target['kind'])
+            else:
+                cb.log.warning('Address "%s" in use by a %s',
+                               floating_ip['address'], resource['kind'])
+
+    @property
+    def id(self):
+        return self._ip['id']
+
+    @property
+    def public_ip(self):
+        return self._ip['address']
+
+    @property
+    def private_ip(self):
+        if not self._target_instance:
+            return None
+        return self._target_instance['networkInterfaces'][0]['networkIP']
+
+    def in_use(self):
+        return True if self._target_instance else False
+
+    def delete(self):
+       project_name = self._provider.project_name
+       # First, delete the forwarding rule, if there is any.
+       if self._rule:
+           response = (self._provider.gce_compute
+                                     .forwardingRules()
+                                     .delete(project=project_name,
+                                             region=self._region,
+                                             forwardingRule=self._rule['name'])
+                                     .execute())
+           self._provider.wait_for_operation(response, region=self._region)
+
+       # Release the address.
+       response = (self._provider.gce_compute
+                                 .addresses()
+                                 .delete(project=project_name,
+                                         region=self._region,
+                                         address=self._ip['name'])
+                                 .execute())
+       self._provider.wait_for_operation(response, region=self._region)

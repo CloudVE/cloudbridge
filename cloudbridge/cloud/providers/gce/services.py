@@ -20,7 +20,10 @@ import googleapiclient
 from retrying import retry
 import sys
 
+import uuid
+
 from .resources import GCEFirewallsDelegate
+from .resources import GCEFloatingIP
 from .resources import GCEInstance
 from .resources import GCEInstanceType
 from .resources import GCEKeyPair
@@ -29,6 +32,7 @@ from .resources import GCENetwork
 from .resources import GCERegion
 from .resources import GCESecurityGroup
 from .resources import GCESecurityGroupRule
+
 
 class GCESecurityService(BaseSecurityService):
 
@@ -142,7 +146,7 @@ class GCEKeyPairService(BaseKeyPairService):
             # common_metadata will have the current fingerprint at this point
             operation = self.gce_projects.setCommonInstanceMetadata(
                 project=self.provider.project_name, body=metadata).execute()
-            self.provider.wait_for_global_operation(operation)
+            self.provider.wait_for_operation(operation)
 
         # Retry a few times if the fingerprints conflict
         retry_decorator = retry(stop_max_attempt_number=5)
@@ -602,7 +606,7 @@ class GCENetworkService(BaseNetworkService):
                                      .execute())
             if 'error' in response:
                 return None
-            self.provider.wait_for_global_operation(response)
+            self.provider.wait_for_operation(response)
             networks = self.list(filter='name eq %s' % name)
             return None if len(networks) == 0 else networks[0]
         except:
@@ -612,11 +616,45 @@ class GCENetworkService(BaseNetworkService):
     def subnets(self):
         raise NotImplementedError('To be implemented')
 
-    def floating_ips(self, network_id=None):
-        raise NotImplementedError('To be implemented')
+    def floating_ips(self, network_id=None, region=None):
+        if not region:
+            region = self.provider.region_name
+        try:
+            response = (self.provider.gce_compute
+                                     .addresses()
+                                     .list(project=self.provider.project_name,
+                                           region=region)
+                                     .execute())
+            ips = []
+            if 'items' in response:
+                for ip in response['items']:
+                    ips.append(GCEFloatingIP(self.provider, ip))
+            # TODO: if network_id is given, filter out IPs that are assigned to
+            # resources in a different network.
+            return ips
+        except:
+            return []
 
-    def create_floating_ip(self):
-        raise NotImplementedError('To be implemented')
+    def create_floating_ip(self, region=None):
+        if not region:
+            region = self.provider.region_name
+        ip_name = 'ip-{0}'.format(uuid.uuid4())
+        try:
+            response = (self.provider.gce_compute
+                                     .addresses()
+                                     .insert(project=self.provider.project_name,
+                                             region=region,
+                                             body={'name': ip_name})
+                                     .execute())
+            if 'error' in response:
+                return None
+            self.provider.wait_for_operation(response, region=region)
+            ips = self.floating_ips()
+            for ip in ips:
+                if ip.id == response["targetId"]:
+                    return ip
+        except:
+            return None
 
     def routers(self):
         raise NotImplementedError('To be implemented')
