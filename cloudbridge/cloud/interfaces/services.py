@@ -205,7 +205,7 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, image, instance_type, network=None, zone=None,
+    def create(self, name, image, instance_type, subnet=None, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -223,19 +223,20 @@ class InstanceService(PageableObjectMixin, CloudService):
         :param instance_type: The InstanceType or name, specifying the size of
                               the instance to boot into
 
-        :type  network:  ``Network`` or ``str``
-        :param network:  The Network or an ID with which the instance should
-                         be associated. If no network was specified, this
-                         method will attempt to find a 'default' one and launch
-                         the instance using that network. A 'default' network
-                         is one tagged as such by the native API. If such tag
-                         or functionality does not exist, an attempt to create
-                         a new network (by default called 'CloudBridgeNet')
-                         will be made. If that falls through, an attempt will
-                         be made to launch the instance without specifying the
-                         network parameter (this is under the assumption the
-                         private networking functionality is not available on
-                         the provider).
+        :type  subnet:  ``Subnet`` or ``str``
+        :param subnet: The Subnet object or a subnet string ID with which the
+                       instance should be associated. If no subnet was
+                       specified, this method will attempt to find a 'default'
+                       network and launch the instance using that network (or
+                       subnet, as appropriate by the provider). A 'default'
+                       network is one tagged as such by the native API. If such
+                       tag or functionality does not exist, an attempt to
+                       create a new network (by default called
+                       'CloudBridgeNet') will be made. If that falls through,
+                       an attempt will be made to launch the instance without
+                       specifying the network parameter (this is under the
+                       assumption the private networking functionality is not
+                       available on the provider).
 
         :type  zone: ``Zone`` or ``str``
         :param zone: The Zone or its name, where the instance should be placed.

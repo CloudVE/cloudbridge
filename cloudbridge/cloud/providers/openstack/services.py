@@ -26,7 +26,6 @@ from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
-from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
@@ -562,7 +561,7 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, network=None, zone=None,
+    def create(self, name, image, instance_type, subnet=None, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -572,7 +571,8 @@ class OpenStackInstanceService(BaseInstanceService):
             isinstance(instance_type, InstanceType) else \
             self.provider.compute.instance_types.find(
                 name=instance_type)[0].id
-        network_id = network.id if isinstance(network, Network) else network
+        network_id = (self.provider.network.subnets.get(subnet).network_id
+                      if isinstance(subnet, str) else subnet.network_id)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
@@ -657,11 +657,12 @@ class OpenStackInstanceService(BaseInstanceService):
         """
         Format the network ID for the API call, figuring out a default network.
 
-        If a network_id is not supplied, figure out which is the default
+        The returned network will be the parent network for the supplied
+        subnet. If a subnet_id is not supplied, figure out which is the default
         network and use it. A default network is either marked as such by the
         provider or matches the default network name defined within this
         library (by default CloudBridgeNet). If a default network cannot be
-        found, attempt to create a new one.
+        found, attempt to create a new one is made.
         """
         if network_id:
             return [{'net-id': network_id}]
