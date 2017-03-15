@@ -914,18 +914,18 @@ class GCEInstance(BaseInstance):
 
     @property
     def _existing_target_instance(self):
-        parsed_url = self._provider.parse_url(self._gce_instance['selfLink'])
+        self_url = self._provider.parse_url(self._gce_instance['selfLink'])
         try:
             response = (self._provider.gce_compute
                                       .targetInstances()
                                       .list(project=self._provider.project_name,
-                                            zone=parsed_url.parameters['zone'])
+                                            zone=self_url.parameters['zone'])
                                       .execute())
             if 'items' not in response:
                 return None
             for target_instance in response['items']:
-                instance = self._provider.parse_url(target_instance['instance'])
-                if instance.parameters['instance'] == self.name:
+                url = self._provider.parse_url(target_instance['instance'])
+                if url.parameters['instance'] == self.name:
                     return target_instance
         except Exception as e:
             cb.log.warning('Exception while listing target instances: %s', e)
@@ -938,20 +938,19 @@ class GCEInstance(BaseInstance):
             return existing_target_instance
 
         # No targetInstance exists for this instance. Create one.
-        url = self._gce_instance['selfLink']
-        parsed_url = self._provider.parse_url(url)
+        self_url = self._provider.parse_url(self._gce_instance['selfLink'])
         body = {'name': 'target-instance-{0}'.format(uuid.uuid4()),
-                'instance': url}
+                'instance': self._gce_instance['selfLink']}
         try:
             response = (self._provider.gce_compute
                                       .targetInstances()
                                       .insert(
                                           project=self._provider.project_name,
-                                          zone=parsed_url.parameters['zone'],
+                                          zone=self_url.parameters['zone'],
                                           body=body)
                                       .execute())
             self._provider.wait_for_operation(
-                response, zone=parsed_url.parameters['zone'])
+                response, zone=self_url.parameters['zone'])
         except Exception as e:
             cb.log.warning('Exception while inserting a target instance: %s', e)
             return None
@@ -998,10 +997,9 @@ class GCEInstance(BaseInstance):
     def _forward(self, ip, target_instance):
         if self._redirect_existing_rule(ip, target_instance):
             return True
-        target_url = target_instance['selfLink']
         body = {'name': 'forwarding-rule-{0}'.format(uuid.uuid4()),
                 'IPAddress': ip.public_ip,
-                'target': target_url}
+                'target': target_instance['selfLink']}
         try:
             response = (self._provider.gce_compute
                                       .forwardingRules()
@@ -1018,7 +1016,7 @@ class GCEInstance(BaseInstance):
 
     def _delete_existing_rule(self, ip, target_instance):
         zone = (self._provider.parse_url(target_instance['zone'])
-                                  .parameters['zone'])
+                              .parameters['zone'])
         name = target_instance['name']
         try:
             response = (self._provider.gce_compute
@@ -1033,7 +1031,7 @@ class GCEInstance(BaseInstance):
                     parsed_target_url = self._provider.parse_url(rule['target'])
                     temp_zone = parsed_target_url.parameters['zone']
                     temp_name = parsed_target_url.parameters['targetInstance']
-                    if temp_zone != zone and temp_name != name:
+                    if temp_zone != zone or temp_name != name:
                         cb.log.warning('"%s" is forwarded to "%s" in zone "%s"',
                                        ip.public_ip, temp_name, temp_zone)
                         return False
