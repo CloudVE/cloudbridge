@@ -50,6 +50,26 @@ def cleanup_action(cleanup_func):
         print("Error during cleanup: {0}".format(e))
 
 
+def skipIfNoService(service):
+    """
+    A decorator for skipping tests if the provider
+    does not implement a given service.
+    """
+    def wrap(func):
+        """
+        The actual wrapper
+        """
+        def wrapper(self, *args, **kwargs):
+            provider = getattr(self, 'provider')
+            if provider and not provider.has_service(service):
+                self.skipTest("Skipping test because '%s' service is not"
+                              " implemented" % (service,))
+            else:
+                func(self, *args, **kwargs)
+        return wrapper
+    return wrap
+
+
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
         "image": os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
