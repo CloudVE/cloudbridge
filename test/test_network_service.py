@@ -10,6 +10,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         super(CloudNetworkServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
+    @helpers.skipIfNoService(['network'])
     def test_crud_network_service(self):
         name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4())
         subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4())
@@ -99,6 +100,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             "Network {0} should have been deleted but still exists."
             .format(name))
 
+    @helpers.skipIfNoService(['network'])
     def test_crud_network(self):
         name = 'cbtestnetwork-{0}'.format(uuid.uuid4())
         subnet_name = 'cbtestsubnet-{0}'.format(uuid.uuid4())
@@ -139,6 +141,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     "Subnet's CIDR %s should match the specified one %s." % (
                         sn.cidr_block, cidr))
 
+    @helpers.skipIfNoService(['network.routers'])
     def test_crud_router(self):
 
         def _cleanup(net, subnet, router):

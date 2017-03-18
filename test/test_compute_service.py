@@ -20,6 +20,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         super(CloudComputeServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
+    @helpers.skipIfNoService(['compute.instances', 'network'])
     @skip("Until Moto supports 'state' for DescribeSubnets filter")
     def test_crud_instance(self):
         name = "CBInstCrud-{0}-{1}".format(
@@ -92,6 +93,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             return False
         return True
 
+    @helpers.skipIfNoService(['compute.instances', 'network',
+                              'security.security_groups',
+                              'security.key_pairs'])
     @skip("Until Moto supports 'state' for DescribeSubnets filter")
     def test_instance_properties(self):
         name = "CBInstProps-{0}-{1}".format(
@@ -173,6 +177,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "Instance type {0} does not match expected type {1}".format(
                     itype.name, expected_type))
 
+    @helpers.skipIfNoService(['compute.instances', 'compute.images',
+                              'compute.instance_types'])
     def test_block_device_mapping_launch_config(self):
         lc = self.provider.compute.instances.create_launch_config()
 
@@ -232,6 +238,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             "Expected %d total block devices bit found %d" %
             (2 + inst_type.num_ephemeral_disks, len(lc.block_devices)))
 
+    @helpers.skipIfNoService(['compute.instances', 'compute.images',
+                              'compute.instance_types', 'block_store.volumes'])
     def test_block_device_mapping_attachments(self):
         name = "CBInstBlkAttch-{0}-{1}".format(
             self.provider.name,

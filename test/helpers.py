@@ -50,7 +50,7 @@ def cleanup_action(cleanup_func):
         print("Error during cleanup: {0}".format(e))
 
 
-def skipIfNoService(service):
+def skipIfNoService(services):
     """
     A decorator for skipping tests if the provider
     does not implement a given service.
@@ -61,9 +61,11 @@ def skipIfNoService(service):
         """
         def wrapper(self, *args, **kwargs):
             provider = getattr(self, 'provider')
-            if provider and not provider.has_service(service):
-                self.skipTest("Skipping test because '%s' service is not"
-                              " implemented" % (service,))
+            if provider:
+                for service in services:
+                    if not provider.has_service(service):
+                        self.skipTest("Skipping test because '%s' service is"
+                                      " not implemented" % (service,))
             else:
                 func(self, *args, **kwargs)
         return wrapper
