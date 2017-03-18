@@ -115,6 +115,8 @@ class BaseCloudProvider(CloudProvider):
                 return True
         except AttributeError:
             pass  # Undefined service type
+        except NotImplementedError:
+            pass  # service not implemented
         return False
 
     def _get_config_value(self, key, default_value):
