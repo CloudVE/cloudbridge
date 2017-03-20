@@ -101,7 +101,8 @@ def create_test_network(provider, name):
     """
     net = provider.network.create(name=name)
     cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
-    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block, name=name))
+    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block), name=name,
+                           zone=get_provider_test_data(provider, 'placement'))
     return net, sn
 
 
@@ -115,13 +116,13 @@ def delete_test_network(network):
 
 
 def create_test_instance(
-        provider, instance_name, network, zone=None, launch_config=None,
+        provider, instance_name, subnet, zone=None, launch_config=None,
         key_pair=None, security_groups=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
-        network=network,
+        subnet=subnet,
         zone=zone,
         key_pair=key_pair,
         security_groups=security_groups,

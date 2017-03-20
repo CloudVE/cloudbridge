@@ -299,14 +299,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         for _ in range(inst_type.num_ephemeral_disks):
             lc.add_ephemeral_device()
 
-        net, _ = helpers.create_test_network(self.provider, name)
+        net, subnet = helpers.create_test_network(self.provider, name)
 
         inst = helpers.create_test_instance(
             self.provider,
             name,
-            network=net,
+            subnet=subnet,
             # We don't have a way to match the test net placement and this zone
-            # zone=helpers.get_provider_test_data(self.provider, 'placement'),
+            zone=helpers.get_provider_test_data(self.provider, 'placement'),
             launch_config=lc)
 
         def cleanup(instance, net):
