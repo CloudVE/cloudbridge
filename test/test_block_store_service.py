@@ -3,6 +3,7 @@ import uuid
 
 import six
 
+from cloudbridge.cloud.interfaces.services import BlockStoreService
 from cloudbridge.cloud.interfaces import SnapshotState
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
@@ -17,6 +18,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         super(CloudBlockStoreServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
+    @helpers.skipIfNoService(['block_store.volumes'])
     def test_crud_volume(self):
         """
         Create a new volume, check whether the expected values are set,
@@ -94,6 +96,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             name)
 
     @skip("Until Moto supports 'state' for DescribeSubnets filter")
+    @helpers.skipIfNoService(['block_store.volumes'])
     def test_attach_detach_volume(self):
         """
         Create a new volume, and attempt to attach it to an instance
@@ -121,6 +124,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
 
     @skip("Until Moto supports 'state' for DescribeSubnets filter")
+    @helpers.skipIfNoService(['block_store.volumes'])
     def test_volume_properties(self):
         """
         Test volume properties
@@ -176,6 +180,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     [VolumeState.AVAILABLE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
 
+    @helpers.skipIfNoService(['block_store.snapshots'])
     def test_crud_snapshot(self):
         """
         Create a new volume, create a snapshot of the volume, and check
@@ -293,6 +298,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     "repr(obj) should contain the object id so that the object"
                     " can be reconstructed, but does not.")
 
+    @helpers.skipIfNoService(['block_store.snapshots'])
     def test_snapshot_properties(self):
         """
         Test snapshot properties

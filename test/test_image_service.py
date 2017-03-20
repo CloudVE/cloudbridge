@@ -15,6 +15,8 @@ class CloudImageServiceTestCase(ProviderTestBase):
         super(CloudImageServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
+    @helpers.skipIfNoService(['compute.images', 'network',
+                              'compute.instances'])
     @skip("Until Moto supports 'state' for DescribeSubnets filter")
     def test_create_and_list_image(self):
         """

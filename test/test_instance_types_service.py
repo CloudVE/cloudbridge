@@ -12,6 +12,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
         super(CloudInstanceTypesServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
+    @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types(self):
         instance_types = self.provider.compute.instance_types.list()
         # check iteration
@@ -69,6 +70,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
                     inst_type.extra_data, dict),
                 "InstanceType extra_data must be None or a dict")
 
+    @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types_find(self):
         """
         Searching for an instance by name should return an
@@ -91,6 +93,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
             self.provider.compute.instance_types.find(
                 non_existent_param="random_value")
 
+    @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types_get(self):
         """
         Searching for an instance by id should return an

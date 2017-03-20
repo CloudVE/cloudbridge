@@ -13,6 +13,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         super(CloudObjectStoreServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
 
+    @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket(self):
         """
         Create a new bucket, check whether the expected values are set,
@@ -66,6 +67,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             "Bucket %s should have been deleted but still exists." %
             name)
 
+    @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket_objects(self):
         """
         Create a new bucket, upload some contents into the bucket, and
@@ -137,6 +139,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 "Object %s should have been deleted but still exists." %
                 obj_name)
 
+    @helpers.skipIfNoService(['object_store'])
     def test_upload_download_bucket_content(self):
 
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
