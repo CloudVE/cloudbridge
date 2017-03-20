@@ -2,7 +2,7 @@ from contextlib import contextmanager
 import os
 import sys
 import unittest
-
+import functools
 from six import reraise
 
 from cloudbridge.cloud.factory import CloudProviderFactory
@@ -59,6 +59,7 @@ def skipIfNoService(services):
         """
         The actual wrapper
         """
+        @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             provider = getattr(self, 'provider')
             if provider:
@@ -66,8 +67,7 @@ def skipIfNoService(services):
                     if not provider.has_service(service):
                         self.skipTest("Skipping test because '%s' service is"
                                       " not implemented" % (service,))
-            else:
-                func(self, *args, **kwargs)
+            func(self, *args, **kwargs)
         return wrapper
     return wrap
 
