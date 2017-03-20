@@ -26,6 +26,7 @@ discovery. (The test generator will automatically add ``unittest.TestCase``
 as a base class to each combination).
 """
 import cloudbridge
+
 from test.helpers import ProviderTestCaseGenerator
 from test.test_block_store_service import CloudBlockStoreServiceTestCase
 from test.test_cloud_helpers import CloudHelpersTestCase

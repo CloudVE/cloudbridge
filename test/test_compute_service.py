@@ -1,9 +1,7 @@
 import ipaddress
+import uuid
 
 import six
-
-from unittest import skip
-import uuid
 
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
@@ -21,7 +19,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             methodName=methodName, provider=provider)
 
     @helpers.skipIfNoService(['compute.instances', 'network'])
-    @skip("Until Moto supports 'state' for DescribeSubnets filter")
     def test_crud_instance(self):
         name = "CBInstCrud-{0}-{1}".format(
             self.provider.name,
@@ -96,7 +93,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances', 'network',
                               'security.security_groups',
                               'security.key_pairs'])
-    @skip("Until Moto supports 'state' for DescribeSubnets filter")
     def test_instance_properties(self):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,

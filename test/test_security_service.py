@@ -1,6 +1,9 @@
 """Test cloudbridge.security modules."""
 import json
+import unittest
 import uuid
+
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
@@ -199,7 +202,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 #                 sort_keys=True)
 #             self.assertTrue(
 #                 sg.to_json() == json_repr,
-#                 "JSON sec group representation {0} does not match expected {1}"
+#                 "JSON SG representation {0} does not match expected {1}"
 #                 .format(sg.to_json(), json_repr))
 
         sgl = self.provider.security.security_groups.list()
@@ -212,6 +215,11 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group_rule_add_twice(self):
         """Test whether adding the same rule twice succeeds."""
+        if isinstance(self.provider, TestMockHelperMixin):
+            raise unittest.SkipTest(
+                "Mock provider returns InvalidParameterValue: "
+                "Value security_group is invalid for parameter.")
+
         name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(

@@ -1,4 +1,3 @@
-from unittest import skip
 import uuid
 
 import six
@@ -17,7 +16,6 @@ class CloudImageServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.images', 'network',
                               'compute.instances'])
-    @skip("Until Moto supports 'state' for DescribeSubnets filter")
     def test_create_and_list_image(self):
         """
         Create a new image and check whether that image can be listed.
@@ -53,7 +51,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
                         test_image.description, six.string_types),
                     "Image description must be None or a string")
 
-                # These checks won't work when >50 images are available
+                # This check won't work when >50 images are available
                 # images = self.provider.compute.images.list()
                 # list_images = [image for image in images
                 #                if image.name == name]
@@ -62,13 +60,13 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 #     "List images does not return the expected image %s" %
                 #     name)
 
-                # # check iteration
-                # iter_images = [image for image in self.provider.compute.images
-                #                if image.name == name]
-                # self.assertTrue(
-                #     len(iter_images) == 1,
-                #     "Iter images does not return the expected image %s" %
-                #     name)
+                # check iteration
+                iter_images = [image for image in self.provider.compute.images
+                               if image.name == name]
+                self.assertTrue(
+                    len(iter_images) == 1,
+                    "Iter images does not return the expected image %s" %
+                    name)
 
                 # find image
                 found_images = self.provider.compute.images.find(name=name)
