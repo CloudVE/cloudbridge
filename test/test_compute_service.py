@@ -26,8 +26,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         name = "CBInstCrud-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, name)
-        inst = helpers.get_test_instance(self.provider, name, network=net)
+        net, subnet = helpers.create_test_network(self.provider, name)
+        inst = helpers.get_test_instance(self.provider, name, subnet=subnet)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 inst, net)):
@@ -101,14 +101,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, name)
+        net, subnet = helpers.create_test_network(self.provider, name)
         kp = self.provider.security.key_pairs.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
         test_instance = helpers.get_test_instance(self.provider,
                                                   name, key_pair=kp,
                                                   security_groups=[sg],
-                                                  network=net)
+                                                  subnet=subnet)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net, sg, kp)):
@@ -287,7 +287,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             # TODO: This should be greater than the ami size or tests
             # will fail on actual infrastructure. Needs an image.size
             # method
-            size=2,
+            size=8,
             delete_on_terminate=True)
 
         # Add all available ephemeral devices
@@ -305,7 +305,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.provider,
             name,
             subnet=subnet,
-            # We don't have a way to match the test net placement and this zone
             zone=helpers.get_provider_test_data(self.provider, 'placement'),
             launch_config=lc)
 

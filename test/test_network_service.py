@@ -1,6 +1,7 @@
 import test.helpers as helpers
 import uuid
 from test.helpers import ProviderTestBase
+
 from cloudbridge.cloud.interfaces.resources import RouterState
 
 
@@ -124,7 +125,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 % net.cidr_block)
 
             cidr = '10.0.1.0/24'
-            sn = net.create_subnet(cidr_block=cidr, name=subnet_name)
+            sn = net.create_subnet(
+                cidr_block=cidr, name=subnet_name,
+                zone=helpers.get_provider_test_data(self.provider,
+                                                    'placement'))
             with helpers.cleanup_action(lambda: sn.delete()):
                 self.assertTrue(
                     sn.id in [s.id for s in net.subnets()],
@@ -155,7 +159,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         router = self.provider.network.create_router(name=name)
         net = self.provider.network.create(name=name)
         cidr = '10.0.1.0/24'
-        sn = net.create_subnet(cidr_block=cidr, name=name)
+        sn = net.create_subnet(
+            cidr_block=cidr, name=name,
+            zone=helpers.get_provider_test_data(self.provider, 'placement'))
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router)):
             # Check basic router properties
             self.assertIn(

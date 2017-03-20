@@ -15,8 +15,8 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types(self):
         instance_types = self.provider.compute.instance_types.list()
-        # check iteration
-        iter_instance_types = list(self.provider.compute.instance_types)
+        # Check iteration, keeping the first 50 entries (the .list() default)
+        iter_instance_types = list(self.provider.compute.instance_types)[:50]
         self.assertListEqual(iter_instance_types, instance_types)
 
         for inst_type in instance_types:

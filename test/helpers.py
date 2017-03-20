@@ -130,12 +130,12 @@ def create_test_instance(
 
 
 def get_test_instance(provider, name, key_pair=None, security_groups=None,
-                      network=None):
+                      subnet=None):
     launch_config = None
     instance = create_test_instance(
         provider,
         name,
-        network=network,
+        subnet=subnet,
         key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)
@@ -145,9 +145,11 @@ def get_test_instance(provider, name, key_pair=None, security_groups=None,
 
 def cleanup_test_resources(instance=None, network=None, security_group=None,
                            key_pair=None):
-    with cleanup_action(lambda: delete_test_network(network)):
-        with cleanup_action(lambda: key_pair.delete()):
-            with cleanup_action(lambda: security_group.delete()):
+    with cleanup_action(lambda: delete_test_network(network)
+                        if network else None):
+        with cleanup_action(lambda: key_pair.delete() if key_pair else None):
+            with cleanup_action(lambda: security_group.delete()
+                                if security_group else None):
                 instance.terminate()
                 instance.wait_for(
                     [InstanceState.TERMINATED, InstanceState.UNKNOWN],
