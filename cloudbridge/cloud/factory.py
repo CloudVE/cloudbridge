@@ -48,19 +48,19 @@ class CloudProviderFactory(object):
                 if issubclass(cls, TestMockHelperMixin):
                     if self.provider_list.get(provider_id, {}).get(
                             'mock_class'):
-                        log.warn("Mock provider with id: %s is already "
-                                 "registered. Overriding with class: %s",
-                                 provider_id, cls)
+                        log.warning("Mock provider with id: %s is already "
+                                    "registered. Overriding with class: %s",
+                                    provider_id, cls)
                     self.provider_list[provider_id]['mock_class'] = cls
                 else:
                     if self.provider_list.get(provider_id, {}).get('class'):
-                        log.warn("Provider with id: %s is already "
-                                 "registered. Overriding with class: %s",
-                                 provider_id, cls)
+                        log.warning("Provider with id: %s is already "
+                                    "registered. Overriding with class: %s",
+                                    provider_id, cls)
                     self.provider_list[provider_id]['class'] = cls
             else:
-                log.warn("Provider class: %s implements CloudProvider but"
-                         " does not define PROVIDER_ID. Ignoring...", cls)
+                log.warning("Provider class: %s implements CloudProvider but"
+                            " does not define PROVIDER_ID. Ignoring...", cls)
         else:
             log.debug("Class: %s does not implement the CloudProvider"
                       "  interface. Ignoring...", cls)
