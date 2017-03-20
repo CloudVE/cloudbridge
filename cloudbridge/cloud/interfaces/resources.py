@@ -921,6 +921,18 @@ class Subnet(CloudResource):
         """
         pass
 
+    @abstractproperty
+    def zone(self):
+        """
+        Placement zone of the subnet.
+
+        If the provider does not support subnet placement, return ``None``.
+
+        :rtype: :class:`.PlacementZone` object
+        :return: Placement zone of the subnet, or ``None`` if not defined.
+        """
+        pass
+
     @abstractmethod
     def delete(self):
         """

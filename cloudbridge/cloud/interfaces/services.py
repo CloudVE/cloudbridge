@@ -676,7 +676,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network_id, cidr_block, name=None):
+    def create(self, network_id, cidr_block, name=None, zone=None):
         """
         Create a new subnet within the supplied network.
 
@@ -690,6 +690,10 @@ class SubnetService(PageableObjectMixin, CloudService):
         :type name: ``str``
         :param name: An optional subnet name. The name will be set if the
                      provider supports it.
+
+        :type zone: ``str``
+        :param zone: An optional placement zone for the subnet. Some providers
+                     may not support this, in which case the value is ignored.
 
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object

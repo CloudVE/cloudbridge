@@ -728,6 +728,15 @@ class OpenStackSubnet(BaseSubnet):
     def network_id(self):
         return self._subnet.get('network_id', None)
 
+    @property
+    def zone(self):
+        """
+        OpenStack does not have a notion of placement zone for subnets.
+
+        Default to None.
+        """
+        return None
+
     def delete(self):
         if self.id in str(self._provider.neutron.list_subnets()):
             self._provider.neutron.delete_subnet(self.id)

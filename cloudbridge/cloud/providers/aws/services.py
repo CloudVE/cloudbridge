@@ -946,9 +946,10 @@ class AWSSubnetService(BaseSubnetService):
         subnets = self.provider.vpc_conn.get_all_subnets(filters=fltr)
         return [AWSSubnet(self.provider, subnet) for subnet in subnets]
 
-    def create(self, network, cidr_block, name=None):
+    def create(self, network, cidr_block, name=None, zone=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
-        subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block)
+        subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block,
+                                                      availability_zone=zone)
         cb_subnet = AWSSubnet(self.provider, subnet)
         if name:
             time.sleep(2)  # The subnet does not always get created in time

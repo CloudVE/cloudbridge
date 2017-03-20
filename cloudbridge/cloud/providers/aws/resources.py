@@ -27,6 +27,7 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+
 from datetime import datetime
 import hashlib
 import inspect
@@ -34,6 +35,7 @@ import json
 
 from boto.exception import EC2ResponseError
 from boto.s3.key import Key
+
 from retrying import retry
 
 
@@ -1008,6 +1010,11 @@ class AWSSubnet(BaseSubnet):
     @property
     def network_id(self):
         return self._subnet.vpc_id
+
+    @property
+    def zone(self):
+        return AWSPlacementZone(self._provider, self._subnet.availability_zone,
+                                self._provider.region_name)
 
     def delete(self):
         return self._provider.vpc_conn.delete_subnet(subnet_id=self.id)
