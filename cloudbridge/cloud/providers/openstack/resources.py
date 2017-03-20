@@ -691,7 +691,8 @@ class OpenStackNetwork(BaseNetwork):
                    .get('subnets', []))
         return [OpenStackSubnet(self._provider, subnet) for subnet in subnets]
 
-    def create_subnet(self, cidr_block, name=''):
+    def create_subnet(self, cidr_block, name='', zone=None):
+        """OpenStack has no support for subnet zones so the value is ignored"""
         subnet_info = {'name': name, 'network_id': self.id,
                        'cidr': cidr_block, 'ip_version': 4}
         subnet = (self._provider.neutron.create_subnet({'subnet': subnet_info})

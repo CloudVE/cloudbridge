@@ -961,8 +961,9 @@ class AWSNetwork(BaseNetwork):
         subnets = self._provider.vpc_conn.get_all_subnets(filters=flter)
         return [AWSSubnet(self._provider, subnet) for subnet in subnets]
 
-    def create_subnet(self, cidr_block, name=None):
-        subnet = self._provider.vpc_conn.create_subnet(self.id, cidr_block)
+    def create_subnet(self, cidr_block, name=None, zone=None):
+        subnet = self._provider.vpc_conn.create_subnet(self.id, cidr_block,
+                                                       availability_zone=zone)
         cb_subnet = AWSSubnet(self._provider, subnet)
         if name:
             cb_subnet.name = name

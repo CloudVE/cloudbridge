@@ -856,7 +856,7 @@ class Network(CloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, cidr_block, name=None):
+    def create_subnet(self, cidr_block, name=None, zone=None):
         """
         Create a new network subnet and associate it with this Network.
 
@@ -867,6 +867,11 @@ class Network(CloudResource):
         :type name: ``str``
         :param name: An optional subnet name. The name will be set if the
                      provider supports it.
+
+        :type zone: ``str``
+        :param zone: Placement zone where to create the subnet. Some providers
+                     may not support subnet zones, in which case the value is
+                     ignored.
 
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object
