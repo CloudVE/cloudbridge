@@ -562,7 +562,7 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet=None, zone=None,
+    def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -593,7 +593,6 @@ class OpenStackInstanceService(BaseInstanceService):
         net = self._get_network(network_id)
 
         log.debug("Launching with net %s" % net)
-        print("(PR) Launching with net %s" % net)
         os_instance = self.provider.nova.servers.create(
             name,
             None if self._has_root_device(launch_config) else image_id,

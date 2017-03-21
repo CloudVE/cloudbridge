@@ -466,7 +466,7 @@ class AWSInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AWSInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet=None, zone=None,
+    def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
         image_id = image.id if isinstance(image, MachineImage) else image
