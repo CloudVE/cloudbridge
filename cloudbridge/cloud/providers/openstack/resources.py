@@ -1035,9 +1035,7 @@ class OpenStackBucketObject(BaseBucketObject):
 
     @property
     def name(self):
-        """
-        Get this object's name.
-        """
+        """Get this object's name."""
         return self._obj.get("name")
 
     @property
@@ -1049,10 +1047,7 @@ class OpenStackBucketObject(BaseBucketObject):
         return self._obj.get("last_modified")
 
     def iter_content(self):
-        """
-        Returns this object's content as an
-        iterable.
-        """
+        """Returns this object's content as an iterable."""
         _, content = self._provider.swift.get_object(
             self.cbcontainer.name, self.name, resp_chunk_size=65536)
         return content
@@ -1068,18 +1063,6 @@ class OpenStackBucketObject(BaseBucketObject):
     def upload_from_file(self, path):
         """
         Stores the contents of the file pointed by the "path" variable.
-        :param path: Absolute path to the file to be uploaded to S3.
-        :return: void
-        """
-        raise NotImplementedError("This functionality is not implemented yet.")
-
-    def upload_from_large_file(self, path):
-        """
-        Stores the contents of the large file pointed by the "path" variable.
-        This function split the file in smaller chunks, and uploads chunks
-        in turn.
-        :param path: Absolute path to the large file to be uploaded to S3.
-        :return: void
         """
         raise NotImplementedError("This functionality is not implemented yet.")
 
@@ -1087,7 +1070,7 @@ class OpenStackBucketObject(BaseBucketObject):
         """
         Delete this object.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: True if successful
         """
         try:
