@@ -2057,20 +2057,10 @@ class BucketObject(CloudResource):
     @abstractmethod
     def upload_from_file(self, path):
         """
-        Stores the contents of the file pointed by the "path" variable.
-        :param path: Absolute path to the file to be uploaded to S3.
-        :return: void
-        """
-        pass
+        Store the contents of the file pointed by the "path" variable.
 
-    @abstractmethod
-    def upload_from_large_file(self, path):
-        """
-        Stores the contents of the large file pointed by the "path" variable.
-        This function split the file in smaller chunks, and uploads chunks
-        in turn.
-        :param path: Absolute path to the large file to be uploaded to S3.
-        :return: void
+        :type path: ``str``
+        :param path: Absolute path to the file to be uploaded to S3.
         """
         pass
 
@@ -2085,12 +2075,18 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def generate_url(self, expires_in):
+    def generate_url(self, expires_in=0):
         """
-        Generates a URL to this object. If the object is public, `expires_in`
-        argument is not necessary, but if the object is private, the life time
-        of URL is set using `expires_in` argument.
-        :param expires_in: time to live of the generated URL in seconds.
+        Generate a URL to this object.
+
+        If the object is public, `expires_in` argument is not necessary, but if
+        the object is private, the lifetime of URL is set using `expires_in`
+        argument.
+
+        :type expires_in: ``int``
+        :param expires_in: Time to live of the generated URL in seconds.
+
+        :rtype: ``str``
         :return: A URL to access the object.
         """
         pass
@@ -2136,7 +2132,16 @@ class Bucket(PageableObjectMixin, CloudResource):
     @abstractmethod
     def list(self, limit=None, marker=None, prefix=None):
         """
-        List all objects, or those adhere to the prefix criterion, within this bucket.
+        List objects in this bucket.
+
+        :type limit: ``int``
+        :param limit: Maximum number of elements to return.
+
+        :type marker: ``int``
+        :param marker: Fetch results after this offset.
+
+        :type prefix: ``str``
+        :param prefix: Prefix criteria by which to filter listed objects.
 
         :rtype: :class:``.BucketObject``
         :return: List of all available BucketObjects within this bucket.
@@ -2168,10 +2173,14 @@ class Bucket(PageableObjectMixin, CloudResource):
         pass
 
     @abstractmethod
-    def exists(self, key):
+    def exists(self, name):
         """
         Determines if an object with given key exists in this bucket.
-        :param key: The key to be searched in the bucket.
-        :return: Boolean: True if the key exists, False, if it does not.
+
+        :type name: ``str``
+        :param name: The name of an object to search for in the bucket.
+
+        :rtype: ``bool``
+        :return: True if the object exists, False, if it does not.
         """
         pass

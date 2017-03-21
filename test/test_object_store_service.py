@@ -5,6 +5,7 @@ import urllib
 import os
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
+
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 

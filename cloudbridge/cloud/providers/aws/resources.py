@@ -674,9 +674,9 @@ class AWSSecurityGroup(BaseSecurityGroup):
                  cidr_ip=None, src_group=None):
         for rule in self._security_group.rules:
             if (rule.ip_protocol == ip_protocol and
-                        rule.from_port == from_port and
-                        rule.to_port == to_port and
-                        rule.grants[0].cidr_ip == cidr_ip) or \
+                rule.from_port == from_port and
+                rule.to_port == to_port and
+                rule.grants[0].cidr_ip == cidr_ip) or \
                     (rule.grants[0].group_id == src_group.id if src_group and
                         hasattr(rule.grants[0], 'group_id') else False):
                 return AWSSecurityGroupRule(self._provider, rule, self)
@@ -811,21 +811,9 @@ class AWSBucketObject(BaseBucketObject):
 
     def upload_from_file(self, path):
         """
-        Stores the contents of the file pointed by the "path" variable.
-        :param path: Absolute path to the file to be uploaded to S3.
-        :return: void
+        Store the contents of the file pointed by the "path" variable.
         """
         self._key.set_contents_from_filename(path)
-
-    def upload_from_large_file(self, path):
-        """
-        Stores the contents of the large file pointed by the "path" variable.
-        This function split the file in smaller chunks, and uploads chunks
-        in turn.
-        :param path: Absolute path to the large file to be uploaded to S3.
-        :return: void
-        """
-        raise NotImplementedError("This functionality is not implemented yet.")
 
     def delete(self):
         """
@@ -838,11 +826,7 @@ class AWSBucketObject(BaseBucketObject):
 
     def generate_url(self, expires_in=0):
         """
-        Generates a URL to this object. If the object is public, `expires_in`
-        argument is not necessary, but if the object is private, the life time
-        of URL is set using `expires_in` argument.
-        :param expires_in: time to live of the generated URL in seconds.
-        :return: The URL to access the object.
+        Generate a URL to this object.
         """
         return self._key.generate_url(expires_in=expires_in)
 
@@ -896,13 +880,11 @@ class AWSBucket(BaseBucket):
         key = Key(self._bucket, name)
         return AWSBucketObject(self._provider, key)
 
-    def exists(self, key):
+    def exists(self, name):
         """
-        Determines if an object with given key exists in this bucket.
-        :param key: The key to be searched in the bucket.
-        :return: Boolean: True if the key exists, False, if it does not.
+        Determines if an object with given name key exists in this bucket.
         """
-        key = Key(self._bucket, key)
+        key = Key(self._bucket, name)
         if key and key.exists():
             return True
         return False
@@ -1140,7 +1122,7 @@ class AWSRouter(BaseRouter):
     def state(self):
         self.refresh()  # Explicitly refresh the local object
         if self._router.attachments and \
-                        self._router.attachments[0].state == 'available':
+           self._router.attachments[0].state == 'available':
             return RouterState.ATTACHED
         return RouterState.DETACHED
 

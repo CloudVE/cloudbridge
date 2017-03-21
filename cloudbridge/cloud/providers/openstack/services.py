@@ -29,6 +29,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
@@ -571,8 +572,10 @@ class OpenStackInstanceService(BaseInstanceService):
             isinstance(instance_type, InstanceType) else \
             self.provider.compute.instance_types.find(
                 name=instance_type)[0].id
-        network_id = (self.provider.network.subnets.get(subnet).network_id
-                      if isinstance(subnet, str) else subnet.network_id)
+        network_id = subnet.network_id if isinstance(subnet, Subnet) else None
+        if not network_id and subnet:
+            network_id = (self.provider.network.subnets.get(subnet).network_id
+                          if isinstance(subnet, str) else None)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
@@ -589,6 +592,8 @@ class OpenStackInstanceService(BaseInstanceService):
             bdm = self._to_block_device_mapping(launch_config)
         net = self._get_network(network_id)
 
+        log.debug("Launching with net %s" % net)
+        print("(PR) Launching with net %s" % net)
         os_instance = self.provider.nova.servers.create(
             name,
             None if self._has_root_device(launch_config) else image_id,

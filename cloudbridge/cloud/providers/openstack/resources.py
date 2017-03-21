@@ -26,13 +26,16 @@ from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
+
 import inspect
 import json
 
 import ipaddress
 
 from keystoneclient.v3.regions import Region
+
 import novaclient.exceptions as novaex
+
 import swiftclient.exceptions as swiftex
 
 
@@ -1143,7 +1146,8 @@ class OpenStackBucket(BaseBucket):
         :return: List of all available BucketObjects within this bucket.
         """
         if prefix is not None:
-            raise NotImplementedError("This functionality is not implemented yet.")
+            raise NotImplementedError("Prefix functionality is not "
+                                      "implemented yet.")
 
         _, object_list = self._provider.swift.get_container(
             self.name, limit=oshelpers.os_result_limit(self._provider, limit),
@@ -1166,10 +1170,8 @@ class OpenStackBucket(BaseBucket):
         self._provider.swift.put_object(self.name, object_name, None)
         return self.get(object_name)
 
-    def exists(self, key):
+    def exists(self, name):
         """
-        Determines if an object with given key exists in this bucket.
-        :param key: The key to be searched in the bucket.
-        :return: Boolean: True if the key exists, False, if it does not.
+        Determines if an object with given name exists in this bucket.
         """
         raise NotImplementedError("This functionality is not implemented yet.")
