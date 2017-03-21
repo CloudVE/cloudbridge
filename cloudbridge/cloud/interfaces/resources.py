@@ -2055,12 +2055,43 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
+    def upload_from_file(self, path):
+        """
+        Stores the contents of the file pointed by the "path" variable.
+        :param path: Absolute path to the file to be uploaded to S3.
+        :return: void
+        """
+        pass
+
+    @abstractmethod
+    def upload_from_large_file(self, path):
+        """
+        Stores the contents of the large file pointed by the "path" variable.
+        This function split the file in smaller chunks, and uploads chunks
+        in turn.
+        :param path: Absolute path to the large file to be uploaded to S3.
+        :return: void
+        """
+        pass
+
+    @abstractmethod
     def delete(self):
         """
         Delete this object.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
+        """
+        pass
+
+    @abstractmethod
+    def generate_url(self, expires_in):
+        """
+        Generates a URL to this object. If the object is public, `expires_in`
+        argument is not necessary, but if the object is private, the life time
+        of URL is set using `expires_in` argument.
+        :param expires_in: time to live of the generated URL in seconds.
+        :return: A URL to access the object.
         """
         pass
 
@@ -2103,9 +2134,9 @@ class Bucket(PageableObjectMixin, CloudResource):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit=None, marker=None, prefix=None):
         """
-        List all objects within this bucket.
+        List all objects, or those adhere to the prefix criterion, within this bucket.
 
         :rtype: :class:``.BucketObject``
         :return: List of all available BucketObjects within this bucket.
@@ -2133,5 +2164,14 @@ class Bucket(PageableObjectMixin, CloudResource):
 
         :rtype: :class:``.BucketObject``
         :return: The newly created bucket object
+        """
+        pass
+
+    @abstractmethod
+    def exists(self, key):
+        """
+        Determines if an object with given key exists in this bucket.
+        :param key: The key to be searched in the bucket.
+        :return: Boolean: True if the key exists, False, if it does not.
         """
         pass

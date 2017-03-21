@@ -674,17 +674,17 @@ class AWSSecurityGroup(BaseSecurityGroup):
                  cidr_ip=None, src_group=None):
         for rule in self._security_group.rules:
             if (rule.ip_protocol == ip_protocol and
-               rule.from_port == from_port and
-               rule.to_port == to_port and
-               rule.grants[0].cidr_ip == cidr_ip) or \
-               (rule.grants[0].group_id == src_group.id if src_group and
-               hasattr(rule.grants[0], 'group_id') else False):
+                        rule.from_port == from_port and
+                        rule.to_port == to_port and
+                        rule.grants[0].cidr_ip == cidr_ip) or \
+                    (rule.grants[0].group_id == src_group.id if src_group and
+                        hasattr(rule.grants[0], 'group_id') else False):
                 return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        js = {k: v for (k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
         js['rules'] = [json.loads(r) for r in json_rules]
         if js.get('network_id'):
@@ -740,8 +740,8 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         return None
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        js = {k: v for (k, v) in attr if not k.startswith('_')}
         js['group'] = self.group.id if self.group else ''
         js['parent'] = self.parent.id if self.parent else ''
         return json.dumps(js, sort_keys=True)
@@ -809,6 +809,24 @@ class AWSBucketObject(BaseBucketObject):
         """
         self._key.set_contents_from_string(data)
 
+    def upload_from_file(self, path):
+        """
+        Stores the contents of the file pointed by the "path" variable.
+        :param path: Absolute path to the file to be uploaded to S3.
+        :return: void
+        """
+        self._key.set_contents_from_filename(path)
+
+    def upload_from_large_file(self, path):
+        """
+        Stores the contents of the large file pointed by the "path" variable.
+        This function split the file in smaller chunks, and uploads chunks
+        in turn.
+        :param path: Absolute path to the large file to be uploaded to S3.
+        :return: void
+        """
+        raise NotImplementedError("This functionality is not implemented yet.")
+
     def delete(self):
         """
         Delete this object.
@@ -817,6 +835,16 @@ class AWSBucketObject(BaseBucketObject):
         :return: True if successful
         """
         self._key.delete()
+
+    def generate_url(self, expires_in=0):
+        """
+        Generates a URL to this object. If the object is public, `expires_in`
+        argument is not necessary, but if the object is private, the life time
+        of URL is set using `expires_in` argument.
+        :param expires_in: time to live of the generated URL in seconds.
+        :return: The URL to access the object.
+        """
+        return self._key.generate_url(expires_in=expires_in)
 
 
 class AWSBucket(BaseBucket):
@@ -841,11 +869,11 @@ class AWSBucket(BaseBucket):
         Retrieve a given object from this bucket.
         """
         key = Key(self._bucket, key)
-        if key.exists():
+        if key and key.exists():
             return AWSBucketObject(self._provider, key)
         return None
 
-    def list(self, limit=None, marker=None):
+    def list(self, limit=None, marker=None, prefix=None):
         """
         List all objects within this bucket.
 
@@ -853,7 +881,8 @@ class AWSBucket(BaseBucket):
         :return: List of all available BucketObjects within this bucket.
         """
         objects = [AWSBucketObject(self._provider, obj)
-                   for obj in self._bucket.list()]
+                   for obj in self._bucket.list(prefix=prefix)]
+
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
@@ -866,6 +895,17 @@ class AWSBucket(BaseBucket):
     def create_object(self, name):
         key = Key(self._bucket, name)
         return AWSBucketObject(self._provider, key)
+
+    def exists(self, key):
+        """
+        Determines if an object with given key exists in this bucket.
+        :param key: The key to be searched in the bucket.
+        :return: Boolean: True if the key exists, False, if it does not.
+        """
+        key = Key(self._bucket, key)
+        if key and key.exists():
+            return True
+        return False
 
 
 class AWSRegion(BaseRegion):
@@ -1100,7 +1140,7 @@ class AWSRouter(BaseRouter):
     def state(self):
         self.refresh()  # Explicitly refresh the local object
         if self._router.attachments and \
-           self._router.attachments[0].state == 'available':
+                        self._router.attachments[0].state == 'available':
             return RouterState.ATTACHED
         return RouterState.DETACHED
 
