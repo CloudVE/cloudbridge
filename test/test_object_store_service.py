@@ -3,6 +3,8 @@ from io import BytesIO
 import uuid
 import urllib
 import os
+import requests
+import tempfile
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
@@ -158,9 +160,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
             obj = test_bucket.create_object(obj_name)
-            content = "Hello World. Here's some content."
 
             with helpers.cleanup_action(lambda: obj.delete()):
+                content = b"Hello World. Here's some content."
                 # TODO: Upload and download methods accept different parameter
                 # types. Need to make this consistent - possibly provider
                 # multiple methods like upload_from_file, from_stream etc.
@@ -172,22 +174,42 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 for data in obj.iter_content():
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
-                url = obj.generate_url(100)
-                urllib.urlretrieve(url, "Downloaded_" + obj.name)
-                with open("Downloaded_" + obj.name) as tmpFile:
-                    for line in tmpFile:
-                        self.assertEqual(line, content)
-                os.remove("Downloaded_" + obj.name)
 
+
+    @helpers.skipIfNoService(['object_store'])
+    def test_generate_url(self):
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        test_bucket = self.provider.object_store.create(name)
+
+        with helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "hello_upload_download.txt"
             obj = test_bucket.create_object(obj_name)
-            with helpers.cleanup_action(lambda: obj.delete):
-                with open("hello_upload_download.txt", "w+") as tmpFile:
+
+            with helpers.cleanup_action(lambda: obj.delete()):
+                content = b"Hello World. Generate a url."
+                obj.upload(content)
+                target_stream = BytesIO()
+                obj.save_content(target_stream)
+
+                url = obj.generate_url(100)
+                self.assertEqual(requests.get(url).content, content)
+
+    @helpers.skipIfNoService(['object_store'])
+    def test_upload_download_bucket_content_from_file(self):
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        test_bucket = self.provider.object_store.create(name)
+
+        with helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "hello_upload_download.txt"
+            obj = test_bucket.create_object(obj_name)
+
+            with helpers.cleanup_action(lambda: obj.delete()):
+                content = b"Hello World. Upload from file."
+                with tempfile.NamedTemporaryFile() as tmpFile:
                     tmpFile.write(content)
+                    tmpFile.flush()
+
                     obj.upload_from_file(tmpFile.name)
                     target_stream = BytesIO()
                     obj.save_content(target_stream)
                     self.assertEqual(target_stream.getvalue(), content)
-                    target_stream2 = BytesIO()
-                    for data in obj.iter_content():
-                        target_stream2.write(data)
-                    self.assertEqual(target_stream2.getvalue(), content)
