@@ -34,6 +34,7 @@ from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
 from novaclient.exceptions import NotFound as NovaNotFound
+
 from neutronclient.common.exceptions import NeutronClientException
 
 from .resources import OpenStackBucket
@@ -785,10 +786,19 @@ class OpenStackSubnetService(BaseSubnetService):
             for sn in self.list():
                 if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
                     return sn
+            # No default; create one
             net = self.provider.network.create(
                 OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
             sn = net.create_subnet(cidr_block='10.0.0.0/24',
                                    name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
+            router = self.provider.network.create_router(
+                OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
+            for n in self.provider.network.list():
+                if n.external:
+                    external_net = n
+                    break
+            router.attach_network(external_net.id)
+            router.add_route(sn.id)
             return sn
         except NeutronClientException:
             return None
