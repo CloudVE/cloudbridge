@@ -520,43 +520,15 @@ class AWSInstanceService(BaseInstanceService):
 
         :raise ValueError: In case a conflicting combination is found.
         """
-        def _get_security_groups(security_groups, vpc_id, obj=False):
-            """
-            Resolve exact security groups to use.
-
-            :type security_groups: A ``list`` of ``SecurityGroup`` objects or
-                                   a list of ``str`` names.
-            :param security_groups: A list of ``SecurityGroup`` objects or a
-                                    list of ``SecurityGroup`` names, which
-                                    should be resolved.
-
-            :type vpc_id: ``str``
-            :param vpc_id: ID of the network within which to launch.
-
-            :type obj: ``bool``
-            :param obj: If True, return provider-native security group objects.
-                        Otherwise, return the IDs.
-
-            :rtype: list
-            :return: provider-native security group objects or the IDs (see
-                    ``obj`` param).
-            """
-            flters = {'group_name': security_groups}
-            if vpc_id:
-                flters['vpc_id'] = vpc_id
-            sgs = self.provider.ec2_conn.get_all_security_groups(
-                filters=flters)
-            return list(set([sg if obj else sg.id for sg in sgs]))
-
         if subnet:
+            # subnet's zone takes precedence
             zone_id = subnet.zone.id
-            if security_groups:
-                sg_ids = _get_security_groups(security_groups, subnet.network_id)
-                if set(security_groups) != set(sg_ids):
-                    raise ValueError(
-                        "Provided security groups must be associated"
-                        " with the same network as the provided subnet.")
-        return subnet, zone_id, security_groups
+        if isinstance(security_groups, list) and isinstance(
+                security_groups[0], SecurityGroup):
+            security_group_ids = [sg.id for sg in security_groups]
+        else:
+            security_group_ids = security_groups
+        return subnet.id, zone_id, security_group_ids
 
     def _process_block_device_mappings(self, launch_config, zone=None):
         """
