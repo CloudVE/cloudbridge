@@ -34,6 +34,7 @@ from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
 from novaclient.exceptions import NotFound as NovaNotFound
+from neutronclient.common.exceptions import NeutronClientException
 
 from .resources import OpenStackBucket
 from .resources import OpenStackFloatingIP
@@ -780,13 +781,16 @@ class OpenStackSubnetService(BaseSubnetService):
         """
         Subnet zone is not supported by OpenStack and is thus ignored.
         """
-        for sn in self.list():
-            if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
-                return sn
-        net = self.create(OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
-        sn = net.create_subnet(cidr_block='10.0.0.0/24',
-                               name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
-        return sn
+        try:
+            for sn in self.list():
+                if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
+                    return sn
+            net = self.create(OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
+            sn = net.create_subnet(cidr_block='10.0.0.0/24',
+                                   name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
+            return sn
+        except NeutronClientException:
+            return None
 
     def delete(self, subnet):
         subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
