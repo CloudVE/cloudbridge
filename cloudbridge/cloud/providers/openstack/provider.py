@@ -45,9 +45,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
             os.environ.get('OS_PROJECT_DOMAIN_NAME', None))
         self.user_domain_name = self._get_config_value(
             'os_user_domain_name', os.environ.get('OS_USER_DOMAIN_NAME', None))
-        self.identity_api_version = self._get_config_value(
-            'os_identity_api_version',
-            os.environ.get('OS_IDENTITY_API_VERSION', None))
 
         # Service connections, lazily initialized
         self._nova = None
