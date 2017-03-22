@@ -785,7 +785,8 @@ class OpenStackSubnetService(BaseSubnetService):
             for sn in self.list():
                 if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
                     return sn
-            net = self.create(OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
+            net = self.provider.network.create(
+                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
             sn = net.create_subnet(cidr_block='10.0.0.0/24',
                                    name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
             return sn
