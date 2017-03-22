@@ -487,10 +487,6 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
     def terminate(self):
         """
         Permanently terminate this instance.
-
-        :rtype: ``bool``
-        :return: ``True`` if the termination of the instance was successfully
-                 initiated; ``False`` otherwise.
         """
         pass
 
