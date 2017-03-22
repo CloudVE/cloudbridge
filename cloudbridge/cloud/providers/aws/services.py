@@ -484,7 +484,7 @@ class AWSInstanceService(BaseInstanceService):
             bdm = None
 
         subnet_id, zone_id, security_group_ids = \
-            self._resolve_launch_options(zone_id, subnet, security_groups)
+            self._resolve_launch_options(subnet, zone_id, security_groups)
 
         reservation = self.provider.ec2_conn.run_instances(
             image_id=image_id, instance_type=instance_size,
@@ -498,99 +498,29 @@ class AWSInstanceService(BaseInstanceService):
             instance.name = name
         return instance
 
-    def _resolve_launch_options(self, zone_id=None, subnet=None,
+    def _resolve_launch_options(self, subnet=None, zone_id=None,
                                 security_groups=None):
         """
         Work out interdependent launch options.
 
-        Some launch options are required and interdependent so work through
-        those constraints. There are 8 subsets of options so the logic works
-        through each of those combinations to figure out the proper launch
-        options.
-
-        :type zone_id: ``str``
-        :param zone_id: ID of the zone where the launch should happen.
+        Some launch options are required and interdependent so make sure
+        they conform to the interface contract.
 
         :type subnet: ``Subnet``
         :param subnet: Subnet object within which to launch.
 
-        :type security_groups: ``list`` of ``str``
-        :param zone_id: List of security group names.
+        :type zone_id: ``str``
+        :param zone_id: ID of the zone where the launch should happen.
+
+        :type security_groups: ``list`` of ``id``
+        :param zone_id: List of security group IDs.
 
         :rtype: triplet of ``str``
         :return: Subnet ID, zone ID and security group IDs for launch.
 
-        :raise ValueError: In case a conflicting combination is found or the
-                           method cannot infer the defaults, raise.
+        :raise ValueError: In case a conflicting combination is found.
         """
-        def _get_default_vpc(vpcs):
-            """
-            Inspect supplied VPCs to figure out a default one or create one.
-
-            Default VPC either has ``is_default`` property set or matches the
-            default network name used by this library. If a default network
-            is not found, an attempt to create one is made.
-
-            :type vpcs: ``list``
-            :param vpcs: A list of boto VPC objects.
-
-            :rtype: ``str``
-            :return: Default VPC ID.
-            """
-            for vpc in vpcs:
-                if vpc.is_default:
-                    return vpc.id
-            return self.provider.network.get_or_create_default().id
-
-        def _get_a_subnet(filters, exc):
-            """
-            Query existing subnets through supplied filters.
-
-            :type filters: ``dict``
-            :param filters: A dictionary supplying desired filters.
-
-            :type exc: ``str``
-            :type exc: A string value to use if/when raising ValueError.
-
-            :rtype: tuple of ``str``
-            :return: A tuple with a subnet that matches supplied
-                     filters and an availability zone where the given subnet
-                     is defined. First choice of a subnet is one marked as the
-                     `default`, then one contained within a default network
-                     for the library and lastly a random subnet.
-
-            :raise ValueError: If no subnet can be found, raise a ValueError.
-            """
-            potential_subnets = self.provider.vpc_conn.get_all_subnets(
-                filters=filters)
-            sn_id = zone_id = None
-            # Look for the official default subnet
-            for sn in potential_subnets:
-                if sn.defaultForAz:
-                    sn_id = sn.id
-                    zone_id = sn.availability_zone
-                    break
-            # Look for a library-defined default subnet
-            if not sn_id:
-                default_vpc = _get_default_vpc(
-                    self.provider.vpc_conn.get_all_vpcs())
-                filters['vpcId'] = default_vpc
-                default_subnets = self.provider.vpc_conn.get_all_subnets(
-                    filters=filters)
-                print("default subnets: %s" % default_subnets)
-                if default_subnets and len(default_subnets) > 0:
-                    sn_id = default_subnets[0].id
-                    zone_id = default_subnets[0].availability_zone
-            # Try a random subnet
-            if not sn_id:
-                if len(potential_subnets) > 0:
-                    sn_id = potential_subnets[0].id
-                    zone_id = potential_subnets[0].availability_zone
-            if not sn_id:
-                raise ValueError(exc)
-            return sn_id, zone_id
-
-        def _get_security_groups(security_groups, vpc_id=None, obj=False):
+        def _get_security_groups(security_groups, vpc_id, obj=False):
             """
             Resolve exact security groups to use.
 
@@ -611,80 +541,22 @@ class AWSInstanceService(BaseInstanceService):
             :return: provider-native security group objects or the IDs (see
                     ``obj`` param).
             """
-            if isinstance(security_groups, list) and \
-               isinstance(security_groups[0], SecurityGroup):
-                # Update the ref to the objects not to get stale info
-                sg_ids = [sg.id for sg in security_groups]
-                sgs = self.provider.ec2_conn.get_all_security_groups(
-                    group_ids=sg_ids)
-                return list(set([sg if obj else sg.id for sg in sgs]))
-            else:
-                flters = {'group_name': security_groups}
-                if vpc_id:
-                    flters['vpc_id'] = vpc_id
-                sgs = self.provider.ec2_conn.get_all_security_groups(
-                    filters=flters)
-                return list(set([sg if obj else sg.id for sg in sgs]))
+            flters = {'group_name': security_groups}
+            if vpc_id:
+                flters['vpc_id'] = vpc_id
+            sgs = self.provider.ec2_conn.get_all_security_groups(
+                filters=flters)
+            return list(set([sg if obj else sg.id for sg in sgs]))
 
-        if zone_id and subnet and security_groups:
-            sg_ids = _get_security_groups(security_groups, subnet.network_id)
-            sn_id = subnet.id
-        elif subnet and security_groups:
-            sg_ids = _get_security_groups(security_groups, subnet.network_id)
-            sn_id = subnet.id
-            zone_id = subnet._subnet.availability_zone
-        elif subnet and zone_id:
-            sg_ids = None
-            sn_id = subnet.id
-        elif zone_id and security_groups:
-            sgs = _get_security_groups(security_groups, obj=True)
-            # Get VPCs the supplied SGs belong to
-            vpc_ids = list(set([sg.vpc_id for sg in sgs if sg.vpc_id]))
-            vpcs = []
-            if vpc_ids:
-                vpcs = self.provider.vpc_conn.get_all_vpcs(vpc_ids=vpc_ids)
-            exc = ("No default network found for zone {0} and security groups "
-                   "{1}".format(zone_id, security_groups))
-            default_vpc = _get_default_vpc(vpcs)
-            # Filter only the SGs within the default VPC
-            sg_ids = _get_security_groups(security_groups, default_vpc)
-            flters = {'availabilityZone': zone_id, 'state': 'available',
-                      'vpc_id': default_vpc}
-            exc = "No subnets found in zone {0} for default network {1}." \
-                .format(zone_id, default_vpc)
-            sn_id, _ = _get_a_subnet(flters, exc)
-        elif subnet:
-            sn_id = subnet.id
-            zone_id = subnet._subnet.availability_zone
-            sg_ids = None
-        elif zone_id:
-            flters = {'availabilityZone': zone_id, 'state': 'available'}
-            exc = "No subnets found in zone {0}.".format(zone_id)
-            sn_id, _ = self.provider.get_a_subnet(flters, exc)
-            sg_ids = None
-        elif security_groups:
-            sgs = _get_security_groups(security_groups, obj=True)
-            # Get VPCs the supplied SGs belong to
-            vpc_ids = list(set([sg.vpc_id for sg in sgs if sg.vpc_id]))
-            vpcs = []
-            if vpc_ids:
-                vpcs = self.provider.vpc_conn.get_all_vpcs(vpc_ids=vpc_ids)
-            exc = "No default network exists for security groups {0}.".format(
-                security_groups)
-            default_vpc = _get_default_vpc(vpcs)
-            # Filter only the SGs within the default VPC
-            sg_ids = _get_security_groups(security_groups, default_vpc)
-            flters = {'state': 'available', 'vpcId': default_vpc}
-            exc = "No subnets found in network {0}.".format(default_vpc)
-            sn_id, zone_id = _get_a_subnet(flters, exc)
-        else:
-            # Nothing was defined, use all defaults
-            flters = {'state': 'available'}
-            exc = "No default subnets found."
-            sn_id, zone_id = _get_a_subnet(flters, exc)
-            sg_ids = None
-
-        return sn_id, zone_id, sg_ids
+        if subnet:
+            zone_id = subnet.zone.id
+            if security_groups:
+                sg_ids = _get_security_groups(security_groups, subnet.network_id)
+                if set(security_groups) != set(sg_ids):
+                    raise ValueError(
+                        "Provided security groups must be associated"
+                        " with the same network as the provided subnet.")
+        return subnet, zone_id, security_groups
 
     def _process_block_device_mappings(self, launch_config, zone=None):
         """

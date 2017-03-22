@@ -590,7 +590,6 @@ class OpenStackInstanceService(BaseInstanceService):
         bdm = None
         if launch_config:
             bdm = self._to_block_device_mapping(launch_config)
-        net = self._get_network(network_id)
 
         log.debug("Launching with net %s" % net)
         os_instance = self.provider.nova.servers.create(
@@ -604,7 +603,7 @@ class OpenStackInstanceService(BaseInstanceService):
             security_groups=security_groups_list,
             userdata=user_data,
             block_device_mapping_v2=bdm,
-            nics=net)
+            nics=[{'net-id': network_id}])
         return OpenStackInstance(self.provider, os_instance)
 
     def _to_block_device_mapping(self, launch_config):
@@ -656,44 +655,6 @@ class OpenStackInstanceService(BaseInstanceService):
             if device.is_root:
                 return True
         return False
-
-    def _get_network(self, network_id=None):
-        """
-        Format the network ID for the API call, figuring out a default network.
-
-        The returned network will be the parent network for the supplied
-        subnet. If a subnet_id is not supplied, figure out which is the default
-        network and use it. A default network is either marked as such by the
-        provider or matches the default network name defined within this
-        library (by default CloudBridgeNet). If a default network cannot be
-        found, attempt to create a new one is made.
-        """
-        if network_id:
-            return [{'net-id': network_id}]
-        for net in self.provider.network.list():
-            if net.name == OpenStackNetwork.CB_DEFAULT_NETWORK_NAME:
-                return [{'net-id': net.id}]
-        try:
-            # Try to create a complete, Internet-connected new network
-            net = self.provider.network.create(
-                name=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
-            sn = net.create_subnet('10.0.0.0/16', '{0}Subnet'.format(
-                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME))
-            router = self.provider.network.create_router('{0}Router'.format(
-                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME))
-            for n in self.provider.network.list():
-                if n.external:
-                    external_net = n
-                    break
-            router.attach_network(external_net.id)
-            router.add_route(sn.id)
-            return [{'net-id': net.id}]
-        except Exception as exc:
-            # At this point we assume the provider does support user-defined
-            # networks so return None
-            log.warn("Exception occurred trying to create a default "
-                     "CloudBridge network: {0}".format(exc))
-            return None
 
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)
