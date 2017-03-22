@@ -604,7 +604,7 @@ class OpenStackInstanceService(BaseInstanceService):
             security_groups=security_groups_list,
             userdata=user_data,
             block_device_mapping_v2=bdm,
-            nics=[{'net-id': network_id}])
+            nics=[{'net-id': network_id}] if network_id else None)
         return OpenStackInstance(self.provider, os_instance)
 
     def _to_block_device_mapping(self, launch_config):
