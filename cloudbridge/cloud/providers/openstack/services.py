@@ -592,7 +592,7 @@ class OpenStackInstanceService(BaseInstanceService):
         if launch_config:
             bdm = self._to_block_device_mapping(launch_config)
 
-        log.debug("Launching with net %s" % net)
+        log.debug("Launching in network %s" % network_id)
         os_instance = self.provider.nova.servers.create(
             name,
             None if self._has_root_device(launch_config) else image_id,
