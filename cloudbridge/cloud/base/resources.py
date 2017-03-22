@@ -663,6 +663,9 @@ class BaseNetwork(BaseCloudResource, Network, BaseObjectLifeCycleMixin):
 
 class BaseSubnet(Subnet, BaseCloudResource):
 
+    CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
+                                            'CloudBridgeSubnet')
+
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
 

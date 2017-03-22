@@ -855,32 +855,6 @@ class AWSNetworkService(BaseNetworkService):
             return AWSNetwork(self.provider, network[0])
         return None
 
-    def get_or_create_default(self):
-        default_vpc = None
-        vpcs = self.provider.vpc_conn.get_all_vpcs()
-        for vpc in vpcs:
-            if vpc.is_default:
-                return AWSNetwork(self.provider, vpc)
-        if not default_vpc:
-            for vpc in vpcs:
-                if vpc.tags.get('Name', '') == \
-                   AWSNetwork.CB_DEFAULT_NETWORK_NAME:
-                    return AWSNetwork(self.provider, vpc)
-        # No default network exists; create one.
-        default_vpc = self.provider.network.create(
-            name=AWSNetwork.CB_DEFAULT_NETWORK_NAME)
-        # Create a subnet in each of the region's zones
-        # Otherwise, a CloudBridge-default network will exist but
-        # possibly not work in future requests when the zone for the
-        # only existing subnet and a target launch zone don't match.
-        region = self.provider.compute.regions.get(
-            self.provider.vpc_conn.region.name)
-        for i, zone in enumerate(region.zones):
-            self.provider.vpc_conn.create_subnet(
-                default_vpc.id, '10.0.{0}.0/24'.format(i),
-                availability_zone=zone.name)
-        return default_vpc
-
     def list(self, limit=None, marker=None):
         networks = [AWSNetwork(self.provider, network)
                     for network in self.provider.vpc_conn.get_all_vpcs()]
@@ -955,6 +929,33 @@ class AWSSubnetService(BaseSubnetService):
             time.sleep(2)  # The subnet does not always get created in time
             cb_subnet.name = name
         return cb_subnet
+
+    def get_or_create_default(self, zone=None):
+        filtr = {'availabilityZone': zone} if zone else None
+        sns = self.provider.vpc_conn.get_all_subnets(filters=filtr)
+        for sn in sns:
+            if sn.defaultForAz:
+                return AWSSubnet(self.provider, sn)
+        # No provider-default Subnet exists, look for a library-default one
+        for sn in sns:
+            if sn.tags.get('Name') == AWSSubnet.CB_DEFAULT_SUBNET_NAME:
+                return AWSSubnet(self.provider, sn)
+        # No provider-default Subnet exists, try to create it (net + subnets)
+        default_net = self.provider.network.create(
+            name=AWSNetwork.CB_DEFAULT_NETWORK_NAME)
+        # Create a subnet in each of the region's zones
+        region = self.provider.compute.regions.get(
+            self.provider.vpc_conn.region.name)
+        default_sn = None
+        for i, z in enumerate(region.zones):
+            sn = self.create(default_net, '10.0.{0}.0/24'.format(i),
+                             AWSSubnet.CB_DEFAULT_SUBNET_NAME, z.name)
+            if zone and zone == z.name:
+                default_sn = sn
+        # No specific zone was supplied; return the last created subnet
+        if not default_sn:
+            default_sn = sn
+        return default_sn
 
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet

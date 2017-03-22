@@ -743,16 +743,6 @@ class OpenStackNetworkService(BaseNetworkService):
         network = (n for n in self.list() if n.id == network_id)
         return next(network, None)
 
-    def get_or_create_default(self):
-        for net in self.list():
-            if net.name == OpenStackNetwork.CB_DEFAULT_NETWORK_NAME:
-                return net
-        net = self.create(OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
-        net.create_subnet(
-            cidr_block='10.0.0.0/24',
-            name="{0}Subnet".format(OpenStackNetwork.CB_DEFAULT_NETWORK_NAME))
-        return net
-
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks()
@@ -824,6 +814,18 @@ class OpenStackSubnetService(BaseSubnetService):
         subnet = (self.provider.neutron.create_subnet({'subnet': subnet_info})
                   .get('subnet'))
         return OpenStackSubnet(self.provider, subnet)
+
+    def get_or_create_default(self, zone=None):
+        """
+        Subnet zone is not supported by OpenStack and is thus ignored.
+        """
+        for sn in self.list():
+            if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
+                return sn
+        net = self.create(OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
+        sn = net.create_subnet(cidr_block='10.0.0.0/24',
+                               name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
+        return sn
 
     def delete(self, subnet):
         subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
