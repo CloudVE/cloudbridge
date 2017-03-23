@@ -64,14 +64,14 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 iter_images = [image for image in self.provider.compute.images
                                if image.name == name]
                 self.assertTrue(
-                    len(iter_images) == 1,
-                    "Iter images does not return the expected image %s" %
-                    name)
+                    name in [ii.name for ii in iter_images],
+                    "Iter images (%s) does not contain the expected image %s" %
+                    (iter_images, name))
 
                 # find image
                 found_images = self.provider.compute.images.find(name=name)
                 self.assertTrue(
-                    len(found_images) == 1,
+                    name in [fi.name for fi in found_images],
                     "Find images error: expected image %s but found: %s" %
                     (name, found_images))
 
