@@ -698,6 +698,9 @@ class BaseFloatingIP(FloatingIP, BaseCloudResource):
 
 class BaseRouter(Router, BaseCloudResource):
 
+    CB_DEFAULT_ROUTER_NAME = os.environ.get('CB_DEFAULT_ROUTER_NAME',
+                                            'CloudBridgeRouter')
+
     def __init__(self, provider):
         super(BaseRouter, self).__init__(provider)
 
