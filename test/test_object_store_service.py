@@ -1,5 +1,6 @@
 from datetime import datetime
 from io import BytesIO
+from unittest import skip
 import uuid
 
 import requests
@@ -175,6 +176,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
 
+    @skip("Skip until OpenStack implementation is provided")
     @helpers.skipIfNoService(['object_store'])
     def test_generate_url(self):
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
