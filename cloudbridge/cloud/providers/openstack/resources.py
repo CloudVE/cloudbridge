@@ -402,8 +402,8 @@ class OpenStackRegion(BaseRegion):
 
     @property
     def zones(self):
-        # detailed must be set to ``False`` because the (default) ``True``
-        # value requires Admin privileges
+        # ``detailed`` param must be set to ``False`` because the (default)
+        # ``True`` value requires Admin privileges
         if self.name == self._provider.region_name:  # optimisation
             zones = self._provider.nova.availability_zones.list(detailed=False)
         else:
@@ -415,8 +415,7 @@ class OpenStackRegion(BaseRegion):
                 # return an empty list
                 zones = []
 
-        return [OpenStackPlacementZone(self._provider, z.zoneName,
-                                       self._os_region)
+        return [OpenStackPlacementZone(self._provider, z.zoneName, self.name)
                 for z in zones]
 
 
