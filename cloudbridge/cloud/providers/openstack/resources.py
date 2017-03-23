@@ -1064,7 +1064,8 @@ class OpenStackBucketObject(BaseBucketObject):
         """
         Stores the contents of the file pointed by the "path" variable.
         """
-        raise NotImplementedError("This functionality is not implemented yet.")
+        with open(path, 'r') as f:
+            self.upload(f.read())
 
     def delete(self):
         """
@@ -1083,11 +1084,14 @@ class OpenStackBucketObject(BaseBucketObject):
 
     def generate_url(self, expires_in=0):
         """
-        Generates a URL to this object. If the object is public, `expires_in`
-        argument is not necessary, but if the object is private, the life time
-        of URL is set using `expires_in` argument.
-        :param expires_in: time to live of the generated URL in seconds.
-        :return: A URL to access the object.
+        Generates a URL to this object.
+
+        If the object is public, `expires_in` argument is not necessary, but if
+        the object is private, the life time of URL is set using `expires_in`
+        argument.
+
+        See here for implementation details:
+        http://stackoverflow.com/a/37057172
         """
         raise NotImplementedError("This functionality is not implemented yet.")
 
@@ -1109,12 +1113,16 @@ class OpenStackBucket(BaseBucket):
         """
         return self._bucket.get("name")
 
-    def get(self, key):
+    def get(self, name):
         """
         Retrieve a given object from this bucket.
+
+        FIXME: If multiple objects match the name as their name prefix,
+        all will be returned by the provider but this method will only
+        return the first element.
         """
         _, object_list = self._provider.swift.get_container(
-            self.name, prefix=key)
+            self.name, prefix=name)
         if object_list:
             return OpenStackBucketObject(self._provider, self,
                                          object_list[0])
@@ -1128,13 +1136,9 @@ class OpenStackBucket(BaseBucket):
         :rtype: BucketObject
         :return: List of all available BucketObjects within this bucket.
         """
-        if prefix is not None:
-            raise NotImplementedError("Prefix functionality is not "
-                                      "implemented yet.")
-
         _, object_list = self._provider.swift.get_container(
             self.name, limit=oshelpers.os_result_limit(self._provider, limit),
-            marker=marker)
+            marker=marker, prefix=prefix)
         cb_objects = [OpenStackBucketObject(
             self._provider, self, obj) for obj in object_list]
 
@@ -1155,6 +1159,6 @@ class OpenStackBucket(BaseBucket):
 
     def exists(self, name):
         """
-        Determines if an object with given name exists in this bucket.
+        Determine if an object with given name exists in this bucket.
         """
-        raise NotImplementedError("This functionality is not implemented yet.")
+        return True if self.get(name) else False

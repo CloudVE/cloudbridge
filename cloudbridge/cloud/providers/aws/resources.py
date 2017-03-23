@@ -848,11 +848,11 @@ class AWSBucket(BaseBucket):
         """
         return self._bucket.name
 
-    def get(self, key):
+    def get(self, name):
         """
         Retrieve a given object from this bucket.
         """
-        key = Key(self._bucket, key)
+        key = Key(self._bucket, name)
         if key and key.exists():
             return AWSBucketObject(self._provider, key)
         return None
@@ -882,7 +882,7 @@ class AWSBucket(BaseBucket):
 
     def exists(self, name):
         """
-        Determines if an object with given name key exists in this bucket.
+        Determine if an object with given name key exists in this bucket.
         """
         key = Key(self._bucket, name)
         if key and key.exists():

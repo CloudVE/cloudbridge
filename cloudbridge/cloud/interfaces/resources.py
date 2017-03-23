@@ -2113,12 +2113,12 @@ class Bucket(PageableObjectMixin, CloudResource):
         pass
 
     @abstractmethod
-    def get(self, key):
+    def get(self, name):
         """
         Retrieve a given object from this bucket.
 
-        :type key: ``str``
-        :param key: the identifier of the object to retrieve
+        :type name: ``str``
+        :param name: The identifier of the object to retrieve
 
         :rtype: :class:``.BucketObject``
         :return: The BucketObject or ``None`` if it cannot be found.
@@ -2161,7 +2161,7 @@ class Bucket(PageableObjectMixin, CloudResource):
     @abstractmethod
     def create_object(self, name):
         """
-        Creates a new object within this bucket.
+        Create a new object within this bucket.
 
         :rtype: :class:``.BucketObject``
         :return: The newly created bucket object
@@ -2171,7 +2171,7 @@ class Bucket(PageableObjectMixin, CloudResource):
     @abstractmethod
     def exists(self, name):
         """
-        Determines if an object with given key exists in this bucket.
+        Determine if an object with given key exists in this bucket.
 
         :type name: ``str``
         :param name: The name of an object to search for in the bucket.
