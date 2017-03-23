@@ -1,9 +1,9 @@
 from datetime import datetime
 from io import BytesIO
 import uuid
-import urllib
-import os
+
 import requests
+
 import tempfile
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
@@ -109,7 +109,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     "Object size property needs to be a int, not {0}".format(
                         type(objs[0].size)))
                 self.assertTrue(
-                    datetime.strptime(objs[0].last_modified,
+                    datetime.strptime(objs[0].last_modified[:23],
                                       "%Y-%m-%dT%H:%M:%S.%f"),
                     "Object's last_modified field format {0} not matching."
                     .format(objs[0].last_modified))
@@ -174,7 +174,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 for data in obj.iter_content():
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
-
 
     @helpers.skipIfNoService(['object_store'])
     def test_generate_url(self):
