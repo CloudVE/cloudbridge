@@ -41,7 +41,7 @@ This will run all the tests for all the environments defined in file
 Specific environment
 ~~~~~~~~~~~~~~~~~~~~
 If you’d like to run the tests on a specific environment only, say Python 2.7,
-use a command like this: ``tox -e py27``. Alternativley, to use your default
+use a command like this: ``tox -e py27``. Alternatively, to use your default
 python, you can also run the test command directly ``python setup.py test``.
 
 Select infrastructure
