@@ -19,7 +19,7 @@ def parse_bool(val):
 
 @contextmanager
 def cleanup_action(cleanup_func):
-    """
+    """n csdmmnd
     Context manager to carry out a given
     cleanup action after carrying out a set
     of tasks, or when an exception occurs.
@@ -252,7 +252,7 @@ class ProviderTestCaseGenerator():
         factory = CloudProviderFactory()
         use_mock_drivers = parse_bool(
             os.environ.get("CB_USE_MOCK_PROVIDERS", True))
-        provider_name = os.environ.get("CB_TEST_PROVIDER", None)
+        provider_name = os.environ.get("CB_TEST_PROVIDER", "azure")
         if provider_name:
             provider_classes = [
                 factory.get_provider_class(

@@ -28,6 +28,7 @@ as a base class to each combination).
 import cloudbridge
 
 from test.helpers import ProviderTestCaseGenerator
+from test.test_azure_security_service import AzureSecurityServiceTestCase
 from test.test_block_store_service import CloudBlockStoreServiceTestCase
 from test.test_cloud_helpers import CloudHelpersTestCase
 from test.test_compute_service import CloudComputeServiceTestCase
@@ -40,19 +41,19 @@ from test.test_object_store_service import CloudObjectStoreServiceTestCase
 from test.test_region_service import CloudRegionServiceTestCase
 from test.test_security_service import CloudSecurityServiceTestCase
 
-
 PROVIDER_TESTS = [
-    CloudHelpersTestCase,
-    CloudInterfaceTestCase,
-    CloudObjectLifeCycleTestCase,
-    CloudSecurityServiceTestCase,
-    CloudNetworkServiceTestCase,
-    CloudInstanceTypesServiceTestCase,
-    CloudBlockStoreServiceTestCase,
-    CloudObjectStoreServiceTestCase,
-    CloudComputeServiceTestCase,
-    CloudRegionServiceTestCase,
-    CloudImageServiceTestCase
+    # CloudHelpersTestCase,
+    # CloudInterfaceTestCase,
+    # CloudObjectLifeCycleTestCase,
+    # CloudSecurityServiceTestCase,
+    # CloudNetworkServiceTestCase,
+    # CloudInstanceTypesServiceTestCase,
+    # CloudBlockStoreServiceTestCase,
+    # CloudObjectStoreServiceTestCase,
+    # CloudComputeServiceTestCase,
+    # CloudRegionServiceTestCase,
+    # CloudImageServiceTestCase,
+    AzureSecurityServiceTestCase
 ]
 
 
