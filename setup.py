@@ -21,7 +21,8 @@ openstack_reqs = ['python-novaclient>=7.0.0',
                   'python-neutronclient>=6.0.0',
                   'python-keystoneclient>=3.8.0']
 aws_reqs = ['boto>=2.38.0']
-full_reqs = base_reqs + aws_reqs + openstack_reqs
+azure_reqs = ['azure>=2.0.0rc6']
+full_reqs = base_reqs + aws_reqs + openstack_reqs + azure_reqs
 dev_reqs = (['tox>=2.1.1', 'moto>=0.4.20', 'sphinx>=1.3.1'] + full_reqs)
 
 setup(name='cloudbridge',
