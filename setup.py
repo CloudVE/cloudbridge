@@ -24,6 +24,7 @@ REQS_BASE = [
     'retrying>=1.3.3'
 ]
 REQS_AWS = ['boto3']
+REQS_AZURE = ['azure>=2.0.0rc6']
 REQS_OPENSTACK = [
     'openstacksdk',
     'python-novaclient>=7.0.0',
@@ -33,7 +34,7 @@ REQS_OPENSTACK = [
     'python-neutronclient>=6.0.0',
     'python-keystoneclient>=3.13.0'
 ]
-REQS_FULL = REQS_BASE + REQS_AWS + REQS_OPENSTACK
+REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
