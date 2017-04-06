@@ -62,12 +62,12 @@ class AzureCloudProvider(BaseCloudProvider):
 
     @property
     def network(self):
-        return self._security
+        raise NotImplementedError(
+            "AzureCloudProvider does not implement this service")
 
     @property
     def security(self):
-        raise NotImplementedError(
-            "AzureCloudProvider does not implement this service")
+        return self._security
 
     @property
     def block_store(self):
