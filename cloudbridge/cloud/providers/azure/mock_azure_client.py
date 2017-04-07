@@ -18,3 +18,9 @@ class MockAzureClient:
 
     def list_security_group(self, resource_group_name):
         return self.security_groups
+
+    def get_resource_group(self, resource_group_name):
+        return 'Cloudbridge'
+
+    def create_resource_group(self, resource_group_name, params):
+        return resource_group_name

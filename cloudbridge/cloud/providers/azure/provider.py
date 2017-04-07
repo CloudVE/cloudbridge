@@ -49,8 +49,12 @@ class AzureCloudProvider(BaseCloudProvider):
                          'azure_storage_account_name' : self.storage_account_name
                          }
 
-        # TODO: implement code to validate if the resource group is available,if not create
         self._azure_client = azureclient or AzureClient(self.allconfig)
+        try:
+            rg = self._azure_client.get_resource_group(self.resource_group)
+        except:
+            resource_group_params = {'location': self.region_name}
+            self._azure_client.create_resource_group(self.resource_group, resource_group_params)
 
         self._security = AzureSecurityService(self)
         self._object_store = AzureObjectStoreService(self)
