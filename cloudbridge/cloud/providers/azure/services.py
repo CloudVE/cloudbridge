@@ -38,13 +38,13 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         super(AzureSecurityGroupService, self).__init__(provider)
 
     def get(self, sg_id):
-        for item in self.provider.azure_client.list_security_group(self.provider.resource_group):
+        for item in self.provider.azure_client.list_security_group():
             if item.id == sg_id:
                 return AzureSecurityGroup(self.provider, item)
         return None
 
     def list(self, limit=None, marker=None):
-        nsglist = self.provider.azure_client.list_security_group(self.provider.resource_group)
+        nsglist = self.provider.azure_client.list_security_group()
         network_security_group = [AzureSecurityGroup(self.provider, sg)
                                   for sg in nsglist]
         return ClientPagedResultList(self.provider, network_security_group, limit, marker)

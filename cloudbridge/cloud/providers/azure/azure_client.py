@@ -61,6 +61,12 @@ class AzureClient(object):
     def network_management_client(self):
         return self._network_management_client
 
+    def get_resource_group(self, name):
+        return self.resource_client.resource_groups.get(name)
+
+    def create_resource_group(self, name, parameters):
+        return self.resource_client.resource_groups.create_or_update(name, parameters)
+
     def list_locations(self):
         return self.subscription_client.subscriptions.list_locations(self.subscription_id)
 
