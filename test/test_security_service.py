@@ -11,10 +11,6 @@ import test.helpers as helpers
 
 class CloudSecurityServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudSecurityServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_crud_key_pair_service(self):
         name = 'cbtestkeypairA-{0}'.format(uuid.uuid4())

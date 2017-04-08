@@ -7,10 +7,6 @@ import test.helpers as helpers
 
 class CloudRegionServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudRegionServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['compute.regions'])
     def test_get_and_list_regions(self):
         """

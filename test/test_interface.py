@@ -9,10 +9,6 @@ from cloudbridge.cloud.factory import CloudProviderFactory
 
 class CloudInterfaceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudInterfaceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     def test_name_property(self):
         """
         Name should always return a value and should not raise an exception

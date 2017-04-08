@@ -13,10 +13,6 @@ import test.helpers as helpers
 
 class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudBlockStoreServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_crud_volume(self):
         """
