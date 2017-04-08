@@ -2168,15 +2168,3 @@ class Bucket(PageableObjectMixin, CloudResource):
         """
         pass
 
-    @abstractmethod
-    def exists(self, name):
-        """
-        Determine if an object with given key exists in this bucket.
-
-        :type name: ``str``
-        :param name: The name of an object to search for in the bucket.
-
-        :rtype: ``bool``
-        :return: True if the object exists, False, if it does not.
-        """
-        pass
