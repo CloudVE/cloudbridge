@@ -1,5 +1,5 @@
 from azure.mgmt.network.models import NetworkSecurityGroup
-
+from azure.storage.blob.models import Container
 
 class MockAzureClient:
     sec_gr1 = NetworkSecurityGroup()
@@ -13,6 +13,12 @@ class MockAzureClient:
     sec_gr3.id = "sg3"
     security_groups = [sec_gr1, sec_gr2, sec_gr3]
 
+    container1 = Container()
+    container1.name = "container1"
+    container2 = Container()
+    container2.name = "container2"
+    containers = [container1, container2]
+
     def __init__(self, provider):
         self._provider = provider
 
@@ -24,3 +30,15 @@ class MockAzureClient:
 
     def create_resource_group(self, resource_group_name, params):
         return resource_group_name
+
+    def get_container(self, container_name):
+        for container in self.containers:
+            if container.name == container_name:
+                return container
+        return None
+
+    def create_container(self, container_name):
+        new_container = Container()
+        new_container.name = "newContainerCreate"
+        return None
+
