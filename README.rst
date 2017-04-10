@@ -11,7 +11,7 @@ an Alpha state.
    :target: https://coveralls.io/github/gvlproject/cloudbridge?branch=master
    :alt: Code Coverage
 
-.. image:: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge.svg?token=CKR2Kjisx6hZtvixazEK&branch=master
+.. image:: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge.svg?token=CKR2Kjisx6hZtvixazEK&branch=azuedev
    :target: https://github.com/ms-azure-cloudbroker/cloudbridge
    :alt: Travis Build Status
 
