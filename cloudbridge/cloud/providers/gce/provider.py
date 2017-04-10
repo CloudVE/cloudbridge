@@ -35,7 +35,7 @@ class GCPResourceUrl(object):
 
 
 class GCPResources(object):
-    
+
     def __init__(self, connection):
         self._connection = connection
 
@@ -82,7 +82,7 @@ class GCPResources(object):
 
         # We will not mutate self._desc; it's OK to use items() in Python 2.x.
         for resource, resource_desc in desc['resources'].items():
-            methods = resource_desc['methods']
+            methods = resource_desc.get('methods', "")
             if 'get' not in methods:
                 continue
             method = methods['get']
@@ -112,7 +112,8 @@ class GCPResources(object):
         GCP servers.
         """
         url = url.strip()
-        if url.startswith(self._root_url): url = url[len(self._root_url):]
+        if url.startswith(self._root_url):
+            url = url[len(self._root_url):]
         if url.startswith(self._service_path):
             url = url[len(self._service_path):]
 
@@ -213,6 +214,7 @@ class GCECloudProvider(BaseCloudProvider):
         """
         http = httplib2.Http()
         http = self._credentials.authorize(http)
+
         def _postproc(*kwargs):
             if len(kwargs) >= 2:
                 # The first argument is request, and the second is response.
