@@ -3,12 +3,13 @@ from cloudbridge.cloud.base.services import BaseObjectStoreService, BaseSecurity
 
 from .resources import AzureBucket, AzureSecurityGroup
 
+
 class AzureSecurityService(BaseSecurityService):
     def __init__(self, provider):
         super(AzureSecurityService, self).__init__(provider)
 
         # Initialize provider services
-        #self._key_pairs = AzureKeyPairService(provider)
+        # self._key_pairs = AzureKeyPairService(provider)
         self._security_groups = AzureSecurityGroupService(provider)
 
     @property
@@ -33,7 +34,6 @@ class AzureSecurityService(BaseSecurityService):
 
 
 class AzureSecurityGroupService(BaseSecurityGroupService):
-
     def __init__(self, provider):
         super(AzureSecurityGroupService, self).__init__(provider)
 
@@ -58,12 +58,15 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
             "AzureSecurityGroupService does not implement this method")
 
     def delete(self, group_id):
-        raise NotImplementedError(
-            "AzureSecurityGroupService does not implement this method")
+        for item in self.provider.azure_client.list_security_group():
+            if item.id == group_id:
+                sg_name = item.name
+                self.provider.azure_client.delete_security_group(sg_name)
+                return True
+        return False
 
 
 class AzureObjectStoreService(BaseObjectStoreService):
-
     def __init__(self, provider):
         super(AzureObjectStoreService, self).__init__(provider)
 
@@ -73,7 +76,7 @@ class AzureObjectStoreService(BaseObjectStoreService):
 
     def find(self, name, limit=None, marker=None):
         object_store = self.provider.azure_client.get_container(name)
-        object_stores =[]
+        object_stores = []
         if object_store:
             object_stores.append(AzureBucket(self.provider, object_store))
 
