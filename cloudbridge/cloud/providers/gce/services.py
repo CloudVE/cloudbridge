@@ -432,7 +432,7 @@ class GCEInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(GCEInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, network=None, zone=None,
+    def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
         """
@@ -441,9 +441,10 @@ class GCEInstanceService(BaseInstanceService):
         if not zone:
             zone = self.provider.default_zone
         if not launch_config:
-            if network:
+            if subnet:
+                network = self.provider.network.get(subnet.network_id)
                 network_url = (network.resource_url
-                               if isinstance(network, Network) else network)
+                               if isinstance(network, GCENetwork) else network)
             else:
                 network_url = 'global/networks/default'
             config = {
@@ -454,12 +455,14 @@ class GCEInstanceService(BaseInstanceService):
                            'initializeParams': {
                                'sourceImage': image.resource_url,
                            }
-                       }],
+                           }],
                 'networkInterfaces': [
-                    {'network': network_url,
-                     'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
-                                        'name': 'External NAT'}]
-                 }],
+                    {
+                        # TODO: Should replace network below with subnetwork
+                        'network': network_url,
+                        'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
+                                           'name': 'External NAT'}]
+                    }],
             }
             if security_groups and isinstance(security_groups, list):
                 sg_names = []
