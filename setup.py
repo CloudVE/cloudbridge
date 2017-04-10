@@ -21,7 +21,7 @@ openstack_reqs = ['python-novaclient>=7.0.0',
                   'python-neutronclient>=6.0.0',
                   'python-keystoneclient>=3.8.0']
 aws_reqs = ['boto>=2.38.0']
-gce_reqs = ['google-api-python-client>=1.4.2', "pycrypto"]
+gce_reqs = ['google-api-python-client>=1.4.2', "cryptography>=1.4"]
 full_reqs = base_reqs + aws_reqs + openstack_reqs + gce_reqs
 dev_reqs = (['tox>=2.1.1', 'moto>=0.4.18', 'sphinx>=1.3.1'] + full_reqs)
 

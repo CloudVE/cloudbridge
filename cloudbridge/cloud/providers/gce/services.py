@@ -119,7 +119,7 @@ class GCEKeyPairService(BaseKeyPairService):
             # elems should be "ssh-rsa <public_key> <email>"
             elems = key.split(" ")
             if elems and elems[0]:  # ignore blank lines
-                yield GCEKeyPairService.GCEKeyInfo(elems[0], elems[1],
+                yield GCEKeyPairService.GCEKeyInfo(elems[0], elems[1].encode('ascii'),
                                                    elems[2])
 
     def gce_metadata_save_op(self, callback):
