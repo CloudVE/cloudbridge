@@ -12,7 +12,7 @@ an Alpha state.
    :alt: Code Coverage
 
 .. image:: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge.svg?token=CKR2Kjisx6hZtvixazEK&branch=azuedev
-   :target: https://github.com/ms-azure-cloudbroker/cloudbridge
+   :target: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge
    :alt: Travis Build Status
 
 .. image:: https://codeclimate.com/github/gvlproject/cloudbridge/badges/gpa.svg
