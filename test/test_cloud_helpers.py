@@ -17,10 +17,6 @@ class DummyResult(object):
 
 class CloudHelpersTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudHelpersTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     def setUp(self):
         super(CloudHelpersTestCase, self).setUp()
         self.objects = [DummyResult(1, "One"),

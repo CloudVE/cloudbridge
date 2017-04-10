@@ -1,18 +1,21 @@
 from datetime import datetime
 from io import BytesIO
+from unittest import skip
 import uuid
 
+import requests
+
+import tempfile
+
 from cloudbridge.cloud.interfaces.resources import BucketObject
+
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudObjectStoreServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
+    @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket(self):
         """
         Create a new bucket, check whether the expected values are set,
@@ -66,6 +69,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             "Bucket %s should have been deleted but still exists." %
             name)
 
+    @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket_objects(self):
         """
         Create a new bucket, upload some contents into the bucket, and
@@ -80,7 +84,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         self.assertEqual([], objects)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
-            obj_name = "hello_world.txt"
+            obj_name_prefix = "hello"
+            obj_name = obj_name_prefix + "_world.txt"
             obj = test_bucket.create_object(obj_name)
 
             self.assertTrue(
@@ -101,7 +106,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     "Object size property needs to be a int, not {0}".format(
                         type(objs[0].size)))
                 self.assertTrue(
-                    datetime.strptime(objs[0].last_modified,
+                    datetime.strptime(objs[0].last_modified[:23],
                                       "%Y-%m-%dT%H:%M:%S.%f"),
                     "Object's last_modified field format {0} not matching."
                     .format(objs[0].last_modified))
@@ -130,6 +135,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     isinstance(obj_too, BucketObject),
                     "Did not get object {0} of expected type.".format(obj_too))
 
+                prefix_filtered_list = test_bucket.list(prefix=obj_name_prefix)
+                self.assertTrue(
+                    len(objs) == len(prefix_filtered_list) == 1,
+                    'The number of objects returned by list function, '
+                    'with and without a prefix, are expected to be equal, '
+                    'but its detected otherwise.')
+
             objs = test_bucket.list()
             found_objs = [o for o in objs if o.name == obj_name]
             self.assertTrue(
@@ -137,8 +149,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 "Object %s should have been deleted but still exists." %
                 obj_name)
 
+    @helpers.skipIfNoService(['object_store'])
     def test_upload_download_bucket_content(self):
-
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
 
@@ -159,3 +171,42 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 for data in obj.iter_content():
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
+
+    @skip("Skip until OpenStack implementation is provided")
+    @helpers.skipIfNoService(['object_store'])
+    def test_generate_url(self):
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        test_bucket = self.provider.object_store.create(name)
+
+        with helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "hello_upload_download.txt"
+            obj = test_bucket.create_object(obj_name)
+
+            with helpers.cleanup_action(lambda: obj.delete()):
+                content = b"Hello World. Generate a url."
+                obj.upload(content)
+                target_stream = BytesIO()
+                obj.save_content(target_stream)
+
+                url = obj.generate_url(100)
+                self.assertEqual(requests.get(url).content, content)
+
+    @helpers.skipIfNoService(['object_store'])
+    def test_upload_download_bucket_content_from_file(self):
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        test_bucket = self.provider.object_store.create(name)
+
+        with helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "hello_upload_download.txt"
+            obj = test_bucket.create_object(obj_name)
+
+            with helpers.cleanup_action(lambda: obj.delete()):
+                content = b"Hello World. Upload from file."
+                with tempfile.NamedTemporaryFile() as tmpFile:
+                    tmpFile.write(content)
+                    tmpFile.flush()
+
+                    obj.upload_from_file(tmpFile.name)
+                    target_stream = BytesIO()
+                    obj.save_content(target_stream)
+                    self.assertEqual(target_stream.getvalue(), content)

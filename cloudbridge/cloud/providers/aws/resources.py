@@ -27,6 +27,7 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+
 from datetime import datetime
 import hashlib
 import inspect
@@ -34,6 +35,7 @@ import json
 
 from boto.exception import EC2ResponseError
 from boto.s3.key import Key
+
 from retrying import retry
 
 
@@ -646,7 +648,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
         :return: Rule object if successful or ``None``.
         """
         try:
-            if not isinstance(src_group, SecurityGroup):
+            if src_group and not isinstance(src_group, SecurityGroup):
                 src_group = self._provider.security.security_groups.get(
                     src_group)
 
@@ -672,17 +674,17 @@ class AWSSecurityGroup(BaseSecurityGroup):
                  cidr_ip=None, src_group=None):
         for rule in self._security_group.rules:
             if (rule.ip_protocol == ip_protocol and
-               rule.from_port == from_port and
-               rule.to_port == to_port and
-               rule.grants[0].cidr_ip == cidr_ip) or \
-               (rule.grants[0].group_id == src_group.id if src_group and
-               hasattr(rule.grants[0], 'group_id') else False):
+                rule.from_port == from_port and
+                rule.to_port == to_port and
+                rule.grants[0].cidr_ip == cidr_ip) or \
+                    (rule.grants[0].group_id == src_group.id if src_group and
+                        hasattr(rule.grants[0], 'group_id') else False):
                 return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        js = {k: v for (k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
         js['rules'] = [json.loads(r) for r in json_rules]
         if js.get('network_id'):
@@ -738,8 +740,8 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         return None
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        js = {k: v for (k, v) in attr if not k.startswith('_')}
         js['group'] = self.group.id if self.group else ''
         js['parent'] = self.parent.id if self.parent else ''
         return json.dumps(js, sort_keys=True)
@@ -807,6 +809,12 @@ class AWSBucketObject(BaseBucketObject):
         """
         self._key.set_contents_from_string(data)
 
+    def upload_from_file(self, path):
+        """
+        Store the contents of the file pointed by the "path" variable.
+        """
+        self._key.set_contents_from_filename(path)
+
     def delete(self):
         """
         Delete this object.
@@ -815,6 +823,12 @@ class AWSBucketObject(BaseBucketObject):
         :return: True if successful
         """
         self._key.delete()
+
+    def generate_url(self, expires_in=0):
+        """
+        Generate a URL to this object.
+        """
+        return self._key.generate_url(expires_in=expires_in)
 
 
 class AWSBucket(BaseBucket):
@@ -834,16 +848,16 @@ class AWSBucket(BaseBucket):
         """
         return self._bucket.name
 
-    def get(self, key):
+    def get(self, name):
         """
         Retrieve a given object from this bucket.
         """
-        key = Key(self._bucket, key)
-        if key.exists():
+        key = Key(self._bucket, name)
+        if key and key.exists():
             return AWSBucketObject(self._provider, key)
         return None
 
-    def list(self, limit=None, marker=None):
+    def list(self, limit=None, marker=None, prefix=None):
         """
         List all objects within this bucket.
 
@@ -851,7 +865,8 @@ class AWSBucket(BaseBucket):
         :return: List of all available BucketObjects within this bucket.
         """
         objects = [AWSBucketObject(self._provider, obj)
-                   for obj in self._bucket.list()]
+                   for obj in self._bucket.list(prefix=prefix)]
+
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
@@ -959,8 +974,9 @@ class AWSNetwork(BaseNetwork):
         subnets = self._provider.vpc_conn.get_all_subnets(filters=flter)
         return [AWSSubnet(self._provider, subnet) for subnet in subnets]
 
-    def create_subnet(self, cidr_block, name=None):
-        subnet = self._provider.vpc_conn.create_subnet(self.id, cidr_block)
+    def create_subnet(self, cidr_block, name=None, zone=None):
+        subnet = self._provider.vpc_conn.create_subnet(self.id, cidr_block,
+                                                       availability_zone=zone)
         cb_subnet = AWSSubnet(self._provider, subnet)
         if name:
             cb_subnet.name = name
@@ -1008,6 +1024,11 @@ class AWSSubnet(BaseSubnet):
     @property
     def network_id(self):
         return self._subnet.vpc_id
+
+    @property
+    def zone(self):
+        return AWSPlacementZone(self._provider, self._subnet.availability_zone,
+                                self._provider.region_name)
 
     def delete(self):
         return self._provider.vpc_conn.delete_subnet(subnet_id=self.id)

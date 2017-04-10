@@ -1,4 +1,20 @@
-0.1.1 - Aug 10, 2016.
+0.2.0 - March 23, 2017. (sha a442d96b829ea2c721728520b01981fa61774625)
+-------
+
+* Reworked the instance launch method to require subnet vs. network. This
+  removed the option of adding network interface to a launch config object.
+* Added object store methods: upload from file path, list objects with a
+  prefix, check if an object exists, (AWS only) get an accessible URL for an
+  object (thanks @VJalili)
+* Modified `get_ec2_credentials()` method to `get_or_create_ec2_credentials()`
+* Added an option to read provider config values from a file
+  (`~/.cloudbridge` or `/etc/cloudbridge`)
+* Replaced py35 with py36 for running tests
+* Added logging configuration for the library
+* General documentation updates
+
+
+0.1.1 - Aug 10, 2016. (sha 0122fb1173c88ae64e40140ffd35ff3797e9e4ad)
 -------
 
 * For AWS, always launch instances into private networking (i.e., VPC)

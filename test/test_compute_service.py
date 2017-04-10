@@ -1,28 +1,26 @@
+import ipaddress
 import uuid
 
-import ipaddress
 import six
-from cloudbridge.cloud.interfaces \
-    import InvalidConfigurationException
+
+from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
+
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudComputeServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
+    @helpers.skipIfNoService(['compute.instances', 'network'])
     def test_crud_instance(self):
         name = "CBInstCrud-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, name)
-        inst = helpers.get_test_instance(self.provider, name, network=net)
+        net, subnet = helpers.create_test_network(self.provider, name)
+        inst = helpers.get_test_instance(self.provider, name, subnet=subnet)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 inst, net)):
@@ -88,18 +86,21 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             return False
         return True
 
+    @helpers.skipIfNoService(['compute.instances', 'network',
+                              'security.security_groups',
+                              'security.key_pairs'])
     def test_instance_properties(self):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, name)
+        net, subnet = helpers.create_test_network(self.provider, name)
         kp = self.provider.security.key_pairs.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
         test_instance = helpers.get_test_instance(self.provider,
                                                   name, key_pair=kp,
                                                   security_groups=[sg],
-                                                  network=net)
+                                                  subnet=subnet)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net, sg, kp)):
@@ -168,6 +169,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "Instance type {0} does not match expected type {1}".format(
                     itype.name, expected_type))
 
+    @helpers.skipIfNoService(['compute.instances', 'compute.images',
+                              'compute.instance_types'])
     def test_block_device_mapping_launch_config(self):
         lc = self.provider.compute.instances.create_launch_config()
 
@@ -227,6 +230,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             "Expected %d total block devices bit found %d" %
             (2 + inst_type.num_ephemeral_disks, len(lc.block_devices)))
 
+    @helpers.skipIfNoService(['compute.instances', 'compute.images',
+                              'compute.instance_types', 'block_store.volumes'])
     def test_block_device_mapping_attachments(self):
         name = "CBInstBlkAttch-{0}-{1}".format(
             self.provider.name,
@@ -274,7 +279,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             # TODO: This should be greater than the ami size or tests
             # will fail on actual infrastructure. Needs an image.size
             # method
-            size=2,
+            size=8,
             delete_on_terminate=True)
 
         # Add all available ephemeral devices
@@ -286,14 +291,13 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         for _ in range(inst_type.num_ephemeral_disks):
             lc.add_ephemeral_device()
 
-        net, _ = helpers.create_test_network(self.provider, name)
+        net, subnet = helpers.create_test_network(self.provider, name)
 
         inst = helpers.create_test_instance(
             self.provider,
             name,
-            network=net,
-            # We don't have a way to match the test net placement and this zone
-            # zone=helpers.get_provider_test_data(self.provider, 'placement'),
+            subnet=subnet,
+            zone=helpers.get_provider_test_data(self.provider, 'placement'),
             launch_config=lc)
 
         def cleanup(instance, net):

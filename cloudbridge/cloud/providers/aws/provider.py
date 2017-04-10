@@ -38,6 +38,7 @@ class AWSCloudProvider(BaseCloudProvider):
             'aws_access_key', os.environ.get('AWS_ACCESS_KEY', None))
         self.s_key = self._get_config_value(
             'aws_secret_key', os.environ.get('AWS_SECRET_KEY', None))
+        self.session_token = self._get_config_value('aws_session_token', None)
         # EC2 connection fields
         self.ec2_is_secure = self._get_config_value('ec2_is_secure', True)
         self.region_name = self._get_config_value(
@@ -133,6 +134,7 @@ class AWSCloudProvider(BaseCloudProvider):
         vpc_conn = boto.connect_vpc(
             aws_access_key_id=self.a_key,
             aws_secret_access_key=self.s_key,
+            security_token=self.session_token,
             is_secure=self.ec2_is_secure,
             region=r,
             port=self.ec2_port,
@@ -147,6 +149,7 @@ class AWSCloudProvider(BaseCloudProvider):
         """
         s3_conn = boto.connect_s3(aws_access_key_id=self.a_key,
                                   aws_secret_access_key=self.s_key,
+                                  security_token=self.session_token,
                                   is_secure=self.s3_is_secure,
                                   port=self.s3_port,
                                   host=self.s3_host,
@@ -172,7 +175,7 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         HTTPretty.register_uri(
             method="GET",
             uri="https://d168wakzal7fp0.cloudfront.net/aws_instance_data.json",
-            body="""
+            body=u"""
 [
   {
     "family": "General Purpose",
@@ -196,13 +199,12 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
     "storage": null,
     "max_bandwidth": 0,
     "instance_type": "t2.nano",
-    "ECU": "variable,
+    "ECU": "variable",
     "memory": 0.5,
     "ebs_max_bandwidth": 0
   }
 ]
-"""
-        )
+""")
 
     def tearDownMock(self):
         """

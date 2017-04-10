@@ -1,7 +1,6 @@
 CloudBridge aims to provide a simple layer of abstraction over
 different cloud providers, reducing or eliminating the need to write
-conditional code for each cloud. It is currently under development and is in
-an Alpha state.
+conditional code for each cloud.
 
 .. image:: https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat
    :target: https://landscape.io/github/gvlproject/cloudbridge/master

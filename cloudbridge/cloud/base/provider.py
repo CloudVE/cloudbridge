@@ -5,6 +5,7 @@ try:
 except ImportError:  # Python 2
     from ConfigParser import SafeConfigParser
 from os.path import expanduser
+import functools
 
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.resources import Configuration
@@ -95,6 +96,10 @@ class BaseCloudProvider(CloudProvider):
             raise ProviderConnectionException(
                 "Authentication with cloud provider failed: %s" % (e,))
 
+    def _deepgetattr(self, obj, attr):
+        """Recurses through an attribute chain to get the ultimate value."""
+        return functools.reduce(getattr, attr.split('.'), obj)
+
     def has_service(self, service_type):
         """
         Checks whether this provider supports a given service.
@@ -106,10 +111,12 @@ class BaseCloudProvider(CloudProvider):
         :return: ``True`` if the service type is supported.
         """
         try:
-            if getattr(self, service_type):
+            if self._deepgetattr(self, service_type):
                 return True
         except AttributeError:
             pass  # Undefined service type
+        except NotImplementedError:
+            pass  # service not implemented
         return False
 
     def _get_config_value(self, key, default_value):

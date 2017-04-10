@@ -487,10 +487,6 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
     def terminate(self):
         """
         Permanently terminate this instance.
-
-        :rtype: ``bool``
-        :return: ``True`` if the termination of the instance was successfully
-                 initiated; ``False`` otherwise.
         """
         pass
 
@@ -856,7 +852,7 @@ class Network(CloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, cidr_block, name=None):
+    def create_subnet(self, cidr_block, name=None, zone=None):
         """
         Create a new network subnet and associate it with this Network.
 
@@ -867,6 +863,11 @@ class Network(CloudResource):
         :type name: ``str``
         :param name: An optional subnet name. The name will be set if the
                      provider supports it.
+
+        :type zone: ``str``
+        :param zone: Placement zone where to create the subnet. Some providers
+                     may not support subnet zones, in which case the value is
+                     ignored.
 
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object
@@ -918,6 +919,18 @@ class Subnet(CloudResource):
 
         :rtype: ``str``
         :return: Network ID.
+        """
+        pass
+
+    @abstractproperty
+    def zone(self):
+        """
+        Placement zone of the subnet.
+
+        If the provider does not support subnet placement, return ``None``.
+
+        :rtype: :class:`.PlacementZone` object
+        :return: Placement zone of the subnet, or ``None`` if not defined.
         """
         pass
 
@@ -1826,8 +1839,8 @@ class SecurityGroup(CloudResource):
         Create a security group rule. If the rule already exists, simply
         returns it.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``. In other words, either
+        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
         you are authorizing another group or you are authorizing some
         ip-based rule.
 
@@ -1856,7 +1869,7 @@ class SecurityGroup(CloudResource):
         """
         Get a security group rule with the specified parameters.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
+        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
         ``from_port``, ``to_port``, and ``cidr_ip``. Note that when retrieving
         a group rule, this method will return only one rule although possibly
         several rules exist for the group rule. In that case, use the
@@ -2038,12 +2051,39 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
+    def upload_from_file(self, path):
+        """
+        Store the contents of the file pointed by the "path" variable.
+
+        :type path: ``str``
+        :param path: Absolute path to the file to be uploaded to S3.
+        """
+        pass
+
+    @abstractmethod
     def delete(self):
         """
         Delete this object.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
+        """
+        pass
+
+    @abstractmethod
+    def generate_url(self, expires_in=0):
+        """
+        Generate a URL to this object.
+
+        If the object is public, `expires_in` argument is not necessary, but if
+        the object is private, the lifetime of URL is set using `expires_in`
+        argument.
+
+        :type expires_in: ``int``
+        :param expires_in: Time to live of the generated URL in seconds.
+
+        :rtype: ``str``
+        :return: A URL to access the object.
         """
         pass
 
@@ -2073,12 +2113,12 @@ class Bucket(PageableObjectMixin, CloudResource):
         pass
 
     @abstractmethod
-    def get(self, key):
+    def get(self, name):
         """
         Retrieve a given object from this bucket.
 
-        :type key: ``str``
-        :param key: the identifier of the object to retrieve
+        :type name: ``str``
+        :param name: The identifier of the object to retrieve
 
         :rtype: :class:``.BucketObject``
         :return: The BucketObject or ``None`` if it cannot be found.
@@ -2086,9 +2126,18 @@ class Bucket(PageableObjectMixin, CloudResource):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, limit=None, marker=None, prefix=None):
         """
-        List all objects within this bucket.
+        List objects in this bucket.
+
+        :type limit: ``int``
+        :param limit: Maximum number of elements to return.
+
+        :type marker: ``int``
+        :param marker: Fetch results after this offset.
+
+        :type prefix: ``str``
+        :param prefix: Prefix criteria by which to filter listed objects.
 
         :rtype: :class:``.BucketObject``
         :return: List of all available BucketObjects within this bucket.
@@ -2112,9 +2161,10 @@ class Bucket(PageableObjectMixin, CloudResource):
     @abstractmethod
     def create_object(self, name):
         """
-        Creates a new object within this bucket.
+        Create a new object within this bucket.
 
         :rtype: :class:``.BucketObject``
         :return: The newly created bucket object
         """
         pass
+

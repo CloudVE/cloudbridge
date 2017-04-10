@@ -1,20 +1,19 @@
 """Test cloudbridge.security modules."""
 import json
-from test.helpers import ProviderTestBase
-import time
+import unittest
 import uuid
 
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
+
+from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
 
 class CloudSecurityServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudSecurityServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
+    @helpers.skipIfNoService(['security.key_pairs'])
     def test_crud_key_pair_service(self):
-        name = 'cbtestkeypairA-{0}'.format(uuid.uuid4()).lower()
+        name = 'cbtestkeypairA-{0}'.format(uuid.uuid4())
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -64,8 +63,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             no_kp,
             "Found a key pair {0} that should not exist?".format(no_kp))
 
+    @helpers.skipIfNoService(['security.key_pairs'])
     def test_key_pair(self):
-        name = 'cbtestkeypairB-{0}'.format(uuid.uuid4()).lower()
+        name = 'cbtestkeypairB-{0}'.format(uuid.uuid4())
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(lambda: kp.delete()):
             kpl = self.provider.security.key_pairs.list()
@@ -100,8 +100,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 lambda: self.provider.network.delete(network_id=net.id)):
             self.provider.security.security_groups.delete(group_id=sg.id)
 
+    @helpers.skipIfNoService(['security.security_groups'])
     def test_crud_security_group_service(self):
-        name = 'cbtestsecuritygroupA-{0}'.format(uuid.uuid4()).lower()
+        name = 'cbtestsecuritygroupA-{0}'.format(uuid.uuid4())
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
@@ -155,9 +156,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             len(no_sg) == 0,
             "Found a bogus security group?!?".format(no_sg))
 
+    @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group(self):
         """Test for proper creation of a security group."""
-        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4()).lower()
+        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
@@ -195,7 +197,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 #                 sort_keys=True)
 #             self.assertTrue(
 #                 sg.to_json() == json_repr,
-#                 "JSON sec group representation {0} does not match expected {1}"
+#                 "JSON SG representation {0} does not match expected {1}"
 #                 .format(sg.to_json(), json_repr))
 
         sgl = self.provider.security.security_groups.list()
@@ -205,9 +207,15 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             "Security group {0} should have been deleted but still exists."
             .format(name))
 
+    @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group_rule_add_twice(self):
         """Test whether adding the same rule twice succeeds."""
-        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4()).lower()
+        if isinstance(self.provider, TestMockHelperMixin):
+            raise unittest.SkipTest(
+                "Mock provider returns InvalidParameterValue: "
+                "Value security_group is invalid for parameter.")
+
+        name = 'cbtestsecuritygroupB-{0}'.format(uuid.uuid4())
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
@@ -222,9 +230,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "Expected rule {0} not found in security group: {1}".format(
                     same_rule, sg.rules))
 
+    @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group_group_rule(self):
         """Test for proper creation of a security group rule."""
-        name = 'cbtestsecuritygroupC-{0}'.format(uuid.uuid4()).lower()
+        name = 'cbtestsecuritygroupC-{0}'.format(uuid.uuid4())
         net = self.provider.network.create(name=name)
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id=net.id)
@@ -233,7 +242,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 len(sg.rules) == 0,
                 "Expected no security group group rule. Got {0}."
                 .format(sg.rules))
-            rule = sg.add_rule(src_group=sg, ip_protocol='tcp', from_port=0,
+            rule = sg.add_rule(src_group=sg, ip_protocol='tcp', from_port=1,
                                to_port=65535)
             self.assertTrue(
                 rule.group.name == name,

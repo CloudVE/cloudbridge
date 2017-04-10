@@ -26,14 +26,16 @@ from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
-from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
 from novaclient.exceptions import NotFound as NovaNotFound
+
+from neutronclient.common.exceptions import NeutronClientException
 
 from .resources import OpenStackBucket
 from .resources import OpenStackFloatingIP
@@ -81,10 +83,10 @@ class OpenStackSecurityService(BaseSecurityService):
         """
         return self._security_groups
 
-    def get_ec2_credentials(self):
+    def get_or_create_ec2_credentials(self):
         """
         A provider specific method than returns the ec2 credentials for the
-        current user.
+        current user, or creates a new pair if one doesn't exist.
         """
         keystone = self.provider.keystone
         if hasattr(keystone, 'ec2'):
@@ -92,6 +94,10 @@ class OpenStackSecurityService(BaseSecurityService):
                           if cred.tenant_id == keystone.tenant_id]
             if user_creds:
                 return user_creds[0]
+            else:
+                return keystone.ec2.create(keystone.user_id,
+                                           keystone.tenant_id)
+
         return None
 
     def get_ec2_endpoints(self):
@@ -558,7 +564,7 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, network=None, zone=None,
+    def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -568,7 +574,10 @@ class OpenStackInstanceService(BaseInstanceService):
             isinstance(instance_type, InstanceType) else \
             self.provider.compute.instance_types.find(
                 name=instance_type)[0].id
-        network_id = network.id if isinstance(network, Network) else network
+        network_id = subnet.network_id if isinstance(subnet, Subnet) else None
+        if not network_id and subnet:
+            network_id = (self.provider.network.subnets.get(subnet).network_id
+                          if isinstance(subnet, str) else None)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
@@ -583,8 +592,8 @@ class OpenStackInstanceService(BaseInstanceService):
         bdm = None
         if launch_config:
             bdm = self._to_block_device_mapping(launch_config)
-        net = self._get_network(network_id)
 
+        log.debug("Launching in network %s" % network_id)
         os_instance = self.provider.nova.servers.create(
             name,
             None if self._has_root_device(launch_config) else image_id,
@@ -596,7 +605,7 @@ class OpenStackInstanceService(BaseInstanceService):
             security_groups=security_groups_list,
             userdata=user_data,
             block_device_mapping_v2=bdm,
-            nics=net)
+            nics=[{'net-id': network_id}] if network_id else None)
         return OpenStackInstance(self.provider, os_instance)
 
     def _to_block_device_mapping(self, launch_config):
@@ -648,43 +657,6 @@ class OpenStackInstanceService(BaseInstanceService):
             if device.is_root:
                 return True
         return False
-
-    def _get_network(self, network_id=None):
-        """
-        Format the network ID for the API call, figuring out a default network.
-
-        If a network_id is not supplied, figure out which is the default
-        network and use it. A default network is either marked as such by the
-        provider or matches the default network name defined within this
-        library (by default CloudBridgeNet). If a default network cannot be
-        found, attempt to create a new one.
-        """
-        if network_id:
-            return [{'net-id': network_id}]
-        for net in self.provider.network.list():
-            if net.name == OpenStackNetwork.CB_DEFAULT_NETWORK_NAME:
-                return [{'net-id': net.id}]
-        try:
-            # Try to create a complete, Internet-connected new network
-            net = self.provider.network.create(
-                name=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
-            sn = net.create_subnet('10.0.0.0/16', '{0}Subnet'.format(
-                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME))
-            router = self.provider.network.create_router('{0}Router'.format(
-                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME))
-            for n in self.provider.network.list():
-                if n.external:
-                    external_net = n
-                    break
-            router.attach_network(external_net.id)
-            router.add_route(sn.id)
-            return [{'net-id': net.id}]
-        except Exception as exc:
-            # At this point we assume the provider does support user-defined
-            # networks so return None
-            log.warn("Exception occurred trying to create a default "
-                     "CloudBridge network: {0}".format(exc))
-            return None
 
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)
@@ -796,7 +768,8 @@ class OpenStackSubnetService(BaseSubnetService):
         subnets = self.provider.neutron.list_subnets().get('subnets', [])
         return [OpenStackSubnet(self.provider, subnet) for subnet in subnets]
 
-    def create(self, network, cidr_block, name=''):
+    def create(self, network, cidr_block, name='', zone=None):
+        """zone param is ignored."""
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
         subnet_info = {'name': name, 'network_id': network_id,
@@ -804,6 +777,31 @@ class OpenStackSubnetService(BaseSubnetService):
         subnet = (self.provider.neutron.create_subnet({'subnet': subnet_info})
                   .get('subnet'))
         return OpenStackSubnet(self.provider, subnet)
+
+    def get_or_create_default(self, zone=None):
+        """
+        Subnet zone is not supported by OpenStack and is thus ignored.
+        """
+        try:
+            for sn in self.list():
+                if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
+                    return sn
+            # No default; create one
+            net = self.provider.network.create(
+                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
+            sn = net.create_subnet(cidr_block='10.0.0.0/24',
+                                   name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
+            router = self.provider.network.create_router(
+                OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
+            for n in self.provider.network.list():
+                if n.external:
+                    external_net = n
+                    break
+            router.attach_network(external_net.id)
+            router.add_route(sn.id)
+            return sn
+        except NeutronClientException:
+            return None
 
     def delete(self, subnet):
         subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)

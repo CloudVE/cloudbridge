@@ -7,10 +7,7 @@ import test.helpers as helpers
 
 class CloudRegionServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudRegionServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
+    @helpers.skipIfNoService(['compute.regions'])
     def test_get_and_list_regions(self):
         """
         Test whether the region listing methods work,
@@ -47,6 +44,7 @@ class CloudRegionServiceTestCase(ProviderTestBase):
             "Region name {0} not in JSON representation {1}".format(
                 region.name, region.to_json()))
 
+    @helpers.skipIfNoService(['compute.regions'])
     def test_regions_unique(self):
         """
         Regions should not return duplicate items
@@ -55,6 +53,7 @@ class CloudRegionServiceTestCase(ProviderTestBase):
         unique_regions = set([region.id for region in regions])
         self.assertTrue(len(regions) == len(list(unique_regions)))
 
+    @helpers.skipIfNoService(['compute.regions'])
     def test_current_region(self):
         """
         RegionService.current should return a valid region
@@ -63,6 +62,7 @@ class CloudRegionServiceTestCase(ProviderTestBase):
         self.assertIsInstance(current_region, Region)
         self.assertTrue(current_region in self.provider.compute.regions.list())
 
+    @helpers.skipIfNoService(['compute.regions'])
     def test_zones(self):
         """
         Test whether regions return the correct zone information

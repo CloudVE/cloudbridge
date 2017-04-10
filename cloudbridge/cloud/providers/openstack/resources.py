@@ -26,13 +26,16 @@ from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
+
 import inspect
 import json
 
 import ipaddress
 
 from keystoneclient.v3.regions import Region
+
 import novaclient.exceptions as novaex
+
 import swiftclient.exceptions as swiftex
 
 
@@ -399,8 +402,8 @@ class OpenStackRegion(BaseRegion):
 
     @property
     def zones(self):
-        # detailed must be set to ``False`` because the (default) ``True``
-        # value requires Admin privileges
+        # ``detailed`` param must be set to ``False`` because the (default)
+        # ``True`` value requires Admin privileges
         if self.name == self._provider.region_name:  # optimisation
             zones = self._provider.nova.availability_zones.list(detailed=False)
         else:
@@ -412,8 +415,7 @@ class OpenStackRegion(BaseRegion):
                 # return an empty list
                 zones = []
 
-        return [OpenStackPlacementZone(self._provider, z.zoneName,
-                                       self._os_region)
+        return [OpenStackPlacementZone(self._provider, z.zoneName, self.name)
                 for z in zones]
 
 
@@ -691,7 +693,8 @@ class OpenStackNetwork(BaseNetwork):
                    .get('subnets', []))
         return [OpenStackSubnet(self._provider, subnet) for subnet in subnets]
 
-    def create_subnet(self, cidr_block, name=''):
+    def create_subnet(self, cidr_block, name='', zone=None):
+        """OpenStack has no support for subnet zones so the value is ignored"""
         subnet_info = {'name': name, 'network_id': self.id,
                        'cidr': cidr_block, 'ip_version': 4}
         subnet = (self._provider.neutron.create_subnet({'subnet': subnet_info})
@@ -727,6 +730,15 @@ class OpenStackSubnet(BaseSubnet):
     @property
     def network_id(self):
         return self._subnet.get('network_id', None)
+
+    @property
+    def zone(self):
+        """
+        OpenStack does not have a notion of placement zone for subnets.
+
+        Default to None.
+        """
+        return None
 
     def delete(self):
         if self.id in str(self._provider.neutron.list_subnets()):
@@ -875,8 +887,8 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         """
         Create a security group rule.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
+        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        ``from_port``, ``to_port``, ``cidr_ip``.  In other words, either
         you are authorizing another group or you are authorizing some
         ip-based rule.
 
@@ -902,20 +914,19 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
             if not isinstance(src_group, SecurityGroup):
                 src_group = self._provider.security.security_groups.get(
                     src_group)
-            for protocol in ['udp', 'tcp']:
-                existing_rule = self.get_rule(ip_protocol=ip_protocol,
-                                              from_port=1,
-                                              to_port=65535,
-                                              src_group=src_group)
-                if existing_rule:
-                    return existing_rule
+            existing_rule = self.get_rule(ip_protocol=ip_protocol,
+                                          from_port=from_port,
+                                          to_port=to_port,
+                                          src_group=src_group)
+            if existing_rule:
+                return existing_rule
 
-                rule = self._provider.nova.security_group_rules.create(
-                    parent_group_id=self._security_group.id,
-                    ip_protocol=protocol,
-                    from_port=1,
-                    to_port=65535,
-                    group_id=src_group.id)
+            rule = self._provider.nova.security_group_rules.create(
+                parent_group_id=self._security_group.id,
+                ip_protocol=ip_protocol,
+                from_port=from_port,
+                to_port=to_port,
+                group_id=src_group.id)
             if rule:
                 # We can only return one Rule so default to TCP (ie, last in
                 # the for loop above).
@@ -942,16 +953,16 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        # Update SG object; otherwise, recently added rules do now show
+        # Update SG object; otherwise, recently added rules do not show
         self._security_group = self._provider.nova.security_groups.get(
             self._security_group)
         for rule in self._security_group.rules:
             if (rule['ip_protocol'] == ip_protocol and
                 rule['from_port'] == from_port and
                 rule['to_port'] == to_port and
-                rule['ip_range'].get('cidr') == cidr_ip) or \
-               (rule['group'].get('name') == src_group.name if src_group
-                    else False):
+                (rule['ip_range'].get('cidr') == cidr_ip or
+                 (rule['group'].get('name') == src_group.name if src_group
+                  else False))):
                 return OpenStackSecurityGroupRule(self._provider, rule, self)
         return None
 
@@ -1023,9 +1034,7 @@ class OpenStackBucketObject(BaseBucketObject):
 
     @property
     def name(self):
-        """
-        Get this object's name.
-        """
+        """Get this object's name."""
         return self._obj.get("name")
 
     @property
@@ -1037,10 +1046,7 @@ class OpenStackBucketObject(BaseBucketObject):
         return self._obj.get("last_modified")
 
     def iter_content(self):
-        """
-        Returns this object's content as an
-        iterable.
-        """
+        """Returns this object's content as an iterable."""
         _, content = self._provider.swift.get_object(
             self.cbcontainer.name, self.name, resp_chunk_size=65536)
         return content
@@ -1053,11 +1059,18 @@ class OpenStackBucketObject(BaseBucketObject):
         self._provider.swift.put_object(self.cbcontainer.name, self.name,
                                         data)
 
+    def upload_from_file(self, path):
+        """
+        Stores the contents of the file pointed by the "path" variable.
+        """
+        with open(path, 'r') as f:
+            self.upload(f.read())
+
     def delete(self):
         """
         Delete this object.
 
-        :rtype: bool
+        :rtype: ``bool``
         :return: True if successful
         """
         try:
@@ -1067,6 +1080,19 @@ class OpenStackBucketObject(BaseBucketObject):
             if err.http_status == 404:
                 return True
         return False
+
+    def generate_url(self, expires_in=0):
+        """
+        Generates a URL to this object.
+
+        If the object is public, `expires_in` argument is not necessary, but if
+        the object is private, the life time of URL is set using `expires_in`
+        argument.
+
+        See here for implementation details:
+        http://stackoverflow.com/a/37057172
+        """
+        raise NotImplementedError("This functionality is not implemented yet.")
 
 
 class OpenStackBucket(BaseBucket):
@@ -1086,19 +1112,23 @@ class OpenStackBucket(BaseBucket):
         """
         return self._bucket.get("name")
 
-    def get(self, key):
+    def get(self, name):
         """
         Retrieve a given object from this bucket.
+
+        FIXME: If multiple objects match the name as their name prefix,
+        all will be returned by the provider but this method will only
+        return the first element.
         """
         _, object_list = self._provider.swift.get_container(
-            self.name, prefix=key)
+            self.name, prefix=name)
         if object_list:
             return OpenStackBucketObject(self._provider, self,
                                          object_list[0])
         else:
             return None
 
-    def list(self, limit=None, marker=None):
+    def list(self, limit=None, marker=None, prefix=None):
         """
         List all objects within this bucket.
 
@@ -1107,7 +1137,7 @@ class OpenStackBucket(BaseBucket):
         """
         _, object_list = self._provider.swift.get_container(
             self.name, limit=oshelpers.os_result_limit(self._provider, limit),
-            marker=marker)
+            marker=marker, prefix=prefix)
         cb_objects = [OpenStackBucketObject(
             self._provider, self, obj) for obj in object_list]
 

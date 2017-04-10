@@ -45,9 +45,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
             os.environ.get('OS_PROJECT_DOMAIN_NAME', None))
         self.user_domain_name = self._get_config_value(
             'os_user_domain_name', os.environ.get('OS_USER_DOMAIN_NAME', None))
-        self.identity_api_version = self._get_config_value(
-            'os_identity_api_version',
-            os.environ.get('OS_IDENTITY_API_VERSION', None))
 
         # Service connections, lazily initialized
         self._nova = None
@@ -235,9 +232,18 @@ class OpenStackCloudProvider(BaseCloudProvider):
 #                                     session=self.keystone.session)
 
     def _connect_swift(self):
+        storage_url = self._get_config_value(
+            'os_storage_url', os.environ.get('OS_STORAGE_URL', None))
+        auth_token = self._get_config_value(
+            'os_auth_token', os.environ.get('OS_AUTH_TOKEN', None))
+
         """Get an OpenStack Swift (object store) client object cloud."""
-        return swift_client.Connection(authurl=self.auth_url,
-                                       session=self._keystone_session)
+        if storage_url and auth_token:
+            return swift_client.Connection(preauthurl=storage_url,
+                                           preauthtoken=auth_token)
+        else:
+            return swift_client.Connection(authurl=self.auth_url,
+                                           session=self._keystone_session)
 
     def _connect_neutron(self):
         """Get an OpenStack Neutron (networking) client object cloud."""
