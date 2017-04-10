@@ -76,6 +76,9 @@ class AzureClient(object):
     def get_security_group(self, name):
         return self.network_management_client.network_security_groups.get(self.resource_group_name, name)
 
+    def delete_security_group(self, name):
+        return self.network_management_client.network_security_groups.delete(self.resource_group_name, name)
+
     def list_containers(self):
         access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
         block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
