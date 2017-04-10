@@ -10,10 +10,6 @@ import test.helpers as helpers
 
 class CloudImageServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudImageServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['compute.images', 'network',
                               'compute.instances'])
     def test_create_and_list_image(self):

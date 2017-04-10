@@ -8,10 +8,6 @@ from test.helpers import ProviderTestBase
 
 class CloudInstanceTypesServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudInstanceTypesServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types(self):
         instance_types = self.provider.compute.instance_types.list()

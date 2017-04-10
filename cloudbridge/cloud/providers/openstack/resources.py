@@ -1155,9 +1155,3 @@ class OpenStackBucket(BaseBucket):
     def create_object(self, object_name):
         self._provider.swift.put_object(self.name, object_name, None)
         return self.get(object_name)
-
-    def exists(self, name):
-        """
-        Determine if an object with given name exists in this bucket.
-        """
-        return True if self.get(name) else False

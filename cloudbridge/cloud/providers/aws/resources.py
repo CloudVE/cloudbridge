@@ -880,15 +880,6 @@ class AWSBucket(BaseBucket):
         key = Key(self._bucket, name)
         return AWSBucketObject(self._provider, key)
 
-    def exists(self, name):
-        """
-        Determine if an object with given name key exists in this bucket.
-        """
-        key = Key(self._bucket, name)
-        if key and key.exists():
-            return True
-        return False
-
 
 class AWSRegion(BaseRegion):
 

@@ -14,10 +14,6 @@ import test.helpers as helpers
 
 class CloudComputeServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudComputeServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['compute.instances', 'network'])
     def test_crud_instance(self):
         name = "CBInstCrud-{0}-{1}".format(

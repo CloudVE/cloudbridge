@@ -15,10 +15,6 @@ import test.helpers as helpers
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudObjectStoreServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket(self):
         """

@@ -7,10 +7,6 @@ from cloudbridge.cloud.interfaces.resources import RouterState
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudNetworkServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['network'])
     def test_crud_network_service(self):
         name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4())

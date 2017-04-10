@@ -82,7 +82,7 @@ TEST_DATA_CONFIG = {
         "image": os.environ.get('CB_IMAGE_OS',
                                 '842b949c-ea76-48df-998d-8a41f2626243'),
         "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.tiny'),
-        "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r6'),
+        "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
     }
 }
 
@@ -156,18 +156,9 @@ def cleanup_test_resources(instance=None, network=None, security_group=None,
                     terminal_states=[InstanceState.ERROR])
 
 
-class ProviderTestBase(object):
+class ProviderTestBase(unittest.TestCase):
 
-    """
-    A dummy base class for Test Cases. Does not inherit from unittest.TestCase
-    to avoid confusing test discovery by unittest and nose2. unittest.TestCase
-    is injected as a base class by the generator, so calling the unittest
-    constructor works correctly.
-    """
-
-    def __init__(self, methodName, provider):
-        unittest.TestCase.__init__(self, methodName=methodName)
-        self.provider = provider
+    _provider = None
 
     def setUp(self):
         if isinstance(self.provider, TestMockHelperMixin):
@@ -176,17 +167,7 @@ class ProviderTestBase(object):
     def tearDown(self):
         if isinstance(self.provider, TestMockHelperMixin):
             self.provider.tearDownMock()
-
-
-class ProviderTestCaseGenerator():
-
-    """
-    Generates test cases for all provider - testcase combinations.
-    Detailed docs at test/__init__.py
-    """
-
-    def __init__(self, test_classes):
-        self.all_test_classes = test_classes
+        self._provider = None
 
     def get_provider_wait_interval(self, provider_class):
         if issubclass(provider_class, TestMockHelperMixin):
@@ -194,80 +175,19 @@ class ProviderTestCaseGenerator():
         else:
             return 1
 
-    def create_provider_instance(self, provider_class):
-        """
-        Instantiate a default provider instance. All required connection
-        settings are expected to be set as environment variables.
-        """
+    def create_provider_instance(self):
+        provider_name = os.environ.get("CB_TEST_PROVIDER", "aws")
+        use_mock_drivers = parse_bool(
+            os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
+        factory = CloudProviderFactory()
+        provider_class = factory.get_provider_class(provider_name,
+                                                    get_mock=use_mock_drivers)
         config = {'default_wait_interval':
                   self.get_provider_wait_interval(provider_class)}
         return provider_class(config)
 
-    def generate_new_test_class(self, name, testcase_class):
-        """
-        Generates a new type which inherits from the given testcase_class and
-        unittest.TestCase
-        """
-        class_name = "{0}{1}".format(name, testcase_class.__name__)
-        return type(class_name, (testcase_class, unittest.TestCase), {})
-
-    def generate_test_suite_for_provider_testcase(
-            self, provider_class, testcase_class):
-        """
-        Generate and return a suite of tests for a specific provider class and
-        testcase combination
-        """
-        testloader = unittest.TestLoader()
-        testnames = testloader.getTestCaseNames(testcase_class)
-        suite = unittest.TestSuite()
-        for name in testnames:
-            generated_cls = self.generate_new_test_class(
-                provider_class.__name__,
-                testcase_class)
-            suite.addTest(
-                generated_cls(
-                    name,
-                    self.create_provider_instance(provider_class)))
-        return suite
-
-    def generate_test_suite_for_provider(self, provider_class):
-        """
-        Generate and return a suite of all available tests for a given provider
-        class
-        """
-        suite = unittest.TestSuite()
-        suites = [
-            self.generate_test_suite_for_provider_testcase(
-                provider_class, test_class)
-            for test_class in self.all_test_classes]
-        for s in suites:
-            suite.addTest(s)
-        return suite
-
-    def generate_tests(self):
-        """
-        Generate and return a suite of tests for all provider and test class
-        combinations
-        """
-        factory = CloudProviderFactory()
-        use_mock_drivers = parse_bool(
-            os.environ.get("CB_USE_MOCK_PROVIDERS", True))
-        provider_name = os.environ.get("CB_TEST_PROVIDER", None)
-        if provider_name:
-            provider_classes = [
-                factory.get_provider_class(
-                    provider_name,
-                    get_mock=use_mock_drivers)]
-            if not provider_classes[0]:
-                raise ValueError(
-                    "Could not find specified test provider %s" %
-                    provider_name)
-        else:
-            provider_classes = factory.get_all_provider_classes(
-                get_mock=use_mock_drivers)
-        suite = unittest.TestSuite()
-        suites = [
-            self.generate_test_suite_for_provider(p) for p in provider_classes]
-        for s in suites:
-            suite.addTest(s)
-        return suite
+    @property
+    def provider(self):
+        if not self._provider:
+            self._provider = self.create_provider_instance()
+        return self._provider
