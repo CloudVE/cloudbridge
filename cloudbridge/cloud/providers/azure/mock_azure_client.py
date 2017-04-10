@@ -1,5 +1,6 @@
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.storage.blob.models import Container
+from azure.mgmt.resource.resources.models import ResourceGroup
 
 class MockAzureClient:
     sec_gr1 = NetworkSecurityGroup()
@@ -19,17 +20,22 @@ class MockAzureClient:
     container2.name = "container2"
     containers = [container1, container2]
 
+    rg = ResourceGroup(location='westus')
+    rg.name = "testResourceGroup"
+
     def __init__(self, provider):
         self._provider = provider
 
-    def list_security_group(self, resource_group_name):
+    def list_security_group(self):
         return self.security_groups
 
     def get_resource_group(self, resource_group_name):
-        return 'Cloudbridge'
+        return self.rg
 
     def create_resource_group(self, resource_group_name, params):
-        return resource_group_name
+        rg = ResourceGroup(location='westus')
+        rg.name = resource_group_name
+        return rg
 
     def get_container(self, container_name):
         for container in self.containers:
