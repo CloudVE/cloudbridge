@@ -2,6 +2,7 @@ from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.storage.blob.models import Container
 from azure.mgmt.resource.resources.models import ResourceGroup
 
+
 class MockAzureClient:
     sec_gr1 = NetworkSecurityGroup()
     sec_gr1.name = "sec_group1"
@@ -47,4 +48,3 @@ class MockAzureClient:
         new_container = Container()
         new_container.name = "newContainerCreate"
         return None
-
