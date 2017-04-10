@@ -14,18 +14,28 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_list(self):
-        print(self.provider)
         sgl = self.provider.security.security_groups.list()
         found_sg = [g.name for g in sgl]
-        print("List( " + "Name-" + sgl[0].name + "  Id-" + sgl[0].id + " )")
+        for group in sgl:
+            print("List( " + "Name-" + group.name + "  Id-" + group.id + " Rules - " + " )")
         self.assertTrue(
             len(sgl) == 3,
-            "Security group {0} should have been deleted but still exists.")
+            "Count should be 3")
 
     @helpers.skipIfNoService(['security.security_groups'])
-    def test_azure_security_group_get(self):
+    def test_azure_security_group_get_found(self):
         sgl = self.provider.security.security_groups.get("sg2")
         print("Get ( " + "Name - " + sgl.name + "  Id - " + sgl.id + " )")
         self.assertTrue(
             sgl.name == "sec_group2",
-            "Security group {0} should have been deleted but still exists.")
+            "SG name should be sec_group2")
+
+    @helpers.skipIfNoService(['security.security_groups'])
+    def test_azure_security_group_get_not_found(self):
+        sgl = self.provider.security.security_groups.get("sg4")
+        print(str(sgl))
+        self.assertTrue(
+            sgl == None,
+            "Security group does not exist. Should return None.")
+
+
