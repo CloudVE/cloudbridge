@@ -7,6 +7,7 @@ from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
+
 class AzureSecurityServiceTestCase(ProviderTestBase):
     def __init__(self, methodName, provider):
         super(AzureSecurityServiceTestCase, self).__init__(
@@ -37,5 +38,3 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         self.assertTrue(
             sgl == None,
             "Security group does not exist. Should return None.")
-
-

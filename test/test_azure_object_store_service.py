@@ -7,6 +7,7 @@ from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
+
 class AzureObjectStoreServiceTestCase(ProviderTestBase):
     def __init__(self, methodName, provider):
         super(AzureObjectStoreServiceTestCase, self).__init__(
@@ -27,7 +28,6 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         self.assertTrue(
             str(container) == "[<CB-AzureBucket: container1>]",
             "Object find returned value should be container1")
-
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_get(self):
