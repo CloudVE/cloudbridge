@@ -18,7 +18,7 @@ openstack_reqs = ['python-novaclient>=7.0.0',
                   'python-glanceclient>=2.5.0',
                   'python-cinderclient>=1.9.0',
                   'python-swiftclient>=3.2.0',
-                  'python-neutronclient>=6.0.0',
+                  'python-neutronclient>=6.0.0, <=7.0.0',
                   'python-keystoneclient>=3.8.0']
 aws_reqs = ['boto>=2.38.0']
 full_reqs = base_reqs + aws_reqs + openstack_reqs
