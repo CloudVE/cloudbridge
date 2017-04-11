@@ -1,3 +1,15 @@
+0.3.0 - April 11, 2017. (sha a442d96b829ea2c721728520b01981fa61774625)
+-------
+
+* Reworked test framework to rely on tox's test generation features. This
+  allows for individual test cases to be run on a per provider basis.
+* Added more OpenStack swift config options (OS_AUTH_TOKEN and OS_STORAGE_URL)
+* Added supports for accessing EC2 containers with restricted permissions.
+* Removed exists() method from object store interface. Use get()==None check
+  instead.
+* Changed library to beta state
+* General documentation updates (testing, release process)
+
 0.2.0 - March 23, 2017. (sha a442d96b829ea2c721728520b01981fa61774625)
 -------
 
