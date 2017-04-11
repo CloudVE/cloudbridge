@@ -11,10 +11,11 @@ Release Process
 
 4. Add release notes to CHANGELOG.rst. Also add last commit hash to changelog.
 
-5. Release to PyPi 
-    ```
-    python setup.py sdist upload
-    python setup.py bdist_wheel upload
-    ```
+5. Release to PyPi
+
+.. code-block:: bash
+
+   python setup.py sdist upload
+   python setup.py bdist_wheel upload
 
 6. Tag release and make github release.
