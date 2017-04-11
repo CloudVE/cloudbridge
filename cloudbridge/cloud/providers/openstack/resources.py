@@ -672,6 +672,7 @@ class OpenStackNetwork(BaseNetwork):
 
     @property
     def state(self):
+        self.refresh()
         return OpenStackNetwork._NETWORK_STATE_MAP.get(
             self._network.get('status', None),
             NetworkState.UNKNOWN)
@@ -702,11 +703,9 @@ class OpenStackNetwork(BaseNetwork):
         return OpenStackSubnet(self._provider, subnet)
 
     def refresh(self):
-        """
-        Refreshes the state of this network by re-querying the cloud provider
-        for its latest state.
-        """
-        return self.state
+        """Refresh the state of this network by re-querying the provider."""
+        net = self._provider.neutron.list_networks(id=self.id).get('networks')
+        self._network = net[0] if net else {}
 
 
 class OpenStackSubnet(BaseSubnet):
