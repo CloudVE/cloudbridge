@@ -107,8 +107,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         ):
             net.wait_till_ready()
             self.assertEqual(
-                net.refresh(), 'available',
-                "Network in state %s , yet should be 'available'" % net.state)
+                net.state, 'available',
+                "Network in state '%s', yet should be 'available'" % net.state)
 
             self.assertIn(
                 net.id, repr(net),
