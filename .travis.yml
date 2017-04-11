@@ -18,5 +18,5 @@ install:
 script:
   - tox -e $TOX_ENV
 after_success:
-  - coveralls
-  - codecov
+#  - coveralls
+  - codecov --token=1066c661-d8df-487f-9c22-bf20ee2975d3
