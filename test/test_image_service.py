@@ -3,6 +3,7 @@ import uuid
 import six
 
 from cloudbridge.cloud.interfaces import MachineImageState
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
@@ -93,6 +94,11 @@ class CloudImageServiceTestCase(ProviderTestBase):
                     " not as expected: {2}" .format(found_images[0].name,
                                                     get_img.name,
                                                     test_image.name))
+                # TODO: Fix moto so that the BDM is populated correctly
+                if not isinstance(self.provider, TestMockHelperMixin):
+                    # check image size
+                    self.assertGreater(get_img.min_disk, 0, "Minimum disk size"
+                                       " required by image is invalid")
             # TODO: Images take a long time to deregister on EC2. Needs
             # investigation
             images = self.provider.compute.images.list()

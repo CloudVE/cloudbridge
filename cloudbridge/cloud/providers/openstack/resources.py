@@ -80,6 +80,17 @@ class OpenStackMachineImage(BaseMachineImage):
         """
         return None
 
+    @property
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
+        """
+        return self._os_image.minDisk
+
     def delete(self):
         """
         Delete this image

@@ -85,6 +85,18 @@ class AWSMachineImage(BaseMachineImage):
         """
         return self._ec2_image.description
 
+    @property
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
+        """
+        bdm = self._ec2_image.block_device_mapping
+        return bdm[self._ec2_image.root_device_name].size
+
     def delete(self):
         """
         Delete this image

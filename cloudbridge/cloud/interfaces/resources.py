@@ -742,6 +742,17 @@ class MachineImage(ObjectLifeCycleMixin, CloudResource):
         """
         pass
 
+    @abstractproperty
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
+        """
+        pass
+
     @abstractmethod
     def delete(self):
         """
@@ -2167,4 +2178,3 @@ class Bucket(PageableObjectMixin, CloudResource):
         :return: The newly created bucket object
         """
         pass
-
