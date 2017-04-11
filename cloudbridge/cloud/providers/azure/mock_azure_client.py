@@ -30,6 +30,13 @@ class MockAzureClient:
     def list_security_group(self):
         return self.security_groups
 
+    def delete_security_group(self, name):
+        for item in self.security_groups:
+            if item.name == name:
+                self.security_groups.remove(item)
+                return True
+        return False
+
     def get_resource_group(self, resource_group_name):
         return self.rg
 
@@ -48,3 +55,5 @@ class MockAzureClient:
         new_container = Container()
         new_container.name = "newContainerCreate"
         return None
+
+
