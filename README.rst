@@ -9,7 +9,7 @@ an Alpha state.
    :target: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge
    :alt: Travis Build Status
 
-.. image:: https://codecov.io/gh/madhukargilla/cloudbridge/branch/master/graph/badge.svg
+.. image:: https://codecov.io/gh/madhukargilla/cloudbridge/branch/azuedev/graph/badge.svg
   :target: https://codecov.io/gh/madhukargilla/cloudbridge
   :alt: code coverage
 
