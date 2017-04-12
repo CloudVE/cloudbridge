@@ -15,11 +15,12 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_create(self):
-        container = self.provider.object_store.create("container3")
+        container_name = "container3"
+        container = self.provider.object_store.create(container_name)
         print(container)
         self.assertTrue(
-            container == None,
-            "Object create returned value should be None")
+            container.name == container_name,
+            "Name of the container should be {0}".format(container_name))
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_find_Exist(self):
