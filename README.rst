@@ -10,9 +10,7 @@ an Alpha state.
    :alt: Travis Build Status
 
 .. image:: https://codecov.io/gh/madhukargilla/cloudbridge/branch/azuedev/graph/badge.svg
-  :target: https://codecov.io/gh/madhukargilla/cloudbridge
-  :alt: code coverage
-
+   :target: https://codecov.io/gh/madhukargilla/cloudbridge
 
 
 Installation
