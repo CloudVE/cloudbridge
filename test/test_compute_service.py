@@ -6,6 +6,7 @@ import six
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
+from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
 from test.helpers import ProviderTestBase
@@ -237,81 +238,81 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
 
-#         test_vol = self.provider.block_store.volumes.create(
-#             name,
-#             1,
-#             helpers.get_provider_test_data(self.provider, "placement"))
-#         with helpers.cleanup_action(lambda: test_vol.delete()):
-#             test_vol.wait_till_ready()
-#             test_snap = test_vol.create_snapshot(name=name,
-#                                                  description=name)
-#
-#             def cleanup_snap(snap):
-#                 snap.delete()
-#                 snap.wait_for(
-#                     [SnapshotState.UNKNOWN],
-#                     terminal_states=[SnapshotState.ERROR])
-#
-#             with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
-#                 test_snap.wait_till_ready()
-
-        lc = self.provider.compute.instances.create_launch_config()
-
-        # Add a new blank volume
-#         lc.add_volume_device(size=1, delete_on_terminate=True)
-
-        # Attach an existing volume
-#                 lc.add_volume_device(size=1, source=test_vol,
-#                                      delete_on_terminate=True)
-
-        # Add a new volume based on a snapshot
-#                 lc.add_volume_device(size=1, source=test_snap,
-#                                      delete_on_terminate=True)
-
-        # Override root volume size
-        image_id = helpers.get_provider_test_data(
-            self.provider,
-            "image")
-        img = self.provider.compute.images.get(image_id)
-        lc.add_volume_device(
-            is_root=True,
-            source=img,
-            # TODO: This should be greater than the ami size or tests
-            # will fail on actual infrastructure. Needs an image.size
-            # method
-            size=8,
-            delete_on_terminate=True)
-
-        # Add all available ephemeral devices
-        instance_type_name = helpers.get_provider_test_data(
-            self.provider,
-            "instance_type")
-        inst_type = self.provider.compute.instance_types.find(
-            name=instance_type_name)[0]
-        for _ in range(inst_type.num_ephemeral_disks):
-            lc.add_ephemeral_device()
-
-        net, subnet = helpers.create_test_network(self.provider, name)
-
-        inst = helpers.create_test_instance(
-            self.provider,
+        test_vol = self.provider.block_store.volumes.create(
             name,
-            subnet=subnet,
-            zone=helpers.get_provider_test_data(self.provider, 'placement'),
-            launch_config=lc)
+            1,
+            helpers.get_provider_test_data(self.provider, "placement"))
+        with helpers.cleanup_action(lambda: test_vol.delete()):
+            test_vol.wait_till_ready()
+            test_snap = test_vol.create_snapshot(name=name,
+                                                 description=name)
 
-        def cleanup(instance, net):
-            instance.terminate()
-            instance.wait_for(
-                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR])
-            helpers.delete_test_network(net)
+            def cleanup_snap(snap):
+                snap.delete()
+                snap.wait_for(
+                    [SnapshotState.UNKNOWN],
+                    terminal_states=[SnapshotState.ERROR])
 
-        with helpers.cleanup_action(lambda: cleanup(inst, net)):
-            try:
-                inst.wait_till_ready()
-            except WaitStateException as e:
-                self.fail("The block device mapped launch did not "
-                          " complete successfully: %s" % e)
-            # TODO: Check instance attachments and make sure they
-            # correspond to requested mappings
+            with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
+                test_snap.wait_till_ready()
+
+                lc = self.provider.compute.instances.create_launch_config()
+
+                # Add a new blank volume
+                lc.add_volume_device(size=1, delete_on_terminate=True)
+
+                # Attach an existing volume
+                lc.add_volume_device(size=1, source=test_vol,
+                                     delete_on_terminate=True)
+
+                # Add a new volume based on a snapshot
+                lc.add_volume_device(size=1, source=test_snap,
+                                     delete_on_terminate=True)
+
+                # Override root volume size
+                image_id = helpers.get_provider_test_data(
+                    self.provider,
+                    "image")
+                img = self.provider.compute.images.get(image_id)
+                # The size should be greater then the ami size
+                # and therefore, img.min_disk is used.
+                lc.add_volume_device(
+                    is_root=True,
+                    source=img,
+                    size=img.min_disk or 8,
+                    delete_on_terminate=True)
+
+                # Add all available ephemeral devices
+                instance_type_name = helpers.get_provider_test_data(
+                    self.provider,
+                    "instance_type")
+                inst_type = self.provider.compute.instance_types.find(
+                    name=instance_type_name)[0]
+                for _ in range(inst_type.num_ephemeral_disks):
+                    lc.add_ephemeral_device()
+
+                net, subnet = helpers.create_test_network(self.provider, name)
+
+                inst = helpers.create_test_instance(
+                    self.provider,
+                    name,
+                    subnet=subnet,
+                    zone=helpers.get_provider_test_data(self.provider,
+                                                        'placement'),
+                    launch_config=lc)
+
+                def cleanup(instance, net):
+                    instance.terminate()
+                    instance.wait_for(
+                        [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                        terminal_states=[InstanceState.ERROR])
+                    helpers.delete_test_network(net)
+
+                with helpers.cleanup_action(lambda: cleanup(inst, net)):
+                    try:
+                        inst.wait_till_ready()
+                    except WaitStateException as e:
+                        self.fail("The block device mapped launch did not "
+                                  " complete successfully: %s" % e)
+                    # TODO: Check instance attachments and make sure they
+                    # correspond to requested mappings
