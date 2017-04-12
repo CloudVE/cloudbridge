@@ -30,6 +30,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_find_NotExist(self):
+        ## For testing the case when container does not exist
         container = self.provider.object_store.find("container3")
         print("Find Not Exist - " + str(container))
         self.assertEqual(
