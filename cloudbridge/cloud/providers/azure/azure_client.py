@@ -27,6 +27,9 @@ class AzureClient(object):
         self._network_management_client = NetworkManagementClient(credentials, self.subscription_id)
         self._subscription_client = SubscriptionClient(credentials)
         self._compute_client = ComputeManagementClient(credentials, self.subscription_id)
+        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name,
+                                                                           self.storage_account_name)
+        self._block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
 
         log.debug("azure subscription : %s", self.subscription_id)
 
@@ -61,6 +64,10 @@ class AzureClient(object):
     @property
     def network_management_client(self):
         return self._network_management_client
+
+    @property
+    def blob_service(self):
+        return self._block_blob_service
 
     def get_resource_group(self, name):
         return self.resource_client.resource_groups.get(name)
@@ -98,65 +105,41 @@ class AzureClient(object):
         return self.network_management_client.network_security_groups.delete(self.resource_group_name, name)
 
     def list_containers(self):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        return block_blob_service.list_containers()
+        return self.blob_service.list_containers()
 
     def create_container(self, container_name):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        block_blob_service.create_container(container_name,public_access=PublicAccess.Container)
-        return block_blob_service.get_container_properties(container_name)
+        self.blob_service.create_container(container_name, public_access=PublicAccess.Container)
+        return self.blob_service.get_container_properties(container_name)
 
     def get_container(self, container_name):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        return block_blob_service.get_container_properties(container_name)
+        return self.blob_service.get_container_properties(container_name)
 
     def delete_container(self, container_name):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        block_blob_service.delete_container(container_name)
+        self.blob_service.delete_container(container_name)
         return None
     
-    def list_blobs(self,container_name):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        return block_blob_service.list_blobs(container_name)
+    def list_blobs(self, container_name):
+        return self.blob_service.list_blobs(container_name)
 
     def get_blob(self, container_name, blob_name):
         try:
-            access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-            block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-            return block_blob_service.get_blob_properties(container_name, blob_name)
+            return self.blob_service.get_blob_properties(container_name, blob_name)
         except AzureMissingResourceHttpError:
             return None
 
     def create_blob_from_text(self, container_name, blob_name, text):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        block_blob_service.create_blob_from_text(container_name, blob_name,text)
+        self.blob_service.create_blob_from_text(container_name, blob_name, text)
         return None
 
     def create_blob_from_file(self, container_name, blob_name, file_path):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        block_blob_service.create_blob_from_path(container_name, blob_name,file_path)
+        self.blob_service.create_blob_from_path(container_name, blob_name, file_path)
         return None
 
-    def delete_blob(self,container_name, blob_name):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name, self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        block_blob_service.delete_blob(container_name, blob_name)
+    def delete_blob(self, container_name, blob_name):
+        self.blob_service.delete_blob(container_name, blob_name)
 
     def get_blob_url(self, container_name, blob_name):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name,
-                                                                           self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        return block_blob_service.make_blob_url(container_name, blob_name)
+        return self.blob_service.make_blob_url(container_name, blob_name)
 
     def get_blob_content(self, container_name, blob_name):
-        access_key_result = self.storage_client.storage_accounts.list_keys(self.resource_group_name,
-                                                                           self.storage_account_name)
-        block_blob_service = BlockBlobService(self.storage_account_name, access_key_result.keys[0].value)
-        return block_blob_service.get_blob_to_text(container_name, blob_name)
+        return self.blob_service.get_blob_to_text(container_name, blob_name)
