@@ -197,12 +197,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # Override root volume size
         image_id = helpers.get_provider_test_data(self.provider, "image")
         img = self.provider.compute.images.get(image_id)
+        # The size should be greater then the ami size
+        # and therefore, img.min_disk is used.
         lc.add_volume_device(
             is_root=True,
             source=img,
-            # TODO: This should be greater than the ami size or tests will fail
-            # on actual infrastructure. Needs an image.size method
-            size=2,
+            size=img.min_disk if img and img.min_disk else 2,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
@@ -279,7 +279,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 lc.add_volume_device(
                     is_root=True,
                     source=img,
-                    size=img.min_disk or 8,
+                    size=img.min_disk if img and img.min_disk else 2,
                     delete_on_terminate=True)
 
                 # Add all available ephemeral devices
