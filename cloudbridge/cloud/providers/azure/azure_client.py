@@ -73,6 +73,23 @@ class AzureClient(object):
     def list_security_group(self):
         return self.network_management_client.network_security_groups.list(self.resource_group_name)
 
+    def create_security_group(self, name, parameters):
+        sg_create = self.network_management_client.network_security_groups.create_or_update(self.resource_group_name,
+                                                                                            name, parameters)
+        return sg_create.result()
+
+    def create_security_group_rule(self, security_group, rule_name, parameters):
+        security_rules_operations = self.network_management_client.security_rules
+        sro = security_rules_operations.create_or_update(self.resource_group_name, security_group, rule_name,
+                                                         parameters)
+        result = sro.result()
+        return result
+
+    def delete_security_group_rule(self, name, security_group):
+        security_rules_operations = self.network_management_client.security_rules
+        sro = security_rules_operations.delete(self.resource_group_name, security_group, name)
+        return sro.result()
+
     def get_security_group(self, name):
         return self.network_management_client.network_security_groups.get(self.resource_group_name, name)
 

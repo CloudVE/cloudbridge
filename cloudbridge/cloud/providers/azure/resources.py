@@ -57,8 +57,22 @@ class AzureSecurityGroup(BaseSecurityGroup):
         :rtype: :class:``.SecurityGroupRule``
         :return: Rule object if successful or ``None``.
         """
-
-        return None
+        security_group = self._security_group.name
+        resource_group = self._provider.resource_group
+        count = len(self.rules) + 1
+        rule_name = "Rule - " + str(count)
+        priority = count * 100
+        destination_port_range = "*"
+        destination_address_prefix = "*"
+        access = "Allow"
+        direction = "Inbound"
+        parameters = {"protocol": ip_protocol, "source_port_range": str(from_port) + "-" + str(to_port),
+                      "destination_port_range": destination_port_range,"priority": priority,
+                      "source_address_prefix": cidr_ip, "destination_address_prefix": destination_address_prefix,
+                      "access": access, "direction": direction}
+        result = self._provider.azure_client.create_security_group_rule(security_group, rule_name, parameters)
+        self._security_group.security_rules.append(result)
+        return result
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
@@ -115,7 +129,7 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def cidr_ip(self):
-        return self._rule.destination_address_prefix
+        return self._rule.source_address_prefix
 
     @property
     def group(self):
@@ -133,7 +147,7 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
             raise Exception('Default Security Rules cannot be deleted!')
         security_group = self.parent.name
         resource_group = self._provider.resource_group
-        sro = self._provider.azure_wrapper.delete_security_group_rule(self.name, resource_group, security_group)
+        sro = self._provider.azure_client.delete_security_group_rule(self.name, security_group)
         for i, o in enumerate(self.parent._security_group.security_rules):
             if o.name == self.name:
                 del self.parent._security_group.security_rules[i]
