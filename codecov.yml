@@ -24,3 +24,6 @@ comment:
   layout: "header, diff"
   behavior: default
   require_changes: no
+
+ignore:
+  - cloudbridge/cloud/providers/.*  # ignore folders and all its contents
