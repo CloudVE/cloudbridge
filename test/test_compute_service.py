@@ -293,26 +293,24 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
                 net, subnet = helpers.create_test_network(self.provider, name)
 
-                inst = helpers.create_test_instance(
-                    self.provider,
-                    name,
-                    subnet=subnet,
-                    zone=helpers.get_provider_test_data(self.provider,
-                                                        'placement'),
-                    launch_config=lc)
+                with helpers.cleanup_action(lambda:
+                                            helpers.delete_test_network(net)):
 
-                def cleanup(instance, net):
-                    instance.terminate()
-                    instance.wait_for(
-                        [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                        terminal_states=[InstanceState.ERROR])
-                    helpers.delete_test_network(net)
+                    inst = helpers.create_test_instance(
+                        self.provider,
+                        name,
+                        subnet=subnet,
+                        zone=helpers.get_provider_test_data(self.provider,
+                                                            'placement'),
+                        launch_config=lc)
 
-                with helpers.cleanup_action(lambda: cleanup(inst, net)):
-                    try:
-                        inst.wait_till_ready()
-                    except WaitStateException as e:
-                        self.fail("The block device mapped launch did not "
-                                  " complete successfully: %s" % e)
-                    # TODO: Check instance attachments and make sure they
-                    # correspond to requested mappings
+                    with helpers.cleanup_action(lambda:
+                                                helpers.delete_test_instance(
+                                                    inst, net)):
+                        try:
+                            inst.wait_till_ready()
+                        except WaitStateException as e:
+                            self.fail("The block device mapped launch did not "
+                                      " complete successfully: %s" % e)
+                        # TODO: Check instance attachments and make sure they
+                        # correspond to requested mappings

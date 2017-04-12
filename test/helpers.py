@@ -143,6 +143,13 @@ def get_test_instance(provider, name, key_pair=None, security_groups=None,
     return instance
 
 
+def delete_test_instance(instance):
+    if instance:
+        instance.terminate()
+        instance.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                          terminal_states=[InstanceState.ERROR])
+
+
 def cleanup_test_resources(instance=None, network=None, security_group=None,
                            key_pair=None):
     """Clean up any combination of supplied resources."""
@@ -151,11 +158,7 @@ def cleanup_test_resources(instance=None, network=None, security_group=None,
         with cleanup_action(lambda: key_pair.delete() if key_pair else None):
             with cleanup_action(lambda: security_group.delete()
                                 if security_group else None):
-                if instance:
-                    instance.terminate()
-                    instance.wait_for(
-                        [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                        terminal_states=[InstanceState.ERROR])
+                delete_test_instance(instance)
 
 
 class ProviderTestBase(unittest.TestCase):
