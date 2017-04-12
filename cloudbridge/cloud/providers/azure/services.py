@@ -78,8 +78,7 @@ class AzureObjectStoreService(BaseObjectStoreService):
 
     def get(self, bucket_id):
         log.info("Azure Object Store Service get API with bucket id - " + str(bucket_id))
-        object_store = self.provider.azure_client.get_container(self.provider.group_name, self.provider.account_name,
-                                                                bucket_id.split('/')[8])
+        object_store = self.provider.azure_client.get_container(bucket_id)
         if object_store:
             return AzureBucket(self.provider, object_store)
         return None
