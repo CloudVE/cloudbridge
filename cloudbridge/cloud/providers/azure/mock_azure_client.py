@@ -1,5 +1,5 @@
 from azure.mgmt.network.models import NetworkSecurityGroup
-from azure.storage.blob.models import Container, Blob
+from azure.storage.blob.models import Container
 from azure.mgmt.resource.resources.models import ResourceGroup
 from azure.mgmt.network.models import SecurityRule
 
@@ -38,24 +38,11 @@ class MockAzureClient:
 
     security_groups = [sec_gr1, sec_gr2, sec_gr3]
 
-
     container1 = Container()
     container1.name = "container1"
-
     container2 = Container()
     container2.name = "container2"
-
     containers = [container1, container2]
-
-    block1 = Blob()
-    block1.name = "block1"
-    block1.content = "blob1Content"
-
-    block2 = Blob()
-    block2.name = "block2"
-    block2.content = "blob2Content"
-
-    blocks = [block1, block2]
 
     rg = ResourceGroup(location='westus')
     rg.name = "testResourceGroup"
@@ -113,46 +100,4 @@ class MockAzureClient:
         new_container.name = container_name
         return new_container
 
-    def delete_container(self, container_name):
-        for cont in self.containers:
-            if cont.name == container_name:
-                self.containers.remove(cont)
-        return None
-
-    def create_blob_from_text(self, container_name, blob_name, text):
-        new_blob = Blob()
-        new_blob.name = blob_name
-        new_blob.content = text
-        self.blocks.append(new_blob)
-        return None
-
-    def get_blob(self, container_name, blob_name):
-        for blob in self.blocks:
-            if blob.name == blob_name:
-                return blob
-        return None
-
-    def list_blobs(self,container_name):
-        return self.blocks
-
-    def get_blob_content(self, container_name, blob_name):
-        for blob in self.blocks:
-            if blob.name == blob_name:
-                return blob
-        return None
-
-    def delete_blob(self,container_name, blob_name):
-        for blob in self.blocks:
-            if blob.name == blob_name:
-                self.blocks.remove(blob)
-
-    def create_blob_from_file(self, container_name, blob_name, file_path):
-        new_blob = Blob()
-        new_blob.name = blob_name
-        new_blob.content = "FileUploadText"
-        self.blocks.append(new_blob)
-        return None
-
-    def get_blob_url(self, container_name, blob_name):
-        return 'https://cloudbridgeazure.blob.core.windows.net/vhds/block1'
 
