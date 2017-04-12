@@ -10,6 +10,7 @@ coverage:
   ignore:
     - "*/cloud/providers/aws"  # ignore folders and all its contents
     - "*/cloud/providers/openstack"
+    - "*/cloud/interfaces"
     - "*/test"
 
   status:
