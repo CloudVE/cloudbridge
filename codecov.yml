@@ -7,7 +7,7 @@ coverage:
   round: down
   range: "70...100"
   ignore:
-    - "cloudbridge/src/azuedev/cloudbridge/cloud/providers/.*"  # ignore folders and all its contents
+    - "cloudbridge/cloudbridge/cloud/providers/.*"  # ignore folders and all its contents
 
   status:
     project: yes
