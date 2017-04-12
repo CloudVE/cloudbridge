@@ -97,4 +97,5 @@ class AzureObjectStoreService(BaseObjectStoreService):
             "AzureObjectStoreService does not implement this method")
 
     def create(self, name, location=None):
-        self.provider.azure_client.create_container(name)
+        object_store = self.provider.azure_client.create_container(name)
+        return AzureBucket(self.provider, object_store)

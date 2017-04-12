@@ -3,8 +3,10 @@ DataTypes used by this provider
 """
 import inspect
 import json
+from datetime import datetime
 
-from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, BaseSecurityGroupRule
+from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, BaseSecurityGroupRule, BaseBucketObject, \
+    ClientPagedResultList
 
 
 class AzureSecurityGroup(BaseSecurityGroup):
@@ -154,6 +156,77 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
                 break
 
 
+class AzureBucketObject(BaseBucketObject):
+
+    def __init__(self, provider, container, key):
+        super(AzureBucketObject, self).__init__(provider)
+        self._container = container
+        self._key = key
+
+    @property
+    def id(self):
+        return self._key.name
+
+    @property
+    def name(self):
+        """
+        Get this object's name.
+        """
+        return self._key.name
+
+    @property
+    def size(self):
+        """
+        Get this object's size.
+        """
+        return self._key.properties.content_length
+
+    @property
+    def last_modified(self):
+
+        """
+        Get the date and time this object was last modified.
+        """
+
+        return str(self._key.properties.last_modified)
+
+    def iter_content(self):
+        """
+        Returns this object's content as an
+        iterable.
+        """
+        blob = self._provider.azure_client.get_blob_content(self._container.name, self._key.name)
+        return blob.content
+
+    def upload(self, data):
+        """
+        Set the contents of this object to the data read from the source
+        string.
+        """
+        self._provider.azure_client.create_blob_from_text(self._container.name, self.name, data)
+
+    def upload_from_file(self, path):
+        """
+        Store the contents of the file pointed by the "path" variable.
+        """
+        self._provider.azure_client.create_blob_from_file(self._container.name, self.name, path)
+
+    def delete(self):
+        """
+        Delete this object.
+
+        :rtype: bool
+        :return: True if successful
+        """
+        self._provider.azure_client.delete_blob(self._container.name, self.name)
+
+    def generate_url(self, expires_in=0):
+        """
+        Generate a URL to this object.
+        """
+        return self._provider.azure_client.get_blob_url(self._container.name, self.name)
+
+
 class AzureBucket(BaseBucket):
 
     def __init__(self, provider, bucket):
@@ -175,7 +248,11 @@ class AzureBucket(BaseBucket):
         """
         Retrieve a given object from this bucket.
         """
-        pass
+        obj =self._provider.azure_client.get_blob(self.name, key)
+        if obj:
+            return AzureBucketObject(self._provider, self, obj)
+
+        return None
 
     def list(self, limit=None, marker=None):
         """
@@ -184,16 +261,23 @@ class AzureBucket(BaseBucket):
         :rtype: BucketObject
         :return: List of all available BucketObjects within this bucket.
         """
-        pass
+        objects = [AzureBucketObject(self._provider, self, obj)
+                  for obj in self._provider.azure_client.list_blobs(self.name) ]
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
 
-    def delete(self, delete_contents=False):
+    def delete(self, delete_contents=True):
         """
         Delete this bucket.
         """
-        pass
+        self._provider.azure_client.delete_container(self.name)
 
     def create_object(self, name):
-        return None
+        obj = self._provider.azure_client.create_blob_from_text(self.name, name,'')
+        return self.get(name)
 
     def exists(self, name):
-        pass
+        """
+        Determine if an object with given name exists in this bucket.
+        """
+        return True if self.get(name) else False
