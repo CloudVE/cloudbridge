@@ -1,4 +1,5 @@
 codecov:
+  branch: azuedev
   notify:
     require_ci_to_pass: yes
 
@@ -7,7 +8,7 @@ coverage:
   round: down
   range: "70...100"
   ignore:
-    - "cloudbridge/cloudbridge/cloud/providers/.*"  # ignore folders and all its contents
+    - "cloudbridge/cloud/providers/.*"  # ignore folders and all its contents
 
   status:
     project: yes
