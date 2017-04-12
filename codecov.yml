@@ -8,7 +8,10 @@ coverage:
   round: down
   range: "70...100"
   ignore:
-    - "cloudbridge/cloud/providers/"  # ignore folders and all its contents
+    - "*/cloud/providers/aws"  # ignore folders and all its contents
+    - "*/cloud/providers/openstack"
+    - "*/cloud/interfaces"
+    - "*/test"
 
   status:
     project: yes
