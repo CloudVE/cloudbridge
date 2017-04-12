@@ -19,4 +19,4 @@ script:
   - tox -e $TOX_ENV
 after_success:
 #  - coveralls
-  - codecov --token=1066c661-d8df-487f-9c22-bf20ee2975d3
+  - codecov --token=bd85eb21-d28f-456d-bb7e-f59fb0543974
