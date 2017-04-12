@@ -20,11 +20,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         name = "CBInstCrud-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, subnet = helpers.create_test_network(self.provider, name)
-        inst = helpers.get_test_instance(self.provider, name, subnet=subnet)
-
+        inst = None
+        net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 inst, net)):
+            net, subnet = helpers.create_test_network(self.provider, name)
+            inst = helpers.get_test_instance(self.provider, name,
+                                             subnet=subnet)
+
             all_instances = self.provider.compute.instances.list()
 
             list_instances = [i for i in all_instances if i.name == name]
@@ -94,17 +97,22 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, subnet = helpers.create_test_network(self.provider, name)
-        kp = self.provider.security.key_pairs.create(name=name)
-        sg = self.provider.security.security_groups.create(
-            name=name, description=name, network_id=net.id)
-        test_instance = helpers.get_test_instance(self.provider,
-                                                  name, key_pair=kp,
-                                                  security_groups=[sg],
-                                                  subnet=subnet)
 
+        test_instance = None
+        net = None
+        sg = None
+        kp = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net, sg, kp)):
+            net, subnet = helpers.create_test_network(self.provider, name)
+            kp = self.provider.security.key_pairs.create(name=name)
+            sg = self.provider.security.security_groups.create(
+                name=name, description=name, network_id=net.id)
+            test_instance = helpers.get_test_instance(self.provider,
+                                                      name, key_pair=kp,
+                                                      security_groups=[sg],
+                                                      subnet=subnet)
+
             self.assertTrue(
                 test_instance.id in repr(test_instance),
                 "repr(obj) should contain the object id so that the object"
@@ -306,7 +314,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
                     with helpers.cleanup_action(lambda:
                                                 helpers.delete_test_instance(
-                                                    inst, net)):
+                                                    inst)):
                         try:
                             inst.wait_till_ready()
                         except WaitStateException as e:

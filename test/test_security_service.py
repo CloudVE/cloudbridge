@@ -106,11 +106,14 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
     def test_crud_security_group_service(self):
         name = 'CBTestSecurityGroupA-{0}'.format(uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, name)
-        sg = self.provider.security.security_groups.create(
-            name=name, description=name, network_id=net.id)
+        net = None
+        sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 network=net, security_group=sg)):
+            net, _ = helpers.create_test_network(self.provider, name)
+            sg = self.provider.security.security_groups.create(
+                name=name, description=name, network_id=net.id)
+
             self.assertEqual(name, sg.description)
 
             # test list method
@@ -162,11 +165,14 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_security_group(self):
         """Test for proper creation of a security group."""
         name = 'CBTestSecurityGroupB-{0}'.format(uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, name)
-        sg = self.provider.security.security_groups.create(
-            name=name, description=name, network_id=net.id)
+        net = None
+        sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 network=net, security_group=sg)):
+            net, _ = helpers.create_test_network(self.provider, name)
+            sg = self.provider.security.security_groups.create(
+                name=name, description=name, network_id=net.id)
+
             rule = sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
                                cidr_ip='0.0.0.0/0')
             found_rule = sg.get_rule(ip_protocol='tcp', from_port=1111,
@@ -219,11 +225,15 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "Value security_group is invalid for parameter.")
 
         name = 'CBTestSecurityGroupC-{0}'.format(uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, name)
-        sg = self.provider.security.security_groups.create(
-            name=name, description=name, network_id=net.id)
+        net = None
+        sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 network=net, security_group=sg)):
+
+            net, _ = helpers.create_test_network(self.provider, name)
+            sg = self.provider.security.security_groups.create(
+                name=name, description=name, network_id=net.id)
+
             rule = sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
                                cidr_ip='0.0.0.0/0')
             # attempting to add the same rule twice should succeed
@@ -238,11 +248,13 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_security_group_group_rule(self):
         """Test for proper creation of a security group rule."""
         name = 'CBTestSecurityGroupD-{0}'.format(uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, name)
-        sg = self.provider.security.security_groups.create(
-            name=name, description=name, network_id=net.id)
+        net = None
+        sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 network=net, security_group=sg)):
+            net, _ = helpers.create_test_network(self.provider, name)
+            sg = self.provider.security.security_groups.create(
+                name=name, description=name, network_id=net.id)
             self.assertTrue(
                 len(sg.rules) == 0,
                 "Expected no security group group rule. Got {0}."
