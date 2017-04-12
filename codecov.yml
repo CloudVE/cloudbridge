@@ -9,6 +9,8 @@ coverage:
   range: "70...100"
   ignore:
     - "*/cloud/providers/aws"  # ignore folders and all its contents
+    - "*/cloud/providers/openstack"
+    - "*/cloud/providers/test"
 
   status:
     project: yes
