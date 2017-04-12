@@ -1,7 +1,11 @@
+import logging
+
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseObjectStoreService, BaseSecurityGroupService, BaseSecurityService
 
 from .resources import AzureBucket, AzureSecurityGroup
+
+log = logging.getLogger(__name__)
 
 
 class AzureSecurityService(BaseSecurityService):
@@ -73,8 +77,12 @@ class AzureObjectStoreService(BaseObjectStoreService):
         super(AzureObjectStoreService, self).__init__(provider)
 
     def get(self, bucket_id):
-        raise NotImplementedError(
-            "AzureObjectStoreService does not implement this service")
+        log.info("Azure Object Store Service get API with bucket id - " + str(bucket_id))
+        object_store = self.provider.azure_client.get_container(self.provider.group_name, self.provider.account_name,
+                                                                bucket_id.split('/')[8])
+        if object_store:
+            return AzureBucket(self.provider, object_store)
+        return None
 
     def find(self, name, limit=None, marker=None):
         object_store = self.provider.azure_client.get_container(name)
