@@ -11,6 +11,7 @@ an Alpha state.
 
 .. image:: https://codecov.io/gh/madhukargilla/cloudbridge/branch/azuedev/graph/badge.svg
    :target: https://codecov.io/gh/madhukargilla/cloudbridge
+   :alt: Code coverage
 
 
 Installation
