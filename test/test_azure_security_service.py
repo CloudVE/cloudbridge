@@ -81,3 +81,29 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         rules = cb.rules
         print("After deleting Rule -  " + str(rules[0]) + " length - " + str(len(rules)))
         self.assertEqual(len(rules), 2)
+
+    @helpers.skipIfNoService(['security.security_groups'])
+    def test_azure_security_group_rule_get(self):
+        list = self.provider.security.security_groups.list()
+        cb = list.data[0]
+        rule = cb.get_rule('*', '25', '1', '100')
+        print("Get Rule -  " + str(rule))
+        self.assertEqual(str(rule), "<CBSecurityGroupRule: IP: *; from: 25; to: 1; grp: None>")
+
+    @helpers.skipIfNoService(['security.security_groups'])
+    def test_azure_security_group_to_json(self):
+        list = self.provider.security.security_groups.list()
+        cb = list.data[0]
+        rule = cb.to_json()
+        print("Get Rule -  " + str(rule))
+        self.assertEqual(rule[2:4], "id")
+
+    @helpers.skipIfNoService(['security.security_groups'])
+    def test_azure_security_group_rule_to_json(self):
+        list = self.provider.security.security_groups.list()
+        cb = list.data[0]
+        rules = cb.rules
+        rule = rules[0]
+        json = rule.to_json()
+        print("Get Rule -  " + str(json))
+        self.assertEqual(json[2:9], "cidr_ip")
