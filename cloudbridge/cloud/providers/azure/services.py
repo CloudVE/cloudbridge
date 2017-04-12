@@ -48,14 +48,16 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         return None
 
     def list(self, limit=None, marker=None):
-        nsglist = self.provider.azure_client.list_security_group()
+        nsg_list = self.provider.azure_client.list_security_group()
         network_security_group = [AzureSecurityGroup(self.provider, sg)
-                                  for sg in nsglist]
+                                  for sg in nsg_list]
         return ClientPagedResultList(self.provider, network_security_group, limit, marker)
 
+        # network_id is similar to resource group in azure
     def create(self, name, description, network_id):
-        raise NotImplementedError(
-            "AzureSecurityGroupService does not implement this method")
+        parameters = {"location": self.provider.region_name}
+        result = self.provider.azure_client.create_security_group(name, parameters)
+        return AzureSecurityGroup(self.provider, result)
 
     def find(self, name, limit=None, marker=None):
         raise NotImplementedError(
