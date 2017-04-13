@@ -15,8 +15,10 @@ class MockAzureClient:
                             direction="Inbound")
     sg_rule2.name = "rule2"
     sg_rule2.id = "r2"
+    sg_rule2.is_default = True
     sg_rule2.destination_port_range = "*"
-    sg_rule2.source_port_range = "25-2"
+    sg_rule2.source_port_range = "*"
+
 
     sec_gr1 = NetworkSecurityGroup()
     sec_gr1.name = "sec_group1"
