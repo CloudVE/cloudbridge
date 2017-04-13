@@ -8,6 +8,7 @@ from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
@@ -362,3 +363,24 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 sg not in test_inst.security_groups, "Expected security group"
                 " '%s' to be removed from instance security_groups: [%s]" %
                 (sg, test_inst.security_groups))
+
+            # check floating ips
+            router = self.provider.network.create_router(name=name)
+
+            with helpers.cleanup_action(lambda: router.delete()):
+                router.attach_network(net.id)
+                # check whether adding an elastic ip works
+                fip = self.provider.network.create_floating_ip()
+                with helpers.cleanup_action(lambda: fip.delete()):
+                    test_inst.add_floating_ip(fip.public_ip)
+                    test_inst.refresh()
+                    self.assertIn(fip.public_ip, test_inst.public_ips)
+
+                    if isinstance(self.provider, TestMockHelperMixin):
+                        # TODO: Moto bug does not refresh removed public ip
+                        return
+
+                    # check whether removing an elastic ip works
+                    test_inst.remove_floating_ip(fip.public_ip)
+                    test_inst.refresh()
+                    self.assertNotIn(fip.public_ip, test_inst.public_ips)

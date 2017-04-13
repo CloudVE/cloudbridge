@@ -356,7 +356,7 @@ class AWSInstance(BaseInstance):
         """
         if self._ec2_instance.vpc_id:
             aid = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
-            return self._provider._ec2_conn.associate_address(
+            return self._provider.ec2_conn.associate_address(
                 self._ec2_instance.id, allocation_id=aid.allocation_id)
         else:
             return self._ec2_instance.use_ip(ip_address)
@@ -365,8 +365,13 @@ class AWSInstance(BaseInstance):
         """
         Remove a elastic IP address from this instance.
         """
-        raise NotImplementedError(
-            'remove_floating_ip not implemented by this provider.')
+        ip_addr = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
+        if self._ec2_instance.vpc_id:
+            return self._provider.ec2_conn.disassociate_address(
+                association_id=ip_addr.association_id)
+        else:
+            return self._provider.ec2_conn.disassociate_address(
+                public_ip=ip_addr.public_ip)
 
     def add_security_group(self, sg):
         """
