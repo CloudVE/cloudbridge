@@ -1,4 +1,4 @@
-0.3.0 - April 11, 2017. (sha a442d96b829ea2c721728520b01981fa61774625)
+0.3.0 - April 11, 2017. (sha 13539ccda9e4809082796574d18b1b9bb3f2c624)
 -------
 
 * Reworked test framework to rely on tox's test generation features. This
@@ -7,6 +7,9 @@
 * Added supports for accessing EC2 containers with restricted permissions.
 * Removed exists() method from object store interface. Use get()==None check
   instead.
+* New method (img.min_disk) for geting size of machine image.
+* Test improvements (flake8 during build, more tests)
+* Misc bug fixes and improvements
 * Changed library to beta state
 * General documentation updates (testing, release process)
 
