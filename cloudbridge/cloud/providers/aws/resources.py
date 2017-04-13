@@ -368,6 +368,21 @@ class AWSInstance(BaseInstance):
         raise NotImplementedError(
             'remove_floating_ip not implemented by this provider.')
 
+    def add_security_group(self, sg):
+        """
+        Add a security group to this instance
+        """
+        self._ec2_instance.modify_attribute(
+            'groupSet', [g.id for g in self._ec2_instance.groups] + [sg.id])
+
+    def remove_security_group(self, sg):
+        """
+        Remove a security group from this instance
+        """
+        self._ec2_instance.modify_attribute(
+            'groupSet', [g.id for g in self._ec2_instance.groups
+                         if g.id != sg.id])
+
     @property
     def state(self):
         return AWSInstance.INSTANCE_STATE_MAP.get(

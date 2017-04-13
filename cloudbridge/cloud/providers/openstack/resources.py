@@ -374,6 +374,18 @@ class OpenStackInstance(BaseInstance):
         """
         self._os_instance.remove_floating_ip(ip_address)
 
+    def add_security_group(self, sg):
+        """
+        Add a security group to this instance
+        """
+        self._os_instance.add_security_group(sg.id)
+
+    def remove_security_group(self, sg):
+        """
+        Remove a security group from this instance
+        """
+        self._os_instance.remove_security_group(sg.id)
+
     @property
     def state(self):
         return OpenStackInstance.INSTANCE_STATE_MAP.get(

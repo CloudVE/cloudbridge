@@ -580,6 +580,26 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         pass
 
+    @abstractmethod
+    def add_security_group(self, sg):
+        """
+        Add a security group to this instance
+
+        :type sg: ``SecurityGroup``
+        :param sg: The SecurityGroup to associate with the instance.
+        """
+        pass
+
+    @abstractmethod
+    def remove_security_group(self, sg):
+        """
+        Remove a security group from this instance
+
+        :type sg: ``SecurityGroup``
+        :param sg: The SecurityGroup to associate with the instance.
+        """
+        pass
+
 
 class MachineImageState(object):
 
