@@ -1,12 +1,12 @@
 import uuid
 
-import six
+from test import helpers
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces import MachineImageState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+import six
 
 
 class CloudImageServiceTestCase(ProviderTestBase):

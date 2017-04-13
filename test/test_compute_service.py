@@ -1,17 +1,17 @@
 import ipaddress
 import uuid
 
-import six
+from test import helpers
+from test.helpers import ProviderTestBase
 
-from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import InstanceState
+from cloudbridge.cloud.interfaces import InvalidConfigurationException
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import SnapshotState
-from cloudbridge.cloud.interfaces.exceptions import WaitStateException
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+import six
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):

@@ -3,10 +3,10 @@ import json
 import unittest
 import uuid
 
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
-
+from test import helpers
 from test.helpers import ProviderTestBase
-import test.helpers as helpers
+
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 
 class CloudSecurityServiceTestCase(ProviderTestBase):

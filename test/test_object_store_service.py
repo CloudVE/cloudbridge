@@ -1,16 +1,16 @@
-from datetime import datetime
-from io import BytesIO
-from unittest import skip
-import uuid
-
-import requests
 
 import tempfile
+import uuid
+
+from datetime import datetime
+from io import BytesIO
+from test import helpers
+from test.helpers import ProviderTestBase
+from unittest import skip
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+import requests
 
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):

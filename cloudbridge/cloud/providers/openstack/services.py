@@ -33,9 +33,9 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
-from novaclient.exceptions import NotFound as NovaNotFound
-
 from neutronclient.common.exceptions import NeutronClientException
+
+from novaclient.exceptions import NotFound as NovaNotFound
 
 from .resources import OpenStackBucket
 from .resources import OpenStackFloatingIP

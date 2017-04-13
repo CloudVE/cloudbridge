@@ -1,13 +1,15 @@
-from contextlib import contextmanager
+import functools
 import os
 import sys
 import unittest
-import functools
-from six import reraise
+
+from contextlib import contextmanager
 
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
+
+from six import reraise
 
 
 def parse_bool(val):

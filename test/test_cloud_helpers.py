@@ -1,8 +1,9 @@
 import itertools
 
+from test.helpers import ProviderTestBase
+
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
-from test.helpers import ProviderTestBase
 
 
 class DummyResult(object):
@@ -71,4 +72,4 @@ class CloudHelpersTestCase(ProviderTestBase):
         self.assertTrue(results.supports_server_paging, "Server paged result"
                         " lists should return True for server paging.")
         with self.assertRaises(NotImplementedError):
-            _ = results.data
+            results.data

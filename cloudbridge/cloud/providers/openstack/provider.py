@@ -3,14 +3,19 @@
 import os
 
 from cinderclient import client as cinder_client
-from keystoneauth1 import session
-from keystoneclient import client as keystone_client
-from neutronclient.v2_0 import client as neutron_client
-from novaclient import client as nova_client
-from novaclient import shell as nova_shell
-from swiftclient import client as swift_client
 
 from cloudbridge.cloud.base import BaseCloudProvider
+
+from keystoneauth1 import session
+
+from keystoneclient import client as keystone_client
+
+from neutronclient.v2_0 import client as neutron_client
+
+from novaclient import client as nova_client
+from novaclient import shell as nova_shell
+
+from swiftclient import client as swift_client
 
 from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService

@@ -1,14 +1,14 @@
 import time
 import uuid
 
-import six
+from test import helpers
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces import SnapshotState
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+import six
 
 
 class CloudBlockStoreServiceTestCase(ProviderTestBase):

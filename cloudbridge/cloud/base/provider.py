@@ -1,15 +1,16 @@
 """Base implementation of a provider interface."""
+import functools
 import os
+from os.path import expanduser
 try:
     from configparser import SafeConfigParser
 except ImportError:  # Python 2
     from ConfigParser import SafeConfigParser
-from os.path import expanduser
-import functools
 
 from cloudbridge.cloud.interfaces import CloudProvider
-from cloudbridge.cloud.interfaces.resources import Configuration
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
+from cloudbridge.cloud.interfaces.resources import Configuration
+
 
 DEFAULT_RESULT_LIMIT = 50
 DEFAULT_WAIT_TIMEOUT = 600

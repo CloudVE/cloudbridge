@@ -1,6 +1,6 @@
 """Services implemented by the AWS provider."""
-import time
 import string
+import time
 
 from boto.ec2.blockdevicemapping import BlockDeviceMapping
 from boto.ec2.blockdevicemapping import BlockDeviceType
@@ -22,9 +22,9 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -643,6 +643,7 @@ class AWSInstanceService(BaseInstanceService):
         return ServerPagedResultList(reservations.is_truncated,
                                      reservations.next_token,
                                      False, data=instances)
+
 
 AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
                                 "aws_instance_data.json"
