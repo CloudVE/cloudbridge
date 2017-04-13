@@ -152,13 +152,19 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             net.delete()
 
         name = 'cbtestrouter-{0}'.format(uuid.uuid4())
-        router = self.provider.network.create_router(name=name)
-        net = self.provider.network.create(name=name)
-        cidr = '10.0.1.0/24'
-        sn = net.create_subnet(
-            cidr_block=cidr, name=name,
-            zone=helpers.get_provider_test_data(self.provider, 'placement'))
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        net = None
+        sn = None
+        router = None
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router)):
+            router = self.provider.network.create_router(name=name)
+            net = self.provider.network.create(name=name)
+            cidr = '10.0.1.0/24'
+            sn = net.create_subnet(cidr_block=cidr, name=name,
+                                   zone=helpers.get_provider_test_data(
+                                       self.provider, 'placement'))
+
             # Check basic router properties
             self.assertIn(
                 router, self.provider.network.routers(),

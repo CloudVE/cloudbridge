@@ -98,6 +98,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         instance_name = "CBVolOps-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         net = None
         test_instance = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
@@ -129,6 +131,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
         vol_desc = 'newvoldesc1'
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         test_instance = None
         net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(

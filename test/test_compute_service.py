@@ -20,6 +20,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         name = "CBInstCrud-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         inst = None
         net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
@@ -98,6 +100,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
 
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         test_instance = None
         net = None
         sg = None
@@ -330,6 +334,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
 
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         test_inst = None
         net = None
         sg = None

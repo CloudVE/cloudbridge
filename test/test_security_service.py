@@ -106,6 +106,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
     def test_crud_security_group_service(self):
         name = 'CBTestSecurityGroupA-{0}'.format(uuid.uuid4())
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         net = None
         sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
@@ -165,6 +168,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_security_group(self):
         """Test for proper creation of a security group."""
         name = 'CBTestSecurityGroupB-{0}'.format(uuid.uuid4())
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         net = None
         sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
@@ -225,6 +231,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "Value security_group is invalid for parameter.")
 
         name = 'CBTestSecurityGroupC-{0}'.format(uuid.uuid4())
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         net = None
         sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
@@ -248,6 +257,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_security_group_group_rule(self):
         """Test for proper creation of a security group rule."""
         name = 'CBTestSecurityGroupD-{0}'.format(uuid.uuid4())
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
         net = None
         sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
