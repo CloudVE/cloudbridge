@@ -9,8 +9,9 @@ an Alpha state.
    :target: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge
    :alt: Travis Build Status
 
-
-
+.. image:: https://codecov.io/gh/ms-azure-cloudbroker/cloudbridge/branch/azuedev/graph/badge.svg?token=vSBgILNtd7
+   :target: https://codecov.io/gh/ms-azure-cloudbroker/cloudbridge
+   :alt: code coverage
 
 Installation
 ~~~~~~~~~~~~
