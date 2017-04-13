@@ -322,3 +322,37 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                       " complete successfully: %s" % e)
                         # TODO: Check instance attachments and make sure they
                         # correspond to requested mappings
+
+    @helpers.skipIfNoService(['compute.instances', 'network',
+                              'security.security_groups'])
+    def test_instance_methods(self):
+        name = "CBInstProps-{0}-{1}".format(
+            self.provider.name,
+            uuid.uuid4())
+
+        test_inst = None
+        net = None
+        sg = None
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                test_inst, net, sg)):
+            net, subnet = helpers.create_test_network(self.provider, name)
+            test_inst = helpers.get_test_instance(self.provider, name,
+                                                  subnet=subnet)
+            sg = self.provider.security.security_groups.create(
+                name=name, description=name, network_id=net.id)
+
+            # Check adding a security group to a running instance
+            test_inst.add_security_group(sg)
+            test_inst.refresh()
+            self.assertTrue(
+                sg in test_inst.security_groups, "Expected security group '%s'"
+                " to be among instance security_groups: [%s]" %
+                (sg, test_inst.security_groups))
+
+            # Check removing a security group from a running instance
+            test_inst.remove_security_group(sg)
+            test_inst.refresh()
+            self.assertTrue(
+                sg not in test_inst.security_groups, "Expected security group"
+                " '%s' to be removed from instance security_groups: [%s]" %
+                (sg, test_inst.security_groups))
