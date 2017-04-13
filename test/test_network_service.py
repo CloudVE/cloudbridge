@@ -145,11 +145,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_router(self):
 
         def _cleanup(net, subnet, router):
-            router.remove_route(subnet.id)
-            router.detach_network()
-            router.delete()
-            subnet.delete()
-            net.delete()
+            with helpers.cleanup_action(lambda: net.delete()):
+                with helpers.cleanup_action(lambda: subnet.delete()):
+                    with helpers.cleanup_action(lambda: router.delete()):
+                        router.remove_route(subnet.id)
+                        router.detach_network()
 
         name = 'cbtestrouter-{0}'.format(uuid.uuid4())
         # Declare these variables and late binding will allow
@@ -186,6 +186,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Router {0} should not be assoc. with a network {1}".format(
                     router.id, router.network_id))
 
+            # TODO: Cloud specific code, needs fixing
             # Check router connectivity
             # On OpenStack only one network is external and on AWS every
             # network is external, yet we need to use the one we've created?!
