@@ -93,8 +93,11 @@ class AzureObjectStoreService(BaseObjectStoreService):
                                      limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        raise NotImplementedError(
-            "AzureObjectStoreService does not implement this method")
+        object_stores = [AzureBucket(self.provider, object_store)
+                   for object_store in
+                   self.provider.azure_client.list_containers()]
+        return ClientPagedResultList(self.provider, object_stores,
+                                     limit=limit, marker=marker)
 
     def create(self, name, location=None):
         object_store = self.provider.azure_client.create_container(name)
