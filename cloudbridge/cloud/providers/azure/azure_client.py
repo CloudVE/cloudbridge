@@ -42,10 +42,6 @@ class AzureClient(object):
         return self._config.get('azure_storage_account_name')
 
     @property
-    def block_blob_service(self):
-        return self._storage_client
-
-    @property
     def storage_client(self):
         return self._storage_client
 
@@ -112,7 +108,10 @@ class AzureClient(object):
         return self.blob_service.get_container_properties(container_name)
 
     def get_container(self, container_name):
-        return self.blob_service.get_container_properties(container_name)
+        try:
+            return self.blob_service.get_container_properties(container_name)
+        except AzureMissingResourceHttpError:
+            return None
 
     def delete_container(self, container_name):
         self.blob_service.delete_container(container_name)
