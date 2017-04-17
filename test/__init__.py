@@ -42,7 +42,6 @@ from test.test_region_service import CloudRegionServiceTestCase
 from test.test_security_service import CloudSecurityServiceTestCase
 from test.test_azure_object_store_service import AzureObjectStoreServiceTestCase
 from test.test_azure_resource_group import AzureResourceGroupTestCase
-
 PROVIDER_TESTS = [
     # CloudHelpersTestCase,
     # CloudInterfaceTestCase,
@@ -57,7 +56,7 @@ PROVIDER_TESTS = [
     # CloudImageServiceTestCase,
     AzureSecurityServiceTestCase,
     AzureObjectStoreServiceTestCase,
-    AzureResourceGroupTestCase
+    AzureResourceGroupTestCase,
 ]
 
 
