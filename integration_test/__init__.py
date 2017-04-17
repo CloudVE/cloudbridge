@@ -26,11 +26,13 @@ discovery. (The test generator will automatically add ``unittest.TestCase``
 as a base class to each combination).
 """
 import cloudbridge
-from integration_test.test_integration_azure_object_store_service import AzureIntegrationObjectStoreServiceTestCase
 from integration_test.helpers import ProviderTestCaseGenerator
+from integration_test.test_integration_azure_object_store_service import AzureIntegrationObjectStoreServiceTestCase
+from integration_test.test_integration_azure_security_group import AzureIntegrationSecurityServiceTestCase
 
 PROVIDER_TESTS ={'azure': [
-     AzureIntegrationObjectStoreServiceTestCase
+     AzureIntegrationObjectStoreServiceTestCase,
+    AzureIntegrationSecurityServiceTestCase
 ]}
 
 
