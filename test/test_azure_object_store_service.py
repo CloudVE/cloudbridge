@@ -23,6 +23,13 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
             "Name of the container should be {0}".format(container_name))
 
     @helpers.skipIfNoService(['object_store'])
+    def test_azure_bucket_list(self):
+        containerList = self.provider.object_store.list()
+        print("List Container - " + str(containerList))
+        self.assertEqual(
+            len(containerList), 1)
+
+    @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_find_Exist(self):
         container = self.provider.object_store.find("container1")
         print("Find Exist - " + str(container))
