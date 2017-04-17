@@ -110,6 +110,9 @@ class MockAzureClient:
                 return container
         return None
 
+    def list_containers(self):
+        return self.containers
+
     def create_container(self, container_name):
         new_container = Container()
         new_container.name = container_name
