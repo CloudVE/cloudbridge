@@ -42,6 +42,10 @@ class AzureClient(object):
         return self._config.get('azure_storage_account_name')
 
     @property
+    def region_name(self):
+        return self._config.get('azure_region_name')
+
+    @property
     def storage_client(self):
         return self._storage_client
 
@@ -142,3 +146,39 @@ class AzureClient(object):
 
     def get_blob_content(self, container_name, blob_name):
         return self.blob_service.get_blob_to_text(container_name, blob_name)
+
+    def create_empty_disk(self, disk_name, size, region=None, snapshot_id=None):
+        if snapshot_id:
+            return self.create_snapshot_disk(disk_name, snapshot_id, region)
+
+        async_creation = self.compute_client.disks.create_or_update(
+            self.resource_group_name,
+            disk_name,
+            {
+                'location': region or self.region_name,
+                'disk_size_gb': size,
+                'creation_data': {
+                    'create_option': 'empty'
+                }
+            }
+        )
+        disk_resource = async_creation.result()
+        return disk_resource
+
+    def create_snapshot_disk(self, disk_name, snapshot_id, region=None):
+        async_creation = self.compute_client.disks.create_or_update(
+            self.resource_group_name,
+            disk_name,
+            {
+                'location': region or self.region_name,
+                'creation_data': {
+                    'create_option': 'copy',
+                    'source_uri':snapshot_id
+                }
+            }
+        )
+        disk_resource = async_creation.result()
+        return disk_resource
+
+    def get_disk(self, disk_name):
+        return self.compute_client.disks.get(self.resource_group_name, disk_name)
