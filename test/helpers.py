@@ -145,6 +145,10 @@ def get_test_instance(provider, name, key_pair=None, security_groups=None,
     return instance
 
 
+def get_test_fixtures_folder():
+    return os.path.join(os.path.dirname(__file__), 'fixtures/')
+
+
 def delete_test_instance(instance):
     if instance:
         instance.terminate()

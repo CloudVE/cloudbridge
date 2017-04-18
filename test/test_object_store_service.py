@@ -1,5 +1,4 @@
-
-import tempfile
+import os
 import uuid
 
 from datetime import datetime
@@ -201,12 +200,10 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             obj = test_bucket.create_object(obj_name)
 
             with helpers.cleanup_action(lambda: obj.delete()):
-                content = b"Hello World. Upload from file."
-                with tempfile.NamedTemporaryFile() as tmpFile:
-                    tmpFile.write(content)
-                    tmpFile.flush()
-
-                    obj.upload_from_file(tmpFile.name)
-                    target_stream = BytesIO()
-                    obj.save_content(target_stream)
-                    self.assertEqual(target_stream.getvalue(), content)
+                test_file = os.path.join(
+                    helpers.get_test_fixtures_folder(), 'logo.jpg')
+                obj.upload_from_file(test_file)
+                target_stream = BytesIO()
+                obj.save_content(target_stream)
+                with open(test_file, 'rb') as f:
+                    self.assertEqual(target_stream.getvalue(), f.read())
