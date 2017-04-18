@@ -384,18 +384,25 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 else:
                     external_net = net
                 router.attach_network(external_net.id)
-                # check whether adding an elastic ip works
-                fip = self.provider.network.create_floating_ip()
-                with helpers.cleanup_action(lambda: fip.delete()):
-                    test_inst.add_floating_ip(fip.public_ip)
-                    test_inst.refresh()
-                    self.assertIn(fip.public_ip, test_inst.public_ips)
+                router.add_route(subnet.id)
 
-                    if isinstance(self.provider, TestMockHelperMixin):
-                        # TODO: Moto bug does not refresh removed public ip
-                        return
+                def cleanup_router():
+                    router.remove_route(subnet.id)
+                    router.detach_network()
 
-                    # check whether removing an elastic ip works
-                    test_inst.remove_floating_ip(fip.public_ip)
-                    test_inst.refresh()
-                    self.assertNotIn(fip.public_ip, test_inst.public_ips)
+                with helpers.cleanup_action(lambda: cleanup_router()):
+                    # check whether adding an elastic ip works
+                    fip = self.provider.network.create_floating_ip()
+                    with helpers.cleanup_action(lambda: fip.delete()):
+                        test_inst.add_floating_ip(fip.public_ip)
+                        test_inst.refresh()
+                        self.assertIn(fip.public_ip, test_inst.public_ips)
+
+                        if isinstance(self.provider, TestMockHelperMixin):
+                            # TODO: Moto bug does not refresh removed public ip
+                            return
+
+                        # check whether removing an elastic ip works
+                        test_inst.remove_floating_ip(fip.public_ip)
+                        test_inst.refresh()
+                        self.assertNotIn(fip.public_ip, test_inst.public_ips)
