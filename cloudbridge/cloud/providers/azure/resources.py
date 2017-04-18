@@ -5,8 +5,39 @@ import inspect
 import json
 from datetime import datetime
 
+from msrestazure.azure_exceptions import CloudError
+
 from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, BaseSecurityGroupRule, BaseBucketObject, \
-    ClientPagedResultList
+    ClientPagedResultList, BaseVolume, BaseAttachmentInfo, BaseInstance, BaseSnapshot
+from cloudbridge.cloud.interfaces import VolumeState, SnapshotState, InstanceState
+
+NETWORK_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}'
+IMAGE_RESOURCE_ID =  '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/images/{imageName}'
+INSTANCE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/virtualMachines/{vmName}'
+VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/disks/{diskName}'
+SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/snapshots/{snapshotName}'
+NETWORK_SECURITY_GROUP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkSecurityGroups/{networkSecurityGroupName}'
+NETWORK_SECURITY_RULE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkSecurityGroups/{networkSecurityGroupName}/securityRules/{securityRuleName}'
+SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}/subnets/{subnetName}'
+PUBLIC_IP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/publicIPAddresses/{publicIpAddressName}'
+ROUTE_TABLE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/routeTables/{routeTableName}'
+ROUTE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/routeTables/{routeTableName}/routes/{routeName}'
+NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/networkInterfaces/{networkInterfaceName}'
+
+RESOURCE_GROUP_NAME='resourceGroupName'
+SUBSCRIPTION_ID='subscriptionId'
+NETWORK_NAME='virtualNetworkName'
+IMAGE_NAME='imageName'
+VM_NAME='vmName'
+VOLUME_NAME ='diskName'
+SNAPSHOT_NAME ='snapshotName'
+SECURITY_GROUP_NAME='networkSecurityGroupName'
+SECURITY_GROUP_RULE_NAME ='securityRuleName'
+SUBNET_NAME = 'subnetName'
+PUBLIC_IP_NAME = 'publicIpAddressName'
+ROUTE_TABLE_NAME = 'routeTableName'
+ROUTE_NAME = 'routeName'
+NETWORK_INTERFACE_NAME ='networkInterfaceName'
 
 
 class AzureSecurityGroup(BaseSecurityGroup):
@@ -281,3 +312,131 @@ class AzureBucket(BaseBucket):
         Determine if an object with given name exists in this bucket.
         """
         return True if self.get(name) else False
+
+
+class AzureVolume(BaseVolume):
+
+    VOLUME_STATE_MAP = {
+        'creating': VolumeState.CREATING,
+        'available': VolumeState.AVAILABLE,
+        'in-use': VolumeState.IN_USE,
+        'deleting': VolumeState.CONFIGURING,
+        'deleted': VolumeState.DELETED,
+        'error': VolumeState.ERROR
+    }
+
+    def __init__(self, provider, volume):
+        super(AzureVolume, self).__init__(provider)
+        self._volume = volume
+        self._url_params= TemplateUrlParser.parse(VOLUME_RESOURCE_ID,volume.id)
+
+    @property
+    def id(self):
+        return self._volume.id
+
+    @property
+    def name(self):
+        """
+        Get the volume name.
+
+        .. note:: an instance must have a (case sensitive) tag ``Name``
+        """
+        return self._volume.name
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the volume name.
+        """
+        self._volume.name = value
+
+    @property
+    def description(self):
+        return None
+
+    @description.setter
+    def description(self, value):
+        pass
+
+    @property
+    def size(self):
+        return self._volume.disk_size_gb
+
+    @property
+    def create_time(self):
+        return self._volume.time_created
+
+    @property
+    def zone_id(self):
+        return self._volume.location
+
+    @property
+    def source(self):
+        return None
+
+    @property
+    def attachments(self):
+        return None
+
+    def attach(self, instance, device=None):
+        pass
+
+    def detach(self, force=False):
+        pass
+
+    def create_snapshot(self, name, description=None):
+        pass
+
+    def delete(self):
+        pass
+
+    @property
+    def state(self):
+        return AzureVolume.VOLUME_STATE_MAP.get(
+            self._volume.provisioning_state, VolumeState.UNKNOWN)
+
+    def refresh(self):
+        pass
+
+
+class AzureInstance(BaseInstance):
+
+    def __init__(self, provider, vm_instace):
+        super(AzureInstance, self).__init__(provider)
+        self._vm = vm_instace
+        self._url_params = TemplateUrlParser.parse(INSTANCE_RESOURCE_ID,vm_instace.id)
+
+    @property
+    def id(self):
+        """
+        Get the instance identifier.
+        """
+        return self._vm.id
+
+
+class AzureSnapshot(BaseSnapshot):
+
+    def __init__(self, provider, snapshot):
+        super(AzureSnapshot, self).__init__(provider)
+        self._snapshot = snapshot
+        self._url_params = TemplateUrlParser.parse(SNAPSHOT_RESOURCE_ID,snapshot.id)
+
+    @property
+    def id(self):
+        return self._snapshot.id
+
+
+class TemplateUrlParser:
+    @staticmethod
+    def parse(template_url, original_url):
+        template_url_parts = template_url.split('/')
+        original_url_parts = original_url.split('/')
+        if len(template_url_parts) != len(original_url_parts):
+            raise Exception('Invalid url parameter passed')
+        d = {}
+        for k, v in zip(template_url_parts, original_url_parts):
+            if k.startswith('{') and k.endswith('}'):
+                d.update({k[1:-1]: v})
+
+        return d
