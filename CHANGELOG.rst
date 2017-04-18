@@ -1,3 +1,8 @@
+0.3.1 - April 18, 2017. (sha f36a462e886d8444cb2818f6573677ecf0565315)
+-------
+
+* Patch for binary file handling in openstack
+
 0.3.0 - April 11, 2017. (sha 13539ccda9e4809082796574d18b1b9bb3f2c624)
 -------
 
