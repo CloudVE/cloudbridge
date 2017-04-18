@@ -1084,8 +1084,8 @@ class OpenStackBucketObject(BaseBucketObject):
         """
         Stores the contents of the file pointed by the "path" variable.
         """
-        with open(path, 'r') as f:
-            self.upload(f.read())
+        with open(path, 'rb') as f:
+            self.upload(f)
 
     def delete(self):
         """
