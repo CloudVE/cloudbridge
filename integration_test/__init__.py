@@ -29,10 +29,12 @@ import cloudbridge
 from integration_test.helpers import ProviderTestCaseGenerator
 from integration_test.test_integration_azure_object_store_service import AzureIntegrationObjectStoreServiceTestCase
 from integration_test.test_integration_azure_security_group import AzureIntegrationSecurityServiceTestCase
+from integration_test.test_integration_azure_volume_service import AzureIntegrationVolumeServiceTestCase
 
 PROVIDER_TESTS ={'azure': [
-     AzureIntegrationObjectStoreServiceTestCase,
-    AzureIntegrationSecurityServiceTestCase
+    #AzureIntegrationObjectStoreServiceTestCase,
+    #AzureIntegrationSecurityServiceTestCase,
+    AzureIntegrationVolumeServiceTestCase
 ]}
 
 

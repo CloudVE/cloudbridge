@@ -7,7 +7,6 @@ from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import BlockBlobService, PublicAccess
-from azure.common import AzureMissingResourceHttpError
 
 log = logging.getLogger(__name__)
 
@@ -104,18 +103,17 @@ class AzureClient(object):
     def delete_security_group(self, name):
         return self.network_management_client.network_security_groups.delete(self.resource_group_name, name)
 
-    def list_containers(self):
-        return self.blob_service.list_containers()
+    def list_containers(self, filters=None):
+        containers = FilterList(self.blob_service.list_containers())
+        containers.filter(filters)
+        return containers
 
     def create_container(self, container_name):
         self.blob_service.create_container(container_name, public_access=PublicAccess.Container)
         return self.blob_service.get_container_properties(container_name)
 
     def get_container(self, container_name):
-        try:
-            return self.blob_service.get_container_properties(container_name)
-        except AzureMissingResourceHttpError:
-            return None
+        return self.blob_service.get_container_properties(container_name)
 
     def delete_container(self, container_name):
         self.blob_service.delete_container(container_name)
@@ -125,10 +123,7 @@ class AzureClient(object):
         return self.blob_service.list_blobs(container_name)
 
     def get_blob(self, container_name, blob_name):
-        try:
-            return self.blob_service.get_blob_properties(container_name, blob_name)
-        except AzureMissingResourceHttpError:
-            return None
+        return self.blob_service.get_blob_properties(container_name, blob_name)
 
     def create_blob_from_text(self, container_name, blob_name, text):
         self.blob_service.create_blob_from_text(container_name, blob_name, text)
@@ -182,3 +177,13 @@ class AzureClient(object):
 
     def get_disk(self, disk_name):
         return self.compute_client.disks.get(self.resource_group_name, disk_name)
+
+
+class FilterList(list):
+    def filter(self, filters):
+        if filters:
+            for obj in self:
+                for key in filters:
+                    print('original value' + str(getattr(obj, key)) + 'key value' + filters[key])
+                    if filters[key] not in str(getattr(obj, key)):
+                        self.remove(obj)

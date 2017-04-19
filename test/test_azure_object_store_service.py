@@ -29,7 +29,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_find_Exist(self):
-        container = self.provider.object_store.find("container2")
+        container = self.provider.object_store.find("container")
         print("Find Exist - " + str(container))
         self.assertEqual(
             len(container) ,1)
@@ -37,7 +37,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_find_NotExist(self):
         ## For testing the case when container does not exist
-        container = self.provider.object_store.find("container3")
+        container = self.provider.object_store.find("container23")
         print("Find Not Exist - " + str(container))
         self.assertEqual(
             len(container), 0)
@@ -102,7 +102,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         contDel = cont.list()
         print("List object  - " + str(contDel))
         self.assertEqual(
-            len(contDel), 1)
+            len(contDel), 2)
 
 
     @helpers.skipIfNoService(['object_store'])
@@ -113,7 +113,6 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         print("List object  - " + str(contDel))
         self.assertEqual(
             str(contDel), "<CB-AzureBucketObject: block2>")
-
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_iter_content(self):
@@ -127,6 +126,15 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
             str(content),'blob2Content' )
 
     @helpers.skipIfNoService(['object_store'])
+    def test_azure_bucket_object_iter_content_ifBlobNotExists(self):
+        containers = self.provider.object_store.find("container2")
+        cont = containers[0]
+        block = cont.get('block3')
+        content = block.iter_content()
+        self.assertEqual(
+            content, None, 'content should be None')
+
+    @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_upload(self):
         containers = self.provider.object_store.find("container2")
         cont = containers[0]
@@ -134,7 +142,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block = blocks[0]
         block.upload('blob1Content')
         self.assertEqual(
-            block.iter_content(), 'blob2Content')
+            block.iter_content(), 'blob1Content')
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_delete(self):
@@ -144,7 +152,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block = blocks[0]
         block.delete()
         self.assertEqual(
-            len(cont.list()), 1)
+            len(cont.list()), 2)
 
 
     @helpers.skipIfNoService(['object_store'])
