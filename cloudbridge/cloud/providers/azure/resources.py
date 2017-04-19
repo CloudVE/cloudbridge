@@ -5,6 +5,7 @@ import inspect
 import json
 from datetime import datetime
 
+from azure.common import AzureMissingResourceHttpError
 from msrestazure.azure_exceptions import CloudError
 
 from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, BaseSecurityGroupRule, BaseBucketObject, \
@@ -279,11 +280,14 @@ class AzureBucket(BaseBucket):
         """
         Retrieve a given object from this bucket.
         """
-        obj =self._provider.azure_client.get_blob(self.name, key)
-        if obj:
-            return AzureBucketObject(self._provider, self, obj)
+        try:
+            obj =self._provider.azure_client.get_blob(self.name, key)
+            if obj:
+                return AzureBucketObject(self._provider, self, obj)
 
-        return None
+            return None
+        except AzureMissingResourceHttpError:
+            return None
 
     def list(self, limit=None, marker=None):
         """
@@ -329,6 +333,7 @@ class AzureVolume(BaseVolume):
         super(AzureVolume, self).__init__(provider)
         self._volume = volume
         self._url_params= TemplateUrlParser.parse(VOLUME_RESOURCE_ID,volume.id)
+        self._description = None
 
     @property
     def id(self):
@@ -353,11 +358,11 @@ class AzureVolume(BaseVolume):
 
     @property
     def description(self):
-        return None
+        return self._description
 
     @description.setter
     def description(self, value):
-        pass
+        self._description = value
 
     @property
     def size(self):
@@ -398,33 +403,6 @@ class AzureVolume(BaseVolume):
 
     def refresh(self):
         pass
-
-
-class AzureInstance(BaseInstance):
-
-    def __init__(self, provider, vm_instace):
-        super(AzureInstance, self).__init__(provider)
-        self._vm = vm_instace
-        self._url_params = TemplateUrlParser.parse(INSTANCE_RESOURCE_ID,vm_instace.id)
-
-    @property
-    def id(self):
-        """
-        Get the instance identifier.
-        """
-        return self._vm.id
-
-
-class AzureSnapshot(BaseSnapshot):
-
-    def __init__(self, provider, snapshot):
-        super(AzureSnapshot, self).__init__(provider)
-        self._snapshot = snapshot
-        self._url_params = TemplateUrlParser.parse(SNAPSHOT_RESOURCE_ID,snapshot.id)
-
-    @property
-    def id(self):
-        return self._snapshot.id
 
 
 class TemplateUrlParser:

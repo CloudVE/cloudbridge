@@ -12,18 +12,25 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
     def __init__(self, methodName, provider):
         super(AzureSecurityServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
+        self.key_pairs = self.provider.security.key_pairs
+        self.security_groups = self.provider.security.security_groups
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_create(self):
         name = "testCreateSecGroup3"
-        sg = self.provider.security.security_groups.create(
+        sg = self.security_groups.create(
             name=name, description=name, network_id="")
         print("Create( " + "Name-" + sg.name + "  Id-" + sg.id + " Rules - " + str(sg.rules) + " )")
         self.assertEqual(name, sg.name)
 
     @helpers.skipIfNoService(['security.security_groups'])
+    def test_azure_security_group_find(self):
+        with self.assertRaises(NotImplementedError):
+            sgs = self.security_groups.find("mygroup")
+
+    @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_list(self):
-        sgl = self.provider.security.security_groups.list()
+        sgl = self.security_groups.list()
         found_sg = [g.name for g in sgl]
         for group in sgl:
             print("List( " + "Name-" + group.name + "  Id-" + group.id + " Rules - " + " )")
@@ -33,15 +40,15 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_get_found(self):
-        sgl = self.provider.security.security_groups.get("sg3")
+        sgl = self.security_groups.get("/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg3")
         print("Get ( " + "Name - " + sgl.name + "  Id - " + sgl.id + " )")
         self.assertTrue(
-            sgl.name == "sec_group3",
-            "SG name should be sec_group2")
+            sgl.name == "sg3",
+            "SG name should be sg3")
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_get_not_found(self):
-        sgl = self.provider.security.security_groups.get("sg4")
+        sgl = self.security_groups.get("/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg4")
         print(str(sgl))
         self.assertTrue(
             sgl == None,
@@ -49,18 +56,18 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_delete_IdExists(self):
-        sg = self.provider.security.security_groups.delete("sg2")
+        sg = self.security_groups.delete("/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg2")
         print("Delete - ")
         self.assertEqual(sg, True)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_delete_IdNotExist(self):
-        sg = self.provider.security.security_groups.delete("sg5")
+        sg = self.security_groups.delete("/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg5")
         self.assertEqual(sg, False)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_create(self):
-        list = self.provider.security.security_groups.list()
+        list = self.security_groups.list()
         cb = list.data[0]
         rules = cb.rules
         for rule in rules:
@@ -73,7 +80,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_delete(self):
-        list = self.provider.security.security_groups.list()
+        list = self.security_groups.list()
         cb = list.data[0]
         rules = cb.rules
         print("Before deleting Rule -  " + str(rules[0]) + " length - " + str(len(rules)))
@@ -84,7 +91,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_delete_Default(self):
-        list = self.provider.security.security_groups.list()
+        list = self.security_groups.list()
         cb = list.data[0]
         rules = cb.rules
         print("Before deleting Rule -  " + str(rules[0]) + " length - " + str(len(rules)))
@@ -94,7 +101,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_get_exist(self):
-        list = self.provider.security.security_groups.list()
+        list = self.security_groups.list()
         cb = list.data[0]
         rule = cb.get_rule('*', '25', '1', '100')
         print("Get Rule -  " + str(rule))
@@ -102,7 +109,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_get_notExist(self):
-        list = self.provider.security.security_groups.list()
+        list = self.security_groups.list()
         cb = list.data[0]
         rule = cb.get_rule('*', '25', '1', '1')
         print("Get Rule -  " + str(rule))
@@ -110,7 +117,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_to_json(self):
-        list = self.provider.security.security_groups.list()
+        list = self.security_groups.list()
         cb = list.data[0]
         rule = cb.to_json()
         print("Get Rule -  " + str(rule))
@@ -118,7 +125,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_to_json(self):
-        list = self.provider.security.security_groups.list()
+        list = self.security_groups.list()
         cb = list.data[0]
         rules = cb.rules
         rule = rules[0]

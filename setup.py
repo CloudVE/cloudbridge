@@ -24,7 +24,12 @@ REQS_BASE = [
     'retrying>=1.3.3'
 ]
 REQS_AWS = ['boto3']
-REQS_AZURE = ['azure>=2.0.0rc6']
+REQS_AZURE = ['azure-common==1.1.5',
+'azure-mgmt-resource==1.0.0rc1',
+'azure-mgmt-compute==1.0.0rc1',
+'azure-mgmt-network==1.0.0rc1',
+'azure-mgmt-storage==1.0.0rc1',
+'azure-storage==0.34.0']
 REQS_OPENSTACK = [
     'openstacksdk',
     'python-novaclient>=7.0.0',
