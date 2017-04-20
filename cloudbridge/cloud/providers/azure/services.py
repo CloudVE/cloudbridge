@@ -147,7 +147,8 @@ class AzureVolumeService(BaseVolumeService):
         super(AzureVolumeService, self).__init__(provider)
 
     def get(self, volume_id):
-        raise NotImplementedError('AzureVolumeService not imeplemented this method')
+        volume = self.provider.azure_client.get_disk(volume_id)
+        return AzureVolume(self.provider, volume)
 
     def find(self, name, limit=None, marker=None):
         raise NotImplementedError('AzureVolumeService not imeplemented this method')

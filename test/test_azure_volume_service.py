@@ -17,15 +17,17 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_create(self):
         volume = self.provider.block_store.volumes.create("MyVolume",1, description='My volume')
-        print("Create - " + str(volume))
+        print("Create Volume - " + str(volume))
         self.assertTrue(
             volume.name == "MyVolume" , "Volume name should be MyVolume")
 
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_get(self):
-        with self.assertRaises(NotImplementedError):
-            volume = self.provider.block_store.volumes.get("MyVolume")
+        volume = self.provider.block_store.volumes.get("MyVolume")
+        print("Get Volume  - " + str(volume))
+        self.assertTrue(
+            volume.name == "MyVolume", "Volume name should be MyVolume")
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_find(self):
