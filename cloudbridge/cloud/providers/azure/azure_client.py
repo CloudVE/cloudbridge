@@ -77,8 +77,11 @@ class AzureClient(object):
     def list_locations(self):
         return self.subscription_client.subscriptions.list_locations(self.subscription_id)
 
-    def list_security_group(self):
-        return self.network_management_client.network_security_groups.list(self.resource_group_name)
+    def list_security_group(self, filters=None):
+        security_groups = FilterList(
+            self.network_management_client.network_security_groups.list(self.resource_group_name))
+        security_groups.filter(filters)
+        return security_groups
 
     def create_security_group(self, name, parameters):
         sg_create = self.network_management_client.network_security_groups.create_or_update(self.resource_group_name,
@@ -118,7 +121,7 @@ class AzureClient(object):
     def delete_container(self, container_name):
         self.blob_service.delete_container(container_name)
         return None
-    
+
     def list_blobs(self, container_name):
         return self.blob_service.list_blobs(container_name)
 
@@ -168,7 +171,7 @@ class AzureClient(object):
                 'location': region or self.region_name,
                 'creation_data': {
                     'create_option': 'copy',
-                    'source_uri':snapshot_id
+                    'source_uri': snapshot_id
                 }
             }
         )
@@ -179,11 +182,17 @@ class AzureClient(object):
         return self.compute_client.disks.get(self.resource_group_name, disk_name)
 
 
+# TODO: find out a better way.
 class FilterList(list):
     def filter(self, filters):
+        filtered_list = []
         if filters:
             for obj in self:
                 for key in filters:
-                    print('original value' + str(getattr(obj, key)) + 'key value' + filters[key])
+                    print('original value ' + str(getattr(obj, key)) + ' key value ' + filters[key])
                     if filters[key] not in str(getattr(obj, key)):
-                        self.remove(obj)
+                        print("removing " + str(getattr(obj, key)))
+                        filtered_list.append(obj)
+                        # self.remove(obj)
+            for s in filtered_list:
+                self.remove(s)

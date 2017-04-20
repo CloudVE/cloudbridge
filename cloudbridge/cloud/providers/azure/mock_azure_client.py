@@ -101,11 +101,8 @@ class MockAzureClient:
         self.security_groups.append(sg_create)
         return sg_create
 
-    # def list_security_group(self):
-    #     return self.security_groups
-
     def list_security_group(self, filters=None):
-        security_groups= FilterList(self.security_groups)
+        security_groups = FilterList(self.security_groups)
         security_groups.filter(filters)
         return security_groups
 
