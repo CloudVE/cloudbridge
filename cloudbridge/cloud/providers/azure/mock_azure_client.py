@@ -70,6 +70,24 @@ class MockAzureClient:
     rg = ResourceGroup(location='westus')
     rg.name = "testResourceGroup"
 
+    volume1 = Disk(location='eastus', creation_data=None)
+    volume1.id = 'Volume1'
+    volume1.name = "Volume1"
+    volume1.disk_size_gb = 1
+    volume1.creation_data = CreationData(create_option=DiskCreateOption.empty)
+    volume1.time_created = '20-04-2017'
+    volume1.owner_id = 'ubuntu-intro1'
+
+    volume2 = Disk(location='eastus', creation_data=None)
+    volume2.id = 'Volume2'
+    volume2.name = "Volume2"
+    volume2.disk_size_gb = 1
+    volume2.creation_data = CreationData(create_option=DiskCreateOption.empty)
+    volume2.time_created = '20-04-2017'
+    volume2.owner_id = 'ubuntu-intro2'
+
+    volumes = [volume1, volume2]
+
     def __init__(self, provider):
         self._provider = provider
 
@@ -177,6 +195,13 @@ class MockAzureClient:
         volume.creation_data = CreationData(create_option=DiskCreateOption.empty)
         volume.time_created = '01-01-2017'
         volume.owner_id ='/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
+        self.volumes.append(volume)
         return volume
+
+    def get_disk(self, disk_name):
+        for volume in self.volumes:
+            if volume.name == disk_name:
+                return volume
+        return None
 
 
