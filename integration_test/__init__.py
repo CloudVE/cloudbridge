@@ -32,8 +32,8 @@ from integration_test.test_integration_azure_security_group import AzureIntegrat
 from integration_test.test_integration_azure_volume_service import AzureIntegrationVolumeServiceTestCase
 
 PROVIDER_TESTS ={'azure': [
-    #AzureIntegrationObjectStoreServiceTestCase,
-    #AzureIntegrationSecurityServiceTestCase,
+    AzureIntegrationObjectStoreServiceTestCase,
+    AzureIntegrationSecurityServiceTestCase,
     AzureIntegrationVolumeServiceTestCase
 ]}
 
