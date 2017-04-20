@@ -62,7 +62,7 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
 
     def list(self, limit=None, marker=None):
         sgs = [AzureSecurityGroup(self.provider, sg)
-                                  for sg in self.provider.azure_client.list_security_group()]
+               for sg in self.provider.azure_client.list_security_group()]
         return ClientPagedResultList(self.provider, sgs, limit, marker)
 
     def create(self, name, description, network_id):
@@ -72,9 +72,14 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
             return AzureSecurityGroup(self.provider, sg)
         return None
 
-    def find(self, name, limit=None, marker=None):
-        raise NotImplementedError(
-            "AzureSecurityGroupService does not implement this method")
+    def find(self, name: object, limit: object = None, marker: object = None) -> object:
+        """
+        Searches for a security group by a given list of attributes.
+        """
+        security_groups = [AzureSecurityGroup(self.provider, security_group)
+                           for security_group in self.provider.azure_client.list_security_group({'name': name})]
+        return ClientPagedResultList(self.provider, security_groups,
+                                     limit=limit, marker=marker)
 
     def delete(self, group_id):
         params = TemplateUrlParser.parse(NETWORK_SECURITY_GROUP_RESOURCE_ID, group_id)
@@ -99,12 +104,12 @@ class AzureObjectStoreService(BaseObjectStoreService):
         except AzureMissingResourceHttpError:
             return None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, name: object, limit: object = None, marker: object = None) -> object:
         """
         Searches for a bucket by a given list of attributes.
         """
         buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in self.provider.azure_client.list_containers({'name':name})]
+                   for bucket in self.provider.azure_client.list_containers({'name': name})]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
@@ -142,7 +147,6 @@ class AzureBlockStoreService(BaseBlockStoreService):
 
 
 class AzureVolumeService(BaseVolumeService):
-
     def __init__(self, provider):
         super(AzureVolumeService, self).__init__(provider)
 
@@ -150,7 +154,7 @@ class AzureVolumeService(BaseVolumeService):
         volume = self.provider.azure_client.get_disk(volume_id)
         return AzureVolume(self.provider, volume)
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, name: object, limit: object = None, marker: object = None) -> object:
         raise NotImplementedError('AzureVolumeService not imeplemented this method')
 
     def list(self, limit=None, marker=None):
@@ -159,9 +163,9 @@ class AzureVolumeService(BaseVolumeService):
     def create(self, name, size, zone=None, snapshot=None, description=None):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(snapshot, Snapshot) and snapshot else snapshot
-        azure_vol =  self.provider.azure_client.create_empty_disk(name, size, zone_id, snapshot_id)
+        azure_vol = self.provider.azure_client.create_empty_disk(name, size, zone_id, snapshot_id)
 
-        cb_vol=AzureVolume(self.provider, azure_vol)
+        cb_vol = AzureVolume(self.provider, azure_vol)
         if description:
             cb_vol.description = description
 
