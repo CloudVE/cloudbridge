@@ -11,6 +11,7 @@ coverage:
     - "*/cloud/providers/aws"  # ignore folders and all its contents
     - "*/cloud/providers/openstack"
     - "*/cloud/interfaces"
+    - "*/cloud/base"
     - "*/test"
 
   status:
