@@ -72,7 +72,7 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
             return AzureSecurityGroup(self.provider, sg)
         return None
 
-    def find(self, name: object, limit: object = None, marker: object = None) -> object:
+    def find(self, name: object, limit: object = None, marker: object = None):
         """
         Searches for a security group by a given list of attributes.
         """
@@ -104,7 +104,7 @@ class AzureObjectStoreService(BaseObjectStoreService):
         except AzureMissingResourceHttpError:
             return None
 
-    def find(self, name: object, limit: object = None, marker: object = None) -> object:
+    def find(self, name: object, limit: object = None, marker: object = None):
         """
         Searches for a bucket by a given list of attributes.
         """
@@ -154,7 +154,7 @@ class AzureVolumeService(BaseVolumeService):
         volume = self.provider.azure_client.get_disk(volume_id)
         return AzureVolume(self.provider, volume)
 
-    def find(self, name: object, limit: object = None, marker: object = None) -> object:
+    def find(self, name: object, limit: object = None, marker: object = None):
         raise NotImplementedError('AzureVolumeService not imeplemented this method')
 
     def list(self, limit=None, marker=None):
