@@ -4,6 +4,7 @@ from azure.common import AzureMissingResourceHttpError
 from msrestazure.azure_exceptions import CloudError
 
 from cloudbridge.cloud.interfaces.resources import PlacementZone, Snapshot
+from cloudbridge.cloud.providers.azure.azure_client import FilterList
 from .resources import SUBNET_RESOURCE_ID, NETWORK_NAME, SUBNET_NAME, NETWORK_RESOURCE_ID, \
     INSTANCE_RESOURCE_ID, VM_NAME, IMAGE_RESOURCE_ID, RESOURCE_GROUP_NAME, IMAGE_NAME, SNAPSHOT_RESOURCE_ID, \
     SNAPSHOT_NAME, VOLUME_RESOURCE_ID, VOLUME_NAME, NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, \
@@ -76,8 +77,12 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         """
         Searches for a security group by a given list of attributes.
         """
+        filter = {'name': name}
+        filtered_security_groups = FilterList(self.provider.azure_client.list_security_group())
+        filtered_security_groups.filter(filter)
         security_groups = [AzureSecurityGroup(self.provider, security_group)
-                           for security_group in self.provider.azure_client.list_security_group({'name': name})]
+                           for security_group in filtered_security_groups]
+
         return ClientPagedResultList(self.provider, security_groups,
                                      limit=limit, marker=marker)
 

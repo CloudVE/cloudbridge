@@ -23,7 +23,6 @@ class MockAzureClient:
     sg_rule2.destination_port_range = "*"
     sg_rule2.source_port_range = "*"
 
-
     sec_gr1 = NetworkSecurityGroup()
     sec_gr1.name = "sg1"
     sec_gr1.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg1"
@@ -43,7 +42,6 @@ class MockAzureClient:
     sec_gr3.security_rules = [sg_rule2]
 
     security_groups = [sec_gr1, sec_gr2, sec_gr3]
-
 
     container1 = Container()
     container1.name = "container1"
@@ -91,7 +89,6 @@ class MockAzureClient:
     def __init__(self, provider):
         self._provider = provider
 
-
     def create_security_group(self, name, parameters):
         sg_create = NetworkSecurityGroup()
         sg_create.name = name
@@ -102,9 +99,8 @@ class MockAzureClient:
         return sg_create
 
     def list_security_group(self, filters=None):
-        security_groups = FilterList(self.security_groups)
-        security_groups.filter(filters)
-        return security_groups
+
+        return self.security_groups
 
     def delete_security_group(self, name):
         for item in self.security_groups:
@@ -120,7 +116,8 @@ class MockAzureClient:
         return None
 
     def create_security_group_rule(self, security_group, rule_name, parameters):
-        new_sg_rule = SecurityRule(protocol='*',source_address_prefix='100',destination_address_prefix="*",access="Allow",direction = "Inbound")
+        new_sg_rule = SecurityRule(protocol='*', source_address_prefix='100', destination_address_prefix="*",
+                                   access="Allow", direction="Inbound")
         new_sg_rule.name = "rule1"
         new_sg_rule.id = "r1"
         new_sg_rule.destination_port_range = "*"
@@ -146,7 +143,7 @@ class MockAzureClient:
                 return container
         return None
 
-    def list_containers(self, filters = None):
+    def list_containers(self, filters=None):
         containers = FilterList(self.containers)
         containers.filter(filters)
         return containers
@@ -170,14 +167,14 @@ class MockAzureClient:
                 return blob
         return None
 
-    def list_blobs(self,container_name):
+    def list_blobs(self, container_name):
         return self.blocks
 
     def get_blob_content(self, container_name, blob_name):
         blob = self.get_blob(container_name, blob_name)
         return blob
 
-    def delete_blob(self,container_name, blob_name):
+    def delete_blob(self, container_name, blob_name):
         for blob in self.blocks:
             if blob.name == blob_name:
                 self.blocks.remove(blob)
@@ -190,13 +187,13 @@ class MockAzureClient:
         return 'https://cloudbridgeazure.blob.core.windows.net/vhds/block1'
 
     def create_empty_disk(self, disk_name, size, region=None, snapshot_id=None):
-        volume = Disk(location='eastus',creation_data=None)
-        volume.id='/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Compute/disks/SampleVolume'
+        volume = Disk(location='eastus', creation_data=None)
+        volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Compute/disks/SampleVolume'
         volume.name = disk_name
-        volume.disk_size_gb= size
+        volume.disk_size_gb = size
         volume.creation_data = CreationData(create_option=DiskCreateOption.empty)
         volume.time_created = '01-01-2017'
-        volume.owner_id ='/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
+        volume.owner_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
         self.volumes.append(volume)
         return volume
 
@@ -205,5 +202,3 @@ class MockAzureClient:
             if volume.name == disk_name:
                 return volume
         return None
-
-
