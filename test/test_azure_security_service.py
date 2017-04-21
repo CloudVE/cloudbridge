@@ -28,7 +28,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         sgl = self.provider.security.security_groups.find("sg")
         for sg in sgl:
             self.assertTrue("sg" in sg.name)
-        self.assertTrue(sgl.total_results > 1)
+        self.assertTrue(sgl.total_results > 0)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_find_not_exists(self):
