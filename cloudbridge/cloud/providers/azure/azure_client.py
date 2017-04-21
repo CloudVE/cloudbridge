@@ -78,10 +78,11 @@ class AzureClient(object):
         return self.subscription_client.subscriptions.list_locations(self.subscription_id)
 
     def list_security_group(self, filters=None):
-        security_groups = FilterList(
-            self.network_management_client.network_security_groups.list(self.resource_group_name))
-        security_groups.filter(filters)
-        return security_groups
+        # security_groups = FilterList(
+        #     self.network_management_client.network_security_groups.list(self.resource_group_name))
+        # security_groups.filter(filters)
+        # return security_groups
+        return self.network_management_client.network_security_groups.list(self.resource_group_name)
 
     def create_security_group(self, name, parameters):
         sg_create = self.network_management_client.network_security_groups.create_or_update(self.resource_group_name,
