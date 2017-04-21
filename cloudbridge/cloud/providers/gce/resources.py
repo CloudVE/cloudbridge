@@ -287,11 +287,11 @@ class GCEFirewallsDelegate(object):
                                       .execute())
             self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
-            return True
         except:
             return False
         finally:
             self._update_list_response()
+        return True
 
     def find_firewall(self, tag, ip_protocol, port, source_range, source_tag,
                       network_name):
@@ -382,10 +382,10 @@ class GCEFirewallsDelegate(object):
                                               firewall=firewall['name'])
                                       .execute())
             self._provider.wait_for_operation(response)
-            # TODO: process the response and handle errors.
-            return True
         except:
             return False
+        # TODO: process the response and handle errors.
+        return True
 
     def _update_list_response(self):
         """
@@ -756,22 +756,24 @@ class GCEInstance(BaseInstance):
         """
         Get all the public IP addresses for this instance.
         """
+        ips = []
         network_interfaces = self._gce_instance.get('networkInterfaces')
-        if network_interfaces is None or len(network_interfaces) == 0:
-            return []
-        access_configs = network_interfaces[0].get('accessConfigs')
-        if access_configs is None or len(access_configs) == 0:
-            return []
-        # https://cloud.google.com/compute/docs/reference/beta/instances
-        # An array of configurations for this interface. Currently, only one
-        # access config, ONE_TO_ONE_NAT, is supported. If there are no
-        # accessConfigs specified, then this instance will have no external
-        # internet access.
-        access_config = access_configs[0]
-        if 'natIP' in access_config:
-            return [access_config['natIP']]
-        else:
-            return []
+        if network_interfaces is not None and len(network_interfaces) > 0:
+            access_configs = network_interfaces[0].get('accessConfigs')
+            if access_configs is not None and len(access_configs) > 0:
+                # https://cloud.google.com/compute/docs/reference/beta/instances
+                # An array of configurations for this interface. Currently, only
+                # one access config, ONE_TO_ONE_NAT, is supported. If there are
+                # no accessConfigs specified, then this instance will have no
+                # external internet access.
+                access_config = access_configs[0]
+                if 'natIP' in access_config:
+                    ips.append(access_config['natIP'])
+        for ip in self._provider.network.floating_ips():
+            if ip.in_use():
+                if ip.private_ip in self.private_ips:
+                    ips.append(ip.public_ip)
+        return ips
 
     @property
     def private_ips(self):
@@ -914,6 +916,11 @@ class GCEInstance(BaseInstance):
 
     @property
     def _existing_target_instance(self):
+        """
+        Return the target instance corrsponding to this instance.
+
+        If there is no target instance for this instance, return None.
+        """
         self_url = self._provider.parse_url(self._gce_instance['selfLink'])
         try:
             response = (self._provider.gce_compute
@@ -933,6 +940,11 @@ class GCEInstance(BaseInstance):
 
     @property
     def _target_instance(self):
+        """
+        Return the target instance corresponding to this instance.
+
+        If there is no target instance for this instance, create one.
+        """
         existing_target_instance = self._existing_target_instance
         if existing_target_instance:
             return existing_target_instance
@@ -955,9 +967,14 @@ class GCEInstance(BaseInstance):
             cb.log.warning('Exception while inserting a target instance: %s', e)
             return None
 
+        # The following method should find the target instance that we
+        # successfully created above.
         return self._existing_target_instance
 
     def _redirect_existing_rule(self, ip, target_instance):
+        """
+        Redirect the forwarding rule of the given IP to the given Instance.
+        """
         new_zone = (self._provider.parse_url(target_instance['zone'])
                                   .parameters['zone'])
         new_name = target_instance['name']
@@ -976,7 +993,7 @@ class GCEInstance(BaseInstance):
                     old_zone = parsed_target_url.parameters['zone']
                     old_name = parsed_target_url.parameters['targetInstance']
                     if old_zone == new_zone and old_name == new_name:
-                        return
+                        return True
                     response = (self._provider
                                     .gce_compute
                                     .forwardingRules()
@@ -995,6 +1012,12 @@ class GCEInstance(BaseInstance):
         return False
 
     def _forward(self, ip, target_instance):
+        """
+        Forward the traffic to a given IP to a given instance.
+
+        If there is already a forwarding rule for the IP, it is redirected;
+        otherwise, a new forwarding rule is created.
+        """
         if self._redirect_existing_rule(ip, target_instance):
             return True
         body = {'name': 'forwarding-rule-{0}'.format(uuid.uuid4()),
@@ -1015,6 +1038,9 @@ class GCEInstance(BaseInstance):
         return True
 
     def _delete_existing_rule(self, ip, target_instance):
+        """
+        Stop forwarding traffic to an instance by deleting the forwarding rule.
+        """
         zone = (self._provider.parse_url(target_instance['zone'])
                               .parameters['zone'])
         name = target_instance['name']
@@ -1045,11 +1071,11 @@ class GCEInstance(BaseInstance):
                                     .execute())
                     self._provider.wait_for_operation(response,
                                                       region=ip.region)
-                    return True
         except Exception as e:
             cb.log.warning(
                 'Exception while listing/deleting forwarding rules: %s', e)
-        return False
+            return False
+        return True
         
     def add_floating_ip(self, ip_address):
         """
@@ -1093,8 +1119,9 @@ class GCEInstance(BaseInstance):
                                    ip_address, self.name)
                     return
                 if not self._delete_existing_rule(ip, target_instance):
-                    cb.log.warning('Could not remove "%s" from isntance "%s"',
-                                   ip.public_ip, self.name)
+                    cb.log.warning(
+                        'Could not remove floating IP "%s" from instance "%s"',
+                        ip.public_ip, self.name)
                 return
         cb.log.warning('Floating IP "%s" does not exist.', ip_address)
 
@@ -1152,9 +1179,9 @@ class GCENetwork(BaseNetwork):
             if 'error' in response:
                 return False
             self._provider.wait_for_operation(response)
-            return True
         except:
             return False
+        return True
 
     def subnets(self):
         raise NotImplementedError("To be implemented")
