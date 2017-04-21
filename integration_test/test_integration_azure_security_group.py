@@ -32,6 +32,16 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
         get_notfound = self.provider.security.security_groups.get("/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Network/networkSecurityGroups/testCreateSecGroup1")
         self.assertEqual(get_notfound , None)
 
+        find_exists_list = self.provider.security.security_groups.find(sg_name)
+        for sg in find_exists_list:
+            self.assertTrue(sg_name in sg.name)
+        print("Find - " + str(find_exists_list))
+        print("Find - " + str(find_exists_list.total_results))
+        self.assertTrue(find_exists_list.total_results > 0)
+
+        find_not_exists_list = self.provider.security.security_groups.find('dontfindme')
+        self.assertTrue(find_not_exists_list.total_results == 0)
+
         cb = listAfterCreate.data[0]
         lenBeforeCreateRule = len(cb.rules)
         cb.add_rule('*', '25', '100', '*')
