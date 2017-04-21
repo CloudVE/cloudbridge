@@ -923,11 +923,12 @@ class GCEInstance(BaseInstance):
         """
         self_url = self._provider.parse_url(self._gce_instance['selfLink'])
         try:
-            response = (self._provider.gce_compute
-                                      .targetInstances()
-                                      .list(project=self._provider.project_name,
-                                            zone=self_url.parameters['zone'])
-                                      .execute())
+            response = (self._provider
+                .gce_compute
+                .targetInstances()
+                .list(project=self_url.parameters['project'],
+                      zone=self_url.parameters['zone'])
+                .execute())
             if 'items' not in response:
                 return None
             for target_instance in response['items']:
@@ -954,13 +955,13 @@ class GCEInstance(BaseInstance):
         body = {'name': 'target-instance-{0}'.format(uuid.uuid4()),
                 'instance': self._gce_instance['selfLink']}
         try:
-            response = (self._provider.gce_compute
-                                      .targetInstances()
-                                      .insert(
-                                          project=self._provider.project_name,
-                                          zone=self_url.parameters['zone'],
-                                          body=body)
-                                      .execute())
+            response = (self._provider
+                .gce_compute
+                .targetInstances()
+                .insert(project=self_url.parameters['project'],
+                        zone=self_url.parameters['zone'],
+                        body=body)
+                .execute())
             self._provider.wait_for_operation(
                 response, zone=self_url.parameters['zone'])
         except Exception as e:
