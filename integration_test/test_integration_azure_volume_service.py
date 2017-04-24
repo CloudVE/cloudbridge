@@ -16,17 +16,17 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
         volume_name = '{0}'.format(uuid.uuid4())
         snapshot_name = '{0}'.format(uuid.uuid4())
 
-        # volumes_count1 = len(self.provider.block_store.volumes.list())
+        volume_list_before_create = self.provider.block_store.volumes.list()
+        print(str(len(volume_list_before_create)))
 
         volume = self.provider.block_store.volumes.create(volume_name, 1)
         volume_id= volume.id
-        self.assertTrue(volume is not None , 'Volume {0} not created'.format(volume_name))
 
-        # volumes_count2 = len(self.provider.block_store.volumes.list())
-        # self.assertTrue(volumes_count2 > volumes_count1, 'Volume {0} not present in list'.format(volume_name))
+        volume_list_after_create = self.provider.block_store.volumes.list()
+        print(str(len(volume_list_after_create)))
 
-        # find_volume = self.provider.block_store.volumes.find(volume_name)
-        # self.assertTrue(len(find_volume) == 1, 'Volume {0} not found'.format(volume_name))
+        self.assertTrue(len(volume_list_after_create), len(volume_list_before_create) + 1)
+
 
         volume = self.provider.block_store.volumes.get(volume_name)
         print("Get Volume  - " + str(volume))
@@ -45,6 +45,12 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
         volume.refresh()
         self.assertTrue(volume.id == volume_id, 'Volume id should match on refresh')
 
+        volume_list_before_delete = self.provider.block_store.volumes.list()
+        print(str(len(volume_list_before_delete)))
+
         volume.delete()
-        # deleted_volume = self.provider.block_store.volumes.get(volume.id)
-        # self.assertTrue(deleted_volume is None, 'Volume {0} not deleted'.format(volume_name))
+
+        volume_list_after_delete = self.provider.block_store.volumes.list()
+        print(str(len(volume_list_after_delete)))
+
+        self.assertTrue(len(volume_list_after_delete), len(volume_list_before_delete) - 1)

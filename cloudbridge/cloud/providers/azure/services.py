@@ -163,7 +163,10 @@ class AzureVolumeService(BaseVolumeService):
         raise NotImplementedError('AzureVolumeService not imeplemented this method')
 
     def list(self, limit=None, marker=None):
-        raise NotImplementedError('AzureVolumeService not imeplemented this method')
+        azure_vols = self.provider.azure_client.list_disks()
+        cb_vols = [AzureVolume(self.provider, vol) for vol in azure_vols]
+        return ClientPagedResultList(self.provider, cb_vols,
+                                     limit=limit, marker=marker)
 
     def create(self, name, size, zone=None, snapshot=None, description=None):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
