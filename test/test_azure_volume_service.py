@@ -36,6 +36,7 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_list(self):
-        with self.assertRaises(NotImplementedError):
-            volumes = self.provider.block_store.volumes.list()
-
+        volume_list = self.provider.block_store.volumes.list()
+        print("Volume List - " + str(volume_list))
+        self.assertEqual(
+            len(volume_list), 3)
