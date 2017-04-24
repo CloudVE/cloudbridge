@@ -182,6 +182,9 @@ class AzureClient(object):
     def get_disk(self, disk_name):
         return self.compute_client.disks.get(self.resource_group_name, disk_name)
 
+    def list_disks(self):
+        return self.compute_client.disks.list()
+
 
 # TODO: find out a better way.
 class FilterList(list):

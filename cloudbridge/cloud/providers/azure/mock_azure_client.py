@@ -69,7 +69,7 @@ class MockAzureClient:
     rg.name = "testResourceGroup"
 
     volume1 = Disk(location='eastus', creation_data=None)
-    volume1.id = 'Volume1'
+    volume1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE/providers/Microsoft.Compute/disks/Volume1'
     volume1.name = "Volume1"
     volume1.disk_size_gb = 1
     volume1.creation_data = CreationData(create_option=DiskCreateOption.empty)
@@ -77,7 +77,7 @@ class MockAzureClient:
     volume1.owner_id = 'ubuntu-intro1'
 
     volume2 = Disk(location='eastus', creation_data=None)
-    volume2.id = 'Volume2'
+    volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE/providers/Microsoft.Compute/disks/Volume2'
     volume2.name = "Volume2"
     volume2.disk_size_gb = 1
     volume2.creation_data = CreationData(create_option=DiskCreateOption.empty)
@@ -202,3 +202,6 @@ class MockAzureClient:
             if volume.name == disk_name:
                 return volume
         return None
+
+    def list_disks(self):
+        return self.volumes
