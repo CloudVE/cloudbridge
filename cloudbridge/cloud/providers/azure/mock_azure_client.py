@@ -1,4 +1,4 @@
-from io import StringIO
+from io import BytesIO
 
 from azure.mgmt.compute.models import Disk, CreationData, DiskCreateOption
 from azure.mgmt.network.models import NetworkSecurityGroup
@@ -175,8 +175,8 @@ class MockAzureClient:
     def get_blob_content(self, container_name, blob_name):
         blob = self.get_blob(container_name, blob_name)
         if blob.content:
-            output = StringIO()
-            output.write(blob.content)
+            output = BytesIO()
+            output.write(bytearray(blob.content,'UTF-8'))
             return output
 
         return None

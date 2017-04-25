@@ -123,7 +123,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         content = block.iter_content()
         print("Iter content  - " + str(content))
         self.assertEqual(
-            content.getvalue(), 'blob2Content' )
+            content.getvalue(), b'blob2Content' )
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_iter_content_ifBlobNotExists(self):
@@ -142,7 +142,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block = blocks[0]
         block.upload('blob1Content')
         self.assertEqual(
-            block.iter_content().getvalue(), 'blob1Content')
+            block.iter_content().getvalue(), b'blob1Content')
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_delete(self):
@@ -163,7 +163,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block = blocks[0]
         block.upload_from_file('blob2Content')
         self.assertEqual(
-            block.iter_content().getvalue(), 'blob2Content')
+            block.iter_content().getvalue(), b'blob2Content')
 
 
     @helpers.skipIfNoService(['object_store'])
