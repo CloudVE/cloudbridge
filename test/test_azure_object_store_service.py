@@ -25,14 +25,14 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         containerList = self.provider.object_store.list()
         print("List Container - " + str(containerList))
         self.assertEqual(
-            len(containerList), 1)
+            len(containerList), 2)
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_find_Exist(self):
         container = self.provider.object_store.find("container")
         print("Find Exist - " + str(container))
         self.assertEqual(
-            len(container) ,1)
+            len(container) ,2)
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_find_NotExist(self):
@@ -52,7 +52,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_get_NotExist(self):
-        container = self.provider.object_store.get("container3")
+        container = self.provider.object_store.get("container23")
         print("Get Not Exist - " + str(container))
         self.assertEqual(
             str(container) , 'None')
@@ -123,7 +123,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         content = block.iter_content()
         print("Iter content  - " + str(content))
         self.assertEqual(
-            str(content),'blob2Content' )
+            content.getvalue(), 'blob2Content' )
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_iter_content_ifBlobNotExists(self):
@@ -142,7 +142,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block = blocks[0]
         block.upload('blob1Content')
         self.assertEqual(
-            block.iter_content(), 'blob1Content')
+            block.iter_content().getvalue(), 'blob1Content')
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_delete(self):
@@ -163,7 +163,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block = blocks[0]
         block.upload_from_file('blob2Content')
         self.assertEqual(
-            block.iter_content(), 'blob2Content')
+            block.iter_content().getvalue(), 'blob2Content')
 
 
     @helpers.skipIfNoService(['object_store'])

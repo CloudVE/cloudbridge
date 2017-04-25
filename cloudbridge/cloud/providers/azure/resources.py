@@ -5,12 +5,15 @@ import inspect
 import json
 from datetime import datetime
 
+from cloudbridge.cloud.providers.azure import helpers as azure_helpers
+
 from azure.common import AzureMissingResourceHttpError
 from msrestazure.azure_exceptions import CloudError
 
 from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, BaseSecurityGroupRule, BaseBucketObject, \
     ClientPagedResultList, BaseVolume, BaseAttachmentInfo, BaseInstance, BaseSnapshot
 from cloudbridge.cloud.interfaces import VolumeState, SnapshotState, InstanceState
+from cloudbridge.cloud.interfaces.resources import Instance
 
 NETWORK_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}'
 IMAGE_RESOURCE_ID =  '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/images/{imageName}'
@@ -219,16 +222,17 @@ class AzureBucketObject(BaseBucketObject):
         """
         Get the date and time this object was last modified.
         """
-
-        return str(self._key.properties.last_modified)
+        return self._key.properties.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):
         """
         Returns this object's content as an
         iterable.
         """
-        blob = self._provider.azure_client.get_blob_content(self._container.name, self._key.name)
-        return blob.content
+        content_stream = self._provider.azure_client.get_blob_content(self._container.name, self._key.name)
+        if content_stream:
+            content_stream.seek(0)
+        return content_stream
 
     def upload(self, data):
         """
@@ -289,7 +293,7 @@ class AzureBucket(BaseBucket):
         except AzureMissingResourceHttpError:
             return None
 
-    def list(self, limit=None, marker=None):
+    def list(self, limit=None, marker=None, prefix=None):
         """
         List all objects within this bucket.
 
@@ -297,7 +301,7 @@ class AzureBucket(BaseBucket):
         :return: List of all available BucketObjects within this bucket.
         """
         objects = [AzureBucketObject(self._provider, self, obj)
-                  for obj in self._provider.azure_client.list_blobs(self.name) ]
+                  for obj in self._provider.azure_client.list_blobs(self.name) if not prefix or prefix and obj.name.startswith(prefix) ]
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
@@ -321,19 +325,25 @@ class AzureBucket(BaseBucket):
 class AzureVolume(BaseVolume):
 
     VOLUME_STATE_MAP = {
-        'creating': VolumeState.CREATING,
-        'available': VolumeState.AVAILABLE,
-        'in-use': VolumeState.IN_USE,
-        'deleting': VolumeState.CONFIGURING,
-        'deleted': VolumeState.DELETED,
-        'error': VolumeState.ERROR
+        'InProgress': VolumeState.CREATING,
+        'Unattached': VolumeState.AVAILABLE,
+        'Attached': VolumeState.IN_USE,
+        'Deleting': VolumeState.CONFIGURING,
+        'Deleted': VolumeState.DELETED,
+        'Failed': VolumeState.ERROR
     }
 
     def __init__(self, provider, volume):
         super(AzureVolume, self).__init__(provider)
         self._volume = volume
-        self._url_params= TemplateUrlParser.parse(VOLUME_RESOURCE_ID,volume.id)
         self._description = None
+        self._status = 'unknown'
+        if not self._volume.provisioning_state == 'Succeeded':
+            self._status = self._volume.provisioning_state
+        elif self._volume.owner_id:
+            self._status = 'Attached'
+        else:
+            self._status = 'Unattached'
 
     @property
     def id(self):
@@ -370,7 +380,7 @@ class AzureVolume(BaseVolume):
 
     @property
     def create_time(self):
-        return self._volume.time_created
+        return self._volume.time_created.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     @property
     def zone_id(self):
@@ -378,43 +388,61 @@ class AzureVolume(BaseVolume):
 
     @property
     def source(self):
+        if self._volume.creation_data.source_uri:
+            return self._provider.block_store.snapshots.get(self._volume.creation_data.source_uri)
         return None
 
     @property
     def attachments(self):
-        return None
+        if self._volume.owner_id:
+            return BaseAttachmentInfo(self,
+                                      self._volume.owner_id,
+                                      None)
+        else:
+            return None
 
     def attach(self, instance, device=None):
-        pass
+        """
+        Attach this volume to an instance.
+        """
+        instance_id = instance.id if isinstance(
+            instance,
+            Instance) else instance
+        params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID, instance_id)
+        self._provider.azure_client.attach_disk( params.get(VM_NAME),
+                                                self.id, self.name)
 
     def detach(self, force=False):
-        pass
+        """
+        Detach this volume from an instance.
+        """
+        self._provider.azure_client.detach_disk(self.id)
 
     def create_snapshot(self, name, description=None):
-        pass
+        """
+        Create a snapshot of this Volume.
+        """
+        return self._provider.block_store.snapshots.create(name, self.name)
 
     def delete(self):
-        pass
+        """
+        Delete this volume.
+        """
+        self._provider.azure_client.delete_disk(self.name)
 
     @property
     def state(self):
         return AzureVolume.VOLUME_STATE_MAP.get(
-            self._volume.provisioning_state, VolumeState.UNKNOWN)
+            self._status, VolumeState.UNKNOWN)
 
     def refresh(self):
-        pass
-
-
-class TemplateUrlParser:
-    @staticmethod
-    def parse(template_url, original_url):
-        template_url_parts = template_url.split('/')
-        original_url_parts = original_url.split('/')
-        if len(template_url_parts) != len(original_url_parts):
-            raise Exception('Invalid url parameter passed')
-        d = {}
-        for k, v in zip(template_url_parts, original_url_parts):
-            if k.startswith('{') and k.endswith('}'):
-                d.update({k[1:-1]: v})
-
-        return d
+        """
+        Refreshes the state of this volume by re-querying the cloud provider
+        for its latest state.
+        """
+        try:
+            self._volume = self._provider.azure_client.get_disk(self.name)
+        except (CloudError, ValueError):
+            # The volume no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._status = 'unknown'

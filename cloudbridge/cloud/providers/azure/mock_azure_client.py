@@ -1,10 +1,12 @@
+from io import StringIO
+
 from azure.mgmt.compute.models import Disk, CreationData, DiskCreateOption
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.resource.resources.models import ResourceGroup
 from azure.storage.blob.models import Container, Blob
 
-from cloudbridge.cloud.providers.azure.azure_client import FilterList
+from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 
 class MockAzureClient:
@@ -57,13 +59,14 @@ class MockAzureClient:
 
     block2 = Blob()
     block2.name = "block2"
-    block2.content = "blob2Content"
+    block2.content ="blob2Content"
 
     block3 = Blob()
     block3.name = "block3"
     block3.content = None
 
-    blocks = [block1, block2, block3]
+    blocks = {'container1':[block1, block2, block3],
+              'container2':[block1, block2, block3]}
 
     rg = ResourceGroup(location='westus')
     rg.name = "testResourceGroup"
@@ -98,8 +101,7 @@ class MockAzureClient:
         self.security_groups.append(sg_create)
         return sg_create
 
-    def list_security_group(self, filters=None):
-
+    def list_security_group(self):
         return self.security_groups
 
     def delete_security_group(self, name):
@@ -143,14 +145,13 @@ class MockAzureClient:
                 return container
         return None
 
-    def list_containers(self, filters=None):
-        containers = FilterList(self.containers)
-        containers.filter(filters)
-        return containers
+    def list_containers(self):
+        return self.containers
 
     def create_container(self, container_name):
         new_container = Container()
         new_container.name = container_name
+        self.containers.append(new_container)
         return new_container
 
     def delete_container(self, container_name):
@@ -160,24 +161,30 @@ class MockAzureClient:
     def create_blob_from_text(self, container_name, blob_name, text):
         blob = self.get_blob(container_name, blob_name)
         blob.content = text
+        return blob
 
     def get_blob(self, container_name, blob_name):
-        for blob in self.blocks:
+        for blob in self.blocks.get(container_name):
             if blob.name == blob_name:
                 return blob
         return None
 
     def list_blobs(self, container_name):
-        return self.blocks
+        return self.blocks.get(container_name)
 
     def get_blob_content(self, container_name, blob_name):
         blob = self.get_blob(container_name, blob_name)
-        return blob
+        if blob.content:
+            output = StringIO()
+            output.write(blob.content)
+            return output
+
+        return None
 
     def delete_blob(self, container_name, blob_name):
-        for blob in self.blocks:
+        for blob in self.blocks.get(container_name):
             if blob.name == blob_name:
-                self.blocks.remove(blob)
+                self.blocks.get(container_name).remove(blob)
 
     def create_blob_from_file(self, container_name, blob_name, file_path):
         blob = self.get_blob(container_name, blob_name)
@@ -188,7 +195,7 @@ class MockAzureClient:
 
     def create_empty_disk(self, disk_name, size, region=None, snapshot_id=None):
         volume = Disk(location='eastus', creation_data=None)
-        volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Compute/disks/SampleVolume'
+        volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Compute/disks/{0}'.format(disk_name)
         volume.name = disk_name
         volume.disk_size_gb = size
         volume.creation_data = CreationData(create_option=DiskCreateOption.empty)
@@ -205,3 +212,15 @@ class MockAzureClient:
 
     def list_disks(self):
         return self.volumes
+
+    def delete_disk(self, disk_name):
+        disk = self.get_disk(disk_name)
+        self.volumes.remove(disk)
+
+        return True
+
+    def attach_disk(self, vm_name, disk_name, disk_id):
+        return None
+
+    def detach_disk(self, disk_id):
+        return None

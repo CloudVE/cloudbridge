@@ -4,15 +4,17 @@ from azure.common import AzureMissingResourceHttpError
 from msrestazure.azure_exceptions import CloudError
 
 from cloudbridge.cloud.interfaces.resources import PlacementZone, Snapshot
-from cloudbridge.cloud.providers.azure.azure_client import FilterList
+
 from .resources import SUBNET_RESOURCE_ID, NETWORK_NAME, SUBNET_NAME, NETWORK_RESOURCE_ID, \
     INSTANCE_RESOURCE_ID, VM_NAME, IMAGE_RESOURCE_ID, RESOURCE_GROUP_NAME, IMAGE_NAME, SNAPSHOT_RESOURCE_ID, \
     SNAPSHOT_NAME, VOLUME_RESOURCE_ID, VOLUME_NAME, NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, \
-    TemplateUrlParser, AzureVolume
+    AzureVolume
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseObjectStoreService, BaseSecurityGroupService, BaseSecurityService, \
     BaseVolumeService, BaseBlockStoreService
+
+from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from .resources import AzureBucket, AzureSecurityGroup
 
@@ -35,7 +37,7 @@ class AzureSecurityService(BaseSecurityService):
         :rtype: ``object`` of :class:`.KeyPairService`
         :return: a KeyPairService object
         """
-        pass
+        raise NotImplementedError('AzureSecurityService not implemented this property')
 
     @property
     def security_groups(self):
@@ -54,12 +56,14 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
 
     def get(self, sg_id):
         try:
-            params = TemplateUrlParser.parse(NETWORK_SECURITY_GROUP_RESOURCE_ID, sg_id)
+            params = azure_helpers.parse_url(NETWORK_SECURITY_GROUP_RESOURCE_ID, sg_id)
             sgs = self.provider.azure_client.get_security_group(params.get(SECURITY_GROUP_NAME))
             return AzureSecurityGroup(self.provider, sgs) if sgs else None
 
-        except CloudError:
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
             return None
+
 
     def list(self, limit=None, marker=None):
         sgs = [AzureSecurityGroup(self.provider, sg)
@@ -69,25 +73,21 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
     def create(self, name, description, network_id):
         parameters = {"location": self.provider.region_name}
         sg = self.provider.azure_client.create_security_group(name, parameters)
-        if sg:
-            return AzureSecurityGroup(self.provider, sg)
-        return None
+        return AzureSecurityGroup(self.provider, sg)
 
     def find(self, name, limit=None, marker=None):
         """
         Searches for a security group by a given list of attributes.
         """
-        filter = {'name': name}
-        filtered_security_groups = FilterList(self.provider.azure_client.list_security_group())
-        filtered_security_groups.filter(filter)
-        security_groups = [AzureSecurityGroup(self.provider, security_group)
-                           for security_group in filtered_security_groups]
+        filters = {'name': name}
+        sgs = [AzureSecurityGroup(self.provider, security_group)
+                           for security_group in azure_helpers.filter(self.provider.azure_client.list_security_group(), filters)]
 
-        return ClientPagedResultList(self.provider, security_groups,
+        return ClientPagedResultList(self.provider, sgs,
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
-        params = TemplateUrlParser.parse(NETWORK_SECURITY_GROUP_RESOURCE_ID, group_id)
+        params = azure_helpers.parse_url(NETWORK_SECURITY_GROUP_RESOURCE_ID, group_id)
         return self.provider.azure_client.delete_security_group(params.get(SECURITY_GROUP_NAME))
 
 
@@ -106,15 +106,17 @@ class AzureObjectStoreService(BaseObjectStoreService):
                 return AzureBucket(self.provider, bucket)
             else:
                 return None
-        except AzureMissingResourceHttpError:
+        except AzureMissingResourceHttpError as error:
+            log.exception(error.message)
             return None
 
     def find(self, name, limit=None, marker=None):
         """
         Searches for a bucket by a given list of attributes.
         """
+        filters = {'name': name}
         buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in self.provider.azure_client.list_containers({'name': name})]
+                   for bucket in azure_helpers.filter(self.provider.azure_client.list_containers(), filters)]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
@@ -148,7 +150,7 @@ class AzureBlockStoreService(BaseBlockStoreService):
 
     @property
     def snapshots(self):
-        pass
+        raise NotImplementedError('AzureBlockStoreService not implemented.')
 
 
 class AzureVolumeService(BaseVolumeService):
@@ -156,11 +158,26 @@ class AzureVolumeService(BaseVolumeService):
         super(AzureVolumeService, self).__init__(provider)
 
     def get(self, volume_id):
-        volume = self.provider.azure_client.get_disk(volume_id)
-        return AzureVolume(self.provider, volume)
+        try:
+            params = azure_helpers.parse_url(VOLUME_RESOURCE_ID, volume_id)
+            volume = self.provider.azure_client.get_disk(params.get(VOLUME_NAME))
+            if volume:
+                return AzureVolume(self.provider, volume)
+
+            return None
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return None
 
     def find(self, name, limit=None, marker=None):
-        raise NotImplementedError('AzureVolumeService not imeplemented this method')
+        """
+        Searches for a volume by a given list of attributes.
+        """
+        filters = {'name': name}
+        cb_vols = [AzureVolume(self.provider, volume)
+                   for volume in azure_helpers.filter(self.provider.azure_client.list_disks(), filters)]
+        return ClientPagedResultList(self.provider, cb_vols,
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         azure_vols = self.provider.azure_client.list_disks()
@@ -171,8 +188,8 @@ class AzureVolumeService(BaseVolumeService):
     def create(self, name, size, zone=None, snapshot=None, description=None):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(snapshot, Snapshot) and snapshot else snapshot
-        azure_vol = self.provider.azure_client.create_empty_disk(name, size, zone_id, snapshot_id)
-
+        self.provider.azure_client.create_empty_disk(name, size, zone_id, snapshot_id)
+        azure_vol = self.provider.azure_client.get_disk(name)
         cb_vol = AzureVolume(self.provider, azure_vol)
         if description:
             cb_vol.description = description
