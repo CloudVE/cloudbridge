@@ -46,7 +46,8 @@ class AzureIntegrationObjectStoreServiceTestCase(helpers.ProviderTestBase):
         obj.upload(obj_content)
 
         content = obj.iter_content()
-        self.assertTrue(content == obj_content, 'Object {0} content should be {1}'.format(object_name, obj_content))
+        self.assertTrue(content.getvalue().decode('utf-8') == obj_content,
+                        'Object {0} content should be {1}'.format(object_name, obj_content))
 
         file_name = 'mytest.txt'
         file_content = 'defaults'
@@ -61,7 +62,8 @@ class AzureIntegrationObjectStoreServiceTestCase(helpers.ProviderTestBase):
             obj.upload_from_file(tmp)
 
             content = obj.iter_content()
-            self.assertTrue(content == file_content, 'Object {0} content should be {1}'.format(object_name, file_content))
+            self.assertTrue(content.getvalue().decode('utf-8') == file_content,
+                            'Object {0} content should be {1}'.format(object_name, file_content))
 
         finally:
             print('Deleting file')
