@@ -12,7 +12,9 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
     def __init__(self, methodName, provider):
         super(AzureSecurityServiceTestCase, self).__init__(
             methodName=methodName, provider=provider)
-        self.key_pairs = self.provider.security.key_pairs
+        with self.assertRaises(NotImplementedError):
+            self.key_pairs = self.provider.security.key_pairs
+
         self.security_groups = self.provider.security.security_groups
 
     @helpers.skipIfNoService(['security.security_groups'])

@@ -1,4 +1,5 @@
 import logging
+from io import BytesIO
 
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.compute import ComputeManagementClient
@@ -77,11 +78,7 @@ class AzureClient(object):
     def list_locations(self):
         return self.subscription_client.subscriptions.list_locations(self.subscription_id)
 
-    def list_security_group(self, filters=None):
-        # security_groups = FilterList(
-        #     self.network_management_client.network_security_groups.list(self.resource_group_name))
-        # security_groups.filter(filters)
-        # return security_groups
+    def list_security_group(self):
         return self.network_management_client.network_security_groups.list(self.resource_group_name)
 
     def create_security_group(self, name, parameters):
@@ -107,10 +104,8 @@ class AzureClient(object):
     def delete_security_group(self, name):
         return self.network_management_client.network_security_groups.delete(self.resource_group_name, name)
 
-    def list_containers(self, filters=None):
-        containers = FilterList(self.blob_service.list_containers())
-        containers.filter(filters)
-        return containers
+    def list_containers(self):
+        return self.blob_service.list_containers()
 
     def create_container(self, container_name):
         self.blob_service.create_container(container_name, public_access=PublicAccess.Container)
@@ -144,7 +139,9 @@ class AzureClient(object):
         return self.blob_service.make_blob_url(container_name, blob_name)
 
     def get_blob_content(self, container_name, blob_name):
-        return self.blob_service.get_blob_to_text(container_name, blob_name)
+        stream = BytesIO()
+        self.blob_service.get_blob_to_stream(container_name, blob_name, stream=stream)
+        return stream
 
     def create_empty_disk(self, disk_name, size, region=None, snapshot_id=None):
         if snapshot_id:
@@ -159,10 +156,10 @@ class AzureClient(object):
                 'creation_data': {
                     'create_option': 'empty'
                 }
-            }
+            },
+            raw=True
         )
-        disk_resource = async_creation.result()
-        return disk_resource
+        return async_creation
 
     def create_snapshot_disk(self, disk_name, snapshot_id, region=None):
         async_creation = self.compute_client.disks.create_or_update(
@@ -185,18 +182,47 @@ class AzureClient(object):
     def list_disks(self):
         return self.compute_client.disks.list()
 
+    def delete_disk(self, disk_name):
+        async_deletion = self.compute_client.disks.delete(self.resource_group_name, disk_name)
+        async_deletion.wait()
 
-# TODO: find out a better way.
-class FilterList(list):
-    def filter(self, filters):
-        filtered_list = []
-        if filters:
-            for obj in self:
-                for key in filters:
-                    print('original value ' + str(getattr(obj, key)) + ' key value ' + filters[key])
-                    if filters[key] not in str(getattr(obj, key)):
-                        print("removing " + str(getattr(obj, key)))
-                        filtered_list.append(obj)
-                        # self.remove(obj)
-            for s in filtered_list:
-                self.remove(s)
+    def attach_disk(self, vm_name, disk_name, disk_id):
+        vm = self.compute_client.virtual_machines.get(
+            self.resource_group_name,
+            vm_name
+        )
+
+        if vm:
+            vm.storage_profile.data_disks.append({
+                'lun': len(vm.storage_profile.data_disks),  # You choose the value, depending of what is available for you
+                'name': disk_name,
+                'create_option': 'attach',
+                'managed_disk': {
+                    'id': disk_id
+                }
+            })
+            async_update = self.compute_client.virtual_machines.create_or_update(
+                self.resource_group_name,
+                vm.name,
+                vm,
+            )
+            async_update.wait()
+        return None
+
+    def detach_disk(self, disk_id):
+        virtual_machine = None
+        for index, vm in enumerate(self.compute_client.virtual_machines.list_all()):
+            for index, item in enumerate(vm.storage_profile.data_disks):
+                if item.managed_disk and item.managed_disk.id == disk_id:
+                    vm.storage_profile.data_disks.remove(item)
+                    virtual_machine = vm
+                break
+
+        if virtual_machine:
+            async_update = self.compute_client.virtual_machines.create_or_update(
+                self.resource_group_name,
+                virtual_machine.name,
+                virtual_machine
+            )
+            async_update.wait()
+        return None
