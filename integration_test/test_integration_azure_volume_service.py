@@ -27,16 +27,15 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
 
         self.assertTrue(len(volume_list_after_create), len(volume_list_before_create) + 1)
 
-
-        volume = self.provider.block_store.volumes.get(volume_name)
+        volume = self.provider.block_store.volumes.get(volume_id)
         print("Get Volume  - " + str(volume))
         self.assertTrue(
             volume.name == volume_name, "Volume name should be MyVolume")
 
-        volume.attach('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Compute/virtualMachines/ubuntu-intro2')
+        # volume.attach('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Compute/virtualMachines/ubuntu-intro2')
         #TODO: Add logic to verify that disk is attached to instance
 
-        volume.detach()
+        # volume.detach()
         #TODO: Add logic to verify that disk is not in use
 
         # snapshot = volume.create_snapshot(snapshot_name)

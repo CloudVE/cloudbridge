@@ -102,7 +102,8 @@ class AzureClient(object):
         return self.network_management_client.network_security_groups.get(self.resource_group_name, name)
 
     def delete_security_group(self, name):
-        return self.network_management_client.network_security_groups.delete(self.resource_group_name, name)
+        delete_async = self.network_management_client.network_security_groups.delete(self.resource_group_name, name)
+        delete_async.wait()
 
     def list_containers(self):
         return self.blob_service.list_containers()
