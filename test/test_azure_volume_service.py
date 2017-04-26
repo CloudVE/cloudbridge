@@ -79,6 +79,12 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
         self.assertTrue(
             len(volumes) == 2, "Volume should not be available")
 
+    @helpers.skipIfNoService(['block_store.volumes'])
+    def test_azure_volume_find_ifNotExist(self):
+        volumes = self.provider.block_store.volumes.find("Volume123")
+        self.assertTrue(
+            len(volumes) == 0, "Volume should not be available")
+
 
 
     @helpers.skipIfNoService(['block_store.volumes'])

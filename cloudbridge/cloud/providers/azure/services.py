@@ -107,7 +107,7 @@ class AzureObjectStoreService(BaseObjectStoreService):
             else:
                 return None
         except AzureMissingResourceHttpError as error:
-            log.exception(error.message)
+            log.exception(error)
             return None
 
     def find(self, name, limit=None, marker=None):
