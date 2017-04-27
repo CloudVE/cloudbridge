@@ -1,11 +1,4 @@
-import json
-import unittest
-import uuid
-
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
-
 from test.helpers import ProviderTestBase
-import test.helpers as helpers
 
 
 class AzureProviderTestCase(ProviderTestBase):
