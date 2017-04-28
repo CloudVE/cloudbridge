@@ -19,10 +19,11 @@ class AzureIntegrationObjectStoreServiceTestCase(helpers.ProviderTestBase):
         containers_count1 = len(self.provider.object_store.list())
 
         container = self.provider.object_store.create(container_name)
-        self.assertTrue(container is not None , 'Container {0} not created'.format(container_name))
+        self.assertTrue(container is not None, 'Container {0} not created'.format(container_name))
 
         containers_count2 = len(self.provider.object_store.list())
-        self.assertTrue(containers_count2 > containers_count1, 'Container {0} not present in list'.format(container_name))
+        self.assertTrue(containers_count2 > containers_count1,
+                        'Container {0} not present in list'.format(container_name))
 
         find_container = self.provider.object_store.find(container_name)
         self.assertTrue(len(find_container) == 1, 'Container {0} not found'.format(container_name))
@@ -37,7 +38,8 @@ class AzureIntegrationObjectStoreServiceTestCase(helpers.ProviderTestBase):
         self.assertTrue(obj_count == 1, 'Object count should be 1')
 
         get_obj = container.get(object_name)
-        self.assertTrue(get_obj is not None, 'Unable to get object {0} from container {1}.'.format(object_name, container_name))
+        self.assertTrue(get_obj is not None,
+                        'Unable to get object {0} from container {1}.'.format(object_name, container_name))
 
         exits = container.exists(object_name)
         self.assertTrue(exits, 'Object {0} not exists in container {1}'.format(object_name, container_name))
@@ -74,7 +76,8 @@ class AzureIntegrationObjectStoreServiceTestCase(helpers.ProviderTestBase):
 
         obj.delete()
         delete_obj = container.get(object_name)
-        self.assertTrue(delete_obj is None, 'Object {0} not deleted from container {1}'.format(object_name,container_name))
+        self.assertTrue(delete_obj is None,
+                        'Object {0} not deleted from container {1}'.format(object_name, container_name))
 
         container.delete()
         deleted_container = self.provider.object_store.get(container.id)

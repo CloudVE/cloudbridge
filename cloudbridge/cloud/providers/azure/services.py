@@ -85,7 +85,8 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         """
         filters = {'name': name}
         sgs = [AzureSecurityGroup(self.provider, security_group)
-                           for security_group in azure_helpers.filter(self.provider.azure_client.list_security_group(), filters)]
+               for security_group in azure_helpers.filter(
+                self.provider.azure_client.list_security_group(), filters)]
 
         return ClientPagedResultList(self.provider, sgs,
                                      limit=limit, marker=marker)

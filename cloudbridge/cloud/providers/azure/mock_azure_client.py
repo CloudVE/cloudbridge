@@ -1,7 +1,7 @@
 from io import BytesIO
 
-from azure.common import AzureMissingResourceHttpError, AzureException
-from azure.mgmt.compute.models import Disk, CreationData, DiskCreateOption, Snapshot
+from azure.common import AzureException
+from azure.mgmt.compute.models import Disk, CreationData, DiskCreateOption
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.resource.resources.models import ResourceGroup
@@ -9,8 +9,6 @@ from azure.mgmt.storage.models import StorageAccount
 from azure.storage.blob.models import Container, Blob
 from msrestazure.azure_exceptions import CloudError
 from requests import Response
-
-from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 
 class MockAzureClient:
@@ -30,17 +28,20 @@ class MockAzureClient:
 
     sec_gr1 = NetworkSecurityGroup()
     sec_gr1.name = "sg1"
-    sec_gr1.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg1"
+    sec_gr1.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+    '/providers/Microsoft.Network/networkSecurityGroups/sg1"
     sec_gr1.security_rules = [sg_rule1, sg_rule2]
 
     sec_gr2 = NetworkSecurityGroup()
     sec_gr2.name = "sg2"
-    sec_gr2.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg2"
+    sec_gr2.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+    '/providers/Microsoft.Network/networkSecurityGroups/sg2"
     sec_gr2.security_rules = [sg_rule1, sg_rule2]
 
     sec_gr3 = NetworkSecurityGroup()
     sec_gr3.name = "sg3"
-    sec_gr3.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg3"
+    sec_gr3.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+    '/providers/Microsoft.Network/networkSecurityGroups/sg3"
     sec_gr3.security_rules = [sg_rule1, sg_rule2]
 
     security_groups = [sec_gr1, sec_gr2, sec_gr3]
@@ -59,20 +60,21 @@ class MockAzureClient:
 
     block2 = Blob()
     block2.name = "block2"
-    block2.content ="blob2Content"
+    block2.content = "blob2Content"
 
     block3 = Blob()
     block3.name = "block3"
     block3.content = None
 
-    blocks = {'container1':[block1, block2, block3],
-              'container2':[block1, block2, block3]}
+    blocks = {'container1': [block1, block2, block3],
+              'container2': [block1, block2, block3]}
 
     rg = ResourceGroup(location='westus')
     rg.name = "testResourceGroup"
 
     volume1 = Disk(location='eastus', creation_data=None)
-    volume1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE/providers/Microsoft.Compute/disks/Volume1'
+    volume1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE' \
+                 '/providers/Microsoft.Compute/disks/Volume1'
     volume1.name = "Volume1"
     volume1.disk_size_gb = 1
     volume1.creation_data = CreationData(create_option=DiskCreateOption.empty)
@@ -81,7 +83,8 @@ class MockAzureClient:
     volume1.provisioning_state = 'InProgress'
 
     volume2 = Disk(location='eastus', creation_data=None)
-    volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE/providers/Microsoft.Compute/disks/Volume2'
+    volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE' \
+                 '/providers/Microsoft.Compute/disks/Volume2'
     volume2.name = "Volume2"
     volume2.disk_size_gb = 1
     volume2.creation_data = CreationData(create_option=DiskCreateOption.empty)
@@ -184,7 +187,7 @@ class MockAzureClient:
         blob = self.get_blob(container_name, blob_name)
         if blob.content:
             output = BytesIO()
-            output.write(bytearray(blob.content,'UTF-8'))
+            output.write(bytearray(blob.content, 'UTF-8'))
             return output
 
         return None
@@ -203,13 +206,15 @@ class MockAzureClient:
 
     def create_empty_disk(self, disk_name, size, region=None, snapshot_id=None):
         volume = Disk(location='eastus', creation_data=None)
-        volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Compute/disks/{0}'.format(disk_name)
+        volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure' \
+                    '/providers/Microsoft.Compute/disks/{0}'.format(disk_name)
         volume.name = disk_name
         volume.disk_size_gb = size
         volume.creation_data = CreationData(create_option=DiskCreateOption.empty)
         volume.time_created = '01-01-2017'
         volume.provisioning_state = 'Succeeded'
-        volume.owner_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
+        volume.owner_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure' \
+                          's/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
         self.volumes.append(volume)
         return volume
 

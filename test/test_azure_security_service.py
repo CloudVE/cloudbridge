@@ -44,7 +44,8 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_get_found(self):
         sgl = self.security_groups.get(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg3")
+            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+            '/providers/Microsoft.Network/networkSecurityGroups/sg3")
         print("Get ( " + "Name - " + sgl.name + "  Id - " + sgl.id + " )")
         self.assertTrue(
             sgl.name == "sg3",
@@ -53,23 +54,26 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_get_not_found(self):
         sgl = self.security_groups.get(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg4")
+            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+            '/providers/Microsoft.Network/networkSecurityGroups/sg4")
         print(str(sgl))
         self.assertTrue(
-            sgl == None,
+            sgl is None,
             "Security group does not exist. Should return None.")
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_delete_IdExists(self):
         sg = self.security_groups.delete(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg2")
+            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+            '/providers/Microsoft.Network/networkSecurityGroups/sg2")
         print("Delete - ")
         self.assertEqual(sg, True)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_delete_IdNotExist(self):
         sg = self.security_groups.delete(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg5")
+            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+            '/providers/Microsoft.Network/networkSecurityGroups/sg5")
         self.assertEqual(sg, False)
 
     @helpers.skipIfNoService(['security.security_groups'])

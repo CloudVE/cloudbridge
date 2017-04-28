@@ -12,7 +12,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         container = self.provider.object_store.create("container3")
         print("Create - " + str(container))
         self.assertEqual(
-            str(container) , "<CB-AzureBucket: container3>")
+            str(container), "<CB-AzureBucket: container3>")
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_list(self):
@@ -26,11 +26,11 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         container = self.provider.object_store.find("container")
         print("Find Exist - " + str(container))
         self.assertEqual(
-            len(container) ,2)
+            len(container), 2)
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_find_NotExist(self):
-        ## For testing the case when container does not exist
+        # For testing the case when container does not exist
         container = self.provider.object_store.find("container23")
         print("Find Not Exist - " + str(container))
         self.assertEqual(
@@ -49,7 +49,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         container = self.provider.object_store.get("container23")
         print("Get Not Exist - " + str(container))
         self.assertEqual(
-            str(container) , 'None')
+            str(container), 'None')
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_delete(self):
@@ -69,7 +69,6 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         self.assertEqual(
             str(contDel), '<CB-AzureBucketObject: block1>')
 
-
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_exists__internalE(self):
         containers = self.provider.object_store.find("container2")
@@ -88,7 +87,6 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         self.assertEqual(
             str(contDel), 'False')
 
-
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_list(self):
         containers = self.provider.object_store.find("container2")
@@ -97,7 +95,6 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         print("List object  - " + str(contDel))
         self.assertEqual(
             len(contDel), 2)
-
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_get(self):
@@ -117,7 +114,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         content = block.iter_content()
         print("Iter content  - " + str(content))
         self.assertEqual(
-            content.getvalue(), b'blob2Content' )
+            content.getvalue(), b'blob2Content')
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_iter_content_ifBlobNotExists(self):
@@ -148,7 +145,6 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         self.assertEqual(
             len(cont.list()), 2)
 
-
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_upload_from_file(self):
         containers = self.provider.object_store.find("container2")
@@ -158,7 +154,6 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block.upload_from_file('blob2Content')
         self.assertEqual(
             block.iter_content().getvalue(), b'blob2Content')
-
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_generate_url(self):
