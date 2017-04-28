@@ -1,8 +1,8 @@
-from collections import defaultdict
 import importlib
 import inspect
 import logging
 import pkgutil
+from collections import defaultdict
 
 from cloudbridge.cloud import providers
 from cloudbridge.cloud.interfaces import CloudProvider

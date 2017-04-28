@@ -29,8 +29,8 @@ Mandatory variables  Optional Variables
 OS_AUTH_URL			 NOVA_SERVICE_NAME
 OS_USERNAME			 OS_COMPUTE_API_VERSION
 OS_PASSWORD			 OS_VOLUME_API_VERSION
-OS_PROJECT_NAME
-OS_REGION_NAME
+OS_PROJECT_NAME      OS_STORAGE_URL
+OS_REGION_NAME       OS_AUTH_TOKEN
 ===================  ==================
 
 
@@ -75,6 +75,8 @@ default_result_limit  Number of results that a ``.list()`` method should return.
 ====================  ==================
 Variable		      Description
 ====================  ==================
+aws_session_token     Session key for your AWS account (if using temporary
+                      credentials).
 ec2_is_secure         True to use an SSL connection. Default is ``True``.
 ec2_region_name       Default region name. Defaults to ``us-east-1``.
 ec2_region_endpoint   Endpoint to use. Default is ``ec2.us-east-1.amazonaws.com``.

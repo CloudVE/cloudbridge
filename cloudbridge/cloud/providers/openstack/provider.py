@@ -3,14 +3,19 @@
 import os
 
 from cinderclient import client as cinder_client
-from keystoneauth1 import session
-from keystoneclient import client as keystone_client
-from neutronclient.v2_0 import client as neutron_client
-from novaclient import client as nova_client
-from novaclient import shell as nova_shell
-from swiftclient import client as swift_client
 
 from cloudbridge.cloud.base import BaseCloudProvider
+
+from keystoneauth1 import session
+
+from keystoneclient import client as keystone_client
+
+from neutronclient.v2_0 import client as neutron_client
+
+from novaclient import client as nova_client
+from novaclient import shell as nova_shell
+
+from swiftclient import client as swift_client
 
 from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
@@ -232,9 +237,18 @@ class OpenStackCloudProvider(BaseCloudProvider):
 #                                     session=self.keystone.session)
 
     def _connect_swift(self):
+        storage_url = self._get_config_value(
+            'os_storage_url', os.environ.get('OS_STORAGE_URL', None))
+        auth_token = self._get_config_value(
+            'os_auth_token', os.environ.get('OS_AUTH_TOKEN', None))
+
         """Get an OpenStack Swift (object store) client object cloud."""
-        return swift_client.Connection(authurl=self.auth_url,
-                                       session=self._keystone_session)
+        if storage_url and auth_token:
+            return swift_client.Connection(preauthurl=storage_url,
+                                           preauthtoken=auth_token)
+        else:
+            return swift_client.Connection(authurl=self.auth_url,
+                                           session=self._keystone_session)
 
     def _connect_neutron(self):
         """Get an OpenStack Neutron (networking) client object cloud."""

@@ -1,10 +1,10 @@
 """Services implemented by the AWS provider."""
-import time
 import string
+import time
 
 from boto.ec2.blockdevicemapping import BlockDeviceMapping
 from boto.ec2.blockdevicemapping import BlockDeviceType
-from boto.exception import EC2ResponseError
+from boto.exception import EC2ResponseError, S3ResponseError
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
@@ -22,9 +22,9 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -362,11 +362,26 @@ class AWSObjectStoreService(BaseObjectStoreService):
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        bucket = self.provider.s3_conn.lookup(bucket_id)
-        if bucket:
+        try:
+            # Make a call to make sure the bucket exists. While this would
+            # normally return a Bucket instance, there's an edge case where a
+            # 403 response can occur when the bucket exists but the
+            # user simply does not have permissions to access it. See below.
+            bucket = self.provider.s3_conn.get_bucket(bucket_id)
             return AWSBucket(self.provider, bucket)
-        else:
-            return None
+        except S3ResponseError as e:
+            # If 403, it means the bucket exists, but the user does not have
+            # permissions to access the bucket. However, limited operations
+            # may be permitted (with a session token for example), so return a
+            # Bucket instance to allow further operations.
+            # http://stackoverflow.com/questions/32331456/using-boto-upload-file-to-s3-
+            # sub-folder-when-i-have-no-permissions-on-listing-fo
+            if e.status == 403:
+                bucket = self.provider.s3_conn.get_bucket(bucket_id,
+                                                          validate=False)
+                return AWSBucket(self.provider, bucket)
+        # For all other responses, it's assumed that the bucket does not exist.
+        return None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -628,6 +643,7 @@ class AWSInstanceService(BaseInstanceService):
         return ServerPagedResultList(reservations.is_truncated,
                                      reservations.next_token,
                                      False, data=instances)
+
 
 AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
                                 "aws_instance_data.json"

@@ -1,9 +1,14 @@
 """
 DataTypes used by this provider
 """
+import inspect
+import ipaddress
+import json
+
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -16,21 +21,15 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
-from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
-
-import inspect
-import json
-
-import ipaddress
 
 from keystoneclient.v3.regions import Region
 
@@ -79,6 +78,17 @@ class OpenStackMachineImage(BaseMachineImage):
         Get the image description.
         """
         return None
+
+    @property
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
+        """
+        return self._os_image.minDisk
 
     def delete(self):
         """
@@ -362,6 +372,18 @@ class OpenStackInstance(BaseInstance):
         Remove a floating IP address from this instance.
         """
         self._os_instance.remove_floating_ip(ip_address)
+
+    def add_security_group(self, sg):
+        """
+        Add a security group to this instance
+        """
+        self._os_instance.add_security_group(sg.id)
+
+    def remove_security_group(self, sg):
+        """
+        Remove a security group from this instance
+        """
+        self._os_instance.remove_security_group(sg.id)
 
     @property
     def state(self):
@@ -672,6 +694,7 @@ class OpenStackNetwork(BaseNetwork):
 
     @property
     def state(self):
+        self.refresh()
         return OpenStackNetwork._NETWORK_STATE_MAP.get(
             self._network.get('status', None),
             NetworkState.UNKNOWN)
@@ -702,11 +725,9 @@ class OpenStackNetwork(BaseNetwork):
         return OpenStackSubnet(self._provider, subnet)
 
     def refresh(self):
-        """
-        Refreshes the state of this network by re-querying the cloud provider
-        for its latest state.
-        """
-        return self.state
+        """Refresh the state of this network by re-querying the provider."""
+        net = self._provider.neutron.list_networks(id=self.id).get('networks')
+        self._network = net[0] if net else {}
 
 
 class OpenStackSubnet(BaseSubnet):
@@ -1063,8 +1084,8 @@ class OpenStackBucketObject(BaseBucketObject):
         """
         Stores the contents of the file pointed by the "path" variable.
         """
-        with open(path, 'r') as f:
-            self.upload(f.read())
+        with open(path, 'rb') as f:
+            self.upload(f)
 
     def delete(self):
         """
@@ -1155,9 +1176,3 @@ class OpenStackBucket(BaseBucket):
     def create_object(self, object_name):
         self._provider.swift.put_object(self.name, object_name, None)
         return self.get(object_name)
-
-    def exists(self, name):
-        """
-        Determine if an object with given name exists in this bucket.
-        """
-        return True if self.get(name) else False

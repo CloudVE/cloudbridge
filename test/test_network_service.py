@@ -7,10 +7,6 @@ from cloudbridge.cloud.interfaces.resources import RouterState
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudNetworkServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['network'])
     def test_crud_network_service(self):
         name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4())
@@ -111,8 +107,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         ):
             net.wait_till_ready()
             self.assertEqual(
-                net.refresh(), 'available',
-                "Network in state %s , yet should be 'available'" % net.state)
+                net.state, 'available',
+                "Network in state '%s', yet should be 'available'" % net.state)
 
             self.assertIn(
                 net.id, repr(net),
@@ -149,20 +145,26 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_router(self):
 
         def _cleanup(net, subnet, router):
-            router.remove_route(subnet.id)
-            router.detach_network()
-            router.delete()
-            subnet.delete()
-            net.delete()
+            with helpers.cleanup_action(lambda: net.delete()):
+                with helpers.cleanup_action(lambda: subnet.delete()):
+                    with helpers.cleanup_action(lambda: router.delete()):
+                        router.remove_route(subnet.id)
+                        router.detach_network()
 
         name = 'cbtestrouter-{0}'.format(uuid.uuid4())
-        router = self.provider.network.create_router(name=name)
-        net = self.provider.network.create(name=name)
-        cidr = '10.0.1.0/24'
-        sn = net.create_subnet(
-            cidr_block=cidr, name=name,
-            zone=helpers.get_provider_test_data(self.provider, 'placement'))
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        net = None
+        sn = None
+        router = None
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router)):
+            router = self.provider.network.create_router(name=name)
+            net = self.provider.network.create(name=name)
+            cidr = '10.0.1.0/24'
+            sn = net.create_subnet(cidr_block=cidr, name=name,
+                                   zone=helpers.get_provider_test_data(
+                                       self.provider, 'placement'))
+
             # Check basic router properties
             self.assertIn(
                 router, self.provider.network.routers(),
@@ -184,6 +186,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Router {0} should not be assoc. with a network {1}".format(
                     router.id, router.network_id))
 
+            # TODO: Cloud specific code, needs fixing
             # Check router connectivity
             # On OpenStack only one network is external and on AWS every
             # network is external, yet we need to use the one we've created?!

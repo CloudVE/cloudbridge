@@ -1,16 +1,13 @@
 from test import helpers
 
-import six
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces.resources import InstanceType
-from test.helpers import ProviderTestBase
+
+import six
 
 
 class CloudInstanceTypesServiceTestCase(ProviderTestBase):
-
-    def __init__(self, methodName, provider):
-        super(CloudInstanceTypesServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
 
     @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types(self):

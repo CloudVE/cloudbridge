@@ -2,7 +2,7 @@
 import logging
 
 # Current version of the library
-__version__ = '0.2.0'
+__version__ = '0.3.1'
 
 
 def get_version():
@@ -32,6 +32,7 @@ class NullHandler(logging.Handler):
         """Don't emit a log."""
         pass
 
+
 TRACE = 5  # Lower than debug which is 10
 
 
@@ -46,13 +47,13 @@ class CBLogger(logging.Logger):
         """Add ``trace`` log level."""
         self.log(TRACE, msg, *args, **kwargs)
 
+
 # By default, do not force any logging by the library. If you want to see the
 # log messages in your scripts, add the following to the top of your script:
 #   import cloudbridge
 #   cloudbridge.set_stream_logger(__name__)
 #   OR
 #   cloudbridge.set_file_logger(__name__, '/tmp/cb.log')
-
 default_format_string = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 logging.setLoggerClass(CBLogger)
 logging.addLevelName(TRACE, "TRACE")

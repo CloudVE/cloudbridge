@@ -1,21 +1,17 @@
 import time
 import uuid
 
-import six
+from test import helpers
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces import SnapshotState
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+import six
 
 
 class CloudBlockStoreServiceTestCase(ProviderTestBase):
-
-    def __init__(self, methodName, provider):
-        super(CloudBlockStoreServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_crud_volume(self):
@@ -102,11 +98,16 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         instance_name = "CBVolOps-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, subnet = helpers.create_test_network(self.provider, instance_name)
-        test_instance = helpers.get_test_instance(self.provider, instance_name,
-                                                  subnet=subnet)
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        net = None
+        test_instance = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):
+            net, subnet = helpers.create_test_network(
+                self.provider, instance_name)
+            test_instance = helpers.get_test_instance(
+                self.provider, instance_name, subnet=subnet)
             name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.zone_id)
@@ -130,11 +131,17 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
         vol_desc = 'newvoldesc1'
-        net, subnet = helpers.create_test_network(self.provider, instance_name)
-        test_instance = helpers.get_test_instance(self.provider, instance_name,
-                                                  subnet=subnet)
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        test_instance = None
+        net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):
+            net, subnet = helpers.create_test_network(
+                self.provider, instance_name)
+            test_instance = helpers.get_test_instance(
+                self.provider, instance_name, subnet=subnet)
+
             name = "CBUnitTestVolProps-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.zone_id, description=vol_desc)

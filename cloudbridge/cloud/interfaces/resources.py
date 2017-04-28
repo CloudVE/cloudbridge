@@ -580,6 +580,26 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         pass
 
+    @abstractmethod
+    def add_security_group(self, sg):
+        """
+        Add a security group to this instance
+
+        :type sg: ``SecurityGroup``
+        :param sg: The SecurityGroup to associate with the instance.
+        """
+        pass
+
+    @abstractmethod
+    def remove_security_group(self, sg):
+        """
+        Remove a security group from this instance
+
+        :type sg: ``SecurityGroup``
+        :param sg: The SecurityGroup to associate with the instance.
+        """
+        pass
+
 
 class MachineImageState(object):
 
@@ -739,6 +759,17 @@ class MachineImage(ObjectLifeCycleMixin, CloudResource):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud
                  middleware.
+        """
+        pass
+
+    @abstractproperty
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
         """
         pass
 
@@ -2165,18 +2196,5 @@ class Bucket(PageableObjectMixin, CloudResource):
 
         :rtype: :class:``.BucketObject``
         :return: The newly created bucket object
-        """
-        pass
-
-    @abstractmethod
-    def exists(self, name):
-        """
-        Determine if an object with given key exists in this bucket.
-
-        :type name: ``str``
-        :param name: The name of an object to search for in the bucket.
-
-        :rtype: ``bool``
-        :return: True if the object exists, False, if it does not.
         """
         pass

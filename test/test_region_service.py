@@ -1,15 +1,12 @@
-import six
+from test import helpers
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces import Region
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+
+import six
 
 
 class CloudRegionServiceTestCase(ProviderTestBase):
-
-    def __init__(self, methodName, provider):
-        super(CloudRegionServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
 
     @helpers.skipIfNoService(['compute.regions'])
     def test_get_and_list_regions(self):

@@ -1,9 +1,19 @@
 """
 DataTypes used by this provider
 """
+import hashlib
+import inspect
+import json
+
+from datetime import datetime
+
+from boto.exception import EC2ResponseError
+from boto.s3.key import Key
+
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -17,24 +27,15 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
-from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
-
-from datetime import datetime
-import hashlib
-import inspect
-import json
-
-from boto.exception import EC2ResponseError
-from boto.s3.key import Key
 
 from retrying import retry
 
@@ -84,6 +85,18 @@ class AWSMachineImage(BaseMachineImage):
         :return: Description for this image as returned by the cloud middleware
         """
         return self._ec2_image.description
+
+    @property
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
+        """
+        bdm = self._ec2_image.block_device_mapping
+        return bdm[self._ec2_image.root_device_name].size
 
     def delete(self):
         """
@@ -344,7 +357,7 @@ class AWSInstance(BaseInstance):
         """
         if self._ec2_instance.vpc_id:
             aid = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
-            return self._provider._ec2_conn.associate_address(
+            return self._provider.ec2_conn.associate_address(
                 self._ec2_instance.id, allocation_id=aid.allocation_id)
         else:
             return self._ec2_instance.use_ip(ip_address)
@@ -353,8 +366,28 @@ class AWSInstance(BaseInstance):
         """
         Remove a elastic IP address from this instance.
         """
-        raise NotImplementedError(
-            'remove_floating_ip not implemented by this provider.')
+        ip_addr = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
+        if self._ec2_instance.vpc_id:
+            return self._provider.ec2_conn.disassociate_address(
+                association_id=ip_addr.association_id)
+        else:
+            return self._provider.ec2_conn.disassociate_address(
+                public_ip=ip_addr.public_ip)
+
+    def add_security_group(self, sg):
+        """
+        Add a security group to this instance
+        """
+        self._ec2_instance.modify_attribute(
+            'groupSet', [g.id for g in self._ec2_instance.groups] + [sg.id])
+
+    def remove_security_group(self, sg):
+        """
+        Remove a security group from this instance
+        """
+        self._ec2_instance.modify_attribute(
+            'groupSet', [g.id for g in self._ec2_instance.groups
+                         if g.id != sg.id])
 
     @property
     def state(self):
@@ -879,15 +912,6 @@ class AWSBucket(BaseBucket):
     def create_object(self, name):
         key = Key(self._bucket, name)
         return AWSBucketObject(self._provider, key)
-
-    def exists(self, name):
-        """
-        Determine if an object with given name key exists in this bucket.
-        """
-        key = Key(self._bucket, name)
-        if key and key.exists():
-            return True
-        return False
 
 
 class AWSRegion(BaseRegion):
