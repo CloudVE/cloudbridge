@@ -5,7 +5,10 @@ def filter(list_items, filters):
             for key in filters:
                 if filters[key] in str(getattr(obj, key)):
                     filtered_list.append(obj)
-    return filtered_list
+
+        return filtered_list
+    else:
+        return list_items
 
 
 def parse_url(template_url, original_url):

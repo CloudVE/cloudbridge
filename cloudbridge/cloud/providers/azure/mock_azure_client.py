@@ -1,10 +1,14 @@
 from io import BytesIO
 
-from azure.mgmt.compute.models import Disk, CreationData, DiskCreateOption
+from azure.common import AzureMissingResourceHttpError, AzureException
+from azure.mgmt.compute.models import Disk, CreationData, DiskCreateOption, Snapshot
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.resource.resources.models import ResourceGroup
+from azure.mgmt.storage.models import StorageAccount
 from azure.storage.blob.models import Container, Blob
+from msrestazure.azure_exceptions import CloudError
+from requests import Response
 
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
@@ -21,27 +25,23 @@ class MockAzureClient:
                             direction="Inbound")
     sg_rule2.name = "rule2"
     sg_rule2.id = "r2"
-    sg_rule2.is_default = True
     sg_rule2.destination_port_range = "*"
     sg_rule2.source_port_range = "*"
 
     sec_gr1 = NetworkSecurityGroup()
     sec_gr1.name = "sg1"
     sec_gr1.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg1"
-    sec_gr1.default_security_rules = [sg_rule1]
-    sec_gr1.security_rules = [sg_rule2]
+    sec_gr1.security_rules = [sg_rule1, sg_rule2]
 
     sec_gr2 = NetworkSecurityGroup()
     sec_gr2.name = "sg2"
     sec_gr2.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg2"
-    sec_gr2.default_security_rules = [sg_rule1]
-    sec_gr2.security_rules = [sg_rule2]
+    sec_gr2.security_rules = [sg_rule1, sg_rule2]
 
     sec_gr3 = NetworkSecurityGroup()
     sec_gr3.name = "sg3"
     sec_gr3.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sg3"
-    sec_gr3.default_security_rules = [sg_rule1]
-    sec_gr3.security_rules = [sg_rule2]
+    sec_gr3.security_rules = [sg_rule1, sg_rule2]
 
     security_groups = [sec_gr1, sec_gr2, sec_gr3]
 
@@ -78,6 +78,7 @@ class MockAzureClient:
     volume1.creation_data = CreationData(create_option=DiskCreateOption.empty)
     volume1.time_created = '20-04-2017'
     volume1.owner_id = 'ubuntu-intro1'
+    volume1.provisioning_state = 'InProgress'
 
     volume2 = Disk(location='eastus', creation_data=None)
     volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE/providers/Microsoft.Compute/disks/Volume2'
@@ -85,9 +86,12 @@ class MockAzureClient:
     volume2.disk_size_gb = 1
     volume2.creation_data = CreationData(create_option=DiskCreateOption.empty)
     volume2.time_created = '20-04-2017'
-    volume2.owner_id = 'ubuntu-intro2'
+    volume2.owner_id = None
+    volume2.provisioning_state = 'Succeeded'
 
     volumes = [volume1, volume2]
+
+    snapshots = []
 
     def __init__(self, provider):
         self._provider = provider
@@ -115,7 +119,9 @@ class MockAzureClient:
         for item in self.security_groups:
             if item.name == name:
                 return item
-        return None
+        response = Response()
+        response.status_code = 404
+        raise CloudError(response=response, error='Resource Not found')
 
     def create_security_group_rule(self, security_group, rule_name, parameters):
         new_sg_rule = SecurityRule(protocol='*', source_address_prefix='100', destination_address_prefix="*",
@@ -143,7 +149,7 @@ class MockAzureClient:
         for container in self.containers:
             if container.name == container_name:
                 return container
-        return None
+        raise AzureException()
 
     def list_containers(self):
         return self.containers
@@ -167,7 +173,7 @@ class MockAzureClient:
         for blob in self.blocks.get(container_name):
             if blob.name == blob_name:
                 return blob
-        return None
+        raise AzureException()
 
     def list_blobs(self, container_name):
         return self.blocks.get(container_name)
@@ -200,6 +206,7 @@ class MockAzureClient:
         volume.disk_size_gb = size
         volume.creation_data = CreationData(create_option=DiskCreateOption.empty)
         volume.time_created = '01-01-2017'
+        volume.provisioning_state = 'Succeeded'
         volume.owner_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
         self.volumes.append(volume)
         return volume
@@ -208,14 +215,17 @@ class MockAzureClient:
         for volume in self.volumes:
             if volume.name == disk_name:
                 return volume
-        return None
+        response = Response()
+        response.status_code = 404
+        raise CloudError(response=response, error='Resource Not found')
 
     def list_disks(self):
         return self.volumes
 
     def delete_disk(self, disk_name):
-        disk = self.get_disk(disk_name)
-        self.volumes.remove(disk)
+        for disk in self.volumes:
+            if disk.name == disk_name:
+                self.volumes.remove(disk)
 
         return True
 
@@ -224,3 +234,8 @@ class MockAzureClient:
 
     def detach_disk(self, disk_id):
         return None
+
+    def get_storage_account(self, storage_account_name):
+        storage_account = StorageAccount()
+        storage_account.name = storage_account_name
+        return storage_account

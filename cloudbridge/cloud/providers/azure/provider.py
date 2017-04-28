@@ -1,6 +1,8 @@
 import logging
 import os
 
+from msrestazure.azure_exceptions import CloudError
+
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
@@ -53,9 +55,21 @@ class AzureCloudProvider(BaseCloudProvider):
         self._azure_client = azureclient or AzureClient(self.allconfig)
         try:
             rg = self._azure_client.get_resource_group(self.resource_group)
-        except:
+        except CloudError:
             resource_group_params = {'location': self.region_name}
             self._azure_client.create_resource_group(self.resource_group, resource_group_params)
+
+        try:
+            storage_account = self._azure_client.get_storage_account(self.storage_account_name)
+        except CloudError:
+            storage_account_params = {
+                'sku': {
+                    'name': 'Standard_LRS'
+                },
+                'kind': 'storage',
+                'location': self.region_name,
+            }
+            self._azure_client.create_storage_account(self.storage_account_name, storage_account_params)
 
         self._security = AzureSecurityService(self)
         self._object_store = AzureObjectStoreService(self)

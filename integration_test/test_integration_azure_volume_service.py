@@ -20,6 +20,8 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
         print(str(len(volume_list_before_create)))
 
         volume = self.provider.block_store.volumes.create(volume_name, 1)
+        volume.wait_till_ready()
+        self.assertTrue(volume is not None, 'Volume not created')
         volume_id= volume.id
 
         volume_list_after_create = self.provider.block_store.volumes.list()
