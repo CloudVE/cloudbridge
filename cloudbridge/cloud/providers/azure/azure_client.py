@@ -7,7 +7,7 @@ from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
-from azure.storage.blob import BlockBlobService, PublicAccess
+from azure.storage.blob import BlockBlobService
 
 log = logging.getLogger(__name__)
 
@@ -147,9 +147,9 @@ class AzureClient(object):
         return self.blob_service.make_blob_url(container_name, blob_name)
 
     def get_blob_content(self, container_name, blob_name):
-        stream = BytesIO()
-        self.blob_service.get_blob_to_stream(container_name, blob_name, stream=stream)
-        return stream
+        out_stream = BytesIO()
+        self.blob_service.get_blob_to_stream(container_name, blob_name, out_stream)
+        return out_stream
 
     def create_empty_disk(self, disk_name, size, region=None, snapshot_id=None):
         if snapshot_id:

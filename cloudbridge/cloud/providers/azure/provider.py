@@ -43,14 +43,13 @@ class AzureCloudProvider(BaseCloudProvider):
         # create a dict with both optional and mandatory configuration values to pass to the azureclient class, rather
         # than passing the provider object and taking a dependency.
 
-        self.allconfig ={'azure_subscription_id': self.subscription_id,
-                         'azure_client_Id':  self.client_Id,
-                         'azure_secret': self.secret,
-                         'azure_tenant': self.tenant,
-                         'azure_region_name': self.region_name,
-                         'azure_resource_group':  self.resource_group,
-                         'azure_storage_account_name' : self.storage_account_name
-                         }
+        self.allconfig = {'azure_subscription_id': self.subscription_id,
+                          'azure_client_Id': self.client_Id,
+                          'azure_secret': self.secret,
+                          'azure_tenant': self.tenant,
+                          'azure_region_name': self.region_name,
+                          'azure_resource_group': self.resource_group,
+                          'azure_storage_account_name': self.storage_account_name}
 
         self._azure_client = azureclient or AzureClient(self.allconfig)
         try:

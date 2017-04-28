@@ -7,6 +7,7 @@ from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from test.helpers import ProviderTestBase
 import test.helpers as helpers
 
+
 class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
     def __init__(self, methodName, provider):
         super(AzureIntegrationSecurityServiceTestCase, self).__init__(
@@ -19,24 +20,27 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
 
         listBeforeCreate = self.provider.security.security_groups.list()
         print("Length Before create - " + str(len(listBeforeCreate)))
-        netId = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/virtualNetworks/SampleNetwork"
+        netId = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+        '/providers/Microsoft.Network/virtualNetworks/SampleNetwork"
         sg = self.provider.security.security_groups.create(name=sg_name, description="testCreateSecGroup",
                                                            network_id=netId)
         self.assertEqual(sg_name, sg.name)
 
         listAfterCreate = self.provider.security.security_groups.list()
         print("Length After create - " + str(len(listAfterCreate)))
-        self.assertEqual( len(listAfterCreate) , len(listBeforeCreate)+1)
+        self.assertEqual(len(listAfterCreate), len(listBeforeCreate) + 1)
 
         get = self.provider.security.security_groups.get(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Network/networkSecurityGroups/sampleSG")
+            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers'\
+            '/Microsoft.Network/networkSecurityGroups/sampleSG")
         print("Get SG - " + str(get))
         print(str(get.rules))
         self.assertEqual(get.name, "sampleSG")
 
         get_notfound = self.provider.security.security_groups.get(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Network/networkSecurityGroups/SecgrupDontFindMe")
-        self.assertEqual(get_notfound , None)
+            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure'\
+            '/providers/Microsoft.Network/networkSecurityGroups/SecgrupDontFindMe")
+        self.assertEqual(get_notfound, None)
 
         find_exists_list = self.provider.security.security_groups.find(sg_name)
         for sg in find_exists_list:
@@ -74,12 +78,15 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
             cb.rules[1].delete()
 
         listBeforeDeleteFound = self.provider.security.security_groups.list()
-        sg_del = self.provider.security.security_groups.delete("/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Network/networkSecurityGroups/"+sg_name)
+        sg_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers'\
+        '/Microsoft.Network/networkSecurityGroups/" + sg_name
+        sg_del = self.provider.security.security_groups.delete(sg_id)
         listAfterDeleteFound = self.provider.security.security_groups.list()
         print("Length before delete - " + str(len(listBeforeDeleteFound)))
         print("Length after delete - " + str(len(listAfterDeleteFound)))
         self.assertEqual(len(listAfterDeleteFound), len(listBeforeDeleteFound)-1)
-
-        sg_del_notfound = self.provider.security.security_groups.delete("/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers/Microsoft.Network/networkSecurityGroups/sg5")
+        sg_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers'\
+        '/Microsoft.Network/networkSecurityGroups/sg5"
+        sg_del_notfound = self.provider.security.security_groups.delete(sg_id)
         listAfterDeleteNotFound = self.provider.security.security_groups.list()
         self.assertEqual(len(listAfterDeleteNotFound), len(listAfterDeleteFound))
