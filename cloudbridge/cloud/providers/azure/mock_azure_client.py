@@ -137,7 +137,9 @@ class MockAzureClient:
 
     def get_resource_group(self, resource_group_name):
         if resource_group_name == 'cloudbridge-azure':
-            raise Exception()
+            response = Response()
+            response.status_code = 404
+            raise CloudError(response=response, error='Resource not found')
         return self.rg
 
     def create_resource_group(self, resource_group_name, params):
