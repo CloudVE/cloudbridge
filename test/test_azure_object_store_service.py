@@ -58,7 +58,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         contDel = cont.delete()
         print("Bucket delete - " + str(contDel))
         self.assertEqual(
-            contDel, None)
+            contDel, True)
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_create_object(self):

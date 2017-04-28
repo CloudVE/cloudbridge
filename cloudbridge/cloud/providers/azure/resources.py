@@ -7,7 +7,7 @@ from datetime import datetime
 
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
-from azure.common import AzureMissingResourceHttpError
+from azure.common import AzureMissingResourceHttpError, AzureException
 from msrestazure.azure_exceptions import CloudError
 
 from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, BaseSecurityGroupRule, BaseBucketObject, \
@@ -47,22 +47,25 @@ NETWORK_INTERFACE_NAME ='networkInterfaceName'
 class AzureSecurityGroup(BaseSecurityGroup):
     def __init__(self, provider, security_group):
         super(AzureSecurityGroup, self).__init__(provider, security_group)
+        self._description = None
 
     @property
     def network_id(self):
         return self._security_group.resource_guid
 
     @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+
+    @property
     def rules(self):
         security_group_rules = []
-        for rule in self._security_group.default_security_rules:
-            if rule.direction == "Inbound":
-                sg_rule = AzureSecurityGroupRule(self._provider, rule, self)
-                sg_rule.is_default = True
-                security_group_rules.append(sg_rule)
         for custom_rule in self._security_group.security_rules:
             sg_custom_rule = AzureSecurityGroupRule(self._provider, custom_rule, self)
-            sg_custom_rule.is_default = False
             security_group_rules.append(sg_custom_rule)
         return security_group_rules
 
@@ -94,29 +97,37 @@ class AzureSecurityGroup(BaseSecurityGroup):
         :rtype: :class:``.SecurityGroupRule``
         :return: Rule object if successful or ``None``.
         """
-        security_group = self._security_group.name
-        resource_group = self._provider.resource_group
-        count = len(self.rules) + 1
-        rule_name = "Rule - " + str(count)
-        priority = count * 100
-        destination_port_range = "*"
-        destination_address_prefix = "*"
-        access = "Allow"
-        direction = "Inbound"
-        parameters = {"protocol": ip_protocol, "source_port_range": str(from_port) + "-" + str(to_port),
-                      "destination_port_range": destination_port_range,"priority": priority,
-                      "source_address_prefix": cidr_ip, "destination_address_prefix": destination_address_prefix,
-                      "access": access, "direction": direction}
-        result = self._provider.azure_client.create_security_group_rule(security_group, rule_name, parameters)
-        self._security_group.security_rules.append(result)
-        return result
+
+        if not cidr_ip:
+            cidr_ip = '0.0.0.0/0'
+
+        rule = self.get_rule(ip_protocol, from_port, to_port, cidr_ip, src_group)
+        if not rule:
+            security_group = self._security_group.name
+            resource_group = self._provider.resource_group
+            count = len(self.rules) + 1
+            rule_name = "Rule - " + str(count)
+            priority = count * 100
+            destination_port_range = "*"
+            destination_address_prefix = "*"
+            access = "Allow"
+            direction = "Inbound"
+            parameters = {"protocol": ip_protocol, "source_port_range": str(from_port) + "-" + str(to_port),
+                          "destination_port_range": destination_port_range, "priority": priority,
+                          "source_address_prefix": cidr_ip, "destination_address_prefix": destination_address_prefix,
+                          "access": access, "direction": direction}
+            result = self._provider.azure_client.create_security_group_rule(security_group, rule_name, parameters)
+            self._security_group.security_rules.append(result)
+            return AzureSecurityGroupRule(self._provider, result, self)
+
+        return rule
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
         for rule in self.rules:
             if (rule.ip_protocol == ip_protocol and
-               rule.from_port == from_port and
-               rule.to_port == to_port and
+                        rule.from_port == str(from_port) and
+                        rule.to_port == str(to_port) and
                rule.cidr_ip == cidr_ip):
                 return rule
         return None
@@ -170,7 +181,7 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def group(self):
-        return None
+        return self.parent
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -180,10 +191,7 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
         return json.dumps(js, sort_keys=True)
 
     def delete(self):
-        if self.is_default:
-            raise Exception('Default Security Rules cannot be deleted!')
         security_group = self.parent.name
-        resource_group = self._provider.resource_group
         sro = self._provider.azure_client.delete_security_group_rule(self.name, security_group)
         for i, o in enumerate(self.parent._security_group.security_rules):
             if o.name == self.name:
@@ -239,13 +247,21 @@ class AzureBucketObject(BaseBucketObject):
         Set the contents of this object to the data read from the source
         string.
         """
-        self._provider.azure_client.create_blob_from_text(self._container.name, self.name, data)
+        try:
+            self._provider.azure_client.create_blob_from_text(self._container.name, self.name, data)
+            return True
+        except AzureException:
+            return False
 
     def upload_from_file(self, path):
         """
         Store the contents of the file pointed by the "path" variable.
         """
-        self._provider.azure_client.create_blob_from_file(self._container.name, self.name, path)
+        try:
+            self._provider.azure_client.create_blob_from_file(self._container.name, self.name, path)
+            return True
+        except AzureException:
+            return False
 
     def delete(self):
         """
@@ -254,7 +270,11 @@ class AzureBucketObject(BaseBucketObject):
         :rtype: bool
         :return: True if successful
         """
-        self._provider.azure_client.delete_blob(self._container.name, self.name)
+        try:
+            self._provider.azure_client.delete_blob(self._container.name, self.name)
+            return True
+        except AzureException:
+            return False
 
     def generate_url(self, expires_in=0):
         """
@@ -285,12 +305,9 @@ class AzureBucket(BaseBucket):
         Retrieve a given object from this bucket.
         """
         try:
-            obj =self._provider.azure_client.get_blob(self.name, key)
-            if obj:
-                return AzureBucketObject(self._provider, self, obj)
-
-            return None
-        except AzureMissingResourceHttpError:
+            obj = self._provider.azure_client.get_blob(self.name, key)
+            return AzureBucketObject(self._provider, self, obj)
+        except AzureException:
             return None
 
     def list(self, limit=None, marker=None, prefix=None):
@@ -309,7 +326,11 @@ class AzureBucket(BaseBucket):
         """
         Delete this bucket.
         """
-        self._provider.azure_client.delete_container(self.name)
+        try:
+            self._provider.azure_client.delete_container(self.name)
+            return True
+        except AzureException:
+            return False
 
     def create_object(self, name):
         obj = self._provider.azure_client.create_blob_from_text(self.name, name,'')
@@ -329,6 +350,7 @@ class AzureVolume(BaseVolume):
         'Unattached': VolumeState.AVAILABLE,
         'Attached': VolumeState.IN_USE,
         'Deleting': VolumeState.CONFIGURING,
+        'Updating': VolumeState.CONFIGURING,
         'Deleted': VolumeState.DELETED,
         'Failed': VolumeState.ERROR
     }
@@ -338,6 +360,9 @@ class AzureVolume(BaseVolume):
         self._volume = volume
         self._description = None
         self._status = 'unknown'
+        self.update_status()
+
+    def update_status(self):
         if not self._volume.provisioning_state == 'Succeeded':
             self._status = self._volume.provisioning_state
         elif self._volume.owner_id:
@@ -347,7 +372,7 @@ class AzureVolume(BaseVolume):
 
     @property
     def id(self):
-        return self._volume.id
+        return self._volume.id.lower()
 
     @property
     def name(self):
@@ -405,30 +430,41 @@ class AzureVolume(BaseVolume):
         """
         Attach this volume to an instance.
         """
-        instance_id = instance.id if isinstance(
-            instance,
-            Instance) else instance
-        params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID, instance_id)
-        self._provider.azure_client.attach_disk( params.get(VM_NAME),
-                                                self.id, self.name)
+        try:
+            instance_id = instance.id if isinstance(
+                instance,
+                Instance) else instance
+            params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID, instance_id)
+            self._provider.azure_client.attach_disk(params.get(VM_NAME), self.name, self.id)
+            return True
+        except CloudError:
+            return False
 
     def detach(self, force=False):
         """
         Detach this volume from an instance.
         """
-        self._provider.azure_client.detach_disk(self.id)
+        try:
+            self._provider.azure_client.detach_disk(self.id)
+            return True
+        except CloudError:
+            return False
 
     def create_snapshot(self, name, description=None):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.block_store.snapshots.create(name, self.name)
+        return self._provider.block_store.snapshots.create(name, self.id)
 
     def delete(self):
         """
         Delete this volume.
         """
-        self._provider.azure_client.delete_disk(self.name)
+        try:
+            self._provider.azure_client.delete_disk(self.name)
+            return True
+        except CloudError:
+            return False
 
     @property
     def state(self):
@@ -442,6 +478,7 @@ class AzureVolume(BaseVolume):
         """
         try:
             self._volume = self._provider.azure_client.get_disk(self.name)
+            self.update_status()
         except (CloudError, ValueError):
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown

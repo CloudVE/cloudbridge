@@ -24,7 +24,7 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_delete(self):
-        volume = self.provider.block_store.volumes.create("MyVolume", 1, description='My volume')
+        volume = self.provider.block_store.volumes.create("MyVolume", 1)
         volume.refresh()
         print("Create Volume - " + str(volume))
         self.assertTrue(
@@ -56,7 +56,9 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
         self.assertTrue(
             volume.name == "MyVolume", "Volume name should be MyVolume")
         with self.assertRaises(NotImplementedError):
-            volume.create_snapshot('MySnap')
+            snapshot = volume.create_snapshot("MySnap")
+            self.assertTrue(
+                snapshot is not None, "Snapshot not created")
 
         volume.delete()
 
