@@ -13,6 +13,7 @@ coverage:
     - "*/cloud/interfaces"
     - "*/cloud/base"
     - "*/test"
+    - "*/cloud/factory.py"
 
   status:
     project: yes
