@@ -5,11 +5,11 @@ os:
 #  - osx
 env:
   - TOX_ENV=py27-azure
-  - TOX_ENV=py27-aws
-  - TOX_ENV=py27-openstack
+#  - TOX_ENV=py27-aws
+# - TOX_ENV=py27-openstack
   - TOX_ENV=py36-azure
-  - TOX_ENV=py36-aws
-  - TOX_ENV=py36-openstack
+#  - TOX_ENV=py36-aws
+#  - TOX_ENV=py36-openstack
 # - TOX_ENV=pypy-aws
 # - TOX_ENV=pypy-openstack
 matrix:
