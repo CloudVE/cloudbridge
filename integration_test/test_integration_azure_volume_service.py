@@ -2,15 +2,10 @@ import os
 import tempfile
 import uuid
 
-import integration_test.helpers as helpers
+import azure_integration_test.helpers as helpers
 
 
 class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
-
-    def __init__(self, methodName, provider):
-        super(AzureIntegrationVolumeServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['block_store'])
     def test_azure_volume_service(self):
         volume_name = '{0}'.format(uuid.uuid4())

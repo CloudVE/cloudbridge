@@ -1,12 +1,8 @@
-import test.helpers as helpers
-from test.helpers import ProviderTestBase
+import azure_test.helpers as helpers
+from azure_test.helpers import ProviderTestBase
 
 
 class AzureObjectStoreServiceTestCase(ProviderTestBase):
-    def __init__(self, methodName, provider):
-        super(AzureObjectStoreServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_create(self):
         container = self.provider.object_store.create("container3")
@@ -165,4 +161,3 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         print(str(url))
         self.assertEqual(
             str(url), 'https://cloudbridgeazure.blob.core.windows.net/vhds/block1')
-

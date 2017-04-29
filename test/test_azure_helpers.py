@@ -1,12 +1,8 @@
-from test.helpers import ProviderTestBase
+from azure_test.helpers import ProviderTestBase
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 
 class AzureHelpersTestCase(ProviderTestBase):
-    def __init__(self, methodName, provider):
-        super(AzureHelpersTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     def test_parse_url_valid(self):
         params = azure_helpers.parse_url('/subscriptionId/{subscriptionId}', '/subscriptionId/123-1345')
         self.assertTrue(len(params) == 1, 'Parameter count should be 1')

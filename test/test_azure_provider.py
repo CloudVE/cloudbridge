@@ -1,11 +1,7 @@
-from test.helpers import ProviderTestBase
+from azure_test.helpers import ProviderTestBase
 
 
 class AzureProviderTestCase(ProviderTestBase):
-    def __init__(self, methodName, provider):
-        super(AzureProviderTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     def test_azure_provider(self):
         with self.assertRaises(Exception):
             compute = self.provider.compute
@@ -26,4 +22,3 @@ class AzureProviderTestCase(ProviderTestBase):
 
         security = self.provider.security
         self.assertTrue(security is not None, 'Security should not be None')
-
