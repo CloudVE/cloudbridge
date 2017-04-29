@@ -127,7 +127,8 @@ class AzureClient(object):
             get(self.resource_group_name, name)
 
     def delete_security_group(self, name):
-        delete_async = self.network_management_client.network_security_groups. \
+        delete_async = self.network_management_client \
+            .network_security_groups. \
             delete(self.resource_group_name, name)
         delete_async.wait()
 
@@ -171,21 +172,27 @@ class AzureClient(object):
         return out_stream
 
     def create_empty_disk(self, disk_name, size,
-                          region=None, snapshot_id=None):
+                          region=None, snapshot_id=None,
+                          description=None):
+
         if snapshot_id:
             return self.create_snapshot_disk(disk_name,
                                              snapshot_id, region=region)
 
+        params = {
+            'location': region or self.region_name,
+            'disk_size_gb': size,
+            'creation_data': {
+                'create_option': 'empty'
+            }
+        }
+        if description:
+            params['tags'] = {'Description': description}
+
         async_creation = self.compute_client.disks.create_or_update(
             self.resource_group_name,
             disk_name,
-            {
-                'location': region or self.region_name,
-                'disk_size_gb': size,
-                'creation_data': {
-                    'create_option': 'empty'
-                }
-            },
+            params,
             raw=True
         )
         return async_creation
@@ -205,6 +212,17 @@ class AzureClient(object):
         )
 
         return disk_response
+
+    def update_disk_tags(self, disk_name, tags, region=None):
+        disk_result = self.compute_client.disks.update(
+            self.resource_group_name,
+            disk_name,
+            {
+                'tags': tags
+            },
+            raw=True
+        )
+        return disk_result
 
     def get_disk(self, disk_name):
         return self.compute_client.disks. \
