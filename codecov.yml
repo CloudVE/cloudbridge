@@ -14,7 +14,7 @@ coverage:
     - "*/cloud/base"
     - "*/test"
     - "*/cloud/factory.py"
-    - "*/cloud/__init__.py"
+    - "*/__init__.py"
 
   status:
     project: yes
