@@ -1,17 +1,16 @@
 import logging
 
-from azure.common import AzureMissingResourceHttpError, AzureException
+from azure.common import AzureException
 from msrestazure.azure_exceptions import CloudError
 
-from cloudbridge.cloud.interfaces.resources import PlacementZone, Snapshot, Volume
+from cloudbridge.cloud.interfaces.resources import PlacementZone, Snapshot
 
-from .resources import SUBNET_RESOURCE_ID, NETWORK_NAME, SUBNET_NAME, NETWORK_RESOURCE_ID, \
-    INSTANCE_RESOURCE_ID, VM_NAME, IMAGE_RESOURCE_ID, RESOURCE_GROUP_NAME, IMAGE_NAME, SNAPSHOT_RESOURCE_ID, \
-    SNAPSHOT_NAME, VOLUME_RESOURCE_ID, VOLUME_NAME, NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, \
-    AzureVolume
+from .resources import VOLUME_RESOURCE_ID, VOLUME_NAME, \
+    NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, AzureVolume
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.services import BaseObjectStoreService, BaseSecurityGroupService, BaseSecurityService, \
+from cloudbridge.cloud.base.services import BaseObjectStoreService, \
+    BaseSecurityGroupService, BaseSecurityService, \
     BaseVolumeService, BaseBlockStoreService, BaseSnapshotService
 
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
@@ -37,7 +36,8 @@ class AzureSecurityService(BaseSecurityService):
         :rtype: ``object`` of :class:`.KeyPairService`
         :return: a KeyPairService object
         """
-        raise NotImplementedError('AzureSecurityService not implemented this property')
+        raise NotImplementedError('AzureSecurityService '
+                                  'not implemented this property')
 
     @property
     def security_groups(self):
@@ -56,8 +56,10 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
 
     def get(self, sg_id):
         try:
-            params = azure_helpers.parse_url(NETWORK_SECURITY_GROUP_RESOURCE_ID, sg_id)
-            sgs = self.provider.azure_client.get_security_group(params.get(SECURITY_GROUP_NAME))
+            params = azure_helpers.parse_url(
+                NETWORK_SECURITY_GROUP_RESOURCE_ID, sg_id)
+            sgs = self.provider.azure_client.get_security_group(
+                params.get(SECURITY_GROUP_NAME))
             return AzureSecurityGroup(self.provider, sgs)
 
         except CloudError as cloudError:
@@ -92,8 +94,10 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
-        params = azure_helpers.parse_url(NETWORK_SECURITY_GROUP_RESOURCE_ID, group_id)
-        return self.provider.azure_client.delete_security_group(params.get(SECURITY_GROUP_NAME))
+        params = azure_helpers.parse_url(NETWORK_SECURITY_GROUP_RESOURCE_ID,
+                                         group_id)
+        return self.provider.azure_client.delete_security_group(
+            params.get(SECURITY_GROUP_NAME))
 
 
 class AzureObjectStoreService(BaseObjectStoreService):
@@ -117,9 +121,9 @@ class AzureObjectStoreService(BaseObjectStoreService):
         """
         Searches for a bucket by a given list of attributes.
         """
-        filters = {'name': name}
         buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in azure_helpers.filter(self.provider.azure_client.list_containers(), filters)]
+                   for bucket in
+                   self.provider.azure_client.list_containers(prefix=name)]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
@@ -164,7 +168,8 @@ class AzureVolumeService(BaseVolumeService):
     def get(self, volume_id):
         try:
             params = azure_helpers.parse_url(VOLUME_RESOURCE_ID, volume_id)
-            volume = self.provider.azure_client.get_disk(params.get(VOLUME_NAME))
+            volume = self.provider.azure_client.get_disk(
+                params.get(VOLUME_NAME))
             return AzureVolume(self.provider, volume)
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -176,7 +181,8 @@ class AzureVolumeService(BaseVolumeService):
         """
         filters = {'name': name}
         cb_vols = [AzureVolume(self.provider, volume)
-                   for volume in azure_helpers.filter(self.provider.azure_client.list_disks(), filters)]
+                   for volume in azure_helpers.filter(
+                self.provider.azure_client.list_disks(), filters)]
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
@@ -188,8 +194,10 @@ class AzureVolumeService(BaseVolumeService):
 
     def create(self, name, size, zone=None, snapshot=None, description=None):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-        snapshot_id = snapshot.id if isinstance(snapshot, Snapshot) and snapshot else snapshot
-        self.provider.azure_client.create_empty_disk(name, size, zone_id, snapshot_id)
+        snapshot_id = snapshot.id if isinstance(
+            snapshot, Snapshot) and snapshot else snapshot
+        self.provider.azure_client.create_empty_disk(
+            name, size, zone_id, snapshot_id)
         azure_vol = self.provider.azure_client.get_disk(name)
         cb_vol = AzureVolume(self.provider, azure_vol)
         if description:
@@ -203,13 +211,17 @@ class AzureSnapshotService(BaseSnapshotService):
         super(AzureSnapshotService, self).__init__(provider)
 
     def get(self, ss_id):
-        raise NotImplementedError('AzureSnapShotService not implemented this method')
+        raise NotImplementedError('AzureSnapShotService not '
+                                  'implemented this method')
 
     def find(self, name, limit=None, marker=None):
-        raise NotImplementedError('AzureSnapShotService not implemented this method')
+        raise NotImplementedError('AzureSnapShotService not '
+                                  'implemented this method')
 
     def list(self, limit=None, marker=None):
-        raise NotImplementedError('AzureSnapShotService not implemented this method')
+        raise NotImplementedError('AzureSnapShotService not '
+                                  'implemented this method')
 
     def create(self, name, volume, description=None):
-        raise NotImplementedError('AzureSnapShotService not implemented this method')
+        raise NotImplementedError('AzureSnapShotService not '
+                                  'implemented this method')

@@ -12,14 +12,16 @@ from requests import Response
 
 
 class MockAzureClient:
-    sg_rule1 = SecurityRule(protocol='*', source_address_prefix='100', destination_address_prefix="*", access="Allow",
+    sg_rule1 = SecurityRule(protocol='*', source_address_prefix='100',
+                            destination_address_prefix="*", access="Allow",
                             direction="Inbound")
     sg_rule1.name = "rule1"
     sg_rule1.id = "r1"
     sg_rule1.destination_port_range = "*"
     sg_rule1.source_port_range = "25-1"
 
-    sg_rule2 = SecurityRule(protocol='*', source_address_prefix='100', destination_address_prefix="*", access="Allow",
+    sg_rule2 = SecurityRule(protocol='*', source_address_prefix='100',
+                            destination_address_prefix="*", access="Allow",
                             direction="Inbound")
     sg_rule2.name = "rule2"
     sg_rule2.id = "r2"
@@ -73,7 +75,8 @@ class MockAzureClient:
     rg.name = "testResourceGroup"
 
     volume1 = Disk(location='eastus', creation_data=None)
-    volume1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE' \
+    volume1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                 'resourceGroups/CLOUDBRIDGE-AZURE' \
                  '/providers/Microsoft.Compute/disks/Volume1'
     volume1.name = "Volume1"
     volume1.disk_size_gb = 1
@@ -83,7 +86,8 @@ class MockAzureClient:
     volume1.provisioning_state = 'InProgress'
 
     volume2 = Disk(location='eastus', creation_data=None)
-    volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CLOUDBRIDGE-AZURE' \
+    volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                 'resourceGroups/CLOUDBRIDGE-AZURE' \
                  '/providers/Microsoft.Compute/disks/Volume2'
     volume2.name = "Volume2"
     volume2.disk_size_gb = 1
@@ -126,8 +130,10 @@ class MockAzureClient:
         response.status_code = 404
         raise CloudError(response=response, error='Resource Not found')
 
-    def create_security_group_rule(self, security_group, rule_name, parameters):
-        new_sg_rule = SecurityRule(protocol='*', source_address_prefix='100', destination_address_prefix="*",
+    def create_security_group_rule(self, security_group,
+                                   rule_name, parameters):
+        new_sg_rule = SecurityRule(protocol='*', source_address_prefix='100',
+                                   destination_address_prefix="*",
                                    access="Allow", direction="Inbound")
         new_sg_rule.name = "rule1"
         new_sg_rule.id = "r1"
@@ -156,7 +162,13 @@ class MockAzureClient:
                 return container
         raise AzureException()
 
-    def list_containers(self):
+    def list_containers(self, prefix=None):
+        if (prefix is not None):
+            found_containers = []
+            for container in self.containers:
+                if prefix in container.name:
+                    found_containers.append(container)
+            return found_containers
         return self.containers
 
     def create_container(self, container_name):
@@ -180,7 +192,7 @@ class MockAzureClient:
                 return blob
         raise AzureException()
 
-    def list_blobs(self, container_name):
+    def list_blobs(self, container_name, prefix=None):
         return self.blocks.get(container_name)
 
     def get_blob_content(self, container_name, blob_name):
@@ -204,17 +216,22 @@ class MockAzureClient:
     def get_blob_url(self, container_name, blob_name):
         return 'https://cloudbridgeazure.blob.core.windows.net/vhds/block1'
 
-    def create_empty_disk(self, disk_name, size, region=None, snapshot_id=None):
+    def create_empty_disk(self, disk_name, size,
+                          region=None, snapshot_id=None):
         volume = Disk(location='eastus', creation_data=None)
-        volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure' \
+        volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                    'resourceGroups/cloudbridge-azure' \
                     '/providers/Microsoft.Compute/disks/{0}'.format(disk_name)
         volume.name = disk_name
         volume.disk_size_gb = size
-        volume.creation_data = CreationData(create_option=DiskCreateOption.empty)
+        volume.creation_data = CreationData(
+            create_option=DiskCreateOption.empty)
         volume.time_created = '01-01-2017'
         volume.provisioning_state = 'Succeeded'
-        volume.owner_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure' \
-                          's/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
+        volume.owner_id = \
+            '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+            'resourceGroups/CloudBridge-Azure' \
+            's/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
         self.volumes.append(volume)
         return volume
 

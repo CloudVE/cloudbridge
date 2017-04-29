@@ -13,7 +13,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         name = "testCreateSecGroup3"
         sg = self.provider.security.security_groups.create(
             name=name, description=name, network_id="")
-        print("Create( " + "Name-" + sg.name + "  Id-" + sg.id + " Rules - " + str(sg.rules) + " )")
+        print("Create - " + str(sg))
         self.assertEqual(name, sg.name)
 
     @helpers.skipIfNoService(['security.security_groups'])
@@ -31,9 +31,8 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_list(self):
         sgl = self.provider.security.security_groups.list()
-        found_sg = [g.name for g in sgl]
         for group in sgl:
-            print("List( " + "Name-" + group.name + "  Id-" + group.id + " Rules - " + " )")
+            print("List - " + str(group))
         self.assertTrue(
             len(sgl) == 3,
             "Count should be 3")
@@ -80,10 +79,10 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         rules = cb.rules
         for rule in rules:
             print(str(rule))
-        print("Before creating Rule -  " + str(rules[0]) + " length - " + str(len(rules)))
+        print("Before creating Rule length - " + str(len(rules)))
         cb.add_rule('*', '25', '100', '*')
         rules = cb.rules
-        print("After creating Rule -  " + str(rules[0]) + " length - " + str(len(rules)))
+        print("After creating Rule length - " + str(len(rules)))
         self.assertEqual(len(rules), 3)
 
     @helpers.skipIfNoService(['security.security_groups'])
@@ -91,10 +90,10 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         list = self.provider.security.security_groups.list()
         cb = list.data[0]
         rules = cb.rules
-        print("Before deleting Rule -  " + str(rules[0]) + " length - " + str(len(rules)))
+        print("Before deleting Rule length - " + str(len(rules)))
         rules[1].delete()
         rules = cb.rules
-        print("After deleting Rule -  " + str(rules[0]) + " length - " + str(len(rules)))
+        print("After deleting Rule length - " + str(len(rules)))
         self.assertEqual(len(rules), 2)
 
     @helpers.skipIfNoService(['security.security_groups'])

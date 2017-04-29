@@ -1,5 +1,3 @@
-import os
-import tempfile
 import uuid
 
 import azure_integration_test.helpers as helpers
@@ -22,7 +20,8 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
         volume_list_after_create = self.provider.block_store.volumes.list()
         print(str(len(volume_list_after_create)))
 
-        self.assertTrue(len(volume_list_after_create), len(volume_list_before_create) + 1)
+        self.assertTrue(
+            len(volume_list_after_create), len(volume_list_before_create) + 1)
 
         volume = self.provider.block_store.volumes.get(volume_id)
         print("Get Volume  - " + str(volume))
@@ -40,11 +39,13 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
         # TODO: Add logic to verify that disk is not in use
 
         with self.assertRaises(NotImplementedError):
-            snapshot = volume.create_snapshot(snapshot_name)
-        # self.assertTrue(snapshot is not None, 'Snapshot {0} not created'.format(snapshot_name))
+            volume.create_snapshot(snapshot_name)
+        # self.assertTrue(snapshot is not None,
+        # 'Snapshot {0} not created'.format(snapshot_name))
 
         volume.refresh()
-        self.assertTrue(volume.id == volume_id, 'Volume id should match on refresh')
+        self.assertTrue(volume.id == volume_id,
+                        'Volume id should match on refresh')
 
         volume_list_before_delete = self.provider.block_store.volumes.list()
         print(str(len(volume_list_before_delete)))
@@ -53,5 +54,5 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
 
         volume_list_after_delete = self.provider.block_store.volumes.list()
         print(str(len(volume_list_after_delete)))
-
-        self.assertTrue(len(volume_list_after_delete), len(volume_list_before_delete) - 1)
+        self.assertTrue(len(volume_list_after_delete),
+                        len(volume_list_before_delete) - 1)

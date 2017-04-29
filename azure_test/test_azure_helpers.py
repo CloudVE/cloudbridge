@@ -4,12 +4,14 @@ from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 class AzureHelpersTestCase(ProviderTestBase):
     def test_parse_url_valid(self):
-        params = azure_helpers.parse_url('/subscriptionId/{subscriptionId}', '/subscriptionId/123-1345')
+        params = azure_helpers.parse_url('/subscriptionId/{subscriptionId}',
+                                         '/subscriptionId/123-1345')
         self.assertTrue(len(params) == 1, 'Parameter count should be 1')
 
     def test_parse_url_invalid(self):
         with self.assertRaises(Exception):
-            params = azure_helpers.parse_url('/subscriptionId/{subscriptionId}', '/123-1345')
+            azure_helpers.parse_url('/subscriptionId/{subscriptionId}',
+                                    '/123-1345')
 
     def test_filter_matched(self):
         ex1 = Expando()

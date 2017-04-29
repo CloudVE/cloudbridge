@@ -160,4 +160,5 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         url = block.generate_url()
         print(str(url))
         self.assertEqual(
-            str(url), 'https://cloudbridgeazure.blob.core.windows.net/vhds/block1')
+            str(url),
+            'https://cloudbridgeazure.blob.core.windows.net/vhds/block1')

@@ -163,11 +163,12 @@ def delete_test_instance(instance):
 def cleanup_test_resources(instance=None, network=None, security_group=None,
                            key_pair=None):
     """Clean up any combination of supplied resources."""
-    with cleanup_action(lambda: delete_test_network(network)
-    if network else None):
+    with cleanup_action(lambda:
+                        delete_test_network(network) if network else None):
         with cleanup_action(lambda: key_pair.delete() if key_pair else None):
-            with cleanup_action(lambda: security_group.delete()
-            if security_group else None):
+            with cleanup_action(
+                    lambda:
+                    security_group.delete() if security_group else None):
                 delete_test_instance(instance)
 
 
@@ -192,12 +193,13 @@ class ProviderTestBase(unittest.TestCase):
     def create_provider_instance(self):
         provider_name = os.environ.get("CB_TEST_PROVIDER", "aws")
         use_mock_drivers = parse_bool(
-            os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
+            os.environ.get("CB_USE_MOCK_PROVIDERS", "False"))
         factory = CloudProviderFactory()
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
-        config = {'default_wait_interval':
-                      self.get_provider_wait_interval(provider_class)}
+        config = {
+            'default_wait_interval':
+                self.get_provider_wait_interval(provider_class)}
         return provider_class(config)
 
     @property
