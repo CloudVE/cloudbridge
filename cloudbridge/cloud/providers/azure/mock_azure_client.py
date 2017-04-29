@@ -1,13 +1,15 @@
 from io import BytesIO
 
 from azure.common import AzureException
-from azure.mgmt.compute.models import Disk, CreationData, DiskCreateOption
+from azure.mgmt.compute.models import CreationData, Disk, DiskCreateOption
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.resource.resources.models import ResourceGroup
 from azure.mgmt.storage.models import StorageAccount
-from azure.storage.blob.models import Container, Blob
+from azure.storage.blob.models import Blob, Container
+
 from msrestazure.azure_exceptions import CloudError
+
 from requests import Response
 
 
@@ -84,10 +86,11 @@ class MockAzureClient:
     volume1.time_created = '20-04-2017'
     volume1.owner_id = 'ubuntu-intro1'
     volume1.provisioning_state = 'InProgress'
+    volume1.tags = {'Name': 'Volume1'}
 
     volume2 = Disk(location='eastus', creation_data=None)
-    volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                 'resourceGroups/CLOUDBRIDGE-AZURE' \
+    volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                 '/resourceGroups/CLOUDBRIDGE-AZURE' \
                  '/providers/Microsoft.Compute/disks/Volume2'
     volume2.name = "Volume2"
     volume2.disk_size_gb = 1
@@ -95,6 +98,7 @@ class MockAzureClient:
     volume2.time_created = '20-04-2017'
     volume2.owner_id = None
     volume2.provisioning_state = 'Succeeded'
+    volume2.tags = {'Name': 'Volume2'}
 
     volumes = [volume1, volume2]
 
@@ -217,7 +221,7 @@ class MockAzureClient:
         return 'https://cloudbridgeazure.blob.core.windows.net/vhds/block1'
 
     def create_empty_disk(self, disk_name, size,
-                          region=None, snapshot_id=None):
+                          region=None, snapshot_id=None, description=None):
         volume = Disk(location='eastus', creation_data=None)
         volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
                     'resourceGroups/cloudbridge-azure' \
@@ -232,6 +236,7 @@ class MockAzureClient:
             '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
             'resourceGroups/CloudBridge-Azure' \
             's/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
+        volume.tags = {'Name': disk_name}
         self.volumes.append(volume)
         return volume
 
@@ -263,3 +268,6 @@ class MockAzureClient:
         storage_account = StorageAccount()
         storage_account.name = storage_account_name
         return storage_account
+
+    def update_disk_tags(self, disk_name, tags):
+        pass

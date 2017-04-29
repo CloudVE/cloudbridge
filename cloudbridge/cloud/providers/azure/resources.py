@@ -4,16 +4,18 @@ DataTypes used by this provider
 import inspect
 import json
 
-from cloudbridge.cloud.providers.azure import helpers as azure_helpers
-
 from azure.common import AzureException
-from msrestazure.azure_exceptions import CloudError
 
-from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, \
-    BaseSecurityGroupRule, BaseBucketObject, \
-    ClientPagedResultList, BaseVolume, BaseAttachmentInfo
+
+from cloudbridge.cloud.base.resources import BaseAttachmentInfo,\
+    BaseBucket, BaseBucketObject, BaseSecurityGroup, \
+    BaseSecurityGroupRule, BaseVolume, \
+    ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.providers.azure import helpers as azure_helpers
+
+from msrestazure.azure_exceptions import CloudError
 
 NETWORK_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                       '{resourceGroupName}/providers/Microsoft.Network/' \
@@ -166,9 +168,9 @@ class AzureSecurityGroup(BaseSecurityGroup):
                  cidr_ip=None, src_group=None):
         for rule in self.rules:
             if (rule.ip_protocol == ip_protocol and
-                        rule.from_port == str(from_port) and
-                        rule.to_port == str(to_port) and
-                        rule.cidr_ip == cidr_ip):
+                rule.from_port == str(from_port) and
+                rule.to_port == str(to_port) and
+                    rule.cidr_ip == cidr_ip):
                 return rule
         return None
 
@@ -393,6 +395,7 @@ class AzureBucket(BaseBucket):
 class AzureVolume(BaseVolume):
     VOLUME_STATE_MAP = {
         'InProgress': VolumeState.CREATING,
+        'Creating': VolumeState.CREATING,
         'Unattached': VolumeState.AVAILABLE,
         'Attached': VolumeState.IN_USE,
         'Deleting': VolumeState.CONFIGURING,
@@ -404,9 +407,13 @@ class AzureVolume(BaseVolume):
     def __init__(self, provider, volume):
         super(AzureVolume, self).__init__(provider)
         self._volume = volume
+        self._url_params = azure_helpers.\
+            parse_url(VOLUME_RESOURCE_ID, volume.id)
         self._description = None
         self._status = 'unknown'
         self.update_status()
+        if not self._volume.tags:
+            self._volume.tags = {}
 
     def update_status(self):
         if not self._volume.provisioning_state == 'Succeeded':
@@ -418,7 +425,7 @@ class AzureVolume(BaseVolume):
 
     @property
     def id(self):
-        return self._volume.id.lower()
+        return self._volume.id
 
     @property
     def name(self):
@@ -439,11 +446,14 @@ class AzureVolume(BaseVolume):
 
     @property
     def description(self):
-        return self._description
+        return self._volume.tags.get('Description', None)
 
     @description.setter
     def description(self, value):
-        self._description = value
+        self._volume.tags.update(Description=value)
+        self._provider.azure_client.\
+            update_disk_tags(self._url_params.get(VOLUME_NAME),
+                             self._volume.tags)
 
     @property
     def size(self):
@@ -510,7 +520,8 @@ class AzureVolume(BaseVolume):
         Delete this volume.
         """
         try:
-            self._provider.azure_client.delete_disk(self.name)
+            self._provider.azure_client.\
+                delete_disk(self._url_params.get(VOLUME_NAME))
             return True
         except CloudError:
             return False
@@ -526,7 +537,9 @@ class AzureVolume(BaseVolume):
         for its latest state.
         """
         try:
-            self._volume = self._provider.azure_client.get_disk(self.name)
+            print('Volume status ' + self._status)
+            self._volume = self._provider.azure_client.\
+                get_disk(self._url_params.get(VOLUME_NAME))
             self.update_status()
         except (CloudError, ValueError):
             # The volume no longer exists and cannot be refreshed.

@@ -1,7 +1,8 @@
 import uuid
 
-from azure_integration_test.helpers import ProviderTestBase
 import azure_integration_test.helpers as helpers
+
+from azure_integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):

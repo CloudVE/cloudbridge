@@ -1,21 +1,21 @@
 import logging
 
 from azure.common import AzureException
-from msrestazure.azure_exceptions import CloudError
-
-from cloudbridge.cloud.interfaces.resources import PlacementZone, Snapshot
-
-from .resources import VOLUME_RESOURCE_ID, VOLUME_NAME, \
-    NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, AzureVolume
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.services import BaseObjectStoreService, \
-    BaseSecurityGroupService, BaseSecurityService, \
-    BaseVolumeService, BaseBlockStoreService, BaseSnapshotService
-
+from cloudbridge.cloud.base.services import BaseBlockStoreService, \
+    BaseObjectStoreService, BaseSecurityGroupService, \
+    BaseSecurityService, BaseSnapshotService, BaseVolumeService
+from cloudbridge.cloud.interfaces.resources import PlacementZone,\
+    Snapshot
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
-from .resources import AzureBucket, AzureSecurityGroup
+from msrestazure.azure_exceptions import CloudError
+
+from .resources import AzureBucket, AzureSecurityGroup,\
+    AzureVolume,\
+    NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, \
+    VOLUME_NAME, VOLUME_RESOURCE_ID
 
 log = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ class AzureObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket.
         """
-        bucket = self.provider.azure_client.create_container(name)
+        bucket = self.provider.azure_client.create_container(name.lower())
         return AzureBucket(self.provider, bucket)
 
 

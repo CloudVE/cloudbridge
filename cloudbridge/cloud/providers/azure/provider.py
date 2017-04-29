@@ -1,16 +1,16 @@
 import logging
 import os
 
-from msrestazure.azure_exceptions import CloudError
-
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
-
 from cloudbridge.cloud.providers.azure.azure_client import AzureClient
 from cloudbridge.cloud.providers.azure.mock_azure_client import MockAzureClient
 from cloudbridge.cloud.providers.azure.services \
-    import AzureSecurityService, AzureObjectStoreService, \
-    AzureBlockStoreService
+    import AzureBlockStoreService, AzureObjectStoreService, \
+    AzureSecurityService
+
+
+from msrestazure.azure_exceptions import CloudError
 
 log = logging.getLogger(__name__)
 
