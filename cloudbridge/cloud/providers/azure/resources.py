@@ -3,43 +3,61 @@ DataTypes used by this provider
 """
 import inspect
 import json
-from datetime import datetime
 
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
-from azure.common import AzureMissingResourceHttpError, AzureException
+from azure.common import AzureException
 from msrestazure.azure_exceptions import CloudError
 
-from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, BaseSecurityGroupRule, BaseBucketObject, \
-    ClientPagedResultList, BaseVolume, BaseAttachmentInfo, BaseInstance, BaseSnapshot
-from cloudbridge.cloud.interfaces import VolumeState, SnapshotState, InstanceState
+from cloudbridge.cloud.base.resources import BaseBucket, BaseSecurityGroup, \
+    BaseSecurityGroupRule, BaseBucketObject, \
+    ClientPagedResultList, BaseVolume, BaseAttachmentInfo
+from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance
 
-NETWORK_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                      '/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}'
-IMAGE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                    '/providers/Microsoft.Compute/images/{imageName}'
-INSTANCE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                       '/providers/Microsoft.Compute/virtualMachines/{vmName}'
-VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                     '/providers/Microsoft.Compute/disks/{diskName}'
-SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                       '/providers/Microsoft.Compute/snapshots/{snapshotName}'
-NETWORK_SECURITY_GROUP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                                     '/providers/Microsoft.Network/networkSecurityGroups/{networkSecurityGroupName}'
-NETWORK_SECURITY_RULE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                                    '/providers/Microsoft.Network/networkSecurityGroups/{networkSecurityGroupName}' \
+NETWORK_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                      '{resourceGroupName}/providers/Microsoft.Network/' \
+                      'virtualNetworks/{virtualNetworkName}'
+IMAGE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                    '{resourceGroupName}/providers/Microsoft.Compute/' \
+                    'images/{imageName}'
+INSTANCE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                       '{resourceGroupName}/providers/Microsoft.Compute/' \
+                       'virtualMachines/{vmName}'
+VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                     '{resourceGroupName}/providers/Microsoft.Compute/' \
+                     'disks/{diskName}'
+SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                       '{resourceGroupName}/providers/Microsoft.Compute/' \
+                       'snapshots/{snapshotName}'
+NETWORK_SECURITY_GROUP_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
+                                     'resourceGroups/{resourceGroupName}/' \
+                                     'providers/Microsoft.Network/' \
+                                     'networkSecurityGroups/' \
+                                     '{networkSecurityGroupName}'
+NETWORK_SECURITY_RULE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
+                                    'resourceGroups/{resourceGroupName}/' \
+                                    'providers/Microsoft.Network/' \
+                                    'networkSecurityGroups/' \
+                                    '{networkSecurityGroupName}' \
                                     '/securityRules/{securityRuleName}'
-SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                     '/providers/Microsoft.Network/virtualNetworks/{virtualNetworkName}/subnets/{subnetName}'
-PUBLIC_IP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                        '/providers/Microsoft.Network/publicIPAddresses/{publicIpAddressName}'
-ROUTE_TABLE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                          '/providers/Microsoft.Network/routeTables/{routeTableName}'
-ROUTE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                    '/providers/Microsoft.Network/routeTables/{routeTableName}/routes/{routeName}'
-NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}' \
-                                '/providers/Microsoft.Network/networkInterfaces/{networkInterfaceName}'
+SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                     '{resourceGroupName}/providers/Microsoft.Network' \
+                     '/virtualNetworks/{virtualNetworkName}/subnets' \
+                     '/{subnetName}'
+PUBLIC_IP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups' \
+                        '/{resourceGroupName}/providers/Microsoft.Network' \
+                        '/publicIPAddresses/{publicIpAddressName}'
+ROUTE_TABLE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups' \
+                          '/{resourceGroupName}/providers/Microsoft.Network' \
+                          '/routeTables/{routeTableName}'
+ROUTE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                    '{resourceGroupName}/providers/Microsoft.Network' \
+                    '/routeTables/{routeTableName}/routes/{routeName}'
+NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
+                                'resourceGroups/{resourceGroupName}' \
+                                '/providers/Microsoft.Network/' \
+                                'networkInterfaces/{networkInterfaceName}'
 
 RESOURCE_GROUP_NAME = 'resourceGroupName'
 SUBSCRIPTION_ID = 'subscriptionId'
@@ -78,7 +96,8 @@ class AzureSecurityGroup(BaseSecurityGroup):
     def rules(self):
         security_group_rules = []
         for custom_rule in self._security_group.security_rules:
-            sg_custom_rule = AzureSecurityGroupRule(self._provider, custom_rule, self)
+            sg_custom_rule = AzureSecurityGroupRule(self._provider,
+                                                    custom_rule, self)
             security_group_rules.append(sg_custom_rule)
         return security_group_rules
 
@@ -114,10 +133,11 @@ class AzureSecurityGroup(BaseSecurityGroup):
         if not cidr_ip:
             cidr_ip = '0.0.0.0/0'
 
-        rule = self.get_rule(ip_protocol, from_port, to_port, cidr_ip, src_group)
+        rule = self.get_rule(ip_protocol, from_port,
+                             to_port, cidr_ip, src_group)
         if not rule:
             security_group = self._security_group.name
-            resource_group = self._provider.resource_group
+            # resource_group = self._provider.resource_group
             count = len(self.rules) + 1
             rule_name = "Rule - " + str(count)
             priority = count * 100
@@ -125,11 +145,18 @@ class AzureSecurityGroup(BaseSecurityGroup):
             destination_address_prefix = "*"
             access = "Allow"
             direction = "Inbound"
-            parameters = {"protocol": ip_protocol, "source_port_range": str(from_port) + "-" + str(to_port),
-                          "destination_port_range": destination_port_range, "priority": priority,
-                          "source_address_prefix": cidr_ip, "destination_address_prefix": destination_address_prefix,
+            parameters = {"protocol": ip_protocol,
+                          "source_port_range":
+                              str(from_port) + "-" + str(to_port),
+                          "destination_port_range": destination_port_range,
+                          "priority": priority,
+                          "source_address_prefix": cidr_ip,
+                          "destination_address_prefix":
+                              destination_address_prefix,
                           "access": access, "direction": direction}
-            result = self._provider.azure_client.create_security_group_rule(security_group, rule_name, parameters)
+            result = self._provider.azure_client. \
+                create_security_group_rule(security_group,
+                                           rule_name, parameters)
             self._security_group.security_rules.append(result)
             return AzureSecurityGroupRule(self._provider, result, self)
 
@@ -204,7 +231,8 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
 
     def delete(self):
         security_group = self.parent.name
-        sro = self._provider.azure_client.delete_security_group_rule(self.name, security_group)
+        self._provider.azure_client. \
+            delete_security_group_rule(self.name, security_group)
         for i, o in enumerate(self.parent._security_group.security_rules):
             if o.name == self.name:
                 del self.parent._security_group.security_rules[i]
@@ -241,14 +269,16 @@ class AzureBucketObject(BaseBucketObject):
         """
         Get the date and time this object was last modified.
         """
-        return self._key.properties.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
+        return self._key.properties.last_modified. \
+            strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):
         """
         Returns this object's content as an
         iterable.
         """
-        content_stream = self._provider.azure_client.get_blob_content(self._container.name, self._key.name)
+        content_stream = self._provider.azure_client. \
+            get_blob_content(self._container.name, self._key.name)
         if content_stream:
             content_stream.seek(0)
         return content_stream
@@ -259,7 +289,8 @@ class AzureBucketObject(BaseBucketObject):
         string.
         """
         try:
-            self._provider.azure_client.create_blob_from_text(self._container.name, self.name, data)
+            self._provider.azure_client.create_blob_from_text(
+                self._container.name, self.name, data)
             return True
         except AzureException:
             return False
@@ -269,7 +300,8 @@ class AzureBucketObject(BaseBucketObject):
         Store the contents of the file pointed by the "path" variable.
         """
         try:
-            self._provider.azure_client.create_blob_from_file(self._container.name, self.name, path)
+            self._provider.azure_client.create_blob_from_file(
+                self._container.name, self.name, path)
             return True
         except AzureException:
             return False
@@ -282,7 +314,8 @@ class AzureBucketObject(BaseBucketObject):
         :return: True if successful
         """
         try:
-            self._provider.azure_client.delete_blob(self._container.name, self.name)
+            self._provider.azure_client.delete_blob(
+                self._container.name, self.name)
             return True
         except AzureException:
             return False
@@ -291,7 +324,8 @@ class AzureBucketObject(BaseBucketObject):
         """
         Generate a URL to this object.
         """
-        return self._provider.azure_client.get_blob_url(self._container.name, self.name)
+        return self._provider.azure_client.get_blob_url(
+            self._container.name, self.name)
 
 
 class AzureBucket(BaseBucket):
@@ -328,8 +362,9 @@ class AzureBucket(BaseBucket):
         :return: List of all available BucketObjects within this bucket.
         """
         objects = [AzureBucketObject(self._provider, self, obj)
-                   for obj in self._provider.azure_client.list_blobs(self.name) if
-                   not prefix or prefix and obj.name.startswith(prefix)]
+                   for obj in
+                   self._provider.azure_client.list_blobs(
+                       self.name, prefix=prefix)]
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
@@ -344,7 +379,8 @@ class AzureBucket(BaseBucket):
             return False
 
     def create_object(self, name):
-        obj = self._provider.azure_client.create_blob_from_text(self.name, name, '')
+        self._provider.azure_client.create_blob_from_text(
+            self.name, name, '')
         return self.get(name)
 
     def exists(self, name):
@@ -424,7 +460,8 @@ class AzureVolume(BaseVolume):
     @property
     def source(self):
         if self._volume.creation_data.source_uri:
-            return self._provider.block_store.snapshots.get(self._volume.creation_data.source_uri)
+            return self._provider.block_store.snapshots. \
+                get(self._volume.creation_data.source_uri)
         return None
 
     @property
@@ -444,8 +481,10 @@ class AzureVolume(BaseVolume):
             instance_id = instance.id if isinstance(
                 instance,
                 Instance) else instance
-            params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID, instance_id)
-            self._provider.azure_client.attach_disk(params.get(VM_NAME), self.name, self.id)
+            params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID,
+                                             instance_id)
+            self._provider.azure_client.attach_disk(params.get(VM_NAME),
+                                                    self.name, self.id)
             return True
         except CloudError:
             return False

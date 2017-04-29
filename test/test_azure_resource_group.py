@@ -4,7 +4,9 @@ from azure_test.helpers import ProviderTestBase
 class AzureResourceGroupTestCase(ProviderTestBase):
     def test_resource_group_create(self):
         resource_group_params = {'location': self.provider.region_name}
-        rg = self.provider._azure_client.create_resource_group(self.provider.resource_group, resource_group_params)
+        rg = self.provider._azure_client. \
+            create_resource_group(self.provider.resource_group,
+                                  resource_group_params)
         print("Create Resource - " + str(rg))
         self.assertTrue(
             rg.name == "cloudbridge-azure",
