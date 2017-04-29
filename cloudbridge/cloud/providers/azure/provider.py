@@ -110,4 +110,3 @@ class MockAzureCloudProvider(AzureCloudProvider, TestMockHelperMixin):
 
     def tearDownMock(self):
         pass
-

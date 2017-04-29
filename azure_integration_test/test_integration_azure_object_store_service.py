@@ -2,11 +2,10 @@ import os
 import tempfile
 import uuid
 
-import integration_test.helpers as helpers
+import azure_integration_test.helpers as helpers
 
 
 class AzureIntegrationObjectStoreServiceTestCase(helpers.ProviderTestBase):
-
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_service(self):
         container_name = '{0}'.format(uuid.uuid4())

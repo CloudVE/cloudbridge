@@ -4,12 +4,11 @@ import uuid
 
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+from azure_integration_test.helpers import ProviderTestBase
+import azure_integration_test.helpers as helpers
 
 
 class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
-
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group(self):
         sg_name = '{0}'.format(uuid.uuid4())
@@ -53,7 +52,7 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
         lenBeforeCreateRule = len(cb.rules)
         cb.add_rule('tcp', '1111', '2222', '0.0.0.0/0')
         lenAfterCreateRule = len(cb.rules)
-        self.assertEqual(lenAfterCreateRule, lenBeforeCreateRule+1)
+        self.assertEqual(lenAfterCreateRule, lenBeforeCreateRule + 1)
 
         print(str(cb.rules))
         get_rule = cb.get_rule('tcp', '1111', '2222', '0.0.0.0/0')
@@ -81,7 +80,7 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
         listAfterDeleteFound = self.provider.security.security_groups.list()
         print("Length before delete - " + str(len(listBeforeDeleteFound)))
         print("Length after delete - " + str(len(listAfterDeleteFound)))
-        self.assertEqual(len(listAfterDeleteFound), len(listBeforeDeleteFound)-1)
+        self.assertEqual(len(listAfterDeleteFound), len(listBeforeDeleteFound) - 1)
         sg_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers'\
         '/Microsoft.Network/networkSecurityGroups/sg5"
         sg_del_notfound = self.provider.security.security_groups.delete(sg_id)

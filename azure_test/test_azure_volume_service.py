@@ -1,9 +1,8 @@
-import test.helpers as helpers
-from test.helpers import ProviderTestBase
+import azure_test.helpers as helpers
+from azure_test.helpers import ProviderTestBase
 
 
 class AzureVolumeServiceTestCase(ProviderTestBase):
-
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_create_and_get(self):
         volume = self.provider.block_store.volumes.create("MyVolume", 1, description='My volume')

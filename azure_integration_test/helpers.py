@@ -57,10 +57,12 @@ def skipIfNoService(services):
     A decorator for skipping tests if the provider
     does not implement a given service.
     """
+
     def wrap(func):
         """
         The actual wrapper
         """
+
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             provider = getattr(self, 'provider')
@@ -70,7 +72,9 @@ def skipIfNoService(services):
                         self.skipTest("Skipping test because '%s' service is"
                                       " not implemented" % (service,))
             func(self, *args, **kwargs)
+
         return wrapper
+
     return wrap
 
 
@@ -160,15 +164,14 @@ def cleanup_test_resources(instance=None, network=None, security_group=None,
                            key_pair=None):
     """Clean up any combination of supplied resources."""
     with cleanup_action(lambda: delete_test_network(network)
-                        if network else None):
+    if network else None):
         with cleanup_action(lambda: key_pair.delete() if key_pair else None):
             with cleanup_action(lambda: security_group.delete()
-                                if security_group else None):
+            if security_group else None):
                 delete_test_instance(instance)
 
 
 class ProviderTestBase(unittest.TestCase):
-
     _provider = None
 
     def setUp(self):
@@ -194,7 +197,7 @@ class ProviderTestBase(unittest.TestCase):
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
         config = {'default_wait_interval':
-                  self.get_provider_wait_interval(provider_class)}
+                      self.get_provider_wait_interval(provider_class)}
         return provider_class(config)
 
     @property

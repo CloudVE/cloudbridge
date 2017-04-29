@@ -1,9 +1,8 @@
-import test.helpers as helpers
-from test.helpers import ProviderTestBase
+import azure_test.helpers as helpers
+from azure_test.helpers import ProviderTestBase
 
 
 class AzureSecurityServiceTestCase(ProviderTestBase):
-    
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_key_paires(self):
         with self.assertRaises(NotImplementedError):

@@ -1,7 +1,8 @@
 import ast
 import os
 import re
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 # Cannot use "from cloudbridge import get_version" because that would try to
 # import the six package which may not be installed yet.
@@ -15,21 +16,20 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
 
 base_reqs = ['bunch>=1.0.1', 'six>=1.10.0', 'retrying>=1.3.3']
 openstack_reqs = ['Babel==2.3.4', 'requests==2.12.5',
-                  'python-novaclient>=7.0.0',
-                  'python-glanceclient>=2.5.0',
-                  'python-cinderclient>=1.9.0',
-                  'python-swiftclient>=3.2.0',
-                  'python-neutronclient>=6.0.0',
-                  'python-keystoneclient>=3.8.0']
-
+                  'python-novaclient==7.0.0',
+                  'python-glanceclient>=2.5.0,<=2.6.0',
+                  'python-cinderclient>=1.9.0,<=2.0.1',
+                  'python-swiftclient>=3.2.0,<=3.3.0',
+                  'python-neutronclient>=6.0.0,<=6.1.0',
+                  'python-keystoneclient>=3.8.0,<=3.10.0']
 aws_reqs = ['boto>=2.38.0,<=2.46.1']
 
 azure_reqs = ['azure-common==1.1.5',
-'azure-mgmt-resource==1.0.0rc1',
-'azure-mgmt-compute==1.0.0rc1',
-'azure-mgmt-network==1.0.0rc1',
-'azure-mgmt-storage==1.0.0rc1',
-'azure-storage==0.34.0']
+              'azure-mgmt-resource==1.0.0rc1',
+              'azure-mgmt-compute==1.0.0rc1',
+              'azure-mgmt-network==1.0.0rc1',
+              'azure-mgmt-storage==1.0.0rc1',
+              'azure-storage==0.34.0']
 
 full_reqs = base_reqs + aws_reqs + openstack_reqs + azure_reqs
 
@@ -68,5 +68,5 @@ setup(name='cloudbridge',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: Implementation :: CPython',
           'Programming Language :: Python :: Implementation :: PyPy'],
-      test_suite="test"
+      test_suite="azure_test"
       )
