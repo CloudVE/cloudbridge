@@ -7,12 +7,12 @@ import json
 from azure.common import AzureException
 
 
-from cloudbridge.cloud.base.resources import BaseAttachmentInfo,\
+from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketObject, BaseSecurityGroup, \
-    BaseSecurityGroupRule, BaseVolume, \
+    BaseSecurityGroupRule, BaseSnapshot, BaseVolume, \
     ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
-from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.interfaces.resources import Instance, SnapshotState
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
@@ -545,3 +545,89 @@ class AzureVolume(BaseVolume):
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
             self._status = 'unknown'
+
+
+class AzureSnapshot(BaseSnapshot):
+
+    SNAPSHOT_STATE_MAP = {
+        'InProgress': SnapshotState.PENDING,
+        'Succeeded': SnapshotState.AVAILABLE,
+        'Failed': SnapshotState.ERROR,
+        'Updating': SnapshotState.CONFIGURING,
+        'Deleting': SnapshotState.CONFIGURING,
+        'Deleted': SnapshotState.UNKNOWN
+    }
+
+    def __init__(self, provider, snapshot):
+        super(AzureSnapshot, self).__init__(provider)
+        self._snapshot = snapshot
+        self._description = None
+        self._url_params = azure_helpers.\
+            parse_url(SNAPSHOT_RESOURCE_ID, snapshot.id)
+        self._status = self._snapshot.provisioning_state
+
+    @property
+    def id(self):
+        return self._snapshot.id
+
+    @property
+    def name(self):
+        """
+        Get the snapshot name.
+
+        .. note:: an instance must have a (case sensitive) tag ``Name``
+        """
+        return self._snapshot.name
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the snapshot name.
+        """
+        self._snapshot.name = value
+
+    @property
+    def description(self):
+        return self._description
+
+    @description.setter
+    def description(self, value):
+        self._description = value
+
+    @property
+    def size(self):
+        return self._snapshot.disk_size_gb
+
+    @property
+    def volume_id(self):
+        return self._snapshot.creation_data.source_uri
+
+    @property
+    def create_time(self):
+        return self._snapshot.time_created.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+    @property
+    def state(self):
+        return AzureSnapshot.SNAPSHOT_STATE_MAP.get(
+           self._status, SnapshotState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this snapshot by re-querying the cloud provider
+        for its latest state.
+        """
+        pass
+
+    def delete(self):
+        """
+        Delete this snapshot.
+        """
+        pass
+
+    def create_volume(self, placement=None,
+                      size=None, volume_type=None, iops=None):
+        """
+        Create a new Volume from this Snapshot.
+        """
+        pass
