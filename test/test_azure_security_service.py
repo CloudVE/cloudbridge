@@ -108,7 +108,6 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         second_rule = cb.add_rule('*', '25', '100')
         self.assertEqual(first_rule, second_rule)
 
-
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_delete(self):
         list = self.provider.security.security_groups.list()
