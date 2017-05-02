@@ -170,13 +170,14 @@ class MockAzureClient:
 
     def create_security_group_rule(self, security_group,
                                    rule_name, parameters):
-        new_sg_rule = SecurityRule(protocol='*', source_address_prefix='100',
-                                   destination_address_prefix="*",
+        new_sg_rule = SecurityRule(protocol=parameters['protocol'],
+                                   source_address_prefix=parameters['source_address_prefix'],
+                                   destination_address_prefix=parameters['destination_address_prefix'],
                                    access="Allow", direction="Inbound")
         new_sg_rule.name = "rule1"
         new_sg_rule.id = "r1"
         new_sg_rule.destination_port_range = "*"
-        new_sg_rule.source_port_range = "25-1"
+        new_sg_rule.source_port_range = parameters['source_port_range']
         return new_sg_rule
 
     def delete_security_group_rule(self, name, security_group):
