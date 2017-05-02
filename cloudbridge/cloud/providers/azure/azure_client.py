@@ -213,6 +213,10 @@ class AzureClient(object):
 
         return disk_response
 
+    def list_snapshots(self):
+        return self.compute_client.snapshots. \
+            list_by_resource_group(self.resource_group_name)
+
     def update_disk_tags(self, disk_name, tags, region=None):
         disk_result = self.compute_client.disks.update(
             self.resource_group_name,

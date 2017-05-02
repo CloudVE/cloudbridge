@@ -6,14 +6,14 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
     BaseObjectStoreService, BaseSecurityGroupService, \
     BaseSecurityService, BaseSnapshotService, BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import PlacementZone,\
+from cloudbridge.cloud.interfaces.resources import PlacementZone, \
     Snapshot
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
-from .resources import AzureBucket, AzureSecurityGroup,\
-    AzureVolume,\
+from .resources import AzureBucket, AzureSecurityGroup, \
+    AzureSnapshot, AzureVolume, \
     NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, \
     VOLUME_NAME, VOLUME_RESOURCE_ID
 
@@ -219,8 +219,14 @@ class AzureSnapshotService(BaseSnapshotService):
                                   'implemented this method')
 
     def list(self, limit=None, marker=None):
-        raise NotImplementedError('AzureSnapShotService not '
-                                  'implemented this method')
+        """
+               List all snapshots.
+        """
+        snaps = [AzureSnapshot(self.provider, obj)
+                 for obj in
+                 self.provider.
+                     azure_client.list_snapshots()]
+        return ClientPagedResultList(self.provider, snaps, limit, marker)
 
     def create(self, name, volume, description=None):
         raise NotImplementedError('AzureSnapShotService not '
