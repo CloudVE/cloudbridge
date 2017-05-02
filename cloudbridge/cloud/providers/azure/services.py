@@ -15,8 +15,8 @@ from msrestazure.azure_exceptions import CloudError
 from .resources import AzureBucket, AzureSecurityGroup, \
     AzureSnapshot, AzureVolume, \
     NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, \
-    VOLUME_NAME, VOLUME_RESOURCE_ID, AzureSnapshot, \
-    SNAPSHOT_RESOURCE_ID, SNAPSHOT_NAME
+    SNAPSHOT_NAME, SNAPSHOT_RESOURCE_ID, VOLUME_NAME, \
+    VOLUME_RESOURCE_ID
 
 log = logging.getLogger(__name__)
 
@@ -213,7 +213,8 @@ class AzureSnapshotService(BaseSnapshotService):
     def get(self, ss_id):
         try:
             params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID, ss_id)
-            snapshot = self.provider.azure_client.get_snapshot(params.get(SNAPSHOT_NAME))
+            snapshot = self.provider.azure_client. \
+                get_snapshot(params.get(SNAPSHOT_NAME))
             return AzureSnapshot(self.provider, snapshot)
         except CloudError as cloudError:
             log.exception(cloudError.message)
