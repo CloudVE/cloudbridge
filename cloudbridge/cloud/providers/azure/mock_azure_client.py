@@ -1,7 +1,8 @@
 from io import BytesIO
 
 from azure.common import AzureException
-from azure.mgmt.compute.models import CreationData, Disk, DiskCreateOption
+from azure.mgmt.compute.models import CreationData, Disk, DiskCreateOption, \
+    Snapshot
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.resource.resources.models import ResourceGroup
@@ -102,7 +103,32 @@ class MockAzureClient:
 
     volumes = [volume1, volume2]
 
-    snapshots = []
+    creation_data = CreationData(create_option=DiskCreateOption.empty)
+
+    snapshot1 = Snapshot(location='eastus', creation_data=creation_data)
+    snapshot1.name = 'snapshot1'
+    snapshot1.tags = {'Name': 'snapshot1'}
+    snapshot1.disk_size_gb = 1
+
+    snapshot1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                   '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                   '/providers/Microsoft.Compute/snapshots/snapshot1'
+    snapshot1.os_type = 'Linux'
+    snapshot1.account_type = 'Premium_LRS'
+
+    snapshot2 = Snapshot(location='eastus', creation_data=creation_data)
+    snapshot2.name = 'snapshot2'
+    snapshot2.tags = {'Name': 'snapshot1'}
+    snapshot2.disk_size_gb = 2
+    snapshot2.creation_data = \
+        CreationData(create_option=DiskCreateOption.empty)
+    snapshot2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                   '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                   '/providers/Microsoft.Compute/snapshots/snapshot2'
+    snapshot2.os_type = 'Windows'
+    snapshot2.account_type = ' Standard_LRS'
+
+    snapshots = [snapshot1, snapshot2]
 
     def __init__(self, provider):
         self._provider = provider
@@ -271,3 +297,6 @@ class MockAzureClient:
 
     def update_disk_tags(self, disk_name, tags):
         pass
+
+    def list_snapshots(self):
+        return self.snapshots
