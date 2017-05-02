@@ -17,6 +17,21 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         self.assertEqual(name, sg.name)
 
     @helpers.skipIfNoService(['security.security_groups'])
+    def test_azure_security_group_create_no_description(self):
+        name = "testCreateSecGroup13"
+        sg = self.provider.security.security_groups.create(
+            name=name, description=None, network_id="")
+        print("Create - " + str(sg))
+        self.assertEqual(name, sg.name)
+        sg.description = name
+        self.assertEqual(name, sg.description)
+        self.provider.security.security_groups.delete(
+            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
+            '/resourceGroups/CloudBridge-Azure'\
+            '/providers/Microsoft.Network'\
+            '/networkSecurityGroups/testCreateSecGroup13")
+
+    @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_find_exists(self):
         sgl = self.provider.security.security_groups.find("sg")
         for sg in sgl:
