@@ -101,6 +101,15 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         self.assertEqual(len(rules), 3)
 
     @helpers.skipIfNoService(['security.security_groups'])
+    def test_azure_security_group_rule_create_twice(self):
+        list = self.provider.security.security_groups.list()
+        cb = list.data[0]
+        first_rule = cb.add_rule('*', '25', '100')
+        second_rule = cb.add_rule('*', '25', '100')
+        self.assertEqual(first_rule, second_rule)
+
+
+    @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_delete(self):
         list = self.provider.security.security_groups.list()
         cb = list.data[0]
@@ -109,7 +118,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         rules[1].delete()
         rules = cb.rules
         print("After deleting Rule length - " + str(len(rules)))
-        self.assertEqual(len(rules), 2)
+        self.assertEqual(len(rules), 3)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_get_exist(self):

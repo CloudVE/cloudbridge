@@ -33,13 +33,13 @@ class AzureIntegrationSnapshotServiceTestCase(helpers.ProviderTestBase):
         self.assertTrue(len(snapshot_list_after_create),
                         len(snapshot_list_before_create) + 1)
 
-        with self.assertRaises(NotImplementedError):
-            snapshot = self.provider.block_store.snapshots.get(snapshot_id)
-            print("Get Snapshot  - " + str(snapshot))
-            self.assertTrue(
-                snapshot.name == snapshot_name,
-                "Snapshot name should be MySnapshot")
+        snapshot = self.provider.block_store.snapshots.get(snapshot_id)
+        print("Get Snapshot  - " + str(snapshot))
+        self.assertTrue(
+            snapshot.name == snapshot_name,
+            "Snapshot name should be MySnapshot")
 
+        with self.assertRaises(NotImplementedError):
             snapshot_find = self.provider.block_store.\
                 snapshots.find(snapshot_name)
             print("Find Snapshot  - " + str(snapshot))
