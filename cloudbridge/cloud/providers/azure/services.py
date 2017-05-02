@@ -7,7 +7,7 @@ from cloudbridge.cloud.base.services import BaseBlockStoreService, \
     BaseObjectStoreService, BaseSecurityGroupService, \
     BaseSecurityService, BaseSnapshotService, BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone, \
-    Snapshot
+    Snapshot, Volume
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
@@ -73,11 +73,12 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
 
     def create(self, name, description, network_id):
         parameters = {"location": self.provider.region_name}
-        sg = self.provider.azure_client.create_security_group(name, parameters)
-        cb_sg = AzureSecurityGroup(self.provider, sg)
 
         if description:
-            cb_sg.description = description
+            parameters['tags'] = {'Description': description}
+
+        sg = self.provider.azure_client.create_security_group(name, parameters)
+        cb_sg = AzureSecurityGroup(self.provider, sg)
 
         return cb_sg
 
@@ -197,11 +198,9 @@ class AzureVolumeService(BaseVolumeService):
         snapshot_id = snapshot.id if isinstance(
             snapshot, Snapshot) and snapshot else snapshot
         self.provider.azure_client.create_empty_disk(
-            name, size, zone_id, snapshot_id)
+            name, size, zone_id, snapshot_id, description=description)
         azure_vol = self.provider.azure_client.get_disk(name)
         cb_vol = AzureVolume(self.provider, azure_vol)
-        if description:
-            cb_vol.description = description
 
         return cb_vol
 
@@ -229,5 +228,12 @@ class AzureSnapshotService(BaseSnapshotService):
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
     def create(self, name, volume, description=None):
-        raise NotImplementedError('AzureSnapShotService not '
-                                  'implemented this method')
+        volume_id = volume.id if isinstance(volume, Volume) else volume
+        params = azure_helpers.parse_url(VOLUME_RESOURCE_ID, volume_id)
+        self.provider.azure_client. \
+            create_snapshot(name, params.get(VOLUME_NAME),
+                            description=description)
+        azure_snap = self.provider.azure_client.get_snapshot(name)
+        cb_snap = AzureSnapshot(self.provider, azure_snap)
+
+        return cb_snap

@@ -112,6 +112,11 @@ class AzureClient(object):
             create_or_update(self.resource_group_name, name,
                              parameters).result()
 
+    def update_security_group_tags(self, name, tags):
+        return self.network_management_client.network_security_groups. \
+            create_or_update(self.resource_group_name, name,
+                             {'tags': tags}).result()
+
     def create_security_group_rule(self, security_group,
                                    rule_name, parameters):
         return self.network_management_client.security_rules. \
@@ -281,3 +286,49 @@ class AzureClient(object):
                 virtual_machine,
                 raw=True
             )
+
+    def get_snapshot(self, snapshot_name):
+        return self.compute_client.snapshots.get(self.resource_group_name,
+                                                 snapshot_name)
+
+    def create_snapshot(self, snapshot_name, disk_name,
+                        description=None, region=None):
+
+        managed_disk = self.compute_client.\
+            disks.get(self.resource_group_name,
+                      disk_name)
+        params = {
+                'location': region or self.region_name,
+                'creation_data': {
+                    'create_option': 'Copy',
+                    'source_uri': managed_disk.id
+                }
+            }
+
+        if description:
+            params['tags'] = {'Description': description}
+
+        snapshot_response = self.compute_client.snapshots.create_or_update(
+            self.resource_group_name,
+            snapshot_name,
+            params,
+            raw=True
+        )
+
+        return snapshot_response
+
+    def delete_snapshot(self, snapshot_name):
+        async_delete = self.compute_client.snapshots. \
+            delete(self.resource_group_name, snapshot_name)
+        async_delete.wait()
+
+    def update_snapshot_tags(self, snapshot_name, tags, region=None):
+        snapshot_result = self.compute_client.snapshots.update(
+            self.resource_group_name,
+            snapshot_name,
+            {
+                'tags': tags
+            },
+            raw=True
+        )
+        return snapshot_result

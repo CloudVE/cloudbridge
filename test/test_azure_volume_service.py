@@ -1,6 +1,8 @@
 import azure_test.helpers as helpers
 from azure_test.helpers import ProviderTestBase
 
+from cloudbridge.cloud.interfaces import VolumeState
+
 
 class AzureVolumeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['block_store.volumes'])
@@ -11,9 +13,19 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
         self.assertTrue(
             volume.name == "MyVolume", "Volume name should be MyVolume")
 
+        self.assertIsNotNone(volume.description)
+        self.assertIsNotNone(volume.name)
+        self.assertIsNotNone(volume.size)
+        self.assertIsNotNone(volume.zone_id)
+        self.assertIsNone(volume.source)
+        self.assertIsNone(volume.attachments)
+        self.assertIsNotNone(volume.create_time)
+        volume.name = 'newname'
+
         volume = self.provider.block_store.volumes.get(
             "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers'\
             '/Microsoft.Compute/disks/MyVolume")
+        volume.description = 'My Volume desc'
         print("Get Volume  - " + str(volume))
         self.assertTrue(
             volume.name == "MyVolume", "Volume name should be MyVolume")
@@ -22,15 +34,21 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_delete(self):
-        volume = self.provider.block_store.volumes.create("MyVolume", 1)
+        volume = self.provider.block_store.volumes.create("MyTestVolume", 1)
         volume.refresh()
         print("Create Volume - " + str(volume))
-        self.assertTrue(volume.name == "MyVolume",
+        self.assertTrue(volume.name == "MyTestVolume",
                         "Volume name should be MyVolume")
         volume.delete()
         volume1_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96" \
                      "/resourceGroups/cloudbridge-azure/providers" \
                      "/Microsoft.Compute/disks/MyVolume"
+        delete_volume = volume.delete()
+        self.assertEqual(delete_volume, False)
+
+        volume.refresh()
+        self.assertEqual(volume.state, VolumeState.UNKNOWN)
+
         volume1 = self.provider.block_store.volumes.get(volume1_id)
         self.assertTrue(
             volume1 is None, "Volume still exists")
@@ -41,9 +59,19 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
             "MyVolume", 1, description='My volume')
         self.assertTrue(
             volume.name == "MyVolume", "Volume name should be MyVolume")
-        volume.attach("/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96"
-                      "/resourceGroups/CloudBridge-Azure/providers"
-                      "/Microsoft.Compute/virtualMachines/ubuntu-intro1")
+        attached = volume.attach("/subscriptions'\
+        '/7904d702-e01c-4826-8519-f5a25c866a96'\
+        '/resourceGroups/CloudBridge-Azure/providers'\
+        '/Microsoft.Compute/virtualMachines/ubuntu-intro1")
+
+        self.assertEqual(attached, True)
+
+        attach_volume = volume.attach("/subscriptions'\
+        '/7904d702-e01c-4826-8519-f5a25c866a96'\
+        '/resourceGroups/CloudBridge-Azure/providers'\
+        '/Microsoft.Compute/virtualMachines/ubuntu-intro1")
+        self.assertEqual(attach_volume, False)
+
         volume.delete()
 
     @helpers.skipIfNoService(['block_store.volumes'])
@@ -61,10 +89,9 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
             "MyVolume", 1, description='My volume')
         self.assertTrue(
             volume.name == "MyVolume", "Volume name should be MyVolume")
-        with self.assertRaises(NotImplementedError):
-            snapshot = volume.create_snapshot("MySnap")
-            self.assertTrue(
-                snapshot is not None, "Snapshot not created")
+        snapshot = volume.create_snapshot("MySnap")
+        self.assertTrue(
+            snapshot is not None, "Snapshot not created")
 
         volume.delete()
 

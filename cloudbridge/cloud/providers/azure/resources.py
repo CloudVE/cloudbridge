@@ -80,7 +80,9 @@ NETWORK_INTERFACE_NAME = 'networkInterfaceName'
 class AzureSecurityGroup(BaseSecurityGroup):
     def __init__(self, provider, security_group):
         super(AzureSecurityGroup, self).__init__(provider, security_group)
-        self._description = None
+        self._security_group = security_group
+        if not self._security_group.tags:
+            self._security_group.tags = {}
 
     @property
     def network_id(self):
@@ -88,11 +90,14 @@ class AzureSecurityGroup(BaseSecurityGroup):
 
     @property
     def description(self):
-        return self._description
+        return self._security_group.tags.get('Description', None)
 
     @description.setter
     def description(self, value):
-        self._description = value
+        self._security_group.tags.update(Description=value)
+        print(self._security_group.tags)
+        self._provider.azure_client.\
+            update_security_group_tags(self.name, self._security_group.tags)
 
     @property
     def rules(self):
@@ -442,7 +447,8 @@ class AzureVolume(BaseVolume):
         """
         Set the volume name.
         """
-        self._volume.name = value
+        # self._volume.name = value
+        pass
 
     @property
     def description(self):
@@ -565,6 +571,8 @@ class AzureSnapshot(BaseSnapshot):
         self._url_params = azure_helpers.\
             parse_url(SNAPSHOT_RESOURCE_ID, snapshot.id)
         self._status = self._snapshot.provisioning_state
+        if not self._snapshot.tags:
+            self._snapshot.tags = {}
 
     @property
     def id(self):
@@ -585,15 +593,18 @@ class AzureSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        self._snapshot.name = value
+        # self._snapshot.name = value
+        pass
 
     @property
     def description(self):
-        return self._description
+        return self._snapshot.tags.get('Description', None)
 
     @description.setter
     def description(self, value):
-        self._description = value
+        self._snapshot.tags.update(Description=value)
+        self._provider.azure_client.\
+            update_snapshot_tags(self.name, self._snapshot.tags)
 
     @property
     def size(self):
@@ -617,17 +628,33 @@ class AzureSnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        pass
+        try:
+            self._snapshot = self._provider.azure_client.\
+                get_snapshot(self.name)
+            self._status = self._snapshot.provisioning_state
+        except (CloudError, ValueError):
+            # The snapshot no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._status = 'unknown'
 
     def delete(self):
         """
         Delete this snapshot.
         """
-        pass
+        try:
+            self._provider.azure_client.delete_snapshot(self.name)
+            return True
+        except CloudError:
+            return False
 
     def create_volume(self, placement=None,
                       size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.
         """
-        pass
+        self._provider.azure_client.\
+            create_snapshot_disk(self.name + '_disk',
+                                 self.id, region=placement)
+        azure_vol = self._provider.azure_client.get_disk(self.name + '_disk')
+        cb_vol = AzureVolume(self._provider, azure_vol)
+        return cb_vol

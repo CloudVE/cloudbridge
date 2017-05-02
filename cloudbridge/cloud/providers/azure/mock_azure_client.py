@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from io import BytesIO
 
 from azure.common import AzureException
@@ -99,7 +101,7 @@ class MockAzureClient:
     volume2.time_created = '20-04-2017'
     volume2.owner_id = None
     volume2.provisioning_state = 'Succeeded'
-    volume2.tags = {'Name': 'Volume2'}
+    volume2.tags = None
 
     volumes = [volume1, volume2]
 
@@ -137,10 +139,16 @@ class MockAzureClient:
         sg_create = NetworkSecurityGroup()
         sg_create.name = name
         sg_create.id = name
+        sg_create.tags = parameters.get('tags', None)
         sg_create.default_security_rules = [self.sg_rule1]
         sg_create.security_rules = [self.sg_rule2]
         self.security_groups.append(sg_create)
         return sg_create
+
+    def update_security_group_tags(self, name, tags):
+        sg = self.get_security_group(name)
+        sg.tags = tags
+        return sg
 
     def list_security_group(self):
         return self.security_groups
@@ -256,13 +264,10 @@ class MockAzureClient:
         volume.disk_size_gb = size
         volume.creation_data = CreationData(
             create_option=DiskCreateOption.empty)
-        volume.time_created = '01-01-2017'
+        volume.time_created = datetime(year=2017, month=5, day=2)
+        volume.location = 'eastus'
         volume.provisioning_state = 'Succeeded'
-        volume.owner_id = \
-            '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-            'resourceGroups/CloudBridge-Azure' \
-            's/providers/Microsoft.Compute/virtualMachines/ubuntu-intro1'
-        volume.tags = {'Name': disk_name}
+        volume.tags = {'Name': disk_name, 'Description': description}
         self.volumes.append(volume)
         return volume
 
@@ -278,25 +283,104 @@ class MockAzureClient:
         return self.volumes
 
     def delete_disk(self, disk_name):
-        for disk in self.volumes:
-            if disk.name == disk_name:
-                self.volumes.remove(disk)
-
+        disk = self.get_disk(disk_name)
+        self.volumes.remove(disk)
         return True
 
     def attach_disk(self, vm_name, disk_name, disk_id):
-        return None
+        disk = self.get_disk(disk_name)
+        if disk.owner_id:
+            response = Response()
+            response.status_code = 404
+            raise CloudError(response=response,
+                             error='Resource already in use')
+
+        disk.owner_id = vm_name
 
     def detach_disk(self, disk_id):
-        return None
+        for d in self.volumes:
+            if d.id == disk_id and not d.owner_id:
+                response = Response()
+                response.status_code = 404
+                raise CloudError(response=response,
+                                 error='Resource already available')
+            elif d.id == disk_id:
+                d.owner_id = None
 
     def get_storage_account(self, storage_account_name):
+        if storage_account_name == 'cloudbridgeazure':
+            response = Response()
+            response.status_code = 404
+            raise CloudError(response=response, error='Resource not found')
+
+        storage_account = StorageAccount()
+        storage_account.name = storage_account_name
+        return storage_account
+
+    def create_storage_account(self, storage_account_name, params):
         storage_account = StorageAccount()
         storage_account.name = storage_account_name
         return storage_account
 
     def update_disk_tags(self, disk_name, tags):
         pass
+
+    def create_snapshot(self, snapshot_name, disk_name,
+                        description=None, region=None):
+        snapshot = Snapshot(location='eastus', creation_data=None)
+        snapshot.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                      '/resourceGroups/cloudbridge-azure' \
+                      '/providers/Microsoft.Compute/Snapshots/{0}'.format(
+                        disk_name)
+        snapshot.name = snapshot_name
+        snapshot.disk_size_gb = 30
+        snapshot.creation_data = \
+            CreationData(create_option=DiskCreateOption.empty)
+        snapshot.time_created = datetime(year=2017, month=5, day=2)
+        snapshot.creation_data.source_uri = \
+            '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+            '/resourceGroups/CloudBridge-Azure/providers' \
+            '/Microsoft.Compute/disks/{0}'.format(
+                disk_name)
+        if description:
+            snapshot.tags = {'Description': description}
+        self.snapshots.append(snapshot)
+        return snapshot
+
+    def update_snapshot_tags(self, snapshot_name, tags):
+        snapshot = self.get_snapshot(snapshot_name)
+        snapshot.tags = tags
+        return snapshot
+
+    def get_snapshot(self, name):
+        for snapshot in self.snapshots:
+            if snapshot.name == name:
+                return snapshot
+
+        response = Response()
+        response.status_code = 404
+        raise CloudError(response=response, error='Resource Not found')
+
+    def delete_snapshot(self, name):
+        snapshot = self.get_snapshot(name)
+        self.snapshots.remove(snapshot)
+        return True
+
+    def create_snapshot_disk(self, disk_name, snapshot_id, region=None):
+        volume = Disk(location='eastus', creation_data=None)
+        volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                    '/resourceGroups/cloudbridge-azure/providers' \
+                    '/Microsoft.Compute/disks/{0}'.format(
+                        disk_name)
+        volume.name = disk_name
+        volume.disk_size_gb = 50
+        volume.creation_data = CreationData(
+            create_option=DiskCreateOption.copy,
+            source_uri=snapshot_id)
+        volume.time_created = '01-01-2017'
+        volume.tags = {'Name': disk_name}
+        self.volumes.append(volume)
+        return volume
 
     def list_snapshots(self):
         return self.snapshots
