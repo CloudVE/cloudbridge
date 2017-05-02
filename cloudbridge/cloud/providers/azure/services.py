@@ -225,7 +225,7 @@ class AzureSnapshotService(BaseSnapshotService):
         snaps = [AzureSnapshot(self.provider, obj)
                  for obj in
                  self.provider.
-                     azure_client.list_snapshots()]
+                 azure_client.list_snapshots()]
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
     def create(self, name, volume, description=None):
