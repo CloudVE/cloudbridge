@@ -24,6 +24,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         print("Create - " + str(sg))
         self.assertEqual(name, sg.name)
         sg.description = name
+        sg.name = 'NewName'
         self.assertEqual(name, sg.description)
         self.provider.security.security_groups.delete(
             "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
@@ -33,7 +34,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_find_exists(self):
-        sgl = self.provider.security.security_groups.find("sg")
+        sgl = self.provider.security.security_groups.find("sg3")
         for sg in sgl:
             self.assertTrue("sg" in sg.name)
         self.assertTrue(sgl.total_results > 0)
@@ -141,6 +142,9 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         cb = list.data[0]
         rule = cb.to_json()
         print("Get Rule -  " + str(rule))
+        self.assertIsNotNone(rule)
+        cb = list.data[1]
+        rule = cb.to_json()
         self.assertIsNotNone(rule)
 
     @helpers.skipIfNoService(['security.security_groups'])

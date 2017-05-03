@@ -9,6 +9,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         print("Create - " + str(container))
         self.assertEqual(
             str(container), "<CB-AzureBucket: container3>")
+        self.assertIsNotNone(container.id)
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_list(self):
@@ -55,15 +56,21 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         print("Bucket delete - " + str(contDel))
         self.assertEqual(
             contDel, True)
+        contDel = cont.delete()
+        self.assertEqual(
+            contDel, False)
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_create_object(self):
         containers = self.provider.object_store.find("container1")
         cont = containers[0]
-        contDel = cont.create_object("block1")
-        print("Create object  - " + str(contDel))
+        obj = cont.create_object("block1")
+        self.assertIsNotNone(obj.id)
+        self.assertIsNotNone(obj.size)
+        self.assertIsNotNone(obj.last_modified)
+        print("Create object  - " + str(obj))
         self.assertEqual(
-            str(contDel), '<CB-AzureBucketObject: block1>')
+            str(obj), '<CB-AzureBucketObject: block1>')
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_exists__internalE(self):
@@ -90,7 +97,7 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         contDel = cont.list()
         print("List object  - " + str(contDel))
         self.assertEqual(
-            len(contDel), 2)
+            len(contDel), 3)
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_get(self):
@@ -139,7 +146,9 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block = blocks[0]
         block.delete()
         self.assertEqual(
-            len(cont.list()), 2)
+            len(cont.list()), 3)
+        deleted = block.delete()
+        self.assertEqual(deleted, False)
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_upload_from_file(self):
@@ -150,6 +159,19 @@ class AzureObjectStoreServiceTestCase(ProviderTestBase):
         block.upload_from_file('blob2Content')
         self.assertEqual(
             block.iter_content().getvalue(), b'blob2Content')
+
+    @helpers.skipIfNoService(['object_store'])
+    def test_azure_bucket_object_upload_exception(self):
+        containers = self.provider.object_store.find("container2")
+        cont = containers[0]
+        blob = cont.create_object('block4')
+        uploaded = blob.upload_from_file('E:\\blob2Content.txt')
+        self.assertEqual(uploaded, False)
+
+        uploaded = blob.upload('blob2Content')
+        self.assertEqual(uploaded, False)
+
+        blob.delete()
 
     @helpers.skipIfNoService(['object_store'])
     def test_azure_bucket_object_generate_url(self):

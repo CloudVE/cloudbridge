@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from azure.common import AzureException
 
@@ -73,10 +74,11 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         return ClientPagedResultList(self.provider, sgs, limit, marker)
 
     def create(self, name, description, network_id):
-        parameters = {"location": self.provider.region_name}
+        parameters = {"location": self.provider.region_name,
+                      'tags': {'Name': name}}
 
         if description:
-            parameters['tags'] = {'Description': description}
+            parameters['tags'].update(Description=description)
 
         sg = self.provider.azure_client.create_security_group(name, parameters)
         cb_sg = AzureSecurityGroup(self.provider, sg)
@@ -87,7 +89,7 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         """
         Searches for a security group by a given list of attributes.
         """
-        filters = {'name': name}
+        filters = {'Name': name}
         sgs = [AzureSecurityGroup(self.provider, security_group)
                for security_group in azure_helpers.filter(
                 self.provider.azure_client.list_security_group(), filters)]
@@ -181,7 +183,7 @@ class AzureVolumeService(BaseVolumeService):
         """
         Searches for a volume by a given list of attributes.
         """
-        filters = {'name': name}
+        filters = {'Name': name}
         cb_vols = [AzureVolume(self.provider, volume)
                    for volume in azure_helpers.filter(
                 self.provider.azure_client.list_disks(), filters)]
@@ -198,9 +200,34 @@ class AzureVolumeService(BaseVolumeService):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, Snapshot) and snapshot else snapshot
-        self.provider.azure_client.create_empty_disk(
-            name, size, zone_id, snapshot_id, description=description)
-        azure_vol = self.provider.azure_client.get_disk(name)
+        disk_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
+        tags = {'Name': name}
+        if description:
+            tags.update(Description=description)
+        if snapshot_id:
+            params = {
+                'location': zone_id or self.provider.azure_client.region_name,
+                'creation_data': {
+                    'create_option': 'copy',
+                    'source_uri': snapshot_id
+                },
+                'tags': tags
+            }
+
+            self.provider.azure_client.create_snapshot_disk(disk_name, params)
+
+        else:
+            params = {
+                'location': zone_id or self.provider.azure_client.region_name,
+                'disk_size_gb': size,
+                'creation_data': {
+                  'create_option': 'empty'
+                  },
+                'tags': tags}
+
+            self.provider.azure_client.create_empty_disk(disk_name, params)
+
+        azure_vol = self.provider.azure_client.get_disk(disk_name)
         cb_vol = AzureVolume(self.provider, azure_vol)
 
         return cb_vol
@@ -236,11 +263,25 @@ class AzureSnapshotService(BaseSnapshotService):
 
     def create(self, name, volume, description=None):
         volume_id = volume.id if isinstance(volume, Volume) else volume
-        params = azure_helpers.parse_url(VOLUME_RESOURCE_ID, volume_id)
+
+        tags = {'Name': name}
+        snapshot_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
+
+        if description:
+            tags.update(Description=description)
+
+        params = {
+            'location': self.provider.azure_client.region_name,
+            'creation_data': {
+                'create_option': 'Copy',
+                'source_uri': volume_id
+            },
+            'tags': tags
+        }
+
         self.provider.azure_client. \
-            create_snapshot(name, params.get(VOLUME_NAME),
-                            description=description)
-        azure_snap = self.provider.azure_client.get_snapshot(name)
+            create_snapshot(snapshot_name, params)
+        azure_snap = self.provider.azure_client.get_snapshot(snapshot_name)
         cb_snap = AzureSnapshot(self.provider, azure_snap)
 
         return cb_snap

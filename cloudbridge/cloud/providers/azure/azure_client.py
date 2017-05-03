@@ -1,4 +1,5 @@
 import logging
+
 from io import BytesIO
 
 from azure.common.credentials import ServicePrincipalCredentials
@@ -176,62 +177,33 @@ class AzureClient(object):
                                              blob_name, out_stream)
         return out_stream
 
-    def create_empty_disk(self, disk_name, size,
-                          region=None, snapshot_id=None,
-                          description=None):
-
-        if snapshot_id:
-            return self.create_snapshot_disk(disk_name,
-                                             snapshot_id, region=region)
-
-        params = {
-            'location': region or self.region_name,
-            'disk_size_gb': size,
-            'creation_data': {
-                'create_option': 'empty'
-            }
-        }
-        if description:
-            params['tags'] = {'Description': description}
-
-        async_creation = self.compute_client.disks.create_or_update(
+    def create_empty_disk(self, disk_name, params):
+        return self.compute_client.disks.create_or_update(
             self.resource_group_name,
             disk_name,
             params,
             raw=True
         )
-        return async_creation
 
-    def create_snapshot_disk(self, disk_name, snapshot_id, region=None):
-        disk_response = self.compute_client.disks.create_or_update(
+    def create_snapshot_disk(self, disk_name, params):
+        return self.compute_client.disks.create_or_update(
             self.resource_group_name,
             disk_name,
-            {
-                'location': region or self.region_name,
-                'creation_data': {
-                    'create_option': 'copy',
-                    'source_uri': snapshot_id
-                }
-            },
+            params,
             raw=True
         )
-
-        return disk_response
 
     def list_snapshots(self):
         return self.compute_client.snapshots. \
             list_by_resource_group(self.resource_group_name)
 
-    def update_disk_tags(self, disk_name, tags, region=None):
-        disk_result = self.compute_client.disks.update(
+    def update_disk_tags(self, disk_name, tags):
+        return self.compute_client.disks.update(
             self.resource_group_name,
             disk_name,
-            {
-                'tags': tags
-            },
+            {'tags': tags},
             raw=True
         )
-        return disk_result
 
     def get_disk(self, disk_name):
         return self.compute_client.disks. \
@@ -246,89 +218,46 @@ class AzureClient(object):
             delete(self.resource_group_name, disk_name)
         async_deletion.wait()
 
-    def attach_disk(self, vm_name, disk_name, disk_id):
-        vm = self.compute_client.virtual_machines.get(
-            self.resource_group_name,
-            vm_name
-        )
-
-        if vm:
-            vm.storage_profile.data_disks.append({
-                'lun': len(vm.storage_profile.data_disks),
-                'name': disk_name,
-                'create_option': 'attach',
-                'managed_disk': {
-                    'id': disk_id
-                }
-            })
-            self.compute_client.virtual_machines.create_or_update(
-                self.resource_group_name,
-                vm.name,
-                vm,
-                raw=True
-            )
-
-    def detach_disk(self, disk_id):
-        virtual_machine = None
-        for index, vm in enumerate(
-                self.compute_client.virtual_machines.list(
-                    self.resource_group_name)):
-            for index, item in enumerate(vm.storage_profile.data_disks):
-                if item.managed_disk and item.managed_disk.id == disk_id:
-                    vm.storage_profile.data_disks.remove(item)
-                    virtual_machine = vm
-                break
-
-        if virtual_machine:
-            self.compute_client.virtual_machines.create_or_update(
-                self.resource_group_name,
-                virtual_machine.name,
-                virtual_machine,
-                raw=True
-            )
-
     def get_snapshot(self, snapshot_name):
         return self.compute_client.snapshots.get(self.resource_group_name,
                                                  snapshot_name)
 
-    def create_snapshot(self, snapshot_name, disk_name,
-                        description=None, region=None):
-
-        managed_disk = self.compute_client.\
-            disks.get(self.resource_group_name,
-                      disk_name)
-        params = {
-                'location': region or self.region_name,
-                'creation_data': {
-                    'create_option': 'Copy',
-                    'source_uri': managed_disk.id
-                }
-            }
-
-        if description:
-            params['tags'] = {'Description': description}
-
-        snapshot_response = self.compute_client.snapshots.create_or_update(
+    def create_snapshot(self, snapshot_name, params):
+        return self.compute_client.snapshots.create_or_update(
             self.resource_group_name,
             snapshot_name,
             params,
             raw=True
         )
 
-        return snapshot_response
-
     def delete_snapshot(self, snapshot_name):
         async_delete = self.compute_client.snapshots. \
             delete(self.resource_group_name, snapshot_name)
         async_delete.wait()
 
-    def update_snapshot_tags(self, snapshot_name, tags, region=None):
-        snapshot_result = self.compute_client.snapshots.update(
+    def update_snapshot_tags(self, snapshot_name, tags):
+        return self.compute_client.snapshots.update(
             self.resource_group_name,
             snapshot_name,
-            {
-                'tags': tags
-            },
+            {'tags': tags},
             raw=True
         )
-        return snapshot_result
+
+    def get_vm(self, vm_name):
+        return self.compute_client.virtual_machines.get(
+            self.resource_group_name,
+            vm_name
+        )
+
+    def create_or_update_vm(self, vm_name, params):
+        return self.compute_client\
+            .virtual_machines.create_or_update(
+                self.resource_group_name,
+                vm_name,
+                params,
+                raw=True
+            )
+
+    def list_vm(self):
+        return self.compute_client.\
+            virtual_machines.list(self.resource_group_name)

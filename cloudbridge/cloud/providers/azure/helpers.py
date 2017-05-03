@@ -3,7 +3,7 @@ def filter(list_items, filters):
     if filters:
         for obj in list_items:
             for key in filters:
-                if filters[key] in str(getattr(obj, key)):
+                if obj.tags and filters[key] == obj.tags.get(key, ''):
                     filtered_list.append(obj)
 
         return filtered_list

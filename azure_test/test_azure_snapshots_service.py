@@ -7,12 +7,12 @@ from cloudbridge.cloud.interfaces import SnapshotState
 class AzureSnapshotsServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['block_store.snapshots'])
     def test_azure_snapshot_create_and_get(self):
-        snapshot_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
+        volume_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
             '/resourceGroups/cloudbridge-azure'\
-            '/providers/Microsoft.Compute/snapshots/MySnapshot123"
+            '/providers/Microsoft.Compute/disks/MySnapshotDisk123"
         snapshot = self.provider.block_store. \
             snapshots.create("MySnapshot",
-                             snapshot_id)
+                             volume_id)
         snapshot.description = 'My snapshot'
         print("Create Snapshot - " + str(snapshot))
         self.assertTrue(
@@ -24,14 +24,10 @@ class AzureSnapshotsServiceTestCase(ProviderTestBase):
         self.assertIsNotNone(snapshot.volume_id)
         self.assertIsNotNone(snapshot.create_time)
         snapshot.name = 'MySnapNewName'
-        snapshot = self.provider.block_store.snapshots.get(
-                "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
-                '/resourceGroups/cloudbridge-azure'\
-                '/providers/Microsoft.Compute'\
-                /snapshots/MySnapshot")
+        snapshot = self.provider.block_store.snapshots.get(snapshot.id)
         print("Get Snapshot  - " + str(snapshot))
         self.assertTrue(
-            snapshot.name == "MySnapshot",
+            snapshot.name == "MySnapNewName",
             "Snapshot name should be MySnapshot")
 
         snapshot.delete()

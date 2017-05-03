@@ -16,29 +16,29 @@ class AzureHelpersTestCase(ProviderTestBase):
 
     def test_filter_matched(self):
         ex1 = Expando()
-        ex1.name = 'test'
+        ex1.tags = {'Name': 'test'}
 
         ex2 = Expando()
-        ex2.name = 'abc'
+        ex2.tags = {'Name': 'abc'}
 
-        result = azure_helpers.filter([ex1, ex2], {'name': 'test'})
+        result = azure_helpers.filter([ex1, ex2], {'Name': 'test'})
         self.assertTrue(len(result) == 1, 'Result count should be one')
 
     def test_filter_not_matched(self):
         ex1 = Expando()
-        ex1.name = 'pqr'
+        ex1.tags = {'Name': 'pqr'}
 
         ex2 = Expando()
-        ex2.name = 'abc'
-        result = azure_helpers.filter([ex1, ex2], {'name': 'test123'})
+        ex2.tags = {'Name': 'abc'}
+        result = azure_helpers.filter([ex1, ex2], {'Name': 'test123'})
         self.assertTrue(len(result) == 0, 'Result count should be zero')
 
     def test_filter_None(self):
         ex1 = Expando()
-        ex1.name = 'pqr'
+        ex1.tags = {'Name': 'test'}
 
         ex2 = Expando()
-        ex2.name = 'abc'
+        ex2.tags = {'Name': 'abc'}
         result = azure_helpers.filter([ex1, ex2], None)
         self.assertTrue(len(result) == 2, 'Result count should be two')
 
