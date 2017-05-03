@@ -23,12 +23,12 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
         volume.name = 'newname'
 
         volume = self.provider.block_store.volumes.get(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge-azure/providers'\
-            '/Microsoft.Compute/disks/MyVolume")
+            volume.id)
         volume.description = 'My Volume desc'
         print("Get Volume  - " + str(volume))
         self.assertTrue(
-            volume.name == "MyVolume", "Volume name should be MyVolume")
+            volume.description == "My Volume desc",
+            "Volume description should be My Volume desc")
 
         volume.delete()
 
@@ -54,33 +54,28 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
             volume1 is None, "Volume still exists")
 
     @helpers.skipIfNoService(['block_store.volumes'])
-    def test_azure_volume_attach(self):
+    def test_azure_volume_attach_and_detach(self):
         volume = self.provider.block_store.volumes.create(
-            "MyVolume", 1, description='My volume')
+            "attach", 1, description='My volume')
         self.assertTrue(
-            volume.name == "MyVolume", "Volume name should be MyVolume")
-        attached = volume.attach("/subscriptions'\
-        '/7904d702-e01c-4826-8519-f5a25c866a96'\
-        '/resourceGroups/CloudBridge-Azure/providers'\
-        '/Microsoft.Compute/virtualMachines/ubuntu-intro1")
+            volume.name == "attach", "Volume name should be MyVolume")
+        instance_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
+                      '/resourceGroups/CLOUDBRIDGE-AZURE'\
+                      '/providers/Microsoft.Compute/virtualMachines/VM1'
+        attached = volume.attach(instance_id)
 
         self.assertEqual(attached, True)
-
-        attach_volume = volume.attach("/subscriptions'\
-        '/7904d702-e01c-4826-8519-f5a25c866a96'\
-        '/resourceGroups/CloudBridge-Azure/providers'\
-        '/Microsoft.Compute/virtualMachines/ubuntu-intro1")
+        self.assertIsNotNone(volume.attachments)
+        instance_id = instance_id + '1'
+        attach_volume = volume.attach(instance_id)
         self.assertEqual(attach_volume, False)
 
-        volume.delete()
+        detached = volume.detach()
+        self.assertEqual(detached, True)
 
-    @helpers.skipIfNoService(['block_store.volumes'])
-    def test_azure_volume_dettach(self):
-        volume = self.provider.block_store.volumes.create(
-            "MyVolume", 1, description='My volume')
-        self.assertTrue(
-            volume.name == "MyVolume", "Volume name should be MyVolume")
-        volume.detach()
+        detached = volume.detach()
+        self.assertEqual(detached, False)
+
         volume.delete()
 
     @helpers.skipIfNoService(['block_store.volumes'])
@@ -106,9 +101,12 @@ class AzureVolumeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_find(self):
-        volumes = self.provider.block_store.volumes.find("Volume")
+        volumes = self.provider.block_store.volumes.find("Volume1")
+        print(len(volumes))
+        print('after find')
         self.assertTrue(
-            len(volumes) == 2, "Volume should not be available")
+            len(volumes) == 1, "Volume should not be available")
+        self.assertIsNotNone(volumes[0].source)
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_azure_volume_find_ifNotExist(self):

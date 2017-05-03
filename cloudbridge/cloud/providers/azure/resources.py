@@ -89,15 +89,30 @@ class AzureSecurityGroup(BaseSecurityGroup):
         return self._security_group.resource_guid
 
     @property
+    def resource_name(self):
+        return self._security_group.name
+
+    @property
+    def name(self):
+        return self._security_group.tags.get('Name', self._security_group.name)
+
+    @name.setter
+    def name(self, value):
+        self._security_group.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_security_group_tags(self.resource_name,
+                                       self._security_group.tags)
+
+    @property
     def description(self):
         return self._security_group.tags.get('Description', None)
 
     @description.setter
     def description(self, value):
         self._security_group.tags.update(Description=value)
-        print(self._security_group.tags)
         self._provider.azure_client.\
-            update_security_group_tags(self.name, self._security_group.tags)
+            update_security_group_tags(self.resource_name,
+                                       self._security_group.tags)
 
     @property
     def rules(self):
@@ -143,7 +158,6 @@ class AzureSecurityGroup(BaseSecurityGroup):
         rule = self.get_rule(ip_protocol, from_port,
                              to_port, cidr_ip, src_group)
         if not rule:
-            security_group = self._security_group.name
             # resource_group = self._provider.resource_group
             count = len(self.rules) + 1
             rule_name = "Rule - " + str(count)
@@ -162,7 +176,7 @@ class AzureSecurityGroup(BaseSecurityGroup):
                               destination_address_prefix,
                           "access": access, "direction": direction}
             result = self._provider.azure_client. \
-                create_security_group_rule(security_group,
+                create_security_group_rule(self.resource_name,
                                            rule_name, parameters)
             self._security_group.security_rules.append(result)
             return AzureSecurityGroupRule(self._provider, result, self)
@@ -433,13 +447,17 @@ class AzureVolume(BaseVolume):
         return self._volume.id
 
     @property
+    def resource_name(self):
+        return self._volume.name
+
+    @property
     def name(self):
         """
         Get the volume name.
 
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        return self._volume.name
+        return self._volume.tags.get('Name', self._volume.name)
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -448,7 +466,10 @@ class AzureVolume(BaseVolume):
         Set the volume name.
         """
         # self._volume.name = value
-        pass
+        self._volume.tags.update(Name=value)
+        self._provider.azure_client.\
+            update_disk_tags(self.resource_name,
+                             self._volume.tags)
 
     @property
     def description(self):
@@ -458,7 +479,7 @@ class AzureVolume(BaseVolume):
     def description(self, value):
         self._volume.tags.update(Description=value)
         self._provider.azure_client.\
-            update_disk_tags(self._url_params.get(VOLUME_NAME),
+            update_disk_tags(self.resource_name,
                              self._volume.tags)
 
     @property
@@ -499,8 +520,19 @@ class AzureVolume(BaseVolume):
                 Instance) else instance
             params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID,
                                              instance_id)
-            self._provider.azure_client.attach_disk(params.get(VM_NAME),
-                                                    self.name, self.id)
+
+            vm = self._provider.azure_client.get_vm(params.get(VM_NAME))
+
+            vm.storage_profile.data_disks.append({
+                'lun': len(vm.storage_profile.data_disks),
+                'name': self.resource_name,
+                'create_option': 'attach',
+                'managed_disk': {
+                    'id': self.id
+                }
+            })
+            self._provider.azure_client\
+                .create_or_update_vm(params.get(VM_NAME), vm)
             return True
         except CloudError:
             return False
@@ -509,11 +541,24 @@ class AzureVolume(BaseVolume):
         """
         Detach this volume from an instance.
         """
-        try:
-            self._provider.azure_client.detach_disk(self.id)
+        virtual_machine = None
+        for index, vm in enumerate(
+                self._provider.azure_client.list_vm()):
+            for item in vm.storage_profile.data_disks:
+                if item.managed_disk and item.managed_disk.id == self.id:
+                    vm.storage_profile.data_disks.remove(item)
+                    virtual_machine = vm
+                    break
+            if virtual_machine:
+                break
+
+        if virtual_machine:
+            self._provider.azure_client.create_or_update_vm(
+                virtual_machine.name,
+                virtual_machine
+            )
             return True
-        except CloudError:
-            return False
+        return False
 
     def create_snapshot(self, name, description=None):
         """
@@ -527,7 +572,7 @@ class AzureVolume(BaseVolume):
         """
         try:
             self._provider.azure_client.\
-                delete_disk(self._url_params.get(VOLUME_NAME))
+                delete_disk(self.resource_name)
             return True
         except CloudError:
             return False
@@ -543,9 +588,8 @@ class AzureVolume(BaseVolume):
         for its latest state.
         """
         try:
-            print('Volume status ' + self._status)
             self._volume = self._provider.azure_client.\
-                get_disk(self._url_params.get(VOLUME_NAME))
+                get_disk(self.resource_name)
             self.update_status()
         except (CloudError, ValueError):
             # The volume no longer exists and cannot be refreshed.
@@ -579,13 +623,17 @@ class AzureSnapshot(BaseSnapshot):
         return self._snapshot.id
 
     @property
+    def resource_name(self):
+        return self._snapshot.name
+
+    @property
     def name(self):
         """
         Get the snapshot name.
 
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        return self._snapshot.name
+        return self._snapshot.tags.get('Name', self._snapshot.name)
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -594,7 +642,10 @@ class AzureSnapshot(BaseSnapshot):
         Set the snapshot name.
         """
         # self._snapshot.name = value
-        pass
+        self._snapshot.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_snapshot_tags(self.resource_name,
+                                 self._snapshot.tags)
 
     @property
     def description(self):
@@ -604,7 +655,8 @@ class AzureSnapshot(BaseSnapshot):
     def description(self, value):
         self._snapshot.tags.update(Description=value)
         self._provider.azure_client.\
-            update_snapshot_tags(self.name, self._snapshot.tags)
+            update_snapshot_tags(self.resource_name,
+                                 self._snapshot.tags)
 
     @property
     def size(self):
@@ -630,7 +682,7 @@ class AzureSnapshot(BaseSnapshot):
         """
         try:
             self._snapshot = self._provider.azure_client.\
-                get_snapshot(self.name)
+                get_snapshot(self.resource_name)
             self._status = self._snapshot.provisioning_state
         except (CloudError, ValueError):
             # The snapshot no longer exists and cannot be refreshed.
@@ -642,7 +694,7 @@ class AzureSnapshot(BaseSnapshot):
         Delete this snapshot.
         """
         try:
-            self._provider.azure_client.delete_snapshot(self.name)
+            self._provider.azure_client.delete_snapshot(self.resource_name)
             return True
         except CloudError:
             return False
@@ -652,9 +704,6 @@ class AzureSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        self._provider.azure_client.\
-            create_snapshot_disk(self.name + '_disk',
-                                 self.id, region=placement)
-        azure_vol = self._provider.azure_client.get_disk(self.name + '_disk')
-        cb_vol = AzureVolume(self._provider, azure_vol)
-        return cb_vol
+        return self._provider.block_store.volumes.\
+            create(self.resource_name, self.size,
+                   zone=placement, snapshot=self)

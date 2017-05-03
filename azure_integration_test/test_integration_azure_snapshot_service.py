@@ -7,8 +7,8 @@ class AzureIntegrationSnapshotServiceTestCase(helpers.ProviderTestBase):
 
     @helpers.skipIfNoService(['block_store'])
     def test_azure_snapshot_service(self):
-        snapshot_name = '{0}'.format(uuid.uuid4())
-        volume_name = '{0}'.format(uuid.uuid4())
+        snapshot_name = '{0}'.format(uuid.uuid4().hex[:6])
+        volume_name = '{0}'.format(uuid.uuid4().hex[:6])
 
         snapshot_list_before_create = \
             self.provider.block_store.snapshots.list()
@@ -64,8 +64,8 @@ class AzureIntegrationSnapshotServiceTestCase(helpers.ProviderTestBase):
             self.provider.block_store.snapshots.list()
         print(str(len(snapshot_list_after_delete)))
 
-        self.assertTrue(len(snapshot_list_after_delete),
-                        len(snapshot_list_before_delete) - 1)
+        self.assertEqual(len(snapshot_list_after_delete),
+                         len(snapshot_list_before_delete) - 1)
 
         volume.delete()
         vol.delete()

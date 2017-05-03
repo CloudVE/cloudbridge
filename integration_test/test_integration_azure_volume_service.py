@@ -6,8 +6,8 @@ import azure_integration_test.helpers as helpers
 class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
     @helpers.skipIfNoService(['block_store'])
     def test_azure_volume_service(self):
-        volume_name = '{0}'.format(uuid.uuid4())
-        snapshot_name = '{0}'.format(uuid.uuid4())
+        volume_name = '{0}'.format(uuid.uuid4().hex[:6])
+        snapshot_name = '{0}'.format(uuid.uuid4().hex[:6])
 
         volume_list_before_create = self.provider.block_store.volumes.list()
         print(str(len(volume_list_before_create)))
@@ -32,16 +32,20 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
         print("Find Volume  - " + str(volume))
         self.assertEqual(
             len(volume_find), 1)
-        # volume.attach('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers/Microsoft.Compute/virtualMachines/ubuntu-intro2')
+        instance_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                      '/resourceGroups/CloudBridge-Azure/providers'\
+                      '/Microsoft.Compute/virtualMachines/ubuntu-intro1'
+        volume.attach(instance_id)
         # TODO: Add logic to verify that disk is attached to instance
 
-        # volume.detach()
+        volume.detach()
         # TODO: Add logic to verify that disk is not in use
 
-        with self.assertRaises(NotImplementedError):
-            volume.create_snapshot(snapshot_name)
-        # self.assertTrue(snapshot is not None,
-        # 'Snapshot {0} not created'.format(snapshot_name))
+        snapshot = volume.create_snapshot(snapshot_name)
+        self.assertTrue(snapshot is not None,
+                        'Snapshot {0} not created'.format(snapshot_name))
+
+        snapshot.delete()
 
         volume.refresh()
         self.assertTrue(volume.id == volume_id,
