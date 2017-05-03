@@ -248,8 +248,15 @@ class AzureSnapshotService(BaseSnapshotService):
             return None
 
     def find(self, name, limit=None, marker=None):
-        raise NotImplementedError('AzureSnapShotService not '
-                                  'implemented this method')
+        """
+             Searches for a snapshot by a given list of attributes.
+        """
+        filters = {'Name': name}
+        cb_snapshots = [AzureSnapshot(self.provider, snapshot)
+                        for snapshot in azure_helpers.filter(
+                self.provider.azure_client.list_snapshots(), filters)]
+        return ClientPagedResultList(self.provider, cb_snapshots,
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         """
