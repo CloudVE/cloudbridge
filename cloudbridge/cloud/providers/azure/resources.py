@@ -767,39 +767,42 @@ class AzureMachineImage(BaseMachineImage):
     def description(self):
         return self._image.tags.get('Description', None)
 
-        # @property
-        # def min_disk(self):
-        #     """
-        #     Returns the minimum size of the disk that's required to
-        #     boot this image (in GB)
-        #
-        #     :rtype: ``int``
-        #     :return: The minimum disk size needed by this image
-        #     """
-        #     bdm = self._ec2_image.block_device_mapping
-        #     return bdm[self._ec2_image.root_device_name].size
-        #
-        # def delete(self):
-        #     """
-        #     Delete this image
-        #     """
-        #     self._ec2_image.deregister(delete_snapshot=True)
-        #
-        # @property
-        # def state(self):
-        #     return AzureMachineImage.IMAGE_STATE_MAP.get(
-        #         self._ec2_image.state, MachineImageState.UNKNOWN)
-        #
-        # def refresh(self):
-        #     """
-        #     Refreshes the state of this instance by re-querying
-        #     the cloud provider
-        #     for its latest state.
-        #     """
-        #     image = self._provider.compute.images.get(self.id)
-        #     if image:
-        #         # pylint:disable=protected-access
-        #         self._ec2_image = image._ec2_image
-        #     else:
-        #         # image no longer exists
-        #         self._ec2_image.state = "unknown"
+    @property
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
+        """
+        # bdm = self._image.block_device_mapping
+        # return bdm[self._image.root_device_name].size
+        pass
+
+    def delete(self):
+        """
+        Delete this image
+        """
+        # self._image.deregister(delete_snapshot=True)
+        pass
+
+    @property
+    def state(self):
+        return AzureMachineImage.IMAGE_STATE_MAP.get(
+            self._image.provisioning_state, MachineImageState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this instance by re-querying
+        the cloud provider
+        for its latest state.
+        """
+        # image = self._provider.compute.images.get(self.id)
+        # if image:
+        #     # pylint:disable=protected-access
+        #     self._image = image
+        # else:
+        #     # image no longer exists
+        #     self._image.state = "unknown"
+        pass
