@@ -3,9 +3,8 @@ from azure_test.helpers import ProviderTestBase
 
 class AzureProviderTestCase(ProviderTestBase):
     def test_azure_provider(self):
-        with self.assertRaises(Exception):
-            compute = self.provider.compute
-            self.assertTrue(compute is not None, 'Compute should not be None')
+        compute = self.provider.compute
+        self.assertTrue(compute is not None, 'Compute should not be None')
 
         with self.assertRaises(Exception):
             network = self.provider.network

@@ -5,7 +5,7 @@ from io import BytesIO
 
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
-    Disk, DiskCreateOption, ManagedDiskParameters, \
+    Disk, DiskCreateOption, Image, ManagedDiskParameters, \
     Snapshot, StorageProfile, VirtualMachine
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
@@ -162,6 +162,22 @@ class MockAzureClient:
                  lun=0, create_option='attach')
     vm1.storage_profile.data_disks = [data_dik]
     virtual_machines = [vm1]
+
+    image1 = Image(location='eastus')
+    image1.name = 'image1'
+    image1.tags = {'Name': 'image1'}
+    image1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
+                'Microsoft.Compute/images/image1'
+
+    image2 = Image(location='eastus')
+    image2.name = 'image2'
+    image2.tags = {'Name': 'image2'}
+    image2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                '/providers/Microsoft.Compute/images/image2'
+
+    images = [image1, image2]
 
     def __init__(self, provider):
         self._provider = provider
@@ -440,3 +456,15 @@ class MockAzureClient:
 
     def list_vm(self):
         return self.virtual_machines
+
+    def list_images(self):
+        return self.images
+
+    def get_image(self, name):
+        for image in self.images:
+            if image.name == name:
+                return image
+
+        response = Response()
+        response.status_code = 404
+        raise CloudError(response=response, error='Resource Not found')
