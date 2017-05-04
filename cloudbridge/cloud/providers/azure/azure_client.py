@@ -261,3 +261,11 @@ class AzureClient(object):
     def list_vm(self):
         return self.compute_client.\
             virtual_machines.list(self.resource_group_name)
+
+    def list_images(self):
+        return self.compute_client.images. \
+            list_by_resource_group(self.resource_group_name)
+
+    def get_image(self, image_name):
+        return self.compute_client.images. \
+            get(self.resource_group_name, image_name)

@@ -8,11 +8,12 @@ from azure.common import AzureException
 
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseSecurityGroup, \
-    BaseSecurityGroupRule, BaseSnapshot, BaseVolume, \
+    BaseBucket, BaseBucketObject, BaseMachineImage, \
+    BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseVolume, \
     ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
-from cloudbridge.cloud.interfaces.resources import Instance, SnapshotState
+from cloudbridge.cloud.interfaces.resources import Instance, \
+    MachineImageState, SnapshotState
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
@@ -32,6 +33,9 @@ VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
 SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                        '{resourceGroupName}/providers/Microsoft.Compute/' \
                        'snapshots/{snapshotName}'
+IMAGE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                    '{resourceGroupName}/providers/Microsoft.Compute/' \
+                    'images/{imageName}'
 NETWORK_SECURITY_GROUP_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
                                      'resourceGroups/{resourceGroupName}/' \
                                      'providers/Microsoft.Network/' \
@@ -707,3 +711,95 @@ class AzureSnapshot(BaseSnapshot):
         return self._provider.block_store.volumes.\
             create(self.resource_name, self.size,
                    zone=placement, snapshot=self)
+
+
+class AzureMachineImage(BaseMachineImage):
+    IMAGE_STATE_MAP = {
+        'pending': MachineImageState.PENDING,
+        'available': MachineImageState.AVAILABLE,
+        'failed': MachineImageState.ERROR
+    }
+
+    def __init__(self, provider, image):
+        super(AzureMachineImage, self).__init__(provider)
+        self._image = image
+        self._description = None
+        self._status = self._image.provisioning_state
+        if not self._image.tags:
+            self._image.tags = {}
+
+    @property
+    def id(self):
+        """
+        Get the image identifier.
+
+        :rtype: ``str``
+        :return: ID for this instance as returned by the cloud middleware.
+        """
+        return self._image.id
+
+    @property
+    def resource_name(self):
+        return self._image.name
+
+    @property
+    def name(self):
+        """
+        Get the snapshot name.
+
+        .. note:: an instance must have a (case sensitive) tag ``Name``
+        """
+        return self._image.tags.get('Name', self._image.name)
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the snapshot name.
+        """
+        # self._snapshot.name = value
+        self._image.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_snapshot_tags(self.resource_name,
+                                 self._image.tags)
+
+    @property
+    def description(self):
+        return self._image.tags.get('Description', None)
+
+        # @property
+        # def min_disk(self):
+        #     """
+        #     Returns the minimum size of the disk that's required to
+        #     boot this image (in GB)
+        #
+        #     :rtype: ``int``
+        #     :return: The minimum disk size needed by this image
+        #     """
+        #     bdm = self._ec2_image.block_device_mapping
+        #     return bdm[self._ec2_image.root_device_name].size
+        #
+        # def delete(self):
+        #     """
+        #     Delete this image
+        #     """
+        #     self._ec2_image.deregister(delete_snapshot=True)
+        #
+        # @property
+        # def state(self):
+        #     return AzureMachineImage.IMAGE_STATE_MAP.get(
+        #         self._ec2_image.state, MachineImageState.UNKNOWN)
+        #
+        # def refresh(self):
+        #     """
+        #     Refreshes the state of this instance by re-querying
+        #     the cloud provider
+        #     for its latest state.
+        #     """
+        #     image = self._provider.compute.images.get(self.id)
+        #     if image:
+        #         # pylint:disable=protected-access
+        #         self._ec2_image = image._ec2_image
+        #     else:
+        #         # image no longer exists
+        #         self._ec2_image.state = "unknown"

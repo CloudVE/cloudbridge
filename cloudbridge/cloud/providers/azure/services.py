@@ -5,19 +5,22 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
-    BaseObjectStoreService, BaseSecurityGroupService, \
-    BaseSecurityService, BaseSnapshotService, BaseVolumeService
+    BaseComputeService, BaseImageService, BaseObjectStoreService, \
+    BaseSecurityGroupService, BaseSecurityService, \
+    BaseSnapshotService, BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone, \
     Snapshot, Volume
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
-from .resources import AzureBucket, AzureSecurityGroup, \
+from .resources import AzureBucket, AzureMachineImage, \
+    AzureSecurityGroup, \
     AzureSnapshot, AzureVolume, \
-    NETWORK_SECURITY_GROUP_RESOURCE_ID, SECURITY_GROUP_NAME, \
-    SNAPSHOT_NAME, SNAPSHOT_RESOURCE_ID, VOLUME_NAME, \
-    VOLUME_RESOURCE_ID
+    IMAGE_NAME, IMAGE_RESOURCE_ID, \
+    NETWORK_SECURITY_GROUP_RESOURCE_ID, \
+    SECURITY_GROUP_NAME, SNAPSHOT_NAME, \
+    SNAPSHOT_RESOURCE_ID, VOLUME_NAME, VOLUME_RESOURCE_ID
 
 log = logging.getLogger(__name__)
 
@@ -292,3 +295,57 @@ class AzureSnapshotService(BaseSnapshotService):
         cb_snap = AzureSnapshot(self.provider, azure_snap)
 
         return cb_snap
+
+
+class AzureComputeService(BaseComputeService):
+    def __init__(self, provider):
+        super(AzureComputeService, self).__init__(provider)
+        # self._instance_type_svc = AzureInstanceTypesService(self.provider)
+        # self._instance_svc = AzureInstanceService(self.provider)
+        # self._region_svc = AzureRegionService(self.provider)
+        self._images_svc = AzureImageService(self.provider)
+
+    @property
+    def images(self):
+        return self._images_svc
+
+    @property
+    def instance_types(self):
+        raise NotImplementedError('AzureComputeService not '
+                                  'implemented this method')
+
+    @property
+    def instances(self):
+        raise NotImplementedError('AzureComputeService not '
+                                  'implemented this method')
+
+    @property
+    def regions(self):
+        raise NotImplementedError('AzureComputeService not '
+                                  'implemented this method')
+
+
+class AzureImageService(BaseImageService):
+    def __init__(self, provider):
+        super(AzureImageService, self).__init__(provider)
+
+    def get(self, image_id):
+        try:
+            params = azure_helpers.parse_url(IMAGE_RESOURCE_ID, image_id)
+            image = self.provider.azure_client. \
+                get_image(params.get(IMAGE_NAME))
+            return AzureMachineImage(self.provider, image)
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return None
+
+    def find(self, name, limit=None, marker=None):
+        raise NotImplementedError('AzureImageService not '
+                                  'implemented this method')
+
+    def list(self, limit=None, marker=None):
+        azure_images = self.provider.azure_client.list_images()
+        cb_images = [AzureMachineImage(self.provider, vol)
+                     for vol in azure_images]
+        return ClientPagedResultList(self.provider, cb_images,
+                                     limit=limit, marker=marker)
