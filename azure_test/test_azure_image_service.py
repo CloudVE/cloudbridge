@@ -16,6 +16,10 @@ class AzureImageServiceTestCase(ProviderTestBase):
                     'Microsoft.Compute/images/image1'
         image_get = self.provider.compute.images.get(image1_id)
         print("Get Image Exist - " + str(image_get))
+        print(str(image_get.min_disk))
+        print(str(image_get.state))
+        image_get.delete()
+        image_get.refresh()
         self.assertIsNotNone(image_get)
 
     @helpers.skipIfNoService(['security.security_groups'])
