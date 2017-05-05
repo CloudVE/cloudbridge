@@ -169,6 +169,9 @@ class MockAzureClient:
     image1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
                 'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
                 'Microsoft.Compute/images/image1'
+    image1.storage_profile = StorageProfile()
+    image1.storage_profile.os_disk = ManagedDiskParameters(id='')
+    image1.storage_profile.os_disk.disk_size_gb = 10
 
     image2 = Image(location='eastus')
     image2.name = 'image2'
@@ -468,3 +471,7 @@ class MockAzureClient:
         response = Response()
         response.status_code = 404
         raise CloudError(response=response, error='Resource Not found')
+
+    def delete_image(self, name):
+        img = self.get_image(name)
+        self.images.remove(img)

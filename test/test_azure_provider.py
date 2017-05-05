@@ -6,6 +6,21 @@ class AzureProviderTestCase(ProviderTestBase):
         compute = self.provider.compute
         self.assertTrue(compute is not None, 'Compute should not be None')
 
+        self.assertTrue(compute.images is not None,
+                        'Images should not be none')
+
+        with self.assertRaises(NotImplementedError):
+            self.assertTrue(compute.instances is not None,
+                            'Instances should not be none')
+
+        with self.assertRaises(NotImplementedError):
+            self.assertTrue(compute.instance_types is not None,
+                            'Instance types should not be none')
+
+        with self.assertRaises(NotImplementedError):
+            self.assertTrue(compute.regions is not None,
+                            'Regions should not be none')
+
         with self.assertRaises(Exception):
             network = self.provider.network
             self.assertTrue(network is not None, 'Network should not be None')

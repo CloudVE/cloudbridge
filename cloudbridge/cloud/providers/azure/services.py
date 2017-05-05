@@ -345,7 +345,7 @@ class AzureImageService(BaseImageService):
 
     def list(self, limit=None, marker=None):
         azure_images = self.provider.azure_client.list_images()
-        cb_images = [AzureMachineImage(self.provider, vol)
-                     for vol in azure_images]
+        cb_images = [AzureMachineImage(self.provider, img)
+                     for img in azure_images]
         return ClientPagedResultList(self.provider, cb_images,
                                      limit=limit, marker=marker)
