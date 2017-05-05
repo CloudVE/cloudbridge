@@ -7,7 +7,7 @@ class AzureImageServiceTestCase(ProviderTestBase):
     def test_azure_images_list(self):
         images_list = self.provider.compute.images.list()
         print("List Images - " + str(images_list))
-        self.assertEqual(len(images_list), 2)
+        self.assertTrue(images_list.total_results > 0)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_images_get_exist(self):
@@ -18,6 +18,8 @@ class AzureImageServiceTestCase(ProviderTestBase):
         print("Get Image Exist - " + str(image_get))
         print(str(image_get.min_disk))
         print(str(image_get.state))
+        self.assertIsNone(image_get.description)
+        image_get.refresh()
         image_get.delete()
         image_get.refresh()
         self.assertIsNotNone(image_get)

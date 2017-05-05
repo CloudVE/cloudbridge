@@ -33,9 +33,6 @@ VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
 SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                        '{resourceGroupName}/providers/Microsoft.Compute/' \
                        'snapshots/{snapshotName}'
-IMAGE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                    '{resourceGroupName}/providers/Microsoft.Compute/' \
-                    'images/{imageName}'
 NETWORK_SECURITY_GROUP_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
                                      'resourceGroups/{resourceGroupName}/' \
                                      'providers/Microsoft.Network/' \
@@ -714,19 +711,18 @@ class AzureSnapshot(BaseSnapshot):
 
 
 class AzureMachineImage(BaseMachineImage):
+
     IMAGE_STATE_MAP = {
-        'pending': MachineImageState.PENDING,
-        'available': MachineImageState.AVAILABLE,
-        'failed': MachineImageState.ERROR
+        'InProgress': MachineImageState.PENDING,
+        'Succeeded': MachineImageState.AVAILABLE,
+        'Failed': MachineImageState.ERROR
     }
 
     def __init__(self, provider, image):
         super(AzureMachineImage, self).__init__(provider)
         self._image = image
-        self._description = None
-        self._status = self._image.provisioning_state
-        if not self._image.tags:
-            self._image.tags = {}
+        self._url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID, image.id)
+        self._state = self._image.provisioning_state
 
     @property
     def id(self):
@@ -739,33 +735,24 @@ class AzureMachineImage(BaseMachineImage):
         return self._image.id
 
     @property
-    def resource_name(self):
+    def name(self):
+        """
+        Get the image name.
+
+        :rtype: ``str``
+        :return: Name for this image as returned by the cloud middleware.
+        """
         return self._image.name
 
     @property
-    def name(self):
-        """
-        Get the snapshot name.
-
-        .. note:: an instance must have a (case sensitive) tag ``Name``
-        """
-        return self._image.tags.get('Name', self._image.name)
-
-    @name.setter
-    # pylint:disable=arguments-differ
-    def name(self, value):
-        """
-        Set the snapshot name.
-        """
-        # self._snapshot.name = value
-        self._image.tags.update(Name=value)
-        self._provider.azure_client. \
-            update_snapshot_tags(self.resource_name,
-                                 self._image.tags)
-
-    @property
     def description(self):
-        return self._image.tags.get('Description', None)
+        """
+        Get the image description.
+
+        :rtype: ``str``
+        :return: Description for this image as returned by the cloud middleware
+        """
+        return None
 
     @property
     def min_disk(self):
@@ -776,33 +763,27 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        # bdm = self._image.block_device_mapping
-        # return bdm[self._image.root_device_name].size
-        pass
+        return self._image.storage_profile.os_disk.disk_size_gb
 
     def delete(self):
         """
         Delete this image
         """
-        # self._image.deregister(delete_snapshot=True)
-        pass
+        self._provider.azure_client.delete_image(self.name)
 
     @property
     def state(self):
         return AzureMachineImage.IMAGE_STATE_MAP.get(
-            self._image.provisioning_state, MachineImageState.UNKNOWN)
+            self._state, MachineImageState.UNKNOWN)
 
     def refresh(self):
         """
-        Refreshes the state of this instance by re-querying
-        the cloud provider
+        Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        # image = self._provider.compute.images.get(self.id)
-        # if image:
-        #     # pylint:disable=protected-access
-        #     self._image = image
-        # else:
-        #     # image no longer exists
-        #     self._image.state = "unknown"
-        pass
+        try:
+            self._image = self._provider.azure_client.get_image(self.name)
+            self._state = self._image.provisioning_state
+        except CloudError:
+            # image no longer exists
+            self._state = "unknown"

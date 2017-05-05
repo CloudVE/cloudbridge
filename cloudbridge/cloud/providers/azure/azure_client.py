@@ -262,6 +262,10 @@ class AzureClient(object):
         return self.compute_client.\
             virtual_machines.list(self.resource_group_name)
 
+    def delete_image(self, name):
+        self.compute_client.images.\
+            delete(self.resource_group_name, name).wait()
+
     def list_images(self):
         return self.compute_client.images. \
             list_by_resource_group(self.resource_group_name)
