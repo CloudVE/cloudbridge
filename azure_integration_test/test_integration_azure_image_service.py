@@ -14,6 +14,7 @@ class AzureIntegrationImageServiceTestCase(ProviderTestBase):
             print("Get Image - " + str(image_get))
             self.assertIsNotNone(image_get)
 
-        # print("Before updating tag - " + str(image_get.name))
-        # image_get.name("NewTestImage")
-        # print("After updating tag - " + str(image_get.name))
+        image_get.delete()
+        image_get_afetr_delete = self.provider.compute.images.get(image_get.id)
+        print("Get Image - " + str(image_get_afetr_delete))
+        self.assertIsNone(image_get_afetr_delete)
