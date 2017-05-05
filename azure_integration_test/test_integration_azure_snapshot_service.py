@@ -39,12 +39,11 @@ class AzureIntegrationSnapshotServiceTestCase(helpers.ProviderTestBase):
             snapshot.name == snapshot_name,
             "Snapshot name should be MySnapshot")
 
-        with self.assertRaises(NotImplementedError):
-            snapshot_find = self.provider.block_store.\
-                snapshots.find(snapshot_name)
-            print("Find Snapshot  - " + str(snapshot))
-            self.assertEqual(
-                len(snapshot_find), 1)
+        snapshot_find = self.provider.block_store. \
+            snapshots.find(snapshot_name)
+        print("Find Snapshot  - " + str(snapshot))
+        self.assertEqual(
+            len(snapshot_find), 1)
 
         volume = snapshot.create_volume()
         volume.wait_till_ready()
