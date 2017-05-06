@@ -9,6 +9,7 @@ from azure.mgmt.compute.models import CreationData, DataDisk, \
     Snapshot, StorageProfile, VirtualMachine
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
+from azure.mgmt.network.models import VirtualNetwork
 from azure.mgmt.resource.resources.models import ResourceGroup
 from azure.mgmt.storage.models import StorageAccount
 from azure.storage.blob.models import Blob, BlobProperties, \
@@ -89,6 +90,32 @@ class MockAzureClient:
 
     rg = ResourceGroup(location='westus')
     rg.name = "testResourceGroup"
+
+    network1 = VirtualNetwork()
+    network1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                  '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
+                  '/Microsoft.Network/virtualNetworks/CloudBridgeNet1'
+    network1.name = "CloudBridgeNet1"
+    network1.address_space = "{'address_prefixes': ['10.0.0.0/16']}"
+    network1.provisioning_state = "Succeeded"
+
+    network2 = VirtualNetwork()
+    network2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                  '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
+                  '/Microsoft.Network/virtualNetworks/CloudBridgeNet2'
+    network2.name = "CloudBridgeNet2"
+    network2.address_space = "{'address_prefixes': ['10.0.0.0/16']}"
+    network2.provisioning_state = "Failed"
+
+    network3 = VirtualNetwork()
+    network3.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                  '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
+                  '/Microsoft.Network/virtualNetworks/CloudBridgeNet3'
+    network3.name = "CloudBridgeNet3"
+    network3.address_space = "{'address_prefixes': ['10.0.0.0/16']}"
+    network3.provisioning_state = "Succeeded"
+
+    networks = [network1, network2, network3]
 
     volume1 = Disk(location='eastus', creation_data=None)
     volume1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
@@ -245,6 +272,27 @@ class MockAzureClient:
             response.status_code = 404
             raise CloudError(response=response, error='Resource not found')
         return self.rg
+
+    def list_networks(self):
+        return self.networks
+
+    def get_network(self, network_name):
+        for network in self.networks:
+            if network.name == network_name:
+                return network
+        return None
+
+    def create_network(self, name, region=None):
+        for network in self.networks:
+            if network.name == name:
+                return network
+
+    def delete_network(self, network_name):
+        for network in self.networks:
+            if network.name == network_name:
+                self.networks.remove(network)
+                return True
+        return False
 
     def create_resource_group(self, resource_group_name, params):
         rg = ResourceGroup(location='westus')
