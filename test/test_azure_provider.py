@@ -21,9 +21,9 @@ class AzureProviderTestCase(ProviderTestBase):
             self.assertTrue(compute.regions is not None,
                             'Regions should not be none')
 
-        with self.assertRaises(Exception):
-            network = self.provider.network
-            self.assertTrue(network is not None, 'Network should not be None')
+        network = self.provider.network
+        self.assertTrue(network is not None,
+                        'Network should not be None')
 
         block_store = self.provider.block_store
         self.assertTrue(block_store is not None,

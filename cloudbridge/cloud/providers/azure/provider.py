@@ -7,7 +7,7 @@ from cloudbridge.cloud.providers.azure.azure_client import AzureClient
 from cloudbridge.cloud.providers.azure.mock_azure_client import MockAzureClient
 from cloudbridge.cloud.providers.azure.services \
     import AzureBlockStoreService, AzureComputeService, \
-    AzureObjectStoreService, AzureSecurityService
+    AzureNetworkService, AzureObjectStoreService, AzureSecurityService
 
 
 from msrestazure.azure_exceptions import CloudError
@@ -84,6 +84,7 @@ class AzureCloudProvider(BaseCloudProvider):
         self._object_store = AzureObjectStoreService(self)
         self._block_store = AzureBlockStoreService(self)
         self._compute = AzureComputeService(self)
+        self._network = AzureNetworkService(self)
 
     @property
     def compute(self):
@@ -91,8 +92,7 @@ class AzureCloudProvider(BaseCloudProvider):
 
     @property
     def network(self):
-        raise NotImplementedError(
-            "AzureCloudProvider does not implement this service")
+        return self._network
 
     @property
     def security(self):

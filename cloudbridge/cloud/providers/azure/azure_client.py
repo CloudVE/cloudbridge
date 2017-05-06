@@ -209,6 +209,25 @@ class AzureClient(object):
         return self.compute_client.disks. \
             get(self.resource_group_name, disk_name)
 
+    def list_networks(self):
+        return self.network_management_client.virtual_networks.list(
+            self.resource_group_name)
+
+    def get_network(self, network_name):
+        return self.network_management_client.virtual_networks.get(
+            self.resource_group_name, network_name)
+
+    def create_network(self, name, params):
+        return self.network_management_client.virtual_networks. \
+            create_or_update(self.resource_group_name,
+                             name,
+                             parameters=params,
+                             raw=True)
+
+    def delete_network(self, network_name):
+        return self.network_management_client.virtual_networks. \
+            delete(self.resource_group_name, network_name).wait()
+
     def list_disks(self):
         return self.compute_client.disks. \
             list_by_resource_group(self.resource_group_name)

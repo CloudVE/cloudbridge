@@ -5,8 +5,8 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
-    BaseComputeService, BaseImageService, BaseObjectStoreService, \
-    BaseSecurityGroupService, BaseSecurityService, \
+    BaseComputeService, BaseImageService, BaseNetworkService, \
+    BaseObjectStoreService, BaseSecurityGroupService, BaseSecurityService, \
     BaseSnapshotService, BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone, \
     Snapshot, Volume
@@ -15,9 +15,10 @@ from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 from msrestazure.azure_exceptions import CloudError
 
 from .resources import AzureBucket, AzureMachineImage, \
-    AzureSecurityGroup, \
+    AzureNetwork, AzureSecurityGroup, \
     AzureSnapshot, AzureVolume, \
     IMAGE_NAME, IMAGE_RESOURCE_ID, \
+    NETWORK_NAME, NETWORK_RESOURCE_ID, \
     NETWORK_SECURITY_GROUP_RESOURCE_ID, \
     SECURITY_GROUP_NAME, SNAPSHOT_NAME, \
     SNAPSHOT_RESOURCE_ID, VOLUME_NAME, VOLUME_RESOURCE_ID
@@ -349,3 +350,59 @@ class AzureImageService(BaseImageService):
                      for img in azure_images]
         return ClientPagedResultList(self.provider, cb_images,
                                      limit=limit, marker=marker)
+
+
+class AzureNetworkService(BaseNetworkService):
+    def __init__(self, provider):
+        super(AzureNetworkService, self).__init__(provider)
+
+    def get(self, network_id):
+        try:
+            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+            network = self.provider.azure_client. \
+                get_network(params.get(NETWORK_NAME))
+            return AzureNetwork(self.provider, network) if network else None
+
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return None
+
+    def list(self, limit=None, marker=None):
+        """
+               List all networks.
+        """
+        networks = [AzureNetwork(self.provider, network)
+                    for network in self.provider.azure_client.list_networks()]
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
+
+    def create(self, name=None):
+        if name is None:
+            name = "{0}-{1}".format(AzureNetwork.CB_DEFAULT_NETWORK_NAME,
+                                    uuid.uuid4().hex[:6])
+
+        params = {
+            'location': self.provider.azure_client.region_name,
+            'address_space': {
+                'address_prefixes': ['10.0.0.0/16']
+            }
+        }
+
+        self.provider.azure_client.create_network(name, params)
+        network = self.provider.azure_client.get_network(name)
+        cb_network = AzureNetwork(self.provider, network)
+
+        return cb_network
+
+    def delete(self, network_id):
+        """
+        Delete an existing network.
+        """
+        try:
+            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+            network = self.provider.azure_client. \
+                delete_network(params.get(NETWORK_NAME))
+            return True if network else False
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return False

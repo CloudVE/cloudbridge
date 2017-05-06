@@ -8,12 +8,12 @@ from azure.common import AzureException
 
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseMachineImage, \
+    BaseBucket, BaseBucketObject, BaseMachineImage, BaseNetwork, \
     BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseVolume, \
     ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
-    MachineImageState, SnapshotState
+    MachineImageState, NetworkState, SnapshotState
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
@@ -787,3 +787,76 @@ class AzureMachineImage(BaseMachineImage):
         except CloudError:
             # image no longer exists
             self._state = "unknown"
+
+
+class AzureNetwork(BaseNetwork):
+    NETWORK_STATE_MAP = {
+        'InProgress': NetworkState.PENDING,
+        'Succeeded': NetworkState.AVAILABLE,
+    }
+
+    def __init__(self, provider, network):
+        super(AzureNetwork, self).__init__(provider)
+        self._network = network
+        self._state = self._network.provisioning_state
+
+    @property
+    def id(self):
+        return self._network.id
+
+    @property
+    def name(self):
+        """
+        Get the network name.
+
+        .. note:: the network must have a (case sensitive) tag ``Name``
+        """
+        return self._network.name
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the network name.
+        """
+        self._network.name = value
+
+    @property
+    def external(self):
+        """
+        For Azure, all VPC networks can be connected to the Internet so always
+        return ``True``.
+        """
+        return True
+
+    @property
+    def state(self):
+        return AzureNetwork.NETWORK_STATE_MAP.get(
+            self._state, NetworkState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this network by re-querying the cloud provider
+        for its latest state.
+        """
+        try:
+            self._network = self._provider.azure_client.get_network(self.name)
+            self._state = self._network.provisioning_state
+        except (CloudError, ValueError):
+            # The network no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._state = 'unknown'
+
+    @property
+    def cidr_block(self):
+        return self._network.address_space
+
+    def delete(self):
+        """
+        Delete an existing network.
+        """
+        try:
+            network = self._provider.azure_client.delete_network(self.name)
+            return True if network else False
+        except CloudError:
+            return False
