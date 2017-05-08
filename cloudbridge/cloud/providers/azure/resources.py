@@ -861,6 +861,14 @@ class AzureNetwork(BaseNetwork):
         except CloudError:
             return False
 
+    def subnets(self):
+        raise NotImplementedError('AzureNetworkService '
+                                  'not implemented this property')
+
+    def create_subnet(self, cidr_block, name=None, zone=None):
+        raise NotImplementedError('AzureNetworkService '
+                                  'not implemented this property')
+
 
 class AzureRegion(BaseRegion):
 

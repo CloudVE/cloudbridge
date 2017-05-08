@@ -91,27 +91,29 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['network'])
     def test_azure_network_service_delete_networkid_exists(self):
-        network = self.provider.network.delete(
+        isdeleted = self.provider.network.delete(
             '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'
             '/resourceGroups/CLOUDBRIDGE-AZURE/providers'
             '/Microsoft.Network/virtualNetworks/CloudBridgeNet3')
-        print("Delete Network Id exist: " + str(network))
-        self.assertEqual(network, True)
+
+        print("Delete Network Id exist: " + str(isdeleted))
+        self.assertEqual(isdeleted, True)
 
     @helpers.skipIfNoService(['network'])
-    def test_azure_network_service_delete_networkid_doesnotexist(self):
-        network = self.provider.network \
-            .delete('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'
-                    '/resourceGroups/CLOUDBRIDGE-AZURE/providers'
-                    '/Microsoft.Network/virtualNetworks/CloudBridgeNet10')
-        print("Delete Network Id does not exist: " + str(network))
-        self.assertEqual(network, False)
+    def test_azure_network_service_delete_networkid_does_not_exist(self):
+        isdeleted = self.provider.network.delete(
+            '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'
+            '/resourceGroups/CLOUDBRIDGE-AZURE/providers'
+            '/Microsoft.Network/virtualNetworks/CloudBridgeNet10')
+
+        print("Delete Network Id does not exist: " + str(isdeleted))
+        self.assertEqual(isdeleted, True)
 
     @helpers.skipIfNoService(['network'])
     def test_azure_network_service_delete_with_invaid_networkid_throws(self):
         with self.assertRaises(Exception) as context:
-            network = self.provider.network \
+            isdeleted = self.provider.network \
                 .delete('invalidNetworkId')
-            print("Delete with invalid network id: " + str(network))
+            print("Delete with invalid network id: " + str(isdeleted))
             self.assertTrue(
                 'Invalid url parameter passed' in context.exception)
