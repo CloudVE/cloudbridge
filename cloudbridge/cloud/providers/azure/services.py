@@ -414,19 +414,6 @@ class AzureNetworkService(BaseNetworkService):
         raise NotImplementedError('AzureNetworkService '
                                   'not implemented this method')
 
-    def delete(self, network_id):
-        """
-            Delete an existing network.
-            """
-        try:
-            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-            network = self.provider.azure_client. \
-                delete_network(params.get(NETWORK_NAME))
-            return True if network else False
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
-
 
 class AzureRegionService(BaseRegionService):
     def __init__(self, provider):
