@@ -85,6 +85,9 @@ TEST_DATA_CONFIG = {
                                 '842b949c-ea76-48df-998d-8a41f2626243'),
         "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.tiny'),
         "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
+    },
+    "AzureCloudProvider": {
+        "placement": "eastus"
     }
 }
 
@@ -94,6 +97,8 @@ def get_provider_test_data(provider, key):
         return TEST_DATA_CONFIG.get("AWSCloudProvider").get(key)
     elif "OpenStackCloudProvider" in provider.name:
         return TEST_DATA_CONFIG.get("OpenStackCloudProvider").get(key)
+    elif "AzureCloudProvider" in provider.name:
+        return TEST_DATA_CONFIG.get("AzureCloudProvider").get(key)
     return None
 
 

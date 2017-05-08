@@ -17,9 +17,8 @@ class AzureProviderTestCase(ProviderTestBase):
             self.assertTrue(compute.instance_types is not None,
                             'Instance types should not be none')
 
-        with self.assertRaises(NotImplementedError):
-            self.assertTrue(compute.regions is not None,
-                            'Regions should not be none')
+        self.assertTrue(compute.regions is not None,
+                        'Regions should not be none')
 
         network = self.provider.network
         self.assertTrue(network is not None,

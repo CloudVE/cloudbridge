@@ -9,8 +9,8 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketObject, BaseMachineImage, BaseNetwork, \
-    BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseVolume, \
-    ClientPagedResultList
+    BasePlacementZone, BaseRegion, BaseSecurityGroup, BaseSecurityGroupRule, \
+    BaseSnapshot, BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, SnapshotState
@@ -860,3 +860,65 @@ class AzureNetwork(BaseNetwork):
             return True if network else False
         except CloudError:
             return False
+
+
+class AzureRegion(BaseRegion):
+
+    def __init__(self, provider, azure_region):
+        super(AzureRegion, self).__init__(provider)
+        self._azure_region = azure_region
+
+    @property
+    def id(self):
+        return self._azure_region.id
+
+    @property
+    def name(self):
+        return self._azure_region.name
+
+    @property
+    def zones(self):
+        """
+            Access information about placement zones within this region.
+        """
+        # As Azure does not have zones feature, mapping the region
+        # information in the zones.
+        return [AzurePlacementZone(self._provider,
+                                   self._azure_region.id,
+                                   self._azure_region.name)]
+
+
+class AzurePlacementZone(BasePlacementZone):
+
+    def __init__(self, provider, zone, region):
+        super(AzurePlacementZone, self).__init__(provider)
+        self._azure_zone = zone
+        self._azure_region = region
+
+    @property
+    def id(self):
+        """
+            Get the zone id
+            :rtype: ``str``
+            :return: ID for this zone as returned by the cloud middleware.
+        """
+        return self._azure_zone
+
+    @property
+    def name(self):
+        """
+            Get the zone name.
+            :rtype: ``str``
+            :return: Name for this zone as returned by the cloud middleware.
+        """
+        return self._azure_region
+
+    @property
+    def region_name(self):
+        """
+            Get the region that this zone belongs to.
+            :rtype: ``str``
+            :return: Name of this zone's region as returned by the
+            cloud middleware
+        """
+        return self._azure_region
