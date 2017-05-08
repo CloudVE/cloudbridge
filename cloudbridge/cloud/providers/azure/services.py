@@ -5,19 +5,30 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
+<<<<<<< HEAD
     BaseComputeService, BaseImageService, BaseInstanceTypesService, \
     BaseNetworkService, BaseObjectStoreService, \
     BaseSecurityGroupService, BaseSecurityService, \
     BaseSnapshotService, BaseVolumeService
+=======
+    BaseComputeService, BaseImageService, BaseNetworkService, \
+    BaseObjectStoreService, BaseRegionService, BaseSecurityGroupService, \
+    BaseSecurityService, BaseSnapshotService, BaseVolumeService
+>>>>>>> 6ea3953... Added Region Service code changes
 from cloudbridge.cloud.interfaces.resources import PlacementZone, \
     Snapshot, Volume
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
+<<<<<<< HEAD
 from .resources import AzureBucket, AzureInstanceType,\
     AzureMachineImage, AzureNetwork, \
     AzureSecurityGroup, \
+=======
+from .resources import AzureBucket, AzureMachineImage, \
+    AzureNetwork, AzureRegion, AzureSecurityGroup, \
+>>>>>>> 6ea3953... Added Region Service code changes
     AzureSnapshot, AzureVolume, \
     IMAGE_NAME, IMAGE_RESOURCE_ID, \
     NETWORK_NAME, NETWORK_RESOURCE_ID, \
@@ -305,7 +316,7 @@ class AzureComputeService(BaseComputeService):
         super(AzureComputeService, self).__init__(provider)
         self._instance_type_svc = AzureInstanceTypesService(self.provider)
         # self._instance_svc = AzureInstanceService(self.provider)
-        # self._region_svc = AzureRegionService(self.provider)
+        self._region_svc = AzureRegionService(self.provider)
         self._images_svc = AzureImageService(self.provider)
 
     @property
@@ -323,8 +334,7 @@ class AzureComputeService(BaseComputeService):
 
     @property
     def regions(self):
-        raise NotImplementedError('AzureComputeService not '
-                                  'implemented this method')
+        return self._region_svc
 
 
 class AzureImageService(BaseImageService):
@@ -438,8 +448,13 @@ class AzureNetworkService(BaseNetworkService):
 
     def delete(self, network_id):
         """
+<<<<<<< HEAD
                 Delete an existing network.
                 """
+=======
+            Delete an existing network.
+            """
+>>>>>>> 6ea3953... Added Region Service code changes
         try:
             params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
             network = self.provider.azure_client. \
@@ -449,3 +464,37 @@ class AzureNetworkService(BaseNetworkService):
             log.exception(cloudError.message)
             return False
 
+<<<<<<< HEAD
+=======
+
+class AzureRegionService(BaseRegionService):
+    def __init__(self, provider):
+        super(AzureRegionService, self).__init__(provider)
+
+    def get(self, region_id):
+        region = None
+        for azureRegion in self.provider.azure_client.list_locations():
+            if azureRegion.id == region_id:
+                region = AzureRegion(self.provider, azureRegion)
+                break
+        return region
+
+    def list(self, limit=None, marker=None):
+        regions = [AzureRegion(self.provider, region)
+                   for region in self.provider.azure_client.list_locations()]
+        return ClientPagedResultList(self.provider, regions,
+                                     limit=limit, marker=marker)
+
+    @property
+    def current(self):
+        region = None
+        # aws sets the name returned from the aws sdk to both the id & name
+        # of BaseRegion and as such calling get() with the id works
+        # but Azure sdk returns both id & name and are set to
+        # the BaseRegion properties
+        for azureRegion in self.provider.azure_client.list_locations():
+            if azureRegion.name == self.provider.region_name:
+                region = AzureRegion(self.provider, azureRegion)
+                break
+        return region
+>>>>>>> 6ea3953... Added Region Service code changes

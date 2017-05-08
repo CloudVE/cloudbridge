@@ -8,10 +8,9 @@ from azure.common import AzureException
 
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseMachineImage, BaseNetwork,\
-    BaseInstanceType, BaseMachineImage, \
-    BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseVolume, \
-    ClientPagedResultList
+    BaseBucket, BaseBucketObject, BaseMachineImage, BaseNetwork, \
+    BasePlacementZone, BaseRegion, BaseSecurityGroup, BaseSecurityGroupRule, \
+    BaseSnapshot, BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, SnapshotState
@@ -863,45 +862,63 @@ class AzureNetwork(BaseNetwork):
             return False
 
 
-class AzureInstanceType(BaseInstanceType):
+class AzureRegion(BaseRegion):
 
-    def __init__(self, provider, instance_type):
-        super(AzureInstanceType, self).__init__(provider)
-        self._inst_type = instance_type
+    def __init__(self, provider, azure_region):
+        super(AzureRegion, self).__init__(provider)
+        self._azure_region = azure_region
 
-    # @property
-    # def id(self):
-    #     return str(self._inst_dict['instance_type'])
+    @property
+    def id(self):
+        return self._azure_region.id
 
     @property
     def name(self):
-        return self._inst_type.name
-
-    # @property
-    # def family(self):
-    #     return self._inst_type.get('family')
+        return self._azure_region.name
 
     @property
-    def vcpus(self):
-        return self._inst_type.number_of_cores
+    def zones(self):
+        """
+            Access information about placement zones within this region.
+        """
+        # As Azure does not have zones feature, mapping the region
+        # information in the zones.
+        return [AzurePlacementZone(self._provider,
+                                   self._azure_region.id,
+                                   self._azure_region.name)]
+
+
+class AzurePlacementZone(BasePlacementZone):
+
+    def __init__(self, provider, zone, region):
+        super(AzurePlacementZone, self).__init__(provider)
+        self._azure_zone = zone
+        self._azure_region = region
 
     @property
-    def ram(self):
-        return self._inst_type.memory_in_mb
+    def id(self):
+        """
+            Get the zone id
+            :rtype: ``str``
+            :return: ID for this zone as returned by the cloud middleware.
+        """
+        return self._azure_zone
 
     @property
-    def size_root_disk(self):
-        return 0
+    def name(self):
+        """
+            Get the zone name.
+            :rtype: ``str``
+            :return: Name for this zone as returned by the cloud middleware.
+        """
+        return self._azure_region
 
     @property
-    def size_ephemeral_disks(self):
-        return self._inst_type.os_disk_size_in_mb/1024
-
-    @property
-    def num_ephemeral_disks(self):
-        return self._inst_type.max_data_disk_count
-
-    # @property
-    # def extra_data(self):
-    #     return {key: val for key, val in enumerate(self._inst_type)
-    #             if key not in ["instance_type", "family", "vCPU", "memory"]}
+    def region_name(self):
+        """
+            Get the region that this zone belongs to.
+            :rtype: ``str``
+            :return: Name of this zone's region as returned by the
+            cloud middleware
+        """
+        return self._azure_region

@@ -6,13 +6,12 @@ from io import BytesIO
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
     Disk, DiskCreateOption, Image, ManagedDiskParameters, \
-    Snapshot, StorageProfile, VirtualMachine, \
-    VirtualMachineSize
-
+    Snapshot, StorageProfile, VirtualMachine
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.network.models import VirtualNetwork
 from azure.mgmt.resource.resources.models import ResourceGroup
+from azure.mgmt.resource.subscriptions.models import Location
 from azure.mgmt.storage.models import StorageAccount
 from azure.storage.blob.models import Blob, BlobProperties, \
     Container
@@ -211,21 +210,22 @@ class MockAzureClient:
 
     images = [image1, image2]
 
-    instance_type1 = VirtualMachineSize()
-    instance_type1.name = "instance_type1"
-    instance_type1.number_of_cores = 1
-    instance_type1.os_disk_size_in_mb = 100
-    instance_type1.memory_in_mb = 1000
-    instance_type1.max_data_disk_count = 1
+    region1 = Location()
+    region1.name = "westus2"
+    region1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                 'locations/westus2'
 
-    instance_type2 = VirtualMachineSize()
-    instance_type2.name = "instance_type2"
-    instance_type2.number_of_cores = 2
-    instance_type2.os_disk_size_in_mb = 200
-    instance_type2.memory_in_mb = 2000
-    instance_type2.max_data_disk_count = 2
+    region2 = Location()
+    region2.name = "koreasouth"
+    region2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                 'locations/koreasouth'
 
-    instance_types = [instance_type1, instance_type2]
+    region3 = Location()
+    region3.name = "eastus"
+    region3.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                 'locations/eastus'
+
+    regions = [region1, region2, region3]
 
     def __init__(self, provider):
         self._provider = provider
@@ -542,5 +542,5 @@ class MockAzureClient:
         img = self.get_image(name)
         self.images.remove(img)
 
-    def list_instance_types(self):
-        return self.instance_types
+    def list_locations(self):
+        return self.regions
