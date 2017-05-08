@@ -225,8 +225,8 @@ class AzureVolumeService(BaseVolumeService):
                 'location': zone_id or self.provider.azure_client.region_name,
                 'disk_size_gb': size,
                 'creation_data': {
-                  'create_option': 'empty'
-                  },
+                    'create_option': 'empty'
+                },
                 'tags': tags}
 
             self.provider.azure_client.create_empty_disk(disk_name, params)
@@ -394,15 +394,37 @@ class AzureNetworkService(BaseNetworkService):
 
         return cb_network
 
-    def delete(self, network_id):
-        """
+    @property
+    def subnets(self):
+        raise NotImplementedError('AzureNetworkService '
+                                  'not implemented this property')
+
+    def floating_ips(self, network_id=None):
+        raise NotImplementedError('AzureNetworkService '
+                                  'not implemented this method')
+
+    def create_floating_ip(self):
+        raise NotImplementedError('AzureNetworkService '
+                                  'not implemented this method')
+
+    def routers(self):
+        raise NotImplementedError('AzureNetworkService '
+                                  'not implemented this method')
+
+    def create_router(self, name=None):
+        raise NotImplementedError('AzureNetworkService '
+                                  'not implemented this method')
+
+
+def delete(self, network_id):
+    """
         Delete an existing network.
         """
-        try:
-            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-            network = self.provider.azure_client. \
-                delete_network(params.get(NETWORK_NAME))
-            return True if network else False
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+    try:
+        params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+        network = self.provider.azure_client. \
+            delete_network(params.get(NETWORK_NAME))
+        return True if network else False
+    except CloudError as cloudError:
+        log.exception(cloudError.message)
+        return False
