@@ -8,7 +8,8 @@ from azure.common import AzureException
 
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseMachineImage, BaseNetwork, \
+    BaseBucket, BaseBucketObject, BaseMachineImage, BaseNetwork,\
+    BaseInstanceType, BaseMachineImage, \
     BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseVolume, \
     ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
@@ -860,3 +861,47 @@ class AzureNetwork(BaseNetwork):
             return True if network else False
         except CloudError:
             return False
+
+
+class AzureInstanceType(BaseInstanceType):
+
+    def __init__(self, provider, instance_type):
+        super(AzureInstanceType, self).__init__(provider)
+        self._inst_type = instance_type
+
+    # @property
+    # def id(self):
+    #     return str(self._inst_dict['instance_type'])
+
+    @property
+    def name(self):
+        return self._inst_type.name
+
+    # @property
+    # def family(self):
+    #     return self._inst_type.get('family')
+
+    @property
+    def vcpus(self):
+        return self._inst_type.number_of_cores
+
+    @property
+    def ram(self):
+        return self._inst_type.memory_in_mb
+
+    @property
+    def size_root_disk(self):
+        return 0
+
+    @property
+    def size_ephemeral_disks(self):
+        return self._inst_type.os_disk_size_in_mb/1024
+
+    @property
+    def num_ephemeral_disks(self):
+        return self._inst_type.max_data_disk_count
+
+    # @property
+    # def extra_data(self):
+    #     return {key: val for key, val in enumerate(self._inst_type)
+    #             if key not in ["instance_type", "family", "vCPU", "memory"]}

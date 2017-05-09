@@ -6,7 +6,9 @@ from io import BytesIO
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
     Disk, DiskCreateOption, Image, ManagedDiskParameters, \
-    Snapshot, StorageProfile, VirtualMachine
+    Snapshot, StorageProfile, VirtualMachine, \
+    VirtualMachineSize
+
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.network.models import VirtualNetwork
@@ -208,6 +210,22 @@ class MockAzureClient:
                 '/providers/Microsoft.Compute/images/image2'
 
     images = [image1, image2]
+
+    instance_type1 = VirtualMachineSize()
+    instance_type1.name = "instance_type1"
+    instance_type1.number_of_cores = 1
+    instance_type1.os_disk_size_in_mb = 100
+    instance_type1.memory_in_mb = 1000
+    instance_type1.max_data_disk_count = 1
+
+    instance_type2 = VirtualMachineSize()
+    instance_type2.name = "instance_type2"
+    instance_type2.number_of_cores = 2
+    instance_type2.os_disk_size_in_mb = 200
+    instance_type2.memory_in_mb = 2000
+    instance_type2.max_data_disk_count = 2
+
+    instance_types = [instance_type1, instance_type2]
 
     def __init__(self, provider):
         self._provider = provider
@@ -523,3 +541,6 @@ class MockAzureClient:
     def delete_image(self, name):
         img = self.get_image(name)
         self.images.remove(img)
+
+    def list_instance_types(self):
+        return self.instance_types
