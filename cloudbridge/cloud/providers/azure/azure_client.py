@@ -292,3 +292,7 @@ class AzureClient(object):
     def get_image(self, image_name):
         return self.compute_client.images. \
             get(self.resource_group_name, image_name)
+
+    def list_instance_types(self):
+        return self.compute_client.virtual_machine_sizes. \
+            list(self.region_name)

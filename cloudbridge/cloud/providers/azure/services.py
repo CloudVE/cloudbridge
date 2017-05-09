@@ -5,8 +5,9 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
-    BaseComputeService, BaseImageService, BaseNetworkService, \
-    BaseObjectStoreService, BaseSecurityGroupService, BaseSecurityService, \
+    BaseComputeService, BaseImageService, BaseInstanceTypesService, \
+    BaseNetworkService, BaseObjectStoreService, \
+    BaseSecurityGroupService, BaseSecurityService, \
     BaseSnapshotService, BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone, \
     Snapshot, Volume
@@ -14,8 +15,9 @@ from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
-from .resources import AzureBucket, AzureMachineImage, \
-    AzureNetwork, AzureSecurityGroup, \
+from .resources import AzureBucket, AzureInstanceType,\
+    AzureMachineImage, AzureNetwork, \
+    AzureSecurityGroup, \
     AzureSnapshot, AzureVolume, \
     IMAGE_NAME, IMAGE_RESOURCE_ID, \
     NETWORK_NAME, NETWORK_RESOURCE_ID, \
@@ -225,8 +227,8 @@ class AzureVolumeService(BaseVolumeService):
                 'location': zone_id or self.provider.azure_client.region_name,
                 'disk_size_gb': size,
                 'creation_data': {
-                    'create_option': 'empty'
-                },
+                  'create_option': 'empty'
+                  },
                 'tags': tags}
 
             self.provider.azure_client.create_empty_disk(disk_name, params)
@@ -301,7 +303,7 @@ class AzureSnapshotService(BaseSnapshotService):
 class AzureComputeService(BaseComputeService):
     def __init__(self, provider):
         super(AzureComputeService, self).__init__(provider)
-        # self._instance_type_svc = AzureInstanceTypesService(self.provider)
+        self._instance_type_svc = AzureInstanceTypesService(self.provider)
         # self._instance_svc = AzureInstanceService(self.provider)
         # self._region_svc = AzureRegionService(self.provider)
         self._images_svc = AzureImageService(self.provider)
@@ -312,8 +314,7 @@ class AzureComputeService(BaseComputeService):
 
     @property
     def instance_types(self):
-        raise NotImplementedError('AzureComputeService not '
-                                  'implemented this method')
+        return self._instance_type_svc
 
     @property
     def instances(self):
@@ -349,6 +350,26 @@ class AzureImageService(BaseImageService):
         cb_images = [AzureMachineImage(self.provider, img)
                      for img in azure_images]
         return ClientPagedResultList(self.provider, cb_images,
+                                     limit=limit, marker=marker)
+
+
+class AzureInstanceTypesService(BaseInstanceTypesService):
+
+    def __init__(self, provider):
+        super(AzureInstanceTypesService, self).__init__(provider)
+
+    @property
+    def instance_data(self):
+        """
+        Fetch info about the available instances.
+        """
+        r = self.provider.azure_client.list_instance_types()
+        return r
+
+    def list(self, limit=None, marker=None):
+        inst_types = [AzureInstanceType(self.provider, inst_type)
+                      for inst_type in self.instance_data]
+        return ClientPagedResultList(self.provider, inst_types,
                                      limit=limit, marker=marker)
 
 
@@ -415,16 +436,16 @@ class AzureNetworkService(BaseNetworkService):
         raise NotImplementedError('AzureNetworkService '
                                   'not implemented this method')
 
-
-def delete(self, network_id):
-    """
-        Delete an existing network.
+    def delete(self, network_id):
         """
-    try:
-        params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-        network = self.provider.azure_client. \
-            delete_network(params.get(NETWORK_NAME))
-        return True if network else False
-    except CloudError as cloudError:
-        log.exception(cloudError.message)
-        return False
+                Delete an existing network.
+                """
+        try:
+            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+            network = self.provider.azure_client. \
+                delete_network(params.get(NETWORK_NAME))
+            return True if network else False
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return False
+
