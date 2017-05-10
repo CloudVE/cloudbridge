@@ -107,9 +107,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             net, subnet = helpers.create_test_network(
                 self.provider, instance_name)
             test_instance = helpers.get_test_instance(
-                self.provider, instance_name, subnet=subnet,
-                zone=helpers.get_provider_test_data(self.provider,
-                                                    'placement'))
+                self.provider, instance_name, subnet=subnet)
             name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.zone_id)
@@ -142,9 +140,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             net, subnet = helpers.create_test_network(
                 self.provider, instance_name)
             test_instance = helpers.get_test_instance(
-                self.provider, instance_name, subnet=subnet,
-                zone=helpers.get_provider_test_data(self.provider,
-                                                    'placement'))
+                self.provider, instance_name, subnet=subnet)
 
             name = "CBUnitTestVolProps-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(

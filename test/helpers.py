@@ -118,27 +118,26 @@ def delete_test_network(network):
 
 
 def create_test_instance(
-        provider, instance_name, subnet, zone=None, launch_config=None,
+        provider, instance_name, subnet, launch_config=None,
         key_pair=None, security_groups=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
         subnet=subnet,
-        zone=zone,
+        zone=get_provider_test_data(provider, 'placement'),
         key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)
 
 
 def get_test_instance(provider, name, key_pair=None, security_groups=None,
-                      subnet=None, zone=None):
+                      subnet=None):
     launch_config = None
     instance = create_test_instance(
         provider,
         name,
         subnet=subnet,
-        zone=zone,
         key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)
