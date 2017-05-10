@@ -324,11 +324,13 @@ class MockAzureClient:
                 return network
 
     def delete_network(self, network_name):
+        # Delete network method always returns True
+        # for both the scenarios if network exist or not
         for network in self.networks:
             if network.name == network_name:
                 self.networks.remove(network)
-                return True
-        return False
+
+        return True
 
     def create_resource_group(self, resource_group_name, params):
         rg = ResourceGroup(location='westus')

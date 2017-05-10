@@ -99,6 +99,16 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
         print("Delete Network Id exist: " + str(isdeleted))
         self.assertEqual(isdeleted, True)
 
+        # Calling get network to make sure network was actually deleted
+        network = self.provider.network \
+            .get('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'
+                 '/resourceGroups/CLOUDBRIDGE-AZURE/providers'
+                 '/Microsoft.Network/virtualNetworks/CloudBridgeNet3')
+        print("get does not exist: " + str(network))
+
+        self.assertEqual(
+            str(network), 'None')
+
     @helpers.skipIfNoService(['network'])
     def test_azure_network_service_delete_networkid_does_not_exist(self):
         isdeleted = self.provider.network.delete(
