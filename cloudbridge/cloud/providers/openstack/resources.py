@@ -788,7 +788,7 @@ class OpenStackFloatingIP(BaseFloatingIP):
         return self._ip.get('fixed_ip_address', None)
 
     def in_use(self):
-        return True if self._ip.get('status', None) == 'ACTIVE' else False
+        return bool(self._ip.get('port_id', None))
 
     def delete(self):
         self._provider.neutron.delete_floatingip(self.id)
