@@ -5,6 +5,8 @@ import inspect
 import ipaddress
 import json
 
+import os
+
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
@@ -35,7 +37,12 @@ from keystoneclient.v3.regions import Region
 
 import novaclient.exceptions as novaex
 
-import swiftclient.exceptions as swiftex
+import swiftclient
+
+from swiftclient.service import SwiftService, SwiftUploadObject
+
+ONE_GIG = 1048576000  # in bytes
+FIVE_GIG = ONE_GIG * 5  # in bytes
 
 
 class OpenStackMachineImage(BaseMachineImage):
@@ -1076,16 +1083,47 @@ class OpenStackBucketObject(BaseBucketObject):
         """
         Set the contents of this object to the data read from the source
         string.
+
+        .. warning:: Will fail if the data is larger than 5 Gig.
         """
         self._provider.swift.put_object(self.cbcontainer.name, self.name,
                                         data)
 
     def upload_from_file(self, path):
         """
-        Stores the contents of the file pointed by the "path" variable.
+        Stores the contents of the file pointed by the ``path`` variable.
+        If the file is bigger than 5 Gig, it will be broken into segments.
+
+        :type path: ``str``
+        :param path: Absolute path to the file to be uploaded to Swift.
+        :rtype: ``bool``
+        :return: ``True`` if successful, ``False`` if not.
+
+        .. note::
+            * The size of the segments chosen (or any of the other upload
+              options) is not under user control.
+            * If called this method will remap the
+              ``swiftclient.service.get_conn`` factory method to
+              ``self._provider._connect_swift``
+
+        .. seealso:: https://github.com/gvlproject/cloudbridge/issues/35#issuecomment-297629661 # noqa
         """
-        with open(path, 'rb') as f:
-            self.upload(f)
+        upload_options = {}
+        if 'segment_size' not in upload_options:
+            if os.path.getsize(path) >= FIVE_GIG:
+                upload_options['segment_size'] = FIVE_GIG
+
+        # remap the swift service's connection factory method
+        swiftclient.service.get_conn = self._provider._connect_swift
+
+        result = True
+        with SwiftService() as swift:
+            upload_object = SwiftUploadObject(path, object_name=self.name)
+            for up_res in swift.upload(self.cbcontainer.name,
+                                       [upload_object, ],
+                                       options=upload_options):
+                result = result and up_res['success']
+        return result
 
     def delete(self):
         """
@@ -1093,14 +1131,20 @@ class OpenStackBucketObject(BaseBucketObject):
 
         :rtype: ``bool``
         :return: True if successful
+
+        .. note:: If called this method will remap the
+              ``swiftclient.service.get_conn`` factory method to
+              ``self._provider._connect_swift``
         """
-        try:
-            self._provider.swift.delete_object(self.cbcontainer.name,
-                                               self.name)
-        except swiftex.ClientException as err:
-            if err.http_status == 404:
-                return True
-        return False
+
+        # remap the swift service's connection factory method
+        swiftclient.service.get_conn = self._provider._connect_swift
+
+        result = True
+        with SwiftService() as swift:
+            for del_res in swift.delete(self.cbcontainer.name, [self.name, ]):
+                result = result and del_res['success']
+        return result
 
     def generate_url(self, expires_in=0):
         """
