@@ -319,8 +319,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         self.provider,
                         name,
                         subnet=subnet,
-                        zone=helpers.get_provider_test_data(self.provider,
-                                                            'placement'),
                         launch_config=lc)
 
                     with helpers.cleanup_action(lambda:
