@@ -1,6 +1,7 @@
 """
 DataTypes used by this provider
 """
+from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
@@ -11,8 +12,12 @@ from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
+from cloudbridge.cloud.base.resources import BaseSnapshot
+from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import VolumeState
 
 import cloudbridge as cb
 
@@ -80,7 +85,7 @@ class GCEInstanceType(BaseInstanceType):
 
     @property
     def id(self):
-        return str(self._inst_dict.get('id'))
+        return self._inst_dict.get('selfLink')
 
     @property
     def name(self):
@@ -193,7 +198,7 @@ class GCERegion(BaseRegion):
 class GCEFirewallsDelegate(object):
     DEFAULT_NETWORK = 'default'
     _NETWORK_URL_PREFIX = 'global/networks/'
-  
+
     def __init__(self, provider):
         self._provider = provider
         self._list_response = None
@@ -222,7 +227,7 @@ class GCEFirewallsDelegate(object):
             if network_name is not None:
                 out.add((firewall['targetTags'][0], network_name))
         return out
-            
+
     def network_name(self, firewall):
         """
         Extract the network name of a firewall.
@@ -637,7 +642,7 @@ class GCEMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        return self._gce_image['name']
+        return self._gce_image.get('selfLink')
 
     @property
     def name(self):
@@ -1063,3 +1068,253 @@ class GCEFloatingIP(BaseFloatingIP):
                                          address=self._ip['name'])
                                  .execute())
        self._provider.wait_for_operation(response, region=self._region)
+
+
+class GCEVolume(BaseVolume):
+
+    VOLUME_STATE_MAP = {
+        'RESTORING': VolumeState.CONFIGURING,
+        'PENDING': VolumeState.CONFIGURING,
+        'READY': VolumeState.AVAILABLE,
+        'DONE': VolumeState.AVAILABLE,
+        'RUNNING': VolumeState.IN_USE,
+    }
+
+    def __init__(self, provider, volume):
+        super(GCEVolume, self).__init__(provider)
+        self._volume = volume
+
+    @property
+    def id(self):
+        return self._volume.get('selfLink')
+
+    @property
+    def name(self):
+        """
+        Get the volume name.
+        """
+        return self._volume.get('name')
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the volume name.
+        """
+        raise NotImplementedError('Not supported by this provider.')
+
+    @property
+    def description(self):
+        return self._volume.get('description')
+
+    @description.setter
+    def description(self, value):
+        raise NotImplementedError('Not supported by this provider.')
+
+    @property
+    def size(self):
+        return self._volume.get('sizeGb')
+
+    @property
+    def create_time(self):
+        return self._volume.get('creationTimestamp')
+
+    @property
+    def zone_id(self):
+        return self._volume.get('zone')
+
+    @property
+    def source(self):
+        return self._volume.get('sourceSnapshot')
+
+    @property
+    def attachments(self):
+        if 'users' in self._volume and len(self._volume) > 0:
+            return BaseAttachmentInfo(self,
+                                      self._volume.get('users')[0],
+                                      None)
+        else:
+            return None
+
+    def attach(self, instance, device):
+        """
+        Attach this volume to an instance.
+
+        Parameter `device` is ignored here. The user need to mount the disk
+        so that the operating system can use the available storage space.
+        https://cloud.google.com/compute/docs/disks/add-persistent-disk
+        """
+        attach_disk_body = {
+            "source": self.id
+        }
+        instance_name = instance.name if isinstance(
+            instance,
+            GCEInstance) else instance
+        response = (self._provider.gce_compute
+                        .instances()
+                        .attachDisk(
+                            project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            instance=instance_name,
+                            body=attach_disk_body).execute())
+
+    def detach(self, force=False):
+        """
+        Detach this volume from an instance.
+        """
+        if not self.attachments:
+            return
+        instance_data = self._provider.get_gce_resource_data(
+            self.attachments.instance_id)
+        if 'disks' not in instance_data:
+            return
+        device_name = None
+        for disk in instance_data['disks']:
+            if ('source' in disk and 'deviceName' in disk and
+                disk['source'] == self.id):
+                device_name = disk['deviceName']
+        if not device_name:
+            return
+        response = (self._provider.gce_compute
+                        .instances()
+                        .detachDisk(
+                            project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            instance=instance_data.get('name'),
+                            deviceName=device_name).execute())
+
+    def create_snapshot(self, name, description=None):
+        """
+        Create a snapshot of this Volume.
+        """
+        return self._provider.block_store.snapshots.create(
+            name, self, description)
+
+    def delete(self):
+        """
+        Delete this volume.
+        """
+        response = (self._provider.gce_compute
+                        .disks()
+                        .delete(
+                            project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            disk=self.name).execute())
+
+    @property
+    def state(self):
+        return GCEVolume.VOLUME_STATE_MAP.get(
+            self._volume.get('status'), VolumeState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this volume by re-querying the cloud provider
+        for its latest state.
+        """
+        self._volume = self._provider.get_gce_resource_data(
+            self._volume.get('selfLink'))
+
+
+class GCESnapshot(BaseSnapshot):
+
+    SNAPSHOT_STATE_MAP = {
+        'PENDING': SnapshotState.PENDING,
+        'READY': SnapshotState.AVAILABLE,
+    }
+
+    def __init__(self, provider, snapshot):
+        super(GCESnapshot, self).__init__(provider)
+        self._snapshot = snapshot
+
+    @property
+    def id(self):
+        return self._snapshot.get('selfLink')
+
+    @property
+    def name(self):
+        """
+        Get the snapshot name.
+         """
+        return self._snapshot.get('name')
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the snapshot name.
+        """
+        raise NotImplementedError('Not supported by this provider.')
+
+    @property
+    def description(self):
+        return self._snapshot.get('description')
+
+    @description.setter
+    def description(self, value):
+        raise NotImplementedError('Not supported by this provider.')
+
+    @property
+    def size(self):
+        return self._snapshot.get('diskSizeGb')
+
+    @property
+    def volume_id(self):
+        return self._snapshot.get('sourceDisk')
+
+    @property
+    def create_time(self):
+        return self._snapshot.get('creationTimestamp')
+
+    @property
+    def state(self):
+        return GCESnapshot.SNAPSHOT_STATE_MAP.get(
+            self._snapshot.get('status'), SnapshotState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this snapshot by re-querying the cloud provider
+        for its latest state.
+        """
+        self._snapshot = self._provider.get_gce_resource_data(
+            self._snapshot.get('selfLink'))
+
+    def delete(self):
+        """
+        Delete this snapshot.
+        """
+        response = (self._provider.gce_compute
+                        .snapshots()
+                        .delete(
+                            project=self._provider.project_name,
+                            snapshot=self.name).execute())
+
+    def create_volume(self, placement, size=None, volume_type=None, iops=None):
+        """
+        Create a new Volume from this Snapshot.
+
+        Args:
+            placement: GCE zone name, e.g. 'us-central1-f'.
+            size: The size of the new volume, in GiB (optional). Defaults to
+                the size of the snapshot.
+            volume_type: Type of persistent disk. Either 'pd-standard' or
+                'pd-ssd'.
+            iops: Not supported by GCE.
+        """
+        vol_type = 'zones/{0}/diskTypes/{1}'.format(
+            placement,
+            'pd-standard' if (volume_type != 'pd-standard' or
+                              volume_type != 'pd-ssd') else volume_type)
+        disk_body = {
+            'name': 'created-from-{0}'.format(self.name),
+            'sizeGb': size if size is not None else self.size,
+            'type': vol_type,
+            'sourceSnapshot': self.id
+        }
+        operation = (self._provider.gce_compute
+                         .disks()
+                         .insert(
+                             project=self._provider.project_name,
+                             zone=placement,
+                             body=disk_body).execute())
+        return self._provider.block_store.volumes.get(
+            operation.get('targetLink'))
