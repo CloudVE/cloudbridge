@@ -914,8 +914,7 @@ class GCEInstance(BaseInstance):
         raise NotImplementedError(
             'To be implemented after GCEVolumeService.')
 
-    @property
-    def _existing_target_instance(self):
+    def _get_existing_target_instance(self):
         """
         Return the target instance corrsponding to this instance.
 
@@ -939,14 +938,13 @@ class GCEInstance(BaseInstance):
             cb.log.warning('Exception while listing target instances: %s', e)
         return None
 
-    @property
-    def _target_instance(self):
+    def _get_target_instance(self):
         """
         Return the target instance corresponding to this instance.
 
         If there is no target instance for this instance, create one.
         """
-        existing_target_instance = self._existing_target_instance
+        existing_target_instance = self._get_existing_target_instance()
         if existing_target_instance:
             return existing_target_instance
 
@@ -970,7 +968,7 @@ class GCEInstance(BaseInstance):
 
         # The following method should find the target instance that we
         # successfully created above.
-        return self._existing_target_instance
+        return self._get_existing_target_instance()
 
     def _redirect_existing_rule(self, ip, target_instance):
         """
@@ -1090,7 +1088,7 @@ class GCEInstance(BaseInstance):
                             'Floating IP "%s" is already associated to "%s".',
                             ip_address, self.name)
                     return
-                target_instance = self._target_instance
+                target_instance = self._get_target_instance()
                 if not target_instance:
                     cb.log.warning('Could not create a targetInstance for "%s"',
                                    self.name)
@@ -1112,7 +1110,7 @@ class GCEInstance(BaseInstance):
                         'Floating IP "%s" is not associated to "%s".',
                          ip_address, self.name)
                     return
-                target_instance = self._target_instance
+                target_instance = self._get_target_instance()
                 if not target_instance:
                     # We should not be here.
                     cb.log.warning('Something went wrong! "%s" is associated '
@@ -1194,6 +1192,7 @@ class GCENetwork(BaseNetwork):
         return self.state
 
 class GCEFloatingIP(BaseFloatingIP):
+    _DEAD_INSTANCE = 'dead instance'
 
     def __init__(self, provider, floating_ip):
         super(GCEFloatingIP, self).__init__(provider)
@@ -1218,7 +1217,10 @@ class GCEFloatingIP(BaseFloatingIP):
                 target = provider.parse_url(resource['target']).get()
                 if target['kind'] == 'compute#targetInstance':
                     url = provider.parse_url(target['instance'])
-                    self._target_instance = url.get()
+                    try:
+                      self._target_instance = url.get()
+                    except:
+                      self._target_instance = GCEFloatingIP._DEAD_INSTANCE
                 else:
                     cb.log.warning('Address "%s" is forwarded to a %s',
                                    floating_ip['address'], target['kind'])
@@ -1240,7 +1242,8 @@ class GCEFloatingIP(BaseFloatingIP):
 
     @property
     def private_ip(self):
-        if not self._target_instance:
+        if (not self._target_instance or
+            self._target_instance == GCEFloatingIP._DEAD_INSTANCE):
             return None
         return self._target_instance['networkInterfaces'][0]['networkIP']
 
