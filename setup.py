@@ -25,7 +25,7 @@ openstack_reqs = ['requests<2.13.0',
                   'python-keystoneclient>=3.8.0,<=3.10.0']
 aws_reqs = ['boto>=2.38.0,<=2.46.1']
 full_reqs = base_reqs + aws_reqs + openstack_reqs
-dev_reqs = (['tox>=2.1.1', 'moto>=0.4.20', 'sphinx>=1.3.1', 'flake8>=3.3.0',
+dev_reqs = (['tox>=2.1.1', 'moto>=1.0.0', 'sphinx>=1.3.1', 'flake8>=3.3.0',
              'flake8-import-order>=0.12'] + full_reqs)
 
 setup(name='cloudbridge',
