@@ -33,12 +33,16 @@ class AzureImageServiceTestCase(ProviderTestBase):
         print("Get Image Not Exist- " + str(image_get))
         self.assertIsNone(image_get)
 
-    @helpers.skipIfNoService(['security.security_groups'])
-    def test_azure_images_find(self):
-        image1_name = 'image1'
-        with self.assertRaises(NotImplementedError):
-            image_find = self.provider.compute.images \
-                .find(image1_name)
-            print("Find Image  - " + str(image_find))
-            self.assertEqual(
-                len(image_find), 1)
+    @helpers.skipIfNoService(['compute.images'])
+    def test_azure_image_find_exists(self):
+        images = self.provider.compute.images.find("image1")
+        for image in images:
+            self.assertTrue("image" in image.name)
+            print("Find Image  - " + str(image))
+        print(images.total_results)
+        self.assertTrue(images.total_results > 0)
+
+    @helpers.skipIfNoService(['compute.images'])
+    def test_azure_image_find_not_exists(self):
+        images = self.provider.compute.images.find('dontfindme')
+        self.assertTrue(images.total_results == 0)

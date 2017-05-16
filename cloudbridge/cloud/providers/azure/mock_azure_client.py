@@ -546,3 +546,8 @@ class MockAzureClient:
 
     def list_locations(self):
         return self.regions
+
+    def update_image_tags(self, name, tags):
+        img = self.get_image(name)
+        img.tags = tags
+        return img
