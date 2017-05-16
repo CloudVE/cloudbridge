@@ -6,7 +6,6 @@ import json
 
 from azure.common import AzureException
 
-
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketObject, BaseMachineImage, BaseNetwork, \
     BasePlacementZone, BaseRegion, BaseSecurityGroup, BaseSecurityGroupRule, \
@@ -111,7 +110,7 @@ class AzureSecurityGroup(BaseSecurityGroup):
     @description.setter
     def description(self, value):
         self._security_group.tags.update(Description=value)
-        self._provider.azure_client.\
+        self._provider.azure_client. \
             update_security_group_tags(self.resource_name,
                                        self._security_group.tags)
 
@@ -427,7 +426,7 @@ class AzureVolume(BaseVolume):
     def __init__(self, provider, volume):
         super(AzureVolume, self).__init__(provider)
         self._volume = volume
-        self._url_params = azure_helpers.\
+        self._url_params = azure_helpers. \
             parse_url(VOLUME_RESOURCE_ID, volume.id)
         self._description = None
         self._status = 'unknown'
@@ -468,7 +467,7 @@ class AzureVolume(BaseVolume):
         """
         # self._volume.name = value
         self._volume.tags.update(Name=value)
-        self._provider.azure_client.\
+        self._provider.azure_client. \
             update_disk_tags(self.resource_name,
                              self._volume.tags)
 
@@ -479,7 +478,7 @@ class AzureVolume(BaseVolume):
     @description.setter
     def description(self, value):
         self._volume.tags.update(Description=value)
-        self._provider.azure_client.\
+        self._provider.azure_client. \
             update_disk_tags(self.resource_name,
                              self._volume.tags)
 
@@ -532,7 +531,7 @@ class AzureVolume(BaseVolume):
                     'id': self.id
                 }
             })
-            self._provider.azure_client\
+            self._provider.azure_client \
                 .create_or_update_vm(params.get(VM_NAME), vm)
             return True
         except CloudError:
@@ -572,7 +571,7 @@ class AzureVolume(BaseVolume):
         Delete this volume.
         """
         try:
-            self._provider.azure_client.\
+            self._provider.azure_client. \
                 delete_disk(self.resource_name)
             return True
         except CloudError:
@@ -589,7 +588,7 @@ class AzureVolume(BaseVolume):
         for its latest state.
         """
         try:
-            self._volume = self._provider.azure_client.\
+            self._volume = self._provider.azure_client. \
                 get_disk(self.resource_name)
             self.update_status()
         except (CloudError, ValueError):
@@ -599,7 +598,6 @@ class AzureVolume(BaseVolume):
 
 
 class AzureSnapshot(BaseSnapshot):
-
     SNAPSHOT_STATE_MAP = {
         'InProgress': SnapshotState.PENDING,
         'Succeeded': SnapshotState.AVAILABLE,
@@ -613,7 +611,7 @@ class AzureSnapshot(BaseSnapshot):
         super(AzureSnapshot, self).__init__(provider)
         self._snapshot = snapshot
         self._description = None
-        self._url_params = azure_helpers.\
+        self._url_params = azure_helpers. \
             parse_url(SNAPSHOT_RESOURCE_ID, snapshot.id)
         self._status = self._snapshot.provisioning_state
         if not self._snapshot.tags:
@@ -655,7 +653,7 @@ class AzureSnapshot(BaseSnapshot):
     @description.setter
     def description(self, value):
         self._snapshot.tags.update(Description=value)
-        self._provider.azure_client.\
+        self._provider.azure_client. \
             update_snapshot_tags(self.resource_name,
                                  self._snapshot.tags)
 
@@ -674,7 +672,7 @@ class AzureSnapshot(BaseSnapshot):
     @property
     def state(self):
         return AzureSnapshot.SNAPSHOT_STATE_MAP.get(
-           self._status, SnapshotState.UNKNOWN)
+            self._status, SnapshotState.UNKNOWN)
 
     def refresh(self):
         """
@@ -682,7 +680,7 @@ class AzureSnapshot(BaseSnapshot):
         for its latest state.
         """
         try:
-            self._snapshot = self._provider.azure_client.\
+            self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.resource_name)
             self._status = self._snapshot.provisioning_state
         except (CloudError, ValueError):
@@ -705,13 +703,12 @@ class AzureSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        return self._provider.block_store.volumes.\
+        return self._provider.block_store.volumes. \
             create(self.resource_name, self.size,
                    zone=placement, snapshot=self)
 
 
 class AzureMachineImage(BaseMachineImage):
-
     IMAGE_STATE_MAP = {
         'InProgress': MachineImageState.PENDING,
         'Succeeded': MachineImageState.AVAILABLE,
@@ -721,8 +718,12 @@ class AzureMachineImage(BaseMachineImage):
     def __init__(self, provider, image):
         super(AzureMachineImage, self).__init__(provider)
         self._image = image
-        self._url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID, image.id)
+        self._url_params = azure_helpers. \
+            parse_url(IMAGE_RESOURCE_ID, image.id)
         self._state = self._image.provisioning_state
+
+        if not self._image.tags:
+            self._image.tags = {}
 
     @property
     def id(self):
@@ -742,7 +743,16 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Name for this image as returned by the cloud middleware.
         """
-        return self._image.name
+        return self._image.tags.get('Name', self._image.name)
+
+    @name.setter
+    def name(self, value):
+        """
+        Set the image name.
+        """
+        self._image.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_image_tags(self.resource_name, self._image.tags)
 
     @property
     def description(self):
@@ -752,7 +762,20 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        return None
+        return self._image.tags.get('Description', None)
+
+    @description.setter
+    def description(self, value):
+        """
+        Set the image name.
+        """
+        self._image.tags.update(Description=value)
+        self._provider.azure_client. \
+            update_image_tags(self.resource_name, self._image.tags)
+
+    @property
+    def resource_name(self):
+        return self._image.name
 
     @property
     def min_disk(self):
@@ -769,7 +792,7 @@ class AzureMachineImage(BaseMachineImage):
         """
         Delete this image
         """
-        self._provider.azure_client.delete_image(self.name)
+        self._provider.azure_client.delete_image(self.resource_name)
 
     @property
     def state(self):
@@ -782,7 +805,8 @@ class AzureMachineImage(BaseMachineImage):
         for its latest state.
         """
         try:
-            self._image = self._provider.azure_client.get_image(self.name)
+            self._image = self._provider.azure_client\
+                .get_image(self.resource_name)
             self._state = self._image.provisioning_state
         except CloudError:
             # image no longer exists
@@ -871,7 +895,6 @@ class AzureNetwork(BaseNetwork):
 
 
 class AzureRegion(BaseRegion):
-
     def __init__(self, provider, azure_region):
         super(AzureRegion, self).__init__(provider)
         self._azure_region = azure_region
@@ -897,7 +920,10 @@ class AzureRegion(BaseRegion):
 
 
 class AzurePlacementZone(BasePlacementZone):
-
+    """
+    As Azure does not provide zones (limited support), we are mapping the
+    region information in the zones.
+    """
     def __init__(self, provider, zone, region):
         super(AzurePlacementZone, self).__init__(provider)
         self._azure_zone = zone

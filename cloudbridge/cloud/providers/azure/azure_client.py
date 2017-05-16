@@ -293,6 +293,9 @@ class AzureClient(object):
         return self.compute_client.images. \
             get(self.resource_group_name, image_name)
 
-    def list_instance_types(self):
-        return self.compute_client.virtual_machine_sizes. \
-            list(self.region_name)
+    def update_image_tags(self, name, tags):
+        return self.compute_client.images. \
+            create_or_update(self.resource_group_name, name,
+                             {
+                                 'tags': tags
+                             }).result()
