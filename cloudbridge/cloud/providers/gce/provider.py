@@ -82,8 +82,8 @@ class GCPResources(object):
 
         # We will not mutate self._desc; it's OK to use items() in Python 2.x.
         for resource, resource_desc in desc['resources'].items():
-            methods = resource_desc['methods']
-            if 'get' not in methods:
+            methods = resource_desc.get('methods', {})
+            if not methods.get('get'):
                 continue
             method = methods['get']
             parameters = method['parameterOrder']
