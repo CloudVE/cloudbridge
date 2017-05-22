@@ -6,7 +6,9 @@ from io import BytesIO
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
     Disk, DiskCreateOption, Image, ManagedDiskParameters, \
-    Snapshot, StorageProfile, VirtualMachine
+    Snapshot, StorageProfile, VirtualMachine, \
+    VirtualMachineSize
+
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.network.models import VirtualNetwork
@@ -226,6 +228,24 @@ class MockAzureClient:
                  'locations/eastus'
 
     regions = [region1, region2, region3]
+
+    instance_type1 = VirtualMachineSize()
+    instance_type1.name = "instance_type1"
+    instance_type1.number_of_cores = 1
+    instance_type1.os_disk_size_in_mb = 100
+    instance_type1.resource_disk_size_in_mb = 100
+    instance_type1.memory_in_mb = 1000
+    instance_type1.max_data_disk_count = 1
+
+    instance_type2 = VirtualMachineSize()
+    instance_type2.name = "instance_type2"
+    instance_type2.number_of_cores = 2
+    instance_type2.os_disk_size_in_mb = 200
+    instance_type2.resource_disk_size_in_mb = 200
+    instance_type2.memory_in_mb = 2000
+    instance_type2.max_data_disk_count = 2
+
+    instance_types = [instance_type1, instance_type2]
 
     def __init__(self, provider):
         self._provider = provider
@@ -546,6 +566,9 @@ class MockAzureClient:
 
     def list_locations(self):
         return self.regions
+
+    def list_instance_types(self):
+        return self.instance_types
 
     def update_image_tags(self, name, tags):
         img = self.get_image(name)

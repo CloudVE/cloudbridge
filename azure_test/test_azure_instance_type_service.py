@@ -10,10 +10,17 @@ class AzureInstanceTypeServiceTestCase(ProviderTestBase):
         print("List Instance Types - " + str(instance_type_list))
         print("List Instance Type Properties - ")
         print("Name - " + str(instance_type_list[0].name))
+        print("Id - " + str(instance_type_list[0].id))
         print("vcpus - " + str(instance_type_list[0].vcpus))
+        print("size_root_disk - " +
+              str(instance_type_list[0].size_root_disk))
         print("ram - " + str(instance_type_list[0].ram))
         print("size_ephemeral_disks - " +
               str(instance_type_list[0].size_ephemeral_disks))
         print("num_ephemeral_disks - " +
               str(instance_type_list[0].num_ephemeral_disks))
+        print("Family - " +
+              str(instance_type_list[0].family))
+        print("Extra data - " +
+              str(instance_type_list[0].extra_data))
         self.assertTrue(instance_type_list.total_results > 0)
