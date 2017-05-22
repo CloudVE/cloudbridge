@@ -567,3 +567,8 @@ class MockAzureClient:
 
     def list_instance_types(self):
         return self.instance_types
+
+    def update_image_tags(self, name, tags):
+        img = self.get_image(name)
+        img.tags = tags
+        return img

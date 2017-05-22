@@ -341,8 +341,16 @@ class AzureImageService(BaseImageService):
             return None
 
     def find(self, name, limit=None, marker=None):
-        raise NotImplementedError('AzureImageService not '
-                                  'implemented this method')
+
+        """
+         Searches for a image by a given list of attributes.
+        """
+        filters = {'Name': name}
+        cb_images = [AzureMachineImage(self.provider, image)
+                     for image in azure_helpers.filter(
+                self.provider.azure_client.list_images(), filters)]
+        return ClientPagedResultList(self.provider, cb_images,
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         azure_images = self.provider.azure_client.list_images()
