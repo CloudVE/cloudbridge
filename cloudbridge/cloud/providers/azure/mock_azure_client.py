@@ -233,6 +233,7 @@ class MockAzureClient:
     instance_type1.name = "instance_type1"
     instance_type1.number_of_cores = 1
     instance_type1.os_disk_size_in_mb = 100
+    instance_type1.resource_disk_size_in_mb = 100
     instance_type1.memory_in_mb = 1000
     instance_type1.max_data_disk_count = 1
 
@@ -240,6 +241,7 @@ class MockAzureClient:
     instance_type2.name = "instance_type2"
     instance_type2.number_of_cores = 2
     instance_type2.os_disk_size_in_mb = 200
+    instance_type2.resource_disk_size_in_mb = 200
     instance_type2.memory_in_mb = 2000
     instance_type2.max_data_disk_count = 2
 

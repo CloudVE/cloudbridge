@@ -5,9 +5,10 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
-    BaseComputeService, BaseImageService, BaseNetworkService, \
+    BaseComputeService, BaseImageService, \
+    BaseInstanceTypesService, BaseNetworkService, \
     BaseObjectStoreService, BaseRegionService, \
-    BaseInstanceTypesService, BaseSecurityGroupService, \
+    BaseSecurityGroupService, \
     BaseSecurityService, BaseSnapshotService, BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone, \
     Snapshot, Volume
@@ -15,9 +16,10 @@ from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
-from .resources import AzureBucket, AzureMachineImage, \
-    AzureInstanceType, AzureNetwork, \
-    AzureRegion, AzureSecurityGroup, \
+from .resources import AzureBucket, \
+    AzureInstanceType, AzureMachineImage, \
+    AzureNetwork, AzureRegion, \
+    AzureSecurityGroup, \
     AzureSnapshot, AzureVolume, \
     IMAGE_NAME, IMAGE_RESOURCE_ID, \
     NETWORK_NAME, NETWORK_RESOURCE_ID, \
