@@ -1020,7 +1020,7 @@ class AzureSubnet(BaseSubnet):
                 delete_subnet(self._url_params.get(NETWORK_NAME),
                               self._url_params.get(SUBNET_NAME))
             return True
-        except CloudError as cloudError:
+        except CloudError:
             return False
 
 
