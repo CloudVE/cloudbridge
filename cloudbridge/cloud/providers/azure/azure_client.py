@@ -228,6 +228,14 @@ class AzureClient(object):
         return self.network_management_client.virtual_networks. \
             delete(self.resource_group_name, network_name).wait()
 
+    def update_network_tags(self, network_name, tags):
+        return self.network_management_client.virtual_networks. \
+            create_or_update(self.resource_group_name,
+                             network_name,
+                             {
+                                 'tags': tags
+                             })
+
     def list_disks(self):
         return self.compute_client.disks. \
             list_by_resource_group(self.resource_group_name)
@@ -265,11 +273,12 @@ class AzureClient(object):
     def get_vm(self, vm_name):
         return self.compute_client.virtual_machines.get(
             self.resource_group_name,
-            vm_name
+            vm_name,
+            expand='instanceView'
         )
 
     def create_or_update_vm(self, vm_name, params):
-        return self.compute_client\
+        return self.compute_client \
             .virtual_machines.create_or_update(
                 self.resource_group_name,
                 vm_name,
@@ -278,11 +287,11 @@ class AzureClient(object):
             )
 
     def list_vm(self):
-        return self.compute_client.\
+        return self.compute_client. \
             virtual_machines.list(self.resource_group_name)
 
     def delete_image(self, name):
-        self.compute_client.images.\
+        self.compute_client.images. \
             delete(self.resource_group_name, name).wait()
 
     def list_images(self):
@@ -293,16 +302,16 @@ class AzureClient(object):
         return self.compute_client.images. \
             get(self.resource_group_name, image_name)
 
-    def list_instance_types(self):
-        return self.compute_client.virtual_machine_sizes. \
-            list(self.region_name)
-
     def update_image_tags(self, name, tags):
         return self.compute_client.images. \
             create_or_update(self.resource_group_name, name,
                              {
                                  'tags': tags
                              }).result()
+
+    def list_instance_types(self):
+        return self.compute_client.virtual_machine_sizes. \
+            list(self.region_name)
 
     def list_subnets(self, network_name):
         return self.network_management_client.subnets.\
@@ -311,3 +320,25 @@ class AzureClient(object):
     def get_subnet(self, network_name, subnet_name):
         return self.network_management_client.subnets.\
             get(self.resource_group_name, network_name, subnet_name)
+
+    def create_subnet(self, network_name,
+                      subnet_name, params):
+        result_create = self.network_management_client \
+            .subnets.create_or_update(
+                self.resource_group_name,
+                network_name,
+                subnet_name,
+                params
+            )
+        subnet_info = result_create.result()
+
+        return subnet_info
+
+    def delete_subnet(self, network_name, subnet_name):
+        result_delete = self.network_management_client \
+            .subnets.delete(
+                self.resource_group_name,
+                network_name,
+                subnet_name
+            )
+        result_delete.wait()

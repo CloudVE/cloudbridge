@@ -9,7 +9,7 @@ class AzureSnapshotsServiceTestCase(ProviderTestBase):
     def test_azure_snapshot_create_and_get(self):
         volume_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
             '/resourceGroups/cloudbridge-azure'\
-            '/providers/Microsoft.Compute/disks/MySnapshotDisk123"
+            '/providers/Microsoft.Compute/disks/Volume1"
         snapshot = self.provider.block_store. \
             snapshots.create("MySnapshot",
                              volume_id)
@@ -36,7 +36,7 @@ class AzureSnapshotsServiceTestCase(ProviderTestBase):
     def test_azure_snapshot_delete(self):
         volume_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
             '/resourceGroups/cloudbridge-azure'\
-            '/providers/Microsoft.Compute/disks/MyDisk"
+            '/providers/Microsoft.Compute/disks/Volume1"
         snapshot = self.provider.block_store. \
             snapshots.create("MySnapshot",
                              volume_id, description='My snapshot')
@@ -64,7 +64,7 @@ class AzureSnapshotsServiceTestCase(ProviderTestBase):
     def test_azure_snapshot_create_volume(self):
         volume_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
             '/resourceGroups/cloudbridge-azure'\
-            '/providers/Microsoft.Compute/disks/MyDisk"
+            '/providers/Microsoft.Compute/disks/Volume1"
         snapshot = self.provider.block_store. \
             snapshots.create("MySnapshot",
                              volume_id,

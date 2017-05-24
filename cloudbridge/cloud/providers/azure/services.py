@@ -6,22 +6,23 @@ from azure.common import AzureException
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
     BaseComputeService, BaseImageService, BaseInstanceTypesService, \
-    BaseNetworkService, BaseObjectStoreService, BaseRegionService, \
-    BaseSecurityGroupService, BaseSecurityService, \
-    BaseSnapshotService, BaseSubnetService, BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import PlacementZone, \
-    Snapshot, Volume
+    BaseNetworkService, \
+    BaseObjectStoreService, BaseRegionService, \
+    BaseSecurityGroupService, \
+    BaseSecurityService, BaseSnapshotService, \
+    BaseSubnetService, BaseVolumeService
+from cloudbridge.cloud.interfaces.resources import Network,\
+    PlacementZone, Snapshot, Subnet, Volume
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
-from .resources import AzureBucket, \
-    AzureInstanceType, AzureMachineImage, \
-    AzureNetwork, AzureRegion, \
-    AzureSecurityGroup, \
+
+from .resources import AzureBucket, AzureInstanceType, \
+    AzureMachineImage, \
+    AzureNetwork, AzureRegion, AzureSecurityGroup, \
     AzureSnapshot, AzureSubnet, AzureVolume, \
-    IMAGE_NAME, IMAGE_RESOURCE_ID, \
-    NETWORK_NAME, NETWORK_RESOURCE_ID, \
-    NETWORK_SECURITY_GROUP_RESOURCE_ID, \
+    IMAGE_NAME, IMAGE_RESOURCE_ID, NETWORK_NAME, \
+    NETWORK_RESOURCE_ID, NETWORK_SECURITY_GROUP_RESOURCE_ID, \
     SECURITY_GROUP_NAME, SNAPSHOT_NAME, \
     SNAPSHOT_RESOURCE_ID, SUBNET_NAME, SUBNET_RESOURCE_ID, \
     VOLUME_NAME, VOLUME_RESOURCE_ID
@@ -105,10 +106,16 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
-        params = azure_helpers.parse_url(NETWORK_SECURITY_GROUP_RESOURCE_ID,
-                                         group_id)
-        return self.provider.azure_client.delete_security_group(
-            params.get(SECURITY_GROUP_NAME))
+        try:
+            params = azure_helpers.\
+                parse_url(NETWORK_SECURITY_GROUP_RESOURCE_ID,
+                          group_id)
+            self.provider.azure_client.delete_security_group(
+                params.get(SECURITY_GROUP_NAME))
+            return True
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return False
 
 
 class AzureObjectStoreService(BaseObjectStoreService):
@@ -271,12 +278,13 @@ class AzureSnapshotService(BaseSnapshotService):
         """
         snaps = [AzureSnapshot(self.provider, obj)
                  for obj in
-                 self.provider.
-                 azure_client.list_snapshots()]
+                 self.provider.azure_client.list_snapshots()]
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
     def create(self, name, volume, description=None):
         volume_id = volume.id if isinstance(volume, Volume) else volume
+        disk_size = volume.size if isinstance(volume, Volume) else \
+            self.provider.block_store.volumes.get(volume_id).size
 
         tags = {'Name': name}
         snapshot_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
@@ -290,6 +298,7 @@ class AzureSnapshotService(BaseSnapshotService):
                 'create_option': 'Copy',
                 'source_uri': volume_id
             },
+            'disk_size_gb': disk_size,
             'tags': tags
         }
 
@@ -391,7 +400,7 @@ class AzureNetworkService(BaseNetworkService):
             params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
             network = self.provider.azure_client. \
                 get_network(params.get(NETWORK_NAME))
-            return AzureNetwork(self.provider, network) if network else None
+            return AzureNetwork(self.provider, network)
 
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -407,19 +416,20 @@ class AzureNetworkService(BaseNetworkService):
                                      limit=limit, marker=marker)
 
     def create(self, name=None):
-        if name is None:
-            name = "{0}-{1}".format(AzureNetwork.CB_DEFAULT_NETWORK_NAME,
-                                    uuid.uuid4().hex[:6])
+        network_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
+        if name:
+            network_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
                 'address_prefixes': ['10.0.0.0/16']
-            }
+            },
+            'tags': {'Name': name or AzureNetwork.CB_DEFAULT_NETWORK_NAME}
         }
 
-        self.provider.azure_client.create_network(name, params)
-        network = self.provider.azure_client.get_network(name)
+        self.provider.azure_client.create_network(network_name, params)
+        network = self.provider.azure_client.get_network(network_name)
         cb_network = AzureNetwork(self.provider, network)
 
         return cb_network
@@ -450,9 +460,9 @@ class AzureNetworkService(BaseNetworkService):
                 """
         try:
             params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-            network = self.provider.azure_client. \
+            self.provider.azure_client. \
                 delete_network(params.get(NETWORK_NAME))
-            return True if network else False
+            return True
         except CloudError as cloudError:
             log.exception(cloudError.message)
             return False
@@ -478,16 +488,17 @@ class AzureRegionService(BaseRegionService):
 
     @property
     def current(self):
-        region = None
         # aws sets the name returned from the aws sdk to both the id & name
         # of BaseRegion and as such calling get() with the id works
         # but Azure sdk returns both id & name and are set to
         # the BaseRegion properties
-        for azureRegion in self.provider.azure_client.list_locations():
-            if azureRegion.name == self.provider.region_name:
-                region = AzureRegion(self.provider, azureRegion)
-                break
-        return region
+        regions = [region
+                   for region in self.provider.
+                   azure_client.list_locations()
+                   if region.name == self.provider.
+                   azure_client.region_name]
+
+        return AzureRegion(self.provider, regions[0])
 
 
 class AzureSubnetService(BaseSubnetService):
@@ -506,39 +517,87 @@ class AzureSubnetService(BaseSubnetService):
             log.exception(cloudError.message)
             return None
 
-    def list(self, network=None):
-        subnets = []
+    def list(self, network=None, limit=None, marker=None):
+        result_list = []
         if network:
-            network_id = (network.id if isinstance(network, AzureNetwork) else
-                          network)
+            network_id = network.id \
+                if isinstance(network, Network) else network
             params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-            network_name = params.get(NETWORK_NAME)
-            subnets = [AzureSubnet(self.provider, subnet)
-                       for subnet in
-                       self.provider.azure_client.list_subnets(network_name)]
+            result_list = self.provider.azure_client.list_subnets(
+                params.get(NETWORK_NAME)
+            )
         else:
-            networks = [AzureNetwork(self.provider, network)
-                        for network in
-                        self.provider.azure_client.list_networks()]
-
-            for network in networks:
-
-                networksubnets = [AzureSubnet(self.provider, subnet)
-                                  for subnet in
-                                  self.provider.
-                                  azure_client.list_subnets(network.name)]
-                subnets.extend(networksubnets)
+            for net in self.provider.azure_client.list_networks():
+                result_list.extend(self.provider.azure_client.list_subnets(
+                 net.name
+                ))
+        subnets = [AzureSubnet(self.provider, subnet)
+                   for subnet in result_list]
         return ClientPagedResultList(self.provider, subnets,
-                                     limit=None, marker=None)
+                                     limit=limit, marker=marker)
 
-    def create(self, network, cidr_block, name=None, zone=None):
-        raise NotImplementedError('AzureSubnetService '
-                                  'not implemented this method')
+    def create(self, network, cidr_block, name=None, **kwargs):
+        network_id = network.id \
+            if isinstance(network, Network) else network
+        params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+        network_name = params.get(NETWORK_NAME)
+
+        if not name:
+            subnet_name = AzureSubnet.CB_DEFAULT_SUBNET_NAME
+        else:
+            subnet_name = name
+
+        subnet_info = self.provider.azure_client\
+            .create_subnet(
+                            network_name,
+                            subnet_name,
+                            {
+                                'address_prefix': cidr_block
+                            }
+                          )
+
+        return AzureSubnet(self.provider, subnet_info)
 
     def get_or_create_default(self, zone=None):
-        raise NotImplementedError('AzureSubnetService '
-                                  'not implemented this method')
+        default_cdir = '10.0.1.0/24'
+        network = None
+        subnet = None
+        try:
+            network = self.provider.azure_client\
+                .get_network(AzureNetwork.CB_DEFAULT_NETWORK_NAME)
+        except CloudError:
+            pass
+
+        if not network:
+            self.provider.network.create()
+        try:
+            subnet = self.provider.azure_client.get_subnet(
+                AzureNetwork.CB_DEFAULT_NETWORK_NAME,
+                AzureSubnet.CB_DEFAULT_SUBNET_NAME
+            )
+        except CloudError:
+            pass
+
+        if not subnet:
+            subnet = self.provider.azure_client.create_subnet(
+                AzureNetwork.CB_DEFAULT_NETWORK_NAME,
+                AzureSubnet.CB_DEFAULT_SUBNET_NAME,
+                {'address_prefix': default_cdir}
+            )
+
+        return AzureSubnet(self.provider, subnet)
 
     def delete(self, subnet):
-        raise NotImplementedError('AzureSubnetService '
-                                  'not implemented this method')
+        try:
+            subnet_id = subnet.id if \
+                isinstance(subnet, Subnet) else subnet
+            params = azure_helpers.\
+                parse_url(SUBNET_RESOURCE_ID, subnet_id)
+            self.provider.azure_client.delete_subnet(
+                params.get(NETWORK_NAME),
+                params.get(SUBNET_NAME)
+            )
+            return True
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return False

@@ -1,5 +1,5 @@
-import test.helpers as helpers
-from test.helpers import ProviderTestBase
+import azure_test.helpers as helpers
+from azure_test.helpers import ProviderTestBase
 
 
 class AzureNetworkServiceTestCase(ProviderTestBase):
@@ -27,7 +27,7 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
                          '/Microsoft.Network/virtualNetworks/CloudBridgeNet1')
         self.assertEqual(networks[0].name, "CloudBridgeNet1")
         self.assertEqual(networks[0].cidr_block,
-                         "{'address_prefixes': ['10.0.0.0/16']}")
+                         '10.0.0.0/16')
         self.assertEqual(networks[0].state, "available")
         self.assertEqual(networks[1].id,
                          '/subscriptions'
@@ -36,7 +36,7 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
                          '/Microsoft.Network/virtualNetworks/CloudBridgeNet2')
         self.assertEqual(networks[1].name, "CloudBridgeNet2")
         self.assertEqual(networks[1].cidr_block,
-                         "{'address_prefixes': ['10.0.0.0/16']}")
+                         '10.0.0.0/16')
         self.assertEqual(networks[1].state, "unknown")
 
     @helpers.skipIfNoService(['network'])
@@ -53,7 +53,7 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
                          '/Microsoft.Network/virtualNetworks/CloudBridgeNet1')
         self.assertEqual(network.name, "CloudBridgeNet1")
         self.assertEqual(network.cidr_block,
-                         "{'address_prefixes': ['10.0.0.0/16']}")
+                         '10.0.0.0/16')
         self.assertEqual(network.state, "available")
 
     @helpers.skipIfNoService(['network'])
@@ -78,16 +78,21 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['network'])
     def test_azure_network_service_create(self):
         network = self.provider.network.create("CloudBridgeNet1")
+        network.refresh()
         print("create: " + str(network))
-        self.assertEqual(network.id,
-                         '/subscriptions'
-                         '/7904d702-e01c-4826-8519-f5a25c866a96'
-                         '/resourceGroups/CLOUDBRIDGE-AZURE/providers'
-                         '/Microsoft.Network/virtualNetworks/CloudBridgeNet1')
+        self.assertIsNotNone(network.id)
         self.assertEqual(network.name, "CloudBridgeNet1")
         self.assertEqual(network.cidr_block,
-                         "{'address_prefixes': ['10.0.0.0/16']}")
+                         '10.0.0.0/16')
         self.assertEqual(network.state, "available")
+        self.assertTrue(network.external)
+        network.name = 'newname'
+        self.assertEqual(network.name, 'newname')
+        deleted = network.delete()
+        self.assertTrue(deleted)
+        deleted = network.delete()
+        self.assertFalse(deleted)
+        network.refresh()
 
     @helpers.skipIfNoService(['network'])
     def test_azure_network_service_delete_networkid_exists(self):
@@ -117,7 +122,7 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
             '/Microsoft.Network/virtualNetworks/CloudBridgeNet10')
 
         print("Delete Network Id does not exist: " + str(isdeleted))
-        self.assertEqual(isdeleted, True)
+        self.assertEqual(isdeleted, False)
 
     @helpers.skipIfNoService(['network'])
     def test_azure_network_service_delete_with_invaid_networkid_throws(self):
@@ -127,3 +132,33 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
             print("Delete with invalid network id: " + str(isdeleted))
             self.assertTrue(
                 'Invalid url parameter passed' in context.exception)
+
+    @helpers.skipIfNoService(['network'])
+    def test_network_methods(self):
+        with self.assertRaises(NotImplementedError):
+            floating_ips = self.provider.network.floating_ips()
+            self.assertIsNotNone(floating_ips)
+
+        with self.assertRaises(NotImplementedError):
+            floating_ip = self.provider.network.create_floating_ip()
+            self.assertIsNotNone(floating_ip)
+
+        with self.assertRaises(NotImplementedError):
+            routers = self.provider.network.routers()
+            self.assertIsNotNone(routers)
+
+        with self.assertRaises(NotImplementedError):
+            router = self.provider.network.create_router()
+            self.assertIsNotNone(router)
+
+    def test_network_create_and_list_subnet(self):
+        network = self.provider.network \
+            .get('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'
+                 '/resourceGroups/CLOUDBRIDGE-AZURE/providers'
+                 '/Microsoft.Network/virtualNetworks/CloudBridgeNet1')
+
+        subnet = network.create_subnet('10.0.0.0/24')
+        self.assertIsNotNone(subnet)
+        subnets = network.subnets()
+        self.assertTrue(len(subnets) > 0)
+        subnet.delete()

@@ -9,7 +9,7 @@ from azure.mgmt.compute.models import CreationData, DataDisk, \
     Snapshot, StorageProfile, VirtualMachine, \
     VirtualMachineSize
 
-from azure.mgmt.network.models import NetworkSecurityGroup
+from azure.mgmt.network.models import AddressSpace, NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.network.models import Subnet, VirtualNetwork
 from azure.mgmt.resource.resources.models import ResourceGroup
@@ -99,7 +99,9 @@ class MockAzureClient:
                   '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
                   '/Microsoft.Network/virtualNetworks/CloudBridgeNet1'
     network1.name = "CloudBridgeNet1"
-    network1.address_space = "{'address_prefixes': ['10.0.0.0/16']}"
+    network1.location = 'eastus'
+    network1.address_space = AddressSpace()
+    network1.address_space.address_prefixes = ['10.0.0.0/16']
     network1.provisioning_state = "Succeeded"
 
     network2 = VirtualNetwork()
@@ -107,7 +109,9 @@ class MockAzureClient:
                   '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
                   '/Microsoft.Network/virtualNetworks/CloudBridgeNet2'
     network2.name = "CloudBridgeNet2"
-    network2.address_space = "{'address_prefixes': ['10.0.0.0/16']}"
+    network2.location = 'eastus'
+    network2.address_space = AddressSpace()
+    network2.address_space.address_prefixes = ['10.0.0.0/16']
     network2.provisioning_state = "Failed"
 
     network3 = VirtualNetwork()
@@ -115,7 +119,9 @@ class MockAzureClient:
                   '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
                   '/Microsoft.Network/virtualNetworks/CloudBridgeNet3'
     network3.name = "CloudBridgeNet3"
-    network3.address_space = "{'address_prefixes': ['10.0.0.0/16']}"
+    network3.location = 'eastus'
+    network3.address_space = AddressSpace()
+    network3.address_space.address_prefixes = ['10.0.0.0/16']
     network3.provisioning_state = "Succeeded"
 
     networks = [network1, network2, network3]
@@ -246,7 +252,7 @@ class MockAzureClient:
     subnets = [subnet1, subnet2]
 
     instance_type1 = VirtualMachineSize()
-    instance_type1.name = "instance_type1"
+    instance_type1.name = "Standard_DS1_v1"
     instance_type1.number_of_cores = 1
     instance_type1.os_disk_size_in_mb = 100
     instance_type1.resource_disk_size_in_mb = 100
@@ -254,7 +260,7 @@ class MockAzureClient:
     instance_type1.max_data_disk_count = 1
 
     instance_type2 = VirtualMachineSize()
-    instance_type2.name = "instance_type2"
+    instance_type2.name = "Standard_DS1_v2"
     instance_type2.number_of_cores = 2
     instance_type2.os_disk_size_in_mb = 200
     instance_type2.resource_disk_size_in_mb = 200
@@ -289,11 +295,8 @@ class MockAzureClient:
         return self.security_groups
 
     def delete_security_group(self, name):
-        for item in self.security_groups:
-            if item.name == name:
-                self.security_groups.remove(item)
-                return True
-        return False
+        sg = self.get_security_group(name)
+        self.security_groups.remove(sg)
 
     def get_security_group(self, name):
         for item in self.security_groups:
@@ -334,21 +337,30 @@ class MockAzureClient:
         for network in self.networks:
             if network.name == network_name:
                 return network
-        return None
 
-    def create_network(self, name, region=None):
-        for network in self.networks:
-            if network.name == name:
-                return network
+        response = Response()
+        response.status_code = 404
+        raise CloudError(response=response, error='Resource not found')
+
+    def create_network(self, name, params):
+        network = VirtualNetwork()
+        network.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                     '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
+                     '/Microsoft.Network/virtualNetworks/{0}'.\
+            format(name)
+        network.name = name
+        network.address_space = AddressSpace()
+        network.address_space.address_prefixes = ['10.0.0.0/16']
+        network.provisioning_state = "Succeeded"
+        network.tags = params['tags']
+        self.networks.append(network)
+
+    def update_network_tags(self, name, tags):
+        pass
 
     def delete_network(self, network_name):
-        # Delete network method always returns True
-        # for both the scenarios if network exist or not
-        for network in self.networks:
-            if network.name == network_name:
-                self.networks.remove(network)
-
-        return True
+        network = self.get_network(network_name)
+        self.networks.remove(network)
 
     def create_resource_group(self, resource_group_name, params):
         rg = ResourceGroup(location='westus')
@@ -601,3 +613,18 @@ class MockAzureClient:
         response = Response()
         response.status_code = 404
         raise CloudError(response=response, error='Resource Not found')
+
+    def create_subnet(self, network_name, subnet_name, params):
+        subnet = Subnet()
+        subnet.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                    'resourceGroups/CloudBridge-Azure/providers/' \
+                    'Microsoft.Network/virtualNetworks/{0}/' \
+                    'subnets/{1}'.format(network_name, subnet_name)
+        subnet.name = subnet_name
+        subnet.address_prefix = '10.0.0.0/25'
+        self.subnets.append(subnet)
+        return subnet
+
+    def delete_subnet(self, network_name, subnet_name):
+        subnet = self.get_subnet(network_name, subnet_name)
+        self.subnets.remove(subnet)
