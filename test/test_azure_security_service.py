@@ -17,6 +17,18 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         self.assertEqual(name, sg.name)
 
     @helpers.skipIfNoService(['security.security_groups'])
+    def test_azure_security_group_create_and_delete(self):
+        name = "testCreateSecGroup10"
+        sg = self.provider.security.security_groups.create(
+            name=name, description=name, network_id="")
+        print("Create - " + str(sg))
+        self.assertEqual(name, sg.name)
+        deleted = sg.delete()
+        self.assertTrue(deleted)
+        deleted = sg.delete()
+        self.assertFalse(deleted)
+
+    @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_create_no_description(self):
         name = "testCreateSecGroup13"
         sg = self.provider.security.security_groups.create(
@@ -75,18 +87,18 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_delete_IdExists(self):
-        sg = self.provider.security.security_groups.delete(
+        deleted = self.provider.security.security_groups.delete(
             "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
             '/providers/Microsoft.Network/networkSecurityGroups/sg2")
         print("Delete - ")
-        self.assertEqual(sg, True)
+        self.assertEqual(deleted, True)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_delete_IdNotExist(self):
-        sg = self.provider.security.security_groups.delete(
+        deleted = self.provider.security.security_groups.delete(
             "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
             '/providers/Microsoft.Network/networkSecurityGroups/sg5")
-        self.assertEqual(sg, False)
+        self.assertEqual(deleted, False)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_create(self):

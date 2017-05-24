@@ -19,6 +19,10 @@ class AzureImageServiceTestCase(ProviderTestBase):
         print(str(image_get.min_disk))
         print(str(image_get.state))
         self.assertIsNone(image_get.description)
+        image_get.name = 'newname'
+        self.assertEqual(image_get.name, 'newname')
+        image_get.description = 'newdesc'
+        self.assertEqual(image_get.description, 'newdesc')
         image_get.refresh()
         image_get.delete()
         image_get.refresh()

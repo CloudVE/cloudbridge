@@ -24,3 +24,8 @@ class AzureInstanceTypeServiceTestCase(ProviderTestBase):
         print("Extra data - " +
               str(instance_type_list[0].extra_data))
         self.assertTrue(instance_type_list.total_results > 0)
+
+        # Test find
+        inst_type = self.provider.compute. \
+            instance_types.find(name="Standard_DS1_v2")[0]
+        print(str(inst_type))

@@ -7,10 +7,11 @@ import json
 from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseInstanceType,\
+    BaseBucket, BaseBucketObject, BaseInstanceType, \
     BaseMachineImage, BaseNetwork, \
-    BasePlacementZone, BaseRegion, BaseSecurityGroup, BaseSecurityGroupRule, \
-    BaseSnapshot, BaseSubnet, BaseVolume, ClientPagedResultList
+    BasePlacementZone, BaseRegion, \
+    BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
+    BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, SnapshotState
@@ -111,7 +112,7 @@ class AzureSecurityGroup(BaseSecurityGroup):
     @description.setter
     def description(self, value):
         self._security_group.tags.update(Description=value)
-        self._provider.azure_client. \
+        self._provider.azure_client.\
             update_security_group_tags(self.resource_name,
                                        self._security_group.tags)
 
@@ -123,6 +124,14 @@ class AzureSecurityGroup(BaseSecurityGroup):
                                                     custom_rule, self)
             security_group_rules.append(sg_custom_rule)
         return security_group_rules
+
+    def delete(self):
+        try:
+            self._provider.azure_client.\
+                delete_security_group(self.resource_name)
+            return True
+        except CloudError:
+            return False
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
@@ -421,7 +430,8 @@ class AzureVolume(BaseVolume):
         'Deleting': VolumeState.CONFIGURING,
         'Updating': VolumeState.CONFIGURING,
         'Deleted': VolumeState.DELETED,
-        'Failed': VolumeState.ERROR
+        'Failed': VolumeState.ERROR,
+        'Canceled': VolumeState.ERROR
     }
 
     def __init__(self, provider, volume):
@@ -591,6 +601,8 @@ class AzureVolume(BaseVolume):
         try:
             self._volume = self._provider.azure_client. \
                 get_disk(self.resource_name)
+            if not self._volume.tags:
+                self._volume.tags = {}
             self.update_status()
         except (CloudError, ValueError):
             # The volume no longer exists and cannot be refreshed.
@@ -603,6 +615,7 @@ class AzureSnapshot(BaseSnapshot):
         'InProgress': SnapshotState.PENDING,
         'Succeeded': SnapshotState.AVAILABLE,
         'Failed': SnapshotState.ERROR,
+        'Canceled': SnapshotState.ERROR,
         'Updating': SnapshotState.CONFIGURING,
         'Deleting': SnapshotState.CONFIGURING,
         'Deleted': SnapshotState.UNKNOWN
@@ -683,6 +696,8 @@ class AzureSnapshot(BaseSnapshot):
         try:
             self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.resource_name)
+            if not self._snapshot.tags:
+                self._snapshot.tags = {}
             self._status = self._snapshot.provisioning_state
         except (CloudError, ValueError):
             # The snapshot no longer exists and cannot be refreshed.
@@ -808,6 +823,8 @@ class AzureMachineImage(BaseMachineImage):
         try:
             self._image = self._provider.azure_client\
                 .get_image(self.resource_name)
+            if not self._image.tags:
+                self._image.tags = {}
             self._state = self._image.provisioning_state
         except CloudError:
             # image no longer exists
@@ -824,6 +841,8 @@ class AzureNetwork(BaseNetwork):
         super(AzureNetwork, self).__init__(provider)
         self._network = network
         self._state = self._network.provisioning_state
+        if not self._network.tags:
+            self._network.tags = {}
 
     @property
     def id(self):
@@ -836,6 +855,10 @@ class AzureNetwork(BaseNetwork):
 
         .. note:: the network must have a (case sensitive) tag ``Name``
         """
+        return self._network.tags.get('Name', self._network.name)
+
+    @property
+    def resource_name(self):
         return self._network.name
 
     @name.setter
@@ -844,7 +867,9 @@ class AzureNetwork(BaseNetwork):
         """
         Set the network name.
         """
-        self._network.name = value
+        self._network.tags.update(Name=value)
+        self._provider.azure_client.\
+            update_network_tags(self.resource_name, self._network.tags)
 
     @property
     def external(self):
@@ -865,7 +890,10 @@ class AzureNetwork(BaseNetwork):
         for its latest state.
         """
         try:
-            self._network = self._provider.azure_client.get_network(self.name)
+            self._network = self._provider.azure_client.\
+                get_network(self.resource_name)
+            if not self._network.tags:
+                self._network.tags = {}
             self._state = self._network.provisioning_state
         except (CloudError, ValueError):
             # The network no longer exists and cannot be refreshed.
@@ -874,25 +902,25 @@ class AzureNetwork(BaseNetwork):
 
     @property
     def cidr_block(self):
-        return self._network.address_space
+        return self._network.address_space.address_prefixes[0]
 
     def delete(self):
         """
         Delete an existing network.
         """
         try:
-            network = self._provider.azure_client.delete_network(self.name)
-            return True if network else False
+            self._provider.azure_client.\
+                delete_network(self.resource_name)
+            return True
         except CloudError:
             return False
 
     def subnets(self):
-        raise NotImplementedError('AzureNetworkService '
-                                  'not implemented this property')
+        return self._provider.network.subnets.list(network=self.id)
 
     def create_subnet(self, cidr_block, name=None, zone=None):
-        raise NotImplementedError('AzureNetworkService '
-                                  'not implemented this property')
+        return self._provider.network.subnets.\
+            create(network=self.id, cidr_block=cidr_block, name=name)
 
 
 class AzureRegion(BaseRegion):
@@ -964,6 +992,10 @@ class AzureSubnet(BaseSubnet):
     def __init__(self, provider, subnet):
         super(AzureSubnet, self).__init__(provider)
         self._subnet = subnet
+        self._url_params = azure_helpers\
+            .parse_url(SUBNET_RESOURCE_ID, subnet.id)
+        self._network = self._provider.azure_client.\
+            get_network(self._url_params.get(NETWORK_NAME))
 
     @property
     def id(self):
@@ -978,13 +1010,9 @@ class AzureSubnet(BaseSubnet):
         """
         return self._subnet.name
 
-    @name.setter
-    # pylint:disable=arguments-differ
-    def name(self, value):
-        """
-        Set the network name.
-        """
-        self._subnet.name = value
+    @property
+    def zone(self):
+        return self._network.location
 
     @property
     def cidr_block(self):
@@ -992,20 +1020,16 @@ class AzureSubnet(BaseSubnet):
 
     @property
     def network_id(self):
-        params = azure_helpers.parse_url(SUBNET_RESOURCE_ID, self._subnet.id)
-        networkname = params.get(NETWORK_NAME)
-        network = self._provider.azure_client.get_network(networkname)
-        if network:
-            return network.id
-        else:
-            return None
-
-    @property
-    def zone(self):
-        return self._provider.compute.regions.current.zones[0]
+        return self._network.id
 
     def delete(self):
-        return None
+        try:
+            self._provider.azure_client.\
+                delete_subnet(self._url_params.get(NETWORK_NAME),
+                              self._url_params.get(SUBNET_NAME))
+            return True
+        except CloudError as cloudError:
+            return False
 
 
 class AzureInstanceType(BaseInstanceType):

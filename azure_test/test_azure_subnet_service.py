@@ -14,7 +14,7 @@ class AzureSubnetServiceTestCase(ProviderTestBase):
     def test_azure_subnet_service_list_filter_network_id(self):
         network_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
                      'resourceGroups/CloudBridge-Azure/providers/' \
-                     'Microsoft.Network/virtualNetworks/CloudBridgeNet'
+                     'Microsoft.Network/virtualNetworks/CloudBridgeNet2'
         subnets = self.provider.network.subnets.list(network_id)
         self.assertIsNotNone(subnets)
         for subnet in subnets:
@@ -26,7 +26,7 @@ class AzureSubnetServiceTestCase(ProviderTestBase):
     def test_azure_subnet_service_list_filter_network_object(self):
         network_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
                      'resourceGroups/CloudBridge-Azure/providers/' \
-                     'Microsoft.Network/virtualNetworks/CloudBridgeNet'
+                     'Microsoft.Network/virtualNetworks/CloudBridgeNet2'
         network = self.provider.network.get(network_id)
         subnets = self.provider.network.subnets.list(network)
         self.assertIsNotNone(subnets)
@@ -40,7 +40,7 @@ class AzureSubnetServiceTestCase(ProviderTestBase):
         subnet_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
                     'resourceGroups/CloudBridge-Azure/providers/' \
                     'Microsoft.Network/virtualNetworks/' \
-                    'CloudBridgeNet/subnets/MySN1'
+                    'CloudBridgeNet2/subnets/MySN1'
         subnet = self.provider.network.subnets.get(subnet_id)
         self.assertIsNotNone(subnet)
         if subnet:
@@ -57,3 +57,42 @@ class AzureSubnetServiceTestCase(ProviderTestBase):
                     'CloudBridgeNet/subnets/MySN'
         subnet = self.provider.network.subnets.get(subnet_id)
         self.assertIsNone(subnet)
+
+    def test_azure_create_and_delete_from_resource_subnet(self):
+        network_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                    'resourceGroups/CloudBridge-Azure/providers/' \
+                    'Microsoft.Network/virtualNetworks/' \
+                    'CloudBridgeNet2'
+        subnet = self.provider.network.\
+            subnets.create(network=network_id,
+                           cidr_block='10.0.0.0/24')
+        self.assertIsNotNone(subnet.zone)
+        self.assertIsNotNone(subnet)
+        deleted = subnet.delete()
+        self.assertTrue(deleted)
+        deleted = subnet.delete()
+        self.assertFalse(deleted)
+
+    def test_azure_create_and_delete_from_service_subnet(self):
+        network_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                    'resourceGroups/CloudBridge-Azure/providers/' \
+                    'Microsoft.Network/virtualNetworks/' \
+                    'CloudBridgeNet2'
+        subnet = self.provider.network.\
+            subnets.create(network=network_id,
+                           name='test', cidr_block='10.0.0.0/24')
+        self.assertIsNotNone(subnet)
+        deleted = self.provider.network.subnets.delete(subnet)
+        self.assertTrue(deleted)
+        deleted = self.provider.network.subnets.delete(subnet)
+        self.assertFalse(deleted)
+
+    def test_azure_create_or_get_default_subnet(self):
+        subnet = self.provider.network.\
+            subnets.get_or_create_default()
+        self.assertIsNotNone(subnet)
+        subnet = self.provider.network. \
+            subnets.get_or_create_default()
+        self.assertIsNotNone(subnet)
+        subnet.delete()
+        self.provider.network.delete(subnet.network_id)
