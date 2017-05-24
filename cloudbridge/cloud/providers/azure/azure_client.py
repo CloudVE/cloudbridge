@@ -303,3 +303,11 @@ class AzureClient(object):
                              {
                                  'tags': tags
                              }).result()
+
+    def list_subnets(self, network_name):
+        return self.network_management_client.subnets.\
+            list(self.resource_group_name, network_name)
+
+    def get_subnet(self, network_name, subnet_name):
+        return self.network_management_client.subnets.\
+            get(self.resource_group_name, network_name, subnet_name)
