@@ -1,73 +1,54 @@
-import azure_integration_test.helpers as helpers
+import uuid
 
-from cloudbridge.cloud.providers.azure.resources import AzurePlacementZone
+import azure_integration_test.helpers as helpers
 
 
 class AzureIntegrationSubnetServiceTestCase(helpers.ProviderTestBase):
-    def test_azure_integration_subnet_service_list(self):
-        subnets = self.provider.network.subnets.list()
-        self.assertIsNotNone(subnets)
-        for subnet in subnets:
-            print(subnet.name)
-            print(subnet.id)
-            print(subnet.cidr_block)
-            print(subnet.network_id)
-            self.assertIsInstance(subnet.zone, AzurePlacementZone)
-            print(subnet.zone.id)
-            print(subnet.zone.name)
+    @helpers.skipIfNoService(['network'])
+    def test_azure_subnet_service(self):
+        subnet_name = '{0}'.format(uuid.uuid4().hex[:6])
+        network_name = '{0}'.format(uuid.uuid4().hex[:6])
 
-    def test_azure_integration_subnet_service_list_filter_network_id(self):
-        network_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                     'resourceGroups/CloudBridge-Azure/providers/' \
-                     'Microsoft.Network/virtualNetworks/CloudBridgeNet'
-        subnets = self.provider.network.subnets.list(network_id)
-        self.assertIsNotNone(subnets)
-        for subnet in subnets:
-            print(subnet.name)
-            print(subnet.id)
-            print(subnet.cidr_block)
-            print(subnet.network_id)
-            self.assertIsInstance(subnet.zone, AzurePlacementZone)
-            print(subnet.zone.id)
-            print(subnet.zone.name)
+        subnet_list_before_create = \
+            self.provider.network.subnets.list()
+        print(str(len(subnet_list_before_create)))
 
-    def test_azure_integration_subnet_service_list_filter_network_object(self):
-        network_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                     'resourceGroups/CloudBridge-Azure/providers/' \
-                     'Microsoft.Network/virtualNetworks/CloudBridgeNet'
-        network = self.provider.network.get(network_id)
-        subnets = self.provider.network.subnets.list(network)
-        self.assertIsNotNone(subnets)
-        for subnet in subnets:
-            print(subnet.name)
-            print(subnet.id)
-            print(subnet.cidr_block)
-            print(subnet.network_id)
-            self.assertIsInstance(subnet.zone, AzurePlacementZone)
-            print(subnet.zone.id)
-            print(subnet.zone.name)
+        net = self.provider.network.create(name=network_name)
+        net.wait_till_ready()
 
-    def test_azure_integration_subnet_service_get(self):
-        subnet_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                    'resourceGroups/CloudBridge-Azure/providers/' \
-                    'Microsoft.Network/virtualNetworks/' \
-                    'CloudBridgeNet/subnets/MySN1'
+        self.assertTrue(net is not None, 'Network not created')
+
+        subnet = self.provider.network. \
+            subnets.create(network=net, name=subnet_name, cidr_block='10.0.0.0/24')
+        self.assertTrue(subnet is not None, 'Subnet not created')
+
+        subnet_id = subnet.id
+
+        subnet_list_after_create = \
+            self.provider.network.subnets.list()
+        print(str(len(subnet_list_after_create)))
+
+        self.assertTrue(len(subnet_list_after_create),
+                        len(subnet_list_before_create) + 1)
+
         subnet = self.provider.network.subnets.get(subnet_id)
-        self.assertIsNotNone(subnet)
-        if subnet:
-            print("Subnet found")
-            print(subnet.id)
-            print(subnet.name)
-            print(subnet.cidr_block)
-            print(subnet.network_id)
-            self.assertIsInstance(subnet.zone, AzurePlacementZone)
-            print(subnet.zone.id)
-            print(subnet.zone.name)
+        print("Get Subnet  - " + str(subnet))
+        self.assertTrue(
+            subnet.name == subnet_name,
+            "Subnet name should be {0}".format(subnet_name))
 
-    def test_azure_integration_subnet_service_get_invalid_subnet(self):
-        subnet_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                    'resourceGroups/CloudBridge-Azure/providers/' \
-                    'Microsoft.Network/virtualNetworks/' \
-                    'CloudBridgeNet/subnets/MySN'
-        subnet = self.provider.network.subnets.get(subnet_id)
-        self.assertIsNone(subnet)
+        subnet_list_before_delete = \
+            self.provider.network.subnets.list()
+        print(str(len(subnet_list_before_delete)))
+
+        subnet.delete()
+
+        subnet_list_after_delete = \
+            self.provider.network.subnets.list()
+        print(str(len(subnet_list_after_delete)))
+
+        self.assertEqual(len(subnet_list_after_delete),
+                         len(subnet_list_before_delete) - 1)
+
+        subnet.delete()
+        net.delete()
