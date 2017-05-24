@@ -6,10 +6,12 @@ from io import BytesIO
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
     Disk, DiskCreateOption, Image, ManagedDiskParameters, \
-    Snapshot, StorageProfile, VirtualMachine
+    Snapshot, StorageProfile, VirtualMachine, \
+    VirtualMachineSize
+
 from azure.mgmt.network.models import NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
-from azure.mgmt.network.models import VirtualNetwork
+from azure.mgmt.network.models import Subnet, VirtualNetwork
 from azure.mgmt.resource.resources.models import ResourceGroup
 from azure.mgmt.resource.subscriptions.models import Location
 from azure.mgmt.storage.models import StorageAccount
@@ -226,6 +228,40 @@ class MockAzureClient:
                  'locations/eastus'
 
     regions = [region1, region2, region3]
+
+    subnet1 = Subnet()
+    subnet1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                 '/resourceGroups/CloudBridge-Azure/providers/' \
+                 'Microsoft.Network/virtualNetworks/CloudBridgeNet1/subnets/' \
+                 'MySN1'
+    subnet1.name = 'MySN1'
+    subnet1.address_prefix = '10.0.0.0/24'
+    subnet2 = Subnet()
+    subnet2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                 'resourceGroups/CloudBridge-Azure/providers/' \
+                 'Microsoft.Network/virtualNetworks/CloudBridgeNet1/' \
+                 'subnets/MySN2'
+    subnet2.name = 'MySN2'
+    subnet2.address_prefix = '10.0.0.0/25'
+    subnets = [subnet1, subnet2]
+
+    instance_type1 = VirtualMachineSize()
+    instance_type1.name = "instance_type1"
+    instance_type1.number_of_cores = 1
+    instance_type1.os_disk_size_in_mb = 100
+    instance_type1.resource_disk_size_in_mb = 100
+    instance_type1.memory_in_mb = 1000
+    instance_type1.max_data_disk_count = 1
+
+    instance_type2 = VirtualMachineSize()
+    instance_type2.name = "instance_type2"
+    instance_type2.number_of_cores = 2
+    instance_type2.os_disk_size_in_mb = 200
+    instance_type2.resource_disk_size_in_mb = 200
+    instance_type2.memory_in_mb = 2000
+    instance_type2.max_data_disk_count = 2
+
+    instance_types = [instance_type1, instance_type2]
 
     def __init__(self, provider):
         self._provider = provider
@@ -547,7 +583,21 @@ class MockAzureClient:
     def list_locations(self):
         return self.regions
 
+    def list_instance_types(self):
+        return self.instance_types
+
     def update_image_tags(self, name, tags):
         img = self.get_image(name)
         img.tags = tags
         return img
+
+    def list_subnets(self, network_name):
+        return self.subnets
+
+    def get_subnet(self, network_name, subnet_name):
+        for subnet in self.subnets:
+            if subnet.name == subnet_name:
+                return subnet
+        response = Response()
+        response.status_code = 404
+        raise CloudError(response=response, error='Resource Not found')

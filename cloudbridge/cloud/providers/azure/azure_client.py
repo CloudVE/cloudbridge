@@ -293,9 +293,21 @@ class AzureClient(object):
         return self.compute_client.images. \
             get(self.resource_group_name, image_name)
 
+    def list_instance_types(self):
+        return self.compute_client.virtual_machine_sizes. \
+            list(self.region_name)
+
     def update_image_tags(self, name, tags):
         return self.compute_client.images. \
             create_or_update(self.resource_group_name, name,
                              {
                                  'tags': tags
                              }).result()
+
+    def list_subnets(self, network_name):
+        return self.network_management_client.subnets.\
+            list(self.resource_group_name, network_name)
+
+    def get_subnet(self, network_name, subnet_name):
+        return self.network_management_client.subnets.\
+            get(self.resource_group_name, network_name, subnet_name)

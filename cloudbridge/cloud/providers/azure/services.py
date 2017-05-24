@@ -5,23 +5,26 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
-    BaseComputeService, BaseImageService, BaseNetworkService, \
-    BaseObjectStoreService, BaseRegionService, BaseSecurityGroupService, \
-    BaseSecurityService, BaseSnapshotService, BaseVolumeService
+    BaseComputeService, BaseImageService, BaseInstanceTypesService, \
+    BaseNetworkService, BaseObjectStoreService, BaseRegionService, \
+    BaseSecurityGroupService, BaseSecurityService, \
+    BaseSnapshotService, BaseSubnetService, BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone, \
     Snapshot, Volume
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
-
-from .resources import AzureBucket, AzureMachineImage, \
-    AzureNetwork, AzureRegion, AzureSecurityGroup, \
-    AzureSnapshot, AzureVolume, \
+from .resources import AzureBucket, \
+    AzureInstanceType, AzureMachineImage, \
+    AzureNetwork, AzureRegion, \
+    AzureSecurityGroup, \
+    AzureSnapshot, AzureSubnet, AzureVolume, \
     IMAGE_NAME, IMAGE_RESOURCE_ID, \
     NETWORK_NAME, NETWORK_RESOURCE_ID, \
     NETWORK_SECURITY_GROUP_RESOURCE_ID, \
     SECURITY_GROUP_NAME, SNAPSHOT_NAME, \
-    SNAPSHOT_RESOURCE_ID, VOLUME_NAME, VOLUME_RESOURCE_ID
+    SNAPSHOT_RESOURCE_ID, SUBNET_NAME, SUBNET_RESOURCE_ID, \
+    VOLUME_NAME, VOLUME_RESOURCE_ID
 
 log = logging.getLogger(__name__)
 
@@ -301,7 +304,7 @@ class AzureSnapshotService(BaseSnapshotService):
 class AzureComputeService(BaseComputeService):
     def __init__(self, provider):
         super(AzureComputeService, self).__init__(provider)
-        # self._instance_type_svc = AzureInstanceTypesService(self.provider)
+        self._instance_type_svc = AzureInstanceTypesService(self.provider)
         # self._instance_svc = AzureInstanceService(self.provider)
         self._region_svc = AzureRegionService(self.provider)
         self._images_svc = AzureImageService(self.provider)
@@ -312,8 +315,7 @@ class AzureComputeService(BaseComputeService):
 
     @property
     def instance_types(self):
-        raise NotImplementedError('AzureComputeService not '
-                                  'implemented this method')
+        return self._instance_type_svc
 
     @property
     def instances(self):
@@ -359,9 +361,30 @@ class AzureImageService(BaseImageService):
                                      limit=limit, marker=marker)
 
 
+class AzureInstanceTypesService(BaseInstanceTypesService):
+
+    def __init__(self, provider):
+        super(AzureInstanceTypesService, self).__init__(provider)
+
+    @property
+    def instance_data(self):
+        """
+        Fetch info about the available instances.
+        """
+        r = self.provider.azure_client.list_instance_types()
+        return r
+
+    def list(self, limit=None, marker=None):
+        inst_types = [AzureInstanceType(self.provider, inst_type)
+                      for inst_type in self.instance_data]
+        return ClientPagedResultList(self.provider, inst_types,
+                                     limit=limit, marker=marker)
+
+
 class AzureNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(AzureNetworkService, self).__init__(provider)
+        self._subnet_svc = AzureSubnetService(self.provider)
 
     def get(self, network_id):
         try:
@@ -403,8 +426,7 @@ class AzureNetworkService(BaseNetworkService):
 
     @property
     def subnets(self):
-        raise NotImplementedError('AzureNetworkService '
-                                  'not implemented this property')
+        return self._subnet_svc
 
     def floating_ips(self, network_id=None):
         raise NotImplementedError('AzureNetworkService '
@@ -421,6 +443,19 @@ class AzureNetworkService(BaseNetworkService):
     def create_router(self, name=None):
         raise NotImplementedError('AzureNetworkService '
                                   'not implemented this method')
+
+    def delete(self, network_id):
+        """
+                Delete an existing network.
+                """
+        try:
+            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+            network = self.provider.azure_client. \
+                delete_network(params.get(NETWORK_NAME))
+            return True if network else False
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return False
 
 
 class AzureRegionService(BaseRegionService):
@@ -453,3 +488,57 @@ class AzureRegionService(BaseRegionService):
                 region = AzureRegion(self.provider, azureRegion)
                 break
         return region
+
+
+class AzureSubnetService(BaseSubnetService):
+
+    def __init__(self, provider):
+        super(AzureSubnetService, self).__init__(provider)
+
+    def get(self, subnet_id):
+        try:
+            params = azure_helpers.parse_url(SUBNET_RESOURCE_ID, subnet_id)
+            subnet = self.provider.azure_client. \
+                get_subnet(params.get(NETWORK_NAME), params.get(SUBNET_NAME))
+            return AzureSubnet(self.provider, subnet)
+
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return None
+
+    def list(self, network=None):
+        subnets = []
+        if network:
+            network_id = (network.id if isinstance(network, AzureNetwork) else
+                          network)
+            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+            network_name = params.get(NETWORK_NAME)
+            subnets = [AzureSubnet(self.provider, subnet)
+                       for subnet in
+                       self.provider.azure_client.list_subnets(network_name)]
+        else:
+            networks = [AzureNetwork(self.provider, network)
+                        for network in
+                        self.provider.azure_client.list_networks()]
+
+            for network in networks:
+
+                networksubnets = [AzureSubnet(self.provider, subnet)
+                                  for subnet in
+                                  self.provider.
+                                  azure_client.list_subnets(network.name)]
+                subnets.extend(networksubnets)
+        return ClientPagedResultList(self.provider, subnets,
+                                     limit=None, marker=None)
+
+    def create(self, network, cidr_block, name=None, zone=None):
+        raise NotImplementedError('AzureSubnetService '
+                                  'not implemented this method')
+
+    def get_or_create_default(self, zone=None):
+        raise NotImplementedError('AzureSubnetService '
+                                  'not implemented this method')
+
+    def delete(self, subnet):
+        raise NotImplementedError('AzureSubnetService '
+                                  'not implemented this method')

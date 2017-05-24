@@ -7,9 +7,10 @@ import json
 from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseMachineImage, BaseNetwork, \
+    BaseBucket, BaseBucketObject, BaseInstanceType,\
+    BaseMachineImage, BaseNetwork, \
     BasePlacementZone, BaseRegion, BaseSecurityGroup, BaseSecurityGroupRule, \
-    BaseSnapshot, BaseVolume, ClientPagedResultList
+    BaseSnapshot, BaseSubnet, BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, SnapshotState
@@ -956,3 +957,95 @@ class AzurePlacementZone(BasePlacementZone):
             cloud middleware
         """
         return self._azure_region
+
+
+class AzureSubnet(BaseSubnet):
+
+    def __init__(self, provider, subnet):
+        super(AzureSubnet, self).__init__(provider)
+        self._subnet = subnet
+
+    @property
+    def id(self):
+        return self._subnet.id
+
+    @property
+    def name(self):
+        """
+        Get the subnet name.
+
+        .. note:: the subnet must have a (case sensitive) tag ``Name``
+        """
+        return self._subnet.name
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the network name.
+        """
+        self._subnet.name = value
+
+    @property
+    def cidr_block(self):
+        return self._subnet.address_prefix
+
+    @property
+    def network_id(self):
+        params = azure_helpers.parse_url(SUBNET_RESOURCE_ID, self._subnet.id)
+        networkname = params.get(NETWORK_NAME)
+        network = self._provider.azure_client.get_network(networkname)
+        if network:
+            return network.id
+        else:
+            return None
+
+    @property
+    def zone(self):
+        return self._provider.compute.regions.current.zones[0]
+
+    def delete(self):
+        return None
+
+
+class AzureInstanceType(BaseInstanceType):
+
+    def __init__(self, provider, instance_type):
+        super(AzureInstanceType, self).__init__(provider)
+        self._inst_type = instance_type
+
+    @property
+    def id(self):
+        return self._inst_type.name
+
+    @property
+    def name(self):
+        return self._inst_type.name
+
+    @property
+    def family(self):
+        return "Unknown"
+
+    @property
+    def vcpus(self):
+        return self._inst_type.number_of_cores
+
+    @property
+    def ram(self):
+        return self._inst_type.memory_in_mb
+
+    @property
+    def size_root_disk(self):
+        return self._inst_type.os_disk_size_in_mb / 1024
+
+    @property
+    def size_ephemeral_disks(self):
+        return self._inst_type.resource_disk_size_in_mb / 1024
+
+    @property
+    def num_ephemeral_disks(self):
+        return 1
+
+    @property
+    def extra_data(self):
+        return None
