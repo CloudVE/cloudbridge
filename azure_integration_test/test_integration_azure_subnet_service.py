@@ -19,7 +19,8 @@ class AzureIntegrationSubnetServiceTestCase(helpers.ProviderTestBase):
         self.assertTrue(net is not None, 'Network not created')
 
         subnet = self.provider.network. \
-            subnets.create(network=net, name=subnet_name, cidr_block='10.0.0.0/24')
+            subnets.create(network=net, name=subnet_name,
+                           cidr_block='10.0.0.0/24')
         self.assertTrue(subnet is not None, 'Subnet not created')
 
         subnet_id = subnet.id
