@@ -601,8 +601,6 @@ class AzureVolume(BaseVolume):
         try:
             self._volume = self._provider.azure_client. \
                 get_disk(self.resource_name)
-            if not self._volume.tags:
-                self._volume.tags = {}
             self.update_status()
         except (CloudError, ValueError):
             # The volume no longer exists and cannot be refreshed.
@@ -696,8 +694,6 @@ class AzureSnapshot(BaseSnapshot):
         try:
             self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.resource_name)
-            if not self._snapshot.tags:
-                self._snapshot.tags = {}
             self._status = self._snapshot.provisioning_state
         except (CloudError, ValueError):
             # The snapshot no longer exists and cannot be refreshed.
@@ -823,8 +819,6 @@ class AzureMachineImage(BaseMachineImage):
         try:
             self._image = self._provider.azure_client\
                 .get_image(self.resource_name)
-            if not self._image.tags:
-                self._image.tags = {}
             self._state = self._image.provisioning_state
         except CloudError:
             # image no longer exists
@@ -892,8 +886,6 @@ class AzureNetwork(BaseNetwork):
         try:
             self._network = self._provider.azure_client.\
                 get_network(self.resource_name)
-            if not self._network.tags:
-                self._network.tags = {}
             self._state = self._network.provisioning_state
         except (CloudError, ValueError):
             # The network no longer exists and cannot be refreshed.
