@@ -35,14 +35,14 @@ OS_REGION_NAME       OS_AUTH_TOKEN
 
 **Azure**
 
-===================  ==================
-Mandatory variables  Optional Variables
-===================  ==================
-SUBSCRIPTION_ID		 AZURE_REGION_NAME
-AZURE_CLIENT_ID		 AZURE_RESOURCE_GROUP
-AZURE_SECRET		 AZURE_STORAGE_ACCOUNT_NAME
+======================  ==================
+Mandatory variables     Optional Variables
+======================  ==================
+AZURE_SUBSCRIPTION_ID   AZURE_REGION_NAME
+AZURE_CLIENT_ID		    AZURE_RESOURCE_GROUP
+AZURE_SECRET		    AZURE_STORAGE_ACCOUNT_NAME
 AZURE_TENANT                
-===================  ==================
+======================  ==================
 
 
 Once the environment variables are set, you can create a connection as follows:
@@ -75,6 +75,9 @@ will override environment values.
               'azure_secret': '<your_secret>',
               'azure_tenant': '<your_tenant>'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
+
+For Azure, Create service principle credentials from the following link : 
+https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal#check-azure-subscription-permissions
 
 Some optional configuration values can only be provided through the config
 dictionary. These are listed below for each provider.
