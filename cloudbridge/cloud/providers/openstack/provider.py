@@ -241,8 +241,16 @@ class OpenStackCloudProvider(BaseCloudProvider):
     @staticmethod
     def _clean_options(options, method_to_match):
         """
-        Returns a copy of the source options with all keys that are not in the
-        ``method_to_match`` parameter list removed.
+        Returns a **copy** of the source options with all keys that are not in
+        the ``method_to_match`` parameter list removed.
+
+        .. note:: If ``options`` has the ``os_options`` key set it will have
+            any values the value dictionary removed in they copy if they are
+            not set, as they have higher precedence that our settings and thus
+            effectively mask our settings.
+
+        .. seealso::
+            https://docs.openstack.org/developer/python-swiftclient/swiftclient.html#module-swiftclient.client
 
         :param options: The source options.
         :type options: ``dict``
@@ -253,19 +261,19 @@ class OpenStackCloudProvider(BaseCloudProvider):
             then this will be an empty dictionary
         :rtype: ``dict``
         """
-        result = dict(options or {})
-        if len(result):
-            # Don't allow the options to override our authentication
-            result['os_options'] = None
-            passed_in_options = set(result.keys())
+        result = {}
+        if options:
             try:
                 method_signature = inspect.signature(method_to_match)
                 parameters = set(method_signature.parameters.keys())
             except AttributeError:
-                parameters = set(inspect.getargspec(method_to_match)[0])
-            difference = passed_in_options - parameters
-            for name in difference:
-                del result[name]
+                parameters = set(inspect.getargspec(method_to_match).args)
+            result = {key: val for key, val in options.items() if
+                      key in parameters}
+            # Don't allow the options to override our authentication
+            if 'os_options' in result:
+                result['os_options'] = {key: val for key, val in
+                                        result['os_options'].items() if val}
         return result
 
     def _connect_swift(self, options=None):
