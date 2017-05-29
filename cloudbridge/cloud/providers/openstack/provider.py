@@ -244,10 +244,12 @@ class OpenStackCloudProvider(BaseCloudProvider):
         Returns a **copy** of the source options with all keys that are not in
         the ``method_to_match`` parameter list removed.
 
-        .. note:: If ``options`` has the ``os_options`` key set it will have
-            any values the value dictionary removed in they copy if they are
-            not set, as they have higher precedence that our settings and thus
-            effectively mask our settings.
+        .. note:: If ``options`` has the ``os_options`` key it will have
+            both the key and its value removed. This is because any entries
+            in this dictionary value will override our settings. This
+            situation is only going to happen when the `_connect_swift`
+            method is called by the SwiftService to manufacture new
+            connections.
 
         .. seealso::
             https://docs.openstack.org/developer/python-swiftclient/swiftclient.html#module-swiftclient.client
@@ -271,9 +273,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             result = {key: val for key, val in options.items() if
                       key in parameters}
             # Don't allow the options to override our authentication
-            if 'os_options' in result:
-                result['os_options'] = {key: val for key, val in
-                                        result['os_options'].items() if val}
+            result.pop('os_options', None)
         return result
 
     def _connect_swift(self, options=None):
