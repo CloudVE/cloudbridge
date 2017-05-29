@@ -87,7 +87,8 @@ TEST_DATA_CONFIG = {
         "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
     },
     "AzureCloudProvider": {
-        "placement": "eastus"
+        "placement": "eastus",
+        "instance_type": "Standard_DS1_v2"
     }
 }
 
