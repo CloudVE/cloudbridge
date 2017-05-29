@@ -1060,7 +1060,7 @@ class AzureInstanceType(BaseInstanceType):
 
     @property
     def num_ephemeral_disks(self):
-        return 1
+        return 0
 
     @property
     def extra_data(self):
