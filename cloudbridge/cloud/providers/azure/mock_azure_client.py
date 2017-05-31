@@ -197,7 +197,17 @@ class MockAzureClient:
         DataDisk(managed_disk=ManagedDiskParameters(id=data_disk_id),
                  lun=0, create_option='attach')
     vm1.storage_profile.data_disks = [data_dik]
-    virtual_machines = [vm1]
+
+    vm2 = VirtualMachine(location='eastus')
+    vm2.name = 'VM2'
+
+    vm2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+             '/resourceGroups/CLOUDBRIDGE-AZURE' \
+             '/providers/Microsoft.Compute/virtualMachines/VM2'
+    vm2.storage_profile = StorageProfile()
+    vm2.storage_profile.data_disks = [data_dik]
+
+    virtual_machines = [vm1, vm2]
 
     image1 = Image(location='eastus')
     image1.name = 'image1'
@@ -628,3 +638,20 @@ class MockAzureClient:
     def delete_subnet(self, network_name, subnet_name):
         subnet = self.get_subnet(network_name, subnet_name)
         self.subnets.remove(subnet)
+
+    def list_instances(self):
+        return self.virtual_machines
+
+    def get_instance(self, vm_name):
+        for vm in self.virtual_machines:
+            if vm.name == vm_name:
+                return vm
+        response = Response()
+        response.status_code = 404
+        raise CloudError(response=response, error='Resource Not found')
+
+    def reboot_instance(self, vm_name):
+        pass
+
+    def terminate_instance(self, vm_name):
+        pass

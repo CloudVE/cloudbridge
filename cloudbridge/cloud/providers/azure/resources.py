@@ -7,14 +7,16 @@ import json
 from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseInstanceType, \
+    BaseBucket, BaseBucketObject, BaseInstance, \
+    BaseInstanceType, \
     BaseMachineImage, BaseNetwork, \
     BasePlacementZone, BaseRegion, \
     BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
     BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
-    MachineImageState, NetworkState, SnapshotState
+    InstanceState, MachineImageState, \
+    NetworkState, SnapshotState
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
@@ -67,6 +69,7 @@ RESOURCE_GROUP_NAME = 'resourceGroupName'
 SUBSCRIPTION_ID = 'subscriptionId'
 NETWORK_NAME = 'virtualNetworkName'
 IMAGE_NAME = 'imageName'
+INSTANCE_NAME = 'vmName'
 VM_NAME = 'vmName'
 VOLUME_NAME = 'diskName'
 SNAPSHOT_NAME = 'snapshotName'
@@ -1022,6 +1025,167 @@ class AzureSubnet(BaseSubnet):
             return True
         except CloudError:
             return False
+
+
+class AzureInstance(BaseInstance):
+    INSTANCE_STATE_MAP = {
+        'pending': InstanceState.PENDING,
+        'running': InstanceState.RUNNING,
+        'shutting-down': InstanceState.CONFIGURING,
+        'terminated': InstanceState.TERMINATED,
+        'stopping': InstanceState.CONFIGURING,
+        'stopped': InstanceState.STOPPED
+    }
+
+    def __init__(self, provider, instance):
+        super(AzureInstance, self).__init__(provider)
+        self._instance = instance
+        self._state = self._instance.provisioning_state
+
+    @property
+    def id(self):
+        """
+        Get the instance identifier.
+        """
+        return self._instance.id
+
+    @property
+    def name(self):
+        """
+        Get the instance name.
+
+        .. note:: an instance must have a (case sensitive) tag ``Name``
+        """
+        return self._instance.name
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the instance name.
+        """
+        self._instance.add_tag('Name', value)
+
+    @property
+    def public_ips(self):
+        """
+        Get all the public IP addresses for this instance.
+        """
+        pass
+
+    @property
+    def private_ips(self):
+        """
+        Get all the private IP addresses for this instance.
+        """
+        pass
+
+    @property
+    def instance_type_id(self):
+        """
+        Get the instance type name.
+        """
+        return self._instance.hardware_profile.vm_size
+
+    @property
+    def instance_type(self):
+        """
+        Get the instance type.
+        """
+        return self._provider.compute.instance_types.find(
+            name=self.instance_type_id)[0]
+
+    def reboot(self):
+        """
+        Reboot this instance (using the cloud middleware API).
+        """
+        self._provider.azure_client.reboot_instance(self.name)
+
+    def terminate(self):
+        """
+        Permanently terminate this instance.
+        """
+        self._provider.azure_client.terminate_instance(self.name)
+
+    @property
+    def image_id(self):
+        """
+        Get the image ID for this insance.
+        """
+        return self._instance.vm_id
+
+    @property
+    def zone_id(self):
+        """
+        Get the placement zone id where this instance is running.
+        """
+        return self._instance.location
+
+    @property
+    def security_groups(self):
+        """
+        Get the security groups associated with this instance.
+        """
+        # boto instance.groups field returns a ``Group`` object so need to
+        # convert that into a ``SecurityGroup`` object before creating a
+        # cloudbridge SecurityGroup object
+        pass
+
+    @property
+    def security_group_ids(self):
+        """
+        Get the security groups IDs associated with this instance.
+        """
+        pass
+
+    @property
+    def key_pair_name(self):
+        """
+        Get the name of the key pair associated with this instance.
+        """
+        pass
+
+    def create_image(self, name):
+        """
+        Create a new image based on this instance.
+        """
+        pass
+
+    def add_floating_ip(self, ip_address):
+        """
+        Add an elastic IP address to this instance.
+        """
+        pass
+
+    def remove_floating_ip(self, ip_address):
+        """
+        Remove a elastic IP address from this instance.
+        """
+        pass
+
+    def add_security_group(self, sg):
+        """
+        Add a security group to this instance
+        """
+        pass
+
+    def remove_security_group(self, sg):
+        """
+        Remove a security group from this instance
+        """
+        pass
+
+    @property
+    def state(self):
+        return AzureInstance.INSTANCE_STATE_MAP.get(
+            self._state, InstanceState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this instance by re-querying the cloud provider
+        for its latest state.
+        """
+        pass
 
 
 class AzureInstanceType(BaseInstanceType):

@@ -5,7 +5,8 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
-    BaseComputeService, BaseImageService, BaseInstanceTypesService, \
+    BaseComputeService, BaseImageService, BaseInstanceService, \
+    BaseInstanceTypesService, \
     BaseNetworkService, \
     BaseObjectStoreService, BaseRegionService, \
     BaseSecurityGroupService, \
@@ -17,12 +18,15 @@ from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
-from .resources import AzureBucket, AzureInstanceType, \
+from .resources import AzureBucket, AzureInstance, \
+    AzureInstanceType, \
     AzureMachineImage, \
     AzureNetwork, AzureRegion, AzureSecurityGroup, \
     AzureSnapshot, AzureSubnet, AzureVolume, \
-    IMAGE_NAME, IMAGE_RESOURCE_ID, NETWORK_NAME, \
-    NETWORK_RESOURCE_ID, NETWORK_SECURITY_GROUP_RESOURCE_ID, \
+    IMAGE_NAME, IMAGE_RESOURCE_ID, \
+    INSTANCE_NAME, INSTANCE_RESOURCE_ID, \
+    NETWORK_NAME, NETWORK_RESOURCE_ID, \
+    NETWORK_SECURITY_GROUP_RESOURCE_ID, \
     SECURITY_GROUP_NAME, SNAPSHOT_NAME, \
     SNAPSHOT_RESOURCE_ID, SUBNET_NAME, SUBNET_RESOURCE_ID, \
     VOLUME_NAME, VOLUME_RESOURCE_ID
@@ -314,7 +318,7 @@ class AzureComputeService(BaseComputeService):
     def __init__(self, provider):
         super(AzureComputeService, self).__init__(provider)
         self._instance_type_svc = AzureInstanceTypesService(self.provider)
-        # self._instance_svc = AzureInstanceService(self.provider)
+        self._instance_svc = AzureInstanceService(self.provider)
         self._region_svc = AzureRegionService(self.provider)
         self._images_svc = AzureImageService(self.provider)
 
@@ -328,12 +332,38 @@ class AzureComputeService(BaseComputeService):
 
     @property
     def instances(self):
-        raise NotImplementedError('AzureComputeService not '
-                                  'implemented this method')
+        return self._instance_svc
 
     @property
     def regions(self):
         return self._region_svc
+
+
+class AzureInstanceService(BaseInstanceService):
+    def __init__(self, provider):
+        super(AzureInstanceService, self).__init__(provider)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all instances.
+        """
+
+        azure_instances = [instance for instance in
+                           self.provider.azure_client.list_instances()]
+        cb_instances = [AzureInstance(self.provider, instance)
+                        for instance in azure_instances]
+        return ClientPagedResultList(self.provider, cb_instances,
+                                     limit=limit, marker=marker)
+
+    def get(self, instance_id):
+        try:
+            params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID, instance_id)
+            instance = self.provider.azure_client. \
+                get_instance(params.get(INSTANCE_NAME))
+            return AzureInstance(self.provider, instance)
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return None
 
 
 class AzureImageService(BaseImageService):
