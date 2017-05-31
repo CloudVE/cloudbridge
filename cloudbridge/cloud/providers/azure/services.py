@@ -343,6 +343,14 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
+    def create(self, name=None):
+        raise NotImplementedError("AzureInstanceService"
+                                  " not implemented this method")
+
+    def create_launch_config(self, name=None):
+        raise NotImplementedError("AzureInstanceService"
+                                  " not implemented this method")
+
     def list(self, limit=None, marker=None):
         """
         List all instances.
@@ -364,6 +372,10 @@ class AzureInstanceService(BaseInstanceService):
         except CloudError as cloudError:
             log.exception(cloudError.message)
             return None
+
+    def find(self, name, limit=None, marker=None):
+        raise NotImplementedError("AzureInstanceService"
+                                  " not implemented this method")
 
 
 class AzureImageService(BaseImageService):
