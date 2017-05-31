@@ -342,3 +342,26 @@ class AzureClient(object):
                 subnet_name
             )
         result_delete.wait()
+
+    def list_instances(self):
+        return self._compute_client.virtual_machines.list(
+            self.resource_group_name
+        )
+
+    def reboot_instance(self, vm_name):
+        return self._compute_client.virtual_machines.restart(
+            self.resource_group_name,
+            vm_name
+        )
+
+    def terminate_instance(self, vm_name):
+        return self._compute_client.virtual_machines.power_off(
+            self.resource_group_name,
+            vm_name
+        )
+
+    def get_instance(self, vm_name):
+        return self._compute_client.virtual_machines.get(
+            self.resource_group_name,
+            vm_name
+        )
