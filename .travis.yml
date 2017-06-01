@@ -20,7 +20,7 @@ install:
   - pip install tox
   - pip install coveralls
   - pip install codecov
-  - pip install --upgrade setuptools==36.0.0
+  - pip install -U setuptools
 script:
   - tox -e $TOX_ENV
 after_success:
