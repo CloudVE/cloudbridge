@@ -3,6 +3,8 @@ DataTypes used by this provider
 """
 import inspect
 import json
+import logging
+
 
 from azure.common import AzureException
 
@@ -20,6 +22,8 @@ from cloudbridge.cloud.interfaces.resources import Instance, \
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
+
+log = logging.getLogger(__name__)
 
 NETWORK_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                       '{resourceGroupName}/providers/Microsoft.Network/' \
@@ -121,6 +125,9 @@ class AzureSecurityGroup(BaseSecurityGroup):
 
     @property
     def rules(self):
+        """
+        The default rules are not returned, only custom rules.
+        """
         security_group_rules = []
         for custom_rule in self._security_group.security_rules:
             sg_custom_rule = AzureSecurityGroupRule(self._provider,
@@ -133,7 +140,8 @@ class AzureSecurityGroup(BaseSecurityGroup):
             self._provider.azure_client.\
                 delete_security_group(self.resource_name)
             return True
-        except CloudError:
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
             return False
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
@@ -165,9 +173,12 @@ class AzureSecurityGroup(BaseSecurityGroup):
         :return: Rule object if successful or ``None``.
         """
 
+        # If cidr_ip is None, default values is set as 0.0.0.0/0
         if not cidr_ip:
             cidr_ip = '0.0.0.0/0'
 
+        # If the SG with same parameters exist already,
+        # then, it is returned instead of creating a new one.
         rule = self.get_rule(ip_protocol, from_port,
                              to_port, cidr_ip, src_group)
         if not rule:
@@ -326,7 +337,8 @@ class AzureBucketObject(BaseBucketObject):
             self._provider.azure_client.create_blob_from_text(
                 self._container.name, self.name, data)
             return True
-        except AzureException:
+        except AzureException as azureEx:
+            log.exception(azureEx)
             return False
 
     def upload_from_file(self, path):
@@ -337,7 +349,8 @@ class AzureBucketObject(BaseBucketObject):
             self._provider.azure_client.create_blob_from_file(
                 self._container.name, self.name, path)
             return True
-        except AzureException:
+        except AzureException as azureEx:
+            log.exception(azureEx)
             return False
 
     def delete(self):
@@ -351,7 +364,8 @@ class AzureBucketObject(BaseBucketObject):
             self._provider.azure_client.delete_blob(
                 self._container.name, self.name)
             return True
-        except AzureException:
+        except AzureException as azureEx:
+            log.exception(azureEx)
             return False
 
     def generate_url(self, expires_in=0):
@@ -385,7 +399,8 @@ class AzureBucket(BaseBucket):
         try:
             obj = self._provider.azure_client.get_blob(self.name, key)
             return AzureBucketObject(self._provider, self, obj)
-        except AzureException:
+        except AzureException as azureEx:
+            log.exception(azureEx)
             return None
 
     def list(self, limit=None, marker=None, prefix=None):
@@ -409,7 +424,8 @@ class AzureBucket(BaseBucket):
         try:
             self._provider.azure_client.delete_container(self.name)
             return True
-        except AzureException:
+        except AzureException as azureEx:
+            log.exception(azureEx)
             return False
 
     def create_object(self, name):
@@ -548,7 +564,8 @@ class AzureVolume(BaseVolume):
             self._provider.azure_client \
                 .create_or_update_vm(params.get(VM_NAME), vm)
             return True
-        except CloudError:
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
             return False
 
     def detach(self, force=False):
@@ -588,7 +605,8 @@ class AzureVolume(BaseVolume):
             self._provider.azure_client. \
                 delete_disk(self.resource_name)
             return True
-        except CloudError:
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
             return False
 
     @property
@@ -605,7 +623,8 @@ class AzureVolume(BaseVolume):
             self._volume = self._provider.azure_client. \
                 get_disk(self.resource_name)
             self.update_status()
-        except (CloudError, ValueError):
+        except (CloudError, ValueError) as cloudError:
+            log.exception(cloudError.message)
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
             self._status = 'unknown'
@@ -698,7 +717,8 @@ class AzureSnapshot(BaseSnapshot):
             self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.resource_name)
             self._status = self._snapshot.provisioning_state
-        except (CloudError, ValueError):
+        except (CloudError, ValueError) as cloudError:
+            log.exception(cloudError.message)
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
             self._status = 'unknown'
@@ -710,7 +730,8 @@ class AzureSnapshot(BaseSnapshot):
         try:
             self._provider.azure_client.delete_snapshot(self.resource_name)
             return True
-        except CloudError:
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
             return False
 
     def create_volume(self, placement=None,
@@ -823,7 +844,8 @@ class AzureMachineImage(BaseMachineImage):
             self._image = self._provider.azure_client\
                 .get_image(self.resource_name)
             self._state = self._image.provisioning_state
-        except CloudError:
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
             # image no longer exists
             self._state = "unknown"
 
@@ -890,7 +912,8 @@ class AzureNetwork(BaseNetwork):
             self._network = self._provider.azure_client.\
                 get_network(self.resource_name)
             self._state = self._network.provisioning_state
-        except (CloudError, ValueError):
+        except (CloudError, ValueError) as cloudError:
+            log.exception(cloudError.message)
             # The network no longer exists and cannot be refreshed.
             # set the status to unknown
             self._state = 'unknown'
@@ -907,7 +930,8 @@ class AzureNetwork(BaseNetwork):
             self._provider.azure_client.\
                 delete_network(self.resource_name)
             return True
-        except CloudError:
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
             return False
 
     def subnets(self):
@@ -1023,7 +1047,8 @@ class AzureSubnet(BaseSubnet):
                 delete_subnet(self._url_params.get(NETWORK_NAME),
                               self._url_params.get(SUBNET_NAME))
             return True
-        except CloudError:
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
             return False
 
 
@@ -1204,6 +1229,10 @@ class AzureInstanceType(BaseInstanceType):
 
     @property
     def family(self):
+        """
+        Python sdk does not return family details.
+        So, we are populating it as Unknown
+        """
         return "Unknown"
 
     @property
@@ -1224,6 +1253,11 @@ class AzureInstanceType(BaseInstanceType):
 
     @property
     def num_ephemeral_disks(self):
+        """
+        Python sdk does not return num_ephemeral_disks details.
+        In Azure, we cannot explicitly add ephemeral disks.
+        So, we are taking assumption and populating it as Zero.
+        """
         return 0
 
     @property
