@@ -20,8 +20,8 @@ install:
   - pip install tox
   - pip install coveralls
   - pip install codecov
-  - pip install --upgrade pip six
-  - pip install --upgrade setuptools
+  - pip uninstall setuptools
+  - pip install setuptools==28.8.0
 script:
   - tox -e $TOX_ENV
 after_success:
