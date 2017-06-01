@@ -17,6 +17,7 @@ matrix:
   allow_failures:
     - os: osx
 install:
+  - pip install six
   - pip install tox
   - pip install coveralls
   - pip install codecov
