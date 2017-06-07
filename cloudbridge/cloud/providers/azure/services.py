@@ -374,8 +374,15 @@ class AzureInstanceService(BaseInstanceService):
             return None
 
     def find(self, name, limit=None, marker=None):
-        raise NotImplementedError("AzureInstanceService"
-                                  " not implemented this method")
+        """
+         Searches for a instance by a given list of attributes.
+        """
+        filters = {'Name': name}
+        cb_instances = [AzureInstance(self.provider, instance)
+                        for instance in azure_helpers.filter(
+                self.provider.azure_client.list_instances(), filters)]
+        return ClientPagedResultList(self.provider, cb_instances,
+                                     limit=limit, marker=marker)
 
 
 class AzureImageService(BaseImageService):
