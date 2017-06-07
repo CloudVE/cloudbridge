@@ -136,14 +136,6 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['network'])
     def test_network_methods(self):
         with self.assertRaises(NotImplementedError):
-            floating_ips = self.provider.network.floating_ips()
-            self.assertIsNotNone(floating_ips)
-
-        with self.assertRaises(NotImplementedError):
-            floating_ip = self.provider.network.create_floating_ip()
-            self.assertIsNotNone(floating_ip)
-
-        with self.assertRaises(NotImplementedError):
             routers = self.provider.network.routers()
             self.assertIsNotNone(routers)
 
@@ -162,3 +154,15 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
         subnets = network.subnets()
         self.assertTrue(len(subnets) > 0)
         subnet.delete()
+
+    @helpers.skipIfNoService(['network'])
+    def test_azure_network_service_create_floating_ip(self):
+        floating_ip = self.provider.network.create_floating_ip()
+        print("create: " + str(floating_ip))
+        self.assertEqual(floating_ip.id,
+                         '/subscriptions'
+                         '/7904d702-e01c-4826-8519-f5a25c866a96'
+                         '/resourceGroups/cloudbridge-azure/providers'
+                         '/Microsoft.Network/publicIPAddresses/public_ip_test')
+        self.assertEqual(floating_ip.public_ip, '13.82.104.38')
+        self.assertEqual(floating_ip.private_ip, None)
