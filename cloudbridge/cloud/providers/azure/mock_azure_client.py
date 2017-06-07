@@ -10,7 +10,7 @@ from azure.mgmt.compute.models import CreationData, DataDisk, \
     VirtualMachineSize
 
 from azure.mgmt.network.models import AddressSpace, NetworkInterface, \
-    NetworkSecurityGroup
+    NetworkSecurityGroup, PublicIPAddress
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.network.models import Subnet, VirtualNetwork
 from azure.mgmt.resource.resources.models import ResourceGroup
@@ -130,6 +130,32 @@ class MockAzureClient:
     network3.provisioning_state = "Succeeded"
 
     networks = [network1, network2, network3]
+
+    floating_ip1 = PublicIPAddress()
+    floating_ip1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                      '/resourceGroups/cloudbridge-azure/providers' \
+                      '/Microsoft.Network/publicIPAddresses/public_ip_1'
+    floating_ip1.name = 'public_ip_1'
+    floating_ip1.public_ip = '13.82.104.1'
+    floating_ip1.private_ip = None
+
+    floating_ip2 = PublicIPAddress()
+    floating_ip2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                      '/resourceGroups/cloudbridge-azure/providers' \
+                      '/Microsoft.Network/publicIPAddresses/public_ip_2'
+    floating_ip2.name = 'public_ip_2'
+    floating_ip2.public_ip = '13.82.104.2'
+    floating_ip2.private_ip = None
+
+    floating_ip3 = PublicIPAddress()
+    floating_ip3.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                      '/resourceGroups/cloudbridge-azure/providers' \
+                      '/Microsoft.Network/publicIPAddresses/public_ip_3'
+    floating_ip3.name = 'public_ip_3'
+    floating_ip3.public_ip = '13.82.104.3'
+    floating_ip3.private_ip = None
+
+    floating_ips = [floating_ip1, floating_ip2, floating_ip3]
 
     volume1 = Disk(location='eastus', creation_data=None)
     volume1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
@@ -438,6 +464,27 @@ class MockAzureClient:
     def delete_network(self, network_name):
         network = self.get_network(network_name)
         self.networks.remove(network)
+
+        return True
+
+    def create_floating_ip(self, public_ip_address_name, public_ip_parameters):
+        floating_ip = PublicIPAddress()
+        floating_ip.id = '/subscriptions' \
+                         '/7904d702-e01c-4826-8519-f5a25c866a96' \
+                         '/resourceGroups/cloudbridge-azure/providers' \
+                         '/Microsoft.Network/publicIPAddresses/public_ip_test'
+        floating_ip.ip_address = '13.82.104.38'
+        floating_ip.private_ip = None
+        return floating_ip
+
+    def list_floating_ips(self):
+        return self.floating_ips
+
+    def delete_floating_ip(self, public_ip_address_name):
+        for floating_ip in self.floating_ips:
+            if floating_ip.name == public_ip_address_name:
+                self.floating_ips.remove(floating_ip)
+        return True
 
     def create_resource_group(self, resource_group_name, params):
         rg = ResourceGroup(location='westus')

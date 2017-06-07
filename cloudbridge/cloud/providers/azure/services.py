@@ -22,7 +22,7 @@ from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
-from .resources import AzureBucket, \
+from .resources import AzureBucket, AzureFloatingIP, \
     AzureInstance, AzureInstanceType, \
     AzureLaunchConfig, AzureMachineImage, \
     AzureNetwork, AzureRegion, AzureSecurityGroup, \
@@ -699,17 +699,31 @@ class AzureNetworkService(BaseNetworkService):
 
         return cb_network
 
+    def create_floating_ip(self):
+        public_ip_address_name = "{0}-{1}".format(
+            'public_ip', uuid.uuid4().hex[:6])
+        public_ip_parameters = {
+            'location': self.provider.azure_client.region_name,
+            'public_ip_allocation_method': 'Dynamic'
+        }
+
+        floating_ip = self.provider.azure_client.\
+            create_floating_ip(public_ip_address_name, public_ip_parameters)
+        return AzureFloatingIP(self.provider, floating_ip)
+
     @property
     def subnets(self):
         return self._subnet_svc
 
     def floating_ips(self, network_id=None):
-        raise NotImplementedError('AzureNetworkService '
-                                  'not implemented this method')
+        """
+               List all floating ips.
+        """
+        floating_ips = [AzureFloatingIP(self.provider, floating_ip)
+                        for floating_ip in self.provider.azure_client.
+                        list_floating_ips()]
 
-    def create_floating_ip(self):
-        raise NotImplementedError('AzureNetworkService '
-                                  'not implemented this method')
+        return ClientPagedResultList(self.provider, floating_ips)
 
     def routers(self):
         raise NotImplementedError('AzureNetworkService '
