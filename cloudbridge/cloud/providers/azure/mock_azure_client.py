@@ -184,11 +184,11 @@ class MockAzureClient:
     snapshots = [snapshot1, snapshot2]
     vm1 = VirtualMachine(location='eastus')
     vm1.name = 'VM1'
-
     vm1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
              '/resourceGroups/CLOUDBRIDGE-AZURE'\
              '/providers/Microsoft.Compute/virtualMachines/VM1'
     vm1.storage_profile = StorageProfile()
+    vm1.tags = {'Name': 'VM1'}
     data_disk_id = '/subscriptions'\
                    '/7904d702-e01c-4826-8519-f5a25c866a96' \
                    '/resourceGroups/CLOUDBRIDGE-AZURE' \
@@ -200,7 +200,7 @@ class MockAzureClient:
 
     vm2 = VirtualMachine(location='eastus')
     vm2.name = 'VM2'
-
+    vm2.tags = {'Name': 'VM2'}
     vm2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
              '/resourceGroups/CLOUDBRIDGE-AZURE' \
              '/providers/Microsoft.Compute/virtualMachines/VM2'
