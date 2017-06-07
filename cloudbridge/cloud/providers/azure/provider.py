@@ -45,6 +45,10 @@ class AzureCloudProvider(BaseCloudProvider):
             'azure_storage_account_name', os.environ.get
             ('AZURE_STORAGE_ACCOUNT_NAME', 'cloudbridgeazure'))
 
+        self.default_user_name = self._get_config_value(
+            'azure_default_user_name', os.environ.get
+            ('AZURE_DEFAULT_USER_NAME', 'cbazureuser'))
+
         # create a dict with both optional and mandatory configuration values
         # to pass to the azureclient class, rather
         # than passing the provider object and taking a dependency.

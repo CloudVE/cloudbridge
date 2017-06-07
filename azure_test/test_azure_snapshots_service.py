@@ -73,7 +73,7 @@ class AzureSnapshotsServiceTestCase(ProviderTestBase):
             snapshot.name == "MySnapshot",
             "Snapshot name should be MySnapshot")
 
-        volume = snapshot.create_volume("MyVolume")
+        volume = snapshot.create_volume()
         self.assertTrue(
             volume is not None, "Snapshot not created")
         volume.delete()
