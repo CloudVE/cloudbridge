@@ -30,7 +30,8 @@ azure_reqs = ['azure-common==1.1.5',
               'azure-mgmt-compute==1.0.0rc1',
               'azure-mgmt-network==1.0.0rc1',
               'azure-mgmt-storage==1.0.0rc1',
-              'azure-storage==0.34.0']
+              'azure-storage==0.34.0',
+              'pysftp==0.2.9']
 
 full_reqs = base_reqs + aws_reqs + openstack_reqs + azure_reqs
 # httpretty is required with/for moto 1.0.0 or AWS tests fail

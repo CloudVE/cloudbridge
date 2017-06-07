@@ -33,3 +33,62 @@ class AzureInstanceServiceTestCase(ProviderTestBase):
             find('VM1')
         print("Find Instance - " + str(instance_find))
         self.assertIsNotNone(instance_find)
+
+    @helpers.skipIfNoService(['block_store.snapshots'])
+    def test_azure_instance_create_and_get(self):
+        image_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                   'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
+                   'Microsoft.Compute/images/image3'
+
+        img = self.provider.compute.images.get(image_id)
+
+        self.assertIsNotNone(img)
+
+        # TODO: Add logic to get key pair
+        key_pair = None
+        # self.assertIsNotNone(key_pair)
+
+        inst_type = [t for t in self.provider.compute.instance_types.list()
+                     if t.name == 'Standard_DS1_v2'][0]
+        sg_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                '/resourceGroups/CloudBridge-Azure' \
+                '/providers/Microsoft.Network/networkSecurityGroups/sg2'
+        sg = self.provider.security.\
+            security_groups.get(sg_id)
+
+        subnet = self.provider.network.subnets.list()[0]
+
+        lc = self.provider.compute.instances.create_launch_config()
+
+        lc.add_volume_device(
+            is_root=True,
+            source=img,
+            size=img.min_disk if img and img.min_disk else 2,
+            delete_on_terminate=True)
+
+        inst = self.provider.compute.instances.create(
+            name='test', image=img, instance_type=inst_type,
+            subnet=subnet, zone=None,
+            key_pair=key_pair, security_groups=[sg], user_data=None,
+            launch_config=lc)
+
+        self.assertIsNotNone(inst)
+
+        inst.reboot()
+
+        inst.name = 'newvmname'
+
+        self.assertEqual(inst.name, 'newvmname')
+
+        inst.add_security_group(sg)
+        inst.refresh()
+
+        # Check removing a security group from a running instance
+        inst.remove_security_group(sg)
+        inst.refresh()
+
+        img = inst.create_image('test_image')
+
+        self.assertIsNotNone(img)
+
+        inst.terminate()

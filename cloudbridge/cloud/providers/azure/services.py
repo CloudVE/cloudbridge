@@ -12,24 +12,27 @@ from cloudbridge.cloud.base.services import BaseBlockStoreService, \
     BaseSecurityGroupService, \
     BaseSecurityService, BaseSnapshotService, \
     BaseSubnetService, BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import Network,\
-    PlacementZone, Snapshot, Subnet, Volume
+from cloudbridge.cloud.interfaces import InvalidConfigurationException
+
+from cloudbridge.cloud.interfaces.resources import InstanceType, \
+    KeyPair, MachineImage, Network, PlacementZone, SecurityGroup, \
+    Snapshot, Subnet, Volume
+
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
-from .resources import AzureBucket, AzureInstance, \
-    AzureInstanceType, \
-    AzureMachineImage, \
+from .resources import AzureBucket, \
+    AzureInstance, AzureInstanceType, \
+    AzureLaunchConfig, AzureMachineImage, \
     AzureNetwork, AzureRegion, AzureSecurityGroup, \
     AzureSnapshot, AzureSubnet, AzureVolume, \
-    IMAGE_NAME, IMAGE_RESOURCE_ID, \
-    INSTANCE_NAME, INSTANCE_RESOURCE_ID, \
-    NETWORK_NAME, NETWORK_RESOURCE_ID, \
-    NETWORK_SECURITY_GROUP_RESOURCE_ID, \
+    IMAGE_NAME, IMAGE_RESOURCE_ID, INSTANCE_RESOURCE_ID, \
+    LOCATION_NAME, LOCATION_RESOURCE_ID, NETWORK_NAME, \
+    NETWORK_RESOURCE_ID, NETWORK_SECURITY_GROUP_RESOURCE_ID, \
     SECURITY_GROUP_NAME, SNAPSHOT_NAME, \
     SNAPSHOT_RESOURCE_ID, SUBNET_NAME, SUBNET_RESOURCE_ID, \
-    VOLUME_NAME, VOLUME_RESOURCE_ID
+    VM_NAME, VOLUME_NAME, VOLUME_RESOURCE_ID
 
 log = logging.getLogger(__name__)
 
@@ -216,6 +219,11 @@ class AzureVolumeService(BaseVolumeService):
 
     def create(self, name, size, zone=None, snapshot=None, description=None):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+        zone_name = None
+        if zone_id:
+            zone_params = azure_helpers.\
+                parse_url(LOCATION_RESOURCE_ID, zone_id)
+            zone_name = zone_params.get(LOCATION_NAME)
         snapshot_id = snapshot.id if isinstance(
             snapshot, Snapshot) and snapshot else snapshot
         disk_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
@@ -224,7 +232,8 @@ class AzureVolumeService(BaseVolumeService):
             tags.update(Description=description)
         if snapshot_id:
             params = {
-                'location': zone_id or self.provider.azure_client.region_name,
+                'location':
+                    zone_name or self.provider.azure_client.region_name,
                 'creation_data': {
                     'create_option': 'copy',
                     'source_uri': snapshot_id
@@ -236,7 +245,8 @@ class AzureVolumeService(BaseVolumeService):
 
         else:
             params = {
-                'location': zone_id or self.provider.azure_client.region_name,
+                'location':
+                    zone_name or self.provider.azure_client.region_name,
                 'disk_size_gb': size,
                 'creation_data': {
                     'create_option': 'empty'
@@ -343,45 +353,251 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, name=None):
-        raise NotImplementedError("AzureInstanceService"
-                                  " not implemented this method")
+    def create(self, name, image, instance_type, subnet, zone=None,
+               key_pair=None, security_groups=None, user_data=None,
+               launch_config=None, **kwargs):
+        if isinstance(image, MachineImage):
+            image_id = image.id
+        else:
+            image_id = image
+            image = self.provider.compute.images.get(image_id)
+        if key_pair:
+            if isinstance(key_pair, KeyPair):
+                key_pair_name = key_pair.name
+            else:
+                key_pair_name = key_pair
+                key_pair = self.provider.security.\
+                    key_pairs.get(key_pair_name)
+        # else:
+        #     raise Exception("Keypair required")
 
-    def create_launch_config(self, name=None):
-        raise NotImplementedError("AzureInstanceService"
-                                  " not implemented this method")
+        instance_size = instance_type.id if \
+            isinstance(instance_type, InstanceType) else instance_type
+        subnet = (self.provider.network.subnets.get(subnet)
+                  if isinstance(subnet, str) else subnet)
+        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+
+        subnet_id, zone_id, security_group_ids = \
+            self._resolve_launch_options(subnet, zone_id, security_groups)
+
+        zone_params = azure_helpers.parse_url(LOCATION_RESOURCE_ID, zone_id)
+
+        zone_name = None
+        if zone_id:
+            zone_name = zone_params.get(LOCATION_NAME)
+
+        if launch_config:
+            disks = self._process_block_device_mappings(launch_config,
+                                                        name, zone_id)
+        else:
+            disks = None
+
+        nic_params = {
+                'location': self._provider.region_name,
+                'ip_configurations': [{
+                    'name': 'MyIpConfig',
+                    'private_ip_allocation_method': 'Dynamic',
+                    'subnet': {
+                        'id': subnet_id
+                    }
+                }]
+            }
+
+        if security_groups:
+            nic_params['network_security_group'] = {
+                'id': security_group_ids[0]
+            }
+        nic_info = self.provider.azure_client.create_nic(
+            name + '_NIC',
+            nic_params
+        )
+
+        params = {
+            'location': zone_name or self._provider.region_name,
+            'os_profile': {
+                'admin_username': self.provider.default_user_name,
+                'admin_password': 'cbazureuser@123',
+                'computer_name': name
+            },
+            'hardware_profile': {
+                'vm_size': instance_size
+            },
+            'network_profile': {
+                'network_interfaces': [{
+                    'id': nic_info.id
+                }]
+            },
+            'storage_profile': {
+                'image_reference': {
+                    'id': image_id
+                },
+                "os_disk": {
+                    "name": name + '_Os_Disk',
+                    "create_option": "fromImage"
+                },
+                'data_disks': disks
+            },
+            'tags': {'Name': name}
+        }
+
+        if key_pair:
+            params['tags'].update(Key_Pair=key_pair_name)
+
+        if image.os_type == 'Linux' and key_pair:
+            params['os_profile']['linux_configuration'] = \
+                {
+                 "disable_password_authentication": True,
+                 "ssh": {
+                     "public_keys": [{
+                          "path":
+                          "/home/{}/.ssh/authorized_keys".format(
+                              self.provider.default_user_name),
+                          "key_data": key_pair.key
+                         }]
+                       }
+               }
+
+        instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
+
+        self.provider.azure_client.create_vm(instance_name, params)
+        vm = self._provider.azure_client.get_vm(instance_name)
+        return AzureInstance(self.provider, vm)
+
+    def _resolve_launch_options(self, subnet=None, zone_id=None,
+                                security_groups=None):
+        """
+        Work out interdependent launch options.
+
+        Some launch options are required and interdependent so make sure
+        they conform to the interface contract.
+
+        :type subnet: ``Subnet``
+        :param subnet: Subnet object within which to launch.
+
+        :type zone_id: ``str``
+        :param zone_id: ID of the zone where the launch should happen.
+
+        :type security_groups: ``list`` of ``id``
+        :param zone_id: List of security group IDs.
+
+        :rtype: triplet of ``str``
+        :return: Subnet ID, zone ID and security group IDs for launch.
+
+        :raise ValueError: In case a conflicting combination is found.
+        """
+        if subnet:
+            # subnet's zone takes precedence
+            zone_id = subnet.zone.id
+        if isinstance(security_groups, list) and isinstance(
+                security_groups[0], SecurityGroup):
+            security_group_ids = [sg.id for sg in security_groups]
+        else:
+            security_group_ids = security_groups
+        return subnet.id, zone_id, security_group_ids
+
+    def _process_block_device_mappings(self, launch_config,
+                                       vm_name, zone=None):
+        """
+        Processes block device mapping information
+        and returns a Boto BlockDeviceMapping object. If new volumes
+        are requested (source is None and destination is VOLUME), they will be
+        created and the relevant volume ids included in the mapping.
+        """
+        disks = []
+        volumes_count = 0
+
+        def attach_volume(volume, delete_on_terminate):
+            disks.append({
+                'lun': volumes_count,
+                'name': volume.resource_name,
+                'create_option': 'attach',
+                'managed_disk': {
+                    'id': volume.id
+                }
+            })
+            delete_on_terminate = delete_on_terminate or False
+            volume.tags.update(delete_on_terminate=str(delete_on_terminate))
+            self.provider.azure_client.\
+                update_disk_tags(volume.resource_name, volume.tags)
+
+        # assign ephemeral devices from 0 onwards
+        # ephemeral_counter = 0
+
+        for device in launch_config.block_devices:
+            if device.is_volume and not device.is_root:
+                if isinstance(device.source, Snapshot):
+                    snapshot_vol = device.source.create_volume()
+                    attach_volume(snapshot_vol, device.delete_on_terminate)
+                elif isinstance(device.source, Volume):
+                    attach_volume(device.source, device.delete_on_terminate)
+                elif isinstance(device.source, MachineImage):
+                    # Not supported
+                    pass
+                else:
+                    # source is None, but destination is volume, therefore
+                    # create a blank volume. If the Zone is None, this
+                    # could fail since the volume and instance may be created
+                    # in two different zones.
+                    if not zone:
+                        raise InvalidConfigurationException(
+                            "A zone must be specified when launching with a"
+                            " new blank volume block device mapping.")
+                    vol_name = "{0}_disk".format(vm_name, uuid.uuid4().hex[:6])
+                    new_vol = self.provider.block_store.volumes.create(
+                        vol_name,
+                        device.size,
+                        zone)
+                    attach_volume(new_vol, device.delete_on_terminate)
+                # bd_type.delete_on_terminate = device.delete_on_terminate
+                # if device.size:
+                #     bd_type.size = device.size
+                volumes_count += 1
+
+            else:  # device is ephemeral
+                # bd_type.ephemeral_name = 'ephemeral%s' % ephemeral_counter
+                pass
+
+        return disks
+
+    def create_launch_config(self):
+        return AzureLaunchConfig(self.provider)
 
     def list(self, limit=None, marker=None):
         """
         List all instances.
         """
-
-        azure_instances = [instance for instance in
-                           self.provider.azure_client.list_instances()]
-        cb_instances = [AzureInstance(self.provider, instance)
-                        for instance in azure_instances]
-        return ClientPagedResultList(self.provider, cb_instances,
+        instances = [AzureInstance(self.provider, inst)
+                     for inst in self.provider.azure_client.list_vm()]
+        return ClientPagedResultList(self.provider, instances,
                                      limit=limit, marker=marker)
 
     def get(self, instance_id):
+        """
+        Returns an instance given its id. Returns None
+        if the object does not exist.
+        """
         try:
-            params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID, instance_id)
-            instance = self.provider.azure_client. \
-                get_instance(params.get(INSTANCE_NAME))
-            return AzureInstance(self.provider, instance)
+            params = azure_helpers.\
+                parse_url(INSTANCE_RESOURCE_ID, instance_id)
+            vm = self.provider.azure_client. \
+                get_vm(params.get(VM_NAME))
+            return AzureInstance(self.provider, vm)
         except CloudError as cloudError:
             log.exception(cloudError.message)
             return None
 
     def find(self, name, limit=None, marker=None):
         """
-         Searches for a instance by a given list of attributes.
+        Searches for an instance by a given list of attributes.
+
+        :rtype: ``object`` of :class:`.Instance`
+        :return: an Instance object
         """
-        filters = {'Name': name}
-        cb_instances = [AzureInstance(self.provider, instance)
-                        for instance in azure_helpers.filter(
-                self.provider.azure_client.list_instances(), filters)]
-        return ClientPagedResultList(self.provider, cb_instances,
+        filtr = {'Name': name}
+        instances = [AzureInstance(self.provider, inst)
+                     for inst in azure_helpers.filter(
+                self.provider.azure_client.list_vm(), filtr)]
+        return ClientPagedResultList(self.provider, instances,
                                      limit=limit, marker=marker)
 
 
