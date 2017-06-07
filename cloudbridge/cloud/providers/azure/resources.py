@@ -12,8 +12,8 @@ from azure.common import AzureException
 from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseInstance,\
-    BaseInstanceType, \
+    BaseBucket, BaseBucketObject, BaseFloatingIP, \
+    BaseInstance, BaseInstanceType, \
     BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
     BasePlacementZone, BaseRegion, \
     BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
@@ -955,6 +955,40 @@ class AzureNetwork(BaseNetwork):
     def create_subnet(self, cidr_block, name=None, zone=None):
         return self._provider.network.subnets.\
             create(network=self.id, cidr_block=cidr_block, name=name)
+
+
+class AzureFloatingIP(BaseFloatingIP):
+
+    def __init__(self, provider, floating_ip):
+        super(AzureFloatingIP, self).__init__(provider)
+        self._ip = floating_ip
+
+    @property
+    def id(self):
+        return self._ip.id
+
+    @property
+    def public_ip(self):
+        return self._ip.ip_address
+
+    @property
+    def private_ip(self):
+        return self._ip.ip_configuration.private_ip_address \
+            if self._ip.ip_configuration else None
+
+    def in_use(self):
+        return True if self._ip.ip_configuration else False
+
+    def delete(self):
+        """
+        Delete an existing floating ip.
+        """
+        try:
+            self._provider.azure_client.delete_floating_ip(self._ip.name)
+            return True
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return False
 
 
 class AzureRegion(BaseRegion):

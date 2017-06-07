@@ -244,6 +244,21 @@ class AzureClient(object):
         return self.network_management_client.virtual_networks. \
             delete(self.resource_group_name, network_name).wait()
 
+    def create_floating_ip(self, public_ip_name, public_ip_parameters):
+        return self.network_management_client.public_ip_addresses. \
+            create_or_update(self.resource_group_name,
+                             public_ip_name,
+                             public_ip_parameters).result()
+
+    def delete_floating_ip(self, public_ip_address_name):
+        return self.network_management_client.public_ip_addresses. \
+            delete(self.resource_group_name,
+                   public_ip_address_name).result()
+
+    def list_floating_ips(self):
+        return self.network_management_client.public_ip_addresses.list(
+            self.resource_group_name)
+
     def update_network_tags(self, network_name, tags):
         return self.network_management_client.virtual_networks. \
             create_or_update(self.resource_group_name,
