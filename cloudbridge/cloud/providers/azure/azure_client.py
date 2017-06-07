@@ -17,22 +17,17 @@ class AzureClient(object):
     def __init__(self, config):
         self._config = config
         self.subscription_id = config.get('azure_subscription_id')
-        credentials = ServicePrincipalCredentials(
+        self._credentials = ServicePrincipalCredentials(
             client_id=config.get('azure_client_Id'),
             secret=config.get('azure_secret'),
             tenant=config.get('azure_tenant')
         )
 
-        self._resource_client = ResourceManagementClient(credentials,
-                                                         self.subscription_id)
-        self._storage_client = StorageManagementClient(credentials,
-                                                       self.subscription_id)
-        self._network_management_client = NetworkManagementClient(
-            credentials, self.subscription_id)
-        self._subscription_client = SubscriptionClient(credentials)
-        self._compute_client = ComputeManagementClient(credentials,
-                                                       self.subscription_id)
-
+        self._resource_client = None
+        self._storage_client = None
+        self._network_management_client = None
+        self._subscription_client = None
+        self._compute_client = None
         self._access_key_result = None
         self._block_blob_service = None
 
@@ -58,23 +53,44 @@ class AzureClient(object):
         return self._config.get('azure_region_name')
 
     @property
+    def public_key_storage_table_name(self):
+        return self._config.get('azure_public_key_storage_table_name')
+
+    @property
     def storage_client(self):
+        if not self._storage_client:
+            self._storage_client = \
+                StorageManagementClient(self._credentials,
+                                        self.subscription_id)
         return self._storage_client
 
     @property
     def subscription_client(self):
+        if not self._subscription_client:
+            self._subscription_client = SubscriptionClient(self._credentials)
         return self._subscription_client
 
     @property
     def resource_client(self):
+        if not self._resource_client:
+            self._resource_client = \
+                ResourceManagementClient(self._credentials,
+                                         self.subscription_id)
         return self._resource_client
 
     @property
     def compute_client(self):
+        if not self._compute_client:
+            self._compute_client = \
+                ComputeManagementClient(self._credentials,
+                                        self.subscription_id)
         return self._compute_client
 
     @property
     def network_management_client(self):
+        if not self._network_management_client:
+            self._network_management_client = NetworkManagementClient(
+                self._credentials, self.subscription_id)
         return self._network_management_client
 
     @property
@@ -270,25 +286,10 @@ class AzureClient(object):
             raw=True
         )
 
-    def get_vm(self, vm_name):
-        return self.compute_client.virtual_machines.get(
-            self.resource_group_name,
-            vm_name,
-            expand='instanceView'
-        )
-
-    def create_or_update_vm(self, vm_name, params):
-        return self.compute_client \
-            .virtual_machines.create_or_update(
-                self.resource_group_name,
-                vm_name,
-                params,
-                raw=True
-            )
-
-    def list_vm(self):
-        return self.compute_client. \
-            virtual_machines.list(self.resource_group_name)
+    def create_image(self, name, params):
+        return self.compute_client.images. \
+            create_or_update(self.resource_group_name, name,
+                             params, raw=True)
 
     def delete_image(self, name):
         self.compute_client.images. \
@@ -343,25 +344,79 @@ class AzureClient(object):
             )
         result_delete.wait()
 
-    def list_instances(self):
-        return self._compute_client.virtual_machines.list(
+    def list_vm(self):
+        return self.compute_client.virtual_machines.list(
             self.resource_group_name
         )
 
-    def reboot_instance(self, vm_name):
-        return self._compute_client.virtual_machines.restart(
+    def restart_vm(self, vm_name):
+        return self.compute_client.virtual_machines.restart(
             self.resource_group_name,
             vm_name
+        ).wait()
+
+    def delete_vm(self, vm_name):
+        return self.compute_client.virtual_machines.delete(
+            self.resource_group_name,
+            vm_name
+        ).wait()
+
+    def get_vm(self, vm_name):
+        return self.compute_client.virtual_machines.get(
+            self.resource_group_name,
+            vm_name,
+            expand='instanceView'
         )
 
-    def terminate_instance(self, vm_name):
-        return self._compute_client.virtual_machines.power_off(
-            self.resource_group_name,
-            vm_name
-        )
+    def create_vm(self, vm_name, params):
+        return self.compute_client.virtual_machines. \
+            create_or_update(self.resource_group_name,
+                             vm_name, params, raw=True)
 
-    def get_instance(self, vm_name):
-        return self._compute_client.virtual_machines.get(
-            self.resource_group_name,
-            vm_name
-        )
+    def deallocate_vm(self, vm_name):
+        self.compute_client. \
+            virtual_machines.deallocate(self.resource_group_name,
+                                        vm_name).wait()
+
+    def generalize_vm(self, vm_name):
+        self.compute_client.virtual_machines. \
+            generalize(self.resource_group_name, vm_name)
+
+    def start_vm(self, vm_name):
+        self.compute_client.virtual_machines. \
+            start(self.resource_group_name,
+                  vm_name).wait()
+
+    def update_vm_tags(self, vm_name, tags):
+        self.compute_client.virtual_machines. \
+            create_or_update(self.resource_group_name,
+                             vm_name, {'tags': tags})
+
+    def delete_nic(self, nic_name):
+        self.network_management_client. \
+            network_interfaces.delete(self.resource_group_name,
+                                      nic_name).wait()
+
+    def get_nic(self, name):
+        return self.network_management_client. \
+            network_interfaces.get(self.resource_group_name, name)
+
+    def create_nic(self, nic_name, params):
+        async_nic_creation = self.network_management_client. \
+            network_interfaces.create_or_update(
+                self.resource_group_name,
+                nic_name,
+                params
+            )
+        nic_info = async_nic_creation.result()
+
+        return nic_info
+
+    def get_public_ip(self, name):
+        return self.network_management_client. \
+            public_ip_addresses.get(self.resource_group_name, name)
+
+    def delete_public_ip(self, public_ip_name):
+        self.network_management_client. \
+            public_ip_addresses.delete(self.resource_group_name,
+                                       public_ip_name).wait()

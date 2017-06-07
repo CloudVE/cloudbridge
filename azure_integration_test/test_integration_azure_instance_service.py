@@ -1,38 +1,68 @@
+import uuid
+
 import azure_integration_test.helpers as helpers
 
 from azure_integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
-    @helpers.skipIfNoService(['compute.images'])
+    @helpers.skipIfNoService(['compute.instances'])
     def test_azure_instance_service(self):
-        instances_list = self.provider.compute.instances.list()
-        print("List Instances - " + str(instances_list))
-        print("Properties - ")
-        print("Id - " + str(instances_list[0].id))
-        print("name - " + str(instances_list[0].name))
-        print("public_ips - " + str(instances_list[0].public_ips))
-        print("private_ips - " + str(instances_list[0].private_ips))
-        print("instance_type_id - " + str(instances_list[0].instance_type_id))
-        print("instance_type - " + str(instances_list[0].instance_type))
-        print("image_id - " + str(instances_list[0].image_id))
-        print("zone_id - " + str(instances_list[0].zone_id))
-        print("security_groups - " +
-              str(instances_list[0].security_groups))
-        print("security_group_ids - " +
-              str(instances_list[0].security_group_ids))
-        print("key_pair_name - " + str(instances_list[0].key_pair_name))
-        print("state - " + str(instances_list[0].state))
+        instance_name = 'CbAzure-inst-{0}'.format(uuid.uuid4().hex[:6])
+        image_name = 'CbAzure-img-{0}'.format(uuid.uuid4().hex[:6])
+        security_group_name = 'CbAzure-sg-{0}'.format(uuid.uuid4().hex[:6])
+        # key_pair_name = 'CbAzure-keypair-{0}'.format(uuid.uuid4().hex[:6])
 
-        print("Count - " + str(len(instances_list)))
-        self.assertTrue(len(instances_list) > 0)
+        image_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                   '/resourceGroups/VM-TEST-RG/providers' \
+                   '/Microsoft.Compute/images/CbAzure-da80a6'
 
-        instance_get = self.provider.compute.instances. \
-            get(instances_list[0].id)
-        print("Get Instance - " + str(instance_get))
-        self.assertIsNotNone(instance_get)
+        img = self.provider.compute.images.get(image_id)
 
-        instance_find = self.provider.compute.instances. \
-            find(instances_list[0].name)
-        print("Find Instance - " + str(instance_find))
-        self.assertTrue(len(instance_find) > 0)
+        self.assertIsNotNone(img)
+
+        # key_pair = self.provider.security.\
+        #     key_pairs.create(key_pair_name)
+        #
+        # self.assertIsNotNone(key_pair)
+        #
+        # with open('{0}.pem'.format(key_pair_name), 'w') as f:
+        #     f.write(key_pair.material)
+
+        inst_type = [t for t in self.provider.compute.instance_types.list()
+                     if t.name == 'Standard_DS1_v2'][0]
+
+        sg = self.provider.security.security_groups.\
+            create(security_group_name,
+                   'A security group used by CloudBridge', '')
+        sg.add_rule('tcp', 22, 22, '0.0.0.0/0')
+
+        subnet = self.provider.network.subnets.list()[1]
+
+        inst = self.provider.compute.instances.create(
+            name=instance_name, image=img, instance_type=inst_type,
+            subnet=subnet, zone=None,
+            key_pair=None, security_groups=None, user_data=None,
+            launch_config=None)
+
+        inst.wait_till_ready()
+
+        # floating_ip = self.provider.network.create_floating_ip()
+        #
+        # self.assertIsNotNone(floating_ip)
+        #
+        # inst.add_floating_ip(floating_ip.public_ip)
+        #
+        # inst.refresh()
+        #
+        # self.assertIsNotNone(inst.public_ips[0])
+
+        instance = self.provider.compute.\
+            instances.find(name=instance_name)[0]
+
+        self.assertIsNotNone(instance)
+
+        new_img = instance.create_image(image_name)
+        self.assertIsNotNone(new_img)
+
+        instance.terminate()

@@ -4,24 +4,28 @@ DataTypes used by this provider
 import inspect
 import json
 import logging
+import time
 
 
 from azure.common import AzureException
 
+from azure.mgmt.network.models import NetworkSecurityGroup
+
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseInstance, \
+    BaseBucket, BaseBucketObject, BaseInstance,\
     BaseInstanceType, \
-    BaseMachineImage, BaseNetwork, \
+    BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
     BasePlacementZone, BaseRegion, \
     BaseSecurityGroup, BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
     BaseVolume, ClientPagedResultList
-from cloudbridge.cloud.interfaces import VolumeState
+from cloudbridge.cloud.interfaces import InstanceState, VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
-    InstanceState, MachineImageState, \
-    NetworkState, SnapshotState
+    MachineImageState, NetworkState, SnapshotState
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
+
+import pysftp
 
 log = logging.getLogger(__name__)
 
@@ -69,11 +73,13 @@ NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
                                 '/providers/Microsoft.Network/' \
                                 'networkInterfaces/{networkInterfaceName}'
 
+LOCATION_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
+                       'locations/{locationName}'
+
 RESOURCE_GROUP_NAME = 'resourceGroupName'
 SUBSCRIPTION_ID = 'subscriptionId'
 NETWORK_NAME = 'virtualNetworkName'
 IMAGE_NAME = 'imageName'
-INSTANCE_NAME = 'vmName'
 VM_NAME = 'vmName'
 VOLUME_NAME = 'diskName'
 SNAPSHOT_NAME = 'snapshotName'
@@ -84,6 +90,7 @@ PUBLIC_IP_NAME = 'publicIpAddressName'
 ROUTE_TABLE_NAME = 'routeTableName'
 ROUTE_NAME = 'routeName'
 NETWORK_INTERFACE_NAME = 'networkInterfaceName'
+LOCATION_NAME = 'locationName'
 
 
 class AzureSecurityGroup(BaseSecurityGroup):
@@ -481,6 +488,10 @@ class AzureVolume(BaseVolume):
         return self._volume.name
 
     @property
+    def tags(self):
+        return self._volume.tags
+
+    @property
     def name(self):
         """
         Get the volume name.
@@ -562,7 +573,7 @@ class AzureVolume(BaseVolume):
                 }
             })
             self._provider.azure_client \
-                .create_or_update_vm(params.get(VM_NAME), vm)
+                .create_vm(params.get(VM_NAME), vm)
             return True
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -584,7 +595,7 @@ class AzureVolume(BaseVolume):
                 break
 
         if virtual_machine:
-            self._provider.azure_client.create_or_update_vm(
+            self._provider.azure_client.create_vm(
                 virtual_machine.name,
                 virtual_machine
             )
@@ -824,6 +835,10 @@ class AzureMachineImage(BaseMachineImage):
         """
         return self._image.storage_profile.os_disk.disk_size_gb
 
+    @property
+    def os_type(self):
+        return self._image.storage_profile.os_disk.os_type.value
+
     def delete(self):
         """
         Delete this image
@@ -1031,7 +1046,12 @@ class AzureSubnet(BaseSubnet):
 
     @property
     def zone(self):
-        return self._network.location
+        regions = [region
+                   for region in self._provider.
+                   compute.regions.list()
+                   if region.name == self._network.location]
+
+        return regions[0].zones[0]
 
     @property
     def cidr_block(self):
@@ -1053,26 +1073,73 @@ class AzureSubnet(BaseSubnet):
 
 
 class AzureInstance(BaseInstance):
+    # ref:
+    # http://docs.azure.amazon.com/AzureEC2/latest/UserGuide/ec2-instance-lifecycle.html
     INSTANCE_STATE_MAP = {
-        'pending': InstanceState.PENDING,
-        'running': InstanceState.RUNNING,
-        'shutting-down': InstanceState.CONFIGURING,
-        'terminated': InstanceState.TERMINATED,
-        'stopping': InstanceState.CONFIGURING,
-        'stopped': InstanceState.STOPPED
+        'InProgress': InstanceState.PENDING,
+        'Creating': InstanceState.PENDING,
+        'VM running': InstanceState.RUNNING,
+        'Updating': InstanceState.CONFIGURING,
+        'Deleted': InstanceState.TERMINATED,
+        'Stopping': InstanceState.CONFIGURING,
+        'Deleting': InstanceState.CONFIGURING,
+        'Stopped': InstanceState.STOPPED,
+        'Canceled': InstanceState.ERROR,
+        'Failed': InstanceState.ERROR,
+        'VM stopped': InstanceState.STOPPED,
+        'VM deallocated': InstanceState.STOPPED,
+        'VM deallocating': InstanceState.CONFIGURING,
+        'VM stopping': InstanceState.CONFIGURING,
+        'VM starting': InstanceState.CONFIGURING
     }
 
-    def __init__(self, provider, instance):
+    def __init__(self, provider, vm_instance):
         super(AzureInstance, self).__init__(provider)
-        self._instance = instance
-        self._state = self._instance.provisioning_state
+        self._vm = vm_instance
+        self._url_params = azure_helpers.\
+            parse_url(INSTANCE_RESOURCE_ID, vm_instance.id)
+        self.update_state()
+        self._get_network_attributes()
+        if not self._vm.tags:
+            self._vm.tags = {}
+
+    def _get_network_attributes(self):
+        self._private_ips = []
+        self._public_ips = []
+        self._security_group_ids = []
+        self._public_ip_ids = []
+        self._nic_ids = []
+        for nic in self._vm.network_profile.network_interfaces:
+            self._nic_ids.append(nic.id)
+            nic_params = azure_helpers.\
+                parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic.id)
+            nic = self._provider.azure_client.\
+                get_nic(nic_params.get(NETWORK_INTERFACE_NAME))
+            if nic.network_security_group:
+                self._security_group_ids.append(nic.network_security_group.id)
+            if nic.ip_configurations:
+                for ip_config in nic.ip_configurations:
+                    self._private_ips.append(ip_config.private_ip_address)
+                    if ip_config.public_ip_address:
+                        url_params = azure_helpers.\
+                            parse_url(PUBLIC_IP_RESOURCE_ID,
+                                      ip_config.public_ip_address.id)
+                        public_ip = self._provider.\
+                            azure_client.\
+                            get_public_ip(url_params.get(PUBLIC_IP_NAME))
+                        self._public_ip_ids.append(public_ip.id)
+                        self._public_ips.append(public_ip.ip_address)
 
     @property
     def id(self):
         """
         Get the instance identifier.
         """
-        return self._instance.id
+        return self._vm.id
+
+    @property
+    def resource_name(self):
+        return self._vm.name
 
     @property
     def name(self):
@@ -1081,7 +1148,7 @@ class AzureInstance(BaseInstance):
 
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        return self._instance.name
+        return self._vm.tags.get('Name', self._vm.name)
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -1089,28 +1156,30 @@ class AzureInstance(BaseInstance):
         """
         Set the instance name.
         """
-        self._instance.add_tag('Name', value)
+        self._vm.tags.update(Name=value)
+        self._provider.azure_client.\
+            update_vm_tags(self.resource_name, self._vm.tags)
 
     @property
     def public_ips(self):
         """
         Get all the public IP addresses for this instance.
         """
-        pass
+        return self._public_ips
 
     @property
     def private_ips(self):
         """
         Get all the private IP addresses for this instance.
         """
-        pass
+        return self._private_ips
 
     @property
     def instance_type_id(self):
         """
         Get the instance type name.
         """
-        return self._instance.hardware_profile.vm_size
+        return self._vm.hardware_profile.vm_size
 
     @property
     def instance_type(self):
@@ -1124,27 +1193,56 @@ class AzureInstance(BaseInstance):
         """
         Reboot this instance (using the cloud middleware API).
         """
-        self._provider.azure_client.reboot_instance(self.name)
+        self._provider.azure_client.restart_vm(self.resource_name)
 
     def terminate(self):
         """
         Permanently terminate this instance.
         """
-        self._provider.azure_client.terminate_instance(self.name)
+        self._provider.azure_client.deallocate_vm(self.resource_name)
+        self._provider.azure_client.delete_vm(self.resource_name)
+        for nic_id in self._nic_ids:
+            nic_id_params = azure_helpers.\
+                parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+            self._provider.azure_client.\
+                delete_nic(nic_id_params.get(NETWORK_INTERFACE_NAME))
+        for public_ip_id in self._public_ip_ids:
+            public_ip_id_params = azure_helpers.\
+                parse_url(PUBLIC_IP_RESOURCE_ID, public_ip_id)
+            self._provider.azure_client.\
+                delete_public_ip(public_ip_id_params.get(PUBLIC_IP_NAME))
+        for data_disk in self._vm.storage_profile.data_disks:
+            if data_disk.managed_disk:
+                disk_params = azure_helpers.\
+                    parse_url(VOLUME_RESOURCE_ID,
+                              data_disk.managed_disk.id)
+                disk = self._provider.azure_client.\
+                    get_disk(disk_params.get(VOLUME_NAME))
+                if disk and disk.tags \
+                        and disk.tags.get('delete_on_terminate',
+                                          'False') == 'True':
+                    self._provider.azure_client.\
+                        delete_disk(disk_params.get(VOLUME_NAME))
+        if self._vm.storage_profile.os_disk.managed_disk:
+            disk_params = azure_helpers. \
+                parse_url(VOLUME_RESOURCE_ID,
+                          self._vm.storage_profile.os_disk.managed_disk.id)
+            self._provider.azure_client. \
+                delete_disk(disk_params.get(VOLUME_NAME))
 
     @property
     def image_id(self):
         """
         Get the image ID for this insance.
         """
-        return self._instance.vm_id
+        return self._vm.storage_profile.image_reference.id
 
     @property
     def zone_id(self):
         """
         Get the placement zone id where this instance is running.
         """
-        return self._instance.location
+        return self._vm.location
 
     @property
     def security_groups(self):
@@ -1154,51 +1252,161 @@ class AzureInstance(BaseInstance):
         # boto instance.groups field returns a ``Group`` object so need to
         # convert that into a ``SecurityGroup`` object before creating a
         # cloudbridge SecurityGroup object
-        pass
+        return [self._provider.security.security_groups.get(group_id)
+                for group_id in self._security_group_ids]
 
     @property
     def security_group_ids(self):
         """
         Get the security groups IDs associated with this instance.
         """
-        pass
+        return self._security_group_ids
 
     @property
     def key_pair_name(self):
         """
         Get the name of the key pair associated with this instance.
         """
-        pass
+        return self._vm.tags.get('Key_Pair')
 
-    def create_image(self, name):
+    def create_image(self, name, private_key_path=None):
         """
         Create a new image based on this instance.
         """
-        pass
+
+        if not self._state == 'VM generalized':
+            if not self._state == 'VM running':
+                self._provider.azure_client.start_vm(self.resource_name)
+                time.sleep(60)
+                self._get_network_attributes()
+
+            if private_key_path:
+                self._deprovision(private_key_path)
+            self._provider.azure_client.deallocate_vm(self.resource_name)
+            self._provider.azure_client.generalize_vm(self.resource_name)
+
+        create_params = {
+            'location': self._provider.region_name,
+            'source_virtual_machine': {
+                'id': self.id
+            },
+            'tags': {'Name': name}
+        }
+        self._provider.azure_client.\
+            create_image(name, create_params)
+        image = self._provider.azure_client.\
+            get_image(name)
+
+        return AzureMachineImage(self._provider, image)
+
+    def _deprovision(self, private_key_path):
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None
+
+        with pysftp.Connection(self.public_ips[0],
+                               username=self._provider.default_user_name,
+                               cnopts=cnopts,
+                               private_key=private_key_path) as sftp:
+            sftp.execute('sudo waagent -deprovision -force')
+            sftp.close()
 
     def add_floating_ip(self, ip_address):
-        """
-        Add an elastic IP address to this instance.
-        """
-        pass
+        try:
+            ip_addresses = [ip for ip in self._provider.
+                            azure_client.list_public_ips()
+                            if ip.ip_address and ip.ip_address == ip_address]
+            if len(ip_addresses) > 0:
+                """
+                Add an elastic IP address to this instance.
+                """
+                nic_params = azure_helpers. \
+                    parse_url(NETWORK_INTERFACE_RESOURCE_ID,
+                              self._vm.network_profile.
+                              network_interfaces[0].id)
+                nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+                nic = self._provider.azure_client.get_nic(nic_name)
 
-    def remove_floating_ip(self, ip_address):
+                nic.ip_configurations[0].public_ip_address = {
+                    'id': ip_addresses[0].id
+                }
+                self._provider.azure_client.\
+                    create_nic(nic_name, nic)
+
+                return True
+            return False
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return False
+
+    def remove_floating_ip(self, ip_address=None):
         """
         Remove a elastic IP address from this instance.
         """
-        pass
+        try:
+            nic_params = azure_helpers. \
+                parse_url(NETWORK_INTERFACE_RESOURCE_ID,
+                          self._vm.network_profile.network_interfaces[0].id)
+            nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+            nic = self._provider.azure_client.get_nic(nic_name)
+
+            nic.ip_configurations[0].public_ip_address = None
+            self._provider.azure_client. \
+                create_nic(nic_name, nic)
+            return True
+        except CloudError as cloudError:
+            log.exception(cloudError.message)
+            return False
 
     def add_security_group(self, sg):
-        """
-        Add a security group to this instance
-        """
-        pass
+        '''
+        :param sg:
+        :return: None
+
+        This method adds the security group to VM instance.
+        In Azure, security group added to Network interface.
+        Azure supports to add only one security group to
+        network interface, we are adding the provided security group 4
+        if not associated any security group to NIC
+        else replacing the existing security group.
+        '''
+
+        nic_id = \
+            self._vm.network_profile.network_interfaces[0].id
+        nic_params = azure_helpers.\
+            parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+        nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+        nic = self._provider.azure_client.get_nic(nic_name)
+        if not nic.network_security_group:
+            nic.network_security_group = NetworkSecurityGroup()
+
+        sg_id = sg.id if isinstance(sg, AzureSecurityGroup) else sg
+        nic.network_security_group.id = sg_id
+
+        self._provider.azure_client.\
+            create_nic(nic_name, nic)
 
     def remove_security_group(self, sg):
-        """
-        Remove a security group from this instance
-        """
-        pass
+        nic_id = \
+            self._vm.network_profile.network_interfaces[0].id
+        nic_params = azure_helpers. \
+            parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+        nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+        nic = self._provider.azure_client.get_nic(nic_name)
+        sg_id = sg.id if isinstance(sg, AzureSecurityGroup) else sg
+        if nic.network_security_group and \
+                nic.network_security_group.id == sg_id:
+            nic.network_security_group = None
+            self._provider.azure_client. \
+                create_nic(nic_name, nic)
+
+    def update_state(self):
+        if self._vm.instance_view and\
+                        len(self._vm.instance_view.statuses) > 1:
+            self._state = \
+                self._vm.instance_view.statuses[1].display_status
+        else:
+            self._state = \
+                self._vm.provisioning_state
 
     @property
     def state(self):
@@ -1210,7 +1418,25 @@ class AzureInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        pass
+        try:
+            self._vm = self._provider.\
+                azure_client.get_vm(self.resource_name)
+            if not self._vm.tags:
+                self._vm.tags = {}
+            self.update_state()
+            self._get_network_attributes()
+            print(self._state + ' : Vm state')
+        except (CloudError, ValueError) as cloudError:
+            log.exception(cloudError.message)
+            # The volume no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._state = 'unknown'
+
+
+class AzureLaunchConfig(BaseLaunchConfig):
+
+    def __init__(self, provider):
+        super(AzureLaunchConfig, self).__init__(provider)
 
 
 class AzureInstanceType(BaseInstanceType):
@@ -1262,4 +1488,7 @@ class AzureInstanceType(BaseInstanceType):
 
     @property
     def extra_data(self):
-        return None
+        return {
+                    'max_data_disk_count':
+                    self._inst_type.max_data_disk_count
+               }

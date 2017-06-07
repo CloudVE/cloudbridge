@@ -6,10 +6,11 @@ from io import BytesIO
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
     Disk, DiskCreateOption, Image, ManagedDiskParameters, \
-    Snapshot, StorageProfile, VirtualMachine, \
+    NetworkProfile, OSDisk, Snapshot, StorageProfile, VirtualMachine, \
     VirtualMachineSize
 
-from azure.mgmt.network.models import AddressSpace, NetworkSecurityGroup
+from azure.mgmt.network.models import AddressSpace, NetworkInterface, \
+    NetworkSecurityGroup
 from azure.mgmt.network.models import SecurityRule
 from azure.mgmt.network.models import Subnet, VirtualNetwork
 from azure.mgmt.resource.resources.models import ResourceGroup
@@ -21,6 +22,10 @@ from azure.storage.blob.models import Blob, BlobProperties, \
 from msrestazure.azure_exceptions import CloudError
 
 from requests import Response
+
+
+class Expando(object):
+    pass
 
 
 class MockAzureClient:
@@ -182,11 +187,29 @@ class MockAzureClient:
     snapshot2.account_type = ' Standard_LRS'
 
     snapshots = [snapshot1, snapshot2]
+
+    nic1 = NetworkInterface()
+    nic1.name = 'nic1'
+    nic1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+              'resourceGroups/CLOUDBRIDGE-AZURE' \
+              '/providers/Microsoft.Network/' \
+              'networkInterfaces/nic1'
+
+    nic2 = NetworkInterface()
+    nic2.name = 'nic2'
+    nic2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+              'resourceGroups/CLOUDBRIDGE-AZURE' \
+              '/providers/Microsoft.Network/' \
+              'networkInterfaces/nic2'
+
+    nics = [nic1, nic2]
+
     vm1 = VirtualMachine(location='eastus')
     vm1.name = 'VM1'
     vm1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
              '/resourceGroups/CLOUDBRIDGE-AZURE'\
              '/providers/Microsoft.Compute/virtualMachines/VM1'
+    vm1.provisioning_state = 'Succeeded'
     vm1.storage_profile = StorageProfile()
     vm1.tags = {'Name': 'VM1'}
     data_disk_id = '/subscriptions'\
@@ -198,14 +221,31 @@ class MockAzureClient:
                  lun=0, create_option='attach')
     vm1.storage_profile.data_disks = [data_dik]
 
+    vm1.storage_profile.os_disk = OSDisk(create_option='fromImage')
+    vm1.storage_profile.os_disk.managed_disk = \
+        ManagedDiskParameters(id='')
+    vm1.storage_profile.os_disk.disk_size_gb = 10
+
+    vm1.network_profile = NetworkProfile()
+    vm1.network_profile.network_interfaces = [nic1]
+
     vm2 = VirtualMachine(location='eastus')
     vm2.name = 'VM2'
     vm2.tags = {'Name': 'VM2'}
     vm2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
              '/resourceGroups/CLOUDBRIDGE-AZURE' \
              '/providers/Microsoft.Compute/virtualMachines/VM2'
+    vm2.provisioning_state = 'Succeeded'
     vm2.storage_profile = StorageProfile()
     vm2.storage_profile.data_disks = [data_dik]
+
+    vm2.storage_profile.os_disk = OSDisk(create_option='fromImage')
+    vm2.storage_profile.os_disk.managed_disk = \
+        ManagedDiskParameters(id='')
+    vm2.storage_profile.os_disk.disk_size_gb = 10
+
+    vm2.network_profile = NetworkProfile()
+    vm2.network_profile.network_interfaces = [nic2]
 
     virtual_machines = [vm1, vm2]
 
@@ -218,6 +258,10 @@ class MockAzureClient:
     image1.storage_profile = StorageProfile()
     image1.storage_profile.os_disk = ManagedDiskParameters(id='')
     image1.storage_profile.os_disk.disk_size_gb = 10
+    obj1 = Expando()
+    obj1.name = 'linux'
+    obj1.value = 'Linux'
+    image1.storage_profile.os_disk.os_type = obj1
 
     image2 = Image(location='eastus')
     image2.name = 'image2'
@@ -225,8 +269,31 @@ class MockAzureClient:
     image2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
                 '/resourceGroups/CLOUDBRIDGE-AZURE' \
                 '/providers/Microsoft.Compute/images/image2'
+    image2.storage_profile = StorageProfile()
+    image2.storage_profile.os_disk = ManagedDiskParameters(id='')
+    image2.storage_profile.os_disk.disk_size_gb = 10
 
-    images = [image1, image2]
+    obj = Expando()
+    obj.name = 'linux'
+    obj.value = 'Linux'
+    image2.storage_profile.os_disk.os_type = obj
+
+    image3 = Image(location='eastus')
+    image3.name = 'image3'
+    image3.tags = {'Name': 'image3'}
+    image3.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                '/providers/Microsoft.Compute/images/image3'
+    image3.storage_profile = StorageProfile()
+    image3.storage_profile.os_disk = ManagedDiskParameters(id='')
+    image3.storage_profile.os_disk.disk_size_gb = 10
+
+    obj = Expando()
+    obj.name = 'linux'
+    obj.value = 'Linux'
+    image3.storage_profile.os_disk.os_type = obj
+
+    images = [image1, image2, image3]
 
     region1 = Location()
     region1.name = "westus2"
@@ -558,33 +625,80 @@ class MockAzureClient:
     def list_snapshots(self):
         return self.snapshots
 
-    def get_vm(self, vm_name):
-        for virtual_machine in self.virtual_machines:
-            if virtual_machine.name == vm_name:
-                return virtual_machine
+    def create_vm(self, vm_name, params):
 
-        response = Response()
-        response.status_code = 404
-        raise CloudError(response=response, error='Resource Not found')
+        if not isinstance(params, dict):
+            for data_disk in params.storage_profile.data_disks:
+                if isinstance(data_disk, dict):
+                    disk_id = data_disk.get('managed_disk').get('id')
+                    lun = data_disk.get('lun')
+                    create_option = data_disk.get('create_option')
+                    managed_disk = \
+                        ManagedDiskParameters(id=disk_id)
+                    params.storage_profile.data_disks.remove(data_disk)
+                    params.storage_profile.\
+                        data_disks\
+                        .append(DataDisk(managed_disk=managed_disk,
+                                lun=lun, create_option=create_option))
 
-    def create_or_update_vm(self, vm_name, params):
-        for data_disk in params.storage_profile.data_disks:
-            if isinstance(data_disk, dict):
-                disk_id = data_disk.get('managed_disk').get('id')
-                lun = data_disk.get('lun')
-                create_option = data_disk.get('create_option')
-                managed_disk = \
-                    ManagedDiskParameters(id=disk_id)
-                params.storage_profile.data_disks.remove(data_disk)
-                params.storage_profile.\
-                    data_disks\
-                    .append(DataDisk(managed_disk=managed_disk,
-                            lun=lun, create_option=create_option))
+            return params
 
-        return params
+        vm = VirtualMachine(location='eastus')
+        vm.name = vm_name
+        vm.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                '/providers/Microsoft.Compute/virtualMachines/' + vm_name
+        vm.provisioning_state = 'Succeeded'
+        vm.storage_profile = StorageProfile()
+        vm.tags = {'Name': vm_name}
+        data_disk_id = '/subscriptions' \
+                       '/7904d702-e01c-4826-8519-f5a25c866a96' \
+                       '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                       '/providers/Microsoft.Compute/disks/Volume2'
+        data_dik = \
+            DataDisk(managed_disk=ManagedDiskParameters(id=data_disk_id),
+                     lun=0, create_option='attach')
+        vm.storage_profile.data_disks = [data_dik]
 
-    def list_vm(self):
-        return self.virtual_machines
+        vm.storage_profile.os_disk = OSDisk(create_option='fromImage')
+        os_disk_id = '/subscriptions' \
+                     '/7904d702-e01c-4826-8519-f5a25c866a96' \
+                     '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                     '/providers/Microsoft.Compute/disks/os_disk'
+
+        vm.storage_profile.os_disk.managed_disk = \
+            ManagedDiskParameters(id=os_disk_id)
+        vm.storage_profile.os_disk.disk_size_gb = 10
+
+        os_disk = Disk(location='eastus', creation_data=None)
+        os_disk.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                     '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                     '/providers/Microsoft.Compute/disks/os_dsk'
+        os_disk.name = "os_disk"
+        os_disk.disk_size_gb = 30
+        os_disk.creation_data = \
+            CreationData(create_option=DiskCreateOption.empty)
+        os_disk.time_created = '20-04-2017'
+        os_disk.owner_id = None
+        os_disk.provisioning_state = 'Succeeded'
+        os_disk.tags = None
+
+        self.volumes.append(os_disk)
+
+        nic = NetworkInterface()
+        nic.name = vm_name + '_NIC'
+        nic.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                 'resourceGroups/CLOUDBRIDGE-AZURE' \
+                 '/providers/Microsoft.Network/' \
+                 'networkInterfaces/{0}_NIC'.format(vm_name)
+
+        self.nics.append(nic)
+
+        vm.network_profile = NetworkProfile()
+        vm.network_profile.network_interfaces = [nic]
+
+        self.virtual_machines.append(vm)
+        return vm
 
     def list_images(self):
         return self.images
@@ -639,19 +753,84 @@ class MockAzureClient:
         subnet = self.get_subnet(network_name, subnet_name)
         self.subnets.remove(subnet)
 
-    def list_instances(self):
+    def create_image(self, name, params):
+        image = Image(location='eastus')
+        image.name = name
+        image.tags = {'Name': name}
+        image.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                   'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
+                   'Microsoft.Compute/images/' + name
+        image.storage_profile = StorageProfile()
+        image.storage_profile.os_disk = ManagedDiskParameters(id='')
+        image.storage_profile.os_disk.disk_size_gb = 10
+        obj = Expando()
+        obj.name = 'linux'
+        obj.value = 'Linux'
+        image.storage_profile.os_disk.os_type = obj
+        self.images.append(image)
+        return image
+
+    def restart_vm(self, vm_name):
+        pass
+
+    def deallocate_vm(self, vm_name):
+        pass
+
+    def generalize_vm(self, vm_name):
+        pass
+
+    def start_vm(self, vm_name):
+        pass
+
+    def get_nic(self, name):
+        for nic in self.nics:
+            if nic.name == name:
+                return nic
+        response = Response()
+        response.status_code = 404
+        raise CloudError(response=response, error='Resource Not found')
+
+    def create_nic(self, name, params):
+        nic = NetworkInterface()
+        nic.name = name
+        nic.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
+                 'resourceGroups/CLOUDBRIDGE-AZURE' \
+                 '/providers/Microsoft.Network/' \
+                 'networkInterfaces/' + name
+        self.nics.append(nic)
+        return nic
+
+    def get_public_ip(self, name):
+        pass
+
+    def update_vm_tags(self, vm_name, tags):
+        vm = self.get_vm(vm_name)
+        vm.tags = tags
+        return vm
+
+    def add_security_group_vm(self, vm_name, security_group_id):
+        pass
+
+    def delete_security_group_vm(self, vm_name, security_group_id):
+        pass
+
+    def delete_vm(self, vm_name):
+        vm = self.get_vm(vm_name)
+        self.virtual_machines.remove(vm)
+
+    def delete_nic(self, nic_name):
+        pass
+
+    def delete_public_ip(self, public_ip_name):
+        self.get_public_ip(public_ip_name)
+
+    def list_vm(self):
         return self.virtual_machines
 
-    def get_instance(self, vm_name):
+    def get_vm(self, vm_name):
         for vm in self.virtual_machines:
             if vm.name == vm_name:
                 return vm
         response = Response()
         response.status_code = 404
         raise CloudError(response=response, error='Resource Not found')
-
-    def reboot_instance(self, vm_name):
-        pass
-
-    def terminate_instance(self, vm_name):
-        pass
