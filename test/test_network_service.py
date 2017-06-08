@@ -184,13 +184,14 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                         router.id, router.state, RouterState.DETACHED))
                 self.assertFalse(
                     router.network_id,
-                    "Router {0} should not be assoc. with a network {1}".format(
-                        router.id, router.network_id))
+                    "Router {0} should not be assoc. with a "
+                    "network {1}".format(router.id, router.network_id))
 
                 # TODO: Cloud specific code, needs fixing
                 # Check router connectivity
                 # On OpenStack only one network is external and on AWS every
-                # network is external, yet we need to use the one we've created?!
+                # network is external, yet we need to use the
+                # one we've created?!
                 if self.provider.PROVIDER_ID == 'openstack':
                     for n in self.provider.network.list():
                         if n.external:
