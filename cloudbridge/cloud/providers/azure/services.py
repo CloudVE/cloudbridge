@@ -356,20 +356,20 @@ class AzureInstanceService(BaseInstanceService):
     def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
-        if isinstance(image, MachineImage):
-            image_id = image.id
-        else:
-            image_id = image
-            image = self.provider.compute.images.get(image_id)
+        image_id = image.id if isinstance(image, MachineImage) else image
+
         if key_pair:
             if isinstance(key_pair, KeyPair):
                 key_pair_name = key_pair.name
             else:
                 key_pair_name = key_pair
+                # retrieving key pair as we need to pass the public key
                 key_pair = self.provider.security.\
                     key_pairs.get(key_pair_name)
         # else:
         #     raise Exception("Keypair required")
+
+        key = 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDI8EAhG3jKdF/raX3J3UBt9/zAXVn0aaiHd5JcgJNjwR5t6ggonvHlsELjnmT43URzu1GKsDMk6BB8jq8bWBHpuXJ+0203JHqbfmLoScB4JzWgb3dEwFahdTNVI44I31/DgpQ8KN/jA/i6XvGybf/uvuknjMEDwsv0MUiX1tDj4Hpnm2pznjdB3K4CtizUQKz3RHZvb3096vf5Rix/s4a6AVAtH0kWbKCGIbra5ahKew0wn/XV3aJGygW9EFP7DWdSfDe2gsATdNyyZFvWYO7uJU0J4ZBzLP1lrZNuTQzJoYGaPT5iV/PRY9cvikWDH+t7HQ59+duvMl7wmAdl/Xw7'  # noqa
 
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
@@ -416,8 +416,18 @@ class AzureInstanceService(BaseInstanceService):
             'location': zone_name or self._provider.region_name,
             'os_profile': {
                 'admin_username': self.provider.default_user_name,
-                'admin_password': 'cbazureuser@123',
-                'computer_name': name
+                'computer_name': name,
+                'linux_configuration': {
+                             "disable_password_authentication": True,
+                             "ssh": {
+                                 "public_keys": [{
+                                      "path":
+                                      "/home/{}/.ssh/authorized_keys".format(
+                                          self.provider.default_user_name),
+                                      "key_data": key
+                                     }]
+                                   }
+                           }
             },
             'hardware_profile': {
                 'vm_size': instance_size
@@ -442,20 +452,6 @@ class AzureInstanceService(BaseInstanceService):
 
         if key_pair:
             params['tags'].update(Key_Pair=key_pair_name)
-
-        if image.os_type == 'Linux' and key_pair:
-            params['os_profile']['linux_configuration'] = \
-                {
-                 "disable_password_authentication": True,
-                 "ssh": {
-                     "public_keys": [{
-                          "path":
-                          "/home/{}/.ssh/authorized_keys".format(
-                              self.provider.default_user_name),
-                          "key_data": key_pair.key
-                         }]
-                       }
-               }
 
         instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
@@ -499,7 +495,7 @@ class AzureInstanceService(BaseInstanceService):
                                        vm_name, zone=None):
         """
         Processes block device mapping information
-        and returns a Boto BlockDeviceMapping object. If new volumes
+        and returns a Data disk dictionary list. If new volumes
         are requested (source is None and destination is VOLUME), they will be
         created and the relevant volume ids included in the mapping.
         """
@@ -520,41 +516,42 @@ class AzureInstanceService(BaseInstanceService):
             self.provider.azure_client.\
                 update_disk_tags(volume.resource_name, volume.tags)
 
-        # assign ephemeral devices from 0 onwards
-        # ephemeral_counter = 0
-
         for device in launch_config.block_devices:
-            if device.is_volume and not device.is_root:
-                if isinstance(device.source, Snapshot):
-                    snapshot_vol = device.source.create_volume()
-                    attach_volume(snapshot_vol, device.delete_on_terminate)
-                elif isinstance(device.source, Volume):
-                    attach_volume(device.source, device.delete_on_terminate)
-                elif isinstance(device.source, MachineImage):
-                    # Not supported
-                    pass
-                else:
-                    # source is None, but destination is volume, therefore
-                    # create a blank volume. If the Zone is None, this
-                    # could fail since the volume and instance may be created
-                    # in two different zones.
-                    if not zone:
-                        raise InvalidConfigurationException(
-                            "A zone must be specified when launching with a"
-                            " new blank volume block device mapping.")
-                    vol_name = "{0}_disk".format(vm_name, uuid.uuid4().hex[:6])
-                    new_vol = self.provider.block_store.volumes.create(
-                        vol_name,
-                        device.size,
-                        zone)
-                    attach_volume(new_vol, device.delete_on_terminate)
-                # bd_type.delete_on_terminate = device.delete_on_terminate
-                # if device.size:
-                #     bd_type.size = device.size
-                volumes_count += 1
+            if device.is_volume:
+                if not device.is_root:
+                    # In azure, os disk automatically created,
+                    # we are ignoring the root disk, if specified
+                    if isinstance(device.source, Snapshot):
+                        snapshot_vol = device.source.create_volume()
+                        attach_volume(snapshot_vol,
+                                      device.delete_on_terminate)
+                    elif isinstance(device.source, Volume):
+                        attach_volume(device.source,
+                                      device.delete_on_terminate)
+                    elif isinstance(device.source, MachineImage):
+                        # Not supported
+                        pass
+                    else:
+                        # source is None, but destination is volume, therefore
+                        # create a blank volume. If the Zone is None, this
+                        # could fail since the volume and instance may
+                        # be created in two different zones.
+                        if not zone:
+                            raise InvalidConfigurationException(
+                                "A zone must be specified when "
+                                "launching with a"
+                                " new blank volume block device mapping.")
+                        vol_name = \
+                            "{0}_disk".format(vm_name, uuid.uuid4().hex[:6])
+                        new_vol = self.provider.block_store.volumes.create(
+                            vol_name,
+                            device.size,
+                            zone)
+                        attach_volume(new_vol, device.delete_on_terminate)
+                    volumes_count += 1
 
             else:  # device is ephemeral
-                # bd_type.ephemeral_name = 'ephemeral%s' % ephemeral_counter
+                # in azure we cannot add the ephemeral disks explicitly
                 pass
 
         return disks
@@ -681,6 +678,8 @@ class AzureNetworkService(BaseNetworkService):
                                      limit=limit, marker=marker)
 
     def create(self, name=None):
+        # Azure requires CIDR block to be specified when creating a network
+        # so set a default one and use the largest allowed netmask.
         network_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
         if name:
             network_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
@@ -704,7 +703,7 @@ class AzureNetworkService(BaseNetworkService):
             'public_ip', uuid.uuid4().hex[:6])
         public_ip_parameters = {
             'location': self.provider.azure_client.region_name,
-            'public_ip_allocation_method': 'Dynamic'
+            'public_ip_allocation_method': 'Static'
         }
 
         floating_ip = self.provider.azure_client.\
@@ -841,14 +840,8 @@ class AzureSubnetService(BaseSubnetService):
         default_cdir = '10.0.1.0/24'
         network = None
         subnet = None
-        try:
-            network = self.provider.azure_client\
-                .get_network(AzureNetwork.CB_DEFAULT_NETWORK_NAME)
-        except CloudError:
-            pass
 
-        if not network:
-            self.provider.network.create()
+        # No provider-default Subnet exists, look for a library-default one
         try:
             subnet = self.provider.azure_client.get_subnet(
                 AzureNetwork.CB_DEFAULT_NETWORK_NAME,
@@ -857,12 +850,24 @@ class AzureSubnetService(BaseSubnetService):
         except CloudError:
             pass
 
-        if not subnet:
-            subnet = self.provider.azure_client.create_subnet(
-                AzureNetwork.CB_DEFAULT_NETWORK_NAME,
-                AzureSubnet.CB_DEFAULT_SUBNET_NAME,
-                {'address_prefix': default_cdir}
-            )
+        if subnet:
+            return AzureSubnet(self.provider, subnet)
+
+        # No provider-default Subnet exists, try to create it (net + subnets)
+        try:
+            network = self.provider.azure_client\
+                .get_network(AzureNetwork.CB_DEFAULT_NETWORK_NAME)
+        except CloudError:
+            pass
+
+        if not network:
+            self.provider.network.create()
+
+        subnet = self.provider.azure_client.create_subnet(
+            AzureNetwork.CB_DEFAULT_NETWORK_NAME,
+            AzureSubnet.CB_DEFAULT_SUBNET_NAME,
+            {'address_prefix': default_cdir}
+        )
 
         return AzureSubnet(self.provider, subnet)
 
