@@ -1107,6 +1107,8 @@ class AzureSubnet(BaseSubnet):
 
 
 class AzureInstance(BaseInstance):
+    # ref:
+    # http://docs.azure.amazon.com/AzureEC2/latest/UserGuide/ec2-instance-lifecycle.html
     INSTANCE_STATE_MAP = {
         'InProgress': InstanceState.PENDING,
         'Creating': InstanceState.PENDING,
@@ -1265,7 +1267,7 @@ class AzureInstance(BaseInstance):
     @property
     def image_id(self):
         """
-        Get the image ID for this instance.
+        Get the image ID for this insance.
         """
         return self._vm.storage_profile.image_reference.id
 
@@ -1281,6 +1283,9 @@ class AzureInstance(BaseInstance):
         """
         Get the security groups associated with this instance.
         """
+        # boto instance.groups field returns a ``Group`` object so need to
+        # convert that into a ``SecurityGroup`` object before creating a
+        # cloudbridge SecurityGroup object
         return [self._provider.security.security_groups.get(group_id)
                 for group_id in self._security_group_ids]
 
@@ -1342,7 +1347,7 @@ class AzureInstance(BaseInstance):
     def add_floating_ip(self, ip_address):
         try:
             ip_addresses = [ip for ip in self._provider.
-                            azure_client.list_floating_ips()
+                azure_client.list_public_ips()
                             if ip.ip_address and ip.ip_address == ip_address]
             if len(ip_addresses) > 0:
                 """
@@ -1415,18 +1420,6 @@ class AzureInstance(BaseInstance):
             create_nic(nic_name, nic)
 
     def remove_security_group(self, sg):
-
-        '''
-            :param sg:
-            :return: None
-
-            This method removes the security group from VM.
-            In Azure, security group added to Network interface.
-            Azure supports to add only one security group to
-            network interface, we are removing the provided security group
-            if it associated with NIC else ignoring.
-        '''
-
         nic_id = \
             self._vm.network_profile.network_interfaces[0].id
         nic_params = azure_helpers. \
@@ -1441,8 +1434,10 @@ class AzureInstance(BaseInstance):
                 create_nic(nic_name, nic)
 
     def update_state(self):
-        if self._vm.instance_view and\
-                        len(self._vm.instance_view.statuses) > 1:
+        if not self._vm.instance_view:
+            self.refresh()
+        if self._vm.instance_view and len(
+                self._vm.instance_view.statuses) > 1:
             self._state = \
                 self._vm.instance_view.statuses[1].display_status
         else:
