@@ -1346,8 +1346,8 @@ class AzureInstance(BaseInstance):
 
     def add_floating_ip(self, ip_address):
         try:
-            ip_addresses = [ip for ip in self._provider.
-                azure_client.list_public_ips()
+            ip_addresses = [ip for ip in
+                            self._provider.azure_client.list_public_ips()
                             if ip.ip_address and ip.ip_address == ip_address]
             if len(ip_addresses) > 0:
                 """
