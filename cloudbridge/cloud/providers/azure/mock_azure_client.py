@@ -486,6 +486,7 @@ class MockAzureClient:
                          '/Microsoft.Network/publicIPAddresses/public_ip_test'
         floating_ip.ip_address = '13.82.104.38'
         floating_ip.private_ip = None
+        self.floating_ips.append(floating_ip)
         return floating_ip
 
     def list_floating_ips(self):

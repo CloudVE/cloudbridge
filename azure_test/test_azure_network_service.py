@@ -156,7 +156,10 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
         subnet.delete()
 
     @helpers.skipIfNoService(['network'])
-    def test_azure_network_service_create_floating_ip(self):
+    def test_azure_network_service_crud_floating_ips(self):
+        floating_ips = self.provider.network.floating_ips()
+        self.assertTrue(len(floating_ips) == 3, "Count should be 3")
+
         floating_ip = self.provider.network.create_floating_ip()
         print("create: " + str(floating_ip))
         self.assertEqual(floating_ip.id,
@@ -166,3 +169,11 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
                          '/Microsoft.Network/publicIPAddresses/public_ip_test')
         self.assertEqual(floating_ip.public_ip, '13.82.104.38')
         self.assertEqual(floating_ip.private_ip, None)
+
+        floating_ips = self.provider.network.floating_ips()
+        self.assertTrue(len(floating_ips) == 4, "Count should be 4")
+
+        floating_ip.delete()
+
+        floating_ips = self.provider.network.floating_ips()
+        self.assertTrue(len(floating_ips) == 3, "Count should be 3")
