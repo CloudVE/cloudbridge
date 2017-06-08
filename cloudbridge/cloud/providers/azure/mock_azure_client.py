@@ -5,9 +5,10 @@ from io import BytesIO
 
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
-    Disk, DiskCreateOption, Image, ManagedDiskParameters, \
+    Disk, DiskCreateOption, Image, InstanceViewStatus, \
+    ManagedDiskParameters, \
     NetworkProfile, OSDisk, Snapshot, StorageProfile, VirtualMachine, \
-    VirtualMachineSize
+    VirtualMachineInstanceView, VirtualMachineSize
 
 from azure.mgmt.network.models import AddressSpace, NetworkInterface, \
     NetworkSecurityGroup, PublicIPAddress
@@ -238,6 +239,11 @@ class MockAzureClient:
     vm1.provisioning_state = 'Succeeded'
     vm1.storage_profile = StorageProfile()
     vm1.tags = {'Name': 'VM1'}
+    vm1.instance_view = VirtualMachineInstanceView()
+    vm1.instance_view.statuses = [
+        InstanceViewStatus(display_status='VM running'),
+        InstanceViewStatus(display_status='VM running'),
+    ]
     data_disk_id = '/subscriptions'\
                    '/7904d702-e01c-4826-8519-f5a25c866a96' \
                    '/resourceGroups/CLOUDBRIDGE-AZURE' \
@@ -258,6 +264,11 @@ class MockAzureClient:
     vm2 = VirtualMachine(location='eastus')
     vm2.name = 'VM2'
     vm2.tags = {'Name': 'VM2'}
+    vm2.instance_view = VirtualMachineInstanceView()
+    vm2.instance_view.statuses = [
+        InstanceViewStatus(display_status='VM running'),
+        InstanceViewStatus(display_status='VM running'),
+    ]
     vm2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
              '/resourceGroups/CLOUDBRIDGE-AZURE' \
              '/providers/Microsoft.Compute/virtualMachines/VM2'
@@ -743,6 +754,12 @@ class MockAzureClient:
 
         vm.network_profile = NetworkProfile()
         vm.network_profile.network_interfaces = [nic]
+
+        vm.instance_view = VirtualMachineInstanceView()
+        vm.instance_view.statuses = [
+            InstanceViewStatus(display_status='VM running'),
+            InstanceViewStatus(display_status='VM running'),
+        ]
 
         self.virtual_machines.append(vm)
         return vm
