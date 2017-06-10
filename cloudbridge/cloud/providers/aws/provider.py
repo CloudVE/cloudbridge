@@ -7,8 +7,8 @@ from boto.ec2.regioninfo import RegionInfo
 try:
     # These are installed only for the case of a dev instance
     from httpretty import HTTPretty
-    from moto import mock_ec2_deprecated as mock_ec2
-    from moto import mock_s3_deprecated as mock_s3
+    from moto import mock_ec2
+    from moto import mock_s3
 except ImportError:
     # TODO: Once library logging is configured, change this
     print("[aws provider] moto library not available!")
