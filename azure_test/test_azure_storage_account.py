@@ -10,7 +10,7 @@ class AzureStorageAccountTestCase(ProviderTestBase):
             'kind': 'storage',
             'location': 'eastus',
         }
-        rg = self.provider._azure_client. \
+        rg = self.provider.azure_client. \
             create_storage_account('cloudbridgeazure',
                                    storage_account_params)
         print("Create Resource - " + str(rg))
@@ -19,7 +19,7 @@ class AzureStorageAccountTestCase(ProviderTestBase):
             "Storage account name should be cloudbridgeazure")
 
     def test_storage_account_get(self):
-        sa = self.provider._azure_client.get_storage_account('MyGroup')
+        sa = self.provider.azure_client.get_storage_account('MyGroup')
         self.assertTrue(
             sa.name == "MyGroup",
             "storage account should be MyGroup")

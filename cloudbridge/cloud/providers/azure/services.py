@@ -6,17 +6,14 @@ from azure.common import AzureException
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
     BaseComputeService, BaseImageService, BaseInstanceService, \
-    BaseInstanceTypesService, \
-    BaseNetworkService, \
-    BaseObjectStoreService, BaseRegionService, \
-    BaseSecurityGroupService, \
-    BaseSecurityService, BaseSnapshotService, \
-    BaseSubnetService, BaseVolumeService
+    BaseInstanceTypesService, BaseNetworkService, BaseObjectStoreService,\
+    BaseRegionService, BaseSecurityGroupService, BaseSecurityService, \
+    BaseSnapshotService, BaseSubnetService, BaseVolumeService
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 
 from cloudbridge.cloud.interfaces.resources import InstanceType, \
-    KeyPair, MachineImage, Network, PlacementZone, SecurityGroup, \
-    Snapshot, Subnet, Volume
+     MachineImage, Network, PlacementZone, SecurityGroup, \
+     Snapshot, Subnet, Volume
 
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
@@ -26,13 +23,7 @@ from .resources import AzureBucket, AzureFloatingIP, \
     AzureInstance, AzureInstanceType, \
     AzureLaunchConfig, AzureMachineImage, \
     AzureNetwork, AzureRegion, AzureSecurityGroup, \
-    AzureSnapshot, AzureSubnet, AzureVolume, \
-    IMAGE_NAME, IMAGE_RESOURCE_ID, INSTANCE_RESOURCE_ID, \
-    LOCATION_NAME, LOCATION_RESOURCE_ID, NETWORK_NAME, \
-    NETWORK_RESOURCE_ID, NETWORK_SECURITY_GROUP_RESOURCE_ID, \
-    SECURITY_GROUP_NAME, SNAPSHOT_NAME, \
-    SNAPSHOT_RESOURCE_ID, SUBNET_NAME, SUBNET_RESOURCE_ID, \
-    VM_NAME, VOLUME_NAME, VOLUME_RESOURCE_ID
+    AzureSnapshot, AzureSubnet, AzureVolume
 
 log = logging.getLogger(__name__)
 
@@ -73,10 +64,7 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
 
     def get(self, sg_id):
         try:
-            params = azure_helpers.parse_url(
-                NETWORK_SECURITY_GROUP_RESOURCE_ID, sg_id)
-            sgs = self.provider.azure_client.get_security_group(
-                params.get(SECURITY_GROUP_NAME))
+            sgs = self.provider.azure_client.get_security_group(sg_id)
             return AzureSecurityGroup(self.provider, sgs)
 
         except CloudError as cloudError:
@@ -114,11 +102,7 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
 
     def delete(self, group_id):
         try:
-            params = azure_helpers.\
-                parse_url(NETWORK_SECURITY_GROUP_RESOURCE_ID,
-                          group_id)
-            self.provider.azure_client.delete_security_group(
-                params.get(SECURITY_GROUP_NAME))
+            self.provider.azure_client.delete_security_group(group_id)
             return True
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -192,9 +176,7 @@ class AzureVolumeService(BaseVolumeService):
 
     def get(self, volume_id):
         try:
-            params = azure_helpers.parse_url(VOLUME_RESOURCE_ID, volume_id)
-            volume = self.provider.azure_client.get_disk(
-                params.get(VOLUME_NAME))
+            volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -219,24 +201,19 @@ class AzureVolumeService(BaseVolumeService):
 
     def create(self, name, size, zone=None, snapshot=None, description=None):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-        zone_name = None
-        if zone_id:
-            zone_params = azure_helpers.\
-                parse_url(LOCATION_RESOURCE_ID, zone_id)
-            zone_name = zone_params.get(LOCATION_NAME)
-        snapshot_id = snapshot.id if isinstance(
-            snapshot, Snapshot) and snapshot else snapshot
+        snapshot = (self.provider.block_store.snapshots.get(snapshot)
+                    if snapshot and isinstance(snapshot, str) else snapshot)
         disk_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
         tags = {'Name': name}
         if description:
             tags.update(Description=description)
-        if snapshot_id:
+        if snapshot:
             params = {
                 'location':
-                    zone_name or self.provider.azure_client.region_name,
+                    zone_id or self.provider.azure_client.region_name,
                 'creation_data': {
                     'create_option': 'copy',
-                    'source_uri': snapshot_id
+                    'source_uri': snapshot.resource_id
                 },
                 'tags': tags
             }
@@ -246,7 +223,7 @@ class AzureVolumeService(BaseVolumeService):
         else:
             params = {
                 'location':
-                    zone_name or self.provider.azure_client.region_name,
+                    zone_id or self.provider.region_name,
                 'disk_size_gb': size,
                 'creation_data': {
                     'create_option': 'empty'
@@ -267,9 +244,7 @@ class AzureSnapshotService(BaseSnapshotService):
 
     def get(self, ss_id):
         try:
-            params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID, ss_id)
-            snapshot = self.provider.azure_client. \
-                get_snapshot(params.get(SNAPSHOT_NAME))
+            snapshot = self.provider.azure_client.get_snapshot(ss_id)
             return AzureSnapshot(self.provider, snapshot)
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -296,9 +271,8 @@ class AzureSnapshotService(BaseSnapshotService):
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
     def create(self, name, volume, description=None):
-        volume_id = volume.id if isinstance(volume, Volume) else volume
-        disk_size = volume.size if isinstance(volume, Volume) else \
-            self.provider.block_store.volumes.get(volume_id).size
+        volume = (self.provider.block_store.volumes.get(volume)
+                  if isinstance(volume, str) else volume)
 
         tags = {'Name': name}
         snapshot_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
@@ -310,9 +284,9 @@ class AzureSnapshotService(BaseSnapshotService):
             'location': self.provider.azure_client.region_name,
             'creation_data': {
                 'create_option': 'Copy',
-                'source_uri': volume_id
+                'source_uri': volume.resource_id
             },
-            'disk_size_gb': disk_size,
+            'disk_size_gb': volume.size,
             'tags': tags
         }
 
@@ -356,35 +330,27 @@ class AzureInstanceService(BaseInstanceService):
     def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
-        image_id = image.id if isinstance(image, MachineImage) else image
 
         if key_pair:
-            if isinstance(key_pair, KeyPair):
-                key_pair_name = key_pair.name
-            else:
-                key_pair_name = key_pair
-                # retrieving key pair as we need to pass the public key
-                key_pair = self.provider.security.\
-                    key_pairs.get(key_pair_name)
+            key_pair = (self.provider.security.key_pairs.get(key_pair)
+                        if isinstance(key_pair, str) else key_pair)
         # else:
         #     raise Exception("Keypair required")
+
+        image = (self.provider.compute.images.get(image)
+                 if isinstance(image, str) else image)
 
         key = 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDI8EAhG3jKdF/raX3J3UBt9/zAXVn0aaiHd5JcgJNjwR5t6ggonvHlsELjnmT43URzu1GKsDMk6BB8jq8bWBHpuXJ+0203JHqbfmLoScB4JzWgb3dEwFahdTNVI44I31/DgpQ8KN/jA/i6XvGybf/uvuknjMEDwsv0MUiX1tDj4Hpnm2pznjdB3K4CtizUQKz3RHZvb3096vf5Rix/s4a6AVAtH0kWbKCGIbra5ahKew0wn/XV3aJGygW9EFP7DWdSfDe2gsATdNyyZFvWYO7uJU0J4ZBzLP1lrZNuTQzJoYGaPT5iV/PRY9cvikWDH+t7HQ59+duvMl7wmAdl/Xw7'  # noqa
 
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
+
         subnet = (self.provider.network.subnets.get(subnet)
                   if isinstance(subnet, str) else subnet)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
 
         subnet_id, zone_id, security_group_ids = \
             self._resolve_launch_options(subnet, zone_id, security_groups)
-
-        zone_params = azure_helpers.parse_url(LOCATION_RESOURCE_ID, zone_id)
-
-        zone_name = None
-        if zone_id:
-            zone_name = zone_params.get(LOCATION_NAME)
 
         if launch_config:
             disks = self._process_block_device_mappings(launch_config,
@@ -403,7 +369,7 @@ class AzureInstanceService(BaseInstanceService):
                 }]
             }
 
-        if security_groups:
+        if security_group_ids and len(security_group_ids) > 0:
             nic_params['network_security_group'] = {
                 'id': security_group_ids[0]
             }
@@ -413,9 +379,9 @@ class AzureInstanceService(BaseInstanceService):
         )
 
         params = {
-            'location': zone_name or self._provider.region_name,
+            'location': zone_id or self._provider.region_name,
             'os_profile': {
-                'admin_username': self.provider.default_user_name,
+                'admin_username': self.provider.vm_default_user_name,
                 'computer_name': name,
                 'linux_configuration': {
                              "disable_password_authentication": True,
@@ -423,8 +389,8 @@ class AzureInstanceService(BaseInstanceService):
                                  "public_keys": [{
                                       "path":
                                       "/home/{}/.ssh/authorized_keys".format(
-                                          self.provider.default_user_name),
-                                      "key_data": key
+                                          self.provider.vm_default_user_name),
+                                      "key_data": key  # key_pair._key_pair.Key
                                      }]
                                    }
                            }
@@ -439,7 +405,7 @@ class AzureInstanceService(BaseInstanceService):
             },
             'storage_profile': {
                 'image_reference': {
-                    'id': image_id
+                    'id': image.resource_id
                 },
                 "os_disk": {
                     "name": name + '_Os_Disk',
@@ -451,7 +417,7 @@ class AzureInstanceService(BaseInstanceService):
         }
 
         if key_pair:
-            params['tags'].update(Key_Pair=key_pair_name)
+            params['tags'].update(Key_Pair=key_pair.name)
 
         instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
@@ -484,12 +450,18 @@ class AzureInstanceService(BaseInstanceService):
         if subnet:
             # subnet's zone takes precedence
             zone_id = subnet.zone.id
-        if isinstance(security_groups, list) and isinstance(
-                security_groups[0], SecurityGroup):
-            security_group_ids = [sg.id for sg in security_groups]
-        else:
-            security_group_ids = security_groups
-        return subnet.id, zone_id, security_group_ids
+        security_group_ids = None
+        if isinstance(security_groups, list):
+            if isinstance(security_groups[0], SecurityGroup):
+                security_group_ids = [sg.resource_id for sg in security_groups]
+            else:
+                groups = []
+                for sg in security_groups:
+                    sg_obj = self.provider.security.security_groups.get(sg)
+                    groups.append(sg_obj)
+                security_group_ids = [sg.resource_id for sg in groups]
+
+        return subnet.resource_id, zone_id, security_group_ids
 
     def _process_block_device_mappings(self, launch_config,
                                        vm_name, zone=None):
@@ -505,16 +477,16 @@ class AzureInstanceService(BaseInstanceService):
         def attach_volume(volume, delete_on_terminate):
             disks.append({
                 'lun': volumes_count,
-                'name': volume.resource_name,
+                'name': volume.id,
                 'create_option': 'attach',
                 'managed_disk': {
-                    'id': volume.id
+                    'id': volume.resource_id
                 }
             })
             delete_on_terminate = delete_on_terminate or False
             volume.tags.update(delete_on_terminate=str(delete_on_terminate))
             self.provider.azure_client.\
-                update_disk_tags(volume.resource_name, volume.tags)
+                update_disk_tags(volume.id, volume.tags)
 
         for device in launch_config.block_devices:
             if device.is_volume:
@@ -574,10 +546,7 @@ class AzureInstanceService(BaseInstanceService):
         if the object does not exist.
         """
         try:
-            params = azure_helpers.\
-                parse_url(INSTANCE_RESOURCE_ID, instance_id)
-            vm = self.provider.azure_client. \
-                get_vm(params.get(VM_NAME))
+            vm = self.provider.azure_client.get_vm(instance_id)
             return AzureInstance(self.provider, vm)
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -604,9 +573,7 @@ class AzureImageService(BaseImageService):
 
     def get(self, image_id):
         try:
-            params = azure_helpers.parse_url(IMAGE_RESOURCE_ID, image_id)
-            image = self.provider.azure_client. \
-                get_image(params.get(IMAGE_NAME))
+            image = self.provider.azure_client.get_image(image_id)
             return AzureMachineImage(self.provider, image)
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -659,9 +626,7 @@ class AzureNetworkService(BaseNetworkService):
 
     def get(self, network_id):
         try:
-            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-            network = self.provider.azure_client. \
-                get_network(params.get(NETWORK_NAME))
+            network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
 
         except CloudError as cloudError:
@@ -737,9 +702,7 @@ class AzureNetworkService(BaseNetworkService):
                 Delete an existing network.
                 """
         try:
-            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-            self.provider.azure_client. \
-                delete_network(params.get(NETWORK_NAME))
+            self.provider.azure_client.delete_network(network_id)
             return True
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -753,7 +716,7 @@ class AzureRegionService(BaseRegionService):
     def get(self, region_id):
         region = None
         for azureRegion in self.provider.azure_client.list_locations():
-            if azureRegion.id == region_id:
+            if azureRegion.name == region_id:
                 region = AzureRegion(self.provider, azureRegion)
                 break
         return region
@@ -770,13 +733,7 @@ class AzureRegionService(BaseRegionService):
         # of BaseRegion and as such calling get() with the id works
         # but Azure sdk returns both id & name and are set to
         # the BaseRegion properties
-        regions = [region
-                   for region in self.provider.
-                   azure_client.list_locations()
-                   if region.name == self.provider.
-                   azure_client.region_name]
-
-        return AzureRegion(self.provider, regions[0])
+        return self.get(self.provider.region_name)
 
 
 class AzureSubnetService(BaseSubnetService):
@@ -785,40 +742,34 @@ class AzureSubnetService(BaseSubnetService):
         super(AzureSubnetService, self).__init__(provider)
 
     def get(self, subnet_id):
-        try:
-            params = azure_helpers.parse_url(SUBNET_RESOURCE_ID, subnet_id)
-            subnet = self.provider.azure_client. \
-                get_subnet(params.get(NETWORK_NAME), params.get(SUBNET_NAME))
-            return AzureSubnet(self.provider, subnet)
-
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return None
+        subnets = [subnet for subnet in self._list_subnets()
+                   if subnet.id == subnet_id]
+        return subnets[0] if len(subnets) else None
 
     def list(self, network=None, limit=None, marker=None):
+        return ClientPagedResultList(self.provider,
+                                     self._list_subnets(network),
+                                     limit=limit, marker=marker)
+
+    def _list_subnets(self, network=None):
         result_list = []
         if network:
             network_id = network.id \
                 if isinstance(network, Network) else network
-            params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-            result_list = self.provider.azure_client.list_subnets(
-                params.get(NETWORK_NAME)
-            )
+            result_list = self.provider.azure_client.list_subnets(network_id)
         else:
             for net in self.provider.azure_client.list_networks():
                 result_list.extend(self.provider.azure_client.list_subnets(
-                 net.name
+                    net.name
                 ))
         subnets = [AzureSubnet(self.provider, subnet)
                    for subnet in result_list]
-        return ClientPagedResultList(self.provider, subnets,
-                                     limit=limit, marker=marker)
+
+        return subnets
 
     def create(self, network, cidr_block, name=None, **kwargs):
         network_id = network.id \
             if isinstance(network, Network) else network
-        params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-        network_name = params.get(NETWORK_NAME)
 
         if not name:
             subnet_name = AzureSubnet.CB_DEFAULT_SUBNET_NAME
@@ -827,7 +778,7 @@ class AzureSubnetService(BaseSubnetService):
 
         subnet_info = self.provider.azure_client\
             .create_subnet(
-                            network_name,
+                            network_id,
                             subnet_name,
                             {
                                 'address_prefix': cidr_block
@@ -873,13 +824,11 @@ class AzureSubnetService(BaseSubnetService):
 
     def delete(self, subnet):
         try:
-            subnet_id = subnet.id if \
-                isinstance(subnet, Subnet) else subnet
-            params = azure_helpers.\
-                parse_url(SUBNET_RESOURCE_ID, subnet_id)
+            if not isinstance(subnet, Subnet):
+                subnet = self.get(subnet)
             self.provider.azure_client.delete_subnet(
-                params.get(NETWORK_NAME),
-                params.get(SUBNET_NAME)
+                subnet.network_id,
+                subnet.id
             )
             return True
         except CloudError as cloudError:
