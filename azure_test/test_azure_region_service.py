@@ -23,8 +23,7 @@ class AzureRegionServiceTestCase(ProviderTestBase):
                 "Region name should be a non-empty string")
 
     def test_azure_region_service_get(self):
-        region_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/" \
-                    "locations/westus2"
+        region_id = "westus2"
         region = self.provider.compute.regions.get(region_id)
         self.assertIsNotNone(region)
         self.assertEqual(region.name, "westus2")
@@ -33,8 +32,7 @@ class AzureRegionServiceTestCase(ProviderTestBase):
         self.assertEqual(region.zones[0].region_name, region.name)
 
     def test_azure_region_service_get_invalid_region_id(self):
-        region_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/" \
-                    "locations/invalid"
+        region_id = "invalid"
         region = self.provider.compute.regions.get(region_id)
         self.assertIsNone(region)
 

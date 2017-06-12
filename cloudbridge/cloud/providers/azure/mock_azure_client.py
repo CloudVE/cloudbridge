@@ -6,8 +6,8 @@ from io import BytesIO
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
     Disk, DiskCreateOption, Image, InstanceViewStatus, \
-    ManagedDiskParameters, \
-    NetworkProfile, OSDisk, Snapshot, StorageProfile, VirtualMachine, \
+    ManagedDiskParameters, NetworkProfile, OSDisk, Snapshot,\
+    StorageProfile, VirtualMachine, \
     VirtualMachineInstanceView, VirtualMachineSize
 
 from azure.mgmt.network.models import AddressSpace, NetworkInterface, \
@@ -48,7 +48,7 @@ class MockAzureClient:
 
     sec_gr1 = NetworkSecurityGroup()
     sec_gr1.name = "sg1"
-    sec_gr1.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+    sec_gr1.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge'\
     '/providers/Microsoft.Network/networkSecurityGroups/sg1"
     sec_gr1.tags = None
     sec_gr1.resource_guid = uuid.uuid4()
@@ -56,14 +56,14 @@ class MockAzureClient:
 
     sec_gr2 = NetworkSecurityGroup()
     sec_gr2.name = "sg2"
-    sec_gr2.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+    sec_gr2.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge'\
     '/providers/Microsoft.Network/networkSecurityGroups/sg2"
     sec_gr2.tags = None
     sec_gr2.security_rules = [sg_rule1, sg_rule2]
 
     sec_gr3 = NetworkSecurityGroup()
     sec_gr3.name = "sg3"
-    sec_gr3.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure'\
+    sec_gr3.id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/cloudbridge'\
     '/providers/Microsoft.Network/networkSecurityGroups/sg3"
     sec_gr3.tags = {'Name': 'sg3'}
     sec_gr3.security_rules = [sg_rule1, sg_rule2]
@@ -102,7 +102,7 @@ class MockAzureClient:
 
     network1 = VirtualNetwork()
     network1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                  '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
+                  '/resourceGroups/cloudbridge/providers' \
                   '/Microsoft.Network/virtualNetworks/CloudBridgeNet1'
     network1.name = "CloudBridgeNet1"
     network1.location = 'eastus'
@@ -112,7 +112,7 @@ class MockAzureClient:
 
     network2 = VirtualNetwork()
     network2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                  '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
+                  '/resourceGroups/cloudbridge/providers' \
                   '/Microsoft.Network/virtualNetworks/CloudBridgeNet2'
     network2.name = "CloudBridgeNet2"
     network2.location = 'eastus'
@@ -122,7 +122,7 @@ class MockAzureClient:
 
     network3 = VirtualNetwork()
     network3.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                  '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
+                  '/resourceGroups/cloudbridge/providers' \
                   '/Microsoft.Network/virtualNetworks/CloudBridgeNet3'
     network3.name = "CloudBridgeNet3"
     network3.location = 'eastus'
@@ -134,7 +134,7 @@ class MockAzureClient:
 
     floating_ip1 = PublicIPAddress()
     floating_ip1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                      '/resourceGroups/cloudbridge-azure/providers' \
+                      '/resourceGroups/cloudbridge/providers' \
                       '/Microsoft.Network/publicIPAddresses/public_ip_1'
     floating_ip1.name = 'public_ip_1'
     floating_ip1.public_ip = '13.82.104.1'
@@ -142,7 +142,7 @@ class MockAzureClient:
 
     floating_ip2 = PublicIPAddress()
     floating_ip2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                      '/resourceGroups/cloudbridge-azure/providers' \
+                      '/resourceGroups/cloudbridge/providers' \
                       '/Microsoft.Network/publicIPAddresses/public_ip_2'
     floating_ip2.name = 'public_ip_2'
     floating_ip2.public_ip = '13.82.104.2'
@@ -150,7 +150,7 @@ class MockAzureClient:
 
     floating_ip3 = PublicIPAddress()
     floating_ip3.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                      '/resourceGroups/cloudbridge-azure/providers' \
+                      '/resourceGroups/cloudbridge/providers' \
                       '/Microsoft.Network/publicIPAddresses/public_ip_3'
     floating_ip3.name = 'public_ip_3'
     floating_ip3.public_ip = '13.82.104.3'
@@ -160,7 +160,7 @@ class MockAzureClient:
 
     volume1 = Disk(location='eastus', creation_data=None)
     volume1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                 'resourceGroups/CLOUDBRIDGE-AZURE' \
+                 'resourceGroups/cloudbridge' \
                  '/providers/Microsoft.Compute/disks/Volume1'
     volume1.name = "Volume1"
     volume1.disk_size_gb = 1
@@ -171,12 +171,12 @@ class MockAzureClient:
     volume1.tags = {'Name': 'Volume1'}
     volume1.creation_data.source_uri = \
         '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-        '/resourceGroups/CLOUDBRIDGE-AZURE' \
+        '/resourceGroups/cloudbridge' \
         '/providers/Microsoft.Compute/snapshots/snapshot1'
 
     volume2 = Disk(location='eastus', creation_data=None)
     volume2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                 '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                 '/resourceGroups/cloudbridge' \
                  '/providers/Microsoft.Compute/disks/Volume2'
     volume2.name = "Volume2"
     volume2.disk_size_gb = 1
@@ -196,7 +196,7 @@ class MockAzureClient:
     snapshot1.disk_size_gb = 1
 
     snapshot1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                   '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                   '/resourceGroups/cloudbridge' \
                    '/providers/Microsoft.Compute/snapshots/snapshot1'
     snapshot1.os_type = 'Linux'
     snapshot1.account_type = 'Premium_LRS'
@@ -208,7 +208,7 @@ class MockAzureClient:
     snapshot2.creation_data = \
         CreationData(create_option=DiskCreateOption.empty)
     snapshot2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                   '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                   '/resourceGroups/cloudbridge' \
                    '/providers/Microsoft.Compute/snapshots/snapshot2'
     snapshot2.os_type = 'Windows'
     snapshot2.account_type = ' Standard_LRS'
@@ -218,14 +218,14 @@ class MockAzureClient:
     nic1 = NetworkInterface()
     nic1.name = 'nic1'
     nic1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-              'resourceGroups/CLOUDBRIDGE-AZURE' \
+              'resourceGroups/cloudbridge' \
               '/providers/Microsoft.Network/' \
               'networkInterfaces/nic1'
 
     nic2 = NetworkInterface()
     nic2.name = 'nic2'
     nic2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-              'resourceGroups/CLOUDBRIDGE-AZURE' \
+              'resourceGroups/cloudbridge' \
               '/providers/Microsoft.Network/' \
               'networkInterfaces/nic2'
 
@@ -234,7 +234,7 @@ class MockAzureClient:
     vm1 = VirtualMachine(location='eastus')
     vm1.name = 'VM1'
     vm1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
-             '/resourceGroups/CLOUDBRIDGE-AZURE'\
+             '/resourceGroups/cloudbridge'\
              '/providers/Microsoft.Compute/virtualMachines/VM1'
     vm1.provisioning_state = 'Succeeded'
     vm1.storage_profile = StorageProfile()
@@ -246,7 +246,7 @@ class MockAzureClient:
     ]
     data_disk_id = '/subscriptions'\
                    '/7904d702-e01c-4826-8519-f5a25c866a96' \
-                   '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                   '/resourceGroups/cloudbridge' \
                    '/providers/Microsoft.Compute/disks/Volume2'
     data_dik = \
         DataDisk(managed_disk=ManagedDiskParameters(id=data_disk_id),
@@ -270,7 +270,7 @@ class MockAzureClient:
         InstanceViewStatus(display_status='VM running'),
     ]
     vm2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-             '/resourceGroups/CLOUDBRIDGE-AZURE' \
+             '/resourceGroups/cloudbridge' \
              '/providers/Microsoft.Compute/virtualMachines/VM2'
     vm2.provisioning_state = 'Succeeded'
     vm2.storage_profile = StorageProfile()
@@ -290,7 +290,7 @@ class MockAzureClient:
     image1.name = 'image1'
     image1.tags = {'Name': 'image1'}
     image1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
+                'resourceGroups/cloudbridge/providers/' \
                 'Microsoft.Compute/images/image1'
     image1.storage_profile = StorageProfile()
     image1.storage_profile.os_disk = ManagedDiskParameters(id='')
@@ -304,7 +304,7 @@ class MockAzureClient:
     image2.name = 'image2'
     image2.tags = {'Name': 'image2'}
     image2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                '/resourceGroups/cloudbridge' \
                 '/providers/Microsoft.Compute/images/image2'
     image2.storage_profile = StorageProfile()
     image2.storage_profile.os_disk = ManagedDiskParameters(id='')
@@ -319,7 +319,7 @@ class MockAzureClient:
     image3.name = 'image3'
     image3.tags = {'Name': 'image3'}
     image3.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                '/resourceGroups/cloudbridge' \
                 '/providers/Microsoft.Compute/images/image3'
     image3.storage_profile = StorageProfile()
     image3.storage_profile.os_disk = ManagedDiskParameters(id='')
@@ -351,14 +351,14 @@ class MockAzureClient:
 
     subnet1 = Subnet()
     subnet1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                 '/resourceGroups/CloudBridge-Azure/providers/' \
+                 '/resourceGroups/cloudbridge/providers/' \
                  'Microsoft.Network/virtualNetworks/CloudBridgeNet1/subnets/' \
                  'MySN1'
     subnet1.name = 'MySN1'
     subnet1.address_prefix = '10.0.0.0/24'
     subnet2 = Subnet()
     subnet2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                 'resourceGroups/CloudBridge-Azure/providers/' \
+                 'resourceGroups/cloudbridge/providers/' \
                  'Microsoft.Network/virtualNetworks/CloudBridgeNet1/' \
                  'subnets/MySN2'
     subnet2.name = 'MySN2'
@@ -438,7 +438,7 @@ class MockAzureClient:
         pass
 
     def get_resource_group(self, resource_group_name):
-        if resource_group_name == 'cloudbridge-azure':
+        if resource_group_name == 'cloudbridge':
             response = Response()
             response.status_code = 404
             raise CloudError(response=response, error='Resource not found')
@@ -459,7 +459,7 @@ class MockAzureClient:
     def create_network(self, name, params):
         network = VirtualNetwork()
         network.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                     '/resourceGroups/CLOUDBRIDGE-AZURE/providers' \
+                     '/resourceGroups/cloudbridge/providers' \
                      '/Microsoft.Network/virtualNetworks/{0}'.\
             format(name)
         network.name = name
@@ -482,8 +482,10 @@ class MockAzureClient:
         floating_ip = PublicIPAddress()
         floating_ip.id = '/subscriptions' \
                          '/7904d702-e01c-4826-8519-f5a25c866a96' \
-                         '/resourceGroups/cloudbridge-azure/providers' \
-                         '/Microsoft.Network/publicIPAddresses/public_ip_test'
+                         '/resourceGroups/cloudbridge/providers' \
+                         '/Microsoft.Network/publicIPAddresses/' \
+                         + public_ip_address_name
+        floating_ip.name = public_ip_address_name
         floating_ip.ip_address = '13.82.104.38'
         floating_ip.private_ip = None
         self.floating_ips.append(floating_ip)
@@ -574,7 +576,7 @@ class MockAzureClient:
     def create_empty_disk(self, disk_name, params):
         volume = Disk(location='eastus', creation_data=None)
         volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                    'resourceGroups/cloudbridge-azure' \
+                    'resourceGroups/cloudbridge' \
                     '/providers/Microsoft.Compute/disks/{0}'.format(disk_name)
         volume.name = disk_name
         volume.disk_size_gb = 30
@@ -587,7 +589,7 @@ class MockAzureClient:
         if disk_name.startswith('attach'):
             volume.owner_id = \
                 '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
-                '/resourceGroups/CLOUDBRIDGE-AZURE'\
+                '/resourceGroups/cloudbridge'\
                 '/providers/Microsoft.Compute/virtualMachines/VM1'
         self.volumes.append(volume)
         return volume
@@ -609,7 +611,7 @@ class MockAzureClient:
         return True
 
     def get_storage_account(self, storage_account_name):
-        if storage_account_name == 'cloudbridgeazure':
+        if storage_account_name == 'cloudbridgestorage':
             response = Response()
             response.status_code = 404
             raise CloudError(response=response, error='Resource not found')
@@ -629,7 +631,7 @@ class MockAzureClient:
     def create_snapshot(self, snapshot_name, params):
         snapshot = Snapshot(location='eastus', creation_data=None)
         snapshot.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                      '/resourceGroups/cloudbridge-azure' \
+                      '/resourceGroups/cloudbridge' \
                       '/providers/Microsoft.Compute/Snapshots/{0}'.format(
                         snapshot_name)
         snapshot.name = snapshot_name
@@ -639,7 +641,7 @@ class MockAzureClient:
         snapshot.time_created = datetime(year=2017, month=5, day=2)
         snapshot.creation_data.source_uri = \
             '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-            '/resourceGroups/CloudBridge-Azure/providers' \
+            '/resourceGroups/cloudbridge/providers' \
             '/Microsoft.Compute/disks/{0}'.format(
                 snapshot_name)
         snapshot.tags = params.get('tags', None)
@@ -668,7 +670,7 @@ class MockAzureClient:
     def create_snapshot_disk(self, disk_name, params):
         volume = Disk(location='eastus', creation_data=None)
         volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                    '/resourceGroups/cloudbridge-azure/providers' \
+                    '/resourceGroups/cloudbridge/providers' \
                     '/Microsoft.Compute/disks/{0}'.format(
                         disk_name)
         volume.name = disk_name
@@ -705,14 +707,14 @@ class MockAzureClient:
         vm = VirtualMachine(location='eastus')
         vm.name = vm_name
         vm.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                '/resourceGroups/cloudbridge' \
                 '/providers/Microsoft.Compute/virtualMachines/' + vm_name
         vm.provisioning_state = 'Succeeded'
         vm.storage_profile = StorageProfile()
         vm.tags = {'Name': vm_name}
         data_disk_id = '/subscriptions' \
                        '/7904d702-e01c-4826-8519-f5a25c866a96' \
-                       '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                       '/resourceGroups/cloudbridge' \
                        '/providers/Microsoft.Compute/disks/Volume2'
         data_dik = \
             DataDisk(managed_disk=ManagedDiskParameters(id=data_disk_id),
@@ -722,7 +724,7 @@ class MockAzureClient:
         vm.storage_profile.os_disk = OSDisk(create_option='fromImage')
         os_disk_id = '/subscriptions' \
                      '/7904d702-e01c-4826-8519-f5a25c866a96' \
-                     '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                     '/resourceGroups/cloudbridge' \
                      '/providers/Microsoft.Compute/disks/os_disk'
 
         vm.storage_profile.os_disk.managed_disk = \
@@ -731,7 +733,7 @@ class MockAzureClient:
 
         os_disk = Disk(location='eastus', creation_data=None)
         os_disk.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                     '/resourceGroups/CLOUDBRIDGE-AZURE' \
+                     '/resourceGroups/cloudbridge' \
                      '/providers/Microsoft.Compute/disks/os_dsk'
         os_disk.name = "os_disk"
         os_disk.disk_size_gb = 30
@@ -747,7 +749,7 @@ class MockAzureClient:
         nic = NetworkInterface()
         nic.name = vm_name + '_NIC'
         nic.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                 'resourceGroups/CLOUDBRIDGE-AZURE' \
+                 'resourceGroups/cloudbridge' \
                  '/providers/Microsoft.Network/' \
                  'networkInterfaces/{0}_NIC'.format(vm_name)
 
@@ -806,7 +808,7 @@ class MockAzureClient:
     def create_subnet(self, network_name, subnet_name, params):
         subnet = Subnet()
         subnet.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                    'resourceGroups/CloudBridge-Azure/providers/' \
+                    'resourceGroups/cloudbridge/providers/' \
                     'Microsoft.Network/virtualNetworks/{0}/' \
                     'subnets/{1}'.format(network_name, subnet_name)
         subnet.name = subnet_name
@@ -823,7 +825,7 @@ class MockAzureClient:
         image.name = name
         image.tags = {'Name': name}
         image.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                   'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
+                   'resourceGroups/cloudbridge/providers/' \
                    'Microsoft.Compute/images/' + name
         image.storage_profile = StorageProfile()
         image.storage_profile.os_disk = ManagedDiskParameters(id='')
@@ -848,18 +850,13 @@ class MockAzureClient:
         pass
 
     def get_nic(self, name):
-        for nic in self.nics:
-            if nic.name == name:
-                return nic
-        response = Response()
-        response.status_code = 404
-        raise CloudError(response=response, error='Resource Not found')
+        return [nic for nic in self.nics if nic.name == name][0]
 
     def create_nic(self, name, params):
         nic = NetworkInterface()
         nic.name = name
         nic.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                 'resourceGroups/CLOUDBRIDGE-AZURE' \
+                 'resourceGroups/cloudbridge' \
                  '/providers/Microsoft.Network/' \
                  'networkInterfaces/' + name
         self.nics.append(nic)

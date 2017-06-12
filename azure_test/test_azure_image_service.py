@@ -11,9 +11,7 @@ class AzureImageServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_images_get_exist(self):
-        image1_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                    'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
-                    'Microsoft.Compute/images/image1'
+        image1_id = 'image1'
         image_get = self.provider.compute.images.get(image1_id)
         print("Get Image Exist - " + str(image_get))
         print(str(image_get.min_disk))
@@ -30,9 +28,7 @@ class AzureImageServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_images_get_notExist(self):
-        image1_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                    'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
-                    'Microsoft.Compute/images/imageNotExist'
+        image1_id = 'imageNotExist'
         image_get = self.provider.compute.images.get(image1_id)
         print("Get Image Not Exist- " + str(image_get))
         self.assertIsNone(image_get)

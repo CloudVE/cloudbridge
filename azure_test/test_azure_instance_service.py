@@ -11,19 +11,13 @@ class AzureInstanceServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_instances_get_exist(self):
-        instance_get = self.provider.compute.instances. \
-            get('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/'
-                'resourceGroups/cloudbridge-azure/providers/'
-                'Microsoft.Compute/virtualMachines/VM1')
+        instance_get = self.provider.compute.instances.get('VM1')
         print("Get Instance - " + str(instance_get))
         self.assertIsNotNone(instance_get)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_instances_get_Not_exist(self):
-        instance_get = self.provider.compute.instances. \
-            get('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/'
-                'resourceGroups/cloudbridge-azure/providers/'
-                'Microsoft.Compute/virtualMachines/VM_dontfindme')
+        instance_get = self.provider.compute.instances.get('VM_dontfindme')
         print("Get Instance Not Exist - " + str(instance_get))
         self.assertIsNone(instance_get)
 
@@ -36,9 +30,7 @@ class AzureInstanceServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['block_store.snapshots'])
     def test_azure_instance_create_and_get(self):
-        image_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
-                   'resourceGroups/CLOUDBRIDGE-AZURE/providers/' \
-                   'Microsoft.Compute/images/image3'
+        image_id = 'image3'
 
         img = self.provider.compute.images.get(image_id)
 
@@ -50,9 +42,7 @@ class AzureInstanceServiceTestCase(ProviderTestBase):
 
         inst_type = [t for t in self.provider.compute.instance_types.list()
                      if t.name == 'Standard_DS1_v2'][0]
-        sg_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                '/resourceGroups/CloudBridge-Azure' \
-                '/providers/Microsoft.Network/networkSecurityGroups/sg2'
+        sg_id = 'sg2'
         sg = self.provider.security.\
             security_groups.get(sg_id)
 

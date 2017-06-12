@@ -25,17 +25,13 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
         print("Length After create - " + str(len(listAfterCreate)))
         self.assertEqual(len(listAfterCreate), len(listBeforeCreate) + 1)
 
-        get = self.provider.security.security_groups.get(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/resourceGroups/CloudBridge-Azure/providers'\
-            '/Microsoft.Network/networkSecurityGroups/" + sg_name)
+        get = self.provider.security.security_groups.get(sg_name)
         print("Get SG - " + str(get))
         print(str(get.rules))
         self.assertEqual(get.name, sg_name)
 
-        get_notfound = self.provider.security.security_groups.get(
-            "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96"
-            "/resourceGroups/cloudbridge-azure/providers/Microsoft.Network"
-            "/networkSecurityGroups/SecgrupDontFindMe")
+        get_notfound = self.provider.security.\
+            security_groups.get("SecgrupDontFindMe")
         self.assertEqual(get_notfound, None)
 
         find_exists_list = self.provider.security.security_groups.find(sg_name)
@@ -78,18 +74,13 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
         self.assertIsNotNone(sg_json)
 
         listBeforeDeleteFound = self.provider.security.security_groups.list()
-        sg_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96" \
-                "/resourceGroups/cloudbridge-azure/providers" \
-                "/Microsoft.Network/networkSecurityGroups/" + sg_name
-        self.provider.security.security_groups.delete(sg_id)
+        self.provider.security.security_groups.delete(sg_name)
         listAfterDeleteFound = self.provider.security.security_groups.list()
         print("Length before delete - " + str(len(listBeforeDeleteFound)))
         print("Length after delete - " + str(len(listAfterDeleteFound)))
         self.assertEqual(
             len(listAfterDeleteFound), len(listBeforeDeleteFound) - 1)
-        sg_id = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96" \
-                "/resourceGroups/cloudbridge-azure/providers" \
-                "/Microsoft.Network/networkSecurityGroups/sg5"
+        sg_id = "sg5"
         self.provider.security.security_groups.delete(sg_id)
         listAfterDeleteNotFound = self.provider.security.security_groups.list()
         self.assertEqual(

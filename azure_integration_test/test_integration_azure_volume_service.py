@@ -32,9 +32,7 @@ class AzureIntegrationVolumeServiceTestCase(helpers.ProviderTestBase):
         print("Find Volume  - " + str(volume))
         self.assertEqual(
             len(volume_find), 1)
-        instance_id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
-                      '/resourceGroups/CloudBridge-Azure/providers'\
-                      '/Microsoft.Compute/virtualMachines/ubuntu-intro1'
+        instance_id = 'ubuntu-intro1'
         volume.attach(instance_id)
         # TODO: Add logic to verify that disk is attached to instance
 
