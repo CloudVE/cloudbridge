@@ -88,7 +88,7 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
                for sg in self.provider.azure_client.list_security_group()]
         return ClientPagedResultList(self.provider, sgs, limit, marker)
 
-    def create(self, name, description, network_id):
+    def create(self, name, description, network_id=None):
         parameters = {"location": self.provider.region_name,
                       'tags': {'Name': name}}
 
