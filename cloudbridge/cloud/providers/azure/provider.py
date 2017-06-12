@@ -39,50 +39,18 @@ class AzureCloudProvider(BaseCloudProvider):
                                                 'eastus'))
         self.resource_group = self._get_config_value(
             'azure_resource_group', os.environ.get('AZURE_RESOURCE_GROUP',
-                                                   'cloudbridge-azure'))
+                                                   'cloudbridge'))
 
-        self.storage_account_name = self._get_config_value(
-            'azure_storage_account_name', os.environ.get
-            ('AZURE_STORAGE_ACCOUNT_NAME', 'cloudbridgeazure'))
+        self.storage_account = self._get_config_value(
+            'azure_storage_account', os.environ.get
+            ('AZURE_STORAGE_ACCOUNT', 'cloudbridgestorage'))
 
-        self.default_user_name = self._get_config_value(
-            'azure_default_user_name', os.environ.get
-            ('AZURE_DEFAULT_USER_NAME', 'cbazureuser'))
+        self.vm_default_user_name = self._get_config_value(
+            'azure_vm_default_user_name', os.environ.get
+            ('AZURE_VM_DEFAULT_USER_NAME', 'cbuser'))
 
-        # create a dict with both optional and mandatory configuration values
-        # to pass to the azureclient class, rather
-        # than passing the provider object and taking a dependency.
-
-        self.allconfig = {'azure_subscription_id': self.subscription_id,
-                          'azure_client_Id': self.client_Id,
-                          'azure_secret': self.secret,
-                          'azure_tenant': self.tenant,
-                          'azure_region_name': self.region_name,
-                          'azure_resource_group': self.resource_group,
-                          'azure_storage_account_name':
-                              self.storage_account_name}
-
-        self._azure_client = azureclient or AzureClient(self.allconfig)
-        try:
-            self._azure_client.get_resource_group(self.resource_group)
-        except CloudError:
-            resource_group_params = {'location': self.region_name}
-            self._azure_client.create_resource_group(self.resource_group,
-                                                     resource_group_params)
-
-        try:
-            self._azure_client.get_storage_account(self.storage_account_name)
-        except CloudError:
-            storage_account_params = {
-                'sku': {
-                    'name': 'Standard_LRS'
-                },
-                'kind': 'storage',
-                'location': self.region_name,
-            }
-            self._azure_client. \
-                create_storage_account(self.storage_account_name,
-                                       storage_account_params)
+        self._mock_azure_client = azureclient
+        self._azure_client = None
 
         self._security = AzureSecurityService(self)
         self._object_store = AzureObjectStoreService(self)
@@ -112,7 +80,49 @@ class AzureCloudProvider(BaseCloudProvider):
 
     @property
     def azure_client(self):
+        if not self._azure_client:
+
+            # create a dict with both optional and mandatory configuration
+            # values to pass to the azureclient class, rather
+            # than passing the provider object and taking a dependency.
+
+            provider_config = {
+                'azure_subscription_id': self.subscription_id,
+                'azure_client_Id': self.client_Id,
+                'azure_secret': self.secret,
+                'azure_tenant': self.tenant,
+                'azure_region_name': self.region_name,
+                'azure_resource_group': self.resource_group,
+                'azure_storage_account': self.storage_account
+            }
+
+            self._azure_client = \
+                self._mock_azure_client or AzureClient(provider_config)
+            self._initialize()
         return self._azure_client
+
+    def _initialize(self):
+
+        try:
+            self._azure_client.get_resource_group(self.resource_group)
+        except CloudError:
+            resource_group_params = {'location': self.region_name}
+            self._azure_client.create_resource_group(self.resource_group,
+                                                     resource_group_params)
+
+        try:
+            self._azure_client.get_storage_account(self.storage_account)
+        except CloudError:
+            storage_account_params = {
+                'sku': {
+                    'name': 'Standard_LRS'
+                },
+                'kind': 'storage',
+                'location': self.region_name,
+            }
+            self._azure_client. \
+                create_storage_account(self.storage_account,
+                                       storage_account_params)
 
 
 class MockAzureCloudProvider(AzureCloudProvider, TestMockHelperMixin):

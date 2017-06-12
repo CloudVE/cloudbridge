@@ -37,16 +37,16 @@ class AzureClient(object):
     def access_key_result(self):
         if not self._access_key_result:
             self._access_key_result = self.storage_client.storage_accounts. \
-                list_keys(self.resource_group_name, self.storage_account_name)
+                list_keys(self.resource_group, self.storage_account)
         return self._access_key_result
 
     @property
-    def resource_group_name(self):
+    def resource_group(self):
         return self._config.get('azure_resource_group')
 
     @property
-    def storage_account_name(self):
-        return self._config.get('azure_storage_account_name')
+    def storage_account(self):
+        return self._config.get('azure_storage_account')
 
     @property
     def region_name(self):
@@ -97,7 +97,7 @@ class AzureClient(object):
     def blob_service(self):
         if not self._block_blob_service:
             self._block_blob_service = BlockBlobService(
-                self.storage_account_name,
+                self.storage_account,
                 self.access_key_result.keys[0].value)
         return self._block_blob_service
 
@@ -108,13 +108,13 @@ class AzureClient(object):
         return self.resource_client.resource_groups. \
             create_or_update(name, parameters)
 
-    def get_storage_account(self, storage_account_name):
+    def get_storage_account(self, storage_account):
         return self.storage_client.storage_accounts. \
-            get_properties(self.resource_group_name, storage_account_name)
+            get_properties(self.resource_group, storage_account)
 
     def create_storage_account(self, name, params):
         return self.storage_client.storage_accounts. \
-            create(self.resource_group_name, name, params).result()
+            create(self.resource_group, name, params).result()
 
     def list_locations(self):
         return self.subscription_client.subscriptions. \
@@ -122,36 +122,36 @@ class AzureClient(object):
 
     def list_security_group(self):
         return self.network_management_client.network_security_groups. \
-            list(self.resource_group_name)
+            list(self.resource_group)
 
     def create_security_group(self, name, parameters):
         return self.network_management_client.network_security_groups. \
-            create_or_update(self.resource_group_name, name,
+            create_or_update(self.resource_group, name,
                              parameters).result()
 
     def update_security_group_tags(self, name, tags):
         return self.network_management_client.network_security_groups. \
-            create_or_update(self.resource_group_name, name,
+            create_or_update(self.resource_group, name,
                              {'tags': tags}).result()
 
     def create_security_group_rule(self, security_group,
                                    rule_name, parameters):
         return self.network_management_client.security_rules. \
-            create_or_update(self.resource_group_name, security_group,
+            create_or_update(self.resource_group, security_group,
                              rule_name, parameters).result()
 
     def delete_security_group_rule(self, name, security_group):
         return self.network_management_client.security_rules. \
-            delete(self.resource_group_name, security_group, name).result()
+            delete(self.resource_group, security_group, name).result()
 
     def get_security_group(self, name):
         return self.network_management_client.network_security_groups. \
-            get(self.resource_group_name, name)
+            get(self.resource_group, name)
 
     def delete_security_group(self, name):
         delete_async = self.network_management_client \
             .network_security_groups. \
-            delete(self.resource_group_name, name)
+            delete(self.resource_group, name)
         delete_async.wait()
 
     def list_containers(self, prefix=None):
@@ -195,7 +195,7 @@ class AzureClient(object):
 
     def create_empty_disk(self, disk_name, params):
         return self.compute_client.disks.create_or_update(
-            self.resource_group_name,
+            self.resource_group,
             disk_name,
             params,
             raw=True
@@ -203,7 +203,7 @@ class AzureClient(object):
 
     def create_snapshot_disk(self, disk_name, params):
         return self.compute_client.disks.create_or_update(
-            self.resource_group_name,
+            self.resource_group,
             disk_name,
             params,
             raw=True
@@ -211,11 +211,11 @@ class AzureClient(object):
 
     def list_snapshots(self):
         return self.compute_client.snapshots. \
-            list_by_resource_group(self.resource_group_name)
+            list_by_resource_group(self.resource_group)
 
     def update_disk_tags(self, disk_name, tags):
         return self.compute_client.disks.update(
-            self.resource_group_name,
+            self.resource_group,
             disk_name,
             {'tags': tags},
             raw=True
@@ -223,45 +223,45 @@ class AzureClient(object):
 
     def get_disk(self, disk_name):
         return self.compute_client.disks. \
-            get(self.resource_group_name, disk_name)
+            get(self.resource_group, disk_name)
 
     def list_networks(self):
         return self.network_management_client.virtual_networks.list(
-            self.resource_group_name)
+            self.resource_group)
 
     def get_network(self, network_name):
         return self.network_management_client.virtual_networks.get(
-            self.resource_group_name, network_name)
+            self.resource_group, network_name)
 
     def create_network(self, name, params):
         return self.network_management_client.virtual_networks. \
-            create_or_update(self.resource_group_name,
+            create_or_update(self.resource_group,
                              name,
                              parameters=params,
                              raw=True)
 
     def delete_network(self, network_name):
         return self.network_management_client.virtual_networks. \
-            delete(self.resource_group_name, network_name).wait()
+            delete(self.resource_group, network_name).wait()
 
     def create_floating_ip(self, public_ip_name, public_ip_parameters):
         return self.network_management_client.public_ip_addresses. \
-            create_or_update(self.resource_group_name,
+            create_or_update(self.resource_group,
                              public_ip_name,
                              public_ip_parameters).result()
 
     def delete_floating_ip(self, public_ip_address_name):
         return self.network_management_client.public_ip_addresses. \
-            delete(self.resource_group_name,
+            delete(self.resource_group,
                    public_ip_address_name).result()
 
     def list_floating_ips(self):
         return self.network_management_client.public_ip_addresses.list(
-            self.resource_group_name)
+            self.resource_group)
 
     def update_network_tags(self, network_name, tags):
         return self.network_management_client.virtual_networks. \
-            create_or_update(self.resource_group_name,
+            create_or_update(self.resource_group,
                              network_name,
                              {
                                  'tags': tags
@@ -269,20 +269,20 @@ class AzureClient(object):
 
     def list_disks(self):
         return self.compute_client.disks. \
-            list_by_resource_group(self.resource_group_name)
+            list_by_resource_group(self.resource_group)
 
     def delete_disk(self, disk_name):
         async_deletion = self.compute_client.disks. \
-            delete(self.resource_group_name, disk_name)
+            delete(self.resource_group, disk_name)
         async_deletion.wait()
 
     def get_snapshot(self, snapshot_name):
-        return self.compute_client.snapshots.get(self.resource_group_name,
+        return self.compute_client.snapshots.get(self.resource_group,
                                                  snapshot_name)
 
     def create_snapshot(self, snapshot_name, params):
         return self.compute_client.snapshots.create_or_update(
-            self.resource_group_name,
+            self.resource_group,
             snapshot_name,
             params,
             raw=True
@@ -290,12 +290,12 @@ class AzureClient(object):
 
     def delete_snapshot(self, snapshot_name):
         async_delete = self.compute_client.snapshots. \
-            delete(self.resource_group_name, snapshot_name)
+            delete(self.resource_group, snapshot_name)
         async_delete.wait()
 
     def update_snapshot_tags(self, snapshot_name, tags):
         return self.compute_client.snapshots.update(
-            self.resource_group_name,
+            self.resource_group,
             snapshot_name,
             {'tags': tags},
             raw=True
@@ -303,24 +303,24 @@ class AzureClient(object):
 
     def create_image(self, name, params):
         return self.compute_client.images. \
-            create_or_update(self.resource_group_name, name,
+            create_or_update(self.resource_group, name,
                              params, raw=True)
 
     def delete_image(self, name):
         self.compute_client.images. \
-            delete(self.resource_group_name, name).wait()
+            delete(self.resource_group, name).wait()
 
     def list_images(self):
         return self.compute_client.images. \
-            list_by_resource_group(self.resource_group_name)
+            list_by_resource_group(self.resource_group)
 
     def get_image(self, image_name):
         return self.compute_client.images. \
-            get(self.resource_group_name, image_name)
+            get(self.resource_group, image_name)
 
     def update_image_tags(self, name, tags):
         return self.compute_client.images. \
-            create_or_update(self.resource_group_name, name,
+            create_or_update(self.resource_group, name,
                              {
                                  'tags': tags
                              }).result()
@@ -331,17 +331,17 @@ class AzureClient(object):
 
     def list_subnets(self, network_name):
         return self.network_management_client.subnets.\
-            list(self.resource_group_name, network_name)
+            list(self.resource_group, network_name)
 
     def get_subnet(self, network_name, subnet_name):
         return self.network_management_client.subnets.\
-            get(self.resource_group_name, network_name, subnet_name)
+            get(self.resource_group, network_name, subnet_name)
 
     def create_subnet(self, network_name,
                       subnet_name, params):
         result_create = self.network_management_client \
             .subnets.create_or_update(
-                self.resource_group_name,
+                self.resource_group,
                 network_name,
                 subnet_name,
                 params
@@ -353,7 +353,7 @@ class AzureClient(object):
     def delete_subnet(self, network_name, subnet_name):
         result_delete = self.network_management_client \
             .subnets.delete(
-                self.resource_group_name,
+                self.resource_group,
                 network_name,
                 subnet_name
             )
@@ -361,65 +361,65 @@ class AzureClient(object):
 
     def list_vm(self):
         return self.compute_client.virtual_machines.list(
-            self.resource_group_name
+            self.resource_group
         )
 
     def restart_vm(self, vm_name):
         return self.compute_client.virtual_machines.restart(
-            self.resource_group_name,
+            self.resource_group,
             vm_name
         ).wait()
 
     def delete_vm(self, vm_name):
         return self.compute_client.virtual_machines.delete(
-            self.resource_group_name,
+            self.resource_group,
             vm_name
         ).wait()
 
     def get_vm(self, vm_name):
         return self.compute_client.virtual_machines.get(
-            self.resource_group_name,
+            self.resource_group,
             vm_name,
             expand='instanceView'
         )
 
     def create_vm(self, vm_name, params):
         return self.compute_client.virtual_machines. \
-            create_or_update(self.resource_group_name,
+            create_or_update(self.resource_group,
                              vm_name, params, raw=True)
 
     def deallocate_vm(self, vm_name):
         self.compute_client. \
-            virtual_machines.deallocate(self.resource_group_name,
+            virtual_machines.deallocate(self.resource_group,
                                         vm_name).wait()
 
     def generalize_vm(self, vm_name):
         self.compute_client.virtual_machines. \
-            generalize(self.resource_group_name, vm_name)
+            generalize(self.resource_group, vm_name)
 
     def start_vm(self, vm_name):
         self.compute_client.virtual_machines. \
-            start(self.resource_group_name,
+            start(self.resource_group,
                   vm_name).wait()
 
     def update_vm_tags(self, vm_name, tags):
         self.compute_client.virtual_machines. \
-            create_or_update(self.resource_group_name,
+            create_or_update(self.resource_group,
                              vm_name, {'tags': tags})
 
     def delete_nic(self, nic_name):
         self.network_management_client. \
-            network_interfaces.delete(self.resource_group_name,
+            network_interfaces.delete(self.resource_group,
                                       nic_name).wait()
 
     def get_nic(self, name):
         return self.network_management_client. \
-            network_interfaces.get(self.resource_group_name, name)
+            network_interfaces.get(self.resource_group, name)
 
     def create_nic(self, nic_name, params):
         async_nic_creation = self.network_management_client. \
             network_interfaces.create_or_update(
-                self.resource_group_name,
+                self.resource_group,
                 nic_name,
                 params
             )
@@ -429,9 +429,9 @@ class AzureClient(object):
 
     def get_public_ip(self, name):
         return self.network_management_client. \
-            public_ip_addresses.get(self.resource_group_name, name)
+            public_ip_addresses.get(self.resource_group, name)
 
     def delete_public_ip(self, public_ip_name):
         self.network_management_client. \
-            public_ip_addresses.delete(self.resource_group_name,
+            public_ip_addresses.delete(self.resource_group,
                                        public_ip_name).wait()
