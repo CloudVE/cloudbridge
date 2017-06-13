@@ -292,11 +292,11 @@ class GCEFirewallsDelegate(object):
                                       .execute())
             self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
-            return True
         except:
             return False
         finally:
             self._update_list_response()
+        return True
 
     def find_firewall(self, tag, ip_protocol, port, source_range, source_tag,
                       network_name):
@@ -387,10 +387,10 @@ class GCEFirewallsDelegate(object):
                                               firewall=firewall['name'])
                                       .execute())
             self._provider.wait_for_operation(response)
-            # TODO: process the response and handle errors.
-            return True
         except:
             return False
+        # TODO: process the response and handle errors.
+        return True
 
     def _update_list_response(self):
         """
@@ -761,22 +761,24 @@ class GCEInstance(BaseInstance):
         """
         Get all the public IP addresses for this instance.
         """
+        ips = []
         network_interfaces = self._gce_instance.get('networkInterfaces')
-        if network_interfaces is None or len(network_interfaces) == 0:
-            return []
-        access_configs = network_interfaces[0].get('accessConfigs')
-        if access_configs is None or len(access_configs) == 0:
-            return []
-        # https://cloud.google.com/compute/docs/reference/beta/instances
-        # An array of configurations for this interface. Currently, only one
-        # access config, ONE_TO_ONE_NAT, is supported. If there are no
-        # accessConfigs specified, then this instance will have no external
-        # internet access.
-        access_config = access_configs[0]
-        if 'natIP' in access_config:
-            return [access_config['natIP']]
-        else:
-            return []
+        if network_interfaces is not None and len(network_interfaces) > 0:
+            access_configs = network_interfaces[0].get('accessConfigs')
+            if access_configs is not None and len(access_configs) > 0:
+                # https://cloud.google.com/compute/docs/reference/beta/instances
+                # An array of configurations for this interface. Currently, only
+                # one access config, ONE_TO_ONE_NAT, is supported. If there are
+                # no accessConfigs specified, then this instance will have no
+                # external internet access.
+                access_config = access_configs[0]
+                if 'natIP' in access_config:
+                    ips.append(access_config['natIP'])
+        for ip in self._provider.network.floating_ips():
+            if ip.in_use():
+                if ip.private_ip in self.private_ips:
+                    ips.append(ip.public_ip)
+        return ips
 
     @property
     def private_ips(self):
@@ -917,19 +919,215 @@ class GCEInstance(BaseInstance):
         raise NotImplementedError(
             'To be implemented after GCEVolumeService.')
 
+    def _get_existing_target_instance(self):
+        """
+        Return the target instance corrsponding to this instance.
+
+        If there is no target instance for this instance, return None.
+        """
+        self_url = self._provider.parse_url(self._gce_instance['selfLink'])
+        try:
+            response = (self._provider
+                .gce_compute
+                .targetInstances()
+                .list(project=self_url.parameters['project'],
+                      zone=self_url.parameters['zone'])
+                .execute())
+            if 'items' not in response:
+                return None
+            for target_instance in response['items']:
+                url = self._provider.parse_url(target_instance['instance'])
+                if url.parameters['instance'] == self.name:
+                    return target_instance
+        except Exception as e:
+            cb.log.warning('Exception while listing target instances: %s', e)
+        return None
+
+    def _get_target_instance(self):
+        """
+        Return the target instance corresponding to this instance.
+
+        If there is no target instance for this instance, create one.
+        """
+        existing_target_instance = self._get_existing_target_instance()
+        if existing_target_instance:
+            return existing_target_instance
+
+        # No targetInstance exists for this instance. Create one.
+        self_url = self._provider.parse_url(self._gce_instance['selfLink'])
+        body = {'name': 'target-instance-{0}'.format(uuid.uuid4()),
+                'instance': self._gce_instance['selfLink']}
+        try:
+            response = (self._provider
+                .gce_compute
+                .targetInstances()
+                .insert(project=self_url.parameters['project'],
+                        zone=self_url.parameters['zone'],
+                        body=body)
+                .execute())
+            self._provider.wait_for_operation(
+                response, zone=self_url.parameters['zone'])
+        except Exception as e:
+            cb.log.warning('Exception while inserting a target instance: %s', e)
+            return None
+
+        # The following method should find the target instance that we
+        # successfully created above.
+        return self._get_existing_target_instance()
+
+    def _redirect_existing_rule(self, ip, target_instance):
+        """
+        Redirect the forwarding rule of the given IP to the given Instance.
+        """
+        new_zone = (self._provider.parse_url(target_instance['zone'])
+                                  .parameters['zone'])
+        new_name = target_instance['name']
+        new_url = target_instance['selfLink']
+        try:
+            response = (self._provider.gce_compute
+                                      .forwardingRules()
+                                      .list(project=self._provider.project_name,
+                                            region=ip.region)
+                                      .execute())
+            if 'items' not in response:
+                return False
+            for rule in response['items']:
+                if rule['IPAddress'] == ip.public_ip:
+                    parsed_target_url = self._provider.parse_url(rule['target'])
+                    old_zone = parsed_target_url.parameters['zone']
+                    old_name = parsed_target_url.parameters['targetInstance']
+                    if old_zone == new_zone and old_name == new_name:
+                        return True
+                    response = (self._provider
+                                    .gce_compute
+                                    .forwardingRules()
+                                    .setTarget(
+                                        project=self._provider.project_name,
+                                        region=ip.region,
+                                        forwardingRule=rule['name'],
+                                        body={'target': new_url})
+                                    .execute())
+                    self._provider.wait_for_operation(response,
+                                                      region=ip.region)
+                    return True
+        except Exception as e:
+            cb.log.warning(
+                'Exception while listing/changing forwarding rules: %s', e)
+        return False
+
+    def _forward(self, ip, target_instance):
+        """
+        Forward the traffic to a given IP to a given instance.
+
+        If there is already a forwarding rule for the IP, it is redirected;
+        otherwise, a new forwarding rule is created.
+        """
+        if self._redirect_existing_rule(ip, target_instance):
+            return True
+        body = {'name': 'forwarding-rule-{0}'.format(uuid.uuid4()),
+                'IPAddress': ip.public_ip,
+                'target': target_instance['selfLink']}
+        try:
+            response = (self._provider.gce_compute
+                                      .forwardingRules()
+                                      .insert(
+                                          project=self._provider.project_name,
+                                          region=ip.region,
+                                          body=body)
+                                      .execute())
+            self._provider.wait_for_operation(response, region=ip.region)
+        except Exception as e:
+            cb.log.warning('Exception while inserting a forwarding rule: %s', e)
+            return False
+        return True
+
+    def _delete_existing_rule(self, ip, target_instance):
+        """
+        Stop forwarding traffic to an instance by deleting the forwarding rule.
+        """
+        zone = (self._provider.parse_url(target_instance['zone'])
+                              .parameters['zone'])
+        name = target_instance['name']
+        try:
+            response = (self._provider.gce_compute
+                                      .forwardingRules()
+                                      .list(project=self._provider.project_name,
+                                            region=ip.region)
+                                      .execute())
+            if 'items' not in response:
+                return False
+            for rule in response['items']:
+                if rule['IPAddress'] == ip.public_ip:
+                    parsed_target_url = self._provider.parse_url(rule['target'])
+                    temp_zone = parsed_target_url.parameters['zone']
+                    temp_name = parsed_target_url.parameters['targetInstance']
+                    if temp_zone != zone or temp_name != name:
+                        cb.log.warning('"%s" is forwarded to "%s" in zone "%s"',
+                                       ip.public_ip, temp_name, temp_zone)
+                        return False
+                    response = (self._provider
+                                    .gce_compute
+                                    .forwardingRules()
+                                    .delete(
+                                        project=self._provider.project_name,
+                                        region=ip.region,
+                                        forwardingRule=rule['name'])
+                                    .execute())
+                    self._provider.wait_for_operation(response,
+                                                      region=ip.region)
+        except Exception as e:
+            cb.log.warning(
+                'Exception while listing/deleting forwarding rules: %s', e)
+            return False
+        return True
+        
     def add_floating_ip(self, ip_address):
         """
         Add an elastic IP address to this instance.
         """
-        raise NotImplementedError(
-            'To be implemented after GCENetworkService.')
+        for ip in self._provider.network.floating_ips():
+            if ip.public_ip == ip_address:
+                if ip.in_use():
+                    if ip.private_ip not in self.private_ips:
+                        cb.log.warning(
+                            'Floating IP "%s" is already associated to "%s".',
+                            ip_address, self.name)
+                    return
+                target_instance = self._get_target_instance()
+                if not target_instance:
+                    cb.log.warning('Could not create a targetInstance for "%s"',
+                                   self.name)
+                    return
+                if not self._forward(ip, target_instance):
+                    cb.log.warning('Could not forward "%s" to "%s"',
+                                   ip.public_ip, target_instance['selfLink'])
+                return
+        cb.log.warning('Floating IP "%s" does not exist.', ip_address)
 
     def remove_floating_ip(self, ip_address):
         """
         Remove a elastic IP address from this instance.
         """
-        raise NotImplementedError(
-            'To be implemented after GCENetworkService.')
+        for ip in self._provider.network.floating_ips():
+            if ip.public_ip == ip_address:
+                if not ip.in_use() or ip.private_ip not in self.private_ips:
+                    cb.log.warning(
+                        'Floating IP "%s" is not associated to "%s".',
+                         ip_address, self.name)
+                    return
+                target_instance = self._get_target_instance()
+                if not target_instance:
+                    # We should not be here.
+                    cb.log.warning('Something went wrong! "%s" is associated '
+                                   'to "%s" with no target instance',
+                                   ip_address, self.name)
+                    return
+                if not self._delete_existing_rule(ip, target_instance):
+                    cb.log.warning(
+                        'Could not remove floating IP "%s" from instance "%s"',
+                        ip.public_ip, self.name)
+                return
+        cb.log.warning('Floating IP "%s" does not exist.', ip_address)
 
     @property
     def state(self):
@@ -985,9 +1183,9 @@ class GCENetwork(BaseNetwork):
             if 'error' in response:
                 return False
             self._provider.wait_for_operation(response)
-            return True
         except:
             return False
+        return True
 
     def subnets(self):
         raise NotImplementedError("To be implemented")
@@ -999,6 +1197,7 @@ class GCENetwork(BaseNetwork):
         return self.state
 
 class GCEFloatingIP(BaseFloatingIP):
+    _DEAD_INSTANCE = 'dead instance'
 
     def __init__(self, provider, floating_ip):
         super(GCEFloatingIP, self).__init__(provider)
@@ -1023,7 +1222,10 @@ class GCEFloatingIP(BaseFloatingIP):
                 target = provider.parse_url(resource['target']).get()
                 if target['kind'] == 'compute#targetInstance':
                     url = provider.parse_url(target['instance'])
-                    self._target_instance = url.get()
+                    try:
+                      self._target_instance = url.get()
+                    except:
+                      self._target_instance = GCEFloatingIP._DEAD_INSTANCE
                 else:
                     cb.log.warning('Address "%s" is forwarded to a %s',
                                    floating_ip['address'], target['kind'])
@@ -1036,12 +1238,17 @@ class GCEFloatingIP(BaseFloatingIP):
         return self._ip['id']
 
     @property
+    def region(self):
+        return self._region
+
+    @property
     def public_ip(self):
         return self._ip['address']
 
     @property
     def private_ip(self):
-        if not self._target_instance:
+        if (not self._target_instance or
+            self._target_instance == GCEFloatingIP._DEAD_INSTANCE):
             return None
         return self._target_instance['networkInterfaces'][0]['networkIP']
 
@@ -1096,7 +1303,6 @@ class GCEVolume(BaseVolume):
         return self._volume.get('name')
 
     @name.setter
-    # pylint:disable=arguments-differ
     def name(self, value):
         """
         Set the volume name.
@@ -1129,7 +1335,13 @@ class GCEVolume(BaseVolume):
 
     @property
     def attachments(self):
+        # GCE Persistent Disk supports multiple instances attaching a READ-ONLY
+        # disk. In cloudbridge, volume usage pattern is that a disk is attached
+        # to a single instance in a read-write mode. Therefore, we only check
+        # the first user of a disk.
         if 'users' in self._volume and len(self._volume) > 0:
+            if len(self._volume) > 1:
+                cb.log.warning("This volume is attached to multiple instances.")
             return BaseAttachmentInfo(self,
                                       self._volume.get('users')[0],
                                       None)
@@ -1140,12 +1352,16 @@ class GCEVolume(BaseVolume):
         """
         Attach this volume to an instance.
 
-        Parameter `device` is ignored here. The user need to mount the disk
-        so that the operating system can use the available storage space.
+        instance: The ID of an instance or an ``Instance`` object to
+                  which this volume will be attached.
+
+        To use the disk, the user needs to mount the disk so that the operating
+        system can use the available storage space.
         https://cloud.google.com/compute/docs/disks/add-persistent-disk
         """
         attach_disk_body = {
-            "source": self.id
+            "source": self.id,
+            "deviceName": device,
         }
         instance_name = instance.name if isinstance(
             instance,
@@ -1162,10 +1378,12 @@ class GCEVolume(BaseVolume):
         """
         Detach this volume from an instance.
         """
+        # Check whether this volume is attached to an instance.
         if not self.attachments:
             return
         instance_data = self._provider.get_gce_resource_data(
             self.attachments.instance_id)
+        # Check whether the instance has this volume attached.
         if 'disks' not in instance_data:
             return
         device_name = None

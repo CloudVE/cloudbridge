@@ -731,6 +731,10 @@ class GCEVolumeService(BaseVolumeService):
     def list(self, limit=None, marker=None):
         """
         List all volumes.
+
+        limit: The maximum number of volumes to return. The returned
+               ResultList's is_truncated property can be used to determine
+               whether more records are available.
         """
         # For GCE API, Acceptable values are 0 to 500, inclusive.
         # (Default: 500).
