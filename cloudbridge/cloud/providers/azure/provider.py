@@ -27,7 +27,7 @@ class AzureCloudProvider(BaseCloudProvider):
             _get_config_value('azure_subscription_id',
                               os.environ.get('AZURE_SUBSCRIPTION_ID', None))
         self.client_Id = self._get_config_value(
-            'azure_client_Id', os.environ.get('AZURE_CLIENT_ID', None))
+            'azure_client_id', os.environ.get('AZURE_CLIENT_ID', None))
         self.secret = self._get_config_value(
             'azure_secret', os.environ.get('AZURE_SECRET', None))
         self.tenant = self._get_config_value(
@@ -88,7 +88,7 @@ class AzureCloudProvider(BaseCloudProvider):
 
             provider_config = {
                 'azure_subscription_id': self.subscription_id,
-                'azure_client_Id': self.client_Id,
+                'azure_client_id': self.client_Id,
                 'azure_secret': self.secret,
                 'azure_tenant': self.tenant,
                 'azure_region_name': self.region_name,
