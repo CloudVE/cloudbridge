@@ -18,7 +18,7 @@ class AzureClient(object):
         self._config = config
         self.subscription_id = config.get('azure_subscription_id')
         self._credentials = ServicePrincipalCredentials(
-            client_id=config.get('azure_client_Id'),
+            client_id=config.get('azure_client_id'),
             secret=config.get('azure_secret'),
             tenant=config.get('azure_tenant')
         )

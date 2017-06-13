@@ -9,8 +9,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['network'])
     def test_crud_network_service(self):
-        name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4())
-        subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4())
+        name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4().hex[:6])
+        subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4().hex[:6])
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -33,7 +33,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             # check subnet
             subnet = self.provider.network.subnets.create(
-                network=net, cidr_block="10.0.0.1/24", name=subnet_name)
+                network=net, cidr_block="10.0.1.0/24", name=subnet_name)
             with helpers.cleanup_action(
                 lambda:
                     self.provider.network.subnets.delete(subnet=subnet)
@@ -99,8 +99,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['network'])
     def test_crud_network(self):
-        name = 'cbtestnetwork-{0}'.format(uuid.uuid4())
-        subnet_name = 'cbtestsubnet-{0}'.format(uuid.uuid4())
+        name = 'cbtestnetwork-{0}'.format(uuid.uuid4().hex[:6])
+        subnet_name = 'cbtestsubnet-{0}'.format(uuid.uuid4().hex[:6])
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda: net.delete()
@@ -152,7 +152,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                         router.detach_network()
 
         if not self.provider.PROVIDER_ID == 'azure':
-            name = 'cbtestrouter-{0}'.format(uuid.uuid4())
+            name = 'cbtestrouter-{0}'.format(uuid.uuid4().hex[:6])
             # Declare these variables and late binding will allow
             # the cleanup method access to the most current values
             net = None
