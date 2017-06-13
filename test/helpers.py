@@ -87,8 +87,12 @@ TEST_DATA_CONFIG = {
         "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
     },
     "AzureCloudProvider": {
-        "placement": "eastus",
-        "instance_type": "Standard_DS1_v2"
+        "placement":
+            os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
+        "image":
+            os.environ.get('CB_IMAGE_AZURE', 'CbTest-Img'),
+        "instance_type":
+            os.environ.get('CB_INSTANCE_TYPE_AZURE', 'Standard_DS1_v2'),
     }
 }
 
@@ -193,14 +197,26 @@ class ProviderTestBase(unittest.TestCase):
             return 1
 
     def create_provider_instance(self):
-        provider_name = os.environ.get("CB_TEST_PROVIDER", "aws")
+        provider_name = os.environ.get("CB_TEST_PROVIDER", "azure")
         use_mock_drivers = parse_bool(
-            os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
+            os.environ.get("CB_USE_MOCK_PROVIDERS", "False"))
         factory = CloudProviderFactory()
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
         config = {'default_wait_interval':
-                  self.get_provider_wait_interval(provider_class)}
+                  self.get_provider_wait_interval(provider_class),
+                  'azure_subscription_id':
+                      '7904d702-e01c-4826-8519-f5a25c866a96',
+                  'azure_client_id':
+                      '69621fe1-f59f-43de-8799-269007c76b95',
+                  'azure_secret':
+                      'Orcw9U5Kd4cUDntDABg0dygN32RQ4FGBYyLRaJ/BlrM=',
+                  'azure_tenant':
+                      '75ec242e-054d-4b22-98a9-a4602ebb6027',
+                  'azure_resource_group': 'CB-TEST-RG',
+                  'azure_storage_account': 'cbtestsa',
+                  'azure_vm_default_user_name': 'cbtestuser'
+                  }
         return provider_class(config)
 
     @property
