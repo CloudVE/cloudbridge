@@ -91,7 +91,7 @@ class BaseCloudProvider(CloudProvider):
         more efficient implementations.
         """
         try:
-            self.security.key_pairs.list()
+            self.security.security_groups.list()
             return True
         except Exception as e:
             raise ProviderConnectionException(
