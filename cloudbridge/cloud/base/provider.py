@@ -100,7 +100,7 @@ class BaseCloudProvider(CloudProvider):
         """
         log.debug("Checking if cloud credential works...")
         try:
-            self.security.key_pairs.list()
+            self.security.security_groups.list()
             return True
         except Exception as e:
             log.exception("ProviderConnectionException occurred")
