@@ -20,7 +20,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_crud_instance(self):
         name = "CBInstCrud-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         inst = None
@@ -99,7 +99,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_instance_properties(self):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -249,7 +249,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_block_device_mapping_attachments(self):
         name = "CBInstBlkAttch-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
 
         # Comment out BDM tests because OpenStack is not stable enough yet
         if True:
@@ -337,7 +337,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_instance_methods(self):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -367,40 +367,41 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 sg not in test_inst.security_groups, "Expected security group"
                 " '%s' to be removed from instance security_groups: [%s]" %
                 (sg, test_inst.security_groups))
+            if not self.provider.PROVIDER_ID == 'azure':
+                # check floating ips
+                router = self.provider.network.create_router(name=name)
 
-            # check floating ips
-            router = self.provider.network.create_router(name=name)
+                with helpers.cleanup_action(lambda: router.delete()):
 
-            with helpers.cleanup_action(lambda: router.delete()):
+                    # TODO: Cloud specific code, needs fixing
+                    if self.provider.PROVIDER_ID == 'openstack':
+                        for n in self.provider.network.list():
+                            if n.external:
+                                external_net = n
+                                break
+                    else:
+                        external_net = net
+                    router.attach_network(external_net.id)
+                    router.add_route(subnet.id)
 
-                # TODO: Cloud specific code, needs fixing
-                if self.provider.PROVIDER_ID == 'openstack':
-                    for n in self.provider.network.list():
-                        if n.external:
-                            external_net = n
-                            break
-                else:
-                    external_net = net
-                router.attach_network(external_net.id)
-                router.add_route(subnet.id)
+                    def cleanup_router():
+                        router.remove_route(subnet.id)
+                        router.detach_network()
 
-                def cleanup_router():
-                    router.remove_route(subnet.id)
-                    router.detach_network()
+                    with helpers.cleanup_action(lambda: cleanup_router()):
+                        # check whether adding an elastic ip works
+                        fip = self.provider.network.create_floating_ip()
+                        with helpers.cleanup_action(lambda: fip.delete()):
+                            test_inst.add_floating_ip(fip.public_ip)
+                            test_inst.refresh()
+                            self.assertIn(fip.public_ip, test_inst.public_ips)
 
-                with helpers.cleanup_action(lambda: cleanup_router()):
-                    # check whether adding an elastic ip works
-                    fip = self.provider.network.create_floating_ip()
-                    with helpers.cleanup_action(lambda: fip.delete()):
-                        test_inst.add_floating_ip(fip.public_ip)
-                        test_inst.refresh()
-                        self.assertIn(fip.public_ip, test_inst.public_ips)
+                            if isinstance(self.provider, TestMockHelperMixin):
+                                # TODO: Moto bug does not refresh removed public ip  # noqa
+                                return
 
-                        if isinstance(self.provider, TestMockHelperMixin):
-                            # TODO: Moto bug does not refresh removed public ip
-                            return
-
-                        # check whether removing an elastic ip works
-                        test_inst.remove_floating_ip(fip.public_ip)
-                        test_inst.refresh()
-                        self.assertNotIn(fip.public_ip, test_inst.public_ips)
+                            # check whether removing an elastic ip works
+                            test_inst.remove_floating_ip(fip.public_ip)
+                            test_inst.refresh()
+                            self.assertNotIn(fip.public_ip,
+                                             test_inst.public_ips)

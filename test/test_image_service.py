@@ -21,7 +21,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
         """
         instance_name = "CBImageTest-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -34,7 +34,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
             test_instance = helpers.get_test_instance(
                 self.provider, instance_name, subnet=subnet)
 
-            name = "CBUnitTestListImg-{0}".format(uuid.uuid4())
+            name = "CBUnitTestListImg-{0}".format(uuid.uuid4().hex[:6])
             test_image = test_instance.create_image(name)
 
             def cleanup_img(img):
@@ -102,9 +102,11 @@ class CloudImageServiceTestCase(ProviderTestBase):
                                                     get_img.name,
                                                     test_image.name))
                 # TODO: Fix moto so that the BDM is populated correctly
-                if not isinstance(self.provider, TestMockHelperMixin):
+                if not isinstance(self.provider, TestMockHelperMixin)\
+                        and not self.provider.PROVIDER_ID == 'azure':
                     # check image size
-                    self.assertGreater(get_img.min_disk, 0, "Minimum disk size"
+                    self.assertGreater(get_img.min_disk, 0,
+                                       "Minimum disk size"
                                        " required by image is invalid")
             # TODO: Images take a long time to deregister on EC2. Needs
             # investigation

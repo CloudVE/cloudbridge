@@ -57,10 +57,12 @@ def skipIfNoService(services):
     A decorator for skipping tests if the provider
     does not implement a given service.
     """
+
     def wrap(func):
         """
         The actual wrapper
         """
+
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             provider = getattr(self, 'provider')
@@ -70,7 +72,9 @@ def skipIfNoService(services):
                         self.skipTest("Skipping test because '%s' service is"
                                       " not implemented" % (service,))
             func(self, *args, **kwargs)
+
         return wrapper
+
     return wrap
 
 
@@ -92,7 +96,7 @@ TEST_DATA_CONFIG = {
         "image":
             os.environ.get('CB_IMAGE_AZURE', 'CbTest-Img'),
         "instance_type":
-            os.environ.get('CB_INSTANCE_TYPE_AZURE', 'Standard_DS1_v2'),
+            os.environ.get('CB_INSTANCE_TYPE_AZURE', 'Standard_A0'),
     }
 }
 
@@ -128,14 +132,14 @@ def delete_test_network(network):
 
 
 def create_test_instance(
-        provider, instance_name, subnet, launch_config=None,
+        provider, instance_name, subnet, zone=None, launch_config=None,
         key_pair=None, security_groups=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
         subnet=subnet,
-        zone=get_provider_test_data(provider, 'placement'),
+        zone=zone,
         key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)
@@ -169,16 +173,16 @@ def delete_test_instance(instance):
 def cleanup_test_resources(instance=None, network=None, security_group=None,
                            key_pair=None):
     """Clean up any combination of supplied resources."""
-    with cleanup_action(lambda: delete_test_network(network)
-                        if network else None):
+    with cleanup_action(lambda:
+                        delete_test_network(network) if network else None):
         with cleanup_action(lambda: key_pair.delete() if key_pair else None):
-            with cleanup_action(lambda: security_group.delete()
-                                if security_group else None):
+            with cleanup_action(
+                    lambda:
+                    security_group.delete() if security_group else None):
                 delete_test_instance(instance)
 
 
 class ProviderTestBase(unittest.TestCase):
-
     _provider = None
 
     def setUp(self):

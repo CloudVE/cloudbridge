@@ -1,4 +1,3 @@
-"""Library install script for setuptools."""
 import ast
 import os
 import re
@@ -15,7 +14,7 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
             version = ast.literal_eval(m.group(1))
             break
 
-base_reqs = ['bunch>=1.0.1', 'six>=1.10.0', 'retrying>=1.3.3']
+base_reqs = ['msrest==0.4.7', 'bunch>=1.0.1', 'six>=1.10.0', 'retrying>=1.3.3']
 openstack_reqs = ['requests<2.13.0',
                   'Babel>=2.3.4,<2.4.0',
                   'python-novaclient==7.0.0',
@@ -25,6 +24,19 @@ openstack_reqs = ['requests<2.13.0',
                   'python-neutronclient>=6.0.0,<=6.1.0',
                   'python-keystoneclient>=3.8.0,<=3.10.0']
 aws_reqs = ['boto>=2.38.0,<=2.46.1']
+
+azure_reqs = ['azure-common==1.1.5',
+              'azure-mgmt-resource==1.0.0rc1',
+              'azure-mgmt-compute==1.0.0rc1',
+              'azure-mgmt-network==1.0.0rc1',
+              'azure-mgmt-storage==1.0.0rc1',
+              'azure-storage==0.34.0',
+              'pysftp==0.2.9']
+
+full_reqs = base_reqs + aws_reqs + openstack_reqs + azure_reqs
+
+dev_reqs = (['tox>=2.1.1', 'moto>=0.4.20', 'sphinx>=1.3.1', 'flake8>=3.3.0',
+             'flake8-import-order>=0.12'] + full_reqs)
 full_reqs = base_reqs + aws_reqs + openstack_reqs
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 dev_reqs = (['tox>=2.1.1', 'moto<1.0.0', 'sphinx>=1.3.1', 'flake8>=3.3.0',
@@ -62,5 +74,5 @@ setup(name='cloudbridge',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: Implementation :: CPython',
           'Programming Language :: Python :: Implementation :: PyPy'],
-      test_suite="test"
+      test_suite="azure_test"
       )

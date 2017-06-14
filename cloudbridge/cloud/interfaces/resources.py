@@ -551,7 +551,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def create_image(self, name):
+    def create_image(self, name, private_key_path=None):
         """
         Create a new image based on this instance.
 

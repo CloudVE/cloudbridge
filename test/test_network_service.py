@@ -9,8 +9,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['network'])
     def test_crud_network_service(self):
-        name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4())
-        subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4())
+        name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4().hex[:6])
+        subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4().hex[:6])
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -33,7 +33,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             # check subnet
             subnet = self.provider.network.subnets.create(
-                network=net, cidr_block="10.0.0.1/24", name=subnet_name)
+                network=net, cidr_block="10.0.1.0/24", name=subnet_name)
             with helpers.cleanup_action(
                 lambda:
                     self.provider.network.subnets.delete(subnet=subnet)
@@ -99,8 +99,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['network'])
     def test_crud_network(self):
-        name = 'cbtestnetwork-{0}'.format(uuid.uuid4())
-        subnet_name = 'cbtestsubnet-{0}'.format(uuid.uuid4())
+        name = 'cbtestnetwork-{0}'.format(uuid.uuid4().hex[:6])
+        subnet_name = 'cbtestsubnet-{0}'.format(uuid.uuid4().hex[:6])
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda: net.delete()
@@ -151,64 +151,66 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                         router.remove_route(subnet.id)
                         router.detach_network()
 
-        name = 'cbtestrouter-{0}'.format(uuid.uuid4())
-        # Declare these variables and late binding will allow
-        # the cleanup method access to the most current values
-        net = None
-        sn = None
-        router = None
-        with helpers.cleanup_action(lambda: _cleanup(net, sn, router)):
-            router = self.provider.network.create_router(name=name)
-            net = self.provider.network.create(name=name)
-            cidr = '10.0.1.0/24'
-            sn = net.create_subnet(cidr_block=cidr, name=name,
-                                   zone=helpers.get_provider_test_data(
-                                       self.provider, 'placement'))
+        if not self.provider.PROVIDER_ID == 'azure':
+            name = 'cbtestrouter-{0}'.format(uuid.uuid4().hex[:6])
+            # Declare these variables and late binding will allow
+            # the cleanup method access to the most current values
+            net = None
+            sn = None
+            router = None
+            with helpers.cleanup_action(lambda: _cleanup(net, sn, router)):
+                router = self.provider.network.create_router(name=name)
+                net = self.provider.network.create(name=name)
+                cidr = '10.0.1.0/24'
+                sn = net.create_subnet(cidr_block=cidr, name=name,
+                                       zone=helpers.get_provider_test_data(
+                                           self.provider, 'placement'))
 
-            # Check basic router properties
-            self.assertIn(
-                router, self.provider.network.routers(),
-                "Router {0} should exist in the router list {1}.".format(
-                    router.id, self.provider.network.routers()))
-            self.assertIn(
-                router.id, repr(router),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not.")
-            self.assertEqual(
-                router.name, name,
-                "Router {0} name should be {1}.".format(router.name, name))
-            self.assertEqual(
-                router.state, RouterState.DETACHED,
-                "Router {0} state {1} should be {2}.".format(
-                    router.id, router.state, RouterState.DETACHED))
-            self.assertFalse(
-                router.network_id,
-                "Router {0} should not be assoc. with a network {1}".format(
-                    router.id, router.network_id))
+                # Check basic router properties
+                self.assertIn(
+                    router, self.provider.network.routers(),
+                    "Router {0} should exist in the router list {1}.".format(
+                        router.id, self.provider.network.routers()))
+                self.assertIn(
+                    router.id, repr(router),
+                    "repr(obj) should contain the object id so that the object"
+                    " can be reconstructed, but does not.")
+                self.assertEqual(
+                    router.name, name,
+                    "Router {0} name should be {1}.".format(router.name, name))
+                self.assertEqual(
+                    router.state, RouterState.DETACHED,
+                    "Router {0} state {1} should be {2}.".format(
+                        router.id, router.state, RouterState.DETACHED))
+                self.assertFalse(
+                    router.network_id,
+                    "Router {0} should not be assoc. with a "
+                    "network {1}".format(router.id, router.network_id))
 
-            # TODO: Cloud specific code, needs fixing
-            # Check router connectivity
-            # On OpenStack only one network is external and on AWS every
-            # network is external, yet we need to use the one we've created?!
-            if self.provider.PROVIDER_ID == 'openstack':
-                for n in self.provider.network.list():
-                    if n.external:
-                        external_net = n
-                        break
-            else:
-                external_net = net
-            router.attach_network(external_net.id)
-            router.refresh()
-            self.assertEqual(
-                router.network_id, external_net.id,
-                "Router should be attached to network {0}, not {1}".format(
-                    external_net.id, router.network_id))
-            router.add_route(sn.id)
-            # TODO: add a check for routes after that's been implemented
+                # TODO: Cloud specific code, needs fixing
+                # Check router connectivity
+                # On OpenStack only one network is external and on AWS every
+                # network is external, yet we need to use the
+                # one we've created?!
+                if self.provider.PROVIDER_ID == 'openstack':
+                    for n in self.provider.network.list():
+                        if n.external:
+                            external_net = n
+                            break
+                else:
+                    external_net = net
+                router.attach_network(external_net.id)
+                router.refresh()
+                self.assertEqual(
+                    router.network_id, external_net.id,
+                    "Router should be attached to network {0}, not {1}".format(
+                        external_net.id, router.network_id))
+                router.add_route(sn.id)
+                # TODO: add a check for routes after that's been implemented
 
-        routerl = self.provider.network.routers()
-        found_router = [r for r in routerl if r.name == name]
-        self.assertEqual(
-            len(found_router), 0,
-            "Router {0} should have been deleted but still exists."
-            .format(name))
+            routerl = self.provider.network.routers()
+            found_router = [r for r in routerl if r.name == name]
+            self.assertEqual(
+                len(found_router), 0,
+                "Router {0} should have been deleted but still exists."
+                .format(name))
