@@ -1,3 +1,9 @@
+0.3.2 - June 10, 2017. (sha f07f3cbd758a0872b847b5537d9073c90f87c24d)
+-------
+
+* Patch release to support files>5GB with OpenStack (thanks @MartinPaulo)
+* Misc bug fixes
+
 0.3.1 - April 18, 2017. (sha f36a462e886d8444cb2818f6573677ecf0565315)
 -------
 
