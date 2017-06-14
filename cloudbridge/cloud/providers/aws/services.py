@@ -645,10 +645,6 @@ class AWSInstanceService(BaseInstanceService):
                                      False, data=instances)
 
 
-AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
-                                "aws_instance_data.json"
-
-
 class AWSInstanceTypesService(BaseInstanceTypesService):
 
     def __init__(self, provider):
@@ -660,8 +656,8 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
         Fetch info about the available instances.
 
         To update this information, update the file pointed to by the
-        ``AWS_INSTANCE_DATA_DEFAULT_URL`` above. The content for this file
-        should be obtained from this repo
+        ``provider.AWS_INSTANCE_DATA_DEFAULT_URL`` above. The content for this
+        file should be obtained from this repo:
         https://github.com/powdahound/ec2instances.info (in particular, this
         file: https://raw.githubusercontent.com/powdahound/ec2instances.info/
         master/www/instances.json).
@@ -669,7 +665,8 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
         TODO: Needs a caching function with timeout
         """
         r = requests.get(self.provider.config.get(
-            "aws_instance_info_url", AWS_INSTANCE_DATA_DEFAULT_URL))
+            "aws_instance_info_url",
+            self.provider.AWS_INSTANCE_DATA_DEFAULT_URL))
         return r.json()
 
     def list(self, limit=None, marker=None):

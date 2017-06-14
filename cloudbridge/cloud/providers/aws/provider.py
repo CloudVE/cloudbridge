@@ -7,8 +7,8 @@ from boto.ec2.regioninfo import RegionInfo
 try:
     # These are installed only for the case of a dev instance
     from httpretty import HTTPretty
-    from moto import mock_ec2_deprecated as mock_ec2
-    from moto import mock_s3_deprecated as mock_s3
+    from moto import mock_ec2
+    from moto import mock_s3
 except ImportError:
     # TODO: Once library logging is configured, change this
     print("[aws provider] moto library not available!")
@@ -26,6 +26,8 @@ from .services import AWSSecurityService
 class AWSCloudProvider(BaseCloudProvider):
 
     PROVIDER_ID = 'aws'
+    AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
+                                    "aws_instance_data.json"
 
     def __init__(self, config):
         super(AWSCloudProvider, self).__init__(config)
@@ -171,8 +173,8 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         self.s3mock = mock_s3()
         self.s3mock.start()
         HTTPretty.register_uri(
-            method="GET",
-            uri="https://d168wakzal7fp0.cloudfront.net/aws_instance_data.json",
+            HTTPretty.GET,
+            self.AWS_INSTANCE_DATA_DEFAULT_URL,
             body=u"""
 [
   {
