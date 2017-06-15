@@ -327,26 +327,28 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet, zone=None,
+    def create(self, name, image, instance_type, subnet=None, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
 
         if key_pair:
             key_pair = (self.provider.security.key_pairs.get(key_pair)
                         if isinstance(key_pair, str) else key_pair)
-        # else:
-        #     raise Exception("Keypair required")
+        else:
+            raise Exception("Keypair required")
 
         image = (self.provider.compute.images.get(image)
                  if isinstance(image, str) else image)
 
-        key = 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDI8EAhG3jKdF/raX3J3UBt9/zAXVn0aaiHd5JcgJNjwR5t6ggonvHlsELjnmT43URzu1GKsDMk6BB8jq8bWBHpuXJ+0203JHqbfmLoScB4JzWgb3dEwFahdTNVI44I31/DgpQ8KN/jA/i6XvGybf/uvuknjMEDwsv0MUiX1tDj4Hpnm2pznjdB3K4CtizUQKz3RHZvb3096vf5Rix/s4a6AVAtH0kWbKCGIbra5ahKew0wn/XV3aJGygW9EFP7DWdSfDe2gsATdNyyZFvWYO7uJU0J4ZBzLP1lrZNuTQzJoYGaPT5iV/PRY9cvikWDH+t7HQ59+duvMl7wmAdl/Xw7'  # noqa
-
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
 
-        subnet = (self.provider.network.subnets.get(subnet)
-                  if isinstance(subnet, str) else subnet)
+        if not subnet:
+            subnet = self.provider.network.subnets.get_or_create_default()
+        else:
+            subnet = (self.provider.network.subnets.get(subnet)
+                      if isinstance(subnet, str) else subnet)
+
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
 
         subnet_id, zone_id, security_group_ids = \
@@ -357,6 +359,8 @@ class AzureInstanceService(BaseInstanceService):
                                                         name, zone_id)
         else:
             disks = None
+
+        instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
         nic_params = {
                 'location': self._provider.region_name,
@@ -374,7 +378,7 @@ class AzureInstanceService(BaseInstanceService):
                 'id': security_group_ids[0]
             }
         nic_info = self.provider.azure_client.create_nic(
-            name + '_NIC',
+            instance_name + '_NIC',
             nic_params
         )
 
@@ -382,7 +386,7 @@ class AzureInstanceService(BaseInstanceService):
             'location': zone_id or self._provider.region_name,
             'os_profile': {
                 'admin_username': self.provider.vm_default_user_name,
-                'computer_name': name,
+                'computer_name': instance_name,
                 'linux_configuration': {
                              "disable_password_authentication": True,
                              "ssh": {
@@ -390,7 +394,7 @@ class AzureInstanceService(BaseInstanceService):
                                       "path":
                                       "/home/{}/.ssh/authorized_keys".format(
                                           self.provider.vm_default_user_name),
-                                      "key_data": key  # key_pair._key_pair.Key
+                                      "key_data": key_pair._key_pair.Key
                                      }]
                                    }
                            }
@@ -418,8 +422,6 @@ class AzureInstanceService(BaseInstanceService):
 
         if key_pair:
             params['tags'].update(Key_Pair=key_pair.name)
-
-        instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
         self.provider.azure_client.create_vm(instance_name, params)
         vm = self._provider.azure_client.get_vm(instance_name)
