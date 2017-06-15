@@ -807,7 +807,7 @@ class AzureMachineImage(BaseMachineImage):
     def min_disk(self):
         """
         Returns the minimum size of the disk that's required to
-        boot this image (in GB)
+        boot this image (in GB).
 
         :rtype: ``int``
         :return: The minimum disk size needed by this image
@@ -910,6 +910,10 @@ class AzureNetwork(BaseNetwork):
 
     @property
     def cidr_block(self):
+        """
+        Address space associated with this network
+        :return:
+        """
         return self._network.address_space.address_prefixes[0]
 
     def delete(self):
@@ -925,9 +929,20 @@ class AzureNetwork(BaseNetwork):
             return False
 
     def subnets(self):
+        """
+        List all the subnets in this network
+        :return:
+        """
         return self._provider.network.subnets.list(network=self.id)
 
     def create_subnet(self, cidr_block, name=None, zone=None):
+        """
+        Create the subnet with cidr_block
+        :param cidr_block:
+        :param name:
+        :param zone:
+        :return:
+        """
         return self._provider.network.subnets.\
             create(network=self.id, cidr_block=cidr_block, name=name)
 
@@ -1076,6 +1091,10 @@ class AzureSubnet(BaseSubnet):
         return self._url_params.get(NETWORK_NAME)
 
     def delete(self):
+        """
+        Delete the subnet
+        :return:
+        """
         try:
             self._provider.azure_client.\
                 delete_subnet(self.network_id,
@@ -1115,6 +1134,11 @@ class AzureInstance(BaseInstance):
             self._vm.tags = {}
 
     def _get_network_attributes(self):
+        """
+        This method used identify the public , private ip addresses
+        and security groups associated with network interfaces.
+        :return:
+        """
         self._private_ips = []
         self._public_ips = []
         self._security_group_ids = []
@@ -1213,6 +1237,10 @@ class AzureInstance(BaseInstance):
     def terminate(self):
         """
         Permanently terminate this instance.
+        After deleting the VM. we are deleting the network interface
+        associated to the instance, public ip addresses associated to
+        the instance and also removing OS disk and data disks where
+        tag with name 'delete_on_terminate' has value True.
         """
         self._provider.azure_client.deallocate_vm(self.id)
         self._provider.azure_client.delete_vm(self.id)
@@ -1264,9 +1292,6 @@ class AzureInstance(BaseInstance):
         """
         Get the security groups associated with this instance.
         """
-        # boto instance.groups field returns a ``Group`` object so need to
-        # convert that into a ``SecurityGroup`` object before creating a
-        # cloudbridge SecurityGroup object
         return [self._provider.security.security_groups.get(group_id)
                 for group_id in self._security_group_ids]
 
@@ -1287,6 +1312,8 @@ class AzureInstance(BaseInstance):
     def create_image(self, name, private_key_path=None):
         """
         Create a new image based on this instance.
+        Documentation for create image available at
+        https://docs.microsoft.com/en-us/azure/virtual-machines/linux/capture-image  # noqa
         """
 
         if not self._state == 'VM generalized':
@@ -1327,9 +1354,14 @@ class AzureInstance(BaseInstance):
                 sftp.close()
 
     def add_floating_ip(self, ip_address):
+        """
+        Attaches public ip to the instance
+        :param ip_address:
+        :return:
+        """
         try:
             ip_addresses = [ip for ip in
-                            self._provider.azure_client.list_public_ips()
+                            self._provider.azure_client.list_floating_ips()
                             if ip.ip_address and ip.ip_address == ip_address]
             if len(ip_addresses) > 0:
                 """
@@ -1349,7 +1381,7 @@ class AzureInstance(BaseInstance):
 
     def remove_floating_ip(self, ip_address=None):
         """
-        Remove a elastic IP address from this instance.
+        Remove a public IP address from this instance.
         """
         try:
             nic = self._provider.azure_client.get_nic(self._nic_ids[0])
@@ -1368,7 +1400,7 @@ class AzureInstance(BaseInstance):
         This method adds the security group to VM instance.
         In Azure, security group added to Network interface.
         Azure supports to add only one security group to
-        network interface, we are adding the provided security group 4
+        network interface, we are adding the provided security group
         if not associated any security group to NIC
         else replacing the existing security group.
         '''
@@ -1384,6 +1416,19 @@ class AzureInstance(BaseInstance):
         self._provider.azure_client.create_nic(self._nic_ids[0], nic)
 
     def remove_security_group(self, sg):
+
+        '''
+                :param sg:
+                :return: None
+
+                This method removes the security group to VM instance.
+                In Azure, security group added to Network interface.
+                Azure supports to add only one security group to
+                network interface, we are removing the provided security group
+                if it associated to NIC
+                else we are ignoring.
+                '''
+
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
         sg = (self._provicer.security.security_groups.get(sg)
               if isinstance(sg, str) else sg)
@@ -1473,8 +1518,8 @@ class AzureInstanceType(BaseInstanceType):
     @property
     def num_ephemeral_disks(self):
         """
-        Python sdk does not return num_ephemeral_disks details.
-        In Azure, we cannot explicitly add ephemeral disks.
+        Azure by default add one ephemeral disks. We can not add
+        more ephemeral disks to VM explicitly
         So, we are taking assumption and populating it as Zero.
         """
         return 0
