@@ -114,7 +114,7 @@ class AzureClient(object):
 
     def create_storage_account(self, name, params):
         return self.storage_client.storage_accounts. \
-            create(self.resource_group, name, params).result()
+            create(self.resource_group, name.lower(), params).result()
 
     def list_locations(self):
         return self.subscription_client.subscriptions. \
