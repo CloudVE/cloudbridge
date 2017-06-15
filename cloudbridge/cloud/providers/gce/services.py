@@ -478,13 +478,18 @@ class GCEInstanceService(BaseInstanceService):
                     config['tags']['items'] = sg_names
         else:
             config = launch_config
-        response = self.provider.gce_compute \
-                                .instances() \
-                                .insert(
-                                    project=self.provider.project_name,
-                                    zone=self.provider.default_zone,
-                                    body=config) \
-                                .execute()
+        operation = (self.provider.gce_compute.instances()
+                         .insert(
+                             project=self.provider.project_name,
+                             zone=self.provider.default_zone,
+                             body=config)
+                         .execute())
+        if 'zone' not in operation:
+            return None
+        gce_zone = self.provider.get_gce_resource_data(operation['zone'])
+        instance_id = operation.get('targetLink')
+        self.provider.wait_for_operation(operation, zone=gce_zone.get('name'))
+        return self.get(instance_id)
 
     def get(self, instance_id):
         """
