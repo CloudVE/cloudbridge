@@ -5,7 +5,7 @@ an Alpha state.
 
 
 
-.. image:: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge.svg?token=CKR2Kjisx6hZtvixazEK&branch=azure_dev_v2
+.. image:: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge.svg?token=CKR2Kjisx6hZtvixazEK&branch=azure_dev_v3
    :target: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge
    :alt: Travis Build Status
 
