@@ -1311,11 +1311,26 @@ class GCEVolume(BaseVolume):
 
     @property
     def description(self):
-        return self._volume.get('description')
+        self.refresh()
+        labels = self._volume.get('labels')
+        if not labels or 'description' not in labels:
+            return ''
+        return labels.get('description', '')
 
     @description.setter
     def description(self, value):
-        raise NotImplementedError('Not supported by this provider.')
+        self.refresh()
+        request_body = {
+            'labels': {'description': value.replace(' ', '_').lower(),},
+            'labelFingerprint': self._volume.get('labelFingerprint'),
+        }
+        response = (self._provider.gce_compute
+                    .disks()
+                    .setLabels(
+                        project=self._provider.project_name,
+                        zone=self._provider.default_zone,
+                        resource=self.name,
+                        body=request_body).execute())
 
     @property
     def size(self):
