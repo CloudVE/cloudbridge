@@ -49,6 +49,10 @@ class AzureCloudProvider(BaseCloudProvider):
             'azure_vm_default_user_name', os.environ.get
             ('AZURE_VM_DEFAULT_USER_NAME', 'cbuser'))
 
+        self.public_key_storage_table_name = self._get_config_value(
+            'azure_public_key_storage_table_name', os.environ.get
+            ('AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME', 'cbcerts'))
+
         self._mock_azure_client = azureclient
         self._azure_client = None
 
@@ -93,7 +97,9 @@ class AzureCloudProvider(BaseCloudProvider):
                 'azure_tenant': self.tenant,
                 'azure_region_name': self.region_name,
                 'azure_resource_group': self.resource_group,
-                'azure_storage_account': self.storage_account
+                'azure_storage_account': self.storage_account,
+                'azure_public_key_storage_table_name':
+                    self.public_key_storage_table_name
             }
 
             self._azure_client = \

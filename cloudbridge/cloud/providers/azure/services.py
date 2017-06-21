@@ -6,7 +6,8 @@ from azure.common import AzureException
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
     BaseComputeService, BaseImageService, BaseInstanceService, \
-    BaseInstanceTypesService, BaseNetworkService, BaseObjectStoreService,\
+    BaseInstanceTypesService, BaseKeyPairService, \
+    BaseNetworkService, BaseObjectStoreService,\
     BaseRegionService, BaseSecurityGroupService, BaseSecurityService, \
     BaseSnapshotService, BaseSubnetService, BaseVolumeService
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
@@ -20,7 +21,7 @@ from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 from msrestazure.azure_exceptions import CloudError
 
 from .resources import AzureBucket, AzureFloatingIP, \
-    AzureInstance, AzureInstanceType, \
+    AzureInstance, AzureInstanceType, AzureKeyPair,\
     AzureLaunchConfig, AzureMachineImage, \
     AzureNetwork, AzureRegion, AzureSecurityGroup, \
     AzureSnapshot, AzureSubnet, AzureVolume
@@ -33,7 +34,7 @@ class AzureSecurityService(BaseSecurityService):
         super(AzureSecurityService, self).__init__(provider)
 
         # Initialize provider services
-        # self._key_pairs = AzureKeyPairService(provider)
+        self._key_pairs = AzureKeyPairService(provider)
         self._security_groups = AzureSecurityGroupService(provider)
 
     @property
@@ -44,8 +45,7 @@ class AzureSecurityService(BaseSecurityService):
         :rtype: ``object`` of :class:`.KeyPairService`
         :return: a KeyPairService object
         """
-        raise NotImplementedError('AzureSecurityService '
-                                  'not implemented this property')
+        return self._key_pairs
 
     @property
     def security_groups(self):
@@ -107,6 +107,62 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         except CloudError as cloudError:
             log.exception(cloudError.message)
             return False
+
+
+class AzureKeyPairService(BaseKeyPairService):
+    PARTITION_KEY = '00000000-0000-0000-0000-000000000000'
+
+    def __init__(self, provider):
+        super(AzureKeyPairService, self).__init__(provider)
+
+    def get(self, key_pair_id):
+        try:
+            key_pair = self.provider.azure_client.\
+                get_public_key(key_pair_id)
+
+            if key_pair:
+                return AzureKeyPair(self.provider, key_pair)
+            return None
+        except AzureException as error:
+            log.exception(error)
+            return None
+
+    def list(self, limit=None, marker=None):
+        key_pairs = [AzureKeyPair(self.provider, key_pair) for key_pair in
+                     self.provider.azure_client.
+                     list_public_keys(AzureKeyPairService.PARTITION_KEY)]
+        return ClientPagedResultList(self.provider, key_pairs, limit, marker)
+
+    def find(self, name, limit=None, marker=None):
+        key_pair = self.get(name)
+        return ClientPagedResultList(self.provider,
+                                     [key_pair] if key_pair else [],
+                                     limit, marker)
+
+    def create(self, name):
+
+        key_pair = self.get(name)
+
+        if key_pair:
+            raise Exception(
+                'Keypair already exists with name {0}'.format(name))
+
+        private_key_str, public_key_str = azure_helpers.gen_key_pair()
+
+        entity = {
+                  'PartitionKey': AzureKeyPairService.PARTITION_KEY,
+                  'RowKey': str(uuid.uuid4()),
+                  'Name': name,
+                  'Key': public_key_str
+                 }
+
+        self.provider.azure_client.create_public_key(entity)
+
+        key_pair = self.get(name)
+
+        key_pair.material = private_key_str
+
+        return key_pair
 
 
 class AzureObjectStoreService(BaseObjectStoreService):

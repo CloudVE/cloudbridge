@@ -4,11 +4,6 @@ from azure_test.helpers import ProviderTestBase
 
 class AzureSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
-    def test_azure_security_key_paires(self):
-        with self.assertRaises(NotImplementedError):
-            self.key_pairs = self.provider.security.key_pairs
-
-    @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_create(self):
         name = "testCreateSecGroup3"
         sg = self.provider.security.security_groups.create(
