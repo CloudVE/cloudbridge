@@ -524,6 +524,14 @@ class AzureVolume(BaseVolume):
 
     @property
     def attachments(self):
+        """
+        Azure doesn’t have option to specify the device name
+        while attaching disk to VM. It is automatically populated
+        and is not returned. As a result this method ignores
+        the device name parameter and passes None
+        to the BaseAttachmentInfo
+        :return:
+        """
         if self._volume.owner_id:
             url_params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID,
                                                  self._volume.owner_id)
@@ -808,6 +816,8 @@ class AzureMachineImage(BaseMachineImage):
         """
         Returns the minimum size of the disk that's required to
         boot this image (in GB).
+        This value is not retuned in azure api
+        as this is a limitation with Azure Compute API
 
         :rtype: ``int``
         :return: The minimum disk size needed by this image
@@ -1002,9 +1012,9 @@ class AzureRegion(BaseRegion):
     def zones(self):
         """
             Access information about placement zones within this region.
+            As Azure does not have this feature, mapping the region
+            name as zone id and name.
         """
-        # As Azure does not have zones feature, mapping the region
-        # information in the zones.
         return [AzurePlacementZone(self._provider,
                                    self._azure_region.name,
                                    self._azure_region.name)]
@@ -1314,6 +1324,13 @@ class AzureInstance(BaseInstance):
         Create a new image based on this instance.
         Documentation for create image available at
         https://docs.microsoft.com/en-us/azure/virtual-machines/linux/capture-image  # noqa
+        In azure, need to deprovision the VM before capturing.
+        To deprovision, login to VM and execute ‘waagent –deprovision’ command.
+        To do this programmatically, using pysftp to ssh into the VM
+        and executing deprovision command.
+        To SSH into the VM programmatically, need pass private key file path,
+        so we have modified the Cloud Bridge interface to pass
+        the private key file path
         """
 
         if not self._state == 'VM generalized':
@@ -1438,6 +1455,13 @@ class AzureInstance(BaseInstance):
             self._provider.azure_client.create_nic(self._nic_ids[0], nic)
 
     def _update_state(self):
+        """
+        Azure python sdk list operation does not return the current
+        staus of the instance. We have to explicity call the get method
+        for each instance to get the instance status(instance_view).
+        This is the limitation with azure rest api
+        :return:
+        """
         if not self._vm.instance_view:
             self.refresh()
         if self._vm.instance_view and len(
@@ -1495,7 +1519,7 @@ class AzureInstanceType(BaseInstanceType):
     def family(self):
         """
         Python sdk does not return family details.
-        So, we are populating it as Unknown
+        So, as of now populating it with 'Unknown'
         """
         return "Unknown"
 
@@ -1518,9 +1542,9 @@ class AzureInstanceType(BaseInstanceType):
     @property
     def num_ephemeral_disks(self):
         """
-        Azure by default add one ephemeral disks. We can not add
+        Azure by default adds one ephemeral disk. We can not add
         more ephemeral disks to VM explicitly
-        So, we are taking assumption and populating it as Zero.
+        So, returning it as Zero.
         """
         return 0
 

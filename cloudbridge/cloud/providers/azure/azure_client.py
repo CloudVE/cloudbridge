@@ -15,6 +15,9 @@ log = logging.getLogger(__name__)
 
 
 class AzureClient(object):
+    """
+    Azure client is the wrapper on top of azure python sdk
+    """
     def __init__(self, config):
         self._config = config
         self.subscription_id = config.get('azure_subscription_id')
