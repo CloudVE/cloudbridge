@@ -63,20 +63,48 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         super(AzureSecurityGroupService, self).__init__(provider)
 
     def get(self, sg_id):
+        """
+        Returns a SecurityGroup given its id.
+        """
         try:
             sgs = self.provider.azure_client.get_security_group(sg_id)
             return AzureSecurityGroup(self.provider, sgs)
 
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return None
 
     def list(self, limit=None, marker=None):
+        """
+        List all security groups associated with this account.
+
+        :rtype: ``list`` of :class:`.SecurityGroup`
+        :return:  list of SecurityGroup objects
+        """
         sgs = [AzureSecurityGroup(self.provider, sg)
                for sg in self.provider.azure_client.list_security_group()]
         return ClientPagedResultList(self.provider, sgs, limit, marker)
 
     def create(self, name, description, network_id=None):
+        """
+        Create a new SecurityGroup.
+
+        :type name: str
+        :param name: The name of the new security group.
+
+        :type description: str
+        :param description: The description of the new security group.
+
+        :type  network_id: ``str``
+        :param network_id: The ID of the virtual network under which to
+                            create the security group. But we are not using
+                            this in azure as security group associated with
+                            subnet or network interface
+
+        :rtype: ``object`` of :class:`.SecurityGroup`
+        :return:  A SecurityGroup instance or ``None`` if one was not created.
+        """
         parameters = {"location": self.provider.region_name,
                       'tags': {'Name': name}}
 
@@ -101,10 +129,23 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
+        """
+       Delete an existing SecurityGroup.
+
+       :type group_id: str
+       :param group_id: The security group ID to be deleted.
+
+       :rtype: ``bool``
+       :return:  ``True`` if the security group deleted, ``False``
+                 otherwise. Note that this implies that the group may not have
+                 been deleted by this method but instead has not existed in
+                 the first place.
+       """
         try:
             self.provider.azure_client.delete_security_group(group_id)
             return True
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return False
 
@@ -231,10 +272,14 @@ class AzureVolumeService(BaseVolumeService):
         super(AzureVolumeService, self).__init__(provider)
 
     def get(self, volume_id):
+        """
+        Returns a volume given its id.
+        """
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return None
 
@@ -250,12 +295,18 @@ class AzureVolumeService(BaseVolumeService):
                                      limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
+        """
+        List all volumes.
+        """
         azure_vols = self.provider.azure_client.list_disks()
         cb_vols = [AzureVolume(self.provider, vol) for vol in azure_vols]
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
     def create(self, name, size, zone=None, snapshot=None, description=None):
+        """
+        Creates a new volume.
+        """
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot = (self.provider.block_store.snapshots.get(snapshot)
                     if snapshot and isinstance(snapshot, str) else snapshot)
@@ -299,10 +350,14 @@ class AzureSnapshotService(BaseSnapshotService):
         super(AzureSnapshotService, self).__init__(provider)
 
     def get(self, ss_id):
+        """
+        Returns a snapshot given its id.
+        """
         try:
             snapshot = self.provider.azure_client.get_snapshot(ss_id)
             return AzureSnapshot(self.provider, snapshot)
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return None
 
@@ -327,6 +382,9 @@ class AzureSnapshotService(BaseSnapshotService):
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
     def create(self, name, volume, description=None):
+        """
+        Creates a new snapshot of a given volume.
+        """
         volume = (self.provider.block_store.volumes.get(volume)
                   if isinstance(volume, str) else volume)
 
@@ -387,6 +445,7 @@ class AzureInstanceService(BaseInstanceService):
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
 
+        # Key_pair is mandatory in azure and it should not be None.
         if key_pair:
             key_pair = (self.provider.security.key_pairs.get(key_pair)
                         if isinstance(key_pair, str) else key_pair)
@@ -421,7 +480,7 @@ class AzureInstanceService(BaseInstanceService):
         nic_params = {
                 'location': self._provider.region_name,
                 'ip_configurations': [{
-                    'name': 'MyIpConfig',
+                    'name': instance_name + '_ip_config',
                     'private_ip_allocation_method': 'Dynamic',
                     'subnet': {
                         'id': subnet_id
@@ -434,7 +493,7 @@ class AzureInstanceService(BaseInstanceService):
                 'id': security_group_ids[0]
             }
         nic_info = self.provider.azure_client.create_nic(
-            instance_name + '_NIC',
+            instance_name + '_nic',
             nic_params
         )
 
@@ -468,7 +527,7 @@ class AzureInstanceService(BaseInstanceService):
                     'id': image.resource_id
                 },
                 "os_disk": {
-                    "name": name + '_Os_Disk',
+                    "name": instance_name + '_os_disk',
                     "create_option": "fromImage"
                 },
                 'data_disks': disks
@@ -543,6 +602,11 @@ class AzureInstanceService(BaseInstanceService):
             })
             delete_on_terminate = delete_on_terminate or False
             volume.tags.update(delete_on_terminate=str(delete_on_terminate))
+            # In azure, there is no option to specify terminate disks
+            # (similar to AWS delete_on_terminate) on VM delete.
+            # This method uses the azure tags functionality to store
+            # the  delete_on_terminate option when the virtual machine
+            # is deleted, we parse the tags and delete accordingly
             self.provider.azure_client.\
                 update_disk_tags(volume.id, volume.tags)
 
@@ -572,7 +636,8 @@ class AzureInstanceService(BaseInstanceService):
                                 "launching with a"
                                 " new blank volume block device mapping.")
                         vol_name = \
-                            "{0}_disk".format(vm_name, uuid.uuid4().hex[:6])
+                            "{0}_{1}_disk".format(vm_name,
+                                                  uuid.uuid4().hex[:6])
                         new_vol = self.provider.block_store.volumes.create(
                             vol_name,
                             device.size,
@@ -607,6 +672,7 @@ class AzureInstanceService(BaseInstanceService):
             vm = self.provider.azure_client.get_vm(instance_id)
             return AzureInstance(self.provider, vm)
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return None
 
@@ -630,10 +696,14 @@ class AzureImageService(BaseImageService):
         super(AzureImageService, self).__init__(provider)
 
     def get(self, image_id):
+        """
+        Returns an Image given its id
+        """
         try:
             image = self.provider.azure_client.get_image(image_id)
             return AzureMachineImage(self.provider, image)
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return None
 
@@ -650,6 +720,9 @@ class AzureImageService(BaseImageService):
                                      limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
+        """
+        List all images.
+        """
         azure_images = self.provider.azure_client.list_images()
         cb_images = [AzureMachineImage(self.provider, img)
                      for img in azure_images]
@@ -688,6 +761,7 @@ class AzureNetworkService(BaseNetworkService):
             return AzureNetwork(self.provider, network)
 
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return None
 
@@ -763,6 +837,7 @@ class AzureNetworkService(BaseNetworkService):
             self.provider.azure_client.delete_network(network_id)
             return True
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return False
 
@@ -787,10 +862,6 @@ class AzureRegionService(BaseRegionService):
 
     @property
     def current(self):
-        # aws sets the name returned from the aws sdk to both the id & name
-        # of BaseRegion and as such calling get() with the id works
-        # but Azure sdk returns both id & name and are set to
-        # the BaseRegion properties
         return self.get(self.provider.region_name)
 
 
@@ -800,11 +871,23 @@ class AzureSubnetService(BaseSubnetService):
         super(AzureSubnetService, self).__init__(provider)
 
     def get(self, subnet_id):
+        """
+         Azure does not provide an api to get the subnet directly by id.
+         It also requires the network id.
+         To make it consistent across the providers the following code
+         gets the specific code from the subnet list.
+
+        :param subnet_id:
+        :return:
+        """
         subnets = [subnet for subnet in self._list_subnets()
                    if subnet.id == subnet_id]
         return subnets[0] if len(subnets) else None
 
     def list(self, network=None, limit=None, marker=None):
+        """
+        List subnets
+        """
         return ClientPagedResultList(self.provider,
                                      self._list_subnets(network),
                                      limit=limit, marker=marker)
@@ -826,6 +909,9 @@ class AzureSubnetService(BaseSubnetService):
         return subnets
 
     def create(self, network, cidr_block, name=None, **kwargs):
+        """
+        Create subnet
+        """
         network_id = network.id \
             if isinstance(network, Network) else network
 
@@ -857,6 +943,7 @@ class AzureSubnetService(BaseSubnetService):
                 AzureSubnet.CB_DEFAULT_SUBNET_NAME
             )
         except CloudError:
+            # Azure raises the cloud error if the resource not available
             pass
 
         if subnet:
@@ -867,6 +954,7 @@ class AzureSubnetService(BaseSubnetService):
             network = self.provider.azure_client\
                 .get_network(AzureNetwork.CB_DEFAULT_NETWORK_NAME)
         except CloudError:
+            # Azure raises the cloud error if the resource not available
             pass
 
         if not network:
@@ -882,13 +970,20 @@ class AzureSubnetService(BaseSubnetService):
 
     def delete(self, subnet):
         try:
+            # Azure does not provide an api to delete the subnet by id
+            # It also requires network id. To get the network id
+            # code is doing an explicit get and retrieving the network id
+
             if not isinstance(subnet, Subnet):
                 subnet = self.get(subnet)
-            self.provider.azure_client.delete_subnet(
-                subnet.network_id,
-                subnet.id
-            )
-            return True
+            if subnet:
+                self.provider.azure_client.delete_subnet(
+                    subnet.network_id,
+                    subnet.id
+                )
+                return True
+            return False
         except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return False

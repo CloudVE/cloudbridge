@@ -4,6 +4,12 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 
 def filter(list_items, filters):
+    """
+    This function filter items on the tags
+    :param list_items:
+    :param filters:
+    :return:
+    """
     filtered_list = []
     if filters:
         for obj in list_items:
@@ -17,37 +23,45 @@ def filter(list_items, filters):
 
 
 def parse_url(template_url, original_url):
+    """
+    In Azure all the resource IDs are returned as URIs.
+    ex: '/subscriptions/{subscriptionId}/resourceGroups/' \
+       '{resourceGroupName}/providers/Microsoft.Compute/' \
+       'virtualMachines/{vmName}'
+    This function splits the resource ID based on the template url passed
+    and returning the dictionary.
+    """
     template_url_parts = template_url.split('/')
     original_url_parts = original_url.split('/')
     if len(template_url_parts) != len(original_url_parts):
         raise Exception('Invalid url parameter passed')
-    d = {}
-    for k, v in zip(template_url_parts, original_url_parts):
-        if k.startswith('{') and k.endswith('}'):
-            d.update({k[1:-1]: v})
+    dict = {}
+    for key, value in zip(template_url_parts, original_url_parts):
+        if key.startswith('{') and key.endswith('}'):
+            dict.update({key[1:-1]: value})
 
-    return d
+    return dict
 
 
 def gen_key_pair():
-    # generate private/public key pair
-    key = rsa.generate_private_key(backend=default_backend(),
-                                   public_exponent=65537,
-                                   key_size=2048)
+    """
+    This method generates the public and private key pair.
+    The public key format is OpenSSH and private key format is PEM container
+    :return:
+    """
 
-    # get public key in OpenSSH format
-    public_key = key.public_key().\
+    private_key = rsa.generate_private_key(backend=default_backend(),
+                                           public_exponent=65537,
+                                           key_size=2048)
+
+    public_key_str = private_key.public_key().\
         public_bytes(serialization.Encoding.OpenSSH,
-                     serialization.PublicFormat.OpenSSH)
+                     serialization.PublicFormat.OpenSSH).decode('utf-8')
 
-    # get private key in PEM container format
-    pem = key.\
+    private_key_str = private_key.\
         private_bytes(encoding=serialization.Encoding.PEM,
                       format=serialization.PrivateFormat.TraditionalOpenSSL,
-                      encryption_algorithm=serialization.NoEncryption())
-
-    # decode to printable strings
-    private_key_str = pem.decode('utf-8')
-    public_key_str = public_key.decode('utf-8')
+                      encryption_algorithm=serialization.NoEncryption()
+                      ).decode('utf-8')
 
     return (private_key_str, public_key_str)
