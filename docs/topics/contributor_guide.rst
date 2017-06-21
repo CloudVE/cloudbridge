@@ -9,5 +9,6 @@ CloudBridge Provider.
 
     Design Goals <design_goals.rst>
     Testing <testing.rst>
-    Provider development walkthrough <provider_development.rst>
+    Provider Development Walkthrough <provider_development.rst>
+    Release Process <release_process.rst>
 

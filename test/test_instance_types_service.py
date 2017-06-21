@@ -1,21 +1,19 @@
 from test import helpers
 
-import six
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces.resources import InstanceType
-from test.helpers import ProviderTestBase
+
+import six
 
 
 class CloudInstanceTypesServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudInstanceTypesServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
+    @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types(self):
         instance_types = self.provider.compute.instance_types.list()
-        # check iteration
-        iter_instance_types = list(self.provider.compute.instance_types)
+        # Check iteration, keeping the first 50 entries (the .list() default)
+        iter_instance_types = list(self.provider.compute.instance_types)[:50]
         self.assertListEqual(iter_instance_types, instance_types)
 
         for inst_type in instance_types:
@@ -69,6 +67,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
                     inst_type.extra_data, dict),
                 "InstanceType extra_data must be None or a dict")
 
+    @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types_find(self):
         """
         Searching for an instance by name should return an
@@ -91,6 +90,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
             self.provider.compute.instance_types.find(
                 non_existent_param="random_value")
 
+    @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_types_get(self):
         """
         Searching for an instance by id should return an

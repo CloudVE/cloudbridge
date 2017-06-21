@@ -187,7 +187,12 @@ class InstanceService(PageableObjectMixin, CloudService):
                 print("Instance Data: {0}", instance)
 
         :type  limit: ``int``
-        :param limit: The maximum number of objects to return
+        :param limit: The maximum number of objects to return. Note that the
+                      maximum is not guaranteed to be honoured, and a lower
+                      maximum may be enforced depending on the provider. In
+                      such a case, the returned ResultList's is_truncated
+                      property can be used to determine whether more records
+                      are available.
 
         :type  marker: ``str``
         :param marker: The marker is an opaque identifier used to assist
@@ -200,7 +205,7 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, image, instance_type, network=None, zone=None,
+    def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -218,32 +223,39 @@ class InstanceService(PageableObjectMixin, CloudService):
         :param instance_type: The InstanceType or name, specifying the size of
                               the instance to boot into
 
-        :type  network:  ``Network`` or ``str``
-        :param network:  The Network or an ID with which the instance should
-                         be associated. If no network was specified, this
-                         method will attempt to find a 'default' one and launch
-                         the instance using that network. A 'default' network
-                         is one tagged as such by the native API. If such tag
-                         or functionality does not exist, an attempt to create
-                         a new network (by default called 'CloudBridgeNet')
-                         will be made. If that falls through, an attempt will
-                         be made to launch the instance without specifying the
-                         network parameter (this is under the assumption the
-                         private networking functionality is not available on
-                         the provider).
+        :type  subnet:  ``Subnet`` or ``str``
+        :param subnet: The subnet object or a subnet string ID with which the
+                       instance should be associated. The subnet is a mandatory
+                       parameter, and must be provided when launching an
+                       instance.
+
+                       Note: Older clouds (with classic networking), may not
+                       have proper subnet support and are not guaranteed to
+                       work. Some providers (e.g. OpenStack) support a null
+                       value but the behaviour is implementation specific.
 
         :type  zone: ``Zone`` or ``str``
         :param zone: The Zone or its name, where the instance should be placed.
+                     This parameter is provided for legacy compatibility (with
+                     classic networks).
+
+                     The subnet's placement zone will take precedence over this
+                     parameter, but in its absence, this value will be used.
 
         :type  key_pair: ``KeyPair`` or ``str``
         :param key_pair: The KeyPair object or its name, to set for the
                          instance.
 
         :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a
-                                list of ``str`` names
+                                list of ``str`` object IDs
         :param security_groups: A list of ``SecurityGroup`` objects or a list
-                                of ``SecurityGroup`` names, which should be
+                                of ``SecurityGroup`` IDs, which should be
                                 assigned to this instance.
+
+                                The security groups must be associated with the
+                                same network as the supplied subnet. Use
+                                ``network.security_groups`` to retrieve a list
+                                of security groups belonging to a network.
 
         :type  user_data: ``str``
         :param user_data: An extra userdata object which is compatible with
@@ -655,7 +667,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network_id, cidr_block, name=None):
+    def create(self, network_id, cidr_block, name=None, zone=None):
         """
         Create a new subnet within the supplied network.
 
@@ -670,8 +682,32 @@ class SubnetService(PageableObjectMixin, CloudService):
         :param name: An optional subnet name. The name will be set if the
                      provider supports it.
 
+        :type zone: ``str``
+        :param zone: An optional placement zone for the subnet. Some providers
+                     may not support this, in which case the value is ignored.
+
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object
+        """
+        pass
+
+    @abstractmethod
+    def get_or_create_default(self, zone=None):
+        """
+        Return a default subnet for the account or create one if not found.
+
+        A default network is one marked as such by the provider or matches the
+        default name used by this library (e.g., CloudBridgeNet).
+
+        If this method creates a new subnet, it will create one in each zone
+        available from the provider.
+
+        :type zone: ``str``
+        :param zone: Placement zone where to look for the subnet. If not
+                     supplied, a subnet from random zone will be selected.
+
+        :rtype: ``object`` of :class:`.Subnet`
+        :return: A Subnet object
         """
         pass
 
@@ -970,7 +1006,7 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
     @abstractmethod
     def find(self, name, limit=None, marker=None):
         """
-        Get all security groups associated with your account.
+        Get security groups associated with your account filtered by name.
 
         :type name: str
         :param name: The name of the security group to retrieve.

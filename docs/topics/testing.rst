@@ -38,18 +38,31 @@ This will run all the tests for all the environments defined in file
 ``tox.ini``.
 
 
-Specific environment
-~~~~~~~~~~~~~~~~~~~~
+Specific environment and infrastructure
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 If you’d like to run the tests on a specific environment only, say Python 2.7,
-use a command like this: ``tox -e py27``. Alternativley, to use your default
-python, you can also run the test command directly ``python setup.py test``.
+against a specific infrastructure, say aws, use a command like this:
+``tox -e py27-aws``. The available provider names are listed in the
+`ProviderList`_ class (e.g., ``aws`` or ``openstack``).  
 
-Select infrastructure
-~~~~~~~~~~~~~~~~~~~~~
-You can also run the tests on a specific cloud only. To do so, export an
-environment variable ``CB_TEST_PROVIDER`` and specify the desired provider
-name. The available provider names are listed in the `ProviderList`_ class
-(e.g., ``aws`` or ``openstack``). Then, run the ``tox`` command.
+Specific test cases
+~~~~~~~~~~~~~~~~~~~~
+You can run a specific test case, as follows:
+``tox -- -s test.test_cloud_factory.CloudFactoryTestCase``
+
+It can also be restricted to a particular environment as follows:
+``tox -e "py27-aws" -- -s test.test_cloud_factory.CloudFactoryTestCase``
+
+Using unittest directly
+~~~~~~~~~~~~~~~~~~~~~~~
+You can also run the tests against your active virtual environment directly
+with ``python setup.py test``. You will need to set the ``CB_TEST_PROVIDER``
+and ``CB_USE_MOCK_PROVIDERS`` environment variables prior to running the tests,
+or they will default to ``CB_TEST_PROVIDER=aws`` and
+``CB_USE_MOCK_PROVIDERS=True``.
+
+You can also run a specific test case, as follows:
+``python setup.py test -s test.test_cloud_factory.CloudFactoryTestCase``
 
 Using a mock provider
 ~~~~~~~~~~~~~~~~~~~~~

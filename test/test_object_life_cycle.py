@@ -1,17 +1,15 @@
 import uuid
 
+from test import helpers
+from test.helpers import ProviderTestBase
+
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
 
 
 class CloudObjectLifeCycleTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudObjectLifeCycleTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
+    @helpers.skipIfNoService(['block_store.volumes'])
     def test_object_life_cycle(self):
         """
         Test object life cycle methods by using a volume.

@@ -15,9 +15,9 @@ Create a new private network
 ----------------------------
 Creating a private network is a simple, one-line command but appropriately
 connecting it so it has Internet access is a multi-step process:
-(1) create a network; (2) create a subnet within the network; (3) create a
+(1) create a network; (2) create a subnet within this network; (3) create a
 router; (4) attach the router to an external network; and (5) add a route to
-the router that links with with a subnet. For some providers, any network can
+the router that links with a subnet. For some providers, any network can
 be external (ie, connected to the Internet) while for others it's a specific,
 pre-defined one that exists in the an account by default. In order to properly
 connect the router, we need to ensure we're using an external network.
@@ -35,9 +35,9 @@ the block and allow up to 16 IP addresses into the subnet (``/28``).
     if not net.external:
         for n in self.provider.network.list():
             if n.external:
-                external_net = n
+                net = n
                 break
-    router.attach_network(external_net.id)
+    router.attach_network(net.id)
     router.add_route(sn.id)
 
 Retrieve an existing private network

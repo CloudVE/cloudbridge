@@ -35,7 +35,7 @@ class GCPResourceUrl(object):
 
 
 class GCPResources(object):
-    
+
     def __init__(self, connection):
         self._connection = connection
 
@@ -112,7 +112,8 @@ class GCPResources(object):
         GCP servers.
         """
         url = url.strip()
-        if url.startswith(self._root_url): url = url[len(self._root_url):]
+        if url.startswith(self._root_url):
+            url = url[len(self._root_url):]
         if url.startswith(self._service_path):
             url = url[len(self._service_path):]
 
@@ -213,6 +214,7 @@ class GCECloudProvider(BaseCloudProvider):
         """
         http = httplib2.Http()
         http = self._credentials.authorize(http)
+
         def _postproc(*kwargs):
             if len(kwargs) >= 2:
                 # The first argument is request, and the second is response.

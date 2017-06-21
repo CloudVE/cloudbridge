@@ -9,14 +9,14 @@ import os
 import shutil
 import time
 
-import six
-
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
+from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
@@ -30,18 +30,17 @@ from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Region
-from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.resources import ResultList
+from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import Subnet
-from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
-from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
+import six
 
 log = logging.getLogger(__name__)
 
@@ -667,6 +666,9 @@ class BaseNetwork(BaseCloudResource, Network, BaseObjectLifeCycleMixin):
 
 class BaseSubnet(Subnet, BaseCloudResource):
 
+    CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
+                                            'CloudBridgeSubnet')
+
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
 
@@ -698,6 +700,9 @@ class BaseFloatingIP(FloatingIP, BaseCloudResource):
 
 
 class BaseRouter(Router, BaseCloudResource):
+
+    CB_DEFAULT_ROUTER_NAME = os.environ.get('CB_DEFAULT_ROUTER_NAME',
+                                            'CloudBridgeRouter')
 
     def __init__(self, provider):
         super(BaseRouter, self).__init__(provider)

@@ -14,7 +14,7 @@ and 4 GB RAM.
 
 .. code-block:: python
 
-    img = provider.compute.images.get('ami-5ac2cd4d')  # Ubuntu 14.04 on AWS
+    img = provider.compute.images.get('ami-f4cc1de2')  # Ubuntu 16.04 on AWS
     inst_type = sorted([t for t in provider.compute.instance_types.list()
                         if t.vcpus >= 2 and t.ram >= 4],
                        key=lambda x: x.vcpus*x.ram)[0]
@@ -45,16 +45,17 @@ Private networking
 ~~~~~~~~~~~~~~~~~~
 Private networking gives you control over the networking setup for your
 instance(s) and is considered the preferred method for launching instances. To
-launch an instance with an explicit private network, just supply it as an
-additional argument to the ``create`` method:
+launch an instance with an explicit private network, supply a subnet within
+a network as an additional argument to the ``create`` method:
 
 .. code-block:: python
 
     provider.network.list()  # Find a desired network ID
     net = provider.network.get('desired network ID')
+    sn = net.subnets()[0]  # Get a handle on the desired subnet to launch with
     inst = provider.compute.instances.create(
         name='CloudBridge-VPC', image=img, instance_type=inst_type,
-        network=net, key_pair=kp, security_groups=[sg])
+        subnet=sn, key_pair=kp, security_groups=[sg])
 
 For more information on how to create and setup a private network, take a look
 at `Networking <./networking.html>`_.

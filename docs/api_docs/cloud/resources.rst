@@ -8,21 +8,6 @@ CloudServiceType
 .. autoclass:: cloudbridge.cloud.interfaces.resources.CloudServiceType
     :members:
 
-CloudBridgeBaseException
-------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.CloudBridgeBaseException
-    :members:
-
-WaitStateException
-------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.WaitStateException
-    :members:
-
-InvalidConfigurationException
------------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.InvalidConfigurationException
-    :members:
-
 ObjectLifeCycleMixin
 --------------------
 .. autoclass:: cloudbridge.cloud.interfaces.resources.ObjectLifeCycleMixin

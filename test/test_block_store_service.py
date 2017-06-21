@@ -1,20 +1,19 @@
+import time
 import uuid
 
-import six
+from test import helpers
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces import SnapshotState
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+
+import six
 
 
 class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudBlockStoreServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
+    @helpers.skipIfNoService(['block_store.volumes'])
     def test_crud_volume(self):
         """
         Create a new volume, check whether the expected values are set,
@@ -91,6 +90,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             "Volume %s should have been deleted but still exists." %
             name)
 
+    @helpers.skipIfNoService(['block_store.volumes'])
     def test_attach_detach_volume(self):
         """
         Create a new volume, and attempt to attach it to an instance
@@ -98,11 +98,16 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         instance_name = "CBVolOps-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, _ = helpers.create_test_network(self.provider, instance_name)
-        test_instance = helpers.get_test_instance(self.provider, instance_name,
-                                                  network=net)
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        net = None
+        test_instance = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):
+            net, subnet = helpers.create_test_network(
+                self.provider, instance_name)
+            test_instance = helpers.get_test_instance(
+                self.provider, instance_name, subnet=subnet)
             name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.zone_id)
@@ -117,6 +122,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     [VolumeState.AVAILABLE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
 
+    @helpers.skipIfNoService(['block_store.volumes'])
     def test_volume_properties(self):
         """
         Test volume properties
@@ -125,11 +131,17 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             self.provider.name,
             uuid.uuid4())
         vol_desc = 'newvoldesc1'
-        net, _ = helpers.create_test_network(self.provider, instance_name)
-        test_instance = helpers.get_test_instance(self.provider, instance_name,
-                                                  network=net)
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        test_instance = None
+        net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):
+            net, subnet = helpers.create_test_network(
+                self.provider, instance_name)
+            test_instance = helpers.get_test_instance(
+                self.provider, instance_name, subnet=subnet)
+
             name = "CBUnitTestVolProps-{0}".format(uuid.uuid4())
             test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.zone_id, description=vol_desc)
@@ -163,8 +175,9 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                  "/dev/sda2")
                 test_vol.detach()
                 test_vol.name = 'newvolname1'
-                # Force a refresh before checking attachment status
-                test_vol.refresh()
+                test_vol.wait_for(
+                    [VolumeState.AVAILABLE],
+                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
                 self.assertEqual(test_vol.name, 'newvolname1')
                 self.assertEqual(test_vol.description, vol_desc)
                 self.assertIsNone(test_vol.attachments)
@@ -172,6 +185,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     [VolumeState.AVAILABLE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
 
+    @helpers.skipIfNoService(['block_store.snapshots'])
     def test_crud_snapshot(self):
         """
         Create a new volume, create a snapshot of the volume, and check
@@ -280,6 +294,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
             # Test creation of a snap via SnapshotService
             snap_too_name = "CBSnapToo-{0}".format(name)
+            time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
             test_snap_too = self.provider.block_store.snapshots.create(
                 name=snap_too_name, volume=test_vol, description=snap_too_name)
             with helpers.cleanup_action(lambda: cleanup_snap(test_snap_too)):
@@ -289,6 +304,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     "repr(obj) should contain the object id so that the object"
                     " can be reconstructed, but does not.")
 
+    @helpers.skipIfNoService(['block_store.snapshots'])
     def test_snapshot_properties(self):
         """
         Test snapshot properties

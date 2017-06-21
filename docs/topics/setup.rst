@@ -2,10 +2,11 @@ Setup
 -----
 To initialize a connection to a cloud and get a provider object, you will
 need to provide the cloud's access credentials to CloudBridge. These may
-be provided in one of two ways:
+be provided in one of following ways:
 
 1. Environment variables
 2. A dictionary
+3. Configuration file
 
 Providing access credentials through environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -28,8 +29,8 @@ Mandatory variables  Optional Variables
 OS_AUTH_URL			 NOVA_SERVICE_NAME
 OS_USERNAME			 OS_COMPUTE_API_VERSION
 OS_PASSWORD			 OS_VOLUME_API_VERSION
-OS_PROJECT_NAME
-OS_REGION_NAME
+OS_PROJECT_NAME      OS_STORAGE_URL
+OS_REGION_NAME       OS_AUTH_TOKEN
 ===================  ==================
 
 
@@ -74,6 +75,8 @@ default_result_limit  Number of results that a ``.list()`` method should return.
 ====================  ==================
 Variable		      Description
 ====================  ==================
+aws_session_token     Session key for your AWS account (if using temporary
+                      credentials).
 ec2_is_secure         True to use an SSL connection. Default is ``True``.
 ec2_region_name       Default region name. Defaults to ``us-east-1``.
 ec2_region_endpoint   Endpoint to use. Default is ``ec2.us-east-1.amazonaws.com``.
@@ -92,20 +95,51 @@ s3_validate_certs     Whether to use SSL certificate verification. Default is
 ====================  ==================
 
 
+Providing access credentials in a file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CloudBridge can also read credentials from a file on your local file system.
+The file should be placed in one of two locations: ``/etc/cloudbridge.ini`` or
+``~/.cloudbridge``. Each set of credentials should be delineated with the
+provider ID (e.g., ``openstack``, ``aws``) with the necessary credentials
+being supplied in YAML format. Note that only one set of credentials per
+cloud provider type can be supplied (i.e., via this method, it is not possible
+to provide credentials for two different OpenStack clouds).
+
+.. code-block:: bash
+
+    [openstack]
+    os_username: username
+    os_password: password
+    os_auth_url: auth url
+    os_user_domain_name: user domain name
+    os_project_domain_name: project domain name
+    os_project_name: project name
+
+    [aws]
+    aws_access_key: access key
+    aws_secret_key: secret key
+
+
 Other configuration variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 In addition to the provider specific configuration variables above, there are
 some general configuration environment variables that apply to CloudBridge as
 a whole
 
-=====================  ==================
-Variable		       Description
-=====================  ==================
-CB_DEBUG               Setting ``CB_DEBUG=True`` will cause detailed debug
-                       output to be printed for each provider (including HTTP
-                       traces).
-CB_USE_MOCK_PROVIDERS  Setting this to ``True`` will cause the CloudBridge test
-                       suite to use mock drivers when available.
-CB_TEST_PROVIDER       Set this value to a valid :class:`.ProviderList` value
-                       such as ``aws``, to limit tests to that provider only.
-=====================  ==================
+======================  ==================
+Variable		            Description
+======================  ==================
+CB_DEBUG                Setting ``CB_DEBUG=True`` will cause detailed debug
+                        output to be printed for each provider (including HTTP
+                        traces).
+CB_USE_MOCK_PROVIDERS   Setting this to ``True`` will cause the CloudBridge test
+                        suite to use mock drivers when available.
+CB_TEST_PROVIDER        Set this value to a valid :class:`.ProviderList` value
+                        such as ``aws``, to limit tests to that provider only.
+CB_DEFAULT_SUBNET_NAME  Name to be used for a subnet that will be considered
+                        the 'default' by the library. This default will be used
+                        only in cases there is no subnet marked as the default by the provider.
+CB_DEFAULT_NETWORK_NAME Name to be used for a network that will be considered
+                        the 'default' by the library. This default will be used
+                        only in cases there is no network marked as the default by the provider.
+======================= ==================

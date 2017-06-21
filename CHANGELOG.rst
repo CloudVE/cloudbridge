@@ -1,4 +1,46 @@
-0.1.1 - Aug 10, 2016.
+0.3.2 - June 10, 2017. (sha f07f3cbd758a0872b847b5537d9073c90f87c24d)
+-------
+
+* Patch release to support files>5GB with OpenStack (thanks @MartinPaulo)
+* Misc bug fixes
+
+0.3.1 - April 18, 2017. (sha f36a462e886d8444cb2818f6573677ecf0565315)
+-------
+
+* Patch for binary file handling in openstack
+
+0.3.0 - April 11, 2017. (sha 13539ccda9e4809082796574d18b1b9bb3f2c624)
+-------
+
+* Reworked test framework to rely on tox's test generation features. This
+  allows for individual test cases to be run on a per provider basis.
+* Added more OpenStack swift config options (OS_AUTH_TOKEN and OS_STORAGE_URL)
+* Added supports for accessing EC2 containers with restricted permissions.
+* Removed exists() method from object store interface. Use get()==None check
+  instead.
+* New method (img.min_disk) for geting size of machine image.
+* Test improvements (flake8 during build, more tests)
+* Misc bug fixes and improvements
+* Changed library to beta state
+* General documentation updates (testing, release process)
+
+0.2.0 - March 23, 2017. (sha a442d96b829ea2c721728520b01981fa61774625)
+-------
+
+* Reworked the instance launch method to require subnet vs. network. This
+  removed the option of adding network interface to a launch config object.
+* Added object store methods: upload from file path, list objects with a
+  prefix, check if an object exists, (AWS only) get an accessible URL for an
+  object (thanks @VJalili)
+* Modified `get_ec2_credentials()` method to `get_or_create_ec2_credentials()`
+* Added an option to read provider config values from a file
+  (`~/.cloudbridge` or `/etc/cloudbridge`)
+* Replaced py35 with py36 for running tests
+* Added logging configuration for the library
+* General documentation updates
+
+
+0.1.1 - Aug 10, 2016. (sha 0122fb1173c88ae64e40140ffd35ff3797e9e4ad)
 -------
 
 * For AWS, always launch instances into private networking (i.e., VPC)
