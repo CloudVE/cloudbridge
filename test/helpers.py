@@ -130,6 +130,8 @@ def delete_test_network(network):
 def create_test_instance(
         provider, instance_name, subnet, launch_config=None,
         key_pair=None, security_groups=None):
+    if not key_pair and provider.PROVIDER_ID == 'azure':
+        key_pair = provider.security.key_pairs.create(name=instance_name)
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),

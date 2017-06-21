@@ -450,7 +450,8 @@ class AzureInstanceService(BaseInstanceService):
             key_pair = (self.provider.security.key_pairs.get(key_pair)
                         if isinstance(key_pair, str) else key_pair)
         else:
-            raise Exception("Keypair required")
+            raise Exception("Can not create instance in azure "
+                            "without public key. Keypair required")
 
         image = (self.provider.compute.images.get(image)
                  if isinstance(image, str) else image)
@@ -470,10 +471,12 @@ class AzureInstanceService(BaseInstanceService):
             self._resolve_launch_options(subnet, zone_id, security_groups)
 
         if launch_config:
-            disks = self._process_block_device_mappings(launch_config,
-                                                        name, zone_id)
+            disks, root_disk_size = \
+                self._process_block_device_mappings(launch_config,
+                                                    name, zone_id)
         else:
             disks = None
+            root_disk_size = None
 
         instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
@@ -538,6 +541,10 @@ class AzureInstanceService(BaseInstanceService):
         if key_pair:
             params['tags'].update(Key_Pair=key_pair.name)
 
+        if root_disk_size:
+            params['storage_profile']['os_disk']['disk_size_gb'] = \
+                root_disk_size
+
         self.provider.azure_client.create_vm(instance_name, params)
         vm = self._provider.azure_client.get_vm(instance_name)
         return AzureInstance(self.provider, vm)
@@ -590,6 +597,7 @@ class AzureInstanceService(BaseInstanceService):
         """
         disks = []
         volumes_count = 0
+        root_disk_size = None
 
         def attach_volume(volume, delete_on_terminate):
             disks.append({
@@ -644,12 +652,14 @@ class AzureInstanceService(BaseInstanceService):
                             zone)
                         attach_volume(new_vol, device.delete_on_terminate)
                     volumes_count += 1
+                else:
+                    root_disk_size = device.size
 
             else:  # device is ephemeral
                 # in azure we cannot add the ephemeral disks explicitly
                 pass
 
-        return disks
+        return disks, root_disk_size
 
     def create_launch_config(self):
         return AzureLaunchConfig(self.provider)
