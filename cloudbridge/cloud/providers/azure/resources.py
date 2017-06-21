@@ -1571,10 +1571,6 @@ class AzureKeyPair(BaseKeyPair):
         return self._key_pair.Name
 
     @property
-    def key(self):
-        return self._key_pair.Key
-
-    @property
     def material(self):
         """
         Unencrypted private key.
