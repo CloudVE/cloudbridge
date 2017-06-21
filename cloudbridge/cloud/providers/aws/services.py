@@ -1,6 +1,6 @@
 """Services implemented by the AWS provider."""
-import time
 import string
+import time
 
 from boto.ec2.blockdevicemapping import BlockDeviceMapping
 from boto.ec2.blockdevicemapping import BlockDeviceType
@@ -22,9 +22,9 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -644,9 +644,6 @@ class AWSInstanceService(BaseInstanceService):
                                      reservations.next_token,
                                      False, data=instances)
 
-AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
-                                "aws_instance_data.json"
-
 
 class AWSInstanceTypesService(BaseInstanceTypesService):
 
@@ -659,8 +656,8 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
         Fetch info about the available instances.
 
         To update this information, update the file pointed to by the
-        ``AWS_INSTANCE_DATA_DEFAULT_URL`` above. The content for this file
-        should be obtained from this repo
+        ``provider.AWS_INSTANCE_DATA_DEFAULT_URL`` above. The content for this
+        file should be obtained from this repo:
         https://github.com/powdahound/ec2instances.info (in particular, this
         file: https://raw.githubusercontent.com/powdahound/ec2instances.info/
         master/www/instances.json).
@@ -668,7 +665,8 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
         TODO: Needs a caching function with timeout
         """
         r = requests.get(self.provider.config.get(
-            "aws_instance_info_url", AWS_INSTANCE_DATA_DEFAULT_URL))
+            "aws_instance_info_url",
+            self.provider.AWS_INSTANCE_DATA_DEFAULT_URL))
         return r.json()
 
     def list(self, limit=None, marker=None):

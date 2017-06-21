@@ -1,3 +1,29 @@
+0.3.2 - June 10, 2017. (sha f07f3cbd758a0872b847b5537d9073c90f87c24d)
+-------
+
+* Patch release to support files>5GB with OpenStack (thanks @MartinPaulo)
+* Misc bug fixes
+
+0.3.1 - April 18, 2017. (sha f36a462e886d8444cb2818f6573677ecf0565315)
+-------
+
+* Patch for binary file handling in openstack
+
+0.3.0 - April 11, 2017. (sha 13539ccda9e4809082796574d18b1b9bb3f2c624)
+-------
+
+* Reworked test framework to rely on tox's test generation features. This
+  allows for individual test cases to be run on a per provider basis.
+* Added more OpenStack swift config options (OS_AUTH_TOKEN and OS_STORAGE_URL)
+* Added supports for accessing EC2 containers with restricted permissions.
+* Removed exists() method from object store interface. Use get()==None check
+  instead.
+* New method (img.min_disk) for geting size of machine image.
+* Test improvements (flake8 during build, more tests)
+* Misc bug fixes and improvements
+* Changed library to beta state
+* General documentation updates (testing, release process)
+
 0.2.0 - March 23, 2017. (sha a442d96b829ea2c721728520b01981fa61774625)
 -------
 

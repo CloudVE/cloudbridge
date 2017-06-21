@@ -1,11 +1,12 @@
 import uuid
 
-import six
+from test import helpers
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces import MachineImageState
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+import six
 
 
 class CloudImageServiceTestCase(ProviderTestBase):
@@ -21,11 +22,18 @@ class CloudImageServiceTestCase(ProviderTestBase):
         instance_name = "CBImageTest-{0}-{1}".format(
             self.provider.name,
             uuid.uuid4())
-        net, subnet = helpers.create_test_network(self.provider, instance_name)
-        test_instance = helpers.get_test_instance(self.provider, instance_name,
-                                                  subnet=subnet)
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        test_instance = None
+        net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):
+            net, subnet = helpers.create_test_network(
+                self.provider, instance_name)
+            test_instance = helpers.get_test_instance(
+                self.provider, instance_name, subnet=subnet)
+
             name = "CBUnitTestListImg-{0}".format(uuid.uuid4())
             test_image = test_instance.create_image(name)
 
@@ -93,6 +101,11 @@ class CloudImageServiceTestCase(ProviderTestBase):
                     " not as expected: {2}" .format(found_images[0].name,
                                                     get_img.name,
                                                     test_image.name))
+                # TODO: Fix moto so that the BDM is populated correctly
+                if not isinstance(self.provider, TestMockHelperMixin):
+                    # check image size
+                    self.assertGreater(get_img.min_disk, 0, "Minimum disk size"
+                                       " required by image is invalid")
             # TODO: Images take a long time to deregister on EC2. Needs
             # investigation
             images = self.provider.compute.images.list()

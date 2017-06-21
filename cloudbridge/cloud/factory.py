@@ -1,11 +1,12 @@
-from cloudbridge.cloud import providers
-from cloudbridge.cloud.interfaces import CloudProvider
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
-from collections import defaultdict
 import importlib
 import inspect
 import logging
 import pkgutil
+from collections import defaultdict
+
+from cloudbridge.cloud import providers
+from cloudbridge.cloud.interfaces import CloudProvider
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 
 log = logging.getLogger(__name__)

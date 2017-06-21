@@ -1,9 +1,10 @@
 from test import helpers
 
-import six
+from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.interfaces.resources import InstanceType
-from test.helpers import ProviderTestBase
+
+import six
 
 
 class CloudInstanceTypesServiceTestCase(ProviderTestBase):

@@ -1,16 +1,17 @@
-from datetime import datetime
-from io import BytesIO
-from unittest import skip
+import filecmp
+import os
+import tempfile
 import uuid
 
-import requests
-
-import tempfile
+from datetime import datetime
+from io import BytesIO
+from test import helpers
+from test.helpers import ProviderTestBase
+from unittest import skip
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+import requests
 
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
@@ -201,12 +202,40 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             obj = test_bucket.create_object(obj_name)
 
             with helpers.cleanup_action(lambda: obj.delete()):
-                content = b"Hello World. Upload from file."
-                with tempfile.NamedTemporaryFile() as tmpFile:
-                    tmpFile.write(content)
-                    tmpFile.flush()
+                test_file = os.path.join(
+                    helpers.get_test_fixtures_folder(), 'logo.jpg')
+                obj.upload_from_file(test_file)
+                target_stream = BytesIO()
+                obj.save_content(target_stream)
+                with open(test_file, 'rb') as f:
+                    self.assertEqual(target_stream.getvalue(), f.read())
 
-                    obj.upload_from_file(tmpFile.name)
-                    target_stream = BytesIO()
-                    obj.save_content(target_stream)
-                    self.assertEqual(target_stream.getvalue(), content)
+    @skip("Skip unless you want to test swift objects bigger than 5 Gig")
+    @helpers.skipIfNoService(['object_store'])
+    def test_upload_download_bucket_content_with_large_file(self):
+        """
+        Creates a 6 Gig file in the temp directory, then uploads it to
+        Swift. Once uploaded, then downloads to a new file in the temp
+        directory and compares the two files to see if they match.
+        """
+        temp_dir = tempfile.gettempdir()
+        file_name = '6GigTest.tmp'
+        six_gig_file = os.path.join(temp_dir, file_name)
+        with open(six_gig_file, "wb") as out:
+            out.truncate(6 * 1024 * 1024 * 1024)  # 6 Gig...
+        with helpers.cleanup_action(lambda: os.remove(six_gig_file)):
+            download_file = "{0}/cbtestfile-{1}".format(temp_dir, file_name)
+            bucket_name = "cbtestbucketlargeobjs-{0}".format(uuid.uuid4())
+            test_bucket = self.provider.object_store.create(bucket_name)
+            with helpers.cleanup_action(lambda: test_bucket.delete()):
+                test_obj = test_bucket.create_object(file_name)
+                with helpers.cleanup_action(lambda: test_obj.delete()):
+                    file_uploaded = test_obj.upload_from_file(six_gig_file)
+                    self.assertTrue(file_uploaded, "Could not upload object?")
+                    with helpers.cleanup_action(
+                            lambda: os.remove(download_file)):
+                        with open(download_file, 'wb') as f:
+                            test_obj.save_content(f)
+                            self.assertTrue(
+                                filecmp.cmp(six_gig_file, download_file),
+                                "Uploaded file != downloaded")

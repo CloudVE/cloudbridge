@@ -1,9 +1,16 @@
 """
 DataTypes used by this provider
 """
+import inspect
+import ipaddress
+import json
+
+import os
+
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
+from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -16,27 +23,26 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
-from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
+from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
-
-import inspect
-import json
-
-import ipaddress
 
 from keystoneclient.v3.regions import Region
 
 import novaclient.exceptions as novaex
 
-import swiftclient.exceptions as swiftex
+import swiftclient
+
+from swiftclient.service import SwiftService, SwiftUploadObject
+
+ONE_GIG = 1048576000  # in bytes
+FIVE_GIG = ONE_GIG * 5  # in bytes
 
 
 class OpenStackMachineImage(BaseMachineImage):
@@ -79,6 +85,17 @@ class OpenStackMachineImage(BaseMachineImage):
         Get the image description.
         """
         return None
+
+    @property
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
+        """
+        return self._os_image.minDisk
 
     def delete(self):
         """
@@ -362,6 +379,18 @@ class OpenStackInstance(BaseInstance):
         Remove a floating IP address from this instance.
         """
         self._os_instance.remove_floating_ip(ip_address)
+
+    def add_security_group(self, sg):
+        """
+        Add a security group to this instance
+        """
+        self._os_instance.add_security_group(sg.id)
+
+    def remove_security_group(self, sg):
+        """
+        Remove a security group from this instance
+        """
+        self._os_instance.remove_security_group(sg.id)
 
     @property
     def state(self):
@@ -672,6 +701,7 @@ class OpenStackNetwork(BaseNetwork):
 
     @property
     def state(self):
+        self.refresh()
         return OpenStackNetwork._NETWORK_STATE_MAP.get(
             self._network.get('status', None),
             NetworkState.UNKNOWN)
@@ -702,11 +732,9 @@ class OpenStackNetwork(BaseNetwork):
         return OpenStackSubnet(self._provider, subnet)
 
     def refresh(self):
-        """
-        Refreshes the state of this network by re-querying the cloud provider
-        for its latest state.
-        """
-        return self.state
+        """Refresh the state of this network by re-querying the provider."""
+        net = self._provider.neutron.list_networks(id=self.id).get('networks')
+        self._network = net[0] if net else {}
 
 
 class OpenStackSubnet(BaseSubnet):
@@ -767,7 +795,7 @@ class OpenStackFloatingIP(BaseFloatingIP):
         return self._ip.get('fixed_ip_address', None)
 
     def in_use(self):
-        return True if self._ip.get('status', None) == 'ACTIVE' else False
+        return bool(self._ip.get('port_id', None))
 
     def delete(self):
         self._provider.neutron.delete_floatingip(self.id)
@@ -1055,16 +1083,47 @@ class OpenStackBucketObject(BaseBucketObject):
         """
         Set the contents of this object to the data read from the source
         string.
+
+        .. warning:: Will fail if the data is larger than 5 Gig.
         """
         self._provider.swift.put_object(self.cbcontainer.name, self.name,
                                         data)
 
     def upload_from_file(self, path):
         """
-        Stores the contents of the file pointed by the "path" variable.
+        Stores the contents of the file pointed by the ``path`` variable.
+        If the file is bigger than 5 Gig, it will be broken into segments.
+
+        :type path: ``str``
+        :param path: Absolute path to the file to be uploaded to Swift.
+        :rtype: ``bool``
+        :return: ``True`` if successful, ``False`` if not.
+
+        .. note::
+            * The size of the segments chosen (or any of the other upload
+              options) is not under user control.
+            * If called this method will remap the
+              ``swiftclient.service.get_conn`` factory method to
+              ``self._provider._connect_swift``
+
+        .. seealso:: https://github.com/gvlproject/cloudbridge/issues/35#issuecomment-297629661 # noqa
         """
-        with open(path, 'r') as f:
-            self.upload(f.read())
+        upload_options = {}
+        if 'segment_size' not in upload_options:
+            if os.path.getsize(path) >= FIVE_GIG:
+                upload_options['segment_size'] = FIVE_GIG
+
+        # remap the swift service's connection factory method
+        swiftclient.service.get_conn = self._provider._connect_swift
+
+        result = True
+        with SwiftService() as swift:
+            upload_object = SwiftUploadObject(path, object_name=self.name)
+            for up_res in swift.upload(self.cbcontainer.name,
+                                       [upload_object, ],
+                                       options=upload_options):
+                result = result and up_res['success']
+        return result
 
     def delete(self):
         """
@@ -1072,14 +1131,20 @@ class OpenStackBucketObject(BaseBucketObject):
 
         :rtype: ``bool``
         :return: True if successful
+
+        .. note:: If called this method will remap the
+              ``swiftclient.service.get_conn`` factory method to
+              ``self._provider._connect_swift``
         """
-        try:
-            self._provider.swift.delete_object(self.cbcontainer.name,
-                                               self.name)
-        except swiftex.ClientException as err:
-            if err.http_status == 404:
-                return True
-        return False
+
+        # remap the swift service's connection factory method
+        swiftclient.service.get_conn = self._provider._connect_swift
+
+        result = True
+        with SwiftService() as swift:
+            for del_res in swift.delete(self.cbcontainer.name, [self.name, ]):
+                result = result and del_res['success']
+        return result
 
     def generate_url(self, expires_in=0):
         """

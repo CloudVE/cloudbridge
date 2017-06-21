@@ -1,13 +1,15 @@
-from contextlib import contextmanager
+import functools
 import os
 import sys
 import unittest
-import functools
-from six import reraise
+
+from contextlib import contextmanager
 
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
+
+from six import reraise
 
 
 def parse_bool(val):
@@ -122,14 +124,14 @@ def delete_test_network(network):
 
 
 def create_test_instance(
-        provider, instance_name, subnet, zone=None, launch_config=None,
+        provider, instance_name, subnet, launch_config=None,
         key_pair=None, security_groups=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
         subnet=subnet,
-        zone=zone,
+        zone=get_provider_test_data(provider, 'placement'),
         key_pair=key_pair,
         security_groups=security_groups,
         launch_config=launch_config)
@@ -149,17 +151,26 @@ def get_test_instance(provider, name, key_pair=None, security_groups=None,
     return instance
 
 
+def get_test_fixtures_folder():
+    return os.path.join(os.path.dirname(__file__), 'fixtures/')
+
+
+def delete_test_instance(instance):
+    if instance:
+        instance.terminate()
+        instance.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                          terminal_states=[InstanceState.ERROR])
+
+
 def cleanup_test_resources(instance=None, network=None, security_group=None,
                            key_pair=None):
+    """Clean up any combination of supplied resources."""
     with cleanup_action(lambda: delete_test_network(network)
                         if network else None):
         with cleanup_action(lambda: key_pair.delete() if key_pair else None):
             with cleanup_action(lambda: security_group.delete()
                                 if security_group else None):
-                instance.terminate()
-                instance.wait_for(
-                    [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                    terminal_states=[InstanceState.ERROR])
+                delete_test_instance(instance)
 
 
 class ProviderTestBase(unittest.TestCase):
