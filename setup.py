@@ -14,7 +14,8 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
             version = ast.literal_eval(m.group(1))
             break
 
-base_reqs = ['msrest==0.4.7', 'bunch>=1.0.1', 'six>=1.10.0', 'retrying>=1.3.3']
+base_reqs = ['msrest==0.4.7', 'msrestazure==0.4.7', 'bunch>=1.0.1',
+             'six>=1.10.0', 'retrying>=1.3.3']
 openstack_reqs = ['requests<2.13.0',
                   'Babel>=2.3.4,<2.4.0',
                   'python-novaclient==7.0.0',
