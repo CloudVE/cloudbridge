@@ -525,7 +525,7 @@ class AzureVolume(BaseVolume):
     @property
     def attachments(self):
         """
-        Azure doesn’t have option to specify the device name
+        Azure does not have option to specify the device name
         while attaching disk to VM. It is automatically populated
         and is not returned. As a result this method ignores
         the device name parameter and passes None
@@ -1325,7 +1325,7 @@ class AzureInstance(BaseInstance):
         Documentation for create image available at
         https://docs.microsoft.com/en-us/azure/virtual-machines/linux/capture-image  # noqa
         In azure, need to deprovision the VM before capturing.
-        To deprovision, login to VM and execute ‘waagent –deprovision’ command.
+        To deprovision, login to VM and execute waagent deprovision command.
         To do this programmatically, using pysftp to ssh into the VM
         and executing deprovision command.
         To SSH into the VM programmatically, need pass private key file path,
@@ -1336,7 +1336,7 @@ class AzureInstance(BaseInstance):
         if not self._state == 'VM generalized':
             if not self._state == 'VM running':
                 self._provider.azure_client.start_vm(self.id)
-                time.sleep(10)
+                time.sleep(10)  # Some time is required
                 self._get_network_attributes()
 
             # if private_key_path:
