@@ -9,6 +9,7 @@ from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import BlockBlobService
+from azure.storage.table import TableService
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class AzureClient(object):
         self._compute_client = None
         self._access_key_result = None
         self._block_blob_service = None
+        self._table_service = None
 
         log.debug("azure subscription : %s", self.subscription_id)
 
@@ -100,6 +102,18 @@ class AzureClient(object):
                 self.storage_account,
                 self.access_key_result.keys[0].value)
         return self._block_blob_service
+
+    @property
+    def table_service(self):
+        if not self._table_service:
+            self._table_service = TableService(
+                self.storage_account,
+                self.access_key_result.keys[0].value)
+        if not self._table_service. \
+                exists(table_name=self.public_key_storage_table_name):
+            self._table_service.create_table(
+                self.public_key_storage_table_name)
+        return self._table_service
 
     def get_resource_group(self, name):
         return self.resource_client.resource_groups.get(name)
@@ -435,3 +449,34 @@ class AzureClient(object):
         self.network_management_client. \
             public_ip_addresses.delete(self.resource_group,
                                        public_ip_name).wait()
+
+    def create_public_key(self, entity):
+
+        return self.table_service. \
+            insert_or_replace_entity(self.public_key_storage_table_name,
+                                     entity)
+
+    def get_public_key(self, name):
+        entities = self.table_service. \
+            query_entities(self.public_key_storage_table_name,
+                           "Name eq '{0}'".format(name), num_results=1)
+
+        return entities.items[0] if len(entities.items) > 0 else None
+
+    def delete_public_key(self, entity):
+        self.table_service.delete_entity(self.public_key_storage_table_name,
+                                         entity.PartitionKey, entity.RowKey)
+
+    def list_public_keys(self, partition_key):
+        items = []
+        next_marker = None
+        while True:
+            entities = self.table_service. \
+                query_entities(self.public_key_storage_table_name,
+                               "PartitionKey eq '{0}'".format(partition_key),
+                               marker=next_marker, num_results=1)
+            items.extend(entities.items)
+            next_marker = entities.next_marker
+            if not next_marker:
+                break
+        return items
