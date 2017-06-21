@@ -1311,7 +1311,6 @@ class GCEVolume(BaseVolume):
 
     @property
     def description(self):
-        self.refresh()
         labels = self._volume.get('labels')
         if not labels or 'description' not in labels:
             return ''
@@ -1319,18 +1318,21 @@ class GCEVolume(BaseVolume):
 
     @description.setter
     def description(self, value):
-        self.refresh()
         request_body = {
             'labels': {'description': value.replace(' ', '_').lower(),},
             'labelFingerprint': self._volume.get('labelFingerprint'),
         }
-        response = (self._provider.gce_compute
-                    .disks()
-                    .setLabels(
-                        project=self._provider.project_name,
-                        zone=self._provider.default_zone,
-                        resource=self.name,
-                        body=request_body).execute())
+        try:
+            response = (self._provider.gce_compute
+                        .disks()
+                        .setLabels(
+                            project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            resource=self.name,
+                            body=request_body).execute())
+        except Exception as e:
+            cb.log.warning('Exception while setting volume description: %s', e)
+        self.refresh()
 
     @property
     def size(self):
