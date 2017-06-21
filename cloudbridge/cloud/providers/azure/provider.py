@@ -108,7 +108,11 @@ class AzureCloudProvider(BaseCloudProvider):
         return self._azure_client
 
     def _initialize(self):
-
+        """
+        Verifying that resource group and storage account exists
+        if not create one with the name provided in the
+        configuration
+        """
         try:
             self._azure_client.get_resource_group(self.resource_group)
         except CloudError:
