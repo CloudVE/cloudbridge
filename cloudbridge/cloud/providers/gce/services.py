@@ -1,5 +1,6 @@
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.cloud.base.services import BaseBlockStoreService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -9,6 +10,9 @@ from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
+from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.gce import helpers
 import cloudbridge as cb
@@ -32,6 +36,8 @@ from .resources import GCENetwork
 from .resources import GCERegion
 from .resources import GCESecurityGroup
 from .resources import GCESecurityGroupRule
+from .resources import GCESnapshot
+from .resources import GCEVolume
 
 
 class GCESecurityService(BaseSecurityService):
@@ -475,13 +481,18 @@ class GCEInstanceService(BaseInstanceService):
                     config['tags']['items'] = sg_names
         else:
             config = launch_config
-        response = self.provider.gce_compute \
-                                .instances() \
-                                .insert(
-                                    project=self.provider.project_name,
-                                    zone=self.provider.default_zone,
-                                    body=config) \
-                                .execute()
+        operation = (self.provider.gce_compute.instances()
+                         .insert(
+                             project=self.provider.project_name,
+                             zone=self.provider.default_zone,
+                             body=config)
+                         .execute())
+        if 'zone' not in operation:
+            return None
+        gce_zone = self.provider.get_gce_resource_data(operation['zone'])
+        instance_id = operation.get('targetLink')
+        self.provider.wait_for_operation(operation, zone=gce_zone.get('name'))
+        return self.get(instance_id)
 
     def get(self, instance_id):
         """
@@ -664,3 +675,200 @@ class GCENetworkService(BaseNetworkService):
 
     def create_router(self, name=None):
         raise NotImplementedError('To be implemented')
+
+
+class GCEBlockStoreService(BaseBlockStoreService):
+
+    def __init__(self, provider):
+        super(GCEBlockStoreService, self).__init__(provider)
+
+        # Initialize provider services
+        self._volume_svc = GCEVolumeService(self.provider)
+        self._snapshot_svc = GCESnapshotService(self.provider)
+
+    @property
+    def volumes(self):
+        return self._volume_svc
+
+    @property
+    def snapshots(self):
+        return self._snapshot_svc
+
+
+class GCEVolumeService(BaseVolumeService):
+
+    def __init__(self, provider):
+        super(GCEVolumeService, self).__init__(provider)
+
+    def get(self, volume_id):
+        """
+        Returns a volume given its id.
+        """
+        try:
+            response = self.provider.get_gce_resource_data(volume_id)
+            if response:
+                return GCEVolume(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            # If the volume is not found, the API will raise
+            # googleapiclient.errors.HttpError.
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
+        return None
+
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for a volume by a given list of attributes.
+        """
+        filtr = 'name eq ' + name
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gce_compute.disks()
+                        .list(project=self.provider.project_name,
+                              zone=self.provider.default_zone,
+                              filter=filtr,
+                              maxResults=max_result,
+                              pageToken=marker).execute())
+        if 'items' not in response:
+            return []
+        gce_vols = [GCEVolume(self.provider, vol)
+                    for vol in response['items']]
+        return ServerPagedResultList(len(gce_vols) > max_result,
+                                     response.get('nextPageToken'),
+                                     False, data=gce_vols)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all volumes.
+
+        limit: The maximum number of volumes to return. The returned
+               ResultList's is_truncated property can be used to determine
+               whether more records are available.
+        """
+        # For GCE API, Acceptable values are 0 to 500, inclusive.
+        # (Default: 500).
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gce_compute.disks()
+                        .list(project=self.provider.project_name,
+                              zone=self.provider.default_zone,
+                              maxResults=max_result,
+                              pageToken=marker).execute())
+        if 'items' not in response:
+            return []
+        gce_vols = [GCEVolume(self.provider, vol)
+                    for vol in response['items']]
+        return ServerPagedResultList(len(gce_vols) > max_result,
+                                     response.get('nextPageToken'),
+                                     False, data=gce_vols)
+
+    def create(self, name, size, zone, snapshot=None, description=None):
+        """
+        Creates a new volume.
+
+        Argument `name` must be 1-63 characters long, and comply with RFC1035.
+        Specifically, the name must be 1-63 characters long and match the
+        regular expression [a-z]([-a-z0-9]*[a-z0-9])? which means the first
+        character must be a lowercase letter, and all following characters must
+        be a dash, lowercase letter, or digit, except the last character, which
+        cannot be a dash.
+        """
+        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        snapshot_id = snapshot.id if isinstance(
+            snapshot, GCESnapshot) and snapshot else snapshot
+        disk_body = {
+            'name': name,
+            'sizeGb': size,
+            'type': 'zones/{0}/diskTypes/{1}'.format(zone_name, 'pd-standard'),
+            'sourceSnapshot': snapshot_id,
+            'description': description,
+        }
+        operation = (self.provider.gce_compute.disks()
+                         .insert(
+                             project=self._provider.project_name,
+                             zone=zone_name,
+                             body=disk_body).execute())
+        return self.get(operation.get('targetLink'))
+
+
+class GCESnapshotService(BaseSnapshotService):
+
+    def __init__(self, provider):
+        super(GCESnapshotService, self).__init__(provider)
+
+    def get(self, snapshot_id):
+        """
+        Returns a snapshot given its id.
+        """
+        try:
+            response = self.provider.get_gce_resource_data(snapshot_id)
+            if response:
+                return GCESnapshot(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            # If the volume is not found, the API will raise
+            # googleapiclient.errors.HttpError.
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
+        return None
+
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for a snapshot by a given list of attributes.
+        """
+        filtr = 'name eq ' + name
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gce_compute.snapshots()
+                        .list(project=self.provider.project_name,
+                              filter=filtr,
+                              maxResults=max_result,
+                              pageToken=marker).execute())
+        if 'items' not in response:
+            return []
+        snapshots = [GCESnapshot(self.provider, snapshot)
+                    for snapshot in response['items']]
+        return ServerPagedResultList(len(snapshots) > max_result,
+                                     response.get('nextPageToken'),
+                                     False, data=snapshots)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all snapshots.
+        """
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gce_compute.snapshots()
+                        .list(project=self.provider.project_name,
+                              maxResults=max_result,
+                              pageToken=marker).execute())
+        if 'items' not in response:
+            return []
+        snapshots = [GCESnapshot(self.provider, snapshot)
+                    for snapshot in response['items']]
+        return ServerPagedResultList(len(snapshots) > max_result,
+                                     response.get('nextPageToken'),
+                                     False, data=snapshots)
+
+    def create(self, name, volume, description=None):
+        """
+        Creates a new snapshot of a given volume.
+        """
+        volume_name = volume.name if isinstance(volume, GCEVolume) else volume
+        snapshot_body = {
+            "name": name,
+            "description": description
+        }
+        operation = (self.provider
+                         .gce_compute.disks()
+                         .createSnapshot(
+                             project=self.provider.project_name,
+                             zone=self.provider.default_zone,
+                             disk=volume_name, body=snapshot_body).execute())
+        if 'zone' not in operation:
+            return None
+        gce_zone = self.provider.get_gce_resource_data(operation['zone'])
+        self.provider.wait_for_operation(operation, zone=gce_zone.get('name'))
+        snapshots = self.provider.block_store.snapshots.find(name=name)
+        if snapshots:
+            return snapshots[0]
+        else:
+            return None
