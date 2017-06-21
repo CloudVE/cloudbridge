@@ -13,7 +13,7 @@ from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketObject, BaseFloatingIP, \
-    BaseInstance, BaseInstanceType, \
+    BaseInstance, BaseInstanceType, BaseKeyPair,\
     BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
     BasePlacementZone, BaseRegion, BaseSecurityGroup, \
     BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
@@ -1530,3 +1530,45 @@ class AzureInstanceType(BaseInstanceType):
                     'max_data_disk_count':
                     self._inst_type.max_data_disk_count
                }
+
+
+class AzureKeyPair(BaseKeyPair):
+
+    def __init__(self, provider, key_pair):
+        super(AzureKeyPair, self).__init__(provider, key_pair)
+        self._material = None
+
+    @property
+    def id(self):
+        return self._key_pair.Name
+
+    @property
+    def name(self):
+        return self._key_pair.Name
+
+    @property
+    def key(self):
+        return self._key_pair.Key
+
+    @property
+    def material(self):
+        """
+        Unencrypted private key.
+
+        :rtype: str
+        :return: Unencrypted private key or ``None`` if not available.
+
+        """
+        return self._material
+
+    @material.setter
+    def material(self, value):
+        self._material = value
+
+    def delete(self):
+        try:
+            self._provider.azure_client.\
+                delete_public_key(self._key_pair)
+            return True
+        except CloudError:
+            return False

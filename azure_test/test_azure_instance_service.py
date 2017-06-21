@@ -37,8 +37,8 @@ class AzureInstanceServiceTestCase(ProviderTestBase):
         self.assertIsNotNone(img)
 
         # TODO: Add logic to get key pair
-        key_pair = None
-        # self.assertIsNotNone(key_pair)
+        key_pair = self.provider.security.key_pairs.get('KeyPair1')
+        self.assertIsNotNone(key_pair)
 
         inst_type = [t for t in self.provider.compute.instance_types.list()
                      if t.name == 'Standard_DS1_v2'][0]

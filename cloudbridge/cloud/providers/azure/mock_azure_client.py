@@ -19,6 +19,7 @@ from azure.mgmt.resource.subscriptions.models import Location
 from azure.mgmt.storage.models import StorageAccount
 from azure.storage.blob.models import Blob, BlobProperties, \
     Container
+from azure.storage.table.models import Entity
 
 from msrestazure.azure_exceptions import CloudError
 
@@ -896,3 +897,39 @@ class MockAzureClient:
         response = Response()
         response.status_code = 404
         raise CloudError(response=response, error='Resource Not found')
+
+    keyEntity1 = Entity()
+    keyEntity1.PartitionKey = '00000000-0000-0000-0000-000000000000'
+    keyEntity1.RowKey = str(uuid.uuid4())
+    keyEntity1.Name = 'KeyPair1'
+    keyEntity1.Key = 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ+G1hl'
+
+    keyEntity2 = Entity()
+    keyEntity2.PartitionKey = '00000000-0000-0000-0000-000000000000'
+    keyEntity2.RowKey = str(uuid.uuid4())
+    keyEntity2.Name = 'KeyPair2'
+    keyEntity2.Key = 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ+G1h2'
+
+    key_entities = [keyEntity1, keyEntity2]
+
+    def create_public_key(self, entity):
+        newKey = Entity()
+        newKey.PartitionKey = entity['PartitionKey']
+        newKey.RowKey = entity['RowKey']
+        newKey.Name = entity['Name']
+        newKey.Key = entity['Key']
+        self.key_entities.append(newKey)
+
+    def get_public_key(self, key_name):
+        for key in self.key_entities:
+            if key.Name == key_name:
+                return key
+        response = Response()
+        response.status_code = 404
+        raise AzureException()
+
+    def delete_public_key(self, entity):
+        self.key_entities.remove(entity)
+
+    def list_public_keys(self, partition_key):
+        return self.key_entities
