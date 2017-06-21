@@ -1331,7 +1331,10 @@ class GCEVolume(BaseVolume):
                             resource=self.name,
                             body=request_body).execute())
         except Exception as e:
-            cb.log.warning('Exception while setting volume description: %s', e)
+            cb.log.warning('Exception while setting volume description: %s.'
+                           'Check for invalid characters in description. Should'
+                           'confirm to RFC1035.', e)
+            raise e
         self.refresh()
 
     @property
