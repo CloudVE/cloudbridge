@@ -106,16 +106,6 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 'Invalid url parameter passed' in context.exception)
 
-    @helpers.skipIfNoService(['network'])
-    def test_network_methods(self):
-        with self.assertRaises(NotImplementedError):
-            routers = self.provider.network.routers()
-            self.assertIsNotNone(routers)
-
-        with self.assertRaises(NotImplementedError):
-            router = self.provider.network.create_router()
-            self.assertIsNotNone(router)
-
     def test_network_create_and_list_subnet(self):
         network = self.provider.network.get('CloudBridgeNet1')
 
