@@ -23,7 +23,7 @@ from msrestazure.azure_exceptions import CloudError
 from .resources import AzureBucket, AzureFloatingIP, \
     AzureInstance, AzureInstanceType, AzureKeyPair,\
     AzureLaunchConfig, AzureMachineImage, \
-    AzureNetwork, AzureRegion, AzureSecurityGroup, \
+    AzureNetwork, AzureRegion, AzureRouter, AzureSecurityGroup, \
     AzureSnapshot, AzureSubnet, AzureVolume
 
 log = logging.getLogger(__name__)
@@ -832,12 +832,12 @@ class AzureNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, floating_ips)
 
     def routers(self):
-        raise NotImplementedError('AzureNetworkService '
-                                  'not implemented this method')
+        return ClientPagedResultList(self.provider, [])
 
     def create_router(self, name=None):
-        raise NotImplementedError('AzureNetworkService '
-                                  'not implemented this method')
+        ar = AzureRouter(self.provider, None)
+        ar.name = name
+        return ar
 
     def delete(self, network_id):
         """

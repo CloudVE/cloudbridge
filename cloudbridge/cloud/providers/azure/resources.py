@@ -15,12 +15,12 @@ from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketObject, BaseFloatingIP, \
     BaseInstance, BaseInstanceType, BaseKeyPair,\
     BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
-    BasePlacementZone, BaseRegion, BaseSecurityGroup, \
+    BasePlacementZone, BaseRegion, BaseRouter, BaseSecurityGroup, \
     BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
     BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import InstanceState, VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
-    MachineImageState, NetworkState, SnapshotState
+    MachineImageState, NetworkState, RouterState, SnapshotState
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
@@ -1592,3 +1592,85 @@ class AzureKeyPair(BaseKeyPair):
             return True
         except CloudError:
             return False
+
+
+class AzureRouter(BaseRouter):
+
+    def __init__(self, provider, router):
+        super(AzureRouter, self).__init__(provider)
+        self._router = router
+        self._ROUTE_CIDR = '0.0.0.0/0'
+        self._name = None
+        self._network_id = None
+        self._state = RouterState.DETACHED
+
+    def _route_table(self, subnet_id):
+        pass
+
+    @property
+    def id(self):
+        return self._name
+
+    @property
+    def resource_id(self):
+        pass
+
+    @property
+    def name(self):
+        """
+        Get the router name.
+
+        .. note:: the router must have a (case sensitive) tag ``Name``
+        """
+        return self._name
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the router name.
+        """
+        self._name = value
+
+    def refresh(self):
+        pass
+
+    @property
+    def state(self):
+        return self._state
+
+    @property
+    def network_id(self):
+        return self._network_id
+
+    def delete(self):
+        pass
+
+    def attach_network(self, network_id):
+        self._network_id = network_id
+        self._state = RouterState.ATTACHED
+
+    def detach_network(self):
+        pass
+
+    def add_route(self, subnet_id):
+        """
+        Add a default route to this router.
+
+        For Azure, routes are added to a route table. A route table is assoc.
+        with a network vs. a subnet so we retrieve the network via the subnet.
+        Note that the subnet must belong to the same network as the router
+        is attached to.
+
+        Further, only a single route can be added, targeting the Internet
+        (i.e., destination CIDR block ``0.0.0.0/0``).
+        """
+        pass
+
+    def remove_route(self, subnet_id):
+        """
+        Remove the default Internet route from this router.
+
+        .. seealso:: ``add_route`` method
+        """
+        pass
