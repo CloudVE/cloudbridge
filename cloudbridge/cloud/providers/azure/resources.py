@@ -822,7 +822,7 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        return self._image.storage_profile.os_disk.disk_size_gb
+        return self._image.storage_profile.os_disk.disk_size_gb or 0
 
     def delete(self):
         """

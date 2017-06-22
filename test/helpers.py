@@ -128,19 +128,27 @@ def delete_test_network(network):
 
 
 def create_test_instance(
-        provider, instance_name, subnet, zone=None, launch_config=None,
+        provider, instance_name, subnet, launch_config=None,
         key_pair=None, security_groups=None):
-    if not key_pair and provider.PROVIDER_ID == 'azure':
-        key_pair = provider.security.key_pairs.create(name=instance_name)
-    return provider.compute.instances.create(
+
+    kp = None
+    if not key_pair:
+        kp = provider.security.key_pairs.create(name=instance_name)
+
+    instance = provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'instance_type'),
         subnet=subnet,
-        zone=zone,
-        key_pair=key_pair,
+        zone=get_provider_test_data(provider, 'placement'),
+        key_pair=key_pair or kp,
         security_groups=security_groups,
         launch_config=launch_config)
+
+    if kp:
+        kp.delete()
+
+    return instance
 
 
 def get_test_instance(provider, name, key_pair=None, security_groups=None,
@@ -206,18 +214,7 @@ class ProviderTestBase(unittest.TestCase):
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
         config = {'default_wait_interval':
-                  self.get_provider_wait_interval(provider_class),
-                  'azure_subscription_id':
-                      '7904d702-e01c-4826-8519-f5a25c866a96',
-                  'azure_client_id':
-                      '69621fe1-f59f-43de-8799-269007c76b95',
-                  'azure_secret':
-                      'Orcw9U5Kd4cUDntDABg0dygN32RQ4FGBYyLRaJ/BlrM=',
-                  'azure_tenant':
-                      '75ec242e-054d-4b22-98a9-a4602ebb6027',
-                  'azure_resource_group': 'CB-TEST-RG',
-                  'azure_storage_account': 'cbtestsa',
-                  'azure_vm_default_user_name': 'cbtestuser'
+                  self.get_provider_wait_interval(provider_class)
                   }
         return provider_class(config)
 
