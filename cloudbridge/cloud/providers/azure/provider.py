@@ -54,6 +54,10 @@ class AzureCloudProvider(BaseCloudProvider):
             ('AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME', 'cbcerts'))
 
         print('Storage account name:' + self.storage_account)
+        print('Resource group name:' + os.environ.get('AZURE_RESOURCE_GROUP',
+                                                      None))
+        print('Resource group name:' + os.environ.get('AZURE_RESOURCE_GROUP',
+                                                   'cloudbridge'))
         print('Resource group name:' + self.resource_group)
         print('Region name:' + self.region_name)
         print('VM default user name:' + self.vm_default_user_name)
