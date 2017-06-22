@@ -53,20 +53,6 @@ class AzureCloudProvider(BaseCloudProvider):
             'azure_public_key_storage_table_name', os.environ.get
             ('AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME', 'cbcerts'))
 
-        print('Storage account name:' + self.storage_account)
-        print('Resource group name:{0}'.format(os.environ.get('AZURE_RESOURCE_GROUP',
-                                                      None)))
-        print('Resource group name:{0}'.format(os.environ.get('AZURE_RESOURCE_GROUP',
-                                                   'cloudbridge')))
-        print('Resource group name:{0}'.format(self.resource_group))
-        print('Region name:{0}'.format( self.region_name))
-        print('VM default user name:{0}'.format(self.vm_default_user_name))
-        print('Public key table name:{0}'.format(self.public_key_storage_table_name))
-        print('Client id:{0}'.format( self.client_Id))
-        print('Subscription id:{0}'.format( self.subscription_id))
-        print('Secret:{0}'.format( self.secret))
-        print('Tenant:{0}'.format( self.tenant))
-
         self._mock_azure_client = azureclient
         self._azure_client = None
 
