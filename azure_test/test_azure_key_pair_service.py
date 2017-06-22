@@ -10,7 +10,6 @@ class AzureKeyPairServiceTestCase(ProviderTestBase):
         self.assertIsNotNone(key_pair_create)
         self.assertIsNotNone(key_pair_create)
         self.assertIsNotNone(key_pair_create.id)
-        self.assertIsNotNone(key_pair_create.key)
         self.assertIsNotNone(key_pair_create.material)
 
     @helpers.skipIfNoService(['security.key_pairs'])

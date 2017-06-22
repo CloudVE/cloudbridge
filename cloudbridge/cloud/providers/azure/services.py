@@ -928,7 +928,7 @@ class AzureSubnetService(BaseSubnetService):
         if not name:
             subnet_name = AzureSubnet.CB_DEFAULT_SUBNET_NAME
         else:
-            subnet_name = name
+            subnet_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
         subnet_info = self.provider.azure_client\
             .create_subnet(

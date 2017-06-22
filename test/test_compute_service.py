@@ -9,7 +9,7 @@ from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import InstanceType
-# from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SnapshotState
 
 import six
 
@@ -215,7 +215,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         lc.add_volume_device(
             is_root=True,
             source=img,
-            size=img.min_disk if img and img.min_disk else 50,
+            size=img.min_disk if img and img.min_disk else 30,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
@@ -255,82 +255,82 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         if True:
             if True:
 
-                # test_vol = self.provider.block_store.volumes.create(
-                #    name,
-                #    1,
-                #    helpers.get_provider_test_data(self.provider,
-                #                                   "placement"))
-                # with helpers.cleanup_action(lambda: test_vol.delete()):
-                #    test_vol.wait_till_ready()
-                #    test_snap = test_vol.create_snapshot(name=name,
-                #                                         description=name)
-                #
-                #    def cleanup_snap(snap):
-                #        snap.delete()
-                #        snap.wait_for(
-                #            [SnapshotState.UNKNOWN],
-                #            terminal_states=[SnapshotState.ERROR])
-                #
-                #    with helpers.cleanup_action(lambda:
-                #                                cleanup_snap(test_snap)):
-                #         test_snap.wait_till_ready()
+                    test_vol = self.provider.block_store.volumes.create(
+                       name,
+                       1,
+                       helpers.get_provider_test_data(self.provider,
+                                                      "placement"))
+                    with helpers.cleanup_action(lambda: test_vol.delete()):
+                        test_vol.wait_till_ready()
+                        test_snap = test_vol.create_snapshot(name=name,
+                                                             description=name)
 
-                lc = self.provider.compute.instances.create_launch_config()
+                        def cleanup_snap(snap):
+                            snap.delete()
+                            snap.wait_for(
+                                [SnapshotState.UNKNOWN],
+                                terminal_states=[SnapshotState.ERROR])
 
-#                 # Add a new blank volume
-#                 lc.add_volume_device(size=1, delete_on_terminate=True)
-#
-#                 # Attach an existing volume
-#                 lc.add_volume_device(size=1, source=test_vol,
-#                                      delete_on_terminate=True)
-#
-#                 # Add a new volume based on a snapshot
-#                 lc.add_volume_device(size=1, source=test_snap,
-#                                      delete_on_terminate=True)
+                        with helpers.cleanup_action(lambda:
+                                                    cleanup_snap(test_snap)):
+                            test_snap.wait_till_ready()
 
-                # Override root volume size
-                image_id = helpers.get_provider_test_data(
-                    self.provider,
-                    "image")
-                img = self.provider.compute.images.get(image_id)
-                # The size should be greater then the ami size
-                # and therefore, img.min_disk is used.
-                lc.add_volume_device(
-                    is_root=True,
-                    source=img,
-                    size=img.min_disk if img and img.min_disk else 50,
-                    delete_on_terminate=True)
+                            lc = self.provider.compute.instances.create_launch_config()
 
-                # Add all available ephemeral devices
-                instance_type_name = helpers.get_provider_test_data(
-                    self.provider,
-                    "instance_type")
-                inst_type = self.provider.compute.instance_types.find(
-                    name=instance_type_name)[0]
-                for _ in range(inst_type.num_ephemeral_disks):
-                    lc.add_ephemeral_device()
+                            # Add a new blank volume
+                            lc.add_volume_device(size=1, delete_on_terminate=True)
 
-                net, subnet = helpers.create_test_network(self.provider, name)
+                            # Attach an existing volume
+                            lc.add_volume_device(size=1, source=test_vol,
+                                          delete_on_terminate=True)
 
-                with helpers.cleanup_action(lambda:
-                                            helpers.delete_test_network(net)):
+                            # Add a new volume based on a snapshot
+                            lc.add_volume_device(size=1, source=test_snap,
+                                          delete_on_terminate=True)
 
-                    inst = helpers.create_test_instance(
-                        self.provider,
-                        name,
-                        subnet=subnet,
-                        launch_config=lc)
+                            # Override root volume size
+                            image_id = helpers.get_provider_test_data(
+                                self.provider,
+                                "image")
+                            img = self.provider.compute.images.get(image_id)
+                            # The size should be greater then the ami size
+                            # and therefore, img.min_disk is used.
+                            lc.add_volume_device(
+                                is_root=True,
+                                source=img,
+                                size=img.min_disk if img and img.min_disk else 30,
+                                delete_on_terminate=True)
 
-                    with helpers.cleanup_action(lambda:
-                                                helpers.delete_test_instance(
-                                                    inst)):
-                        try:
-                            inst.wait_till_ready()
-                        except WaitStateException as e:
-                            self.fail("The block device mapped launch did not "
-                                      " complete successfully: %s" % e)
-                        # TODO: Check instance attachments and make sure they
-                        # correspond to requested mappings
+                            # Add all available ephemeral devices
+                            instance_type_name = helpers.get_provider_test_data(
+                                self.provider,
+                                "instance_type")
+                            inst_type = self.provider.compute.instance_types.find(
+                                name=instance_type_name)[0]
+                            for _ in range(inst_type.num_ephemeral_disks):
+                                lc.add_ephemeral_device()
+
+                            net, subnet = helpers.create_test_network(self.provider, name)
+
+                            with helpers.cleanup_action(lambda:
+                                                        helpers.delete_test_network(net)):
+
+                                inst = helpers.create_test_instance(
+                                    self.provider,
+                                    name,
+                                    subnet=subnet,
+                                    launch_config=lc)
+
+                                with helpers.cleanup_action(lambda:
+                                                            helpers.delete_test_instance(
+                                                                inst)):
+                                    try:
+                                        inst.wait_till_ready()
+                                    except WaitStateException as e:
+                                        self.fail("The block device mapped launch did not "
+                                                  " complete successfully: %s" % e)
+                                    # TODO: Check instance attachments and make sure they
+                                    # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'network',
                               'security.security_groups'])
