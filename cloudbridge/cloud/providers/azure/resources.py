@@ -158,6 +158,20 @@ class AzureSecurityGroup(BaseSecurityGroup):
         :rtype: :class:``.SecurityGroupRule``
         :return: Rule object if successful or ``None``.
         """
+        if ip_protocol and from_port and to_port:
+            return self._create_rule(ip_protocol, from_port, to_port, cidr_ip)
+        elif src_group:
+            result = None
+            sg = (self._provicer.security.security_groups.get(src_group)
+                  if isinstance(src_group, str) else src_group)
+            for rule in sg.rules:
+                result = self._create_rule(rule.ip_protocol, rule.from_port,
+                                           rule.to_port, rule.cidr_ip)
+            return result
+        else:
+            return None
+
+    def _create_rule(self, ip_protocol, from_port, to_port, cidr_ip):
 
         # If cidr_ip is None, default values is set as 0.0.0.0/0
         if not cidr_ip:
@@ -165,33 +179,32 @@ class AzureSecurityGroup(BaseSecurityGroup):
 
         # If the SG with same parameters exist already,
         # then, it is returned instead of creating a new one.
-        rule = self.get_rule(ip_protocol, from_port,
-                             to_port, cidr_ip, src_group)
-        if not rule:
-            # resource_group = self._provider.resource_group
-            count = len(self.rules) + 1
-            rule_name = "Rule - " + str(count)
-            priority = count * 100
-            destination_port_range = "*"
-            destination_address_prefix = "*"
-            access = "Allow"
-            direction = "Inbound"
-            parameters = {"protocol": ip_protocol,
-                          "source_port_range":
-                              str(from_port) + "-" + str(to_port),
-                          "destination_port_range": destination_port_range,
-                          "priority": priority,
-                          "source_address_prefix": cidr_ip,
-                          "destination_address_prefix":
-                              destination_address_prefix,
-                          "access": access, "direction": direction}
-            result = self._provider.azure_client. \
-                create_security_group_rule(self.id,
-                                           rule_name, parameters)
-            self._security_group.security_rules.append(result)
-            return AzureSecurityGroupRule(self._provider, result, self)
+        rule = self.get_rule(ip_protocol, from_port, to_port, cidr_ip)
 
-        return rule
+        if rule:
+            return rule
+
+        count = len(self.rules) + 1
+        rule_name = "Rule - " + str(count)
+        priority = count * 100
+        destination_port_range = str(from_port) + "-" + str(to_port)
+        source_port_range = '*'
+        destination_address_prefix = "*"
+        access = "Allow"
+        direction = "Inbound"
+        parameters = {"protocol": ip_protocol,
+                      "source_port_range": source_port_range,
+                      "destination_port_range": destination_port_range,
+                      "priority": priority,
+                      "source_address_prefix": cidr_ip,
+                      "destination_address_prefix":
+                          destination_address_prefix,
+                      "access": access, "direction": direction}
+        result = self._provider.azure_client. \
+            create_security_group_rule(self.id,
+                                       rule_name, parameters)
+        self._security_group.security_rules.append(result)
+        return AzureSecurityGroupRule(self._provider, result, self)
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
@@ -1071,7 +1084,7 @@ class AzureSubnet(BaseSubnet):
 
     @property
     def id(self):
-        return self._subnet.name
+        return self.network_id + '|$|' + self._subnet.name
 
     @property
     def resource_id(self):
@@ -1421,30 +1434,42 @@ class AzureInstance(BaseInstance):
         if not associated any security group to NIC
         else replacing the existing security group.
         '''
-
+        sg = (self._provicer.security.security_groups.get(sg)
+              if isinstance(sg, str) else sg)
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
         if not nic.network_security_group:
             nic.network_security_group = NetworkSecurityGroup()
+            nic.network_security_group.id = sg.resource_id
+        else:
+            sg_url_params = azure_helpers.\
+                parse_url(SECURITY_GROUP_RESOURCE_ID,
+                          nic.network_security_group.id)
+            existing_sg = self._provider.security.\
+                security_groups.get(sg_url_params.get(SECURITY_GROUP_NAME))
 
-        sg = (self._provicer.security.security_groups.get(sg)
-              if isinstance(sg, str) else sg)
-        nic.network_security_group.id = sg.resource_id
+            new_sg = self._provider.security.security_groups.\
+                create('{0}-{1}'.format(sg.name, existing_sg.name),
+                       'Merged security groups {0} and {1}'.
+                       format(sg.name, existing_sg.name))
+            new_sg.add_rule(src_group=sg)
+            new_sg.add_rule(src_group=existing_sg)
+            nic.network_security_group.id = new_sg.resource_id
 
         self._provider.azure_client.create_nic(self._nic_ids[0], nic)
 
     def remove_security_group(self, sg):
 
         '''
-                :param sg:
-                :return: None
+        :param sg:
+        :return: None
 
-                This method removes the security group to VM instance.
-                In Azure, security group added to Network interface.
-                Azure supports to add only one security group to
-                network interface, we are removing the provided security group
-                if it associated to NIC
-                else we are ignoring.
-                '''
+        This method removes the security group to VM instance.
+        In Azure, security group added to Network interface.
+        Azure supports to add only one security group to
+        network interface, we are removing the provided security group
+        if it associated to NIC
+        else we are ignoring.
+        '''
 
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
         sg = (self._provicer.security.security_groups.get(sg)
