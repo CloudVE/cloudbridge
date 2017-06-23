@@ -9,6 +9,8 @@ import re
 import shutil
 import time
 
+import cloudbridge
+
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
@@ -48,6 +50,7 @@ from cloudbridge.cloud.interfaces.resources import VolumeState
 
 import six
 
+cloudbridge.set_stream_logger(__name__)
 log = logging.getLogger(__name__)
 
 
