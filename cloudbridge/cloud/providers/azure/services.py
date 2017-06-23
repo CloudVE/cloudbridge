@@ -445,6 +445,8 @@ class AzureInstanceService(BaseInstanceService):
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
 
+        instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
+
         # Key_pair is mandatory in azure and it should not be None.
         if key_pair:
             key_pair = (self.provider.security.key_pairs.get(key_pair)
@@ -467,8 +469,9 @@ class AzureInstanceService(BaseInstanceService):
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
 
-        subnet_id, zone_id, security_group_ids = \
-            self._resolve_launch_options(subnet, zone_id, security_groups)
+        subnet_id, zone_id, security_group_id = \
+            self._resolve_launch_options(instance_name,
+                                         subnet, zone_id, security_groups)
 
         if launch_config:
             disks, root_disk_size = \
@@ -477,8 +480,6 @@ class AzureInstanceService(BaseInstanceService):
         else:
             disks = None
             root_disk_size = None
-
-        instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
         nic_params = {
                 'location': self._provider.region_name,
@@ -491,9 +492,9 @@ class AzureInstanceService(BaseInstanceService):
                 }]
             }
 
-        if security_group_ids and len(security_group_ids) > 0:
+        if security_group_id:
             nic_params['network_security_group'] = {
-                'id': security_group_ids[0]
+                'id': security_group_id
             }
         nic_info = self.provider.azure_client.create_nic(
             instance_name + '_nic',
@@ -549,7 +550,7 @@ class AzureInstanceService(BaseInstanceService):
         vm = self._provider.azure_client.get_vm(instance_name)
         return AzureInstance(self.provider, vm)
 
-    def _resolve_launch_options(self, subnet=None, zone_id=None,
+    def _resolve_launch_options(self, name, subnet=None, zone_id=None,
                                 security_groups=None):
         """
         Work out interdependent launch options.
@@ -574,18 +575,30 @@ class AzureInstanceService(BaseInstanceService):
         if subnet:
             # subnet's zone takes precedence
             zone_id = subnet.zone.id
-        security_group_ids = None
-        if isinstance(security_groups, list):
-            if isinstance(security_groups[0], SecurityGroup):
-                security_group_ids = [sg.resource_id for sg in security_groups]
-            else:
-                groups = []
-                for sg in security_groups:
-                    sg_obj = self.provider.security.security_groups.get(sg)
-                    groups.append(sg_obj)
-                security_group_ids = [sg.resource_id for sg in groups]
+        security_group_id = None
 
-        return subnet.resource_id, zone_id, security_group_ids
+        if isinstance(security_groups, list) and len(security_groups) > 0:
+
+            if isinstance(security_groups[0], SecurityGroup):
+                security_groups_ids = [sg.id for sg in security_groups]
+                security_group_id = security_groups[0].resource_id
+            else:
+                security_groups_ids = security_groups
+                seuciry_group = self.provider.security.\
+                    security_groups.get(security_groups[0])
+                security_group_id = seuciry_group.resource_id
+
+            if len(security_groups) > 1:
+                new_sg = self.provider.security.security_groups.\
+                    create('{0}-sg'.format(name), 'Merge security groups {0}'.
+                           format(','.join(security_groups_ids)))
+
+                for sg in security_groups:
+                    new_sg.add_rule(src_group=sg)
+
+                security_group_id = new_sg.resource_id
+
+        return subnet.resource_id, zone_id, security_group_id
 
     def _process_block_device_mappings(self, launch_config,
                                        vm_name, zone=None):
@@ -890,9 +903,11 @@ class AzureSubnetService(BaseSubnetService):
         :param subnet_id:
         :return:
         """
-        subnets = [subnet for subnet in self._list_subnets()
-                   if subnet.id == subnet_id]
-        return subnets[0] if len(subnets) else None
+        subnet_id_parts = subnet_id.split('|$|')
+        azure_subnet = self.provider.azure_client.\
+            get_subnet(subnet_id_parts[0], subnet_id_parts[1])
+        return AzureSubnet(self.provider,
+                           azure_subnet) if azure_subnet else None
 
     def list(self, network=None, limit=None, marker=None):
         """
@@ -928,7 +943,7 @@ class AzureSubnetService(BaseSubnetService):
         if not name:
             subnet_name = AzureSubnet.CB_DEFAULT_SUBNET_NAME
         else:
-            subnet_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
+            subnet_name = name
 
         subnet_info = self.provider.azure_client\
             .create_subnet(
@@ -984,15 +999,11 @@ class AzureSubnetService(BaseSubnetService):
             # It also requires network id. To get the network id
             # code is doing an explicit get and retrieving the network id
 
-            if not isinstance(subnet, Subnet):
-                subnet = self.get(subnet)
-            if subnet:
-                self.provider.azure_client.delete_subnet(
-                    subnet.network_id,
-                    subnet.id
-                )
-                return True
-            return False
+            subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
+            subnet_id_parts = subnet_id.split('|$|')
+            self.provider.azure_client.\
+                delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
+            return True
         except CloudError as cloudError:
             # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
