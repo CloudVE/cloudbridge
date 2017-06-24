@@ -244,18 +244,18 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def from_port(self):
-        if self._rule.source_port_range == '*':
-            return self._rule.source_port_range
-        source_port_range = self._rule.source_port_range
-        port_range_split = source_port_range.split('-', 1)
+        if self._rule.destination_port_range == '*':
+            return self._rule.destination_port_range
+        destination_port_range = self._rule.destination_port_range
+        port_range_split = destination_port_range.split('-', 1)
         return port_range_split[0]
 
     @property
     def to_port(self):
-        if self._rule.source_port_range == '*':
-            return self._rule.source_port_range
-        source_port_range = self._rule.source_port_range
-        port_range_split = source_port_range.split('-', 1)
+        if self._rule.destination_port_range == '*':
+            return self._rule.destination_port_range
+        destination_port_range = self._rule.destination_port_range
+        port_range_split = destination_port_range.split('-', 1)
         return port_range_split[1]
 
     @property
