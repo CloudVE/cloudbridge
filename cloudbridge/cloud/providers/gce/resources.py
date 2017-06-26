@@ -1728,7 +1728,7 @@ class GCSObject(BaseBucketObject):
         Set the contents of this object to the given text.
         """
         media_body = googleapiclient.http.MediaIoBaseUpload(
-                io.BytesIO(data), mimetype='application/octet-stream')
+                io.BytesIO(data), mimetype='plain/text')
         response = self._bucket.create_object_with_media_body(self.name,
                                                               media_body)
         if response:
@@ -1827,7 +1827,7 @@ class GCSBucket(BaseBucket):
         response = self.create_object_with_media_body(
             name,
             googleapiclient.http.MediaIoBaseUpload(
-                    io.BytesIO(''), mimetype='application/octet-stream'))
+                    io.BytesIO(''), mimetype='plain/text'))
         return GCSObject(self._provider, self, response) if response else None
 
     def create_object_with_media_body(self, name, media_body):
