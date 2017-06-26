@@ -21,6 +21,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from .services import GCEBlockStoreService
 from .services import GCEComputeService
 from .services import GCENetworkService
+from .services import GCSObjectStoreService
 from .services import GCESecurityService
 
 
@@ -165,6 +166,7 @@ class GCECloudProvider(BaseCloudProvider):
         self._security = GCESecurityService(self)
         self._network = GCENetworkService(self)
         self._block_store = GCEBlockStoreService(self)
+        self._object_store = GCSObjectStoreService(self)
 
         self._compute_resources = GCPResources(self.gce_compute)
         self._storage_resources = GCPResources(self.gcp_storage)
@@ -187,8 +189,7 @@ class GCECloudProvider(BaseCloudProvider):
 
     @property
     def object_store(self):
-        raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+        return self._object_store
 
     @property
     def gce_compute(self):

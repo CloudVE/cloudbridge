@@ -1022,3 +1022,74 @@ class GCESnapshotService(BaseSnapshotService):
             return snapshots[0]
         else:
             return None
+
+
+class GCSObjectStoreService(BaseObjectStoreService):
+
+    def __init__(self, provider):
+        super(GCSObjectStoreService, self).__init__(provider)
+
+    def get(self, bucket_id):
+        """
+        Returns a bucket given its ID. Returns ``None`` if the bucket
+        does not exist or if the user does not have permission to access the
+        bucket.
+        """
+        try:
+            response = (self.provider
+                            .gcp_storage
+                            .buckets()
+                            .get(bucket=bucket_id)
+                            .execute())
+            if 'error' in response:
+                # response['error']['code'] is 404 if the bucket does not exist
+                # and 403 if the user does not have permission to access it.
+                return None
+            return GCSBucket(self.provider, response)
+        except:
+            return None
+
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches in bucket names for a substring.
+        """
+        buckets = [bucket for bucket in self.list() if name in bucket.name]
+        return ClientPagedResultList(self.provider, buckets, limit=limit,
+                                     marker=marker)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all containers.
+        """
+        try:
+            response = (self.provider
+                            .gcp_storage
+                            .buckets()
+                            .list(project=self.provider.project_name)
+                            .execute())
+            if 'error' in response or 'items' not in response:
+                return []
+            buckets = [GCSBucket(self.provider, bucket)
+                       for bucket in response['items']]
+            return ClientPagedResultList(self.provider, buckets,
+                                         limit=limit, marker=marker)
+        except:
+            return []
+
+    def create(self, name, location=None):
+        """
+        Create a new bucket and returns it. Returns None if creation fails.
+        """
+        try:
+            response = (self.provider
+                            .gcp_storage
+                            .buckets()
+                            .insert(project=self.provider.project_name,
+                                    name=name,
+                                    location=location if location else '')
+                            .execute())
+            if 'error' in response:
+                return None
+            return GCSBucket(self.provider, response)
+        except:
+            return None
