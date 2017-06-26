@@ -9,6 +9,8 @@ import uuid
 
 import cloudbridge as cb
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
+from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
@@ -1689,3 +1691,83 @@ class GCESnapshot(BaseSnapshot):
                          .execute())
         return self._provider.block_store.volumes.get(
             operation.get('targetLink'))
+
+
+class GCSBucket(BaseBucket):
+
+    def __init__(self, provider, bucket):
+        super(GCSBucket, self).__init__(provider)
+        self._bucket = bucket
+
+    @property
+    def id(self):
+        return self._bucket['id']
+
+    @property
+    def name(self):
+        """
+        Get this bucket's name.
+        """
+        return self._bucket['name']
+
+    def get(self, name):
+        """
+        Retrieve a given object from this bucket.
+        """
+        try:
+            response = (self._provider
+                            .gcp_storage
+                            .objects()
+                            .get(bucket=self.name, object=name)
+                            .execute())
+            if 'error' in response:
+                return None
+            return GCSObject(self._provider, response)
+        except:
+            return None
+
+    def list(self, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+        """
+        body = {}
+        if prefix:
+            body['prefix'] = prefix
+        try:
+            response = (self._provider
+                            .gcp_storage
+                            .objects()
+                            .list(bucket=self.name, body=body)
+                            .execute())
+            if 'error' in response or 'items' not in response:
+                return None
+            objects = [GCSObject(self._provider, obj)
+                       for obj in response['items']]
+            return ClientPagedResultList(self._provider, objects, limit=limit,
+                                         marker=marker)
+        except:
+            return []
+
+    def delete(self, delete_contents=False):
+        """
+        Delete this bucket.
+        """
+        (self._provider
+             .gcp_storage
+             .buckets()
+             .delete(bucket=self.name)
+             .execute())
+
+    def create_object(self, name):
+        try:
+            response = (self._provider
+                            .gcp_storage
+                            .objects()
+                            .insert(bucket=self.name, body={'name': name})
+                            .execute())
+            if 'error' in response:
+                return None
+            return GCSObject(self._provider, response)
+        except:
+            return None
+

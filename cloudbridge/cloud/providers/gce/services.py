@@ -40,6 +40,7 @@ from .resources import GCESecurityGroup
 from .resources import GCESnapshot
 from .resources import GCESubnet
 from .resources import GCEVolume
+from .resources import GCSBucket
 
 
 class GCESecurityService(BaseSecurityService):
@@ -1080,13 +1081,16 @@ class GCSObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket and returns it. Returns None if creation fails.
         """
+        body = {}
+        if location:
+            body['location'] = location
         try:
             response = (self.provider
                             .gcp_storage
                             .buckets()
                             .insert(project=self.provider.project_name,
                                     name=name,
-                                    location=location if location else '')
+                                    body=body)
                             .execute())
             if 'error' in response:
                 return None
