@@ -1697,8 +1697,9 @@ class GCESnapshot(BaseSnapshot):
 
 class GCSObject(BaseBucketObject):
 
-    def __init__(self, provider, obj):
+    def __init__(self, provider, bucket, obj):
         super(GCSObject, self).__init__(provider)
+        self._bucket = bucket
         self._obj = obj
 
     @property
@@ -1723,10 +1724,27 @@ class GCSObject(BaseBucketObject):
         raise NotImplementedError('Not Implemented')
 
     def upload(self, data):
-        raise NotImplementedError('Not Implemented')
+        """
+        Set the contents of this object to the given text.
+        """
+        media_body = googleapiclient.http.MediaIoBaseUpload(
+                io.BytesIO(data), mimetype='application/octet-stream')
+        response = self._bucket.create_object_with_media_body(self.name,
+                                                              media_body)
+        if response:
+            self._obj = response
 
     def upload_from_file(self, path):
-        raise NotImplementedError('Not Implemented')
+        """
+        Upload a binary file.
+        """
+        with open(path, 'rb') as f:
+            media_body = googleapiclient.http.MediaIoBaseUpload(
+                    f, 'application/octet-stream')
+            response = self._bucket.create_object_with_media_body(self.name,
+                                                                  media_body)
+            if response:
+                self._obj = response
 
     def delete(self):
         (self._provider
@@ -1768,7 +1786,7 @@ class GCSBucket(BaseBucket):
                             .execute())
             if 'error' in response:
                 return None
-            return GCSObject(self._provider, response)
+            return GCSObject(self._provider, self, response)
         except:
             return None
 
@@ -1784,14 +1802,12 @@ class GCSBucket(BaseBucket):
                                   prefix=prefix if prefix else '')
                             .execute())
             if 'error' in response or 'items' not in response:
-                cb.log.warning('response: %s', response)
                 return []
-            objects = [GCSObject(self._provider, obj)
+            objects = [GCSObject(self._provider, self, obj)
                        for obj in response['items']]
             return ClientPagedResultList(self._provider, objects, limit=limit,
                                          marker=marker)
-        except Exception as e:
-            cb.log.warning('error: %s', e)
+        except:
             return []
 
     def delete(self, delete_contents=False):
@@ -1808,9 +1824,14 @@ class GCSBucket(BaseBucket):
         """
         Create an empty plain text object.
         """
+        response = self.create_object_with_media_body(
+            name,
+            googleapiclient.http.MediaIoBaseUpload(
+                    io.BytesIO(''), mimetype='application/octet-stream'))
+        return GCSObject(self._provider, self, response) if response else None
+
+    def create_object_with_media_body(self, name, media_body):
         try:
-            media_body = googleapiclient.http.MediaIoBaseUpload(
-                    io.BytesIO(''), mimetype='plain/text')
             response = (self._provider
                             .gcp_storage
                             .objects()
@@ -1820,7 +1841,6 @@ class GCSBucket(BaseBucket):
                             .execute())
             if 'error' in response:
                 return None
-            return GCSObject(self._provider, response)
-        except Exception as e:
-            cb.log.warning('error: %s', e)
+            return response
+        except:
             return None
