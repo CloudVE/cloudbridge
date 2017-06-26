@@ -3,6 +3,7 @@ DataTypes used by this provider
 """
 import hashlib
 import inspect
+import io
 import json
 import re
 import uuid
@@ -1775,22 +1776,22 @@ class GCSBucket(BaseBucket):
         """
         List all objects within this bucket.
         """
-        body = {}
-        if prefix:
-            body['prefix'] = prefix
         try:
             response = (self._provider
                             .gcp_storage
                             .objects()
-                            .list(bucket=self.name, body=body)
+                            .list(bucket=self.name,
+                                  prefix=prefix if prefix else '')
                             .execute())
             if 'error' in response or 'items' not in response:
-                return None
+                cb.log.warning('response: %s', response)
+                return []
             objects = [GCSObject(self._provider, obj)
                        for obj in response['items']]
             return ClientPagedResultList(self._provider, objects, limit=limit,
                                          marker=marker)
-        except:
+        except Exception as e:
+            cb.log.warning('error: %s', e)
             return []
 
     def delete(self, delete_contents=False):
@@ -1804,14 +1805,22 @@ class GCSBucket(BaseBucket):
              .execute())
 
     def create_object(self, name):
+        """
+        Create an empty plain text object.
+        """
         try:
+            media_body = googleapiclient.http.MediaIoBaseUpload(
+                    io.BytesIO(''), mimetype='plain/text')
             response = (self._provider
                             .gcp_storage
                             .objects()
-                            .insert(bucket=self.name, body={'name': name})
+                            .insert(bucket=self.name,
+                                    body={'name': name},
+                                    media_body=media_body)
                             .execute())
             if 'error' in response:
                 return None
             return GCSObject(self._provider, response)
-        except:
+        except Exception as e:
+            cb.log.warning('error: %s', e)
             return None

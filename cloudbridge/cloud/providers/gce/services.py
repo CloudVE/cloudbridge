@@ -1082,7 +1082,7 @@ class GCSObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket and returns it. Returns None if creation fails.
         """
-        body = {}
+        body = {'name': name}
         if location:
             body['location'] = location
         try:
@@ -1090,7 +1090,6 @@ class GCSObjectStoreService(BaseObjectStoreService):
                             .gcp_storage
                             .buckets()
                             .insert(project=self.provider.project_name,
-                                    name=name,
                                     body=body)
                             .execute())
             if 'error' in response:
