@@ -1693,6 +1693,50 @@ class GCESnapshot(BaseSnapshot):
             operation.get('targetLink'))
 
 
+class GCSObject(BaseBucketObject):
+
+    def __init__(self, provider, obj):
+        super(GCSObject, self).__init__(provider)
+        self._obj = obj
+
+    @property
+    def id(self):
+        return self._obj['id']
+
+    @property
+    def name(self):
+        return self._obj['name']
+
+    @property
+    def size(self):
+        return self._obj['size']
+
+    @property
+    def last_modified(self):
+        return self._obj['updated']
+
+    def iter_content(self):
+        # TODO: It's not clear what does this method do. Does it return an
+        # iterator for metadata fields?
+        raise NotImplementedError('Not Implemented')
+
+    def upload(self, data):
+        raise NotImplementedError('Not Implemented')
+
+    def upload_from_file(self, path):
+        raise NotImplementedError('Not Implemented')
+
+    def delete(self):
+        (self._provider
+             .gcp_storage
+             .objects()
+             .delete(bucket=self._obj['bucket'], object=self.name)
+             .execute())
+
+    def generate_url(self, expires_in=0):
+        return self._obj['selfLink']
+
+
 class GCSBucket(BaseBucket):
 
     def __init__(self, provider, bucket):
