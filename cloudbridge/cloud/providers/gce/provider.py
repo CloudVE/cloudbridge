@@ -21,8 +21,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 from .services import GCEBlockStoreService
 from .services import GCEComputeService
 from .services import GCENetworkService
-from .services import GCSObjectStoreService
 from .services import GCESecurityService
+from .services import GCSObjectStoreService
 
 
 class GCPResourceUrl(object):
