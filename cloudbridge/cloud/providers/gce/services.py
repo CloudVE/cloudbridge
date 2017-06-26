@@ -1,3 +1,8 @@
+import hashlib
+import uuid
+from collections import namedtuple
+
+import cloudbridge as cb
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService
@@ -11,20 +16,15 @@ from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.providers.gce import helpers
-import cloudbridge as cb
 
-from collections import namedtuple
-import hashlib
 import googleapiclient
 
 from retrying import retry
-import sys
-
-import uuid
 
 from .resources import GCEFirewallsDelegate
 from .resources import GCEFloatingIP
@@ -33,10 +33,12 @@ from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 from .resources import GCEMachineImage
 from .resources import GCENetwork
+from .resources import GCEPlacementZone
 from .resources import GCERegion
+from .resources import GCERouter
 from .resources import GCESecurityGroup
-from .resources import GCESecurityGroupRule
 from .resources import GCESnapshot
+from .resources import GCESubnet
 from .resources import GCEVolume
 
 
@@ -125,8 +127,8 @@ class GCEKeyPairService(BaseKeyPairService):
             # elems should be "ssh-rsa <public_key> <email>"
             elems = key.split(" ")
             if elems and elems[0]:  # ignore blank lines
-                yield GCEKeyPairService.GCEKeyInfo(elems[0], elems[1].encode('ascii'),
-                                                   elems[2])
+                yield GCEKeyPairService.GCEKeyInfo(
+                        elems[0], elems[1].encode('ascii'), elems[2])
 
     def gce_metadata_save_op(self, callback):
         """
@@ -276,11 +278,12 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
 
     @property
     def instance_data(self):
-        response = self.provider.gce_compute \
-                                .machineTypes() \
-                                .list(project=self.provider.project_name,
-                                      zone=self.provider.default_zone) \
-                                .execute()
+        response = (self.provider
+                        .gce_compute
+                        .machineTypes()
+                        .list(project=self.provider.project_name,
+                              zone=self.provider.default_zone)
+                        .execute())
         return response['items']
 
     def get(self, instance_type_id):
@@ -318,11 +321,12 @@ class GCERegionService(BaseRegionService):
 
     def get(self, region_id):
         try:
-            region = self.provider.gce_compute \
-                                  .regions() \
-                                  .get(project=self.provider.project_name,
-                                       region=region_id) \
-                                  .execute()
+            region = (self.provider
+                          .gce_compute
+                          .regions()
+                          .get(project=self.provider.project_name,
+                               region=region_id)
+                          .execute())
         # Handle the case when region_id is not valid
         except googleapiclient.errors.HttpError:
             return None
@@ -332,8 +336,11 @@ class GCERegionService(BaseRegionService):
             return None
 
     def list(self, limit=None, marker=None):
-        regions_response = self.provider.gce_compute.regions().list(
-            project=self.provider.project_name).execute()
+        regions_response = (self.provider
+                                .gce_compute
+                                .regions()
+                                .list(project=self.provider.project_name)
+                                .execute())
         regions = [GCERegion(self.provider, region)
                    for region in regions_response['items']]
         return ClientPagedResultList(self.provider, regions,
@@ -351,7 +358,7 @@ class GCEImageService(BaseImageService):
         self._public_images = None
 
     _PUBLIC_IMAGE_PROJECTS = ['centos-cloud', 'coreos-cloud', 'debian-cloud',
-                             'opensuse-cloud', 'ubuntu-os-cloud']
+                              'opensuse-cloud', 'ubuntu-os-cloud']
 
     def _retrieve_public_images(self):
         if self._public_images is not None:
@@ -359,10 +366,11 @@ class GCEImageService(BaseImageService):
         self._public_images = []
         for project in GCEImageService._PUBLIC_IMAGE_PROJECTS:
             try:
-                response = self.provider.gce_compute \
-                                        .images() \
-                                        .list(project=project) \
-                                        .execute()
+                response = (self.provider
+                                .gce_compute
+                                .images()
+                                .list(project=project)
+                                .execute())
             except googleapiclient.errors.HttpError as http_error:
                 cb.log.warning("googleapiclient.errors.HttpError: {0}".format(
                     http_error))
@@ -376,11 +384,12 @@ class GCEImageService(BaseImageService):
         Returns an Image given its id
         """
         try:
-            image = self.provider.gce_compute \
-                                  .images() \
-                                  .get(project=self.provider.project_name,
-                                       image=image_id) \
-                                  .execute()
+            image = (self.provider
+                         .gce_compute
+                         .images()
+                         .get(project=self.provider.project_name,
+                              image=image_id)
+                         .execute())
             if image:
                 return GCEMachineImage(self.provider, image)
         except TypeError as type_error:
@@ -415,13 +424,13 @@ class GCEImageService(BaseImageService):
         self._retrieve_public_images()
         images = []
         if (self.provider.project_name not in
-            GCEImageService._PUBLIC_IMAGE_PROJECTS):
+                GCEImageService._PUBLIC_IMAGE_PROJECTS):
             try:
-                response = self.provider \
-                               .gce_compute \
-                               .images() \
-                               .list(project=self.provider.project_name) \
-                               .execute()
+                response = (self.provider
+                                .gce_compute
+                                .images()
+                                .list(project=self.provider.project_name)
+                                .execute())
                 if 'items' in response:
                     images = [GCEMachineImage(self.provider, image) for image
                               in response['items']]
@@ -481,11 +490,11 @@ class GCEInstanceService(BaseInstanceService):
                     config['tags']['items'] = sg_names
         else:
             config = launch_config
-        operation = (self.provider.gce_compute.instances()
-                         .insert(
-                             project=self.provider.project_name,
-                             zone=self.provider.default_zone,
-                             body=config)
+        operation = (self.provider
+                         .gce_compute.instances()
+                         .insert(project=self.provider.project_name,
+                                 zone=self.provider.default_zone,
+                                 body=config)
                          .execute())
         if 'zone' not in operation:
             return None
@@ -531,16 +540,20 @@ class GCEInstanceService(BaseInstanceService):
         # For GCE API, Acceptable values are 0 to 500, inclusive.
         # (Default: 500).
         max_result = limit if limit is not None and limit < 500 else 500
-        response = self.provider.gce_compute.instances().list(
-            project=self.provider.project_name,
-            zone=self.provider.default_zone,
-            maxResults=max_result,
-            pageToken=marker).execute()
+        response = (self.provider
+                        .gce_compute
+                        .instances()
+                        .list(project=self.provider.project_name,
+                              zone=self.provider.default_zone,
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
         instances = [GCEInstance(self.provider, inst)
                      for inst in response['items']]
         return ServerPagedResultList(len(instances) > max_result,
                                      response.get('nextPageToken'),
                                      False, data=instances)
+
 
 class GCEComputeService(BaseComputeService):
     # TODO: implement GCEComputeService
@@ -572,14 +585,14 @@ class GCENetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(GCENetworkService, self).__init__(provider)
+        self._subnet_svc = GCESubnetService(self.provider)
 
     def get(self, network_id):
         if network_id is None:
             return None
-        # networks = self.list(filter='id eq %s' % network_id) would be better.
-        # But, there is a GCE API bug that causes an error if the network_id
-        # has more than 19 digits. So, we list all networks and filter
-        # ourselves.
+        # Note: networks = self.list(filter='id eq %s' % network_id) does not
+        # work due to a GCE API bug that causes an error if the network_id has
+        # has more than 19 digits.
         networks = self.list()
         for network in networks:
             if network.id == network_id:
@@ -594,11 +607,12 @@ class GCENetworkService(BaseNetworkService):
 
     def list(self, limit=None, marker=None, filter=None):
         try:
-            response = (self.provider.gce_compute
-                                     .networks()
-                                     .list(project=self.provider.project_name,
-                                           filter=filter)
-                                     .execute())
+            response = (self.provider
+                            .gce_compute
+                            .networks()
+                            .list(project=self.provider.project_name,
+                                  filter=filter)
+                            .execute())
             networks = []
             if 'items' in response:
                 for network in response['items']:
@@ -608,16 +622,28 @@ class GCENetworkService(BaseNetworkService):
             return []
 
     def create(self, name):
+        """
+        Creates a custom mode VPC network.
+        """
         try:
             networks = self.list(filter='name eq %s' % name)
             if len(networks) > 0:
                 return networks[0]
 
-            response = (self.provider.gce_compute
-                                     .networks()
-                                     .insert(project=self.provider.project_name,
-                                             body={'name': name})
-                                     .execute())
+            # Possible values for 'autoCreateSubnetworks' are:
+            #
+            # None: For creating a legacy (non-subnetted) network.
+            # True: For creating an auto mode VPC network. This also creates a
+            #       subnetwork in every region.
+            # False: For creating a custom mode VPC network. Subnetworks should
+            #        be created manually.
+            response = (self.provider
+                            .gce_compute
+                            .networks()
+                            .insert(project=self.provider.project_name,
+                                    body={'name': name,
+                                          'autoCreateSubnetworks': False})
+                            .execute())
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response)
@@ -628,17 +654,18 @@ class GCENetworkService(BaseNetworkService):
 
     @property
     def subnets(self):
-        raise NotImplementedError('To be implemented')
+        return self._subnet_svc
 
     def floating_ips(self, network_id=None, region=None):
         if not region:
             region = self.provider.region_name
         try:
-            response = (self.provider.gce_compute
-                                     .addresses()
-                                     .list(project=self.provider.project_name,
-                                           region=region)
-                                     .execute())
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .list(project=self.provider.project_name,
+                                  region=region)
+                            .execute())
             ips = []
             if 'items' in response:
                 for ip in response['items']:
@@ -654,27 +681,137 @@ class GCENetworkService(BaseNetworkService):
             region = self.provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
         try:
-            response = (self.provider.gce_compute
-                                     .addresses()
-                                     .insert(project=self.provider.project_name,
-                                             region=region,
-                                             body={'name': ip_name})
-                                     .execute())
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .insert(project=self.provider.project_name,
+                                    region=region,
+                                    body={'name': ip_name})
+                            .execute())
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response, region=region)
             ips = self.floating_ips()
             for ip in ips:
-                if ip.id == response["targetId"]:
+                if ip.id == response['targetId']:
                     return ip
         except:
             return None
 
-    def routers(self):
+    def routers(self, region=None):
+        if not region:
+            region = self.provider.region_name
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .routers()
+                            .list(project=self.provider.project_name,
+                                  region=region)
+                            .execute())
+            routers = []
+            if 'items' in response:
+                for router in response['items']:
+                    routers.append(GCERouter(self.provider, router))
+            return routers
+        except:
+            return []
+
+    def create_router(self, name=None, network=None, region=None):
+        network_url = 'global/networks/default'
+        if isinstance(network, GCENetwork):
+            network_url = network.resource_url
+        if not region:
+            region = self.provider.region_name
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .routers()
+                            .insert(project=self.provider.project_name,
+                                    region=region,
+                                    body={'name': name,
+                                          'network': network_url})
+                            .execute())
+            if 'error' in response:
+                return None
+            self.provider.wait_for_opeartion(response, region=region)
+            routers = self.routers()
+            for router in routers:
+                if router.id == response['targetId']:
+                    return router
+        except:
+            return None
+
+
+class GCESubnetService(BaseSubnetService):
+
+    def __init__(self, provider):
+        super(GCESubnetService, self).__init__(provider)
+
+    def get(self, subnet_id):
+        for subnet in self.list():
+            if subnet.id == subnet_id:
+                return subnet
+        return None
+
+    def list(self, network=None, region=None):
+        if not region:
+            region = self.provider.region_name
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .subnetworks()
+                            .list(project=self.provider.project_name,
+                                  region=region)
+                            .execute())
+            subnets = []
+            if 'items' in response:
+                for subnet in response['items']:
+                    subnets.append(GCESubnet(self.provider, subnet))
+            return subnets
+        except:
+            return []
+
+    def create(self, network, cidr_block, name=None, zone=None):
+        if not name:
+            name = 'subnet-{0}'.format(uuid.uuid4())
+        region = self.provider.region_name
+        if isinstance(zone, GCEPlacementZone):
+            region = zone.region_name
+        body = {'ipCidrRange': cidr_block,
+                'name': name,
+                'network': network.resource_url,
+                'region': region}
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .subnetworks()
+                            .insert(project=self.provider.project_name,
+                                    region=region,
+                                    body=body)
+                            .execute())
+            self.provider.wait_for_operation(response, region=region)
+            if 'error' in response:
+                return None
+            subnets = self.list(network, region)
+            for subnet in subnets:
+                cb.log.warning('subnet ID: %s', subnet.id)
+                if subnet.id == response['targetId']:
+                    return subnet
+        except:
+            return None
+
+    def get_or_create_default(self, zone=None):
         raise NotImplementedError('To be implemented')
 
-    def create_router(self, name=None):
-        raise NotImplementedError('To be implemented')
+    def delete(self, subnet):
+        response = (self.provider
+                        .gce_compute
+                        .subnetworks()
+                        .delete(project=self.provider.project_name,
+                                region=subnet.region,
+                                router=subnet.name)
+                        .execute())
+        self._provider.wait_for_operation(response, region=subnet.region)
 
 
 class GCEBlockStoreService(BaseBlockStoreService):
@@ -722,12 +859,14 @@ class GCEVolumeService(BaseVolumeService):
         filtr = 'name eq ' + name
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute.disks()
+                        .gce_compute
+                        .disks()
                         .list(project=self.provider.project_name,
                               zone=self.provider.default_zone,
                               filter=filtr,
                               maxResults=max_result,
-                              pageToken=marker).execute())
+                              pageToken=marker)
+                        .execute())
         if 'items' not in response:
             return []
         gce_vols = [GCEVolume(self.provider, vol)
@@ -748,11 +887,13 @@ class GCEVolumeService(BaseVolumeService):
         # (Default: 500).
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute.disks()
+                        .gce_compute
+                        .disks()
                         .list(project=self.provider.project_name,
                               zone=self.provider.default_zone,
                               maxResults=max_result,
-                              pageToken=marker).execute())
+                              pageToken=marker)
+                        .execute())
         if 'items' not in response:
             return []
         gce_vols = [GCEVolume(self.provider, vol)
@@ -782,11 +923,14 @@ class GCEVolumeService(BaseVolumeService):
             'sourceSnapshot': snapshot_id,
             'description': description,
         }
-        operation = (self.provider.gce_compute.disks()
+        operation = (self.provider
+                         .gce_compute
+                         .disks()
                          .insert(
                              project=self._provider.project_name,
                              zone=zone_name,
-                             body=disk_body).execute())
+                             body=disk_body)
+                         .execute())
         return self.get(operation.get('targetLink'))
 
 
@@ -817,15 +961,17 @@ class GCESnapshotService(BaseSnapshotService):
         filtr = 'name eq ' + name
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute.snapshots()
+                        .gce_compute
+                        .snapshots()
                         .list(project=self.provider.project_name,
                               filter=filtr,
                               maxResults=max_result,
-                              pageToken=marker).execute())
+                              pageToken=marker)
+                        .execute())
         if 'items' not in response:
             return []
         snapshots = [GCESnapshot(self.provider, snapshot)
-                    for snapshot in response['items']]
+                     for snapshot in response['items']]
         return ServerPagedResultList(len(snapshots) > max_result,
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
@@ -836,14 +982,16 @@ class GCESnapshotService(BaseSnapshotService):
         """
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute.snapshots()
+                        .gce_compute
+                        .snapshots()
                         .list(project=self.provider.project_name,
                               maxResults=max_result,
-                              pageToken=marker).execute())
+                              pageToken=marker)
+                        .execute())
         if 'items' not in response:
             return []
         snapshots = [GCESnapshot(self.provider, snapshot)
-                    for snapshot in response['items']]
+                     for snapshot in response['items']]
         return ServerPagedResultList(len(snapshots) > max_result,
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
@@ -858,11 +1006,13 @@ class GCESnapshotService(BaseSnapshotService):
             "description": description
         }
         operation = (self.provider
-                         .gce_compute.disks()
+                         .gce_compute
+                         .disks()
                          .createSnapshot(
                              project=self.provider.project_name,
                              zone=self.provider.default_zone,
-                             disk=volume_name, body=snapshot_body).execute())
+                             disk=volume_name, body=snapshot_body)
+                         .execute())
         if 'zone' not in operation:
             return None
         gce_zone = self.provider.get_gce_resource_data(operation['zone'])

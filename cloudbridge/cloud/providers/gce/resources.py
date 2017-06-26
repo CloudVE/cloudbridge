@@ -1,6 +1,13 @@
 """
 DataTypes used by this provider
 """
+import hashlib
+import inspect
+import json
+import re
+import uuid
+
+import cloudbridge as cb
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
@@ -10,28 +17,25 @@ from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
+from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
-import cloudbridge as cb
+import googleapiclient
 
 # Older versions of Python do not have a built-in set data-structure.
 try:
     set
 except NameError:
     from sets import Set as set
-
-import hashlib
-import inspect
-import json
-import re
-import uuid
 
 
 class GCEKeyPair(BaseKeyPair):
@@ -187,8 +191,11 @@ class GCERegion(BaseRegion):
         """
         Accesss information about placement zones within this region.
         """
-        zones_response = self._provider.gce_compute.zones().list(
-            project=self._provider.project_name).execute()
+        zones_response = (self._provider
+                              .gce_compute
+                              .zones()
+                              .list(project=self._provider.project_name)
+                              .execute())
         zones = [zone for zone in zones_response['items']
                  if zone['region'] == self._gce_region['selfLink']]
         return [GCEPlacementZone(self._provider, zone['name'], self.name)
@@ -285,11 +292,12 @@ class GCEFirewallsDelegate(object):
             firewall['sourceTags'] = [source_tag]
         project_name = self._provider.project_name
         try:
-            response = (self._provider.gce_compute
-                                      .firewalls()
-                                      .insert(project=project_name,
-                                              body=firewall)
-                                      .execute())
+            response = (self._provider
+                            .gce_compute
+                            .firewalls()
+                            .insert(project=project_name,
+                                    body=firewall)
+                            .execute())
             self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
         except:
@@ -314,7 +322,8 @@ class GCEFirewallsDelegate(object):
             if not self._check_list_in_dict(firewall, 'sourceRanges',
                                             source_range):
                 continue
-            if not self._check_list_in_dict(firewall, 'sourceTags', source_tag):
+            if not self._check_list_in_dict(firewall, 'sourceTags',
+                                            source_tag):
                 continue
             return firewall['id']
         return None
@@ -328,7 +337,7 @@ class GCEFirewallsDelegate(object):
             if firewall['id'] != firewall_id:
                 continue
             if ('sourceRanges' in firewall and
-                len(firewall['sourceRanges']) == 1):
+                    len(firewall['sourceRanges']) == 1):
                 info['source_range'] = firewall['sourceRanges'][0]
             if 'sourceTags' in firewall and len(firewall['sourceTags']) == 1:
                 info['source_tag'] = firewall['sourceTags'][0]
@@ -337,7 +346,7 @@ class GCEFirewallsDelegate(object):
             if 'IPProtocol' in firewall['allowed'][0]:
                 info['ip_protocol'] = firewall['allowed'][0]['IPProtocol']
             if ('ports' in firewall['allowed'][0] and
-                len(firewall['allowed'][0]['ports']) == 1):
+                    len(firewall['allowed'][0]['ports']) == 1):
                 info['port'] = firewall['allowed'][0]['ports'][0]
             info['network_name'] = self.network_name(firewall)
             return info
@@ -362,7 +371,8 @@ class GCEFirewallsDelegate(object):
         if 'items' not in self._list_response:
             return
         for firewall in self._list_response['items']:
-            if 'targetTags' not in firewall or len(firewall['targetTags']) != 1:
+            if ('targetTags' not in firewall or
+                    len(firewall['targetTags']) != 1):
                 continue
             if 'allowed' not in firewall or len(firewall['allowed']) != 1:
                 continue
@@ -381,11 +391,12 @@ class GCEFirewallsDelegate(object):
         """
         project_name = self._provider.project_name
         try:
-            response = (self._provider.gce_compute
-                                      .firewalls()
-                                      .delete(project=project_name,
-                                              firewall=firewall['name'])
-                                      .execute())
+            response = (self._provider
+                            .gce_compute
+                            .firewalls()
+                            .delete(project=project_name,
+                                    firewall=firewall['name'])
+                            .execute())
             self._provider.wait_for_operation(response)
         except:
             return False
@@ -396,11 +407,11 @@ class GCEFirewallsDelegate(object):
         """
         Sync the local cache of all firewalls with the server.
         """
-        self._list_response = (
-                self._provider.gce_compute
-                              .firewalls()
-                              .list(project=self._provider.project_name)
-                              .execute())
+        self._list_response = (self._provider
+                                   .gce_compute
+                                   .firewalls()
+                                   .list(project=self._provider.project_name)
+                                   .execute())
 
     def _check_list_in_dict(self, dictionary, field_name, value):
         """
@@ -408,9 +419,8 @@ class GCEFirewallsDelegate(object):
         """
         if field_name not in dictionary:
             return value is None
-        if (value is None or
-            len(dictionary[field_name]) != 1 or
-            dictionary[field_name][0] != value):
+        if (value is None or len(dictionary[field_name]) != 1 or
+                dictionary[field_name][0] != value):
             return False
         return True
 
@@ -532,7 +542,7 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
             return None
         if 'target_tag' not in info or info['network_name'] is None:
             return None
-        network = delegate.network.get_by_name(info['network_name'])
+        network = self._delegate.network.get_by_name(info['network_name'])
         if network is None:
             return None
         return GCESecurityGroup(self._delegate, info['target_tag'], network)
@@ -666,9 +676,12 @@ class GCEMachineImage(BaseMachineImage):
         """
         Delete this image
         """
-        request = self._provider.gce_compute.images().delete(
-            project=self._provider.project_name, image=self.name)
-        request.execute()
+        (self._provider
+             .gce_compute
+             .images()
+             .delete(project=self._provider.project_name,
+                     image=self.name)
+             .execute())
 
     @property
     def state(self):
@@ -689,11 +702,11 @@ class GCEMachineImage(BaseMachineImage):
             cb.log.warning("Project name is not found.")
             return
         try:
-            response = self._provider.gce_compute \
-                                  .images() \
-                                  .get(project=project,
-                                       image=self.name) \
-                                  .execute()
+            response = (self._provider
+                            .gce_compute
+                            .images()
+                            .get(project=project, image=self.name)
+                            .execute())
             if response:
                 # pylint:disable=protected-access
                 self._gce_image = response
@@ -767,10 +780,10 @@ class GCEInstance(BaseInstance):
             access_configs = network_interfaces[0].get('accessConfigs')
             if access_configs is not None and len(access_configs) > 0:
                 # https://cloud.google.com/compute/docs/reference/beta/instances
-                # An array of configurations for this interface. Currently, only
-                # one access config, ONE_TO_ONE_NAT, is supported. If there are
-                # no accessConfigs specified, then this instance will have no
-                # external internet access.
+                # An array of configurations for this interface. Currently,
+                # only one access config, ONE_TO_ONE_NAT, is supported. If
+                # there are no accessConfigs specified, then this instance will
+                # have no external internet access.
                 access_config = access_configs[0]
                 if 'natIP' in access_config:
                     ips.append(access_config['natIP'])
@@ -820,41 +833,45 @@ class GCEInstance(BaseInstance):
         Reboot this instance.
         """
         if self.state == InstanceState.STOPPED:
-            self._provider.gce_compute \
-                          .instances() \
-                          .start(project=self._provider.project_name,
-                                 zone=self._provider.default_zone,
-                                 instance=self.name) \
-                          .execute()
+            (self._provider
+                 .gce_compute
+                 .instances()
+                 .start(project=self._provider.project_name,
+                        zone=self._provider.default_zone,
+                        instance=self.name)
+                 .execute())
         else:
-            self._provider.gce_compute \
-                          .instances() \
-                          .reset(project=self._provider.project_name,
-                                 zone=self._provider.default_zone,
-                                 instance=self.name) \
-                          .execute()
+            (self._provider
+                 .gce_compute
+                 .instances()
+                 .reset(project=self._provider.project_name,
+                        zone=self._provider.default_zone,
+                        instance=self.name)
+                 .execute())
 
     def terminate(self):
         """
         Permanently terminate this instance.
         """
-        self._provider.gce_compute \
-                      .instances() \
-                      .delete(project=self._provider.project_name,
-                              zone=self._provider.default_zone,
-                              instance=self.name) \
-                      .execute()
+        (self._provider
+             .gce_compute
+             .instances()
+             .delete(project=self._provider.project_name,
+                     zone=self._provider.default_zone,
+                     instance=self.name)
+             .execute())
 
     def stop(self):
         """
         Stop this instance.
         """
-        self._provider.gce_compute \
-                      .instances() \
-                      .stop(project=self._provider.project_name,
-                            zone=self._provider.default_zone,
-                            instance=self.name) \
-                      .execute()
+        (self._provider
+             .gce_compute
+             .instances()
+             .stop(project=self._provider.project_name,
+                   zone=self._provider.default_zone,
+                   instance=self.name)
+             .execute())
 
     @property
     def image_id(self):
@@ -928,11 +945,11 @@ class GCEInstance(BaseInstance):
         self_url = self._provider.parse_url(self._gce_instance['selfLink'])
         try:
             response = (self._provider
-                .gce_compute
-                .targetInstances()
-                .list(project=self_url.parameters['project'],
-                      zone=self_url.parameters['zone'])
-                .execute())
+                            .gce_compute
+                            .targetInstances()
+                            .list(project=self_url.parameters['project'],
+                                  zone=self_url.parameters['zone'])
+                            .execute())
             if 'items' not in response:
                 return None
             for target_instance in response['items']:
@@ -959,16 +976,17 @@ class GCEInstance(BaseInstance):
                 'instance': self._gce_instance['selfLink']}
         try:
             response = (self._provider
-                .gce_compute
-                .targetInstances()
-                .insert(project=self_url.parameters['project'],
-                        zone=self_url.parameters['zone'],
-                        body=body)
-                .execute())
+                            .gce_compute
+                            .targetInstances()
+                            .insert(project=self_url.parameters['project'],
+                                    zone=self_url.parameters['zone'],
+                                    body=body)
+                            .execute())
             self._provider.wait_for_operation(
                 response, zone=self_url.parameters['zone'])
         except Exception as e:
-            cb.log.warning('Exception while inserting a target instance: %s', e)
+            cb.log.warning('Exception while inserting a target instance: %s',
+                           e)
             return None
 
         # The following method should find the target instance that we
@@ -984,16 +1002,18 @@ class GCEInstance(BaseInstance):
         new_name = target_instance['name']
         new_url = target_instance['selfLink']
         try:
-            response = (self._provider.gce_compute
-                                      .forwardingRules()
-                                      .list(project=self._provider.project_name,
-                                            region=ip.region)
-                                      .execute())
+            response = (self._provider
+                            .gce_compute
+                            .forwardingRules()
+                            .list(project=self._provider.project_name,
+                                  region=ip.region)
+                            .execute())
             if 'items' not in response:
                 return False
             for rule in response['items']:
                 if rule['IPAddress'] == ip.public_ip:
-                    parsed_target_url = self._provider.parse_url(rule['target'])
+                    parsed_target_url = self._provider.parse_url(
+                            rule['target'])
                     old_zone = parsed_target_url.parameters['zone']
                     old_name = parsed_target_url.parameters['targetInstance']
                     if old_zone == new_zone and old_name == new_name:
@@ -1028,16 +1048,17 @@ class GCEInstance(BaseInstance):
                 'IPAddress': ip.public_ip,
                 'target': target_instance['selfLink']}
         try:
-            response = (self._provider.gce_compute
-                                      .forwardingRules()
-                                      .insert(
-                                          project=self._provider.project_name,
-                                          region=ip.region,
-                                          body=body)
-                                      .execute())
+            response = (self._provider
+                            .gce_compute
+                            .forwardingRules()
+                            .insert(project=self._provider.project_name,
+                                    region=ip.region,
+                                    body=body)
+                            .execute())
             self._provider.wait_for_operation(response, region=ip.region)
         except Exception as e:
-            cb.log.warning('Exception while inserting a forwarding rule: %s', e)
+            cb.log.warning('Exception while inserting a forwarding rule: %s',
+                           e)
             return False
         return True
 
@@ -1049,21 +1070,24 @@ class GCEInstance(BaseInstance):
                               .parameters['zone'])
         name = target_instance['name']
         try:
-            response = (self._provider.gce_compute
-                                      .forwardingRules()
-                                      .list(project=self._provider.project_name,
-                                            region=ip.region)
-                                      .execute())
+            response = (self._provider
+                            .gce_compute
+                            .forwardingRules()
+                            .list(project=self._provider.project_name,
+                                  region=ip.region)
+                            .execute())
             if 'items' not in response:
                 return False
             for rule in response['items']:
                 if rule['IPAddress'] == ip.public_ip:
-                    parsed_target_url = self._provider.parse_url(rule['target'])
+                    parsed_target_url = self._provider.parse_url(
+                            rule['target'])
                     temp_zone = parsed_target_url.parameters['zone']
                     temp_name = parsed_target_url.parameters['targetInstance']
                     if temp_zone != zone or temp_name != name:
-                        cb.log.warning('"%s" is forwarded to "%s" in zone "%s"',
-                                       ip.public_ip, temp_name, temp_zone)
+                        cb.log.warning(
+                                '"%s" is forwarded to "%s" in zone "%s"',
+                                ip.public_ip, temp_name, temp_zone)
                         return False
                     response = (self._provider
                                     .gce_compute
@@ -1080,7 +1104,7 @@ class GCEInstance(BaseInstance):
                 'Exception while listing/deleting forwarding rules: %s', e)
             return False
         return True
-        
+
     def add_floating_ip(self, ip_address):
         """
         Add an elastic IP address to this instance.
@@ -1095,8 +1119,9 @@ class GCEInstance(BaseInstance):
                     return
                 target_instance = self._get_target_instance()
                 if not target_instance:
-                    cb.log.warning('Could not create a targetInstance for "%s"',
-                                   self.name)
+                    cb.log.warning(
+                            'Could not create a targetInstance for "%s"',
+                            self.name)
                     return
                 if not self._forward(ip, target_instance):
                     cb.log.warning('Could not forward "%s" to "%s"',
@@ -1113,7 +1138,7 @@ class GCEInstance(BaseInstance):
                 if not ip.in_use() or ip.private_ip not in self.private_ips:
                     cb.log.warning(
                         'Floating IP "%s" is not associated to "%s".',
-                         ip_address, self.name)
+                        ip_address, self.name)
                     return
                 target_instance = self._get_target_instance()
                 if not target_instance:
@@ -1141,6 +1166,7 @@ class GCEInstance(BaseInstance):
         """
         self._gce_instance = self._provider.get_gce_resource_data(
             self._gce_instance.get('selfLink'))
+
 
 class GCENetwork(BaseNetwork):
 
@@ -1175,11 +1201,11 @@ class GCENetwork(BaseNetwork):
     def delete(self):
         try:
             response = (self._provider
-                    .gce_compute
-                    .networks()
-                    .delete(project=self._provider.project_name,
-                            network=self.name)
-                    .execute())
+                            .gce_compute
+                            .networks()
+                            .delete(project=self._provider.project_name,
+                                    network=self.name)
+                            .execute())
             if 'error' in response:
                 return False
             self._provider.wait_for_operation(response)
@@ -1188,13 +1214,14 @@ class GCENetwork(BaseNetwork):
         return True
 
     def subnets(self):
-        raise NotImplementedError("To be implemented")
+        return self._provider.network.subnets.list()
 
     def create_subnet(self, cidr_block, name=None):
-        raise NotImplementedError("To be implemented")
+        return self._provider.network.subnets.create(self, cidr_block, name)
 
     def refresh(self):
         return self.state
+
 
 class GCEFloatingIP(BaseFloatingIP):
     _DEAD_INSTANCE = 'dead instance'
@@ -1223,9 +1250,9 @@ class GCEFloatingIP(BaseFloatingIP):
                 if target['kind'] == 'compute#targetInstance':
                     url = provider.parse_url(target['instance'])
                     try:
-                      self._target_instance = url.get()
+                        self._target_instance = url.get()
                     except:
-                      self._target_instance = GCEFloatingIP._DEAD_INSTANCE
+                        self._target_instance = GCEFloatingIP._DEAD_INSTANCE
                 else:
                     cb.log.warning('Address "%s" is forwarded to a %s',
                                    floating_ip['address'], target['kind'])
@@ -1248,7 +1275,7 @@ class GCEFloatingIP(BaseFloatingIP):
     @property
     def private_ip(self):
         if (not self._target_instance or
-            self._target_instance == GCEFloatingIP._DEAD_INSTANCE):
+                self._target_instance == GCEFloatingIP._DEAD_INSTANCE):
             return None
         return self._target_instance['networkInterfaces'][0]['networkIP']
 
@@ -1256,25 +1283,125 @@ class GCEFloatingIP(BaseFloatingIP):
         return True if self._target_instance else False
 
     def delete(self):
-       project_name = self._provider.project_name
-       # First, delete the forwarding rule, if there is any.
-       if self._rule:
-           response = (self._provider.gce_compute
-                                     .forwardingRules()
-                                     .delete(project=project_name,
-                                             region=self._region,
-                                             forwardingRule=self._rule['name'])
-                                     .execute())
-           self._provider.wait_for_operation(response, region=self._region)
+        project_name = self._provider.project_name
+        # First, delete the forwarding rule, if there is any.
+        if self._rule:
+            response = (self._provider
+                            .gce_compute
+                            .forwardingRules()
+                            .delete(project=project_name,
+                                    region=self._region,
+                                    forwardingRule=self._rule['name'])
+                            .execute())
+            self._provider.wait_for_operation(response, region=self._region)
 
-       # Release the address.
-       response = (self._provider.gce_compute
-                                 .addresses()
-                                 .delete(project=project_name,
-                                         region=self._region,
-                                         address=self._ip['name'])
-                                 .execute())
-       self._provider.wait_for_operation(response, region=self._region)
+        # Release the address.
+        response = (self._provider
+                        .gce_compute
+                        .addresses()
+                        .delete(project=project_name,
+                                region=self._region,
+                                address=self._ip['name'])
+                        .execute())
+        self._provider.wait_for_operation(response, region=self._region)
+
+
+class GCERouter(BaseRouter):
+
+    def __init__(self, provider, router):
+        super(GCERouter, self).__init__(provider)
+        self._router = router
+
+    @property
+    def id(self):
+        return self._router['id']
+
+    @property
+    def name(self):
+        return self._router['name']
+
+    def refresh(self):
+        self._router = self._provider.parse_url(self._router['selfLink']).get()
+
+    @property
+    def state(self):
+        # GCE routers are always attached to a network.
+        return RouterState.ATTACHED
+
+    @property
+    def network_id(self):
+        network = self._provider.parse_url(self._router['network']).get()
+        return network['id']
+
+    def delete(self):
+        response = (self._provider
+                        .gce_compute
+                        .routers()
+                        .delete(project=self._provider.project_name,
+                                region=self._router['region'],
+                                router=self._router['name'])
+                        .execute())
+        self._provider.wait_for_operation(response,
+                                          region=self._router['region'])
+
+    def attach_network(self, network_id):
+        if network_id == self.network_id:
+            return
+        cb.log.warning('GCE routers should be attached at creation time')
+
+    def detach_network(self, network_id):
+        cb.log.warning('GCE routers are always attached')
+
+    def add_route(self, subnet_id):
+        cb.log.warning('Not implemented')
+
+    def remove_route(self, subnet_id):
+        cb.log.warning('Not implemented')
+
+
+class GCESubnet(BaseSubnet):
+
+    def __init__(self, provider, subnet):
+        super(GCESubnet, self).__init__(provider)
+        self._subnet = subnet
+
+    @property
+    def id(self):
+        return self._subnet['id']
+
+    @property
+    def name(self):
+        return self._subnet['name']
+
+    @name.setter
+    def name(self, value):
+        if value == self.name:
+            return
+        cb.log.warning('Cannot change the name of a GCE subnetwork')
+
+    @property
+    def cidr_block(self):
+        return self._subnet['ipCidrRange']
+
+    @property
+    def network_url(self):
+        return self._subnet['network']
+
+    @property
+    def network_id(self):
+        return self._provider.parse_url(self.network_url).get()['id']
+
+    @property
+    def region(self):
+        return self._subnet['region']
+
+    @property
+    def zone(self):
+        raise NotImplementedError('To be implemented')
+
+    @property
+    def delete(self):
+        return self._provider.network.subnets.delete(self)
 
 
 class GCEVolume(BaseVolume):
@@ -1319,21 +1446,22 @@ class GCEVolume(BaseVolume):
     @description.setter
     def description(self, value):
         request_body = {
-            'labels': {'description': value.replace(' ', '_').lower(),},
+            'labels': {'description': value.replace(' ', '_').lower()},
             'labelFingerprint': self._volume.get('labelFingerprint'),
         }
         try:
-            response = (self._provider.gce_compute
-                        .disks()
-                        .setLabels(
-                            project=self._provider.project_name,
+            (self._provider
+                 .gce_compute
+                 .disks()
+                 .setLabels(project=self._provider.project_name,
                             zone=self._provider.default_zone,
                             resource=self.name,
-                            body=request_body).execute())
+                            body=request_body)
+                 .execute())
         except Exception as e:
-            cb.log.warning('Exception while setting volume description: %s.'
-                           'Check for invalid characters in description. Should'
-                           'confirm to RFC1035.', e)
+            cb.log.warning('Exception while setting volume description: %s. '
+                           'Check for invalid characters in description. '
+                           'Should confirm to RFC1035.', e)
             raise e
         self.refresh()
 
@@ -1361,7 +1489,7 @@ class GCEVolume(BaseVolume):
         # the first user of a disk.
         if 'users' in self._volume and len(self._volume) > 0:
             if len(self._volume) > 1:
-                cb.log.warning("This volume is attached to multiple instances.")
+                cb.log.warning("This volume is attached to multiple instances")
             return BaseAttachmentInfo(self,
                                       self._volume.get('users')[0],
                                       None)
@@ -1386,13 +1514,14 @@ class GCEVolume(BaseVolume):
         instance_name = instance.name if isinstance(
             instance,
             GCEInstance) else instance
-        response = (self._provider.gce_compute
-                        .instances()
-                        .attachDisk(
-                            project=self._provider.project_name,
-                            zone=self._provider.default_zone,
-                            instance=instance_name,
-                            body=attach_disk_body).execute())
+        (self._provider
+             .gce_compute
+             .instances()
+             .attachDisk(project=self._provider.project_name,
+                         zone=self._provider.default_zone,
+                         instance=instance_name,
+                         body=attach_disk_body)
+             .execute())
 
     def detach(self, force=False):
         """
@@ -1409,17 +1538,18 @@ class GCEVolume(BaseVolume):
         device_name = None
         for disk in instance_data['disks']:
             if ('source' in disk and 'deviceName' in disk and
-                disk['source'] == self.id):
+                    disk['source'] == self.id):
                 device_name = disk['deviceName']
         if not device_name:
             return
-        response = (self._provider.gce_compute
-                        .instances()
-                        .detachDisk(
-                            project=self._provider.project_name,
-                            zone=self._provider.default_zone,
-                            instance=instance_data.get('name'),
-                            deviceName=device_name).execute())
+        (self._provider
+             .gce_compute
+             .instances()
+             .detachDisk(project=self._provider.project_name,
+                         zone=self._provider.default_zone,
+                         instance=instance_data.get('name'),
+                         deviceName=device_name)
+             .execute())
 
     def create_snapshot(self, name, description=None):
         """
@@ -1432,12 +1562,13 @@ class GCEVolume(BaseVolume):
         """
         Delete this volume.
         """
-        response = (self._provider.gce_compute
-                        .disks()
-                        .delete(
-                            project=self._provider.project_name,
-                            zone=self._provider.default_zone,
-                            disk=self.name).execute())
+        (self._provider
+             .gce_compute
+             .disks()
+             .delete(project=self._provider.project_name,
+                     zone=self._provider.default_zone,
+                     disk=self.name)
+             .execute())
 
     @property
     def state(self):
@@ -1520,11 +1651,12 @@ class GCESnapshot(BaseSnapshot):
         """
         Delete this snapshot.
         """
-        response = (self._provider.gce_compute
-                        .snapshots()
-                        .delete(
-                            project=self._provider.project_name,
-                            snapshot=self.name).execute())
+        (self._provider
+             .gce_compute
+             .snapshots()
+             .delete(project=self._provider.project_name,
+                     snapshot=self.name)
+             .execute())
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
@@ -1548,11 +1680,12 @@ class GCESnapshot(BaseSnapshot):
             'type': vol_type,
             'sourceSnapshot': self.id
         }
-        operation = (self._provider.gce_compute
+        operation = (self._provider
+                         .gce_compute
                          .disks()
-                         .insert(
-                             project=self._provider.project_name,
-                             zone=placement,
-                             body=disk_body).execute())
+                         .insert(project=self._provider.project_name,
+                                 zone=placement,
+                                 body=disk_body)
+                         .execute())
         return self._provider.block_store.volumes.get(
             operation.get('targetLink'))

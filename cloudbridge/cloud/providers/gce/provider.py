@@ -2,18 +2,19 @@
 Provider implementation based on google-api-python-client library
 for GCE.
 """
-
-
-from cloudbridge.cloud.base import BaseCloudProvider
-import httplib2
 import json
 import os
 import re
-from string import Template
 import time
+from string import Template
 
-from googleapiclient import discovery
+from cloudbridge.cloud.base import BaseCloudProvider
+
 import googleapiclient.http
+from googleapiclient import discovery
+
+import httplib2
+
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -230,7 +231,7 @@ class GCECloudProvider(BaseCloudProvider):
 
     def wait_for_global_operation(self, operation):
         while True:
-            result = self.gce_compute.globalOperations().get(
+            self.gce_compute.globalOperations().get(
                 project=self.project_name,
                 operation=operation['name']).execute()
 
