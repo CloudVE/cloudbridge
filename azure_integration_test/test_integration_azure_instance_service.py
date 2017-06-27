@@ -9,25 +9,25 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances'])
     def test_azure_instance_service(self):
         instance_name = 'CbAzure-test6-{0}'.format(uuid.uuid4().hex[:6])
-        # image_name = 'CbAzure-img-{0}'.format(uuid.uuid4().hex[:6])
+        image_name = 'CbAzure-img-{0}'.format(uuid.uuid4().hex[:6])
         security_group_name = 'CbAzure-sg-{0}'.format(uuid.uuid4().hex[:6])
         network_name = 'CbAzure-net-{0}'.format(uuid.uuid4().hex[:6])
         subnet_name = 'CbAzure-subnet-{0}'.format(uuid.uuid4().hex[:6])
-        # key_pair_name = 'CbAzure-keypair-4e36b7'
+        key_pair_name = 'CbAzure-keypair-{0}'.format(uuid.uuid4().hex[:6])
 
-        image_id = 'CBAZURE-USER-TEST-IMG'
+        image_id = 'CbTest-Img'
 
         img = self.provider.compute.images.get(image_id)
 
         self.assertIsNotNone(img)
 
-        # key_pair = self.provider.security.\
-        #     key_pairs.create(key_pair_name)
-        #
-        # self.assertIsNotNone(key_pair)
-        #
-        # with open('{0}.pem'.format(key_pair_name), 'w') as f:
-        #     f.write(key_pair.material)
+        key_pair = self.provider.security.\
+            key_pairs.create(key_pair_name)
+
+        self.assertIsNotNone(key_pair)
+
+        with open('{0}.pem'.format(key_pair_name), 'w') as f:
+            f.write(key_pair.material)
 
         inst_type = [t for t in self.provider.compute.instance_types.list()
                      if t.name == 'Standard_DS2_v2'][0]
@@ -47,6 +47,16 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
         self.assertIsNotNone(sg)
 
         sg.add_rule('tcp', 22, 22, '0.0.0.0/0')
+
+        new_security_group_name = 'CbAzure-sg-{0}'.format(uuid.uuid4().hex[:6])
+
+        new_sg = self.provider.security.security_groups. \
+            create(new_security_group_name,
+                   'A security group used by CloudBridge', '')
+
+        self.assertIsNotNone(new_sg)
+
+        new_sg.add_rule('*', 0, 65535, '*')
 
         # lc = self.provider.compute.instances.create_launch_config()
         #
@@ -86,7 +96,8 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
         inst = self.provider.compute.instances.create(
             name=instance_name, image=img, instance_type=inst_type,
             subnet=subnet, zone=None,
-            key_pair=None, security_groups=None, user_data=None,
+            key_pair=key_pair, security_groups=[sg, new_sg],
+            user_data=None,
             launch_config=None)
 
         inst.wait_till_ready()
@@ -101,23 +112,16 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
 
         self.assertIsNotNone(inst.public_ips[0])
 
-        # inst = self.provider.compute.instances.
-        # get('/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96
-        # /resourceGroups/CB-INST-DEMO-RG/providers/
-        # Microsoft.Compute/virtualMachines/CbAzure-inst-304a17-968334')
-        #
-        # img = inst.\
-        #     create_image(image_name)
-        # self.assertIsNotNone(img)
+        img = inst.create_image(image_name)
 
-        # inst.terminate()
-        #
-        # subnet.delete()
-        #
-        # net.delete()
-        #
-        # sg.delete()
-        #
-        # snapshot.delete()
-        #
-        # img.delete()
+        self.assertIsNotNone(img)
+
+        inst.terminate()
+
+        subnet.delete()
+
+        net.delete()
+
+        sg.delete()
+
+        img.delete()
