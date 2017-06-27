@@ -735,7 +735,7 @@ class GCENetworkService(BaseNetworkService):
                             .execute())
             if 'error' in response:
                 return None
-            self.provider.wait_for_opeartion(response, region=region)
+            self.provider.wait_for_operation(response, region=region)
             routers = self.routers()
             for router in routers:
                 if router.id == response['targetId']:
@@ -1046,6 +1046,10 @@ class GCSObjectStoreService(BaseObjectStoreService):
             if 'error' in response:
                 # response['error']['code'] is 404 if the bucket does not exist
                 # and 403 if the user does not have permission to access it.
+                if response['error']['code'] not in (403, 404):
+                    cb.log.warning('Unexpected error code (%d) when accessing '
+                                   'bucket %s', response['error']['code'],
+                                   bucket_id)
                 return None
             return GCSBucket(self.provider, response)
         except:

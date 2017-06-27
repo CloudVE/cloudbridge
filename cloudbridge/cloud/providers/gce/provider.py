@@ -230,12 +230,6 @@ class GCECloudProvider(BaseCloudProvider):
         response = request.execute()
         return response
 
-    def wait_for_global_operation(self, operation):
-        while True:
-            self.gce_compute.globalOperations().get(
-                project=self.project_name,
-                operation=operation['name']).execute()
-
     def _connect_gcp_storage(self):
         return discovery.build('storage', 'v1', credentials=self._credentials)
 
