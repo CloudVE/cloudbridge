@@ -503,7 +503,8 @@ class AzureInstanceService(BaseInstanceService):
         )
         # #! indicates shell script
         ud = '#cloud-config\n' + user_data \
-            if user_data and not user_data.startswith('#!') else user_data
+            if user_data and not user_data.startswith('#!')\
+            and not user_data.startswith('#cloud-config') else user_data
 
         params = {
             'location': zone_id or self._provider.region_name,
