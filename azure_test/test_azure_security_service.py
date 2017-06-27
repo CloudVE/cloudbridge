@@ -113,7 +113,7 @@ class AzureSecurityServiceTestCase(ProviderTestBase):
         rules[1].delete()
         rules = cb.rules
         print("After deleting Rule length - " + str(len(rules)))
-        self.assertEqual(len(rules), 3)
+        self.assertEqual(len(rules), 4)
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_azure_security_group_rule_get_exist(self):

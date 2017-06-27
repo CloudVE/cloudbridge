@@ -1119,9 +1119,9 @@ class AzureSubnet(BaseSubnet):
         :return:
         """
         try:
-            self._provider.azure_client.\
-                delete_subnet(self.network_id,
-                              self.id)
+            subnet_id_parts = self.id.split('|$|')
+            self._provider.azure_client. \
+                delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
             return True
         except CloudError as cloudError:
             log.exception(cloudError.message)

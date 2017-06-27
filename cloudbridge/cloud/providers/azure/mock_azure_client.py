@@ -36,8 +36,8 @@ class MockAzureClient:
                             direction="Inbound")
     sg_rule1.name = "rule1"
     sg_rule1.id = "r1"
-    sg_rule1.destination_port_range = "*"
-    sg_rule1.source_port_range = "25-1"
+    sg_rule1.source_port_range = "*"
+    sg_rule1.destination_port_range = "25-1"
 
     sg_rule2 = SecurityRule(protocol='*', source_address_prefix='100',
                             destination_address_prefix="*", access="Allow",
@@ -131,7 +131,17 @@ class MockAzureClient:
     network3.address_space.address_prefixes = ['10.0.0.0/16']
     network3.provisioning_state = "Succeeded"
 
-    networks = [network1, network2, network3]
+    network4 = VirtualNetwork()
+    network4.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                  '/resourceGroups/cloudbridge/providers' \
+                  '/Microsoft.Network/virtualNetworks/CloudBridgeNet4'
+    network4.name = "CloudBridgeNet4"
+    network4.location = 'eastus'
+    network4.address_space = AddressSpace()
+    network4.address_space.address_prefixes = ['10.0.0.0/16']
+    network4.provisioning_state = "Succeeded"
+
+    networks = [network1, network2, network3, network4]
 
     floating_ip1 = PublicIPAddress()
     floating_ip1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
@@ -353,14 +363,14 @@ class MockAzureClient:
     subnet1 = Subnet()
     subnet1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
                  '/resourceGroups/cloudbridge/providers/' \
-                 'Microsoft.Network/virtualNetworks/CloudBridgeNet1/subnets/' \
+                 'Microsoft.Network/virtualNetworks/CloudBridgeNet4/subnets/' \
                  'MySN1'
     subnet1.name = 'MySN1'
     subnet1.address_prefix = '10.0.0.0/24'
     subnet2 = Subnet()
     subnet2.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96/' \
                  'resourceGroups/cloudbridge/providers/' \
-                 'Microsoft.Network/virtualNetworks/CloudBridgeNet1/' \
+                 'Microsoft.Network/virtualNetworks/CloudBridgeNet4/' \
                  'subnets/MySN2'
     subnet2.name = 'MySN2'
     subnet2.address_prefix = '10.0.0.0/25'
