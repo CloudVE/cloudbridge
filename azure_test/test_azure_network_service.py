@@ -10,7 +10,7 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
             print("List( " + "Name: " + network.name + ", Id: " +
                   str(network.id) + ", State: " + network.state +
                   ", Cidr_Block: " + str(network.cidr_block) + " )")
-        self.assertTrue(len(networks) == 2, "Count should be 2")
+        self.assertTrue(len(networks) == 3, "Count should be 3")
 
     @helpers.skipIfNoService(['network'])
     def test_azure_network_service_list_check_values(self):
@@ -19,7 +19,7 @@ class AzureNetworkServiceTestCase(ProviderTestBase):
             print("List( " + "Name: " + network.name + ", Id: " +
                   str(network.id) + ", State: " + network.state +
                   ", Cidr_Block: " + str(network.cidr_block) + " )")
-        self.assertTrue(len(networks) == 2, "Count should be 2")
+        self.assertTrue(len(networks) == 3, "Count should be 3")
         self.assertEqual(networks[0].id, 'CloudBridgeNet1')
         self.assertEqual(networks[0].name, "CloudBridgeNet1")
         self.assertEqual(networks[0].cidr_block,

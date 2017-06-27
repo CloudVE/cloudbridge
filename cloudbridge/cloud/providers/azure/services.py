@@ -1,3 +1,4 @@
+import base64
 import logging
 import uuid
 
@@ -500,6 +501,9 @@ class AzureInstanceService(BaseInstanceService):
             instance_name + '_nic',
             nic_params
         )
+        # #! indicates shell script
+        ud = '#cloud-config\n' + user_data \
+            if user_data and not user_data.startswith('#!') else user_data
 
         params = {
             'location': zone_id or self._provider.region_name,
@@ -545,6 +549,10 @@ class AzureInstanceService(BaseInstanceService):
         if root_disk_size:
             params['storage_profile']['os_disk']['disk_size_gb'] = \
                 root_disk_size
+
+        if user_data:
+            custom_data = base64.b64encode(bytes(ud, 'utf-8'))
+            params['os_profile']['custom_data'] = str(custom_data, 'utf-8'),
 
         self.provider.azure_client.create_vm(instance_name, params)
         vm = self._provider.azure_client.get_vm(instance_name)
@@ -903,11 +911,16 @@ class AzureSubnetService(BaseSubnetService):
         :param subnet_id:
         :return:
         """
-        subnet_id_parts = subnet_id.split('|$|')
-        azure_subnet = self.provider.azure_client.\
-            get_subnet(subnet_id_parts[0], subnet_id_parts[1])
-        return AzureSubnet(self.provider,
-                           azure_subnet) if azure_subnet else None
+        try:
+            subnet_id_parts = subnet_id.split('|$|')
+            azure_subnet = self.provider.azure_client.\
+                get_subnet(subnet_id_parts[0], subnet_id_parts[1])
+            return AzureSubnet(self.provider,
+                               azure_subnet) if azure_subnet else None
+        except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloudError.message)
+            return None
 
     def list(self, network=None, limit=None, marker=None):
         """
