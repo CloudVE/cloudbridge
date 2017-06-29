@@ -553,7 +553,7 @@ class AzureInstanceService(BaseInstanceService):
 
         if user_data:
             custom_data = base64.b64encode(bytes(ud, 'utf-8'))
-            params['os_profile']['custom_data'] = str(custom_data, 'utf-8'),
+            params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
 
         self.provider.azure_client.create_vm(instance_name, params)
         vm = self._provider.azure_client.get_vm(instance_name)
