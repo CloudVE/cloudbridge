@@ -33,6 +33,17 @@ OS_PROJECT_NAME      OS_STORAGE_URL
 OS_REGION_NAME       OS_AUTH_TOKEN
 ===================  ==================
 
+**Azure**
+
+======================  ==================
+Mandatory variables     Optional Variables
+======================  ==================
+AZURE_SUBSCRIPTION_ID   AZURE_REGION_NAME
+AZURE_CLIENT_ID		    AZURE_RESOURCE_GROUP
+AZURE_SECRET		    AZURE_STORAGE_ACCOUNT_NAME
+AZURE_TENANT                
+======================  ==================
+
 
 Once the environment variables are set, you can create a connection as follows:
 
@@ -56,6 +67,17 @@ will override environment values.
     config = {'aws_access_key' : '<your_access_key>',
               'aws_secret_key' : '<your_secret_key>'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
+
+
+    ## For Azure
+    config = {'azure_subscription_id': '<your_subscription_id>',
+              'azure_client_Id': '<your_client_Id>',
+              'azure_secret': '<your_secret>',
+              'azure_tenant': '<your_tenant>'}
+    provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
+
+For Azure, Create service principle credentials from the following link : 
+https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal#check-azure-subscription-permissions
 
 Some optional configuration values can only be provided through the config
 dictionary. These are listed below for each provider.
@@ -100,7 +122,7 @@ Providing access credentials in a file
 CloudBridge can also read credentials from a file on your local file system.
 The file should be placed in one of two locations: ``/etc/cloudbridge.ini`` or
 ``~/.cloudbridge``. Each set of credentials should be delineated with the
-provider ID (e.g., ``openstack``, ``aws``) with the necessary credentials
+provider ID (e.g., ``openstack``, ``aws``, ``azure``) with the necessary credentials
 being supplied in YAML format. Note that only one set of credentials per
 cloud provider type can be supplied (i.e., via this method, it is not possible
 to provide credentials for two different OpenStack clouds).
