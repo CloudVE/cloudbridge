@@ -5,11 +5,11 @@ an Alpha state.
 
 
 
-.. image:: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge.svg?token=CKR2Kjisx6hZtvixazEK&branch=azure_dev_v3
+.. image:: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge.svg?token=CKR2Kjisx6hZtvixazEK&branch=azure_dev_v4
    :target: https://travis-ci.com/ms-azure-cloudbroker/cloudbridge
    :alt: Travis Build Status
 
-.. image:: https://codecov.io/gh/ms-azure-cloudbroker/cloudbridge/branch/azure_dev_v2/graph/badge.svg?token=vSBgILNtd7
+.. image:: https://codecov.io/gh/ms-azure-cloudbroker/cloudbridge/branch/azure_dev_v4/graph/badge.svg?token=vSBgILNtd7
    :target: https://codecov.io/gh/ms-azure-cloudbroker/cloudbridge
    :alt: code coverage
 
