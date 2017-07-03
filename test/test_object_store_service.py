@@ -22,7 +22,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         Create a new bucket, check whether the expected values are set,
         and delete it.
         """
-        name = "cbtestcreatebucket-{0}".format(uuid.uuid4())
+        name = "cbtestcreatebucket-{0}".format(uuid.uuid4().hex[:6])
         test_bucket = self.provider.object_store.create(name)
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             self.assertTrue(
@@ -77,7 +77,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         check whether list properly detects the new content.
         Delete everything afterwards.
         """
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4().hex[:6])
         test_bucket = self.provider.object_store.create(name)
 
         # ensure that the bucket is empty
@@ -152,7 +152,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['object_store'])
     def test_upload_download_bucket_content(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4().hex[:6])
         test_bucket = self.provider.object_store.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
@@ -176,7 +176,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
     @skip("Skip until OpenStack implementation is provided")
     @helpers.skipIfNoService(['object_store'])
     def test_generate_url(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4().hex[:6])
         test_bucket = self.provider.object_store.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
@@ -194,7 +194,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['object_store'])
     def test_upload_download_bucket_content_from_file(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4().hex[:6])
         test_bucket = self.provider.object_store.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
