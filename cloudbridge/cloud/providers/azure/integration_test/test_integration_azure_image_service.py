@@ -1,6 +1,6 @@
-import azure_integration_test.helpers as helpers
+from cloudbridge.cloud.providers.azure.integration_test import helpers
 
-from azure_integration_test.helpers import ProviderTestBase
+from cloudbridge.cloud.providers.azure.integration_test.helpers import  ProviderTestBase
 
 
 class AzureIntegrationImageServiceTestCase(ProviderTestBase):
@@ -15,7 +15,7 @@ class AzureIntegrationImageServiceTestCase(ProviderTestBase):
 
         if images_list.total_results > 0:
             found_images_list = self.provider.compute.images.\
-                find(images_list[0].name[:2])
+                find(images_list[0].name)
             print("Find Images  count - {0}".
                   format(str(found_images_list.total_results)))
             self.assertTrue(found_images_list.total_results > 0)
@@ -23,12 +23,12 @@ class AzureIntegrationImageServiceTestCase(ProviderTestBase):
             print("Get Image - " + str(image_get))
             self.assertIsNotNone(image_get)
 
-        image_get.delete()
+            # image_get.delete()
 
-        image_get_after_delete = self.provider.compute.images.get(image_get.id)
-        print("Get Image - " + str(image_get_after_delete))
-        self.assertIsNone(image_get_after_delete)
+            image_get_after_delete = self.provider.compute.images.get(image_get.id)
+            print("Get Image - " + str(image_get_after_delete))
+            self.assertIsNone(image_get_after_delete)
 
-        images_list_after_delete = self.provider.compute.images.list()
-        print("Images List after Delete" + str(images_list_after_delete))
-        print("List count after Delete- " + str(len(images_list_after_delete)))
+            images_list_after_delete = self.provider.compute.images.list()
+            print("Images List after Delete" + str(images_list_after_delete))
+            print("List count after Delete- " + str(len(images_list_after_delete)))

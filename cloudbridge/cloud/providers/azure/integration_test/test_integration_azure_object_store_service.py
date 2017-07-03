@@ -2,7 +2,7 @@ import os
 import tempfile
 import uuid
 
-import azure_integration_test.helpers as helpers
+from cloudbridge.cloud.providers.azure.integration_test import helpers
 
 
 class AzureIntegrationObjectStoreServiceTestCase(helpers.ProviderTestBase):

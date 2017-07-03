@@ -1,8 +1,7 @@
 import uuid
 
-import azure_integration_test.helpers as helpers
-
-from azure_integration_test.helpers import ProviderTestBase
+from cloudbridge.cloud.providers.azure.integration_test import helpers
+from cloudbridge.cloud.providers.azure.integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
@@ -13,9 +12,7 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
 
         listBeforeCreate = self.provider.security.security_groups.list()
         print("Length Before create - " + str(len(listBeforeCreate)))
-        # netId = "/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96
-        # /resourceGroups/CloudBridge-Azure'\
-        # '/providers/Microsoft.Network/virtualNetworks/SampleNetwork"
+
         sg = self.provider.security.security_groups.create(
             name=sg_name, description="testCreateSecGroup", network_id='')
         self.assertEqual(sg_name, sg.name)

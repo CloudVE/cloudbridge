@@ -1,14 +1,13 @@
 import uuid
 
-import azure_integration_test.helpers as helpers
-
-from azure_integration_test.helpers import ProviderTestBase
+from cloudbridge.cloud.providers.azure.integration_test import helpers
+from cloudbridge.cloud.providers.azure.integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances'])
     def test_azure_instance_service(self):
-        instance_name = 'CbAzure-test6-{0}'.format(uuid.uuid4().hex[:6])
+        instance_name = 'CbAzure-{0}'.format(uuid.uuid4().hex[:6])
         image_name = 'CbAzure-img-{0}'.format(uuid.uuid4().hex[:6])
         security_group_name = 'CbAzure-sg-{0}'.format(uuid.uuid4().hex[:6])
         network_name = 'CbAzure-net-{0}'.format(uuid.uuid4().hex[:6])
@@ -58,47 +57,47 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
 
         new_sg.add_rule('*', 0, 65535, '*')
 
-        # lc = self.provider.compute.instances.create_launch_config()
-        #
-        # volume = self.provider.block_store.\
-        #     volumes.create('CbAzure-Vol-{0}'.
-        # format(uuid.uuid4().hex[:6]), 30)
-        #
-        # volume.wait_till_ready()
-        #
-        # self.assertIsNotNone(volume)
-        #
-        # snapshot = volume.\
-        #     create_snapshot('CbAzure-Snap-{0}'.format(uuid.uuid4().hex[:6]))
-        #
-        # snapshot.wait_till_ready()
-        #
-        # self.assertIsNotNone(snapshot)
-        #
-        # lc.add_volume_device(
-        #     is_root=False,
-        #     source=volume,
-        #     size=volume.size,
-        #     delete_on_terminate=True)
-        #
-        # lc.add_volume_device(
-        #     is_root=False,
-        #     source=snapshot,
-        #     size=snapshot.size,
-        #     delete_on_terminate=True)
-        #
-        # lc.add_volume_device(
-        #     is_root=False,
-        #     source=None,
-        #     size=40,
-        #     delete_on_terminate=True)
+        lc = self.provider.compute.instances.create_launch_config()
+
+        volume = self.provider.block_store.\
+            volumes.create('CbAzure-Vol-{0}'.
+        format(uuid.uuid4().hex[:6]), 30)
+
+        volume.wait_till_ready()
+
+        self.assertIsNotNone(volume)
+
+        snapshot = volume.\
+            create_snapshot('CbAzure-Snap-{0}'.format(uuid.uuid4().hex[:6]))
+
+        snapshot.wait_till_ready()
+
+        self.assertIsNotNone(snapshot)
+
+        lc.add_volume_device(
+            is_root=False,
+            source=volume,
+            size=volume.size,
+            delete_on_terminate=True)
+
+        lc.add_volume_device(
+            is_root=False,
+            source=snapshot,
+            size=snapshot.size,
+            delete_on_terminate=True)
+
+        lc.add_volume_device(
+            is_root=False,
+            source=None,
+            size=40,
+            delete_on_terminate=True)
 
         inst = self.provider.compute.instances.create(
             name=instance_name, image=img, instance_type=inst_type,
             subnet=subnet, zone=None,
             key_pair=key_pair, security_groups=[sg, new_sg],
             user_data=None,
-            launch_config=None)
+            launch_config=lc)
 
         inst.wait_till_ready()
 
@@ -124,4 +123,10 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
 
         sg.delete()
 
+        new_sg.delete()
+
         img.delete()
+
+        volume.delete()
+
+        snapshot.delete()

@@ -1,14 +1,13 @@
 import uuid
 
-import azure_integration_test.helpers as helpers
-
-from azure_integration_test.helpers import ProviderTestBase
+from cloudbridge.cloud.providers.azure.integration_test import helpers
+from cloudbridge.cloud.providers.azure.integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationNetworkServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['network'])
     def test_crud_network_service(self):
-        name = 'intgtestnetworkservice-{0}'.format(uuid.uuid4())
+        name = 'intgtestnetworkservice-{0}'.format(uuid.uuid4().hex[:6])
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda:

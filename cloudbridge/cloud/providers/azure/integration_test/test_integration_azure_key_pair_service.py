@@ -1,8 +1,7 @@
 import uuid
 
-import azure_integration_test.helpers as helpers
-
-from azure_integration_test.helpers import ProviderTestBase
+from cloudbridge.cloud.providers.azure.integration_test import helpers
+from cloudbridge.cloud.providers.azure.integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationKeyPairServiceTestCase(ProviderTestBase):
@@ -27,3 +26,5 @@ class AzureIntegrationKeyPairServiceTestCase(ProviderTestBase):
         key_pair_get = self.provider.security.key_pairs.get(key_pair_name)
         print(key_pair_get.__dict__)
         self.assertIsNotNone(key_pair_get)
+
+        key_pair_create.delete()

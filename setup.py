@@ -71,5 +71,5 @@ setup(name='cloudbridge',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: Implementation :: CPython',
           'Programming Language :: Python :: Implementation :: PyPy'],
-      test_suite="test"
+      test_suite="cloudbridge.cloud.providers.azure.test"
       )

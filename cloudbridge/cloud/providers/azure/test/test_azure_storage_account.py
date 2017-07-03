@@ -1,4 +1,4 @@
-from azure_test.helpers import ProviderTestBase
+from cloudbridge.cloud.providers.azure.test.helpers import ProviderTestBase
 
 
 class AzureStorageAccountTestCase(ProviderTestBase):

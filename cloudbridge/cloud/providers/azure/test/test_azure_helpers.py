@@ -1,6 +1,5 @@
-from azure_test.helpers import ProviderTestBase
-
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
+from cloudbridge.cloud.providers.azure.test.helpers import ProviderTestBase
 
 
 class AzureHelpersTestCase(ProviderTestBase):

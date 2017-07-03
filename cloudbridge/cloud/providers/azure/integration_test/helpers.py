@@ -96,7 +96,7 @@ TEST_DATA_CONFIG = {
         "image":
             os.environ.get('CB_IMAGE_AZURE', 'CbTest-Img'),
         "instance_type":
-            os.environ.get('CB_INSTANCE_TYPE_AZURE', 'Standard_A0'),
+            os.environ.get('CB_INSTANCE_TYPE_AZURE', 'Standard_DS1_v2'),
     }
 }
 
@@ -217,8 +217,8 @@ class ProviderTestBase(unittest.TestCase):
                       'Orcw9U5Kd4cUDntDABg0dygN32RQ4FGBYyLRaJ/BlrM=',
                   'azure_tenant':
                       '75ec242e-054d-4b22-98a9-a4602ebb6027',
-                  'azure_resource_group': 'CB-TEST-RG',
-                  'azure_storage_account': 'cbtestsa',
+                  'azure_resource_group': 'CB-TEST-TEST-RG',
+                  'azure_storage_account': 'cbtestsa134',
                   'azure_vm_default_user_name': 'cbtestuser'
                   }
         return provider_class(config)

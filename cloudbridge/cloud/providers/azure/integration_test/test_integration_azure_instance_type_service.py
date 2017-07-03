@@ -1,6 +1,6 @@
-import azure_integration_test.helpers as helpers
+from cloudbridge.cloud.providers.azure.integration_test import helpers
 
-from azure_integration_test.helpers import ProviderTestBase
+from cloudbridge.cloud.providers.azure.integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationInstanceTypeServiceTestCase(ProviderTestBase):

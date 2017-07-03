@@ -1,7 +1,6 @@
-import azure_test.helpers as helpers
-from azure_test.helpers import ProviderTestBase
-
+import cloudbridge.cloud.providers.azure.test.helpers as helpers
 from cloudbridge.cloud.interfaces import SnapshotState
+from cloudbridge.cloud.providers.azure.test.helpers import ProviderTestBase
 
 
 class AzureSnapshotsServiceTestCase(ProviderTestBase):
