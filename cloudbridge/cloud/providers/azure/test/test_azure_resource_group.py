@@ -9,12 +9,12 @@ class AzureResourceGroupTestCase(ProviderTestBase):
                                   resource_group_params)
         print("Create Resource - " + str(rg))
         self.assertTrue(
-            rg.name == "cloudbridge",
-            "Resource Group should be Cloudbridge")
+            rg.name == self.provider.resource_group,
+            "Resource Group should be {0}".format(rg.name))
 
     def test_resource_group_get(self):
         rg = self.provider.azure_client.get_resource_group('MyGroup')
         print("Get Resource - " + str(rg))
         self.assertTrue(
             rg.name == "testResourceGroup",
-            "Resource Group should be Cloudbridge")
+            "Resource Group should be {0}".format(rg.name))
