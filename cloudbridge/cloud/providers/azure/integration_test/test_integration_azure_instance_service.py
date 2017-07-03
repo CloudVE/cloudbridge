@@ -1,7 +1,8 @@
 import uuid
 
 from cloudbridge.cloud.providers.azure.integration_test import helpers
-from cloudbridge.cloud.providers.azure.integration_test.helpers import ProviderTestBase
+from cloudbridge.cloud.providers.azure.\
+    integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
@@ -60,8 +61,7 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
         lc = self.provider.compute.instances.create_launch_config()
 
         volume = self.provider.block_store.\
-            volumes.create('CbAzure-Vol-{0}'.
-        format(uuid.uuid4().hex[:6]), 30)
+            volumes.create('CbAzure-Vol-{0}'.format(uuid.uuid4().hex[:6]), 30)
 
         volume.wait_till_ready()
 
