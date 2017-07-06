@@ -23,7 +23,9 @@ openstack_reqs = ['python-novaclient==7.0.0',
                   'python-keystoneclient>=3.8.0,<=3.10.0']
 aws_reqs = ['boto>=2.38.0,<=2.46.1']
 
-azure_reqs = ['azure-common==1.1.5',
+azure_reqs = ['msrest==0.4.7',
+              'msrestazure==0.4.7',
+              'azure-common==1.1.5',
               'azure-mgmt-resource==1.0.0rc1',
               'azure-mgmt-compute==1.0.0rc1',
               'azure-mgmt-network==1.0.0rc1',
