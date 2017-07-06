@@ -4,14 +4,14 @@ os:
   - linux
 #  - osx
 env:
+  - TOX_ENV=py27-aws
+  - TOX_ENV=py27-openstack
   - TOX_ENV=py27-azure
-#  - TOX_ENV=py27-aws
-# - TOX_ENV=py27-openstack
+  - TOX_ENV=py36-aws
+  - TOX_ENV=py36-openstack
   - TOX_ENV=py36-azure
-#  - TOX_ENV=py36-aws
-#  - TOX_ENV=py36-openstack
-# - TOX_ENV=pypy-aws
-# - TOX_ENV=pypy-openstack
+  - TOX_ENV=pypy-aws
+  - TOX_ENV=pypy-openstack
 matrix:
   fast_finish: true
   allow_failures:
@@ -23,5 +23,4 @@ install:
 script:
   - travis_wait 110 tox -e $TOX_ENV
 after_success:
-#  - coveralls
-  - codecov --token=bd85eb21-d28f-456d-bb7e-f59fb0543974
+  - coveralls

@@ -319,7 +319,7 @@ class AWSSnapshotService(BaseSnapshotService):
     def find(self, name, limit=None, marker=None):
         """
         Searches for a snapshot by a given list of attributes.
-            """
+        """
         filtr = {'tag-value': name}
         snaps = [AWSSnapshot(self.provider, snap) for snap in
                  self.provider.ec2_conn.get_all_snapshots(filters=filtr)]

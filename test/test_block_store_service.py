@@ -171,7 +171,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(test_vol.attachments.volume, test_vol)
                 self.assertEqual(test_vol.attachments.instance_id,
                                  test_instance.id)
-                # Device name mapping not available in azure
+                # TODO: Device name mapping feature not available in azure. For now, returning None.  # noqa
                 if not self.provider.PROVIDER_ID == 'azure':
                     self.assertEqual(test_vol.attachments.device,
                                      "/dev/sda2")
