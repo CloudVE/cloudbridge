@@ -152,6 +152,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                                    zone=helpers.get_provider_test_data(
                                        self.provider, 'placement'))
 
+            # Comment out routers assertion because Azure has dummy
+            # implementation for routers
+            # and not returns the expected router from the routers method
             # Check basic router properties
             sit.check_standard_behaviour(
                 self, self.provider.networking.routers, router)
