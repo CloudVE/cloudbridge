@@ -1059,7 +1059,16 @@ class GCSObjectStoreService(BaseObjectStoreService):
         """
         Searches in bucket names for a substring.
         """
-        buckets = [bucket for bucket in self.list() if name in bucket.name]
+        buckets = []
+        token = None
+        while True:
+            list_result = self.list(marker=token)
+            for bucket in list_result:
+                if name in bucket.name:
+                    buckets.append(bucket)
+            if not list_result.is_truncated:
+                break
+            token = list_result.marker
         return ClientPagedResultList(self.provider, buckets, limit=limit,
                                      marker=marker)
 
@@ -1067,20 +1076,27 @@ class GCSObjectStoreService(BaseObjectStoreService):
         """
         List all containers.
         """
+        max_result = limit if limit is not None and limit < 500 else 500
         try:
             response = (self.provider
                             .gcp_storage
                             .buckets()
-                            .list(project=self.provider.project_name)
+                            .list(project=self.provider.project_name,
+                                  maxResults=max_result,
+                                  pageToken=marker)
                             .execute())
             if 'error' in response or 'items' not in response:
                 return []
             buckets = [GCSBucket(self.provider, bucket)
                        for bucket in response['items']]
-            return ClientPagedResultList(self.provider, buckets,
-                                         limit=limit, marker=marker)
+            if len(buckets) > max_result:
+                cb.log.warning('Expected at most %d results; got %d',
+                               max_result, len(buckets))
+            return ServerPagedResultList('nextPageToken' in response,
+                                         response.get('nextPageToken'),
+                                         False, data=buckets)
         except:
-            return []
+            return ServerPagedResults(False, None, False, data=[])
 
     def create(self, name, location=None):
         """

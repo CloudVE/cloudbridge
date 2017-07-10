@@ -1719,9 +1719,11 @@ class GCSObject(BaseBucketObject):
         return self._obj['updated']
 
     def iter_content(self):
-        # TODO: It's not clear what does this method do. Does it return an
-        # iterator for metadata fields?
-        raise NotImplementedError('Not Implemented')
+        return io.BytesIO(self._provider
+                              .gcp_storage
+                              .objects()
+                              .get_media(bucket=self._obj['bucket'], object=self.name)
+                              .execute())
 
     def upload(self, data):
         """
@@ -1754,7 +1756,7 @@ class GCSObject(BaseBucketObject):
              .execute())
 
     def generate_url(self, expires_in=0):
-        return self._obj['selfLink']
+        return self._obj['mediaLink']
 
 
 class GCSBucket(BaseBucket):
@@ -1794,21 +1796,28 @@ class GCSBucket(BaseBucket):
         """
         List all objects within this bucket.
         """
+        max_result = limit if limit is not None and limit < 500 else 500
         try:
             response = (self._provider
                             .gcp_storage
                             .objects()
                             .list(bucket=self.name,
-                                  prefix=prefix if prefix else '')
+                                  prefix=prefix if prefix else '',
+                                  maxResults=max_result,
+                                  pageToken=marker)
                             .execute())
             if 'error' in response or 'items' not in response:
                 return []
             objects = [GCSObject(self._provider, self, obj)
                        for obj in response['items']]
-            return ClientPagedResultList(self._provider, objects, limit=limit,
-                                         marker=marker)
+            if len(objects) > max_result:
+                cb.log.warning('Expected at most %d results; got %d',
+                               max_result, len(objects))
+            return ServerPagedResultList('nextPageToken' in response,
+                                         response.get('nextPageToken'),
+                                         False, data=objects)
         except:
-            return []
+            return ServerPagedResults(False, None, False, data=[])
 
     def delete(self, delete_contents=False):
         """
