@@ -338,15 +338,22 @@ class GCERegionService(BaseRegionService):
             return None
 
     def list(self, limit=None, marker=None):
+        max_result = limit if limit is not None and limit < 500 else 500
         regions_response = (self.provider
                                 .gce_compute
                                 .regions()
-                                .list(project=self.provider.project_name)
+                                .list(project=self.provider.project_name,
+                                      maxResults=max_result,
+                                      pageToken=marker)
                                 .execute())
         regions = [GCERegion(self.provider, region)
                    for region in regions_response['items']]
-        return ClientPagedResultList(self.provider, regions,
-                                     limit=limit, marker=marker)
+        if len(regions) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(regions))
+        return ServerPagedResultList('nextPageToken' in regions_response,
+                                     regions_response.get('nextPageToken'),
+                                     False, data=regions)
 
     @property
     def current(self):
@@ -368,18 +375,23 @@ class GCEImageService(BaseImageService):
         self._public_images = []
         for project in GCEImageService._PUBLIC_IMAGE_PROJECTS:
             try:
-                response = (self.provider
-                                .gce_compute
-                                .images()
-                                .list(project=project)
-                                .execute())
+                token = None
+                while True:
+                    response = (self.provider
+                                    .gce_compute
+                                    .images()
+                                    .list(project=project, pageToken=token)
+                                    .execute())
+                    if 'items' in response:
+                        self._public_images.extend(
+                            [GCEMachineImage(self.provider, image) for image
+                             in response['items']])
+                    if 'nextPageToken' not in response:
+                        break
+                    token = response['nextPageToken']
             except googleapiclient.errors.HttpError as http_error:
                 cb.log.warning("googleapiclient.errors.HttpError: {0}".format(
                     http_error))
-            if 'items' in response:
-                self._public_images.extend(
-                    [GCEMachineImage(self.provider, image) for image
-                     in response['items']])
 
     def get(self, image_id):
         """
@@ -428,14 +440,19 @@ class GCEImageService(BaseImageService):
         if (self.provider.project_name not in
                 GCEImageService._PUBLIC_IMAGE_PROJECTS):
             try:
-                response = (self.provider
-                                .gce_compute
-                                .images()
-                                .list(project=self.provider.project_name)
-                                .execute())
-                if 'items' in response:
-                    images = [GCEMachineImage(self.provider, image) for image
-                              in response['items']]
+                token = None
+                while True:
+                    response = (self.provider
+                                    .gce_compute
+                                    .images()
+                                    .list(project=self.provider.project_name,
+                                          pageToken=token)
+                                    .execute())
+                    for image in response.get('items', []):
+                        images.append(GCEMachineImage(self.provider, image))
+                    if 'nextPageToken' not in response:
+                        break
+                    token = response['nextPageToken']
             except googleapiclient.errors.HttpError as http_error:
                 cb.log.warning(
                     "googleapiclient.errors.HttpError: {0}".format(http_error))
@@ -552,7 +569,10 @@ class GCEInstanceService(BaseInstanceService):
                         .execute())
         instances = [GCEInstance(self.provider, inst)
                      for inst in response['items']]
-        return ServerPagedResultList(len(instances) > max_result,
+        if len(instances) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(instances))
+        return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=instances)
 
@@ -662,16 +682,21 @@ class GCENetworkService(BaseNetworkService):
         if not region:
             region = self.provider.region_name
         try:
-            response = (self.provider
-                            .gce_compute
-                            .addresses()
-                            .list(project=self.provider.project_name,
-                                  region=region)
-                            .execute())
             ips = []
-            if 'items' in response:
-                for ip in response['items']:
+            token = None
+            while True:
+                response = (self.provider
+                                .gce_compute
+                                .addresses()
+                                .list(project=self.provider.project_name,
+                                      region=region,
+                                      pageToken=token)
+                                .execute())
+                for ip in response.get('items', []):
                     ips.append(GCEFloatingIP(self.provider, ip))
+                if 'nextPageToken' not in response:
+                    break
+                token = response['nextPageToken']
             # TODO: if network_id is given, filter out IPs that are assigned to
             # resources in a different network.
             return ips
@@ -704,16 +729,21 @@ class GCENetworkService(BaseNetworkService):
         if not region:
             region = self.provider.region_name
         try:
-            response = (self.provider
-                            .gce_compute
-                            .routers()
-                            .list(project=self.provider.project_name,
-                                  region=region)
-                            .execute())
             routers = []
-            if 'items' in response:
-                for router in response['items']:
+            token = None
+            while True:
+                response = (self.provider
+                                .gce_compute
+                                .routers()
+                                .list(project=self.provider.project_name,
+                                      region=region,
+                                      pageToken=token)
+                                .execute())
+                for router in response.get('items', []):
                     routers.append(GCERouter(self.provider, router))
+                if 'nextPageToken' not in response:
+                    break
+                token = response['nextPageToken']
             return routers
         except:
             return []
@@ -759,16 +789,21 @@ class GCESubnetService(BaseSubnetService):
         if not region:
             region = self.provider.region_name
         try:
-            response = (self.provider
-                            .gce_compute
-                            .subnetworks()
-                            .list(project=self.provider.project_name,
-                                  region=region)
-                            .execute())
             subnets = []
-            if 'items' in response:
-                for subnet in response['items']:
+            token = None
+            while True:
+                response = (self.provider
+                                .gce_compute
+                                .subnetworks()
+                                .list(project=self.provider.project_name,
+                                      region=region,
+                                      pageToken=token)
+                                .execute())
+                for subnet in response.get('items', []):
                     subnets.append(GCESubnet(self.provider, subnet))
+                if 'nextPageToken' not in response:
+                    break
+                token = response['nextPageToken']
             return subnets
         except:
             return []
@@ -873,7 +908,10 @@ class GCEVolumeService(BaseVolumeService):
             return []
         gce_vols = [GCEVolume(self.provider, vol)
                     for vol in response['items']]
-        return ServerPagedResultList(len(gce_vols) > max_result,
+        if len(gce_vols) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(gce_vols))
+        return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
 
@@ -900,7 +938,10 @@ class GCEVolumeService(BaseVolumeService):
             return []
         gce_vols = [GCEVolume(self.provider, vol)
                     for vol in response['items']]
-        return ServerPagedResultList(len(gce_vols) > max_result,
+        if len(gce_vols) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(gce_vols))
+        return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
 
@@ -974,7 +1015,10 @@ class GCESnapshotService(BaseSnapshotService):
             return []
         snapshots = [GCESnapshot(self.provider, snapshot)
                      for snapshot in response['items']]
-        return ServerPagedResultList(len(snapshots) > max_result,
+        if len(snapshots) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(snapshots))
+        return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
@@ -994,7 +1038,10 @@ class GCESnapshotService(BaseSnapshotService):
             return []
         snapshots = [GCESnapshot(self.provider, snapshot)
                      for snapshot in response['items']]
-        return ServerPagedResultList(len(snapshots) > max_result,
+        if len(snapshots) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(snapshots))
+        return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
@@ -1085,10 +1132,11 @@ class GCSObjectStoreService(BaseObjectStoreService):
                                   maxResults=max_result,
                                   pageToken=marker)
                             .execute())
-            if 'error' in response or 'items' not in response:
-                return []
-            buckets = [GCSBucket(self.provider, bucket)
-                       for bucket in response['items']]
+            if 'error' in response:
+                return ServerPagedResultList(False, None, False, data=[])
+            buckets = []
+            for bucket in response.get('items', []):
+                buckets.append(GCSBucket(self.provider, bucket))
             if len(buckets) > max_result:
                 cb.log.warning('Expected at most %d results; got %d',
                                max_result, len(buckets))
@@ -1096,7 +1144,7 @@ class GCSObjectStoreService(BaseObjectStoreService):
                                          response.get('nextPageToken'),
                                          False, data=buckets)
         except:
-            return ServerPagedResults(False, None, False, data=[])
+            return ServerPagedResultList(False, None, False, data=[])
 
     def create(self, name, location=None):
         """
