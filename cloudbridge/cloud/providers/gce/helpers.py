@@ -1,4 +1,5 @@
 # based on http://stackoverflow.com/a/39126754
+import cloudbridge as cb
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -17,3 +18,14 @@ def generate_key_pair():
         crypt_serialization.Encoding.OpenSSH,
         crypt_serialization.PublicFormat.OpenSSH)
     return private_key, public_key
+
+
+def iter_all(resource, **kwargs):
+    token = None
+    while True:
+        response = resource.list(pageToken=token, **kwargs).execute()
+        for item in response.get('items', []):
+            yield item
+        if 'nextPageToken' not in response:
+            return
+        token = response['nextPageToken']

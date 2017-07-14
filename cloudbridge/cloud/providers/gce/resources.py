@@ -32,6 +32,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
+from cloudbridge.cloud.providers.gce import helpers
 
 import googleapiclient
 
@@ -411,24 +412,9 @@ class GCEFirewallsDelegate(object):
         """
         Sync the local cache of all firewalls with the server.
         """
-        self._list_response = None
-        token = None
-        while True:
-            list_response = (self._provider
-                                 .gce_compute
-                                 .firewalls()
-                                 .list(project=self._provider.project_name,
-                                       pageToken=token)
-                                 .execute())
-            if self._list_response is None:
-                self._list_response = list_response
-                if 'items' not in self._list_response:
-                    self._list_response['items'] = []
-            else:
-                self._list_response['items'] += list_response.get('items', [])
-            if 'nextPageToken' not in list_response:
-                return
-            token = list_response['nextPageToken']
+        self._list_response = list(
+                helpers.iter_all(self._provider.gce_compute.firewalls(),
+                                 project=self._provider.project_name))
 
     def _check_list_in_dict(self, dictionary, field_name, value):
         """
@@ -961,24 +947,13 @@ class GCEInstance(BaseInstance):
         """
         self_url = self._provider.parse_url(self._gce_instance['selfLink'])
         try:
-            token = None
-            while True:
-                response = (self._provider
-                                .gce_compute
-                                .targetInstances()
-                                .list(project=self_url.parameters['project'],
-                                      zone=self_url.parameters['zone'],
-                                      pageToken=token)
-                                .execute())
-                if 'items' not in response:
-                    break
-                for target_instance in response['items']:
-                    url = self._provider.parse_url(target_instance['instance'])
-                    if url.parameters['instance'] == self.name:
-                        return target_instance
-                if 'nextPageToken' not in response:
-                    break
-                token = response['nextPageToken']
+            for target_instance in helpers.iter_all(
+                    self._provider.gce_compute.targetInstances(),
+                    project=self_url.parameters['project'],
+                    zone=self_url.parameters['zone']):
+                url = self._provider.parse_url(target_instance['instance'])
+                if url.parameters['instance'] == self.name:
+                    return target_instance
         except Exception as e:
             cb.log.warning('Exception while listing target instances: %s', e)
         return None
@@ -1024,42 +999,29 @@ class GCEInstance(BaseInstance):
                                   .parameters['zone'])
         new_name = target_instance['name']
         new_url = target_instance['selfLink']
-        token = None
         try:
-            while True:
+            for rule in helpers.iter_all(
+                    self._provider.gce_compute.forwardingRules(),
+                    project=self._provider.project_name,
+                    region=ip.region):
+                if rule['IPAddress'] != ip.public_ip:
+                    continue
+                parsed_target_url = self._provider.parse_url(rule['target'])
+                old_zone = parsed_target_url.parameters['zone']
+                old_name = parsed_target_url.parameters['targetInstance']
+                if old_zone == new_zone and old_name == new_name:
+                    return True
                 response = (self._provider
                                 .gce_compute
                                 .forwardingRules()
-                                .list(project=self._provider.project_name,
-                                      region=ip.region,
-                                      pageToken=token)
+                                .setTarget(
+                                    project=self._provider.project_name,
+                                    region=ip.region,
+                                    forwardingRule=rule['name'],
+                                    body={'target': new_url})
                                 .execute())
-                if 'items' not in response:
-                    break
-                for rule in response['items']:
-                    if rule['IPAddress'] != ip.public_ip:
-                        continue
-                    parsed_target_url = self._provider.parse_url(
-                            rule['target'])
-                    old_zone = parsed_target_url.parameters['zone']
-                    old_name = parsed_target_url.parameters['targetInstance']
-                    if old_zone == new_zone and old_name == new_name:
-                        return True
-                    response = (self._provider
-                                    .gce_compute
-                                    .forwardingRules()
-                                    .setTarget(
-                                        project=self._provider.project_name,
-                                        region=ip.region,
-                                        forwardingRule=rule['name'],
-                                        body={'target': new_url})
-                                    .execute())
-                    self._provider.wait_for_operation(response,
-                                                      region=ip.region)
-                    return True
-                if 'nextPageToken' not in response:
-                    break
-                token = response['nextPageToken']
+                self._provider.wait_for_operation(response, region=ip.region)
+                return True
         except Exception as e:
             cb.log.warning(
                 'Exception while listing/changing forwarding rules: %s', e)
@@ -1099,44 +1061,31 @@ class GCEInstance(BaseInstance):
         zone = (self._provider.parse_url(target_instance['zone'])
                               .parameters['zone'])
         name = target_instance['name']
-        token = None
         try:
-            while True:
+            for rule in helpers.iter_all(
+                    self._provider.gce_compute.forwardingRules(),
+                    project=self._provider.project_name,
+                    region=ip.region):
+                if rule['IPAddress'] != ip.public_ip:
+                    continue
+                parsed_target_url = self._provider.parse_url(rule['target'])
+                temp_zone = parsed_target_url.parameters['zone']
+                temp_name = parsed_target_url.parameters['targetInstance']
+                if temp_zone != zone or temp_name != name:
+                    cb.log.warning(
+                            '"%s" is forwarded to "%s" in zone "%s"',
+                            ip.public_ip, temp_name, temp_zone)
+                    return False
                 response = (self._provider
                                 .gce_compute
                                 .forwardingRules()
-                                .list(project=self._provider.project_name,
-                                      region=ip.region,
-                                      pageToken=token)
+                                .delete(
+                                    project=self._provider.project_name,
+                                    region=ip.region,
+                                    forwardingRule=rule['name'])
                                 .execute())
-                if 'items' not in response:
-                    return False
-                for rule in response['items']:
-                    if rule['IPAddress'] != ip.public_ip:
-                        continue
-                    parsed_target_url = self._provider.parse_url(
-                            rule['target'])
-                    temp_zone = parsed_target_url.parameters['zone']
-                    temp_name = parsed_target_url.parameters['targetInstance']
-                    if temp_zone != zone or temp_name != name:
-                        cb.log.warning(
-                                '"%s" is forwarded to "%s" in zone "%s"',
-                                ip.public_ip, temp_name, temp_zone)
-                        return False
-                    response = (self._provider
-                                    .gce_compute
-                                    .forwardingRules()
-                                    .delete(
-                                        project=self._provider.project_name,
-                                        region=ip.region,
-                                        forwardingRule=rule['name'])
-                                    .execute())
-                    self._provider.wait_for_operation(response,
-                                                      region=ip.region)
-                    return True
-                if 'nextPageToken' not in response:
-                    break
-                token = response['nextPageToken']
+                self._provider.wait_for_operation(response, region=ip.region)
+                return True
         except Exception as e:
             cb.log.warning(
                 'Exception while listing/deleting forwarding rules: %s', e)
