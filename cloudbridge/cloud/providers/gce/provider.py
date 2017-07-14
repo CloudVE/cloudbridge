@@ -2,18 +2,19 @@
 Provider implementation based on google-api-python-client library
 for GCE.
 """
-
-
-from cloudbridge.cloud.base import BaseCloudProvider
-import httplib2
 import json
 import os
 import re
-from string import Template
 import time
+from string import Template
 
-from googleapiclient import discovery
+from cloudbridge.cloud.base import BaseCloudProvider
+
 import googleapiclient.http
+from googleapiclient import discovery
+
+import httplib2
+
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -21,6 +22,7 @@ from .services import GCEBlockStoreService
 from .services import GCEComputeService
 from .services import GCENetworkService
 from .services import GCESecurityService
+from .services import GCSObjectStoreService
 
 
 class GCPResourceUrl(object):
@@ -164,6 +166,7 @@ class GCECloudProvider(BaseCloudProvider):
         self._security = GCESecurityService(self)
         self._network = GCENetworkService(self)
         self._block_store = GCEBlockStoreService(self)
+        self._object_store = GCSObjectStoreService(self)
 
         self._compute_resources = GCPResources(self.gce_compute)
         self._storage_resources = GCPResources(self.gcp_storage)
@@ -186,8 +189,7 @@ class GCECloudProvider(BaseCloudProvider):
 
     @property
     def object_store(self):
-        raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+        return self._object_store
 
     @property
     def gce_compute(self):
@@ -227,12 +229,6 @@ class GCECloudProvider(BaseCloudProvider):
         # The response is a dict representing the GCE resource data.
         response = request.execute()
         return response
-
-    def wait_for_global_operation(self, operation):
-        while True:
-            result = self.gce_compute.globalOperations().get(
-                project=self.project_name,
-                operation=operation['name']).execute()
 
     def _connect_gcp_storage(self):
         return discovery.build('storage', 'v1', credentials=self._credentials)
