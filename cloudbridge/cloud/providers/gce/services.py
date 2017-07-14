@@ -762,7 +762,9 @@ class GCESubnetService(BaseSubnetService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        subnets = [GCESubnet(self.provider, item) for item in response['items']]
+        subnets = []
+        for subnet in response.get('items', []):
+            subnets.append(GCESubnet(self.provider, subnet))
         if len(subnets) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(subnets))

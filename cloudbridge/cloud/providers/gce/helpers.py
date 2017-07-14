@@ -1,5 +1,4 @@
 # based on http://stackoverflow.com/a/39126754
-import cloudbridge as cb
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
