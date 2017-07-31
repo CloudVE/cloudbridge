@@ -377,7 +377,7 @@ class GCEImageService(BaseImageService):
             for project in GCEImageService._PUBLIC_IMAGE_PROJECTS:
                 for image in helpers.iter_all(
                         self.provider.gce_compute.images(), project=project):
-                    self._public_iamges.append(
+                    self._public_images.append(
                         GCEMachineImage(self.provider, image))
         except googleapiclient.errors.HttpError as http_error:
                 cb.log.warning("googleapiclient.errors.HttpError: {0}".format(
@@ -548,8 +548,10 @@ class GCEInstanceService(BaseInstanceService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        instances = [GCEInstance(self.provider, inst)
-                     for inst in response['items']]
+        instances = []
+        if 'items' in response:
+            instances = [GCEInstance(self.provider, inst)
+                         for inst in response['items']]
         if len(instances) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(instances))
