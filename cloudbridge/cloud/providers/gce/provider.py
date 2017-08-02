@@ -136,7 +136,6 @@ class GCECloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
         super(GCECloudProvider, self).__init__(config)
-        self.cloud_type = 'gce'
 
         # Initialize cloud connection fields
         self.client_email = self._get_config_value(
