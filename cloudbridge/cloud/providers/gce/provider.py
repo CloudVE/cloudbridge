@@ -138,10 +138,6 @@ class GCECloudProvider(BaseCloudProvider):
         super(GCECloudProvider, self).__init__(config)
 
         # Initialize cloud connection fields
-        self.client_email = self._get_config_value(
-            'gce_client_email', os.environ.get('GCE_CLIENT_EMAIL'))
-        self.project_name = self._get_config_value(
-            'gce_project_name', os.environ.get('GCE_PROJECT_NAME'))
         self.credentials_file = self._get_config_value(
             'gce_service_creds_file', os.environ.get('GCE_SERVICE_CREDS_FILE'))
         self.credentials_dict = self._get_config_value(
@@ -156,6 +152,8 @@ class GCECloudProvider(BaseCloudProvider):
             'gce_default_zone', os.environ.get('GCE_DEFAULT_ZONE'))
         self.region_name = self._get_config_value(
             'gce_region_name', 'us-central1')
+
+        self.project_name = self.credentials_dict['project_id']
 
         # service connections, lazily initialized
         self._gce_compute = None
