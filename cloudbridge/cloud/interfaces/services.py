@@ -164,8 +164,8 @@ class InstanceService(PageableObjectMixin, CloudService):
         """
         Searches for an instance by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.Instance`
-        :return: an Instance object
+        :rtype: List of ``object`` of :class:`.Instance`
+        :return: A list of Instance objects matching the supplied attributes.
         """
         pass
 
