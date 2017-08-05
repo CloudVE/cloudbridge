@@ -16,8 +16,8 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
             break
 
 base_reqs = ['bunch>=1.0.1', 'six>=1.10.0', 'retrying>=1.3.3']
-openstack_reqs = ['requests<2.13.0',
-                  'Babel>=2.3.4,<2.4.0',
+openstack_reqs = ['requests',
+                  'Babel',
                   'python-novaclient==7.0.0',
                   'python-glanceclient>=2.5.0,<=2.6.0',
                   'python-cinderclient>=1.9.0,<=2.0.1',
@@ -28,8 +28,8 @@ aws_reqs = ['boto>=2.38.0,<=2.46.1']
 gce_reqs = ['google-api-python-client>=1.4.2', "cryptography>=1.4"]
 full_reqs = base_reqs + aws_reqs + openstack_reqs + gce_reqs
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
-dev_reqs = (['tox>=2.1.1', 'moto<1.0.0', 'sphinx>=1.3.1', 'flake8>=3.3.0',
-             'flake8-import-order>=0.12', 'httpretty==0.8.10'] + full_reqs)
+dev_reqs = (full_reqs + ['tox>=2.1.1', 'moto<1.0.0', 'sphinx>=1.3.1',
+            'flake8>=3.3.0', 'flake8-import-order>=0.12', 'httpretty==0.8.10'])
 
 setup(name='cloudbridge',
       version=version,

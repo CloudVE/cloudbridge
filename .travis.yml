@@ -6,10 +6,13 @@ os:
 env:
   - TOX_ENV=py27-aws
   - TOX_ENV=py27-openstack
+  - TOX_ENV=py27-gce
   - TOX_ENV=py36-aws
   - TOX_ENV=py36-openstack
+  - TOX_ENV=py36-gce
   - TOX_ENV=pypy-aws
   - TOX_ENV=pypy-openstack
+  - TOX_ENV=pypy-gce
 matrix:
   fast_finish: true
   allow_failures:
