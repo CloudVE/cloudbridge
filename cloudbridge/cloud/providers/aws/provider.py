@@ -31,7 +31,6 @@ class AWSCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
         super(AWSCloudProvider, self).__init__(config)
-        self.cloud_type = 'aws'
 
         # Initialize cloud connection fields
         self.a_key = self._get_config_value(

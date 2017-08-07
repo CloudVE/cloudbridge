@@ -33,7 +33,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
         super(OpenStackCloudProvider, self).__init__(config)
-        self.cloud_type = 'openstack'
 
         # Initialize cloud connection fields
         self.username = self._get_config_value(
