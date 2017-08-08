@@ -1,3 +1,8 @@
+0.3.3 - Aug 7, 2017. (sha 348e1e88935f61f53a83ed8d6a0e012a46621e25)
+-------
+
+* Remove explicit versioning of requests and Babel
+
 0.3.2 - June 10, 2017. (sha f07f3cbd758a0872b847b5537d9073c90f87c24d)
 -------
 
