@@ -531,6 +531,16 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
+    def find(self, name):
+        """
+        Searches for a network by a given list of attributes.
+
+        :rtype: List of ``object`` of :class:`.Network`
+        :return: A list of Network objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
     def create(self, name=None):
         """
         Create a new network.

@@ -1,6 +1,7 @@
 from test import helpers
 
 from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
 
 from cloudbridge.cloud.interfaces.resources import InstanceType
 
@@ -17,10 +18,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
         self.assertListEqual(iter_instance_types, instance_types)
 
         for inst_type in instance_types:
-            self.assertTrue(
-                inst_type.id in repr(inst_type),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
+            sit.check_repr(self, inst_type)
             self.assertIsNotNone(
                 inst_type.id,
                 "InstanceType id must have a value")

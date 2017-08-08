@@ -1,6 +1,8 @@
 import test.helpers as helpers
 import uuid
+
 from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
 
 from cloudbridge.cloud.interfaces.resources import RouterState
 
@@ -16,20 +18,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             lambda:
                 self.provider.network.delete(network_id=net.id)
         ):
-            # test list method
-            netl = self.provider.network.list()
-            list_netl = [n for n in netl if n.name == name]
-            self.assertTrue(
-                len(list_netl) == 1,
-                "List networks does not return the expected network %s" %
-                name)
-
-            # check get
-            get_net = self.provider.network.get(network_id=net.id)
-            self.assertTrue(
-                get_net == net,
-                "Get network did not return the expected network {0}."
-                .format(name))
+            sit.check_standard_behaviour(
+                self, self.provider.network, net)
 
             # check subnet
             subnet = self.provider.network.subnets.create(
@@ -110,10 +100,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 net.state, 'available',
                 "Network in state '%s', yet should be 'available'" % net.state)
 
-            self.assertIn(
-                net.id, repr(net),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not.")
+            sit.check_repr(self, net)
 
             self.assertIn(
                 net.cidr_block, ['', '10.0.0.0/16'],
