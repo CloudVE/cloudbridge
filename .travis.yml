@@ -6,8 +6,10 @@ os:
 env:
   - TOX_ENV=py27-aws
   - TOX_ENV=py27-openstack
+  - TOX_ENV=py27-azure
   - TOX_ENV=py36-aws
   - TOX_ENV=py36-openstack
+  - TOX_ENV=py36-azure
   - TOX_ENV=pypy-aws
   - TOX_ENV=pypy-openstack
 matrix:
@@ -19,7 +21,6 @@ install:
   - pip install coveralls
   - pip install codecov
 script:
-  - tox -e $TOX_ENV
+  - travis_wait 110 tox -e $TOX_ENV
 after_success:
   - coveralls
-  - codecov

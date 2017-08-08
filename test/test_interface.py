@@ -62,4 +62,6 @@ class CloudInterfaceTestCase(ProviderTestBase):
             elif cloned_provider.PROVIDER_ID == 'openstack':
                 cloned_provider.username = "cb_dummy"
                 cloned_provider.password = "cb_dummy"
+            elif cloned_provider.PROVIDER_ID == 'azure':
+                cloned_provider.subscription_id = "cb_dummy"
             cloned_provider.authenticate()
