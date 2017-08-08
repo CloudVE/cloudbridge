@@ -718,6 +718,14 @@ class AWSNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
+    def find(self, name, limit=None, marker=None):
+        filtr = {'tag:Name': name}
+        networks = [AWSNetwork(self.provider, network)
+                    for network in self.provider.vpc_conn.get_all_vpcs(
+                        filters=filtr)]
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
+
     def create(self, name=None):
         # AWS requires CIDR block to be specified when creating a network
         # so set a default one and use the largest allowed netmask.

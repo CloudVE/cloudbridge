@@ -2176,6 +2176,16 @@ class Bucket(PageableObjectMixin, CloudResource):
         pass
 
     @abstractmethod
+    def find(self, name):
+        """
+        Searches for an instance by a given name
+
+        :rtype: List of ``object`` of :class:`.BucketObject`
+        :return: A list of BucketObjects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
     def delete(self, delete_contents=False):
         """
         Delete this bucket.
