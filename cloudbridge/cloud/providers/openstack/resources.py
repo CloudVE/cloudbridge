@@ -24,6 +24,7 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
+from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -1210,6 +1211,11 @@ class OpenStackBucket(BaseBucket):
             self._provider,
             cb_objects,
             limit)
+
+    def find(self, name, limit=None, marker=None):
+        objects = [obj for obj in self if obj.name == name]
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
 
     def delete(self, delete_contents=False):
         """

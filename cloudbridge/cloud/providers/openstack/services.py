@@ -713,6 +713,15 @@ class OpenStackNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
+    def find(self, name, limit=None, marker=None):
+        search_opts = {'name': name}
+        networks = [OpenStackNetwork(self.provider, network)
+                    for network in self.provider.neutron.list_networks(
+                        search_opts=search_opts)
+                    .get('networks', [])]
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
+
     def create(self, name=''):
         net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})

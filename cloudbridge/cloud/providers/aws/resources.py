@@ -903,6 +903,12 @@ class AWSBucket(BaseBucket):
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
+    def find(self, name, limit=None, marker=None):
+        objects = [obj for obj in self if obj.name == name]
+
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
+
     def delete(self, delete_contents=False):
         """
         Delete this bucket.
