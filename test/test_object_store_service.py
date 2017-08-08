@@ -7,6 +7,7 @@ from datetime import datetime
 from io import BytesIO
 from test import helpers
 from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
 from unittest import skip
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
@@ -25,50 +26,10 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         name = "cbtestcreatebucket-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
         with helpers.cleanup_action(lambda: test_bucket.delete()):
-            self.assertTrue(
-                test_bucket.id in repr(test_bucket),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
+            sit.check_standard_behaviour(
+                self, self.provider.object_store, test_bucket)
 
-            buckets = self.provider.object_store.list()
-
-            list_buckets = [c for c in buckets if c.name == name]
-            self.assertTrue(
-                len(list_buckets) == 1,
-                "List buckets does not return the expected bucket %s" %
-                name)
-
-            # check iteration
-            iter_buckets = [c for c in self.provider.object_store
-                            if c.name == name]
-            self.assertTrue(
-                len(iter_buckets) == 1,
-                "Iter buckets does not return the expected bucket %s" %
-                name)
-
-            # check find
-            find_buckets = self.provider.object_store.find(name=name)
-            self.assertTrue(
-                len(find_buckets) == 1,
-                "Find buckets does not return the expected bucket %s" %
-                name)
-
-            get_bucket = self.provider.object_store.get(
-                test_bucket.id)
-            self.assertTrue(
-                list_buckets[0] ==
-                get_bucket == test_bucket,
-                "Objects returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(list_buckets[0].id,
-                                         get_bucket.id,
-                                         test_bucket.name))
-
-        buckets = self.provider.object_store.list()
-        found_buckets = [c for c in buckets if c.name == name]
-        self.assertTrue(
-            len(found_buckets) == 0,
-            "Bucket %s should have been deleted but still exists." %
-            name)
+        sit.check_delete(self, self.provider.object_store, test_bucket)
 
     @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket_objects(self):
@@ -116,20 +77,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 iter_objs = list(test_bucket)
                 self.assertListEqual(iter_objs, objs)
 
-                found_objs = [o for o in objs if o.name == obj_name]
-                self.assertTrue(
-                    len(found_objs) == 1,
-                    "List bucket objects does not return the expected"
-                    " object %s" % obj_name)
-
-                get_bucket_obj = test_bucket.get(obj_name)
-                self.assertTrue(
-                    found_objs[0] ==
-                    get_bucket_obj == obj,
-                    "Objects returned by list: {0} and get: {1} are not as "
-                    " expected: {2}" .format(found_objs[0].id,
-                                             get_bucket_obj.id,
-                                             obj.id))
+                sit.check_standard_behaviour(self, test_bucket, obj)
 
                 obj_too = test_bucket.get(obj_name)
                 self.assertTrue(
@@ -143,12 +91,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     'with and without a prefix, are expected to be equal, '
                     'but its detected otherwise.')
 
-            objs = test_bucket.list()
-            found_objs = [o for o in objs if o.name == obj_name]
-            self.assertTrue(
-                len(found_objs) == 0,
-                "Object %s should have been deleted but still exists." %
-                obj_name)
+            sit.check_delete(self, test_bucket, obj)
 
     @helpers.skipIfNoService(['object_store'])
     def test_upload_download_bucket_content(self):

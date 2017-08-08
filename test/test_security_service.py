@@ -5,6 +5,7 @@ import uuid
 
 from test import helpers
 from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
 
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
@@ -19,49 +20,14 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             lambda:
                 self.provider.security.key_pairs.delete(key_pair_id=kp.id)
         ):
-            # test list method
-            kpl = self.provider.security.key_pairs.list()
-            list_kpl = [i for i in kpl if i.name == name]
-            self.assertTrue(
-                len(list_kpl) == 1,
-                "List key pairs does not return the expected key pair %s" %
-                name)
-
-            # check iteration
-            iter_kpl = [i for i in self.provider.security.key_pairs
-                        if i.name == name]
-            self.assertTrue(
-                len(iter_kpl) == 1,
-                "Iter key pairs does not return the expected key pair %s" %
-                name)
-
-            # check find
-            find_kp = self.provider.security.key_pairs.find(name=name)[0]
-            self.assertTrue(
-                find_kp == kp,
-                "Find key pair did not return the expected key {0}."
-                .format(name))
-
-            # check get
-            get_kp = self.provider.security.key_pairs.get(name)
-            self.assertTrue(
-                get_kp == kp,
-                "Get key pair did not return the expected key {0}."
-                .format(name))
+            sit.check_standard_behaviour(
+                self, self.provider.security.key_pairs, kp)
 
             # Recreating existing keypair should raise an exception
             with self.assertRaises(Exception):
                 self.provider.security.key_pairs.create(name=name)
-        kpl = self.provider.security.key_pairs.list()
-        found_kp = [k for k in kpl if k.name == name]
-        self.assertTrue(
-            len(found_kp) == 0,
-            "Key pair {0} should have been deleted but still exists."
-            .format(name))
-        no_kp = self.provider.security.key_pairs.find(name='bogus_kp')
-        self.assertFalse(
-            no_kp,
-            "Found a key pair {0} that should not exist?".format(no_kp))
+
+        sit.check_delete(self, self.provider.security.key_pairs, kp)
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_key_pair(self):
@@ -119,50 +85,16 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
             self.assertEqual(name, sg.description)
 
-            # test list method
-            sgl = self.provider.security.security_groups.list()
-            found_sgl = [i for i in sgl if i.name == name]
-            self.assertTrue(
-                len(found_sgl) == 1,
-                "List security groups does not return the expected group %s" %
-                name)
+            sit.check_standard_behaviour(
+                self, self.provider.security.security_groups, sg)
 
-            # check iteration
-            found_sgl = [i for i in self.provider.security.security_groups
-                         if i.name == name]
-            self.assertTrue(
-                len(found_sgl) == 1,
-                "Iter security groups does not return the expected group %s" %
-                name)
-
-            # check find
-            find_sg = self.provider.security.security_groups.find(name=sg.name)
-            self.assertTrue(
-                len(find_sg) == 1,
-                "List security groups returned {0} when expected was: {1}."
-                .format(find_sg, sg.name))
-
-            # check get
-            get_sg = self.provider.security.security_groups.get(sg.id)
-            self.assertTrue(
-                get_sg == sg,
-                "Get SecurityGroup did not return the expected key {0}."
-                .format(name))
-
-            self.assertTrue(
-                sg.id in repr(sg),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
+        # sit.check_delete(self, self.provider.security.security_groups, sg)
         sgl = self.provider.security.security_groups.list()
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(
             len(found_sg) == 0,
             "Security group {0} should have been deleted but still exists."
             .format(name))
-        no_sg = self.provider.security.security_groups.find(name='bogus_sg')
-        self.assertTrue(
-            len(no_sg) == 0,
-            "Found a bogus security group?!?".format(no_sg))
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group(self):
@@ -215,6 +147,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 #                 "JSON SG representation {0} does not match expected {1}"
 #                 .format(sg.to_json(), json_repr))
 
+        # sit.check_delete(self, self.provider.security.security_groups, sg)
         sgl = self.provider.security.security_groups.list()
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(
