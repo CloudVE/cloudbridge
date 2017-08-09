@@ -37,16 +37,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             self.assertIsNotNone(
                 kp.material,
                 "KeyPair material is empty but it should not be.")
-            self.assertTrue(
-                kp == kp,
-                "The same key pair should be equal to self.")
-            json_repr = json.dumps(
-                {"material": kp.material, "id": name, "name": name},
-                sort_keys=True)
-            self.assertEqual(
-                kp.to_json(), json_repr,
-                "JSON key pair representation {0} does not match expected {1}"
-                .format(kp.to_json(), json_repr))
 
     def cleanup_sg(self, sg, net):
         with helpers.cleanup_action(
