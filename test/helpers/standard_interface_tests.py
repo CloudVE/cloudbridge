@@ -67,7 +67,17 @@ def check_find_non_existent(test, service):
 def check_get(test, service, obj):
     get_obj = service.get(obj.id)
     test.assertEqual(get_obj, obj)
+    test.assertIsInstance(get_obj, type(obj))
     return get_obj
+
+
+def check_get_non_existent(test, service):
+    # check get
+    get_objs = service.get("random_imagined_obj_id")
+    test.assertIsNone(
+        get_objs,
+        "Get non-existent object for %s returned unexpected objects: %s"
+        % (type(service).__name__, get_objs))
 
 
 def check_delete(test, service, obj, perform_delete=False):
@@ -89,6 +99,7 @@ def check_standard_behaviour(test, service, obj):
     objs_find = check_find(test, service, obj)
     check_find_non_existent(test, service)
     obj_get = check_get(test, service, obj)
+    check_get_non_existent(test, service)
 
     test.assertTrue(
         obj == objs_list[0] == objs_iter[0] == objs_find[0] == obj_get,
