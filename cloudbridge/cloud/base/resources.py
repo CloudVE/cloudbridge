@@ -3,7 +3,6 @@ Base implementation for data objects exposed through a provider or service
 """
 import inspect
 import itertools
-import json
 import logging
 import os
 import shutil
@@ -58,7 +57,7 @@ class BaseCloudResource(CloudResource):
         # Get all attributes but filter methods and private/magic ones
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
         js = {k: v for(k, v) in attr if not k.startswith('_')}
-        return json.dumps(js, sort_keys=True)
+        return js
 
 
 class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
@@ -585,7 +584,7 @@ class BaseRegion(Region, BaseCloudResource):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
         js = {k: v for(k, v) in attr if not k.startswith('_')}
         js['zones'] = [z.name for z in self.zones]
-        return json.dumps(js, sort_keys=True)
+        return js
 
 
 class BaseBucketObject(BucketObject, BaseCloudResource):
