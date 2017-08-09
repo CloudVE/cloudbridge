@@ -332,7 +332,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
                 # TODO: Cloud specific code, needs fixing
                 if self.provider.PROVIDER_ID == 'openstack':
-                    for n in self.provider.network.list():
+                    for n in self.provider.network:
                         if n.external:
                             external_net = n
                             break

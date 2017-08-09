@@ -699,7 +699,7 @@ class OpenStackNetworkService(BaseNetworkService):
         self._subnet_svc = OpenStackSubnetService(self.provider)
 
     def get(self, network_id):
-        network = (n for n in self.list() if n.id == network_id)
+        network = (n for n in self if n.id == network_id)
         return next(network, None)
 
     def list(self, limit=None, marker=None):
@@ -710,10 +710,9 @@ class OpenStackNetworkService(BaseNetworkService):
                                      limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
-        search_opts = {'name': name}
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks(
-                        search_opts=search_opts)
+                        name=name)
                     .get('networks', [])]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)

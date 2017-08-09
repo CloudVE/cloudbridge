@@ -114,13 +114,13 @@ class BaseInstanceTypesService(
         super(BaseInstanceTypesService, self).__init__(provider)
 
     def get(self, instance_type_id):
-        itype = (t for t in self.list() if t.id == instance_type_id)
+        itype = (t for t in self if t.id == instance_type_id)
         return next(itype, None)
 
     def find(self, **kwargs):
         name = kwargs.get('name')
         if name:
-            return [itype for itype in self.list() if itype.name == name]
+            return [itype for itype in self if itype.name == name]
         else:
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
@@ -161,3 +161,11 @@ class BaseSubnetService(
 
     def __init__(self, provider):
         super(BaseSubnetService, self).__init__(provider)
+
+    def find(self, **kwargs):
+        name = kwargs.get('name')
+        if name:
+            return [subnet for subnet in self if subnet.name == name]
+        else:
+            raise TypeError(
+                "Invalid parameters for search. Supported attributes: {name}")
