@@ -15,6 +15,17 @@ def check_repr(test, obj):
         % (type(obj).__name__,))
 
 
+def check_json(test, obj):
+    val = obj.to_json()
+    test.assertEqual(val.get('id'), obj.id)
+    test.assertEqual(val.get('name'), obj.name)
+
+
+def check_obj_properties(test, obj):
+    test.assertEqual(obj, obj, "Object should be equal to itself")
+    test.assertFalse(obj != obj, "Object inequality should be false")
+
+
 def check_list(test, service, obj):
     objects = service.list()
     list_objs = [o for o in objects if o.id == obj.id]
@@ -74,6 +85,8 @@ def check_delete(test, service, obj, perform_delete=False):
 
 def check_standard_behaviour(test, service, obj):
     check_repr(test, obj)
+    check_json(test, obj)
+    check_obj_properties(test, obj)
     objs_list = check_list(test, service, obj)
     objs_iter = check_iter(test, service, obj)
     objs_find = check_find(test, service, obj)
