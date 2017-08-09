@@ -65,8 +65,8 @@ def check_delete(test, service, obj, perform_delete=False):
         obj.delete()
 
     objs = service.list()
-    test.assertTrue(
     found_objs = [o for o in objs if o.id == obj.id]
+    test.assertTrue(
         len(found_objs) == 0,
         "Object %s in service %s should have been deleted but still exists."
         % (type(obj).__name__, found_objs))
