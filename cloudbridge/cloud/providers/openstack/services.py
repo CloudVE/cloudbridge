@@ -288,13 +288,9 @@ class OpenStackImageService(BaseImageService):
         """
         List all images.
         """
-        if marker is None:
-            os_images = self.provider.nova.images.list(
-                limit=oshelpers.os_result_limit(self.provider, limit))
-        else:
-            os_images = self.provider.nova.images.list(
-                limit=oshelpers.os_result_limit(self.provider, limit),
-                marker=marker)
+        os_images = self.provider.nova.images.list(
+            limit=oshelpers.os_result_limit(self.provider, limit),
+            marker=marker)
 
         cb_images = [
             OpenStackMachineImage(self.provider, img)
