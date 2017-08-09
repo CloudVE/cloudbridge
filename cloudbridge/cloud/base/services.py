@@ -139,6 +139,9 @@ class BaseRegionService(
     def __init__(self, provider):
         super(BaseRegionService, self).__init__(provider)
 
+    def find(self, name):
+        return [region for region in self if region.name == name]
+
 
 class BaseNetworkService(
         BasePageableObjectMixin, NetworkService, BaseCloudService):
