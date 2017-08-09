@@ -88,7 +88,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             sit.check_standard_behaviour(
                 self, self.provider.security.security_groups, sg)
 
-        # sit.check_delete(self, self.provider.security.security_groups, sg)
+        sit.check_delete(self, self.provider.security.security_groups, sg)
         sgl = self.provider.security.security_groups.list()
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(
@@ -147,7 +147,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 #                 "JSON SG representation {0} does not match expected {1}"
 #                 .format(sg.to_json(), json_repr))
 
-        # sit.check_delete(self, self.provider.security.security_groups, sg)
+        sit.check_delete(self, self.provider.security.security_groups, sg)
         sgl = self.provider.security.security_groups.list()
         found_sg = [g for g in sgl if g.name == name]
         self.assertTrue(
