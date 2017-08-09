@@ -1125,3 +1125,13 @@ class RegionService(PageableObjectMixin, CloudService):
         :return:  list of region objects
         """
         pass
+
+    @abstractmethod
+    def find(self, name):
+        """
+        Searches for a region by a given list of attributes.
+
+        :rtype: ``object`` of :class:`.Region`
+        :return: a Region object
+        """
+        pass
