@@ -178,7 +178,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             # On OpenStack only one network is external and on AWS every
             # network is external, yet we need to use the one we've created?!
             if self.provider.PROVIDER_ID == 'openstack':
-                for n in self.provider.network.list():
+                for n in self.provider.network:
                     if n.external:
                         external_net = n
                         break
