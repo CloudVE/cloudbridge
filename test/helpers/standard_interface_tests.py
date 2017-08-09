@@ -5,6 +5,8 @@ This includes:
    2. Checking for object equality and repr
    3. Checking standard behaviour for list, iter, find, get, delete
 """
+import uuid
+
 from cloudbridge.cloud.interfaces.resources import ResultList
 
 
@@ -84,7 +86,7 @@ def check_get(test, service, obj):
 
 def check_get_non_existent(test, service):
     # check get
-    get_objs = service.get("random_imagined_obj_id")
+    get_objs = service.get(str(uuid.uuid4()))
     test.assertIsNone(
         get_objs,
         "Get non-existent object for %s returned unexpected objects: %s"
