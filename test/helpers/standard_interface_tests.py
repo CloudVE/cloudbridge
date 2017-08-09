@@ -5,6 +5,7 @@ This includes:
    2. Checking for object equality and repr
    3. Checking standard behaviour for list, iter, find, get, delete
 """
+from cloudbridge.cloud.interfaces.resources import ResultList
 
 
 def check_repr(test, obj):
@@ -16,12 +17,18 @@ def check_repr(test, obj):
 
 
 def check_list(test, service, obj):
-    list_objs = [o for o in service.list() if o.id == obj.id]
+    list_objs = service.list()
+    test.assertIsInstance(list_objs, ResultList)
+    all_records = list_objs
+    while list_objs.is_truncated:
+        list_objs = service.list(marker=list_objs.marker)
+        all_records += list_objs
+    match_objs = [o for o in all_records if o.id == obj.id]
     test.assertTrue(
-        len(list_objs) == 1,
+        len(match_objs) == 1,
         "List objects for %s does not return the expected object id %s. Got %s"
-        % (type(obj).__name__, obj.id, list_objs))
-    return list_objs
+        % (type(obj).__name__, obj.id, match_objs))
+    return match_objs
 
 
 def check_iter(test, service, obj):
