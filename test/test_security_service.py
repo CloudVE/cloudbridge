@@ -30,20 +30,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         sit.check_delete(self, self.provider.security.key_pairs, kp)
 
     @helpers.skipIfNoService(['security.key_pairs'])
-    def test_key_pair(self):
+    def test_key_pair_properties(self):
         name = 'cbtestkeypairB-{0}'.format(uuid.uuid4())
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(lambda: kp.delete()):
-            kpl = self.provider.security.key_pairs.list()
-            found_kp = [k for k in kpl if k.name == name]
-            self.assertTrue(
-                len(found_kp) == 1,
-                "List key pairs did not return the expected key {0}."
-                .format(name))
-            self.assertTrue(
-                kp.id in repr(kp),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
             self.assertIsNotNone(
                 kp.material,
                 "KeyPair material is empty but it should not be.")
@@ -57,12 +47,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 kp.to_json(), json_repr,
                 "JSON key pair representation {0} does not match expected {1}"
                 .format(kp.to_json(), json_repr))
-        kpl = self.provider.security.key_pairs.list()
-        found_kp = [k for k in kpl if k.name == name]
-        self.assertTrue(
-            len(found_kp) == 0,
-            "Key pair {0} should have been deleted but still exists."
-            .format(name))
 
     def cleanup_sg(self, sg, net):
         with helpers.cleanup_action(
@@ -89,12 +73,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 self, self.provider.security.security_groups, sg)
 
         sit.check_delete(self, self.provider.security.security_groups, sg)
-        sgl = self.provider.security.security_groups.list()
-        found_sg = [g for g in sgl if g.name == name]
-        self.assertTrue(
-            len(found_sg) == 0,
-            "Security group {0} should have been deleted but still exists."
-            .format(name))
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group(self):
