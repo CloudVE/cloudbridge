@@ -15,9 +15,9 @@ class CloudRegionServiceTestCase(ProviderTestBase):
         Test whether the region listing methods work,
         and whether zones are returned appropriately.
         """
-        regions = self.provider.compute.regions.list()
+        regions = list(self.provider.compute.regions)
         sit.check_standard_behaviour(
-            self, self.provider.compute.regions, regions[0])
+            self, self.provider.compute.regions, regions[-1])
 
         for region in regions:
             self.assertIsInstance(
@@ -44,7 +44,7 @@ class CloudRegionServiceTestCase(ProviderTestBase):
         """
         current_region = self.provider.compute.regions.current
         self.assertIsInstance(current_region, Region)
-        self.assertTrue(current_region in self.provider.compute.regions.list())
+        self.assertTrue(current_region in self.provider.compute.regions)
 
     @helpers.skipIfNoService(['compute.regions'])
     def test_zones(self):

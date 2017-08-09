@@ -604,8 +604,11 @@ class AWSInstanceService(BaseInstanceService):
         Returns an instance given its id. Returns None
         if the object does not exist.
         """
-        reservation = self.provider.ec2_conn.get_all_reservations(
-            instance_ids=[instance_id])
+        try:
+            reservation = self.provider.ec2_conn.get_all_reservations(
+                instance_ids=[instance_id])
+        except EC2ResponseError:
+            return None
         if reservation:
             return AWSInstance(self.provider, reservation[0].instances[0])
         else:
@@ -682,10 +685,9 @@ class AWSRegionService(BaseRegionService):
         super(AWSRegionService, self).__init__(provider)
 
     def get(self, region_id):
-        region = self.provider.ec2_conn.get_all_regions(
-            region_names=[region_id])
+        region = [r for r in self if r.id == region_id]
         if region:
-            return AWSRegion(self.provider, region[0])
+            return region[0]
         else:
             return None
 

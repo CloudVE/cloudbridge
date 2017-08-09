@@ -1,5 +1,4 @@
 """Test cloudbridge.security modules."""
-import json
 import unittest
 import uuid
 
