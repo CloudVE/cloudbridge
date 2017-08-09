@@ -3,7 +3,6 @@ DataTypes used by this provider
 """
 import hashlib
 import inspect
-import json
 
 from datetime import datetime
 
@@ -95,8 +94,9 @@ class AWSMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        bdm = self._ec2_image.block_device_mapping
-        return bdm[self._ec2_image.root_device_name].size
+        bdm = self._ec2_image.block_device_mapping.get(
+            self._ec2_image.root_device_name)
+        return bdm.size if bdm else None
 
     def delete(self):
         """
@@ -719,10 +719,10 @@ class AWSSecurityGroup(BaseSecurityGroup):
         attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
         js = {k: v for (k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
-        js['rules'] = [json.loads(r) for r in json_rules]
+        js['rules'] = json_rules
         if js.get('network_id'):
             js.pop('network_id')  # Omit for consistency across cloud providers
-        return json.dumps(js, sort_keys=True)
+        return js
 
 
 class AWSSecurityGroupRule(BaseSecurityGroupRule):
@@ -777,7 +777,7 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         js = {k: v for (k, v) in attr if not k.startswith('_')}
         js['group'] = self.group.id if self.group else ''
         js['parent'] = self.parent.id if self.parent else ''
-        return json.dumps(js, sort_keys=True)
+        return js
 
     def delete(self):
         if self.group:
@@ -824,9 +824,12 @@ class AWSBucketObject(BaseBucketObject):
         """
         Get the date and time this object was last modified.
         """
-        lm = datetime.strptime(self._key.last_modified,
-                               "%Y-%m-%dT%H:%M:%S.%fZ")
-        return lm.strftime("%Y-%m-%dT%H:%M:%S.%f")
+        if self._key.last_modified:
+            lm = datetime.strptime(self._key.last_modified,
+                                   "%Y-%m-%dT%H:%M:%S.%fZ")
+            return lm.strftime("%Y-%m-%dT%H:%M:%S.%f")
+        else:
+            return None
 
     def iter_content(self):
         """

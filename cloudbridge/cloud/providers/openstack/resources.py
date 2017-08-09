@@ -3,7 +3,6 @@ DataTypes used by this provider
 """
 import inspect
 import ipaddress
-import json
 
 import os
 
@@ -999,8 +998,8 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
         js = {k: v for(k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
-        js['rules'] = [json.loads(r) for r in json_rules]
-        return json.dumps(js, sort_keys=True)
+        js['rules'] = json_rules
+        return js
 
 
 class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
@@ -1044,7 +1043,7 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
         js = {k: v for(k, v) in attr if not k.startswith('_')}
         js['group'] = self.group.id if self.group else ''
         js['parent'] = self.parent.id if self.parent else ''
-        return json.dumps(js, sort_keys=True)
+        return js
 
     def delete(self):
         return self._provider.nova.security_group_rules.delete(self.id)
