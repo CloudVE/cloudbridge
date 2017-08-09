@@ -16,23 +16,26 @@ def check_repr(test, obj):
 
 
 def check_list(test, service, obj):
-    objects = service.list()
-    list_objs = [o for o in objects if o.id == obj.id]
+    list_objs = [o for o in service.list() if o.id == obj.id]
     test.assertTrue(
         len(list_objs) == 1,
-        "List objects for %s does not return the expected object id %s"
-        % (type(obj).__name__, obj.id))
+        "List objects for %s does not return the expected object id %s. Got %s"
+        % (type(obj).__name__, obj.id, list_objs))
     return list_objs
 
 
 def check_iter(test, service, obj):
     # check iteration
-    iter_objs = [o for o in service if o.id == obj.id]
+    iter_objs = list(service)
+    iter_ids = [o.id for o in service]
+    test.assertEqual(len(set(iter_ids)), len(iter_ids),
+                     "Iteration should not return duplicates")
+    match_objs = [o for o in iter_objs if o.id == obj.id]
     test.assertTrue(
-        len(iter_objs) == 1,
-        "Iter objects for %s does not return the expected object id %s"
-        % (type(obj).__name__, obj.id))
-    return iter_objs
+        len(match_objs) == 1,
+        "Iter objects for %s does not return the expected object id %s. Got %s"
+        % (type(obj).__name__, obj.id, match_objs))
+    return match_objs
 
 
 def check_find(test, service, obj):
@@ -40,8 +43,8 @@ def check_find(test, service, obj):
     find_objs = service.find(name=obj.name)
     test.assertTrue(
         len(find_objs) == 1,
-        "Find objects for %s does not return the expected object: %s"
-        % (type(obj).__name__, obj.name))
+        "Find objects for %s does not return the expected object: %s. Got %s"
+        % (type(obj).__name__, obj.name, find_objs))
     return find_objs
 
 
@@ -65,11 +68,11 @@ def check_delete(test, service, obj, perform_delete=False):
         obj.delete()
 
     objs = service.list()
-    found_objs = [o for o in objs if obj.id == obj.id]
+    found_objs = [o for o in objs if o.id == obj.id]
     test.assertTrue(
         len(found_objs) == 0,
         "Object %s in service %s should have been deleted but still exists."
-        % (type(obj).__name__, found_objs))
+        % (found_objs, type(service).__name__))
 
 
 def check_standard_behaviour(test, service, obj):
