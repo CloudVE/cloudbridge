@@ -28,8 +28,11 @@ class CloudResource(object):
 
     """
     Base interface for any Resource supported by a provider. This interface
-    has an  _provider property that can be used to access the provider
+    has a  _provider property that can be used to access the provider
     associated with the resource, which is only intended for use by subclasses.
+    Every cloudbridge resource also has an id and name property. The id
+    property is a unique identifier for the resource. The name property is a
+    display value.
     """
     __metaclass__ = ABCMeta
 
@@ -41,6 +44,36 @@ class CloudResource(object):
 
         :rtype: :class:`.CloudProvider`
         :return: a CloudProvider object
+        """
+        pass
+
+    @abstractproperty
+    def id(self):
+        """
+        Get the resource identifier. The id property is used to uniquely
+        identify the resource, and is an opaque value which should not be
+        interpreted by cloudbridge clients, and is a value meaningful to
+        the underlying cloud provider.
+
+        :rtype: ``str``
+        :return: ID for this resource as returned by the cloud middleware.
+        """
+        pass
+
+    @abstractproperty
+    def name(self):
+        """
+        Get the resource name. The name property is typically a user-friendly
+        display value for the resource. Some resources may allow the resource
+        name to be set.
+
+        The name property adheres to the following restrictions:
+        * Names cannot be longer than 63 characters
+        * May only contain lowercase letters, numeric characters, underscores,
+          and dashes. International characters are allowed.
+
+        :rtype: ``str``
+        :return: Name for this instance as returned by the cloud middleware.
         """
         pass
 
@@ -402,27 +435,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
-    @abstractproperty
-    def id(self):
-        """
-        Get the instance identifier.
-
-        :rtype: ``str``
-        :return: ID for this instance as returned by the cloud middleware.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get the instance name.
-
-        :rtype: ``str``
-        :return: Name for this instance as returned by the cloud middleware.
-        """
-        pass
-
-    @name.setter
+    @CloudResource.name.setter
     @abstractmethod
     def name(self, value):
         """
@@ -732,26 +745,6 @@ class MachineImage(ObjectLifeCycleMixin, CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def id(self):
-        """
-        Get the image identifier.
-
-        :rtype: ``str``
-        :return: ID for this instance as returned by the cloud middleware.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get the image name.
-
-        :rtype: ``str``
-        :return: Name for this image as returned by the cloud middleware.
-        """
-        pass
-
-    @abstractproperty
     def description(self):
         """
         Get the image description.
@@ -807,27 +800,6 @@ class Network(CloudResource):
     Represents a software-defined network, like the Virtual Private Cloud.
     """
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def id(self):
-        """
-        Get the network identifier.
-
-        :rtype: ``str``
-        :return: ID for this network. Will generally correspond to the cloud
-                 middleware's ID, but should be treated as an opaque value.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get the network name.
-
-        :rtype: ``str``
-        :return: Name for this network as returned by the cloud middleware.
-        """
-        pass
 
     @abstractproperty
     def external(self):
@@ -913,27 +885,6 @@ class Subnet(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def id(self):
-        """
-        Get the subnet identifier.
-
-        :rtype: ``str``
-        :return: ID for this network. Will generally correspond to the cloud
-                 middleware's ID, but should be treated as an opaque value.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get the subnet name.
-
-        :rtype: ``str``
-        :return: Name for this subnet as returned by the cloud middleware.
-        """
-        pass
-
-    @abstractproperty
     def cidr_block(self):
         """
         A CIDR block for this subnet.
@@ -981,17 +932,6 @@ class FloatingIP(CloudResource):
     Represents a floating (i.e., static) IP address.
     """
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def id(self):
-        """
-        Get the address identifier.
-
-        :rtype: ``str``
-        :return: ID for this network. Will generally correspond to the cloud
-                 middleware's ID, but should be treated as an opaque value.
-        """
-        pass
 
     @abstractproperty
     def public_ip(self):
@@ -1054,27 +994,6 @@ class Router(CloudResource):
     Represents a private network router.
     """
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def id(self):
-        """
-        Get the router identifier.
-
-        :rtype: ``str``
-        :return: ID for this router. Will generally correspond to the cloud
-                 middleware's ID, but should be treated as an opaque value.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get the router name, if available.
-
-        :rtype: ``str``
-        :return: Name for this router.
-        """
-        pass
 
     @abstractmethod
     def refresh(self):
@@ -1229,28 +1148,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
-    @abstractproperty
-    def id(self):
-        """
-        Get the volume identifier.
-
-        :rtype: ``str``
-        :return: ID for this volume. Will generally correspond to the cloud
-                 middleware's ID, but should be treated as an opaque value.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get the volume name.
-
-        :rtype: ``str``
-        :return: Name for this volume as returned by the cloud middleware.
-        """
-        pass
-
-    @name.setter
+    @CloudResource.name.setter
     @abstractmethod
     def name(self, value):
         """
@@ -1425,25 +1323,7 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
-    @abstractproperty
-    def id(self):
-        """
-        Get the snapshot identifier.
-
-        :rtype: ``str``
-        :return: ID for this snapshot. Will generally correspond to the cloud
-                 middleware's ID, but should be treated as an opaque value.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get the snapshot name.
-        """
-        pass
-
-    @name.setter
+    @CloudResource.name.setter
     @abstractmethod
     def name(self, value):
         """
@@ -1580,27 +1460,6 @@ class KeyPair(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def id(self):
-        """
-        Return the id of this key pair.
-
-        :rtype: ``str``
-        :return: ID for this snapshot. Will generally correspond to the cloud
-                 middleware's name, but should be treated as an opaque value.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Return the name of this key pair.
-
-        :rtype: ``str``
-        :return: A name of this ssh key pair.
-        """
-        pass
-
-    @abstractproperty
     def material(self):
         """
         Unencrypted private key.
@@ -1630,26 +1489,6 @@ class Region(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def id(self):
-        """
-        The id for this region
-
-        :rtype: ``str``
-        :return: ID of the region.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Name of the region.
-
-        :rtype: ``str``
-        :return: Name of the region.
-        """
-        pass
-
-    @abstractproperty
     def zones(self):
         """
         Access information about placement zones within this region.
@@ -1668,26 +1507,6 @@ class PlacementZone(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def id(self):
-        """
-        Name of the placement zone.
-
-        :rtype: ``str``
-        :return: Name of the placement zone.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Name of the placement zone.
-
-        :rtype: ``str``
-        :return: Name of the placement zone.
-        """
-        pass
-
-    @abstractproperty
     def region_name(self):
         """
         A region this placement zone is associated with.
@@ -1704,14 +1523,6 @@ class InstanceType(CloudResource):
     An instance type object.
     """
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def id(self):
-        pass
-
-    @abstractproperty
-    def name(self):
-        pass
 
     @abstractproperty
     def family(self):
@@ -1802,26 +1613,6 @@ class InstanceType(CloudResource):
 class SecurityGroup(CloudResource):
 
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def id(self):
-        """
-        Get the ID of this security group.
-
-        :rtype: ``str``
-        :return: Security group ID.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Return the name of this security group.
-
-        :rtype: ``str``
-        :return: A name of this security group.
-        """
-        pass
 
     @abstractproperty
     def description(self):
@@ -1935,19 +1726,6 @@ class SecurityGroupRule(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def id(self):
-        """
-        ID for this rule.
-
-        Note that this may be a CloudBridge-specific ID if the underlying
-        provider does not support rule IDs.
-
-        :rtype: ``str``
-        :return: Role ID.
-        """
-        pass
-
-    @abstractproperty
     def ip_protocol(self):
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
@@ -2011,26 +1789,6 @@ class BucketObject(CloudResource):
     Represents an object stored within a bucket.
     """
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def id(self):
-        """
-        Get this object's id.
-
-        :rtype: ``str``
-        :return: id of this object as returned by the cloud middleware.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get this object's name.
-
-        :rtype: ``str``
-        :return: Name of this object as returned by the cloud middleware.
-        """
-        pass
 
     @abstractproperty
     def size(self):
@@ -2122,26 +1880,6 @@ class BucketObject(CloudResource):
 class Bucket(PageableObjectMixin, CloudResource):
 
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def id(self):
-        """
-        Get this bucket's id.
-
-        :rtype: ``str``
-        :return: ID of this bucket as returned by the cloud middleware.
-        """
-        pass
-
-    @abstractproperty
-    def name(self):
-        """
-        Get this bucket's name.
-
-        :rtype: ``str``
-        :return: Name of this bucket as returned by the cloud middleware.
-        """
-        pass
 
     @abstractmethod
     def get(self, name):
