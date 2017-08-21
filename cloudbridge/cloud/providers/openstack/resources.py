@@ -713,8 +713,9 @@ class OpenStackNetwork(BaseNetwork):
         Set the network name.
         """
         if self.is_valid_resource_name(value):
-            self._network.name = value
-            self._network.update(name=value)
+            self._provider.neutron.update_network(self.id,
+                                                  {'network': {'name': value}})
+            self.refresh()
         else:
             raise InvalidNameException(value)
 
@@ -786,8 +787,9 @@ class OpenStackSubnet(BaseSubnet):
         Set the subnet name.
         """
         if self.is_valid_resource_name(value):
-            self._subnet.name = value
-            self._subnet.update(name=value)
+            self._provider.neutron.update_subnet(self.id,
+                                                 {'subnet': {'name': value}})
+            self.refresh()
         else:
             raise InvalidNameException(value)
 
