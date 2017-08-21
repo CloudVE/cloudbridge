@@ -784,7 +784,7 @@ class NetworkState(object):
 
     :cvar UNKNOWN: Network state unknown.
     :cvar PENDING: Network is being created.
-    :cvar AVAILABLE: Network is being available.
+    :cvar AVAILABLE: Network is available.
     :cvar DOWN = Network is not operational.
     :cvar ERROR = Network errored.
     """
@@ -795,7 +795,7 @@ class NetworkState(object):
     ERROR = "error"
 
 
-class Network(CloudResource):
+class Network(ObjectLifeCycleMixin, CloudResource):
     """
     Represents a software-defined network, like the Virtual Private Cloud.
     """
@@ -878,7 +878,25 @@ class Network(CloudResource):
         pass
 
 
-class Subnet(CloudResource):
+class SubnetState(object):
+
+    """
+    Standard states for a subnet.
+
+    :cvar UNKNOWN: Subnet state unknown.
+    :cvar PENDING: Subnet is being created.
+    :cvar AVAILABLE: Subnet is available.
+    :cvar DOWN = Subnet is not operational.
+    :cvar ERROR = Subnet errored.
+    """
+    UNKNOWN = "unknown"
+    PENDING = "pending"
+    AVAILABLE = "available"
+    DOWN = "down"
+    ERROR = "error"
+
+
+class Subnet(ObjectLifeCycleMixin, CloudResource):
     """
     Represents a subnet, as part of a Network.
     """
@@ -989,18 +1007,11 @@ class RouterState(object):
     DETACHED = "detached"
 
 
-class Router(CloudResource):
+class Router(ObjectLifeCycleMixin, CloudResource):
     """
     Represents a private network router.
     """
     __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def refresh(self):
-        """
-        Update this object.
-        """
-        pass
 
     @abstractproperty
     def state(self):

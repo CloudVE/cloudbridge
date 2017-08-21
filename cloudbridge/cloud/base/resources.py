@@ -37,6 +37,7 @@ from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
@@ -349,7 +350,7 @@ class BasePageableObjectMixin(PageableObjectMixin):
                 yield result
 
 
-class BaseInstanceType(InstanceType, BaseCloudResource):
+class BaseInstanceType(BaseCloudResource, InstanceType):
 
     def __init__(self, provider):
         super(BaseInstanceType, self).__init__(provider)
@@ -560,7 +561,7 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
                                             self.name, self.id)
 
 
-class BaseKeyPair(KeyPair, BaseCloudResource):
+class BaseKeyPair(BaseCloudResource, KeyPair):
 
     def __init__(self, provider, key_pair):
         super(BaseKeyPair, self).__init__(provider)
@@ -601,7 +602,7 @@ class BaseKeyPair(KeyPair, BaseCloudResource):
         return "<CBKeyPair: {0}>".format(self.name)
 
 
-class BaseSecurityGroup(SecurityGroup, BaseCloudResource):
+class BaseSecurityGroup(BaseCloudResource, SecurityGroup):
 
     def __init__(self, provider, security_group):
         super(BaseSecurityGroup, self).__init__(provider)
@@ -655,7 +656,7 @@ class BaseSecurityGroup(SecurityGroup, BaseCloudResource):
                                             self.id, self.name)
 
 
-class BaseSecurityGroupRule(SecurityGroupRule, BaseCloudResource):
+class BaseSecurityGroupRule(BaseCloudResource, SecurityGroupRule):
 
     def __init__(self, provider, rule, parent):
         super(BaseSecurityGroupRule, self).__init__(provider)
@@ -688,7 +689,7 @@ class BaseSecurityGroupRule(SecurityGroupRule, BaseCloudResource):
                                              self.group))
 
 
-class BasePlacementZone(PlacementZone, BaseCloudResource):
+class BasePlacementZone(BaseCloudResource, PlacementZone):
 
     def __init__(self, provider):
         super(BasePlacementZone, self).__init__(provider)
@@ -704,7 +705,7 @@ class BasePlacementZone(PlacementZone, BaseCloudResource):
                 self.id == other.id)
 
 
-class BaseRegion(Region, BaseCloudResource):
+class BaseRegion(BaseCloudResource, Region):
 
     def __init__(self, provider):
         super(BaseRegion, self).__init__(provider)
@@ -726,7 +727,7 @@ class BaseRegion(Region, BaseCloudResource):
         return js
 
 
-class BaseBucketObject(BucketObject, BaseCloudResource):
+class BaseBucketObject(BaseCloudResource, BucketObject):
 
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
@@ -751,7 +752,7 @@ class BaseBucketObject(BucketObject, BaseCloudResource):
                                       self.name)
 
 
-class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
+class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
 
     def __init__(self, provider):
         super(BaseBucket, self).__init__(provider)
@@ -769,7 +770,7 @@ class BaseBucket(BasePageableObjectMixin, Bucket, BaseCloudResource):
                                       self.name)
 
 
-class BaseNetwork(BaseCloudResource, Network, BaseObjectLifeCycleMixin):
+class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
                                              'CloudBridgeNet')
@@ -795,7 +796,7 @@ class BaseNetwork(BaseCloudResource, Network, BaseObjectLifeCycleMixin):
                 self.id == other.id)
 
 
-class BaseSubnet(Subnet, BaseCloudResource):
+class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
     CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
                                             'CloudBridgeSubnet')
@@ -813,8 +814,15 @@ class BaseSubnet(Subnet, BaseCloudResource):
                 self._provider == other._provider and
                 self.id == other.id)
 
+    def wait_till_ready(self, timeout=None, interval=None):
+        self.wait_for(
+            [SubnetState.AVAILABLE],
+            terminal_states=[SubnetState.ERROR],
+            timeout=timeout,
+            interval=interval)
 
-class BaseFloatingIP(FloatingIP, BaseCloudResource):
+
+class BaseFloatingIP(BaseCloudResource, FloatingIP):
 
     def __init__(self, provider):
         super(BaseFloatingIP, self).__init__(provider)
@@ -830,7 +838,7 @@ class BaseFloatingIP(FloatingIP, BaseCloudResource):
                 self.id == other.id)
 
 
-class BaseRouter(Router, BaseCloudResource):
+class BaseRouter(BaseCloudResource, Router):
 
     CB_DEFAULT_ROUTER_NAME = os.environ.get('CB_DEFAULT_ROUTER_NAME',
                                             'CloudBridgeRouter')

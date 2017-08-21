@@ -35,6 +35,7 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
 from retrying import retry
@@ -1015,7 +1016,7 @@ class AWSNetwork(BaseNetwork):
     @property
     def state(self):
         return AWSNetwork._NETWORK_STATE_MAP.get(
-            self._vpc.update(), NetworkState.UNKNOWN)
+            self._vpc.state, NetworkState.UNKNOWN)
 
     @property
     def cidr_block(self):
@@ -1042,10 +1043,21 @@ class AWSNetwork(BaseNetwork):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        return self.state
+        try:
+            self._vpc.update(validate=True)
+        except (EC2ResponseError, ValueError):
+            # The network no longer exists and cannot be refreshed.
+            # set the status to unknown
+            self._vpc.state = 'unknown'
 
 
 class AWSSubnet(BaseSubnet):
+
+    # http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeSubnets.html
+    _SUBNET_STATE_MAP = {
+        'pending': SubnetState.PENDING,
+        'available': SubnetState.AVAILABLE,
+    }
 
     def __init__(self, provider, subnet):
         super(AWSSubnet, self).__init__(provider)
@@ -1090,6 +1102,20 @@ class AWSSubnet(BaseSubnet):
 
     def delete(self):
         return self._provider.vpc_conn.delete_subnet(subnet_id=self.id)
+
+    @property
+    def state(self):
+        return self._SUBNET_STATE_MAP.get(
+            self._subnet.state, NetworkState.UNKNOWN)
+
+    def refresh(self):
+        subnet = self._provider.network.subnets.get(self.id)
+        if subnet:
+            # pylint:disable=protected-access
+            self._subnet = subnet._subnet
+        else:
+            # subnet no longer exists
+            self._subnet.state = "unknown"
 
 
 class AWSFloatingIP(BaseFloatingIP):
