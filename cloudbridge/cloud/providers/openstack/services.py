@@ -759,18 +759,20 @@ class OpenStackSubnetService(BaseSubnetService):
         super(OpenStackSubnetService, self).__init__(provider)
 
     def get(self, subnet_id):
-        subnet = (s for s in self.list() if s.id == subnet_id)
+        subnet = (s for s in self if s.id == subnet_id)
         return next(subnet, None)
 
-    def list(self, network=None):
+    def list(self, network=None, limit=None, marker=None):
         if network:
             network_id = (network.id if isinstance(network, OpenStackNetwork)
                           else network)
-            subnets = self.list()
-            return [subnet for subnet in subnets if network_id in
-                    subnet.network_id]
-        subnets = self.provider.neutron.list_subnets().get('subnets', [])
-        return [OpenStackSubnet(self.provider, subnet) for subnet in subnets]
+            subnets = [subnet for subnet in self.list() if network_id ==
+                       subnet.network_id]
+        else:
+            subnets = [OpenStackSubnet(self.provider, subnet) for subnet in
+                       self.provider.neutron.list_subnets().get('subnets', [])]
+        return ClientPagedResultList(self.provider, subnets,
+                                     limit=limit, marker=marker)
 
     def create(self, network, cidr_block, name='', zone=None):
         """zone param is ignored."""
