@@ -50,11 +50,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             obj_name = obj_name_prefix + "_world.txt"
             obj = test_bucket.create_object(obj_name)
 
-            self.assertTrue(
-                obj.id in repr(obj),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
-
             with helpers.cleanup_action(lambda: obj.delete()):
                 # TODO: This is wrong. We shouldn't have to have a separate
                 # call to upload some content before being able to delete

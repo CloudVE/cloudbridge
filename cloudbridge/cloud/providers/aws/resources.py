@@ -28,6 +28,7 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -257,7 +258,10 @@ class AWSInstance(BaseInstance):
         """
         Set the instance name.
         """
-        self._ec2_instance.add_tag('Name', value)
+        if self.is_valid_resource_name(value):
+            self._ec2_instance.add_tag('Name', value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def public_ips(self):
@@ -444,7 +448,10 @@ class AWSVolume(BaseVolume):
         """
         Set the volume name.
         """
-        self._volume.add_tag('Name', value)
+        if self.is_valid_resource_name(value):
+            self._volume.add_tag('Name', value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def description(self):
@@ -565,7 +572,10 @@ class AWSSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        self._snapshot.add_tag('Name', value)
+        if self.is_valid_resource_name(value):
+            self._snapshot.add_tag('Name', value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def description(self):
@@ -617,7 +627,7 @@ class AWSSnapshot(BaseSnapshot):
         ec2_vol = self._snapshot.create_volume(placement, size, volume_type,
                                                iops)
         cb_vol = AWSVolume(self._provider, ec2_vol)
-        cb_vol.name = "Created from {0} ({1})".format(self.id, self.name)
+        cb_vol.name = "from_snap_{0}".format(self.id or self.name)
         return cb_vol
 
 
@@ -989,7 +999,10 @@ class AWSNetwork(BaseNetwork):
         """
         Set the network name.
         """
-        self._vpc.add_tag('Name', value)
+        if self.is_valid_resource_name(value):
+            self._vpc.add_tag('Name', value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def external(self):
@@ -1057,7 +1070,10 @@ class AWSSubnet(BaseSubnet):
         """
         Set the subnet name.
         """
-        self._subnet.add_tag('Name', value)
+        if self.is_valid_resource_name(value):
+            self._subnet.add_tag('Name', value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def cidr_block(self):
@@ -1145,7 +1161,10 @@ class AWSRouter(BaseRouter):
         """
         Set the router name.
         """
-        self._router.add_tag('Name', value)
+        if self.is_valid_resource_name(value):
+            self._router.add_tag('Name', value)
+        else:
+            raise InvalidNameException(value)
 
     def refresh(self):
         self._router = self._provider.vpc_conn.get_all_internet_gateways(

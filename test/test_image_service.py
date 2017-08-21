@@ -1,5 +1,3 @@
-import uuid
-
 from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
@@ -18,9 +16,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
         This covers waiting till the image is ready, checking that the image
         name is the expected one and whether list_images is functional.
         """
-        instance_name = "CBImageTest-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4())
+        instance_name = "cb_crudimage-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -33,7 +29,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
             test_instance = helpers.get_test_instance(
                 self.provider, instance_name, subnet=subnet)
 
-            name = "CBUnitTestListImg-{0}".format(uuid.uuid4())
+            name = "cb_listimg-{0}".format(helpers.get_uuid())
             test_image = test_instance.create_image(name)
 
             def cleanup_img(img):

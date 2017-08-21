@@ -2,6 +2,7 @@ import functools
 import os
 import sys
 import unittest
+import uuid
 
 from contextlib import contextmanager
 
@@ -165,6 +166,10 @@ def cleanup_test_resources(instance=None, network=None, security_group=None,
             with cleanup_action(lambda: security_group.delete()
                                 if security_group else None):
                 delete_test_instance(instance)
+
+
+def get_uuid():
+    return str(uuid.uuid4()).replace("-", "")
 
 
 class ProviderTestBase(unittest.TestCase):
