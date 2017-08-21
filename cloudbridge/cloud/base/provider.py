@@ -3,9 +3,9 @@ import functools
 import os
 from os.path import expanduser
 try:
-    from configparser import SafeConfigParser
+    from configparser import ConfigParser
 except ImportError:  # Python 2
-    from ConfigParser import SafeConfigParser
+    from ConfigParser import SafeConfigParser as ConfigParser
 
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
@@ -73,7 +73,7 @@ class BaseCloudProvider(CloudProvider):
 
     def __init__(self, config):
         self._config = BaseConfiguration(config)
-        self._config_parser = SafeConfigParser()
+        self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
 
     @property
