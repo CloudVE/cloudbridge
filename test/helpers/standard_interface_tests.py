@@ -7,6 +7,8 @@ This includes:
 """
 import uuid
 
+from cloudbridge.cloud.interfaces.exceptions \
+    import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import ResultList
 
 
@@ -27,6 +29,7 @@ def check_json(test, obj):
 def check_obj_properties(test, obj):
     test.assertEqual(obj, obj, "Object should be equal to itself")
     test.assertFalse(obj != obj, "Object inequality should be false")
+    check_obj_name(test, obj)
 
 
 def check_list(test, service, obj):
@@ -105,7 +108,49 @@ def check_delete(test, service, obj, perform_delete=False):
         % (found_objs, type(service).__name__))
 
 
+def check_obj_name(test, obj):
+    """
+    Cloudbridge identifiers must be 1-63 characters long, and comply with
+    RFC1035. In addition, identifiers should contain only lowercase letters,
+    numeric characters, underscores, and dashes. International
+    characters are allowed.
+    """
+    test.assertTrue(obj.is_valid_resource_name(obj.name), "Object name %s is"
+                    " not a valid resource name" % obj.name)
+
+    # if name has a setter, make sure invalid values cannot be set
+    name_property = getattr(type(obj), 'name', None)
+    if isinstance(name_property, property) and name_property.fset:
+        # setting letters, numbers and international characters should succeed
+        # TODO: Unicode characters trip up Moto. Add following: \u0D85\u0200
+        VALID_NAME = u"hello_world-123"
+        original_name = obj.name
+        obj.name = VALID_NAME
+        # setting spaces should raise an exception
+        with test.assertRaises(InvalidNameException):
+            obj.name = "hello world"
+        # setting upper case characters should raise an exception
+        with test.assertRaises(InvalidNameException):
+            obj.name = "hello World"
+        # setting special characters should raise an exception
+        with test.assertRaises(InvalidNameException):
+            obj.name = "hello.world:how_goes_it"
+        # setting a length > 63 should result in an exception
+        with test.assertRaises(InvalidNameException,
+                               msg="Name of length > 64 should be disallowed"):
+            obj.name = "a" * 64
+        # refreshing should yield the last successfully set name
+        obj.refresh()
+        test.assertEqual(obj.name, VALID_NAME)
+        obj.name = original_name
+    pass
+
+
 def check_standard_behaviour(test, service, obj):
+    """
+    Checks standard behaviour in a given cloudbridge resource
+    of a given service.
+    """
     check_repr(test, obj)
     check_json(test, obj)
     check_obj_properties(test, obj)
