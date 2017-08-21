@@ -24,6 +24,7 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -40,6 +41,7 @@ import novaclient.exceptions as novaex
 import swiftclient
 
 from swiftclient.service import SwiftService, SwiftUploadObject
+
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
@@ -265,8 +267,11 @@ class OpenStackInstance(BaseInstance):
         """
         Set the instance name.
         """
-        self._os_instance.name = value
-        self._os_instance.update()
+        if self.is_valid_resource_name(value):
+            self._os_instance.name = value
+            self._os_instance.update()
+        else:
+            raise InvalidNameException(value)
 
     @property
     def public_ips(self):
@@ -485,8 +490,11 @@ class OpenStackVolume(BaseVolume):
         """
         Set the volume name.
         """
-        self._volume.name = value
-        self._volume.update(name=value)
+        if self.is_valid_resource_name(value):
+            self._volume.name = value
+            self._volume.update(name=value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def description(self):
@@ -605,8 +613,11 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        self._snapshot.name = value
-        self._snapshot.update(name=value)
+        if self.is_valid_resource_name(value):
+            self._snapshot.name = value
+            self._snapshot.update(name=value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def description(self):
@@ -658,7 +669,7 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        vol_name = "Created from {0} ({1})".format(self.id, self.name)
+        vol_name = "from_snap_{0}".format(self.id or self.name)
         size = size if size else self._snapshot.size
         os_vol = self._provider.cinder.volumes.create(
             size, name=vol_name, availability_zone=placement,
@@ -694,6 +705,17 @@ class OpenStackNetwork(BaseNetwork):
     @property
     def name(self):
         return self._network.get('name', None)
+
+    @name.setter
+    def name(self, value):  # pylint:disable=arguments-differ
+        """
+        Set the network name.
+        """
+        if self.is_valid_resource_name(value):
+            self._network.name = value
+            self._network.update(name=value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def external(self):
@@ -750,6 +772,17 @@ class OpenStackSubnet(BaseSubnet):
     @property
     def name(self):
         return self._subnet.get('name', None)
+
+    @name.setter
+    def name(self, value):  # pylint:disable=arguments-differ
+        """
+        Set the subnet name.
+        """
+        if self.is_valid_resource_name(value):
+            self._subnet.name = value
+            self._subnet.update(name=value)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def cidr_block(self):
@@ -817,6 +850,17 @@ class OpenStackRouter(BaseRouter):
     @property
     def name(self):
         return self._router.get('name', None)
+
+    @name.setter
+    def name(self, value):  # pylint:disable=arguments-differ
+        """
+        Set the router name.
+        """
+        if self.is_valid_resource_name(value):
+            self._router.name = value
+            self._router.update(name=value)
+        else:
+            raise InvalidNameException(value)
 
     def refresh(self):
         self._router = self._provider.neutron.show_router(self.id)['router']

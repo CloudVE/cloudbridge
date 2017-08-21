@@ -20,7 +20,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         Create a new volume, check whether the expected values are set,
         and delete it
         """
-        name = "CBUnitTestCreateVol-{0}".format(uuid.uuid4().hex[:6])
+        name = "cb_createvol-{0}".format(helpers.get_uuid())
         test_vol = self.provider.block_store.volumes.create(
             name,
             1,
@@ -43,9 +43,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         """
         Create a new volume, and attempt to attach it to an instance
         """
-        instance_name = "CBVolOps-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4().hex[:6])
+        name = "cb_attachvol-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
@@ -53,10 +51,10 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):
             net, subnet = helpers.create_test_network(
-                self.provider, instance_name)
+                self.provider, name)
             test_instance = helpers.get_test_instance(
-                self.provider, instance_name, subnet=subnet)
-            name = "CBUnitTestAttachVol-{0}".format(uuid.uuid4().hex[:6])
+                self.provider, name, subnet=subnet)
+
             test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.zone_id)
             with helpers.cleanup_action(lambda: test_vol.delete()):
@@ -75,9 +73,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         """
         Test volume properties
         """
-        instance_name = "CBVolProps-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4().hex[:6])
+        name = "cb_volprops-{0}".format(helpers.get_uuid())
         vol_desc = 'newvoldesc1'
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -86,11 +82,10 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):
             net, subnet = helpers.create_test_network(
-                self.provider, instance_name)
+                self.provider, name)
             test_instance = helpers.get_test_instance(
-                self.provider, instance_name, subnet=subnet)
+                self.provider, name, subnet=subnet)
 
-            name = "CBUnitTestVolProps-{0}".format(uuid.uuid4().hex[:6])
             test_vol = self.provider.block_store.volumes.create(
                 name, 1, test_instance.zone_id, description=vol_desc)
             with helpers.cleanup_action(lambda: test_vol.delete()):
@@ -119,10 +114,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(test_vol.attachments.volume, test_vol)
                 self.assertEqual(test_vol.attachments.instance_id,
                                  test_instance.id)
-                # Device name mapping not available in azure
-                if not self.provider.PROVIDER_ID == 'azure':
-                    self.assertEqual(test_vol.attachments.device,
-                                     "/dev/sda2")
+                self.assertEqual(test_vol.attachments.device,
+                                 "/dev/sda2")
                 test_vol.detach()
                 test_vol.name = 'newvolname1'
                 test_vol.wait_for(
@@ -142,14 +135,14 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         whether list_snapshots properly detects the new snapshot.
         Delete everything afterwards.
         """
-        name = "CBUnitTestCreateSnap-{0}".format(uuid.uuid4().hex[:6])
+        name = "cb_crudsnap-{0}".format(helpers.get_uuid())
         test_vol = self.provider.block_store.volumes.create(
             name,
             1,
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
-            snap_name = "CBSnapshot-{0}".format(name)
+            snap_name = "cb_snap-{0}".format(name)
             test_snap = test_vol.create_snapshot(name=snap_name,
                                                  description=snap_name)
 
@@ -165,7 +158,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     self, self.provider.block_store.snapshots, test_snap)
 
                 # Test volume creation from a snapshot (via VolumeService)
-                sv_name = "CBUnitTestSnapVol-{0}".format(name)
+                sv_name = "cb_snapvol_{0}".format(name)
                 snap_vol = self.provider.block_store.volumes.create(
                     sv_name,
                     1,
@@ -184,30 +177,28 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self, self.provider.block_store.snapshots, test_snap)
 
             # Test creation of a snap via SnapshotService
-            snap_too_name = "CBSnapToo-{0}".format(name)
+            snap_two_name = "cb_snaptwo-{0}".format(name)
             time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
-            test_snap_too = self.provider.block_store.snapshots.create(
-                name=snap_too_name, volume=test_vol, description=snap_too_name)
-            with helpers.cleanup_action(lambda: cleanup_snap(test_snap_too)):
-                test_snap_too.wait_till_ready()
-                self.assertTrue(
-                    test_snap_too.id in repr(test_snap_too),
-                    "repr(obj) should contain the object id so that the object"
-                    " can be reconstructed, but does not.")
+            test_snap_two = self.provider.block_store.snapshots.create(
+                name=snap_two_name, volume=test_vol, description=snap_two_name)
+            with helpers.cleanup_action(lambda: cleanup_snap(test_snap_two)):
+                test_snap_two.wait_till_ready()
+                sit.check_standard_behaviour(
+                    self, self.provider.block_store.snapshots, test_snap_two)
 
     @helpers.skipIfNoService(['block_store.snapshots'])
     def test_snapshot_properties(self):
         """
         Test snapshot properties
         """
-        name = "CBTestSnapProp-{0}".format(uuid.uuid4().hex[:6])
+        name = "cb_snapprop-{0}".format(uuid.uuid4())
         test_vol = self.provider.block_store.volumes.create(
             name,
             1,
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
-            snap_name = "CBSnapProp-{0}".format(name)
+            snap_name = "cb_snap-{0}".format(name)
             test_snap = test_vol.create_snapshot(name=snap_name,
                                                  description=snap_name)
 

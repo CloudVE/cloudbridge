@@ -1,6 +1,5 @@
 """Test cloudbridge.security modules."""
 import unittest
-import uuid
 
 from test import helpers
 from test.helpers import ProviderTestBase
@@ -13,7 +12,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_crud_key_pair_service(self):
-        name = 'cbtestkeypairA-{0}'.format(uuid.uuid4().hex[:6])
+        name = 'cb_crudkp-{0}'.format(helpers.get_uuid())
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -30,7 +29,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_key_pair_properties(self):
-        name = 'cbtestkeypairB-{0}'.format(uuid.uuid4().hex[:6])
+        name = 'cb_kpprops-{0}'.format(helpers.get_uuid())
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(lambda: kp.delete()):
             self.assertIsNotNone(
@@ -44,7 +43,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_crud_security_group_service(self):
-        name = 'CBTestSecurityGroupA-{0}'.format(uuid.uuid4().hex[:6])
+        name = 'cb_crudsg-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -66,7 +65,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group(self):
         """Test for proper creation of a security group."""
-        name = 'CBTestSecurityGroupB-{0}'.format(uuid.uuid4().hex[:6])
+        name = 'cb_propsg-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -130,7 +129,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 "Mock provider returns InvalidParameterValue: "
                 "Value security_group is invalid for parameter.")
 
-        name = 'CBTestSecurityGroupC-{0}'.format(uuid.uuid4().hex[:6])
+        name = 'cb_sgruletwice-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -156,7 +155,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group_group_rule(self):
         """Test for proper creation of a security group rule."""
-        name = 'CBTestSecurityGroupD-{0}'.format(uuid.uuid4().hex[:6])
+        name = 'cb_sgrule-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values

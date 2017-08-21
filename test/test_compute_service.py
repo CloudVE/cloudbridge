@@ -1,5 +1,4 @@
 import ipaddress
-import uuid
 
 from test import helpers
 from test.helpers import ProviderTestBase
@@ -19,9 +18,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.instances', 'network'])
     def test_crud_instance(self):
-        name = "CBInstCrud-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4())
+        name = "cb_instcrud-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         inst = None
@@ -54,9 +51,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                               'security.security_groups',
                               'security.key_pairs'])
     def test_instance_properties(self):
-        name = "CBInstProps-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4())
+        name = "cb_inst_props-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -74,11 +69,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                                       name, key_pair=kp,
                                                       security_groups=[sg],
                                                       subnet=subnet)
-
-            self.assertTrue(
-                test_instance.id in repr(test_instance),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
             self.assertEqual(
                 test_instance.name, name,
                 "Instance name {0} is not equal to the expected name"
@@ -204,9 +194,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
                               'compute.instance_types', 'block_store.volumes'])
     def test_block_device_mapping_attachments(self):
-        name = "CBInstBlkAttch-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4())
+        name = "cb_blkattch-{0}".format(helpers.get_uuid())
 
         # Comment out BDM tests because OpenStack is not stable enough yet
         if True:
@@ -292,9 +280,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances', 'network',
                               'security.security_groups'])
     def test_instance_methods(self):
-        name = "CBInstProps-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4())
+        name = "cb_instmethod-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values

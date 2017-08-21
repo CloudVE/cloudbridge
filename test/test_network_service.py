@@ -1,5 +1,4 @@
 import test.helpers as helpers
-import uuid
 
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
@@ -11,8 +10,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['network'])
     def test_crud_network_service(self):
-        name = 'cbtestnetworkservice-{0}'.format(uuid.uuid4().hex[:6])
-        subnet_name = 'cbtestsubnetservice-{0}'.format(uuid.uuid4().hex[:6])
+        name = 'cb_crudnetwork-{0}'.format(helpers.get_uuid())
+        subnet_name = 'cb_crudsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda:
@@ -23,30 +22,15 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             # check subnet
             subnet = self.provider.network.subnets.create(
-                network=net, cidr_block="10.0.1.0/24", name=subnet_name)
+                network=net, cidr_block="10.0.0.1/24", name=subnet_name)
             with helpers.cleanup_action(
                 lambda:
                     self.provider.network.subnets.delete(subnet=subnet)
             ):
-                # test list method
-                subnetl = self.provider.network.subnets.list(network=net)
-                list_subnetl = [n for n in subnetl if n.name == subnet_name]
-                self.assertTrue(
-                    len(list_subnetl) == 1,
-                    "List subnets does not return the expected subnet %s" %
-                    subnet_name)
-                # test get method
-                sn = self.provider.network.subnets.get(subnet.id)
-                self.assertTrue(
-                    subnet.id == sn.id,
-                    "GETting subnet should return the same subnet")
+                sit.check_standard_behaviour(
+                    self, self.provider.network.subnets, subnet)
 
-            subnetl = self.provider.network.subnets.list()
-            found_subnet = [n for n in subnetl if n.name == subnet_name]
-            self.assertTrue(
-                len(found_subnet) == 0,
-                "Subnet {0} should have been deleted but still exists."
-                .format(subnet_name))
+            sit.check_delete(self, self.provider.network.subnets, subnet)
 
             # Check floating IP address
             ip = self.provider.network.create_floating_ip()
@@ -80,17 +64,12 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Floating IP {0} should have been deleted but still exists."
                 .format(ip_id))
 
-        netl = self.provider.network.list()
-        found_net = [n for n in netl if n.name == name]
-        self.assertEqual(
-            len(found_net), 0,
-            "Network {0} should have been deleted but still exists."
-            .format(name))
+        sit.check_delete(self, self.provider.network, net)
 
     @helpers.skipIfNoService(['network'])
-    def test_crud_network(self):
-        name = 'cbtestnetwork-{0}'.format(uuid.uuid4().hex[:6])
-        subnet_name = 'cbtestsubnet-{0}'.format(uuid.uuid4().hex[:6])
+    def test_network_properties(self):
+        name = 'cb_propnetwork-{0}'.format(helpers.get_uuid())
+        subnet_name = 'cb_propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
             lambda: net.delete()
@@ -138,7 +117,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                         router.remove_route(subnet.id)
                         router.detach_network()
 
-        name = 'cbtestrouter-{0}'.format(uuid.uuid4().hex[:6])
+        name = 'cb_crudrouter-{0}'.format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
@@ -153,10 +132,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                                        self.provider, 'placement'))
 
             # Check basic router properties
-            # self.assertIn(
-            #     router, self.provider.network.routers(),
-            #     "Router {0} should exist in the router list {1}.".format(
-            #         router.id, self.provider.network.routers()))
+            self.assertIn(
+                router, self.provider.network.routers(),
+                "Router {0} should exist in the router list {1}.".format(
+                    router.id, self.provider.network.routers()))
             self.assertIn(
                 router.id, repr(router),
                 "repr(obj) should contain the object id so that the object"
@@ -170,14 +149,13 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     router.id, router.state, RouterState.DETACHED))
             self.assertFalse(
                 router.network_id,
-                "Router {0} should not be assoc. with a "
-                "network {1}".format(router.id, router.network_id))
+                "Router {0} should not be assoc. with a network {1}".format(
+                    router.id, router.network_id))
 
             # TODO: Cloud specific code, needs fixing
             # Check router connectivity
             # On OpenStack only one network is external and on AWS every
-            # network is external, yet we need to use the
-            # one we've created?!
+            # network is external, yet we need to use the one we've created?!
             if self.provider.PROVIDER_ID == 'openstack':
                 for n in self.provider.network:
                     if n.external:
