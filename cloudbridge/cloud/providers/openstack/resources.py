@@ -31,6 +31,7 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
@@ -755,8 +756,13 @@ class OpenStackNetwork(BaseNetwork):
 
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
-        net = self._provider.neutron.list_networks(id=self.id).get('networks')
-        self._network = net[0] if net else {}
+        network = self._provider.network.get(self.id)
+        if network:
+            # pylint:disable=protected-access
+            self._network = network._network
+        else:
+            # subnet no longer exists
+            self._network.state = NetworkState.UNKNOWN
 
 
 class OpenStackSubnet(BaseSubnet):
@@ -764,6 +770,7 @@ class OpenStackSubnet(BaseSubnet):
     def __init__(self, provider, subnet):
         super(OpenStackSubnet, self).__init__(provider)
         self._subnet = subnet
+        self._state = None
 
     @property
     def id(self):
@@ -807,6 +814,21 @@ class OpenStackSubnet(BaseSubnet):
         # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_subnets()):
             return True
+
+    @property
+    def state(self):
+        return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \
+             else self.SubnetState.AVAILABLE
+
+    def refresh(self):
+        subnet = self._provider.network.subnets.get(self.id)
+        if subnet:
+            # pylint:disable=protected-access
+            self._subnet = subnet._subnet
+            self._state = SubnetState.AVAILABLE
+        else:
+            # subnet no longer exists
+            self._state = SubnetState.UNKNOWN
 
 
 class OpenStackFloatingIP(BaseFloatingIP):
