@@ -115,8 +115,6 @@ def check_obj_name(test, obj):
     numeric characters, underscores, and dashes. International
     characters are allowed.
     """
-    test.assertTrue(obj.is_valid_resource_name(obj.name), "Object name %s is"
-                    " not a valid resource name" % obj.name)
 
     # if name has a setter, make sure invalid values cannot be set
     name_property = getattr(type(obj), 'name', None)
