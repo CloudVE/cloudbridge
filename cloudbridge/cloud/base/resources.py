@@ -57,7 +57,7 @@ class BaseCloudResource(CloudResource):
     #
     # NOTE: The following regex is based on GCEs internal validation logic,
     # and is significantly complex to allow for international characters.
-    CB_NAME_PATTERN = re.compile(
+    CB_NAME_PATTERN = re.compile(six.u(
         r"^[\u0061-\u007A\u00B5\u00DF-\u00F6\u00F8-\u00FF\u0101\u0103\u0105"
         "\u0107\u0109\u010B\u010D\u010F\u0111\u0113\u0115\u0117\u0119\u011B"
         "\u011D\u011F\u0121\u0123\u0125\u0127\u0129\u012B\u012D\u012F\u0131"
@@ -181,7 +181,7 @@ class BaseCloudResource(CloudResource):
         "\u3029\u3038-\u303A\u3192-\u3195\u3220-\u3229\u3248-\u324F\u3251-"
         "\u325F\u3280-\u3289\u32B1-\u32BF\uA620-\uA629\uA6E6-\uA6EF\uA830-"
         "\uA835\uA8D0-\uA8D9\uA900-\uA909\uA9D0-\uA9D9\uAA50-\uAA59\uABF0-"
-        "\uABF9\uFF10-\uFF19_-]{0,63}$", re.UNICODE)
+        "\uABF9\uFF10-\uFF19_-]{0,63}$"), re.UNICODE)
 
     def __init__(self, provider):
         self.__provider = provider
@@ -663,6 +663,12 @@ class BaseSecurityGroupRule(BaseCloudResource, SecurityGroupRule):
         self._rule = rule
         self.parent = parent
 
+    def name(self):
+        """
+        Security group rules don't support names, so pass
+        """
+        pass
+
     def __repr__(self):
         return ("<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}; grp: {3}>"
                 .format(self.ip_protocol, self.from_port, self.to_port,
@@ -848,6 +854,12 @@ class BaseFloatingIP(BaseCloudResource, FloatingIP):
 
     def __init__(self, provider):
         super(BaseFloatingIP, self).__init__(provider)
+
+    def name(self):
+        """
+        Security group rules don't support names, so pass
+        """
+        pass
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
