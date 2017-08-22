@@ -729,8 +729,19 @@ class BaseRegion(BaseCloudResource, Region):
 
 class BaseBucketObject(BaseCloudResource, BucketObject):
 
+    # Regular expression for valid bucket keys.
+    # They, must match the following criteria: http://docs.aws.amazon.com/"
+    # AmazonS3/latest/dev/UsingMetadata.html#object-key-guidelines
+    #
+    # Note: The following regex is based on: https://stackoverflow.com/question
+    # s/537772/what-is-the-most-correct-regular-expression-for-a-unix-file-path
+    CB_NAME_PATTERN = re.compile(r"[^\0]+")
+
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
+
+    def is_valid_resource_name(self, name):
+        return True if self.CB_NAME_PATTERN.match(name) else False
 
     def save_content(self, target_stream):
         """
@@ -754,8 +765,19 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
 class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
 
+    # Regular expression for valid bucket names.
+    # They, must match the following criteria: http://docs.aws.amazon.com/aws
+    # cloudtrail/latest/userguide/cloudtrail-s3-bucket-naming-requirements.html
+    #
+    # NOTE: The following regex is based on: https://stackoverflow.com/questio
+    # ns/2063213/regular-expression-for-validating-dns-label-host-name
+    CB_NAME_PATTERN = re.compile(r"^(?![0-9]+$)(?!-)[a-zA-Z0-9-]{,63}(?<!-)$")
+
     def __init__(self, provider):
         super(BaseBucket, self).__init__(provider)
+
+    def is_valid_resource_name(self, name):
+        return True if self.CB_NAME_PATTERN.match(name) else False
 
     def __eq__(self, other):
         return (isinstance(other, Bucket) and

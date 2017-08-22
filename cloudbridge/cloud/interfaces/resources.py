@@ -67,10 +67,15 @@ class CloudResource(object):
         display value for the resource. Some resources may allow the resource
         name to be set.
 
-        The name property adheres to the following restrictions:
+        The name property adheres to the following restrictions for most
+        cloudbridge resources:
         * Names cannot be longer than 63 characters
         * May only contain lowercase letters, numeric characters, underscores,
           and dashes. International characters are allowed.
+
+        Some resources may relax/increase these restrictions (e.g. Buckets)
+        depending on their requirements. Consult the resource specific
+        documentation for exact restrictions.
 
         :rtype: ``str``
         :return: Name for this instance as returned by the cloud middleware.
@@ -1802,6 +1807,18 @@ class BucketObject(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
+    def name(self):
+        """
+        The bucket object name adheres to a more relaxed naming requirement as
+        detailed here: http://docs.aws.amazon.com/AmazonS3/latest/dev/Using
+        Metadata.html#object-key-guidelines
+
+        :rtype: ``str``
+        :return: Name for this instance as returned by the cloud middleware.
+        """
+        pass
+
+    @abstractproperty
     def size(self):
         """
         Get this object's size.
@@ -1891,6 +1908,18 @@ class BucketObject(CloudResource):
 class Bucket(PageableObjectMixin, CloudResource):
 
     __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def name(self):
+        """
+        The bucket name adheres to a more relaxed naming requirement as
+        detailed here: http://docs.aws.amazon.com/awscloudtrail/latest/userguid
+        e/cloudtrail-s3-bucket-naming-requirements.html
+
+        :rtype: ``str``
+        :return: Name for this instance as returned by the cloud middleware.
+        """
+        pass
 
     @abstractmethod
     def get(self, name):
