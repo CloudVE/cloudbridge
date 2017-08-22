@@ -1012,7 +1012,7 @@ class RouterState(object):
     DETACHED = "detached"
 
 
-class Router(ObjectLifeCycleMixin, CloudResource):
+class Router(CloudResource):
     """
     Represents a private network router.
     """
