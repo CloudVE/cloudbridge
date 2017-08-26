@@ -570,10 +570,13 @@ class OpenStackInstanceService(BaseInstanceService):
             isinstance(instance_type, InstanceType) else \
             self.provider.compute.instance_types.find(
                 name=instance_type)[0].id
-        subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
-        net_id = subnet.network_id if isinstance(subnet, Subnet) else None
-        if not net_id and subnet_id:
-            net_id = self.provider.network.subnets.get(subnet_id).network_id
+        if isinstance(subnet, Subnet):
+            subnet_id = subnet.id
+            net_id = subnet.network_id
+        else:
+            subnet_id = subnet
+            net_id = (self.provider.network.subnets.get(subnet_id).network_id
+                      if subnet_id else None)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
@@ -589,21 +592,21 @@ class OpenStackInstanceService(BaseInstanceService):
         if launch_config:
             bdm = self._to_block_device_mapping(launch_config)
 
-        log.debug("Creating network port for %s" % name)
-        port_def = {
-            "port": {
-                "admin_state_up": True,
-                "name": name,
-                "network_id": net_id,
-                "fixed_ips": [
-                    {
-                        "subnet_id": subnet_id
-                    }
-                ]
+        nics = None
+        if subnet_id:
+            log.debug("Creating network port for %s in subnet: %s" %
+                      (name, subnet_id))
+            port_def = {
+                "port": {
+                    "admin_state_up": True,
+                    "name": name,
+                    "network_id": net_id,
+                    "fixed_ips": [{"subnet_id": subnet_id}]
+                }
             }
-        }
-        port_id = self.provider.neutron.create_port(port_def)['port']['id']
-        nics = [{'net-id': net_id, 'port-id': port_id}] if port_id else None
+            port_id = self.provider.neutron.create_port(port_def)['port']['id']
+            nics = [{'net-id': net_id, 'port-id': port_id}]
+
         log.debug("Launching in subnet %s" % subnet_id)
         os_instance = self.provider.nova.servers.create(
             name,
