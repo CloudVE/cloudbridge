@@ -24,12 +24,15 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import Volume
 
 import requests
@@ -508,8 +511,11 @@ class AWSInstanceService(BaseInstanceService):
             user_data=user_data, block_device_map=bdm, subnet_id=subnet_id)
         instance = None
         if reservation:
-            time.sleep(2)  # The instance does not always get created in time
             instance = AWSInstance(self.provider, reservation.instances[0])
+            instance.wait_for(
+                [InstanceState.PENDING, InstanceState.RUNNING],
+                terminal_states=[InstanceState.TERMINATED,
+                                 InstanceState.ERROR])
             instance.name = name
         return instance
 
@@ -735,7 +741,9 @@ class AWSNetworkService(BaseNetworkService):
         network = self.provider.vpc_conn.create_vpc(cidr_block=default_cidr)
         cb_network = AWSNetwork(self.provider, network)
         if name:
-            time.sleep(2)  # The net does not always get created fast enough
+            cb_network.wait_for(
+                [NetworkState.PENDING, NetworkState.AVAILABLE],
+                terminal_states=[NetworkState.ERROR])
             cb_network.name = name
         return cb_network
 
@@ -795,7 +803,9 @@ class AWSSubnetService(BaseSubnetService):
                                                       availability_zone=zone)
         cb_subnet = AWSSubnet(self.provider, subnet)
         if name:
-            time.sleep(2)  # The subnet does not always get created in time
+            cb_subnet.wait_for(
+                [SubnetState.PENDING, SubnetState.AVAILABLE],
+                terminal_states=[SubnetState.ERROR])
             cb_subnet.name = name
         return cb_subnet
 
