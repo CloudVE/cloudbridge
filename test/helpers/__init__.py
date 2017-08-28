@@ -169,7 +169,7 @@ def cleanup_test_resources(instance=None, network=None, security_group=None,
 
 
 def get_uuid():
-    return str(uuid.uuid4()).replace("-", "")
+    return str(uuid.uuid4())
 
 
 class ProviderTestBase(unittest.TestCase):
