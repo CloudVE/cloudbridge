@@ -898,14 +898,8 @@
      inkscape:connector-curvature="0"
      id="svg_127-3"
      d="m 414.94998,809.48864 -1.12457,1.12463 3.08979,-1.12463 -3.08979,-1.12457 1.12457,1.12457 z" />
-  <text
-     style="font-size:16.07049942px;font-family:Arial;fill:#000000"
-     font-size="16.0705px"
-     id="e15_texte-1"
-     y="763.03931"
-     x="291.34485">.list() returns</text>
   <a
-     xlink:href="../api_docs/cloud/resources.html#network"
+     xlink:href="../api_docs/cloud/services.html#networkingservice"
      transform="translate(0,226.29061)"
      target="_parent"
      id="svg_18-0">
@@ -919,10 +913,10 @@
        font-size="20.6621px"
        id="e2_texte-0"
        y="490.73755"
-       x="203.49075">network</text>
+       x="203.49075">networking</text>
   </a>
   <a
-     xlink:href="../api_docs/cloud/services.html#cloudbridge.cloud.interfaces.services.NetworkService.subnets"
+     xlink:href="../api_docs/cloud/services.html#cloudbridge.cloud.interfaces.services.NetworkingService.subnets"
      transform="translate(-135.51234,225.97254)"
      target="_parent"
      id="svg_38-3">
@@ -959,7 +953,33 @@
        y="547.26074"
        id="e31_5-1"
        font-size="18.3663px"
-       xml:space="preserve">Network</text>
+       xml:space="preserve">networks</text>
+  </a>
+  <path
+     style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.9934023px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     d="m 258.91223,736.82348 0.16792,73.9978"
+     id="path3922-6-4-3-7"
+     inkscape:connector-type="polyline"
+     inkscape:connector-curvature="0" />
+  <a
+     xlink:href="../api_docs/cloud/resources.html#network"
+     id="a3500"
+     target="_parent"
+     transform="translate(128.63104,225.79059)">
+    <path
+       d="m 554.79394,571.91199 0,0 c 0,-3.11658 2.52649,-5.64301 5.64307,-5.64301 l 156.99738,0 c 1.49664,0 2.93194,0.59448 3.99023,1.65277 1.05829,1.05829 1.65283,2.49359 1.65283,3.99024 l 0,22.5722 c 0,3.11658 -2.52649,5.64301 -5.64306,5.64301 l -156.99738,0 0,0 c -3.11658,0 -5.64307,-2.52643 -5.64307,-5.64301 l 0,-22.5722 z"
+       id="path3502"
+       inkscape:connector-curvature="0"
+       style="fill:#b6d7a8;fill-rule:nonzero;stroke:#000000" />
+    <text
+       xml:space="preserve"
+       font-size="18.3663px"
+       id="text3504"
+       y="539.69812"
+       x="638.93573"
+       stroke-linecap="null"
+       stroke-linejoin="null"
+       style="font-size:18.36630058px;font-family:Arial;text-anchor:middle;fill:#000000;stroke-width:0;stroke-dasharray:none">Network</text>
   </a>
   <path
      style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.9934023px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -987,6 +1007,17 @@
        stroke-linejoin="null"
        style="font-size:18.36630058px;font-family:Arial;text-anchor:middle;fill:#000000;stroke-width:0;stroke-dasharray:none">Subnet</text>
   </a>
+  <path
+     d="m 586.25759,809.48868 95.04957,0"
+     id="path3506"
+     inkscape:connector-curvature="0"
+     style="fill-rule:evenodd;stroke:#000000;stroke-width:0.9915967;stroke-linejoin:round" />
+  <text
+     x="588.67493"
+     y="765.78864"
+     id="text3508"
+     font-size="16.0705px"
+     style="font-size:16.07049942px;font-family:Arial;fill:#000000">.list() returns</text>
   <path
      d="m 586.25759,809.48868 95.04957,0"
      id="path3506"
