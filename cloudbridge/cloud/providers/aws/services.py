@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
+from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
@@ -732,6 +733,22 @@ class AWSRegionService(BaseRegionService):
     @property
     def current(self):
         return self.get(self._provider.region_name)
+
+
+class AWSNetworkingService(BaseNetworkingService):
+
+    def __init__(self, provider):
+        super(AWSNetworkingService, self).__init__(provider)
+        self._network_service = AWSNetworkService(self.provider)
+        self._subnet_service = AWSSubnetService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
 
 
 class AWSNetworkService(BaseNetworkService):

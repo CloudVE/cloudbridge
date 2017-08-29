@@ -500,6 +500,37 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
 
+class NetworkingService(CloudService):
+
+    """
+    Base service interface for networking.
+
+    This service offers a collection of networking services that in turn
+    provide access to networking resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def networks(self):
+        """
+        Provides access to all Network related services.
+
+        :rtype: :class:`.NetworkService`
+        :return: a Network service object
+        """
+        pass
+
+    @abstractproperty
+    def subnets(self):
+        """
+        Provides access to all Subnet related services.
+
+        :rtype: :class:`.SubnetService`
+        :return: a Subnet service object
+        """
+        pass
+
+
 class NetworkService(PageableObjectMixin, CloudService):
 
     """

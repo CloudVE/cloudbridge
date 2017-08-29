@@ -9,6 +9,7 @@ from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import InstanceTypesService
 from cloudbridge.cloud.interfaces.services import KeyPairService
 from cloudbridge.cloud.interfaces.services import NetworkService
+from cloudbridge.cloud.interfaces.services import NetworkingService
 from cloudbridge.cloud.interfaces.services import ObjectStoreService
 from cloudbridge.cloud.interfaces.services import RegionService
 from cloudbridge.cloud.interfaces.services import SecurityGroupService
@@ -141,6 +142,12 @@ class BaseRegionService(
 
     def find(self, name):
         return [region for region in self if region.name == name]
+
+
+class BaseNetworkingService(NetworkingService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseNetworkingService, self).__init__(provider)
 
 
 class BaseNetworkService(
