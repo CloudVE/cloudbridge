@@ -29,11 +29,11 @@ the block and allow up to 16 IP addresses into the subnet (``/28``).
 
 .. code-block:: python
 
-    net = provider.network.create('cloudbridge_intro')
+    net = provider.networking.networks.create('cloudbridge_intro')
     sn = net.create_subnet('10.0.0.0/28', 'cloudbridge-intro')
-    router = provider.network.create_router('cloudbridge-intro')
+    router = provider.networking.networks.create_router('cloudbridge-intro')
     if not net.external:
-        for n in self.provider.network.list():
+        for n in self.provider.networking.networks.list():
             if n.external:
                 net = n
                 break
@@ -46,5 +46,5 @@ If you already have existing networks, we can query for those:
 
 .. code-block:: python
 
-    provider.network.list()  # Find a desired network ID
-    net = provider.network.get('desired network ID')
+    provider.networking.networks.list()  # Find a desired network ID
+    net = provider.networking.networks.get('desired network ID')
