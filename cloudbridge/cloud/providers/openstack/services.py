@@ -16,6 +16,7 @@ from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
+from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
@@ -708,6 +709,22 @@ class OpenStackInstanceService(BaseInstanceService):
             return OpenStackInstance(self.provider, os_instance)
         except NovaNotFound:
             return None
+
+
+class OpenStackNetworkingService(BaseNetworkingService):
+
+    def __init__(self, provider):
+        super(OpenStackNetworkingService, self).__init__(provider)
+        self._network_service = OpenStackNetworkService(self.provider)
+        self._subnet_service = OpenStackSubnetService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
 
 
 class OpenStackNetworkService(BaseNetworkService):

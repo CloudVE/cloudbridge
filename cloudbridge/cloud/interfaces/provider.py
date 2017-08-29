@@ -137,7 +137,7 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def network(self):
+    def networking(self):
         """
         Provide access to all network related services in this provider.
 
@@ -145,11 +145,11 @@ class CloudProvider(object):
 
         .. code-block:: python
 
-            networks = provider.network.list()
-            network = provider.network.create(name="DevNet")
+            networks = provider.networking.networks.list()
+            network = provider.networking.networks.create(name="DevNet")
 
-        :rtype: :class:`.NetworkService`
-        :return:  a NetworkService object
+        :rtype: :class:`.NetworkingService`
+        :return:  a NetworkingService object
         """
 
     @abstractproperty
