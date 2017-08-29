@@ -757,7 +757,7 @@ class OpenStackNetwork(BaseNetwork):
 
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
-        network = self._provider.network.get(self.id)
+        network = self._provider.networking.networks.get(self.id)
         if network:
             # pylint:disable=protected-access
             self._network = network._network
@@ -823,7 +823,7 @@ class OpenStackSubnet(BaseSubnet):
              else self.SubnetState.AVAILABLE
 
     def refresh(self):
-        subnet = self._provider.network.subnets.get(self.id)
+        subnet = self._provider.networking.subnets.get(self.id)
         if subnet:
             # pylint:disable=protected-access
             self._subnet = subnet._subnet
