@@ -1109,7 +1109,7 @@ class AWSSubnet(BaseSubnet):
             self._subnet.state, NetworkState.UNKNOWN)
 
     def refresh(self):
-        subnet = self._provider.network.subnets.get(self.id)
+        subnet = self._provider.networking.subnets.get(self.id)
         if subnet:
             # pylint:disable=protected-access
             self._subnet = subnet._subnet
