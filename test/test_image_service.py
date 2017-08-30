@@ -8,7 +8,7 @@ from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 class CloudImageServiceTestCase(ProviderTestBase):
 
-    @helpers.skipIfNoService(['compute.images', 'network',
+    @helpers.skipIfNoService(['compute.images', 'networking.networks',
                               'compute.instances'])
     def test_create_and_list_image(self):
         """

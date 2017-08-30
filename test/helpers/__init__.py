@@ -114,7 +114,7 @@ def delete_test_network(network):
     Delete the supplied network, first deleting any contained subnets.
     """
     with cleanup_action(lambda: network.delete()):
-        for sn in network.subnets():
+        for sn in network.subnets:
             sn.delete()
 
 
