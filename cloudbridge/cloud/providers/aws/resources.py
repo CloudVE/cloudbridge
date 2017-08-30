@@ -1027,18 +1027,11 @@ class AWSNetwork(BaseNetwork):
     def delete(self):
         return self._vpc.delete()
 
+    @property
     def subnets(self):
         flter = {'vpc-id': self.id}
         subnets = self._provider.vpc_conn.get_all_subnets(filters=flter)
         return [AWSSubnet(self._provider, subnet) for subnet in subnets]
-
-    def create_subnet(self, cidr_block, name=None, zone=None):
-        subnet = self._provider.vpc_conn.create_subnet(self.id, cidr_block,
-                                                       availability_zone=zone)
-        cb_subnet = AWSSubnet(self._provider, subnet)
-        if name:
-            cb_subnet.name = name
-        return cb_subnet
 
     def refresh(self):
         """
@@ -1147,32 +1140,14 @@ class AWSFloatingIP(BaseFloatingIP):
 
 class AWSRouter(BaseRouter):
 
-    def __init__(self, provider, router):
+    def __init__(self, provider, route_table):
         super(AWSRouter, self).__init__(provider)
-        self._router = router
+        self._route_table = route_table
         self._ROUTE_CIDR = '0.0.0.0/0'
-
-    def _route_table(self, subnet_id):
-        """
-        Get the route table for the VPC to which the supplied subnet belongs.
-
-        Note that only the first route table will be returned in case more
-        exist.
-
-        :type subnet_id: ``str``
-        :param subnet_id: Filter the route table by the network in which the
-                          given subnet belongs.
-
-        :rtype: :class:`boto.vpc.routetable.RouteTable`
-        :return: A RouteTable object.
-        """
-        sn = self._provider.vpc_conn.get_all_subnets([subnet_id])[0]
-        return self._provider.vpc_conn.get_all_route_tables(
-            filters={'vpc-id': sn.vpc_id})[0]
 
     @property
     def id(self):
-        return self._router.id
+        return self._route_table.id
 
     @property
     def name(self):
@@ -1181,7 +1156,7 @@ class AWSRouter(BaseRouter):
 
         .. note:: the router must have a (case sensitive) tag ``Name``
         """
-        return self._router.tags.get('Name')
+        return self._route_table.tags.get('Name')
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -1190,63 +1165,45 @@ class AWSRouter(BaseRouter):
         Set the router name.
         """
         if self.is_valid_resource_name(value):
-            self._router.add_tag('Name', value)
+            self._route_table.add_tag('Name', value)
         else:
             raise InvalidNameException(value)
 
     def refresh(self):
-        self._router = self._provider.vpc_conn.get_all_internet_gateways(
+        self._route_table = self._provider.vpc_conn.get_all_route_tables(
             [self.id])[0]
 
     @property
     def state(self):
-        self.refresh()  # Explicitly refresh the local object
-        if self._router.attachments and \
-           self._router.attachments[0].state == 'available':
+        if self._route_table.associations:
             return RouterState.ATTACHED
         return RouterState.DETACHED
 
     @property
     def network_id(self):
-        if self.state == RouterState.ATTACHED:
-            return self._router.attachments[0].vpc_id
-        return None
+        return self._route_table.vpc_id
 
     def delete(self):
-        return self._provider._vpc_conn.delete_internet_gateway(self.id)
+        return self._provider.networking.routers.delete(self)
 
-    def attach_network(self, network_id):
+    def attach_subnet(self, subnet):
+        subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
+        self._provider.vpc_conn.associate_route_table(self.id, subnet_id)
+
+    def detach_subnet(self, subnet):
+        subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
+        association_ids = [a for a in self._route_table.associations
+                           if a.subnet_id == subnet_id]
+        for a in association_ids:
+            self._provider.vpc_conn.disassociate_route_table(a)
+
+    def attach_gateway(self, gateway):
         return self._provider.vpc_conn.attach_internet_gateway(
-            self.id, network_id)
+            gateway.id, self.network_id)
 
-    def detach_network(self):
+    def detach_gateway(self, gateway):
         return self._provider.vpc_conn.detach_internet_gateway(
-            self.id, self.network_id)
-
-    def add_route(self, subnet_id):
-        """
-        Add a default route to this router.
-
-        For AWS, routes are added to a route table. A route table is assoc.
-        with a network vs. a subnet so we retrieve the network via the subnet.
-        Note that the subnet must belong to the same network as the router
-        is attached to.
-
-        Further, only a single route can be added, targeting the Internet
-        (i.e., destination CIDR block ``0.0.0.0/0``).
-        """
-        rt = self._route_table(subnet_id)
-        return self._provider.vpc_conn.create_route(
-            rt.id, self._ROUTE_CIDR, self.id)
-
-    def remove_route(self, subnet_id):
-        """
-        Remove the default Internet route from this router.
-
-        .. seealso:: ``add_route`` method
-        """
-        rt = self._route_table(subnet_id)
-        return self._provider.vpc_conn.delete_route(rt.id, self._ROUTE_CIDR)
+            gateway.id, self.network_id)
 
 
 class AWSInternetGateway(BaseInternetGateway):

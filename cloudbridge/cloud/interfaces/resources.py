@@ -849,7 +849,7 @@ class Network(ObjectLifeCycleMixin, CloudResource):
         """
         pass
 
-    @abstractmethod
+    @abstractproperty
     def subnets(self):
         """
         The associated subnets.
@@ -1049,12 +1049,12 @@ class Router(CloudResource):
         pass
 
     @abstractmethod
-    def attach_network(self, network_id):
+    def attach_subnet(self, subnet):
         """
-        Attach this router to a network.
+        Attach this router to a subnet.
 
-        :type network_id: ``str``
-        :param network_id: The ID of a network to which to attach this router.
+        :type subnet: ``Subnet`` or ``str``
+        :param subnet: The subnet to which to attach this router.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
@@ -1062,9 +1062,12 @@ class Router(CloudResource):
         pass
 
     @abstractmethod
-    def detach_network(self):
+    def detach_subnet(self, subnet):
         """
-        Detach this router from a network.
+        Detach this subnet from a network.
+
+        :type subnet: ``Subnet`` or ``str``
+        :param subnet: The subnet to detach from this router.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
@@ -1072,15 +1075,12 @@ class Router(CloudResource):
         pass
 
     @abstractmethod
-    def add_route(self, subnet_id):
+    def attach_gateway(self, gateway):
         """
-        Add a route to this router.
+        Attach a gateway to this router.
 
-        Note that a router must be attached to a network (to which the supplied
-        subnet belongs to) before a route can be added.
-
-        :type subnet_id: ``str``
-        :param subnet_id: The ID of a subnet to add to this router.
+        :type gateway: ``Gateway``
+        :param gateway: The Gateway to attach to this router.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
@@ -1088,12 +1088,9 @@ class Router(CloudResource):
         pass
 
     @abstractmethod
-    def remove_route(self, subnet_id):
+    def detach_gateway(self, gateway):
         """
-        Remove a route from this router.
-
-        :type subnet_id: ``str``
-        :param subnet_id: The ID of a subnet to remove to this router.
+        Detach this router from a gateway.
 
         :rtype: ``bool``
         :return: ``True`` if successful.

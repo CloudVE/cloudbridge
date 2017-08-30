@@ -796,7 +796,7 @@ class AWSNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def create(self, name=None):
+    def create(self, name):
         # AWS requires CIDR block to be specified when creating a network
         # so set a default one and use the largest allowed netmask.
         default_cidr = '10.0.0.0/16'
@@ -865,7 +865,7 @@ class AWSSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, network, cidr_block, name=None, zone=None):
+    def create(self, name, network, cidr_block, zone=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block,
                                                       availability_zone=zone)
@@ -895,8 +895,8 @@ class AWSSubnetService(BaseSubnetService):
             self.provider.vpc_conn.region.name)
         default_sn = None
         for i, z in enumerate(region.zones):
-            sn = self.create(default_net, '10.0.{0}.0/24'.format(i),
-                             AWSSubnet.CB_DEFAULT_SUBNET_NAME, z.name)
+            sn = self.create(AWSSubnet.CB_DEFAULT_SUBNET_NAME, default_net,
+                             '10.0.{0}.0/24'.format(i), z.name)
             if zone and zone == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
@@ -927,13 +927,20 @@ class AWSRouterService(BaseRouterService):
                 return None
             raise ec2e
 
+    def find(self, name, limit=None, marker=None):
+        filtr = {'tag:Name': name}
+        routers = self.provider.vpc_conn.get_all_route_tables(filters=filtr)
+        aws_routers = [AWSRouter(self.provider, r) for r in routers]
+        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
+                                     marker=marker)
+
     def list(self, limit=None, marker=None):
         routers = self.provider.vpc_conn.get_all_route_tables()
         aws_routers = [AWSRouter(self.provider, r) for r in routers]
         return ClientPagedResultList(self.provider, aws_routers, limit=limit,
                                      marker=marker)
 
-    def create(self, network, name=None):
+    def create(self, name, network):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         router = self.provider.vpc_conn.create_route_table(vpc_id=network_id)
         cb_router = AWSRouter(self.provider, router)

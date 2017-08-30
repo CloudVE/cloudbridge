@@ -744,18 +744,11 @@ class OpenStackNetwork(BaseNetwork):
         if self.id not in str(self._provider.neutron.list_networks()):
             return True
 
+    @property
     def subnets(self):
         subnets = (self._provider.neutron.list_subnets(network_id=self.id)
                    .get('subnets', []))
         return [OpenStackSubnet(self._provider, subnet) for subnet in subnets]
-
-    def create_subnet(self, cidr_block, name='', zone=None):
-        """OpenStack has no support for subnet zones so the value is ignored"""
-        subnet_info = {'name': name, 'network_id': self.id,
-                       'cidr': cidr_block, 'ip_version': 4}
-        subnet = (self._provider.neutron.create_subnet({'subnet': subnet_info})
-                  .get('subnet'))
-        return OpenStackSubnet(self._provider, subnet)
 
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
@@ -910,33 +903,34 @@ class OpenStackRouter(BaseRouter):
         if self.id not in str(self._provider.neutron.list_routers()):
             return True
 
-    def attach_network(self, network_id):
-        self._router = self._provider.neutron.add_gateway_router(
-            self.id, {'network_id': network_id}).get('router', self._router)
-        if self.network_id and self.network_id == network_id:
+    def attach_subnet(self, subnet):
+        router_interface = {'subnet_id': subnet.id}
+        ret = self._provider.neutron.add_interface_router(
+            self.id, router_interface)
+        if subnet.id in ret.get('subnet_ids', ""):
             return True
         return False
 
-    def detach_network(self):
+    def detach_subnet(self, subnet):
+        router_interface = {'subnet_id': subnet.id}
+        ret = self._provider.neutron.remove_interface_router(
+            self.id, router_interface)
+        if subnet.id in ret.get('subnet_ids', ""):
+            return True
+        return False
+
+    def attach_gateway(self, gateway):
+        self._router = self._provider.neutron.add_gateway_router(
+            self.id, {'network_id': self.network_id}).get('router',
+                                                          self._router)
+        if self.network_id and self.network_id == self.network_id:
+            return True
+        return False
+
+    def detach_gateway(self, gateway):
         self._router = self._provider.neutron.remove_gateway_router(
             self.id).get('router', self._router)
         if not self.network_id:
-            return True
-        return False
-
-    def add_route(self, subnet_id):
-        router_interface = {'subnet_id': subnet_id}
-        ret = self._provider.neutron.add_interface_router(
-            self.id, router_interface)
-        if subnet_id in ret.get('subnet_ids', ""):
-            return True
-        return False
-
-    def remove_route(self, subnet_id):
-        router_interface = {'subnet_id': subnet_id}
-        ret = self._provider.neutron.remove_interface_router(
-            self.id, router_interface)
-        if subnet_id in ret.get('subnet_ids', ""):
             return True
         return False
 
