@@ -280,7 +280,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.security_groups'])
     def test_instance_methods(self):
-        name = "cb_instmethod-{0}".format(helpers.get_uuid())
+        name = "cb_instmethods-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -314,31 +314,28 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             # check floating ips
             router = self.provider.networking.routers.create(name, net)
 
-            with helpers.cleanup_action(lambda: router.delete()):
-                router.attach_subnet(subnet)
-                gateway = (self.provider.networking.gateways
-                           .get_or_create_inet_gateway(name))
-
-                def cleanup_router():
+            def cleanup_router():
+                with helpers.cleanup_action(lambda: router.delete()):
                     with helpers.cleanup_action(lambda: gateway.delete()):
                         router.detach_subnet(subnet)
                         router.detach_gateway(gateway)
 
-                with helpers.cleanup_action(lambda: cleanup_router()):
-                    router.attach_gateway(gateway)
-                    # check whether adding an elastic ip works
-                    fip = (self.provider.networking.networks
-                           .create_floating_ip())
-                    with helpers.cleanup_action(lambda: fip.delete()):
-                        test_inst.add_floating_ip(fip.public_ip)
-                        test_inst.refresh()
-                        self.assertIn(fip.public_ip, test_inst.public_ips)
-
-                        if isinstance(self.provider, TestMockHelperMixin):
-                            # TODO: Moto bug does not refresh removed public ip
-                            return
-
-                        # check whether removing an elastic ip works
-                        test_inst.remove_floating_ip(fip.public_ip)
-                        test_inst.refresh()
-                        self.assertNotIn(fip.public_ip, test_inst.public_ips)
+            with helpers.cleanup_action(lambda: cleanup_router()):
+                router.attach_subnet(subnet)
+                gateway = (self.provider.networking.gateways
+                           .get_or_create_inet_gateway(name))
+                router.attach_gateway(gateway)
+                # check whether adding an elastic ip works
+                fip = (self.provider.networking.networks
+                       .create_floating_ip())
+                with helpers.cleanup_action(lambda: fip.delete()):
+                    test_inst.add_floating_ip(fip.public_ip)
+                    test_inst.refresh()
+                    self.assertIn(fip.public_ip, test_inst.public_ips)
+                    if isinstance(self.provider, TestMockHelperMixin):
+                        # TODO: Moto bug does not refresh removed public ip
+                        return
+                    # check whether removing an elastic ip works
+                    test_inst.remove_floating_ip(fip.public_ip)
+                    test_inst.refresh()
+                    self.assertNotIn(fip.public_ip, test_inst.public_ips)
