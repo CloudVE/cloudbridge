@@ -820,8 +820,8 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             interval=interval)
 
     def create_subnet(self, name, cidr_block, zone=None):
-        return self._provider.networking.subnets.create(name, self, cidr_block,
-                                                        zone=zone)
+        return self._provider.networking.subnets.create(
+            name=name, network=self, cidr_block=cidr_block, zone=zone)
 
     def __eq__(self, other):
         return (isinstance(other, Network) and
