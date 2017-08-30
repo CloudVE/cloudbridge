@@ -899,9 +899,6 @@ class OpenStackRouter(BaseRouter):
 
     def delete(self):
         self._provider.neutron.delete_router(self.id)
-        # Adhere to the interface docs
-        if self.id not in str(self._provider.neutron.list_routers()):
-            return True
 
     def attach_subnet(self, subnet):
         router_interface = {'subnet_id': subnet.id}
@@ -921,15 +918,11 @@ class OpenStackRouter(BaseRouter):
 
     def attach_gateway(self, gateway):
         self._router = self._provider.neutron.add_gateway_router(
-            self.id, {'network_id': gateway.id}).get('router',
-                                                     self._router)
+            self.id, {'network_id': gateway.id})
 
     def detach_gateway(self, gateway):
         self._router = self._provider.neutron.remove_gateway_router(
             self.id).get('router', self._router)
-        if not self.network_id:
-            return True
-        return False
 
 
 class OpenStackInternetGateway(BaseInternetGateway):
