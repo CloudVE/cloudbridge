@@ -1143,7 +1143,6 @@ class AWSRouter(BaseRouter):
     def __init__(self, provider, route_table):
         super(AWSRouter, self).__init__(provider)
         self._route_table = route_table
-        self._ROUTE_CIDR = '0.0.0.0/0'
 
     @property
     def id(self):
