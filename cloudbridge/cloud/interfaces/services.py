@@ -540,6 +540,17 @@ class NetworkingService(CloudService):
         """
         pass
 
+    @abstractproperty
+    def gateways(self):
+        """
+        Provides access to all Gateway related services, such as
+        Internet Gateways.
+
+        :rtype: :class:`.GatewayService`
+        :return: a Router service object
+        """
+        pass
+
 
 class NetworkService(PageableObjectMixin, CloudService):
 
@@ -672,7 +683,7 @@ class NetworkService(PageableObjectMixin, CloudService):
     @abstractmethod
     def create_router(self, name=None):
         """
-        Create a new router/gateway.
+        Create a new router.
 
         :type name: ``str``
         :param name: An optional router name. The name will be set if the
@@ -781,7 +792,7 @@ class SubnetService(PageableObjectMixin, CloudService):
 class RouterService(PageableObjectMixin, CloudService):
 
     """
-    Manage networking router actions and resoruces.
+    Manage networking router actions and resources.
     """
     __metaclass__ = ABCMeta
 
@@ -793,8 +804,8 @@ class RouterService(PageableObjectMixin, CloudService):
         :type router_id: ``str``
         :param router_id: The ID of the router to retrieve.
 
-        :rtyoe: ``object``  of :class:`.Router` or ``None``
-        :return: a Router object ot ``None`` if not found.
+        :rtype: ``object``  of :class:`.Router` or ``None``
+        :return: a Router object of ``None`` if not found.
         """
         pass
 
@@ -817,7 +828,8 @@ class RouterService(PageableObjectMixin, CloudService):
         :param network: Network object or ID under which to create the router.
 
         :type name: ``str``
-        :param name: A router name. The name will be set if the provider supports it.
+        :param name: A router name. The name will be set if the provider
+                     supports it.
 
         :rtype: ``object`` of :class:`.Router`
         :return:  A Router object
@@ -836,6 +848,41 @@ class RouterService(PageableObjectMixin, CloudService):
         :return:  ``True`` if the router does not exist, ``False`` otherwise.
                   Note that this implies that the router may not have been
                   deleted by this method but instead has not existed at all.
+        """
+        pass
+
+
+class GatewayService(CloudService):
+
+    """
+    Manage internet gateway resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_or_create_inet_gateway(self):
+        """
+        Creates and returns a new internet gateway or returns an existing
+        singleton gateway, depending on the cloud provider. The returned
+        gateway object can subsequently be attached to a router to provide
+        internet routing to a network. If the gateway is no longer required,
+        clients should call gateway.delete() to delete the gateway. On some
+        cloud providers this will result in the gateway being deleted. On
+        others, it will result in a no-op if the cloud has only a single/public
+        gateway.
+
+        :rtype: ``object``  of :class:`.InternetGateway` or ``None``
+        :return: an InternetGateway object of ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, gateway):
+        """
+        Delete a gateway.
+
+        :type gateway: :class:`.Gateway` object
+        :param gateway: Gateway object to delete.
         """
         pass
 

@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
+from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import BaseMachineImage
@@ -29,6 +30,7 @@ from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
+from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -1245,6 +1247,61 @@ class AWSRouter(BaseRouter):
         """
         rt = self._route_table(subnet_id)
         return self._provider.vpc_conn.delete_route(rt.id, self._ROUTE_CIDR)
+
+
+class AWSInternetGateway(BaseInternetGateway):
+
+    def __init__(self, provider, gateway):
+        super(AWSInternetGateway, self).__init__(provider)
+        self._gateway = gateway
+        self._gateway.state = ''
+
+    @property
+    def id(self):
+        return self._gateway.id
+
+    @property
+    def name(self):
+        """
+        Get the gateway name.
+
+        .. note:: the gateway must have a (case sensitive) tag ``Name``
+        """
+        return self._gateway.tags.get('Name')
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the router name.
+        """
+        if self.is_valid_resource_name(value):
+            self._gateway.add_tag('Name', value)
+        else:
+            raise InvalidNameException(value)
+
+    def refresh(self):
+        gateways = self._provider.vpc_conn.get_all_internet_gateways([self.id])
+        if gateways:
+            self._gateway = gateways[0]
+        else:
+            self._gateway.state = GatewayState.UNKNOWN
+
+    @property
+    def state(self):
+        if self._gateway.state == GatewayState.UNKNOWN:
+            return GatewayState.UNKNOWN
+        else:
+            return GatewayState.AVAILABLE
+
+    @property
+    def network_id(self):
+        if self._gateway.attachments:
+            return self._gateway.attachments[0].vpc_id
+        return None
+
+    def delete(self):
+        return self._provider._vpc_conn.delete_internet_gateway(self.id)
 
 
 class AWSLaunchConfig(BaseLaunchConfig):

@@ -10,6 +10,7 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
@@ -43,6 +44,7 @@ from .resources import AWSBucket
 from .resources import AWSFloatingIP
 from .resources import AWSInstance
 from .resources import AWSInstanceType
+from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
@@ -743,6 +745,7 @@ class AWSNetworkingService(BaseNetworkingService):
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
         self._router_service = AWSRouterService(self.provider)
+        self._gateway_service = AWSGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -755,6 +758,10 @@ class AWSNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
+
+    @property
+    def gateways(self):
+        return self._gateway_service
 
 
 class AWSNetworkService(BaseNetworkService):
@@ -938,3 +945,19 @@ class AWSRouterService(BaseRouterService):
     def delete(self, router):
         router_id = router.id if isinstance(router, AWSRouter) else router
         return self.provider.vpc_conn.delete_route_table(router_id)
+
+
+class AWSGatewayService(BaseGatewayService):
+
+    def __init__(self, provider):
+        super(AWSGatewayService, self).__init__(provider)
+
+    def get_or_create_inet_gateway(self, name):
+        gateway = self.provider.vpc_conn.create_internet_gateway()
+        cb_gateway = AWSInternetGateway(self.provider, gateway)
+        cb_gateway.wait_till_ready()
+        cb_gateway.name = name
+        return cb_gateway
+
+    def delete(self, gateway):
+        gateway.delete()

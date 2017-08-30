@@ -4,6 +4,7 @@ Base implementation for services available through a provider
 from cloudbridge.cloud.interfaces.services import BlockStoreService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
+from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import InstanceTypesService
@@ -184,3 +185,10 @@ class BaseRouterService(
 
     def __init__(self, provider):
         super(BaseRouterService, self).__init__(provider)
+
+
+class BaseGatewayService(
+        GatewayService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseGatewayService, self).__init__(provider)
