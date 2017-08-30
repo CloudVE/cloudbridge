@@ -12,6 +12,7 @@ from cloudbridge.cloud.interfaces.services import NetworkService
 from cloudbridge.cloud.interfaces.services import NetworkingService
 from cloudbridge.cloud.interfaces.services import ObjectStoreService
 from cloudbridge.cloud.interfaces.services import RegionService
+from cloudbridge.cloud.interfaces.services import RouterService
 from cloudbridge.cloud.interfaces.services import SecurityGroupService
 from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
@@ -176,3 +177,10 @@ class BaseSubnetService(
         else:
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
+
+
+class BaseRouterService(
+        BasePageableObjectMixin, RouterService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseRouterService, self).__init__(provider)
