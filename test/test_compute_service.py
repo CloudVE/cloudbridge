@@ -16,7 +16,7 @@ import six
 
 class CloudComputeServiceTestCase(ProviderTestBase):
 
-    @helpers.skipIfNoService(['compute.instances', 'network'])
+    @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         name = "cb_instcrud-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
@@ -47,7 +47,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             return False
         return True
 
-    @helpers.skipIfNoService(['compute.instances', 'network',
+    @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.security_groups',
                               'security.key_pairs'])
     def test_instance_properties(self):
@@ -277,7 +277,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         # TODO: Check instance attachments and make sure they
                         # correspond to requested mappings
 
-    @helpers.skipIfNoService(['compute.instances', 'network',
+    @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.security_groups'])
     def test_instance_methods(self):
         name = "cb_instmethod-{0}".format(helpers.get_uuid())
@@ -312,28 +312,22 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 (sg, test_inst.security_groups))
 
             # check floating ips
-            router = self.provider.network.create_router(name=name)
+            router = self.provider.networking.routers.create(name, net)
 
             with helpers.cleanup_action(lambda: router.delete()):
-
-                # TODO: Cloud specific code, needs fixing
-                if self.provider.PROVIDER_ID == 'openstack':
-                    for n in self.provider.network:
-                        if n.external:
-                            external_net = n
-                            break
-                else:
-                    external_net = net
-                router.attach_network(external_net.id)
-                router.add_route(subnet.id)
+                router.attach_subnet(subnet)
+                gateway = (self.provider.networking.gateways
+                           .get_or_create_inet_gateway(name))
+                router.attach_gateway(gateway)
 
                 def cleanup_router():
-                    router.remove_route(subnet.id)
-                    router.detach_network()
+                    router.detach_subnet(subnet)
+                    gateway.delete()
 
                 with helpers.cleanup_action(lambda: cleanup_router()):
                     # check whether adding an elastic ip works
-                    fip = self.provider.network.create_floating_ip()
+                    fip = (self.provider.networking.networks
+                           .create_floating_ip())
                     with helpers.cleanup_action(lambda: fip.delete()):
                         test_inst.add_floating_ip(fip.public_ip)
                         test_inst.refresh()
