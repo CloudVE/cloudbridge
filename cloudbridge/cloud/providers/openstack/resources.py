@@ -12,6 +12,7 @@ from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
+from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
@@ -25,6 +26,7 @@ from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
+from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -937,6 +939,58 @@ class OpenStackRouter(BaseRouter):
         if subnet_id in ret.get('subnet_ids', ""):
             return True
         return False
+
+
+class OpenStackInternetGateway(BaseInternetGateway):
+
+    GATEWAY_STATE_MAP = {
+        NetworkState.AVAILABLE: GatewayState.AVAILABLE,
+        NetworkState.DOWN: GatewayState.ERROR,
+        NetworkState.ERROR: GatewayState.ERROR,
+        NetworkState.PENDING: GatewayState.CONFIGURING,
+        NetworkState.UNKNOWN: GatewayState.UNKNOWN
+    }
+
+    def __init__(self, provider, gateway_net):
+        super(OpenStackInternetGateway, self).__init__(provider)
+        self._gateway_net = gateway_net
+
+    @property
+    def id(self):
+        return self._gateway_net.get('id', None)
+
+    @property
+    def name(self):
+        return self._gateway_net.get('name', None)
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        if self.is_valid_resource_name(value):
+            self._provider.neutron.update_network(self.id,
+                                                  {'network': {'name': value}})
+            self.refresh()
+        else:
+            raise InvalidNameException(value)
+
+    def refresh(self):
+        """Refresh the state of this network by re-querying the provider."""
+        network = self._provider.networking.networks.get(self.id)
+        if network:
+            # pylint:disable=protected-access
+            self._gateway_net = network._network
+        else:
+            # subnet no longer exists
+            self._gateway_net.state = NetworkState.UNKNOWN
+
+    @property
+    def state(self):
+        return self.GATEWAY_STATE_MAP.get(
+            self._gateway_net.state, GatewayState.UNKNOWN)
+
+    def delete(self):
+        """Do nothing on openstack"""
+        pass
 
 
 class OpenStackKeyPair(BaseKeyPair):

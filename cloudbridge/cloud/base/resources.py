@@ -17,9 +17,11 @@ from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
+from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import InstanceType
+from cloudbridge.cloud.interfaces.resources import InternetGateway
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import LaunchConfig
 from cloudbridge.cloud.interfaces.resources import MachineImage
@@ -889,3 +891,30 @@ class BaseRouter(BaseCloudResource, Router):
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
+
+
+class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
+                          InternetGateway):
+
+    CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
+        'CB_DEFAULT_INET_GATEWAY_NAME', 'CloudBridgeInetGateway')
+
+    def __init__(self, provider):
+        super(BaseRouter, self).__init__(provider)
+
+    def __repr__(self):
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,
+                                            self.name)
+
+    def __eq__(self, other):
+        return (isinstance(other, InternetGateway) and
+                # pylint:disable=protected-access
+                self._provider == other._provider and
+                self.id == other.id)
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self.wait_for(
+            [GatewayState.AVAILABLE],
+            terminal_states=[GatewayState.ERROR, GatewayState.UNKNOWN],
+            timeout=timeout,
+            interval=interval)

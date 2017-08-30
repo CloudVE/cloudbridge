@@ -11,6 +11,7 @@ from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
@@ -43,6 +44,7 @@ from .resources import OpenStackBucket
 from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
+from .resources import OpenStackInternetGateway
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
 from .resources import OpenStackNetwork
@@ -719,6 +721,7 @@ class OpenStackNetworkingService(BaseNetworkingService):
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
         self._router_service = OpenStackRouterService(self.provider)
+        self._gateway_service = OpenStackGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -731,6 +734,10 @@ class OpenStackNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
+
+    @property
+    def gateways(self):
+        return self._gateway_service
 
 
 class OpenStackNetworkService(BaseNetworkService):
@@ -895,3 +902,18 @@ class OpenStackRouterService(BaseRouterService):
         if router_id not in self.list():
             return True
         return False
+
+
+class OpenStackGatewayService(BaseGatewayService):
+
+    def __init__(self, provider):
+        super(OpenStackGatewayService, self).__init__(provider)
+
+    def get_or_create_inet_gateway(self, name):
+        for n in self.provider.networking.networks:
+            if n.external:
+                return OpenStackInternetGateway(self.provider, n)
+        return None
+
+    def delete(self, gateway):
+        gateway.delete()

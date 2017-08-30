@@ -1101,6 +1101,55 @@ class Router(CloudResource):
         pass
 
 
+class GatewayState(object):
+
+    """
+    Standard states for a gateway.
+
+    :cvar UNKNOWN: Gateway state unknown.
+    :cvar CONFIGURING: Gateway is being configured
+    :cvar AVAILABLE: Gateway is ready
+    :cvar ERROR: Gateway is ready
+
+    """
+    UNKNOWN = "unknown"
+    CONFIGURING = "configuring"
+    AVAILABLE = "available"
+    ERROR = "error"
+
+
+class Gateway(CloudResource):
+    """
+    Represents a gateway resource.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def network_id(self):
+        """
+        ID of the network to which the gateway is attached.
+
+        :rtype: ``str``
+        :return: ID for the attached network or ``None``.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self):
+        """
+        Delete this gateway. On some providers, if the gateway
+        is public/a singleton, this operation will do nothing.
+        """
+        pass
+
+
+class InternetGateway(ObjectLifeCycleMixin, Gateway):
+    """
+    Represents an Internet gateway resource.
+    """
+    __metaclass__ = ABCMeta
+
+
 class AttachmentInfo(object):
     """
     Contains attachment information for a volume.
