@@ -112,10 +112,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         def _cleanup(net, subnet, router, gateway):
             with helpers.cleanup_action(lambda: net.delete()):
                 with helpers.cleanup_action(lambda: subnet.delete()):
-                    with helpers.cleanup_action(lambda: router.delete()):
-                        router.detach_subnet(net)
-                        with helpers.cleanup_action(lambda: gateway.delete()):
-                            pass
+                    with helpers.cleanup_action(lambda: gateway.delete()):
+                        with helpers.cleanup_action(lambda: router.delete()):
+                            router.detach_subnet(subnet)
+                            router.detach_gateway(gateway)
 
         name = 'cb_crudrouter-{0}'.format(helpers.get_uuid())
         # Declare these variables and late binding will allow
@@ -123,7 +123,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         net = None
         sn = None
         router = None
-        with helpers.cleanup_action(lambda: _cleanup(net, sn, router)):
+        gteway = None
+        with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
             net = self.provider.networking.networks.create(name=name)
             router = self.provider.networking.routers.create(network=net,
                                                              name=name)
@@ -146,9 +147,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 #                     router.id, router.network_id))
 
             router.attach_subnet(sn)
-            gateway = (self.provider.networking.gateways
-                       .get_or_create_inet_gateway(name))
-            router.attach_gateway(gateway)
+            gteway = (self.provider.networking.gateways
+                      .get_or_create_inet_gateway(name))
+            router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 
         sit.check_delete(self, self.provider.networking.routers, router)

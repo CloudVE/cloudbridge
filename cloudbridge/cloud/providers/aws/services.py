@@ -949,10 +949,6 @@ class AWSRouterService(BaseRouterService):
             cb_router.name = name
         return cb_router
 
-    def delete(self, router):
-        router_id = router.id if isinstance(router, AWSRouter) else router
-        return self.provider.vpc_conn.delete_route_table(router_id)
-
 
 class AWSGatewayService(BaseGatewayService):
 

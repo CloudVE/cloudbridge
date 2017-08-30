@@ -1,6 +1,8 @@
 """
 Base implementation for services available through a provider
 """
+from cloudbridge.cloud.interfaces.resources import Router
+
 from cloudbridge.cloud.interfaces.services import BlockStoreService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
@@ -185,6 +187,14 @@ class BaseRouterService(
 
     def __init__(self, provider):
         super(BaseRouterService, self).__init__(provider)
+
+    def delete(self, router):
+        if isinstance(router, Router):
+            router.delete()
+        else:
+            router = self.get(router)
+            if router:
+                router.delete()
 
 
 class BaseGatewayService(

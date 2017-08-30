@@ -899,11 +899,6 @@ class OpenStackRouterService(BaseRouterService):
             {'router': {'name': name}})
         return OpenStackRouter(self.provider, router.get('router'))
 
-    def delete(self, router):
-        router_id = (router.id if isinstance(router, OpenStackRouter)
-                     else router)
-        self.provider.neutron.delete_router(router_id)
-
 
 class OpenStackGatewayService(BaseGatewayService):
 

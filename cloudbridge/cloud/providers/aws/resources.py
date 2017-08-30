@@ -1183,18 +1183,19 @@ class AWSRouter(BaseRouter):
         return self._route_table.vpc_id
 
     def delete(self):
-        return self._provider.networking.routers.delete(self)
+        self._provider.vpc_conn.delete_route_table(self.id)
 
     def attach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         self._provider.vpc_conn.associate_route_table(self.id, subnet_id)
+        self.refresh()
 
     def detach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
-        association_ids = [a for a in self._route_table.associations
+        association_ids = [a.id for a in self._route_table.associations
                            if a.subnet_id == subnet_id]
-        for a in association_ids:
-            self._provider.vpc_conn.disassociate_route_table(a)
+        for a_id in association_ids:
+            self._provider.vpc_conn.disassociate_route_table(a_id)
 
     def attach_gateway(self, gateway):
         return self._provider.vpc_conn.attach_internet_gateway(

@@ -318,13 +318,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 router.attach_subnet(subnet)
                 gateway = (self.provider.networking.gateways
                            .get_or_create_inet_gateway(name))
-                router.attach_gateway(gateway)
 
                 def cleanup_router():
-                    router.detach_subnet(subnet)
-                    gateway.delete()
+                    with helpers.cleanup_action(lambda: gateway.delete()):
+                        router.detach_subnet(subnet)
+                        router.detach_gateway(gateway)
 
                 with helpers.cleanup_action(lambda: cleanup_router()):
+                    router.attach_gateway(gateway)
                     # check whether adding an elastic ip works
                     fip = (self.provider.networking.networks
                            .create_floating_ip())
