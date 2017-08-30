@@ -921,11 +921,8 @@ class OpenStackRouter(BaseRouter):
 
     def attach_gateway(self, gateway):
         self._router = self._provider.neutron.add_gateway_router(
-            self.id, {'network_id': self.network_id}).get('router',
-                                                          self._router)
-        if self.network_id and self.network_id == self.network_id:
-            return True
-        return False
+            self.id, {'network_id': gateway.id}).get('router',
+                                                     self._router)
 
     def detach_gateway(self, gateway):
         self._router = self._provider.neutron.remove_gateway_router(
