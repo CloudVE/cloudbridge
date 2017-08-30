@@ -530,6 +530,16 @@ class NetworkingService(CloudService):
         """
         pass
 
+    @abstractproperty
+    def routers(self):
+        """
+        Provides access to all Router related services.
+
+        :rtype: :class:`.RouterService`
+        :return: a Router service object
+        """
+        pass
+
 
 class NetworkService(PageableObjectMixin, CloudService):
 
@@ -686,8 +696,8 @@ class SubnetService(PageableObjectMixin, CloudService):
         """
         Returns a Subnet given its ID or ``None`` if not found.
 
-        :type network_id: :class:`.Network` object or ``str``
-        :param network_id: The ID of the subnet to retrieve.
+        :type subnet_id: :class:`.Network` object or ``str``
+        :param subnet_id: The ID of the subnet to retrieve.
 
         :rtype: ``object`` of :class:`.Subnet`
         return: a Subnet object
@@ -763,6 +773,68 @@ class SubnetService(PageableObjectMixin, CloudService):
         :rtype: ``bool``
         :return:  ``True`` if the subnet does not exist, ``False`` otherwise.
                   Note that this implies that the subnet may not have been
+                  deleted by this method but instead has not existed at all.
+        """
+        pass
+
+
+class RouterService(PageableObjectMixin, CloudService):
+
+    """
+    Manage networking router actions and resoruces.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, router_id):
+        """
+        Returns a Router object given its ID.
+
+        :type router_id: ``str``
+        :param router_id: The ID of the router to retrieve.
+
+        :rtyoe: ``object``  of :class:`.Router` or ``None``
+        :return: a Router object ot ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all routers.
+
+        :rtype: ``list`` of :class:`.Router`
+        :return: list of Router objects
+        """
+        pass
+
+    @abstractmethod
+    def create(self, network, name=None):
+        """
+        Create a new router.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID under which to create the router.
+
+        :type name: ``str``
+        :param name: A router name. The name will be set if the provider supports it.
+
+        :rtype: ``object`` of :class:`.Router`
+        :return:  A Router object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, router):
+        """
+        Delete an existing Router.
+
+        :type router: :class:`.Router` object or ``str``
+        :param router: Router object or ID of the router to delete.
+
+        :rtype: ``bool``
+        :return:  ``True`` if the router does not exist, ``False`` otherwise.
+                  Note that this implies that the router may not have been
                   deleted by this method but instead has not existed at all.
         """
         pass

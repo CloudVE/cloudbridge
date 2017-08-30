@@ -18,6 +18,7 @@ from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
+from cloudbridge.cloud.base.services import BaseRouterService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
@@ -741,6 +742,7 @@ class AWSNetworkingService(BaseNetworkingService):
         super(AWSNetworkingService, self).__init__(provider)
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
+        self._router_service = AWSRouterService(self.provider)
 
     @property
     def networks(self):
@@ -749,6 +751,10 @@ class AWSNetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
+
+    @property
+    def routers(self):
+        return self._router_service
 
 
 class AWSNetworkService(BaseNetworkService):
@@ -894,3 +900,41 @@ class AWSSubnetService(BaseSubnetService):
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         return self.provider.vpc_conn.delete_subnet(subnet_id=subnet_id)
+
+
+class AWSRouterService(BaseRouterService):
+    """For AWS, a CloudBridge router corresponds to an AWS Route Table."""
+
+    def __init__(self, provider):
+        super(AWSRouterService, self).__init__(provider)
+
+    def get(self, router_id):
+        try:
+            routers = self.provider.vpc_conn.get_all_route_tables([router_id])
+            return AWSRouter(self.provider, routers[0]) if routers else None
+        except EC2ResponseError as ec2e:
+            if ec2e.code == 'InvalidRouteTableID.NotFound':
+                return None
+            elif ec2e.code == 'InvalidParameterValue':
+                # Occurs if id does not start with 'rtb-...'
+                return None
+            raise ec2e
+
+    def list(self, limit=None, marker=None):
+        routers = self.provider.vpc_conn.get_all_route_tables()
+        aws_routers = [AWSRouter(self.provider, r) for r in routers]
+        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
+                                     marker=marker)
+
+    def create(self, network, name=None):
+        network_id = network.id if isinstance(network, AWSNetwork) else network
+        router = self.provider.vpc_conn.create_route_table(vpc_id=network_id)
+        cb_router = AWSRouter(self.provider, router)
+        if name:
+            time.sleep(2)  # Some time is required
+            cb_router.name = name
+        return cb_router
+
+    def delete(self, router):
+        router_id = router.id if isinstance(router, AWSRouter) else router
+        return self.provider.vpc_conn.delete_route_table(router_id)

@@ -19,6 +19,7 @@ from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
+from cloudbridge.cloud.base.services import BaseRouterService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
@@ -717,6 +718,7 @@ class OpenStackNetworkingService(BaseNetworkingService):
         super(OpenStackNetworkingService, self).__init__(provider)
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
+        self._router_service = OpenStackRouterService(self.provider)
 
     @property
     def networks(self):
@@ -725,6 +727,10 @@ class OpenStackNetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
+
+    @property
+    def routers(self):
+        return self._router_service
 
 
 class OpenStackNetworkService(BaseNetworkService):
@@ -850,5 +856,42 @@ class OpenStackSubnetService(BaseSubnetService):
         self.provider.neutron.delete_subnet(subnet_id)
         # Adhere to the interface docs
         if subnet_id not in self.list():
+            return True
+        return False
+
+
+class OpenStackRouterService(BaseRouterService):
+
+    def __init__(self, provider):
+        super(OpenStackRouterService, self).__init__(provider)
+
+    def get(self, router_id):
+        router = (r for r in self if r.id == router_id)
+        return next(router, None)
+
+    def list(self, limit=None, marker=None):
+        routers = self.provider.neutron.list_routers().get('routers')
+        os_routers = [OpenStackRouter(self.provider, r) for r in routers]
+        return ClientPagedResultList(self.provider, os_routers, limit=limit,
+                                     marker=marker)
+
+    def create(self, network, name=None):
+        """
+        ``network`` is not used by OpenStack.
+
+        However, the API seems to indicate it is a (required) param?!
+        https://developer.openstack.org/api-ref/networking/v2/
+            ?expanded=delete-router-detail,create-router-detail#create-router
+        """
+        router = self.provider.neutron.create_router(
+            {'router': {'name': name}})
+        return OpenStackRouter(self.provider, router.get('router'))
+
+    def delete(self, router):
+        router_id = (router.id if isinstance(router, OpenStackRouter)
+                     else router)
+        self.provider.neutron.delete_router(router_id)
+        # Adhere to the interface docs
+        if router_id not in self.list():
             return True
         return False
