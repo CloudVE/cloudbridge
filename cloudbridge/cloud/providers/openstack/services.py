@@ -765,7 +765,7 @@ class OpenStackNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def create(self, name=''):
+    def create(self, name):
         net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})
         return OpenStackNetwork(self.provider, network.get('network'))
@@ -822,7 +822,7 @@ class OpenStackSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, network, cidr_block, name='', zone=None):
+    def create(self, network, name, cidr_block, zone=None):
         """zone param is ignored."""
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
@@ -882,6 +882,11 @@ class OpenStackRouterService(BaseRouterService):
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
 
+    def find(self, name, limit=None, marker=None):
+        aws_routers = [r for r in self if r.name == name]
+        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
+                                     marker=marker)
+
     def create(self, network, name=None):
         """
         ``network`` is not used by OpenStack.
@@ -898,10 +903,6 @@ class OpenStackRouterService(BaseRouterService):
         router_id = (router.id if isinstance(router, OpenStackRouter)
                      else router)
         self.provider.neutron.delete_router(router_id)
-        # Adhere to the interface docs
-        if router_id not in self.list():
-            return True
-        return False
 
 
 class OpenStackGatewayService(BaseGatewayService):

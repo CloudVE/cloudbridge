@@ -819,6 +819,10 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
+    def create_subnet(self, name, cidr_block, zone=None):
+        return self._provider.networking.subnets.create(name, self, cidr_block,
+                                                        zone=zone)
+
     def __eq__(self, other):
         return (isinstance(other, Network) and
                 # pylint:disable=protected-access
@@ -900,7 +904,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
         'CB_DEFAULT_INET_GATEWAY_NAME', 'CloudBridgeInetGateway')
 
     def __init__(self, provider):
-        super(BaseRouter, self).__init__(provider)
+        super(BaseInternetGateway, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,

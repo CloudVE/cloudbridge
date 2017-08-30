@@ -593,12 +593,12 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name=None):
+    def create(self, name):
         """
         Create a new network.
 
         :type name: ``str``
-        :param name: An optional network name. The name will be set if the
+        :param name: A network name. The name will be set if the
                      provider supports it.
 
         :rtype: ``object`` of :class:`.Network`
@@ -643,6 +643,16 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
+    @abstractproperty
+    def routers(self):
+        """
+        Returns a list of routers connected to this network.
+
+        :rtype: ``list`` of :class: `Router`
+        :return: list of routers
+        """
+        pass
+
     @abstractmethod
     def floating_ips(self, network_id=None):
         """
@@ -667,30 +677,6 @@ class NetworkService(PageableObjectMixin, CloudService):
 
         :rtype: :class:`FloatingIP`
         :return: floating IP object
-        """
-        pass
-
-    @abstractmethod
-    def routers(self):
-        """
-        Get a list of available routers.
-
-        :rtype: ``list`` of :class: `Router`
-        :return: list of routers
-        """
-        pass
-
-    @abstractmethod
-    def create_router(self, name=None):
-        """
-        Create a new router.
-
-        :type name: ``str``
-        :param name: An optional router name. The name will be set if the
-                     provider supports it.
-
-        :rtype: :class:`Router`
-        :return: a newly created router object
         """
         pass
 
@@ -729,9 +715,13 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network_id, cidr_block, name=None, zone=None):
+    def create(self, name, network_id, cidr_block, zone=None):
         """
         Create a new subnet within the supplied network.
+
+        :type name: ``str``
+        :param name: The subnet name. The name will be set if the
+                     provider supports it.
 
         :type network: :class:`.Network` object or ``str``
         :param network: Network object or ID under which to create the subnet.
@@ -739,10 +729,6 @@ class SubnetService(PageableObjectMixin, CloudService):
         :type cidr_block: ``str``
         :param cidr_block: CIDR block within the Network to assign to the
                            subnet.
-
-        :type name: ``str``
-        :param name: An optional subnet name. The name will be set if the
-                     provider supports it.
 
         :type zone: ``str``
         :param zone: An optional placement zone for the subnet. Some providers
@@ -820,6 +806,16 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for a router by a given list of attributes.
+
+        :rtype: List of ``object`` of :class:`.Router`
+        :return: A list of Router objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
     def create(self, network, name=None):
         """
         Create a new router.
@@ -843,11 +839,6 @@ class RouterService(PageableObjectMixin, CloudService):
 
         :type router: :class:`.Router` object or ``str``
         :param router: Router object or ID of the router to delete.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the router does not exist, ``False`` otherwise.
-                  Note that this implies that the router may not have been
-                  deleted by this method but instead has not existed at all.
         """
         pass
 
@@ -860,7 +851,7 @@ class GatewayService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self):
+    def get_or_create_inet_gateway(self, name):
         """
         Creates and returns a new internet gateway or returns an existing
         singleton gateway, depending on the cloud provider. The returned
@@ -870,6 +861,10 @@ class GatewayService(CloudService):
         cloud providers this will result in the gateway being deleted. On
         others, it will result in a no-op if the cloud has only a single/public
         gateway.
+
+        :type  name: ``str``
+        :param name: The gateway name. The name will be set if the provider
+                     supports it.
 
         :rtype: ``object``  of :class:`.InternetGateway` or ``None``
         :return: an InternetGateway object of ``None`` if not found.
