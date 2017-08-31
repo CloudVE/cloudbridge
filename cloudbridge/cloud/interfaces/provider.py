@@ -146,7 +146,8 @@ class CloudProvider(object):
         .. code-block:: python
 
             networks = provider.networking.networks.list()
-            network = provider.networking.networks.create(name="DevNet")
+            network = provider.networking.networks.create(
+                           name="DevNet", cidr_block='10.0.0.0/16')
 
         :rtype: :class:`.NetworkingService`
         :return:  a NetworkingService object

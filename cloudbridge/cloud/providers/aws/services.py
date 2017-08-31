@@ -796,11 +796,8 @@ class AWSNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def create(self, name):
-        # AWS requires CIDR block to be specified when creating a network
-        # so set a default one and use the largest allowed netmask.
-        default_cidr = '10.0.0.0/16'
-        network = self.provider.vpc_conn.create_vpc(cidr_block=default_cidr)
+    def create(self, name, cidr_block):
+        network = self.provider.vpc_conn.create_vpc(cidr_block=cidr_block)
         cb_network = AWSNetwork(self.provider, network)
         if name:
             cb_network.wait_for(

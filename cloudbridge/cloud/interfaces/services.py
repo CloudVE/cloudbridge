@@ -593,13 +593,23 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name):
+    def create(self, name, cidr_block):
         """
         Create a new network.
 
         :type name: ``str``
         :param name: A network name. The name will be set if the
                      provider supports it.
+
+        :type cidr_block: ``str``
+        :param cidr_block: The cidr block for this network. Some providers
+                           will respect this at the network level, while others
+                           will only respect it at subnet level. However, to
+                           write portable code, you should make sure that any
+                           subnets you create fall within this initially
+                           specified range. Note that the block size should be
+                           between a /16 netmask (65,536 IP addresses) and /28
+                           netmask (16 IP addresses). e.g. 10.0.0.0/16
 
         :rtype: ``object`` of :class:`.Network`
         :return:  A Network object

@@ -102,7 +102,8 @@ def create_test_network(provider, name):
     """
     Create a network with one subnet, returning the network and subnet objects.
     """
-    net = provider.networking.networks.create(name=name)
+    net = provider.networking.networks.create(name=name,
+                                              cidr_block='10.0.0.0/16')
     cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
     sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block), name=name,
                            zone=get_provider_test_data(provider, 'placement'))

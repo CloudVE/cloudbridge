@@ -12,7 +12,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_network_service(self):
         name = 'cb_crudnetwork-{0}'.format(helpers.get_uuid())
         subnet_name = 'cb_crudsubnet-{0}'.format(helpers.get_uuid())
-        net = self.provider.networking.networks.create(name=name)
+        net = self.provider.networking.networks.create(
+            name=name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
             lambda:
                 self.provider.networking.networks.delete(network_id=net.id)
@@ -70,7 +71,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_network_properties(self):
         name = 'cb_propnetwork-{0}'.format(helpers.get_uuid())
         subnet_name = 'cb_propsubnet-{0}'.format(helpers.get_uuid())
-        net = self.provider.networking.networks.create(name=name)
+        net = self.provider.networking.networks.create(
+            name=name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
             lambda: net.delete()
         ):
@@ -125,7 +127,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         router = None
         gteway = None
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
-            net = self.provider.networking.networks.create(name=name)
+            net = self.provider.networking.networks.create(
+                name=name, cidr_block='10.0.0.0/16')
             router = self.provider.networking.routers.create(network=net,
                                                              name=name)
             cidr = '10.0.1.0/24'
