@@ -834,7 +834,8 @@ class OpenStackSubnetService(BaseSubnetService):
                     return sn
             # No default; create one
             net = self.provider.networking.networks.create(
-                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
+                name=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME,
+                cidr_block='10.0.0.0/16')
             sn = net.create_subnet(name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME,
                                    cidr_block='10.0.0.0/24')
             router = self.provider.networking.routers.create(
