@@ -942,6 +942,8 @@ class OpenStackInternetGateway(BaseInternetGateway):
 
     def __init__(self, provider, gateway_net):
         super(OpenStackInternetGateway, self).__init__(provider)
+        if isinstance(gateway_net, OpenStackNetwork):
+            gateway_net = gateway_net._network
         self._gateway_net = gateway_net
 
     @property
