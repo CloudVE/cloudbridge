@@ -4,6 +4,7 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
 from cloudbridge.cloud.interfaces.resources import RouterState
+from cloudbridge.cloud.interfaces.resources import Subnet
 
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
@@ -156,3 +157,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             # TODO: add a check for routes after that's been implemented
 
         sit.check_delete(self, self.provider.networking.routers, router)
+
+    @helpers.skipIfNoService(['networking.networks'])
+    def test_default_network(self):
+        subnet = self.provider.networking.subnets.get_or_create_default()
+        self.assertIsInstance(subnet, Subnet)

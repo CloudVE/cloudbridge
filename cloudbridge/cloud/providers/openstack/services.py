@@ -839,12 +839,12 @@ class OpenStackSubnetService(BaseSubnetService):
                                    name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
             router = self.provider.network.create_router(
                 OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
-            for n in self.provider.network.list():
-                if n.external:
-                    external_net = n
-                    break
-            router.attach_network(external_net.id)
-            router.add_route(sn.id)
+            router.attach_subnet(sn)
+            gteway = (self.provider.networking.gateways
+                      .get_or_create_inet_gateway(
+                          OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                          ))
+            router.attach_gateway(gteway)
             return sn
         except NeutronClientException:
             return None
