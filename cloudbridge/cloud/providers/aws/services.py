@@ -813,11 +813,12 @@ class AWSNetworkService(BaseNetworkService):
     def subnets(self):
         return self._subnet_svc
 
-    def floating_ips(self, network_id=None):
-        fltrs = None
-        if network_id:
-            fltrs = {'network-interface-id': network_id}
-        al = self.provider.vpc_conn.get_all_addresses(filters=fltrs)
+    @property
+    def floating_ips(self):
+        # fltrs = None
+        # if network_id:
+        #     fltrs = {'network-interface-id': network_id}
+        al = self.provider.vpc_conn.get_all_addresses()
         return [AWSFloatingIP(self.provider, a) for a in al]
 
     def create_floating_ip(self):

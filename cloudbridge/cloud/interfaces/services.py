@@ -653,8 +653,8 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
-    @abstractmethod
-    def floating_ips(self, network_id=None):
+    @abstractproperty
+    def floating_ips(self):
         """
         List floating (i.e., static) IP addresses.
 
