@@ -36,7 +36,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             ip = self.provider.networking.networks.create_floating_ip()
             ip_id = ip.id
             with helpers.cleanup_action(lambda: ip.delete()):
-                ipl = self.provider.networking.networks.floating_ips()
+                ipl = self.provider.networking.networks.floating_ips
                 self.assertTrue(
                     ip in ipl,
                     "Floating IP address {0} should exist in the list {1}"
@@ -57,7 +57,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 self.assertFalse(
                     ip.in_use(),
                     "Newly created floating IP address should not be in use.")
-            ipl = self.provider.networking.networks.floating_ips()
+            ipl = self.provider.networking.networks.floating_ips
             found_ip = [a for a in ipl if a.id == ip_id]
             self.assertTrue(
                 len(found_ip) == 0,
