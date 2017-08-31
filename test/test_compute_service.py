@@ -313,6 +313,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
             # check floating ips
             router = self.provider.networking.routers.create(name, net)
+            gateway = None
 
             def cleanup_router():
                 with helpers.cleanup_action(lambda: router.delete()):
