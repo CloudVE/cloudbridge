@@ -887,7 +887,7 @@ class AWSSubnetService(BaseSubnetService):
                 return AWSSubnet(self.provider, sn)
         # No provider-default Subnet exists, try to create it (net + subnets)
         default_net = self.provider.network.create(
-            name=AWSNetwork.CB_DEFAULT_NETWORK_NAME)
+            name=AWSNetwork.CB_DEFAULT_NETWORK_NAME, cidr_block='10.0.0.0/16')
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(
             self.provider.vpc_conn.region.name)

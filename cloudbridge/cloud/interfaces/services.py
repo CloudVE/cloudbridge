@@ -753,6 +753,8 @@ class SubnetService(PageableObjectMixin, CloudService):
     def get_or_create_default(self, zone=None):
         """
         Return a default subnet for the account or create one if not found.
+        This provides a convenience method for obtaining a network if you
+        are not particularly concerned with how the network is structured.
 
         A default network is one marked as such by the provider or matches the
         default name used by this library (e.g., CloudBridgeNet).
