@@ -814,7 +814,7 @@ class OpenStackSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, network, name, cidr_block, zone=None):
+    def create(self, name, network, cidr_block, zone=None):
         """zone param is ignored."""
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
@@ -833,11 +833,12 @@ class OpenStackSubnetService(BaseSubnetService):
                 if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
                     return sn
             # No default; create one
-            net = self.provider.network.create(
+            net = self.provider.networking.networks.create(
                 OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
-            sn = net.create_subnet(cidr_block='10.0.0.0/24',
-                                   name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
-            router = self.provider.network.create_router(
+            sn = self.provider.networking.subnets.create(
+                name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME,
+                network=net, cidr_block='10.0.0.0/24')
+            router = self.provider.networking.routers.create(
                 OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
             router.attach_subnet(sn)
             gteway = (self.provider.networking.gateways

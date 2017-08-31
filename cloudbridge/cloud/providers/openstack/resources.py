@@ -964,6 +964,10 @@ class OpenStackInternetGateway(BaseInternetGateway):
         else:
             raise InvalidNameException(value)
 
+    @property
+    def network_id(self):
+        return self._gateway_net.id
+
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
         network = self._provider.networking.networks.get(self.id)
