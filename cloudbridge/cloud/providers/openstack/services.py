@@ -94,13 +94,14 @@ class OpenStackSecurityService(BaseSecurityService):
         """
         keystone = self.provider.keystone
         if hasattr(keystone, 'ec2'):
-            user_creds = [cred for cred in keystone.ec2.list(keystone.user_id)
-                          if cred.tenant_id == keystone.tenant_id]
+            user_id = keystone.session.get_user_id()
+            user_creds = [cred for cred in keystone.ec2.list(user_id) if
+                          cred.tenant_id == keystone.session.get_project_id()]
             if user_creds:
                 return user_creds[0]
             else:
-                return keystone.ec2.create(keystone.user_id,
-                                           keystone.tenant_id)
+                return keystone.ec2.create(
+                    user_id, keystone.session.get_project_id())
 
         return None
 
@@ -109,21 +110,12 @@ class OpenStackSecurityService(BaseSecurityService):
         A provider specific method than returns the ec2 endpoints if
         available.
         """
-        service_catalog = self.provider.keystone.service_catalog.get_data()
-        current_region = self.provider.compute.regions.current.id
-        ec2_url = [endpoint.get('publicURL')
-                   for svc in service_catalog
-                   for endpoint in svc.get('endpoints', [])
-                   if endpoint.get('region', None) ==
-                   current_region and svc.get('type', None) == 'ec2']
-        s3_url = [endpoint.get('publicURL')
-                  for svc in service_catalog
-                  for endpoint in svc.get('endpoints', [])
-                  if endpoint.get('region', None) ==
-                  current_region and svc.get('type', None) == 's3']
+        keystone = self.provider.keystone
+        ec2_url = keystone.session.get_endpoint(service_type='ec2')
+        s3_url = keystone.session.get_endpoint(service_type='s3')
 
-        return {'ec2_endpoint': ec2_url[0] if ec2_url else None,
-                's3_endpoint': s3_url[0] if s3_url else None}
+        return {'ec2_endpoint': ec2_url,
+                's3_endpoint': s3_url}
 
 
 class OpenStackKeyPairService(BaseKeyPairService):
