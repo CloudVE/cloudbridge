@@ -739,6 +739,11 @@ class OpenStackNetwork(BaseNetwork):
 
     def delete(self):
         if self.id in str(self._provider.neutron.list_networks()):
+            # If there are ports associated with the network, it won't delete
+            ports = self._provider.neutron.list_ports(
+                network_id=self.id).get('ports', [])
+            for port in ports:
+                self._provider.neutron.delete_port(port.get('id'))
             self._provider.neutron.delete_network(self.id)
         # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_networks()):
