@@ -4,12 +4,13 @@ from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
+from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import InstanceType
-# from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SnapshotState
 
 import six
 
@@ -79,13 +80,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                              " {1}".format(test_instance.image_id, image_id))
             self.assertIsInstance(test_instance.zone_id,
                                   six.string_types)
-            # FIXME: Moto is not returning the instance's placement zone
-#             find_zone = [zone for zone in
-#                          self.provider.compute.regions.current.zones
-#                          if zone.id == test_instance.zone_id]
-#             self.assertEqual(len(find_zone), 1,
-#                              "Instance's placement zone could not be "
-#                              " found in zones list")
             self.assertEqual(
                 test_instance.image_id,
                 helpers.get_provider_test_data(self.provider, "image"))
@@ -129,6 +123,16 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 itype.name, expected_type,
                 "Instance type {0} does not match expected type {1}".format(
                     itype.name, expected_type))
+            if isinstance(self.provider, TestMockHelperMixin):
+                raise self.skipTest(
+                    "Skipping rest of test because Moto is not returning the"
+                    " instance's placement zone correctly")
+            find_zone = [zone for zone in
+                         self.provider.compute.regions.current.zones
+                         if zone.id == test_instance.zone_id]
+            self.assertEqual(len(find_zone), 1,
+                             "Instance's placement zone could not be "
+                             " found in zones list")
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
                               'compute.instance_types'])
@@ -196,42 +200,41 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_block_device_mapping_attachments(self):
         name = "cb_blkattch-{0}".format(helpers.get_uuid())
 
-        # Comment out BDM tests because OpenStack is not stable enough yet
-        if True:
-            if True:
+        if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
+            raise self.skipTest("Not running BDM tests because OpenStack is"
+                                " not stable enough yet")
 
-                # test_vol = self.provider.block_store.volumes.create(
-                #    name,
-                #    1,
-                #    helpers.get_provider_test_data(self.provider,
-                #                                   "placement"))
-                # with helpers.cleanup_action(lambda: test_vol.delete()):
-                #    test_vol.wait_till_ready()
-                #    test_snap = test_vol.create_snapshot(name=name,
-                #                                         description=name)
-                #
-                #    def cleanup_snap(snap):
-                #        snap.delete()
-                #        snap.wait_for(
-                #            [SnapshotState.UNKNOWN],
-                #            terminal_states=[SnapshotState.ERROR])
-                #
-                #    with helpers.cleanup_action(lambda:
-                #                                cleanup_snap(test_snap)):
-                #         test_snap.wait_till_ready()
+        test_vol = self.provider.block_store.volumes.create(
+           name,
+           1,
+           helpers.get_provider_test_data(self.provider,
+                                          "placement"))
+        with helpers.cleanup_action(lambda: test_vol.delete()):
+            test_vol.wait_till_ready()
+            test_snap = test_vol.create_snapshot(name=name,
+                                                 description=name)
+
+            def cleanup_snap(snap):
+                snap.delete()
+                snap.wait_for([SnapshotState.UNKNOWN],
+                              terminal_states=[SnapshotState.ERROR])
+
+            with helpers.cleanup_action(lambda:
+                                        cleanup_snap(test_snap)):
+                test_snap.wait_till_ready()
 
                 lc = self.provider.compute.instances.create_launch_config()
 
-#                 # Add a new blank volume
-#                 lc.add_volume_device(size=1, delete_on_terminate=True)
-#
-#                 # Attach an existing volume
-#                 lc.add_volume_device(size=1, source=test_vol,
-#                                      delete_on_terminate=True)
-#
-#                 # Add a new volume based on a snapshot
-#                 lc.add_volume_device(size=1, source=test_snap,
-#                                      delete_on_terminate=True)
+                # Add a new blank volume
+                lc.add_volume_device(size=1, delete_on_terminate=True)
+
+                # Attach an existing volume
+                lc.add_volume_device(size=1, source=test_vol,
+                                     delete_on_terminate=True)
+
+                # Add a new volume based on a snapshot
+                lc.add_volume_device(size=1, source=test_snap,
+                                     delete_on_terminate=True)
 
                 # Override root volume size
                 image_id = helpers.get_provider_test_data(
