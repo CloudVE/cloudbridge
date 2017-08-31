@@ -881,8 +881,8 @@ class OpenStackRouter(BaseRouter):
         Set the router name.
         """
         if self.is_valid_resource_name(value):
-            self._router.name = value
-            self._router.update(name=value)
+            self._provider.neutron.update_router(
+                self.id, {'router': {'name': value}})
         else:
             raise InvalidNameException(value)
 
