@@ -325,6 +325,11 @@ class OpenStackInstance(BaseInstance):
         """
         Permanently terminate this instance.
         """
+        # delete the port we created when launching
+        # Assumption: it's the first interface in the list
+        iface_list = self._os_instance.interface_list()
+        if iface_list:
+            self._provider.neutron.delete_port(iface_list[0].port_id)
         self._os_instance.delete()
 
     @property
@@ -882,6 +887,7 @@ class OpenStackRouter(BaseRouter):
         if self.is_valid_resource_name(value):
             self._provider.neutron.update_router(
                 self.id, {'router': {'name': value}})
+            self.refresh()
         else:
             raise InvalidNameException(value)
 
@@ -921,11 +927,11 @@ class OpenStackRouter(BaseRouter):
         return False
 
     def attach_gateway(self, gateway):
-        self._router = self._provider.neutron.add_gateway_router(
+        self._provider.neutron.add_gateway_router(
             self.id, {'network_id': gateway.id})
 
     def detach_gateway(self, gateway):
-        self._router = self._provider.neutron.remove_gateway_router(
+        self._provider.neutron.remove_gateway_router(
             self.id).get('router', self._router)
 
 
