@@ -142,7 +142,7 @@ class GCECloudProvider(BaseCloudProvider):
             'gce_service_creds_file', os.environ.get('GCE_SERVICE_CREDS_FILE'))
         self.credentials_dict = self._get_config_value(
             'gce_service_creds_dict',
-            json.loads(os.environ.get('GCE_SERVICE_CREDS_DICT') or '{}'))
+            json.loads(os.getenv('GCE_SERVICE_CREDS_DICT', '{}')))
         # If 'gce_service_creds_dict' is not passed in from config and
         # self.credentials_file is available, read and parse the json file to
         # self.credentials_dict.
