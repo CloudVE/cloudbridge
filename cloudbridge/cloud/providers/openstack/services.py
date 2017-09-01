@@ -828,9 +828,9 @@ class OpenStackSubnetService(BaseSubnetService):
         Subnet zone is not supported by OpenStack and is thus ignored.
         """
         try:
-            for sn in self.list():
-                if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
-                    return sn
+            sn = self.find(name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
+            if sn:
+                return sn[0]
             # No default; create one
             net = self.provider.networking.networks.create(
                 name=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME,
@@ -886,8 +886,8 @@ class OpenStackRouterService(BaseRouterService):
         https://developer.openstack.org/api-ref/networking/v2/
             ?expanded=delete-router-detail,create-router-detail#create-router
         """
-        router = self.provider.neutron.create_router(
-            {'router': {'name': name}})
+        body = {'router': {'name': name}} if name else None
+        router = self.provider.neutron.create_router(body)
         return OpenStackRouter(self.provider, router.get('router'))
 
 
