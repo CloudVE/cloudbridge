@@ -1153,12 +1153,10 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def group(self):
-        cg = self._rule.get('group', {}).get('name')
-        if cg:
-            security_groups = self._provider.nova.security_groups.list()
-            for sg in security_groups:
-                if sg.name == cg:
-                    return OpenStackSecurityGroup(self._provider, sg)
+        sg_name = self._rule.get('group', {}).get('name')
+        if sg_name:
+            sg = self._provider.security.security_groups.find(name=sg_name)
+            return sg[0] if sg else None
         return None
 
     def to_json(self):
