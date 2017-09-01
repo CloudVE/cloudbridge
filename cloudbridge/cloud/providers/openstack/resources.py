@@ -272,7 +272,7 @@ class OpenStackInstance(BaseInstance):
         """
         if self.is_valid_resource_name(value):
             self._os_instance.name = value
-            self._os_instance.update()
+            self._os_instance.update(name=value)
         else:
             raise InvalidNameException(value)
 
