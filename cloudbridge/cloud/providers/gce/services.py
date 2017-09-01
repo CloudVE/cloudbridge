@@ -748,9 +748,8 @@ class GCESubnetService(BaseSubnetService):
                 return subnet
         return None
 
-    def list(self, network=None, region=None, limit=None, marker=None):
-        if not region:
-            region = self.provider.region_name
+    def list(self, network=None, zone=None, limit=None, marker=None):
+        region = zone.region_name if zone else self.provider.region_name
         filter = None
         if network is not None:
             filter = 'network eq %s' % network.resource_url
@@ -774,10 +773,13 @@ class GCESubnetService(BaseSubnetService):
                                      response.get('nextPageToken'),
                                      False, data=subnets)
 
-    def create(self, network, cidr_block, name=None, zone=None):
+    def create(self, network, cidr_block, name=None, zone=None, region=None):
         if not name:
             name = 'subnet-{0}'.format(uuid.uuid4())
-        region = self.provider.region_name
+        if region is not None and zone is not None:
+            cb.log.warning('Both parameters "zone" and "region" are provided')
+        if region is None:
+            region = self.provider.region_name
         if isinstance(zone, GCEPlacementZone):
             region = zone.region_name
         body = {'ipCidrRange': cidr_block,
@@ -797,14 +799,28 @@ class GCESubnetService(BaseSubnetService):
                 return None
             subnets = self.list(network, region)
             for subnet in subnets:
-                cb.log.warning('subnet ID: %s', subnet.id)
                 if subnet.id == response['targetId']:
                     return subnet
         except:
             return None
 
     def get_or_create_default(self, zone=None):
-        raise NotImplementedError('To be implemented')
+        """
+        Every GCP project comes with a default auto mode VPC network. An auto
+        mode VPC network has exactly one subnetwork per region. This method
+        returns the subnetwork of the default network that spans the given
+        zone.
+        """
+        network = self.provider.network.get_by_name(
+                GCEFirewallsDelegate.DEFAULT_NETWORK)
+        subnets = self.list(network, zone)
+        if len(subnets) > 1:
+            cb.log.warning('The default network has more than one subnetwork '
+                           'in a region')
+        if len(subnets) > 0:
+            return subnets[0]
+        cb.log.warning('The default network has no subnetwork in a region')
+        return None
 
     def delete(self, subnet):
         response = (self.provider

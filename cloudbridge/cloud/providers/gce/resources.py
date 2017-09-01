@@ -1384,7 +1384,7 @@ class GCESubnet(BaseSubnet):
 
     @property
     def zone(self):
-        raise NotImplementedError('To be implemented')
+        raise NotImplementedError('GCP subnetworks are regional resources')
 
     @property
     def delete(self):
