@@ -896,10 +896,8 @@ class GCEInstance(BaseInstance):
             return None
         for disk in self._gce_instance['disks']:
             if 'boot' in disk and disk['boot']:
-                boot_disk = GCEVolume(
-                    self._provider,
-                    self._provider.get_gce_resource_data(disk['source']))
-                return boot_disk.source_image
+                return self._provider.get_gce_resource_data(
+                    disk['source']).get('sourceImage')
         return None
 
     @property
@@ -958,12 +956,10 @@ class GCEInstance(BaseInstance):
             return
         for disk in self._gce_instance['disks']:
             if 'boot' in disk and disk['boot']:
-                boot_disk = GCEVolume(
-                    self._provider,
-                    self._provider.get_gce_resource_data(disk['source']))
                 image_body = {
                     'name': name,
-                    'sourceDisk': boot_disk.id
+                    'sourceDisk': self._provider.get_gce_resource_data(
+                        disk['source']).get('selfLink')
                 }
                 operation = (self._provider
                              .gce_compute
@@ -1426,7 +1422,7 @@ class GCESubnet(BaseSubnet):
 
     @property
     def zone(self):
-        raise NotImplementedError('GCP subnetworks are regional resources')
+        return None
 
     @property
     def delete(self):
@@ -1508,12 +1504,15 @@ class GCEVolume(BaseVolume):
 
     @property
     def source(self):
-        return (self._volume.get('sourceSnapshot') or
-                self._volume.get('sourceImage'))
-
-    @property
-    def source_image(self):
-        return self._volume.get('sourceImage')
+        if 'sourceSnapshot' in self._volume:
+            return GCESnapshot(self._provider,
+                               self._provider.get_gce_resource_data(
+                                   self._volume.get('sourceSnapshot')))
+        if 'sourceImage' in self._volume:
+            return GCEMachineImage(self._provider,
+                                   self._provider.get_gce_resource_data(
+                                       self._volume.get('sourceImage')))
+        return None
 
     @property
     def attachments(self):

@@ -626,28 +626,27 @@ class GCENetworkService(BaseNetworkService):
         except:
             return []
 
-    def create(self, name):
+    def _create(self, name, autoCreateSubnetworks):
         """
-        Creates a custom mode VPC network.
-        """
-        try:
-            networks = self.list(filter='name eq %s' % name)
-            if len(networks) > 0:
-                return networks[0]
+        Possible values for 'autoCreateSubnetworks' are:
 
-            # Possible values for 'autoCreateSubnetworks' are:
-            #
-            # None: For creating a legacy (non-subnetted) network.
-            # True: For creating an auto mode VPC network. This also creates a
-            #       subnetwork in every region.
-            # False: For creating a custom mode VPC network. Subnetworks should
-            #        be created manually.
+        None: For creating a legacy (non-subnetted) network.
+        True: For creating an auto mode VPC network. This also creates a
+              subnetwork in every region.
+        False: For creating a custom mode VPC network. Subnetworks should be
+               created manually.
+        """
+        networks = self.list(filter='name eq %s' % name)
+        if len(networks) > 0:
+            return networks[0]
+        body = {'name': name,
+                'autoCreateSubnetworks': autoCreateSubnetworks}
+        try:
             response = (self.provider
                             .gce_compute
                             .networks()
                             .insert(project=self.provider.project_name,
-                                    body={'name': name,
-                                          'autoCreateSubnetworks': False})
+                                    body=body)
                             .execute())
             if 'error' in response:
                 return None
@@ -656,6 +655,15 @@ class GCENetworkService(BaseNetworkService):
             return None if len(networks) == 0 else networks[0]
         except:
             return None
+
+    def create(self, name):
+        """
+        Creates a custom mode VPC network.
+        """
+        return self._create(name, False)
+
+    def get_or_create_default(self):
+        return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, True)
 
     @property
     def subnets(self):
@@ -773,7 +781,12 @@ class GCESubnetService(BaseSubnetService):
                                      response.get('nextPageToken'),
                                      False, data=subnets)
 
-    def create(self, network, cidr_block, name=None, zone=None, region=None):
+    def create(self, network, cidr_block, name=None, zone=None):
+        """
+        GCE subnets are regional. The region is inferred from the zone if a
+        zone is provided; otherwise, the default region, as set in the
+        provider, is used.
+        """
         if not name:
             name = 'subnet-{0}'.format(uuid.uuid4())
         if region is not None and zone is not None:
@@ -811,8 +824,7 @@ class GCESubnetService(BaseSubnetService):
         returns the subnetwork of the default network that spans the given
         zone.
         """
-        network = self.provider.network.get_by_name(
-                GCEFirewallsDelegate.DEFAULT_NETWORK)
+        network = self.provider.network.get_or_create_default()
         subnets = self.list(network, zone)
         if len(subnets) > 1:
             cb.log.warning('The default network has more than one subnetwork '
