@@ -209,7 +209,7 @@ class ProviderTestBase(unittest.TestCase):
     def create_provider_instance(self):
         provider_name = os.environ.get("CB_TEST_PROVIDER", "azure")
         use_mock_drivers = parse_bool(
-            os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
+            os.environ.get("CB_USE_MOCK_PROVIDERS", "False"))
         factory = CloudProviderFactory()
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
