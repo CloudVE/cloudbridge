@@ -318,13 +318,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             router = self.provider.networking.routers.create(name, net)
             gateway = None
 
-            def cleanup_router():
+            def cleanup_router(router, gateway):
                 with helpers.cleanup_action(lambda: router.delete()):
                     with helpers.cleanup_action(lambda: gateway.delete()):
                         router.detach_subnet(subnet)
                         router.detach_gateway(gateway)
 
-            with helpers.cleanup_action(lambda: cleanup_router()):
+            with helpers.cleanup_action(lambda: cleanup_router(router,
+                                                               gateway)):
                 router.attach_subnet(subnet)
                 gateway = (self.provider.networking.gateways
                            .get_or_create_inet_gateway(name))
@@ -335,11 +336,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 with helpers.cleanup_action(lambda: fip.delete()):
                     test_inst.add_floating_ip(fip.public_ip)
                     test_inst.refresh()
-                    self.assertIn(fip.public_ip, test_inst.public_ips)
+                    # On Devstack, the floating IP is listed under private_ips.
+                    self.assertIn(fip.public_ip,
+                                  test_inst.public_ips + test_inst.private_ips)
                     if isinstance(self.provider, TestMockHelperMixin):
                         # TODO: Moto bug does not refresh removed public ip
                         return
                     # check whether removing an elastic ip works
                     test_inst.remove_floating_ip(fip.public_ip)
                     test_inst.refresh()
-                    self.assertNotIn(fip.public_ip, test_inst.public_ips)
+                    self.assertNotIn(
+                        fip.public_ip,
+                        test_inst.public_ips + test_inst.private_ips)

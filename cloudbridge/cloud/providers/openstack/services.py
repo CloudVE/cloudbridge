@@ -839,7 +839,7 @@ class OpenStackSubnetService(BaseSubnetService):
             sn = net.create_subnet(name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME,
                                    cidr_block='10.0.0.0/24')
             router = self.provider.networking.routers.create(
-                OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
+                network=net, name=OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
             router.attach_subnet(sn)
             gteway = (self.provider.networking.gateways
                       .get_or_create_inet_gateway(
