@@ -1,19 +1,27 @@
+dist: trusty
 language: python
-python: 3.6
+python:
+  - 3.6
 os:
   - linux
 #  - osx
-env:
-  - TOX_ENV=py27-aws
-  - TOX_ENV=py27-openstack
-  - TOX_ENV=py36-aws
-  - TOX_ENV=py36-openstack
-  - TOX_ENV=pypy-aws
-  - TOX_ENV=pypy-openstack
 matrix:
   fast_finish: true
   allow_failures:
     - os: osx
+  include:
+    - python: 2.7
+      env: TOX_ENV=py27-aws
+    - python: 2.7
+      env: TOX_ENV=py27-openstack
+    - python: 3.6
+      env: TOX_ENV=py36-aws
+    - python: 3.6
+      env: TOX_ENV=py36-openstack
+    - python: pypy-5.3.1
+      env: TOX_ENV=pypy-aws
+    - python: pypy-5.3.1
+      env: TOX_ENV=pypy-openstack
 install:
   - pip install tox
   - pip install coveralls
