@@ -576,32 +576,48 @@ class OpenStackInstanceService(BaseInstanceService):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
-        if security_groups:
-            if isinstance(security_groups, list) and \
-                    isinstance(security_groups[0], SecurityGroup):
-                security_groups_list = [sg.name for sg in security_groups]
-            else:
-                security_groups_list = security_groups
-        else:
-            security_groups_list = None
         bdm = None
         if launch_config:
             bdm = self._to_block_device_mapping(launch_config)
 
+        # Security groups must be passed in as a list of IDs and attached to a
+        # port if a port is being created. Otherwise, the security groups must
+        # be passed in as a list of names to the servers.create() call.
+        # OpenStack will respect the port's security groups first and then
+        # fall-back to the named security groups.
+        sg_name_list = []
         nics = None
         if subnet_id:
             log.debug("Creating network port for %s in subnet: %s" %
                       (name, subnet_id))
+            sg_list = []
+            if security_groups:
+                if isinstance(security_groups, list) and \
+                        isinstance(security_groups[0], SecurityGroup):
+                    sg_list = security_groups
+                else:
+                    sg_list = (self.provider.security.security_groups
+                               .find(name=sg) for sg in security_groups)
+                    sg_list = (sg[0] for sg in sg_list if sg)
+            sg_id_list = [sg.id for sg in sg_list]
             port_def = {
                 "port": {
                     "admin_state_up": True,
                     "name": name,
                     "network_id": net_id,
-                    "fixed_ips": [{"subnet_id": subnet_id}]
+                    "fixed_ips": [{"subnet_id": subnet_id}],
+                    "security_groups": sg_id_list
                 }
             }
             port_id = self.provider.neutron.create_port(port_def)['port']['id']
             nics = [{'net-id': net_id, 'port-id': port_id}]
+        else:
+            if security_groups:
+                if isinstance(security_groups, list) and \
+                        isinstance(security_groups[0], SecurityGroup):
+                    sg_name_list = [sg.name for sg in security_groups]
+                else:
+                    sg_name_list = security_groups
 
         log.debug("Launching in subnet %s" % subnet_id)
         os_instance = self.provider.nova.servers.create(
@@ -612,7 +628,7 @@ class OpenStackInstanceService(BaseInstanceService):
             max_count=1,
             availability_zone=zone_id,
             key_name=key_pair_name,
-            security_groups=security_groups_list,
+            security_groups=sg_name_list,
             userdata=user_data,
             block_device_mapping_v2=bdm,
             nics=nics)
