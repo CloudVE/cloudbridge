@@ -356,8 +356,8 @@ class OpenStackInstance(BaseInstance):
         """
         Get the security groups associated with this instance.
         """
-        return [self._provider.security.security_groups.find(group['name'])[0]
-                for group in self._os_instance.security_groups]
+        return [OpenStackSecurityGroup(self._provider, group)
+                for group in self._os_instance.list_security_group()]
 
     @property
     def security_group_ids(self):
