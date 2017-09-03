@@ -1,7 +1,5 @@
 dist: trusty
 language: python
-python:
-  - 3.6
 os:
   - linux
 #  - osx
@@ -22,6 +20,25 @@ matrix:
       env: TOX_ENV=pypy-aws
     - python: pypy-5.3.1
       env: TOX_ENV=pypy-openstack
+before_install:
+    - |
+      DOCS_REGEX='(\.rst$)|(^(docs))/'
+      FILES_IN_CHANGESET="`git diff --name-only $TRAVIS_COMMIT_RANGE`"
+      echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX" || {
+         echo "Only docs were updated. Stopping build process."
+         exit
+      }
+      # Extract env and provider from $TOXENV into $PYENV and $PROVIDER respectively
+      IFS=- read PYENV PROVIDER <<< "$TOXENV"
+      echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX|(^(cloudbridge/cloud/providers))" || {
+          echo "Only docs and providers were updated. Checking whether this provider was changed."
+          echo "$FILES_IN_CHANGESET" | grep -qE "^(cloudbridge/cloud/providers/$PROVIDER)" && {
+              echo "This provider was affected by this changeset. Running tests."
+          } || {
+              echo "This provider was not affected by this changeset. Stopping build process."
+              exit
+          }
+      }
 install:
   - pip install tox
   - pip install coveralls
