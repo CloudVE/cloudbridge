@@ -15,9 +15,19 @@ and 4 GB RAM.
 .. code-block:: python
 
     img = provider.compute.images.get('ami-f4cc1de2')  # Ubuntu 16.04 on AWS
-    inst_type = sorted([t for t in provider.compute.instance_types.list()
+    inst_type = sorted([t for t in provider.compute.instance_types
                         if t.vcpus >= 2 and t.ram >= 4],
                        key=lambda x: x.vcpus*x.ram)[0]
+
+In addition, CloudBridge instances must be launched into a private subnet.
+While it is possible to create complex network configurations as shown in the
+`Private networking`_ section, if you don't particularly care where the
+instance is launched, CloudBridge provides a convenience function to quickly
+obtain a default subnet for use.
+
+.. code-block:: python
+
+    subnet = provider.networking.subnets.get_or_create_default()
 
 When launching an instance, you can also specify several optional arguments
 such as the security group, a key pair, or instance user data. To allow you to
@@ -39,20 +49,27 @@ Once we have all the desired pieces, we'll use them to launch an instance:
 
     inst = provider.compute.instances.create(
         name='CloudBridge-VPC', image=img, instance_type=inst_type,
-        key_pair=kp, security_groups=[sg])
+        subnet=subnet, key_pair=kp, security_groups=[sg])
 
 Private networking
 ~~~~~~~~~~~~~~~~~~
 Private networking gives you control over the networking setup for your
 instance(s) and is considered the preferred method for launching instances. To
-launch an instance with an explicit private network, supply a subnet within
-a network as an additional argument to the ``create`` method:
+launch an instance with an explicit private network, you can create a custom
+network and make sure it has internet connectivity. You can then launch into
+that subnet.
 
 .. code-block:: python
 
-    provider.network.list()  # Find a desired network ID
-    net = provider.network.get('desired network ID')
-    sn = net.subnets()[0]  # Get a handle on the desired subnet to launch with
+    net = self.provider.networking.networks.create(
+        name='my-network', cidr_block='10.0.0.0/16')
+    sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
+    # make sure subnet has internet access
+    router = self.provider.networking.routers.create(network=net, name='my-router')
+    router.attach_subnet(sn)
+    gateway = self.provider.networking.gateways.get_or_create_inet_gateway(name)
+    router.attach_gateway(gateway)
+
     inst = provider.compute.instances.create(
         name='CloudBridge-VPC', image=img, instance_type=inst_type,
         subnet=sn, key_pair=kp, security_groups=[sg])
