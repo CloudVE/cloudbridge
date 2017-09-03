@@ -5,6 +5,7 @@ import hashlib
 import inspect
 import io
 import json
+import math
 import re
 import uuid
 
@@ -675,6 +676,16 @@ class GCEMachineImage(BaseMachineImage):
         """
         return self._gce_image.get('description', '')
 
+    @property
+    def min_disk(self):
+        """
+        Returns the minimum size of the disk that's required to
+        boot this image (in GB)
+        :rtype: ``int``
+        :return: The minimum disk size needed by this image
+        """
+        return int(math.ceil(float(self._gce_image.get('diskSizeGb'))))
+
     def delete(self):
         """
         Delete this image
@@ -881,8 +892,12 @@ class GCEInstance(BaseInstance):
         """
         Get the image ID for this insance.
         """
-        raise NotImplementedError(
-            'To be implemented after GCEVolumeService.')
+        if 'disks' not in self._gce_instance:
+            return None
+        for disk in self._gce_instance['disks']:
+            if 'boot' in disk and disk['boot']:
+                return self._provider.get_gce_resource_data(
+                    disk['source']).get('sourceImage')
         return None
 
     @property
@@ -936,8 +951,25 @@ class GCEInstance(BaseInstance):
         """
         Create a new image based on this instance.
         """
-        raise NotImplementedError(
-            'To be implemented after GCEVolumeService.')
+        if 'disks' not in self._gce_instance:
+            cb.log.error('Failed to create image: no disks found.')
+            return
+        for disk in self._gce_instance['disks']:
+            if 'boot' in disk and disk['boot']:
+                image_body = {
+                    'name': name,
+                    'sourceDisk': self._provider.get_gce_resource_data(
+                        disk['source']).get('selfLink')
+                }
+                operation = (self._provider
+                             .gce_compute
+                             .images()
+                             .insert(project=self._provider.project_name,
+                                     body=image_body)
+                             .execute())
+                self._provider.wait_for_operation(operation)
+                return
+        cb.log.error('Failed to create image: no boot disk found.')
 
     def _get_existing_target_instance(self):
         """
@@ -1153,6 +1185,12 @@ class GCEInstance(BaseInstance):
         """
         self._gce_instance = self._provider.get_gce_resource_data(
             self._gce_instance.get('selfLink'))
+
+    def add_security_group(self, sg):
+        raise NotImplementedError('To be implemented.')
+
+    def remove_security_group(self, sg):
+        raise NotImplementedError('To be implemented.')
 
 
 class GCENetwork(BaseNetwork):
@@ -1466,7 +1504,15 @@ class GCEVolume(BaseVolume):
 
     @property
     def source(self):
-        return self._volume.get('sourceSnapshot')
+        if 'sourceSnapshot' in self._volume:
+            return GCESnapshot(self._provider,
+                               self._provider.get_gce_resource_data(
+                                   self._volume.get('sourceSnapshot')))
+        if 'sourceImage' in self._volume:
+            return GCEMachineImage(self._provider,
+                                   self._provider.get_gce_resource_data(
+                                       self._volume.get('sourceImage')))
+        return None
 
     @property
     def attachments(self):
