@@ -20,6 +20,7 @@ several common scenarios.
    In the simplest scenario, a user may simply want to launch an instance and
    allow the instance to access the internet.
 
+
 2. Allowing internet access to a launched VM
 
    Alternatively, the user may want to allow the instance to be contactable
@@ -28,6 +29,7 @@ several common scenarios.
    to access other VMs which are not directly connected to the internet. In
    the latter scenario, the gateway/jump host/bastion host will need to be
    contactable over the internet.
+
 
 3. Secure access between subnets for n-tier applications
 
