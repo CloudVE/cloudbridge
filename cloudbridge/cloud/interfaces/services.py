@@ -547,7 +547,6 @@ class ImageService(PageableObjectMixin, CloudService):
 
 
 class NetworkingService(CloudService):
-
     """
     Base service interface for networking.
 
@@ -859,7 +858,6 @@ class FloatingIPService(PageableObjectMixin, CloudService):
 
 
 class RouterService(PageableObjectMixin, CloudService):
-
     """
     Manage networking router actions and resources.
     """
@@ -927,7 +925,6 @@ class RouterService(PageableObjectMixin, CloudService):
 
 
 class GatewayService(CloudService):
-
     """
     Manage internet gateway resources.
     """

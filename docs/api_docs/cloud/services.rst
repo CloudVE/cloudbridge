@@ -41,7 +41,7 @@ ImageService
 NetworkingService
 -----------------
 .. autoclass:: cloudbridge.cloud.interfaces.services.NetworkingService
-    :members:
+:members:
 
 NetworkService
 -----------------

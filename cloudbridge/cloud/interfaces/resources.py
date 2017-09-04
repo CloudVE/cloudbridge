@@ -884,7 +884,6 @@ class Network(ObjectLifeCycleMixin, CloudResource):
 
 
 class SubnetState(object):
-
     """
     Standard states for a subnet.
 
@@ -1099,7 +1098,6 @@ class Router(CloudResource):
 
 
 class GatewayState(object):
-
     """
     Standard states for a gateway.
 
