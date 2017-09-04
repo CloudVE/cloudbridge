@@ -1,79 +1,37 @@
 import ipaddress
-import uuid
+
+from test import helpers
+from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
+
+from cloudbridge.cloud.factory import ProviderList
+from cloudbridge.cloud.interfaces import InstanceState
+from cloudbridge.cloud.interfaces import InvalidConfigurationException
+from cloudbridge.cloud.interfaces import TestMockHelperMixin
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
+from cloudbridge.cloud.interfaces.resources import InstanceType
+from cloudbridge.cloud.interfaces.resources import SnapshotState
 
 import six
-
-from cloudbridge.cloud.interfaces import InvalidConfigurationException
-from cloudbridge.cloud.interfaces import InstanceState
-from cloudbridge.cloud.interfaces.resources import InstanceType
-from cloudbridge.cloud.interfaces.exceptions import WaitStateException
-
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudComputeServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
-    @helpers.skipIfNoService(['compute.instances', 'network'])
+    @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
-        name = "CBInstCrud-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4())
-        net, subnet = helpers.create_test_network(self.provider, name)
-        inst = helpers.get_test_instance(self.provider, name, subnet=subnet)
-
+        name = "cb_instcrud-{0}".format(helpers.get_uuid())
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        inst = None
+        net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 inst, net)):
-            all_instances = self.provider.compute.instances.list()
+            net, subnet = helpers.create_test_network(self.provider, name)
+            inst = helpers.get_test_instance(self.provider, name,
+                                             subnet=subnet)
 
-            list_instances = [i for i in all_instances if i.name == name]
-            self.assertTrue(
-                len(list_instances) == 1,
-                "List instances does not return the expected instance %s" %
-                name)
-
-            # check iteration
-            iter_instances = [i for i in self.provider.compute.instances
-                              if i.name == name]
-            self.assertTrue(
-                len(iter_instances) == 1,
-                "Iter instances does not return the expected instance %s" %
-                name)
-
-            # check find
-            find_instances = self.provider.compute.instances.find(name=name)
-            self.assertTrue(
-                len(find_instances) == 1,
-                "Find instances does not return the expected instance %s" %
-                name)
-
-            # check non-existent find
-            find_instances = self.provider.compute.instances.find(
-                name="non_existent")
-            self.assertTrue(
-                len(find_instances) == 0,
-                "Find() for a non-existent image returned %s" % find_instances)
-
-            get_inst = self.provider.compute.instances.get(
-                inst.id)
-            self.assertTrue(
-                list_instances[0] ==
-                get_inst == inst,
-                "Objects returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(list_instances[0].id,
-                                         get_inst.id,
-                                         inst.id))
-            self.assertTrue(
-                list_instances[0].name ==
-                get_inst.name == inst.name,
-                "Names returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(list_instances[0].name,
-                                         get_inst.name,
-                                         inst.name))
+            sit.check_standard_behaviour(
+                self, self.provider.compute.instances, inst)
         deleted_inst = self.provider.compute.instances.get(
             inst.id)
         self.assertTrue(
@@ -90,28 +48,28 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             return False
         return True
 
-    @helpers.skipIfNoService(['compute.instances', 'network',
+    @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.security_groups',
                               'security.key_pairs'])
     def test_instance_properties(self):
-        name = "CBInstProps-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4())
-        net, subnet = helpers.create_test_network(self.provider, name)
-        kp = self.provider.security.key_pairs.create(name=name)
-        sg = self.provider.security.security_groups.create(
-            name=name, description=name, network_id=net.id)
-        test_instance = helpers.get_test_instance(self.provider,
-                                                  name, key_pair=kp,
-                                                  security_groups=[sg],
-                                                  subnet=subnet)
+        name = "cb_inst_props-{0}".format(helpers.get_uuid())
 
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        test_instance = None
+        net = None
+        sg = None
+        kp = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net, sg, kp)):
-            self.assertTrue(
-                test_instance.id in repr(test_instance),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
+            net, subnet = helpers.create_test_network(self.provider, name)
+            kp = self.provider.security.key_pairs.create(name=name)
+            sg = self.provider.security.security_groups.create(
+                name=name, description=name, network_id=net.id)
+            test_instance = helpers.get_test_instance(self.provider,
+                                                      name, key_pair=kp,
+                                                      security_groups=[sg],
+                                                      subnet=subnet)
             self.assertEqual(
                 test_instance.name, name,
                 "Instance name {0} is not equal to the expected name"
@@ -122,13 +80,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                              " {1}".format(test_instance.image_id, image_id))
             self.assertIsInstance(test_instance.zone_id,
                                   six.string_types)
-            # FIXME: Moto is not returning the instance's placement zone
-#             find_zone = [zone for zone in
-#                          self.provider.compute.regions.current.zones
-#                          if zone.id == test_instance.zone_id]
-#             self.assertEqual(len(find_zone), 1,
-#                              "Instance's placement zone could not be "
-#                              " found in zones list")
             self.assertEqual(
                 test_instance.image_id,
                 helpers.get_provider_test_data(self.provider, "image"))
@@ -172,6 +123,16 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 itype.name, expected_type,
                 "Instance type {0} does not match expected type {1}".format(
                     itype.name, expected_type))
+            if isinstance(self.provider, TestMockHelperMixin):
+                raise self.skipTest(
+                    "Skipping rest of test because Moto is not returning the"
+                    " instance's placement zone correctly")
+            find_zone = [zone for zone in
+                         self.provider.compute.regions.current.zones
+                         if zone.id == test_instance.zone_id]
+            self.assertEqual(len(find_zone), 1,
+                             "Instance's placement zone could not be "
+                             " found in zones list")
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
                               'compute.instance_types'])
@@ -200,12 +161,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # Override root volume size
         image_id = helpers.get_provider_test_data(self.provider, "image")
         img = self.provider.compute.images.get(image_id)
+        # The size should be greater then the ami size
+        # and therefore, img.min_disk is used.
         lc.add_volume_device(
             is_root=True,
             source=img,
-            # TODO: This should be greater than the ami size or tests will fail
-            # on actual infrastructure. Needs an image.size method
-            size=2,
+            size=img.min_disk if img and img.min_disk else 2,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
@@ -237,85 +198,148 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
                               'compute.instance_types', 'block_store.volumes'])
     def test_block_device_mapping_attachments(self):
-        name = "CBInstBlkAttch-{0}-{1}".format(
-            self.provider.name,
-            uuid.uuid4())
+        name = "cb_blkattch-{0}".format(helpers.get_uuid())
 
-#         test_vol = self.provider.block_store.volumes.create(
-#             name,
-#             1,
-#             helpers.get_provider_test_data(self.provider, "placement"))
-#         with helpers.cleanup_action(lambda: test_vol.delete()):
-#             test_vol.wait_till_ready()
-#             test_snap = test_vol.create_snapshot(name=name,
-#                                                  description=name)
-#
-#             def cleanup_snap(snap):
-#                 snap.delete()
-#                 snap.wait_for(
-#                     [SnapshotState.UNKNOWN],
-#                     terminal_states=[SnapshotState.ERROR])
-#
-#             with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
-#                 test_snap.wait_till_ready()
+        if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
+            raise self.skipTest("Not running BDM tests because OpenStack is"
+                                " not stable enough yet")
 
-        lc = self.provider.compute.instances.create_launch_config()
+        test_vol = self.provider.block_store.volumes.create(
+           name,
+           1,
+           helpers.get_provider_test_data(self.provider,
+                                          "placement"))
+        with helpers.cleanup_action(lambda: test_vol.delete()):
+            test_vol.wait_till_ready()
+            test_snap = test_vol.create_snapshot(name=name,
+                                                 description=name)
 
-        # Add a new blank volume
-#         lc.add_volume_device(size=1, delete_on_terminate=True)
+            def cleanup_snap(snap):
+                snap.delete()
+                snap.wait_for([SnapshotState.UNKNOWN],
+                              terminal_states=[SnapshotState.ERROR])
 
-        # Attach an existing volume
-#                 lc.add_volume_device(size=1, source=test_vol,
-#                                      delete_on_terminate=True)
+            with helpers.cleanup_action(lambda:
+                                        cleanup_snap(test_snap)):
+                test_snap.wait_till_ready()
 
-        # Add a new volume based on a snapshot
-#                 lc.add_volume_device(size=1, source=test_snap,
-#                                      delete_on_terminate=True)
+                lc = self.provider.compute.instances.create_launch_config()
 
-        # Override root volume size
-        image_id = helpers.get_provider_test_data(
-            self.provider,
-            "image")
-        img = self.provider.compute.images.get(image_id)
-        lc.add_volume_device(
-            is_root=True,
-            source=img,
-            # TODO: This should be greater than the ami size or tests
-            # will fail on actual infrastructure. Needs an image.size
-            # method
-            size=8,
-            delete_on_terminate=True)
+                # Add a new blank volume
+                lc.add_volume_device(size=1, delete_on_terminate=True)
 
-        # Add all available ephemeral devices
-        instance_type_name = helpers.get_provider_test_data(
-            self.provider,
-            "instance_type")
-        inst_type = self.provider.compute.instance_types.find(
-            name=instance_type_name)[0]
-        for _ in range(inst_type.num_ephemeral_disks):
-            lc.add_ephemeral_device()
+                # Attach an existing volume
+                lc.add_volume_device(size=1, source=test_vol,
+                                     delete_on_terminate=True)
 
-        net, subnet = helpers.create_test_network(self.provider, name)
+                # Add a new volume based on a snapshot
+                lc.add_volume_device(size=1, source=test_snap,
+                                     delete_on_terminate=True)
 
-        inst = helpers.create_test_instance(
-            self.provider,
-            name,
-            subnet=subnet,
-            zone=helpers.get_provider_test_data(self.provider, 'placement'),
-            launch_config=lc)
+                # Override root volume size
+                image_id = helpers.get_provider_test_data(
+                    self.provider,
+                    "image")
+                img = self.provider.compute.images.get(image_id)
+                # The size should be greater then the ami size
+                # and therefore, img.min_disk is used.
+                lc.add_volume_device(
+                    is_root=True,
+                    source=img,
+                    size=img.min_disk if img and img.min_disk else 2,
+                    delete_on_terminate=True)
 
-        def cleanup(instance, net):
-            instance.terminate()
-            instance.wait_for(
-                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
-                terminal_states=[InstanceState.ERROR])
-            helpers.delete_test_network(net)
+                # Add all available ephemeral devices
+                instance_type_name = helpers.get_provider_test_data(
+                    self.provider,
+                    "instance_type")
+                inst_type = self.provider.compute.instance_types.find(
+                    name=instance_type_name)[0]
+                for _ in range(inst_type.num_ephemeral_disks):
+                    lc.add_ephemeral_device()
 
-        with helpers.cleanup_action(lambda: cleanup(inst, net)):
-            try:
-                inst.wait_till_ready()
-            except WaitStateException as e:
-                self.fail("The block device mapped launch did not "
-                          " complete successfully: %s" % e)
-            # TODO: Check instance attachments and make sure they
-            # correspond to requested mappings
+                net, subnet = helpers.create_test_network(self.provider, name)
+
+                with helpers.cleanup_action(lambda:
+                                            helpers.delete_test_network(net)):
+
+                    inst = helpers.create_test_instance(
+                        self.provider,
+                        name,
+                        subnet=subnet,
+                        launch_config=lc)
+
+                    with helpers.cleanup_action(lambda:
+                                                helpers.delete_test_instance(
+                                                    inst)):
+                        try:
+                            inst.wait_till_ready()
+                        except WaitStateException as e:
+                            self.fail("The block device mapped launch did not "
+                                      " complete successfully: %s" % e)
+                        # TODO: Check instance attachments and make sure they
+                        # correspond to requested mappings
+
+    @helpers.skipIfNoService(['compute.instances', 'networking.networks',
+                              'security.security_groups'])
+    def test_instance_methods(self):
+        name = "cb_instmethods-{0}".format(helpers.get_uuid())
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        test_inst = None
+        net = None
+        sg = None
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                test_inst, net, sg)):
+            net, subnet = helpers.create_test_network(self.provider, name)
+            test_inst = helpers.get_test_instance(self.provider, name,
+                                                  subnet=subnet)
+            sg = self.provider.security.security_groups.create(
+                name=name, description=name, network_id=net.id)
+
+            # Check adding a security group to a running instance
+            test_inst.add_security_group(sg)
+            test_inst.refresh()
+            self.assertTrue(
+                sg in test_inst.security_groups, "Expected security group '%s'"
+                " to be among instance security_groups: [%s]" %
+                (sg, test_inst.security_groups))
+
+            # Check removing a security group from a running instance
+            test_inst.remove_security_group(sg)
+            test_inst.refresh()
+            self.assertTrue(
+                sg not in test_inst.security_groups, "Expected security group"
+                " '%s' to be removed from instance security_groups: [%s]" %
+                (sg, test_inst.security_groups))
+
+            # check floating ips
+            router = self.provider.networking.routers.create(name, net)
+            gateway = None
+
+            def cleanup_router():
+                with helpers.cleanup_action(lambda: router.delete()):
+                    with helpers.cleanup_action(lambda: gateway.delete()):
+                        router.detach_subnet(subnet)
+                        router.detach_gateway(gateway)
+
+            with helpers.cleanup_action(lambda: cleanup_router()):
+                router.attach_subnet(subnet)
+                gateway = (self.provider.networking.gateways
+                           .get_or_create_inet_gateway(name))
+                router.attach_gateway(gateway)
+                # check whether adding an elastic ip works
+                fip = (self.provider.networking.networks
+                       .create_floating_ip())
+                with helpers.cleanup_action(lambda: fip.delete()):
+                    test_inst.add_floating_ip(fip.public_ip)
+                    test_inst.refresh()
+                    self.assertIn(fip.public_ip, test_inst.public_ips)
+                    if isinstance(self.provider, TestMockHelperMixin):
+                        # TODO: Moto bug does not refresh removed public ip
+                        return
+                    # check whether removing an elastic ip works
+                    test_inst.remove_floating_ip(fip.public_ip)
+                    test_inst.refresh()
+                    self.assertNotIn(fip.public_ip, test_inst.public_ips)

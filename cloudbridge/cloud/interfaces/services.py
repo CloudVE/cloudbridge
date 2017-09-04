@@ -164,8 +164,8 @@ class InstanceService(PageableObjectMixin, CloudService):
         """
         Searches for an instance by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.Instance`
-        :return: an Instance object
+        :rtype: List of ``object`` of :class:`.Instance`
+        :return: A list of Instance objects matching the supplied attributes.
         """
         pass
 
@@ -500,6 +500,58 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
 
+class NetworkingService(CloudService):
+
+    """
+    Base service interface for networking.
+
+    This service offers a collection of networking services that in turn
+    provide access to networking resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def networks(self):
+        """
+        Provides access to all Network related services.
+
+        :rtype: :class:`.NetworkService`
+        :return: a Network service object
+        """
+        pass
+
+    @abstractproperty
+    def subnets(self):
+        """
+        Provides access to all Subnet related services.
+
+        :rtype: :class:`.SubnetService`
+        :return: a Subnet service object
+        """
+        pass
+
+    @abstractproperty
+    def routers(self):
+        """
+        Provides access to all Router related services.
+
+        :rtype: :class:`.RouterService`
+        :return: a Router service object
+        """
+        pass
+
+    @abstractproperty
+    def gateways(self):
+        """
+        Provides access to all Gateway related services, such as
+        Internet Gateways.
+
+        :rtype: :class:`.GatewayService`
+        :return: a Router service object
+        """
+        pass
+
+
 class NetworkService(PageableObjectMixin, CloudService):
 
     """
@@ -531,13 +583,33 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name=None):
+    def find(self, name):
+        """
+        Searches for a network by a given list of attributes.
+
+        :rtype: List of ``object`` of :class:`.Network`
+        :return: A list of Network objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, name, cidr_block):
         """
         Create a new network.
 
         :type name: ``str``
-        :param name: An optional network name. The name will be set if the
+        :param name: A network name. The name will be set if the
                      provider supports it.
+
+        :type cidr_block: ``str``
+        :param cidr_block: The cidr block for this network. Some providers
+                           will respect this at the network level, while others
+                           will only respect it at subnet level. However, to
+                           write portable code, you should make sure that any
+                           subnets you create fall within this initially
+                           specified range. Note that the block size should be
+                           between a /16 netmask (65,536 IP addresses) and /28
+                           netmask (16 IP addresses). e.g. 10.0.0.0/16
 
         :rtype: ``object`` of :class:`.Network`
         :return:  A Network object
@@ -581,8 +653,18 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
-    @abstractmethod
-    def floating_ips(self, network_id=None):
+    @abstractproperty
+    def routers(self):
+        """
+        Returns a list of routers connected to this network.
+
+        :rtype: ``list`` of :class: `Router`
+        :return: list of routers
+        """
+        pass
+
+    @abstractproperty
+    def floating_ips(self):
         """
         List floating (i.e., static) IP addresses.
 
@@ -608,30 +690,6 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
-    @abstractmethod
-    def routers(self):
-        """
-        Get a list of available routers.
-
-        :rtype: ``list`` of :class: `Router`
-        :return: list of routers
-        """
-        pass
-
-    @abstractmethod
-    def create_router(self, name=None):
-        """
-        Create a new router/gateway.
-
-        :type name: ``str``
-        :param name: An optional router name. The name will be set if the
-                     provider supports it.
-
-        :rtype: :class:`Router`
-        :return: a newly created router object
-        """
-        pass
-
 
 class SubnetService(PageableObjectMixin, CloudService):
 
@@ -645,8 +703,8 @@ class SubnetService(PageableObjectMixin, CloudService):
         """
         Returns a Subnet given its ID or ``None`` if not found.
 
-        :type network_id: :class:`.Network` object or ``str``
-        :param network_id: The ID of the subnet to retrieve.
+        :type subnet_id: :class:`.Network` object or ``str``
+        :param subnet_id: The ID of the subnet to retrieve.
 
         :rtype: ``object`` of :class:`.Subnet`
         return: a Subnet object
@@ -667,9 +725,13 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network_id, cidr_block, name=None, zone=None):
+    def create(self, name, network_id, cidr_block, zone=None):
         """
         Create a new subnet within the supplied network.
+
+        :type name: ``str``
+        :param name: The subnet name. The name will be set if the
+                     provider supports it.
 
         :type network: :class:`.Network` object or ``str``
         :param network: Network object or ID under which to create the subnet.
@@ -677,10 +739,6 @@ class SubnetService(PageableObjectMixin, CloudService):
         :type cidr_block: ``str``
         :param cidr_block: CIDR block within the Network to assign to the
                            subnet.
-
-        :type name: ``str``
-        :param name: An optional subnet name. The name will be set if the
-                     provider supports it.
 
         :type zone: ``str``
         :param zone: An optional placement zone for the subnet. Some providers
@@ -695,6 +753,8 @@ class SubnetService(PageableObjectMixin, CloudService):
     def get_or_create_default(self, zone=None):
         """
         Return a default subnet for the account or create one if not found.
+        This provides a convenience method for obtaining a network if you
+        are not particularly concerned with how the network is structured.
 
         A default network is one marked as such by the provider or matches the
         default name used by this library (e.g., CloudBridgeNet).
@@ -723,6 +783,113 @@ class SubnetService(PageableObjectMixin, CloudService):
         :return:  ``True`` if the subnet does not exist, ``False`` otherwise.
                   Note that this implies that the subnet may not have been
                   deleted by this method but instead has not existed at all.
+        """
+        pass
+
+
+class RouterService(PageableObjectMixin, CloudService):
+
+    """
+    Manage networking router actions and resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, router_id):
+        """
+        Returns a Router object given its ID.
+
+        :type router_id: ``str``
+        :param router_id: The ID of the router to retrieve.
+
+        :rtype: ``object``  of :class:`.Router` or ``None``
+        :return: a Router object of ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all routers.
+
+        :rtype: ``list`` of :class:`.Router`
+        :return: list of Router objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for a router by a given list of attributes.
+
+        :rtype: List of ``object`` of :class:`.Router`
+        :return: A list of Router objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, network, name=None):
+        """
+        Create a new router.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID under which to create the router.
+
+        :type name: ``str``
+        :param name: A router name. The name will be set if the provider
+                     supports it.
+
+        :rtype: ``object`` of :class:`.Router`
+        :return:  A Router object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, router):
+        """
+        Delete an existing Router.
+
+        :type router: :class:`.Router` object or ``str``
+        :param router: Router object or ID of the router to delete.
+        """
+        pass
+
+
+class GatewayService(CloudService):
+
+    """
+    Manage internet gateway resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_or_create_inet_gateway(self, name):
+        """
+        Creates and returns a new internet gateway or returns an existing
+        singleton gateway, depending on the cloud provider. The returned
+        gateway object can subsequently be attached to a router to provide
+        internet routing to a network. If the gateway is no longer required,
+        clients should call gateway.delete() to delete the gateway. On some
+        cloud providers this will result in the gateway being deleted. On
+        others, it will result in a no-op if the cloud has only a single/public
+        gateway.
+
+        :type  name: ``str``
+        :param name: The gateway name. The name will be set if the provider
+                     supports it.
+
+        :rtype: ``object``  of :class:`.InternetGateway` or ``None``
+        :return: an InternetGateway object of ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, gateway):
+        """
+        Delete a gateway.
+
+        :type gateway: :class:`.Gateway` object
+        :param gateway: Gateway object to delete.
         """
         pass
 
@@ -1113,5 +1280,15 @@ class RegionService(PageableObjectMixin, CloudService):
 
         :rtype: ``list`` of :class:`.Region`
         :return:  list of region objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, name):
+        """
+        Searches for a region by a given list of attributes.
+
+        :rtype: ``object`` of :class:`.Region`
+        :return: a Region object
         """
         pass

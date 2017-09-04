@@ -2,6 +2,7 @@
 Helper functions
 """
 import itertools
+
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 
 

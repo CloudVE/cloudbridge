@@ -1,23 +1,21 @@
-from datetime import datetime
-from io import BytesIO
-from unittest import skip
+import filecmp
+import os
+import tempfile
 import uuid
 
-import requests
-
-import tempfile
+from datetime import datetime
+from io import BytesIO
+from test import helpers
+from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
+from unittest import skip
 
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
-from test.helpers import ProviderTestBase
-import test.helpers as helpers
+import requests
 
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
-
-    def __init__(self, methodName, provider):
-        super(CloudObjectStoreServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
 
     @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket(self):
@@ -28,50 +26,10 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         name = "cbtestcreatebucket-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
         with helpers.cleanup_action(lambda: test_bucket.delete()):
-            self.assertTrue(
-                test_bucket.id in repr(test_bucket),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
+            sit.check_standard_behaviour(
+                self, self.provider.object_store, test_bucket)
 
-            buckets = self.provider.object_store.list()
-
-            list_buckets = [c for c in buckets if c.name == name]
-            self.assertTrue(
-                len(list_buckets) == 1,
-                "List buckets does not return the expected bucket %s" %
-                name)
-
-            # check iteration
-            iter_buckets = [c for c in self.provider.object_store
-                            if c.name == name]
-            self.assertTrue(
-                len(iter_buckets) == 1,
-                "Iter buckets does not return the expected bucket %s" %
-                name)
-
-            # check find
-            find_buckets = self.provider.object_store.find(name=name)
-            self.assertTrue(
-                len(find_buckets) == 1,
-                "Find buckets does not return the expected bucket %s" %
-                name)
-
-            get_bucket = self.provider.object_store.get(
-                test_bucket.id)
-            self.assertTrue(
-                list_buckets[0] ==
-                get_bucket == test_bucket,
-                "Objects returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(list_buckets[0].id,
-                                         get_bucket.id,
-                                         test_bucket.name))
-
-        buckets = self.provider.object_store.list()
-        found_buckets = [c for c in buckets if c.name == name]
-        self.assertTrue(
-            len(found_buckets) == 0,
-            "Bucket %s should have been deleted but still exists." %
-            name)
+        sit.check_delete(self, self.provider.object_store, test_bucket)
 
     @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket_objects(self):
@@ -91,11 +49,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             obj_name_prefix = "hello"
             obj_name = obj_name_prefix + "_world.txt"
             obj = test_bucket.create_object(obj_name)
-
-            self.assertTrue(
-                obj.id in repr(obj),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
 
             with helpers.cleanup_action(lambda: obj.delete()):
                 # TODO: This is wrong. We shouldn't have to have a separate
@@ -119,20 +72,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 iter_objs = list(test_bucket)
                 self.assertListEqual(iter_objs, objs)
 
-                found_objs = [o for o in objs if o.name == obj_name]
-                self.assertTrue(
-                    len(found_objs) == 1,
-                    "List bucket objects does not return the expected"
-                    " object %s" % obj_name)
-
-                get_bucket_obj = test_bucket.get(obj_name)
-                self.assertTrue(
-                    found_objs[0] ==
-                    get_bucket_obj == obj,
-                    "Objects returned by list: {0} and get: {1} are not as "
-                    " expected: {2}" .format(found_objs[0].id,
-                                             get_bucket_obj.id,
-                                             obj.id))
+                sit.check_standard_behaviour(self, test_bucket, obj)
 
                 obj_too = test_bucket.get(obj_name)
                 self.assertTrue(
@@ -146,12 +86,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     'with and without a prefix, are expected to be equal, '
                     'but its detected otherwise.')
 
-            objs = test_bucket.list()
-            found_objs = [o for o in objs if o.name == obj_name]
-            self.assertTrue(
-                len(found_objs) == 0,
-                "Object %s should have been deleted but still exists." %
-                obj_name)
+            sit.check_delete(self, test_bucket, obj)
 
     @helpers.skipIfNoService(['object_store'])
     def test_upload_download_bucket_content(self):
@@ -205,12 +140,40 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             obj = test_bucket.create_object(obj_name)
 
             with helpers.cleanup_action(lambda: obj.delete()):
-                content = b"Hello World. Upload from file."
-                with tempfile.NamedTemporaryFile() as tmpFile:
-                    tmpFile.write(content)
-                    tmpFile.flush()
+                test_file = os.path.join(
+                    helpers.get_test_fixtures_folder(), 'logo.jpg')
+                obj.upload_from_file(test_file)
+                target_stream = BytesIO()
+                obj.save_content(target_stream)
+                with open(test_file, 'rb') as f:
+                    self.assertEqual(target_stream.getvalue(), f.read())
 
-                    obj.upload_from_file(tmpFile.name)
-                    target_stream = BytesIO()
-                    obj.save_content(target_stream)
-                    self.assertEqual(target_stream.getvalue(), content)
+    @skip("Skip unless you want to test swift objects bigger than 5 Gig")
+    @helpers.skipIfNoService(['object_store'])
+    def test_upload_download_bucket_content_with_large_file(self):
+        """
+        Creates a 6 Gig file in the temp directory, then uploads it to
+        Swift. Once uploaded, then downloads to a new file in the temp
+        directory and compares the two files to see if they match.
+        """
+        temp_dir = tempfile.gettempdir()
+        file_name = '6GigTest.tmp'
+        six_gig_file = os.path.join(temp_dir, file_name)
+        with open(six_gig_file, "wb") as out:
+            out.truncate(6 * 1024 * 1024 * 1024)  # 6 Gig...
+        with helpers.cleanup_action(lambda: os.remove(six_gig_file)):
+            download_file = "{0}/cbtestfile-{1}".format(temp_dir, file_name)
+            bucket_name = "cbtestbucketlargeobjs-{0}".format(uuid.uuid4())
+            test_bucket = self.provider.object_store.create(bucket_name)
+            with helpers.cleanup_action(lambda: test_bucket.delete()):
+                test_obj = test_bucket.create_object(file_name)
+                with helpers.cleanup_action(lambda: test_obj.delete()):
+                    file_uploaded = test_obj.upload_from_file(six_gig_file)
+                    self.assertTrue(file_uploaded, "Could not upload object?")
+                    with helpers.cleanup_action(
+                            lambda: os.remove(download_file)):
+                        with open(download_file, 'wb') as f:
+                            test_obj.save_content(f)
+                            self.assertTrue(
+                                filecmp.cmp(six_gig_file, download_file),
+                                "Uploaded file != downloaded")

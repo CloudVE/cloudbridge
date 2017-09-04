@@ -1,29 +1,18 @@
 from test import helpers
 
-import six
-
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
+
+import six
 
 
 class CloudInstanceTypesServiceTestCase(ProviderTestBase):
 
-    def __init__(self, methodName, provider):
-        super(CloudInstanceTypesServiceTestCase, self).__init__(
-            methodName=methodName, provider=provider)
-
     @helpers.skipIfNoService(['compute.instance_types'])
-    def test_instance_types(self):
-        instance_types = self.provider.compute.instance_types.list()
-        # Check iteration, keeping the first 50 entries (the .list() default)
-        iter_instance_types = list(self.provider.compute.instance_types)[:50]
-        self.assertListEqual(iter_instance_types, instance_types)
+    def test_instance_type_properties(self):
 
-        for inst_type in instance_types:
-            self.assertTrue(
-                inst_type.id in repr(inst_type),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
+        for inst_type in self.provider.compute.instance_types:
+            sit.check_repr(self, inst_type)
             self.assertIsNotNone(
                 inst_type.id,
                 "InstanceType id must have a value")
@@ -71,7 +60,7 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
                 "InstanceType extra_data must be None or a dict")
 
     @helpers.skipIfNoService(['compute.instance_types'])
-    def test_instance_types_find(self):
+    def test_instance_types_standard(self):
         """
         Searching for an instance by name should return an
         InstanceType object and searching for a non-existent
@@ -82,32 +71,6 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
             "instance_type")
         inst_type = self.provider.compute.instance_types.find(
             name=instance_type_name)[0]
-        self.assertTrue(isinstance(inst_type, InstanceType),
-                        "Find must return an InstanceType object")
 
-        self.assertFalse(self.provider.compute.instance_types.find(
-            name="non_existent_instance_type"), "Searching for a non-existent"
-            " instance type must return an empty list")
-
-        with self.assertRaises(TypeError):
-            self.provider.compute.instance_types.find(
-                non_existent_param="random_value")
-
-    @helpers.skipIfNoService(['compute.instance_types'])
-    def test_instance_types_get(self):
-        """
-        Searching for an instance by id should return an
-        InstanceType object and searching for a non-existent
-        object should return None
-        """
-        compute_svc = self.provider.compute
-        instance_type_name = helpers.get_provider_test_data(
-            self.provider,
-            "instance_type")
-        inst_type = self.provider.compute.instance_types.find(
-            name=instance_type_name)[0]
-        self.assertEqual(inst_type,
-                         compute_svc.instance_types.get(inst_type.id))
-        self.assertIsNone(compute_svc.instance_types.get("non_existent_id"),
-                          "Searching for a non-existent instance id must"
-                          " return None")
+        sit.check_standard_behaviour(
+                self, self.provider.compute.instance_types, inst_type)

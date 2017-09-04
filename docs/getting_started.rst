@@ -134,7 +134,7 @@ and then associate it with the instance.
 
 .. code-block:: python
 
-    fip = provider.network.create_floating_ip()
+    fip = provider.networking.networks.create_floating_ip()
     inst.add_floating_ip(fip.public_ip)
     inst.refresh()
     inst.public_ips
