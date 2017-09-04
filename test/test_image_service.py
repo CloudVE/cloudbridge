@@ -7,7 +7,6 @@ from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 
 class CloudImageServiceTestCase(ProviderTestBase):
-
     @helpers.skipIfNoService(['compute.images', 'networking.networks',
                               'compute.instances'])
     def test_create_and_list_image(self):
@@ -47,7 +46,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
                     # check image size
                     test_image.refresh()
                     self.assertGreater(test_image.min_disk, 0, "Minimum disk"
-                                       " size required by image is invalid")
+                                                               " size required by image is invalid")
             # TODO: Images take a long time to deregister on EC2. Needs
             # investigation
             sit.check_delete(self, self.provider.compute.images, test_image)

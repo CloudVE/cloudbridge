@@ -739,7 +739,6 @@ class AWSRegionService(BaseRegionService):
 
 
 class AWSNetworkingService(BaseNetworkingService):
-
     def __init__(self, provider):
         super(AWSNetworkingService, self).__init__(provider)
         self._network_service = AWSNetworkService(self.provider)
@@ -792,7 +791,7 @@ class AWSNetworkService(BaseNetworkService):
         filtr = {'tag:Name': name}
         networks = [AWSNetwork(self.provider, network)
                     for network in self.provider.vpc_conn.get_all_vpcs(
-                        filters=filtr)]
+                filters=filtr)]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
@@ -949,7 +948,6 @@ class AWSRouterService(BaseRouterService):
 
 
 class AWSGatewayService(BaseGatewayService):
-
     def __init__(self, provider):
         super(AWSGatewayService, self).__init__(provider)
 
