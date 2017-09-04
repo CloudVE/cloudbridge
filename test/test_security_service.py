@@ -137,7 +137,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         sg = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 network=net, security_group=sg)):
-
             net, _ = helpers.create_test_network(self.provider, name)
             sg = self.provider.security.security_groups.create(
                 name=name, description=name, network_id=net.id)

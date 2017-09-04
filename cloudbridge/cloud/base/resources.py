@@ -736,7 +736,6 @@ class BaseRegion(BaseCloudResource, Region):
 
 
 class BaseBucketObject(BaseCloudResource, BucketObject):
-
     # Regular expression for valid bucket keys.
     # They, must match the following criteria: http://docs.aws.amazon.com/"
     # AmazonS3/latest/dev/UsingMetadata.html#object-key-guidelines
@@ -772,7 +771,6 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
 
 class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
-
     # Regular expression for valid bucket names.
     # They, must match the following criteria: http://docs.aws.amazon.com/aws
     # cloudtrail/latest/userguide/cloudtrail-s3-bucket-naming-requirements.html
@@ -899,7 +897,6 @@ class BaseRouter(BaseCloudResource, Router):
 
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):
-
     CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
         'CB_DEFAULT_INET_GATEWAY_NAME', 'CloudBridgeInetGateway')
 

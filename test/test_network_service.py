@@ -8,7 +8,6 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
-
     @helpers.skipIfNoService(['networking.networks'])
     def test_crud_network_service(self):
         name = 'cb_crudnetwork-{0}'.format(helpers.get_uuid())
@@ -17,7 +16,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             name=name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
             lambda:
-                self.provider.networking.networks.delete(network_id=net.id)
+            self.provider.networking.networks.delete(network_id=net.id)
         ):
             sit.check_standard_behaviour(
                 self, self.provider.networking.networks, net)
@@ -27,7 +26,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 network=net, cidr_block="10.0.0.1/24", name=subnet_name)
             with helpers.cleanup_action(
                 lambda:
-                    self.provider.networking.subnets.delete(subnet=subnet)
+                self.provider.networking.subnets.delete(subnet=subnet)
             ):
                 sit.check_standard_behaviour(
                     self, self.provider.networking.subnets, subnet)
@@ -111,7 +110,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks.routers'])
     def test_crud_router(self):
-
         def _cleanup(net, subnet, router, gateway):
             with helpers.cleanup_action(lambda: net.delete()):
                 with helpers.cleanup_action(lambda: subnet.delete()):
@@ -145,10 +143,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Router {0} state {1} should be {2}.".format(
                     router.id, router.state, RouterState.DETACHED))
 
-#             self.assertFalse(
-#                 router.network_id,
-#                 "Router {0} should not be assoc. with a network {1}".format(
-#                     router.id, router.network_id))
+            #             self.assertFalse(
+            #                 router.network_id,
+            #                 "Router {0} should not be assoc. with a network {1}".format(
+            #                     router.id, router.network_id))
 
             router.attach_subnet(sn)
             gteway = (self.provider.networking.gateways
