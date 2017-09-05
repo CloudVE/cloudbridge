@@ -5,10 +5,12 @@ This includes:
    2. Checking for object equality and repr
    3. Checking standard behaviour for list, iter, find, get, delete
 """
+import test.helpers as helpers
 import uuid
 
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
+from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
 
 
@@ -162,22 +164,85 @@ def check_standard_behaviour(test, service, obj):
     test.assertTrue(
         obj == objs_list[0] == objs_iter[0] == objs_find[0] == obj_get,
         "Objects returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
-                                           objs_find[0].id, obj_get.id,
-                                           obj.id))
+        " are not as expected: {4}" .format(objs_list[0].id, objs_iter[0].id,
+                                            objs_find[0].id, obj_get.id,
+                                            obj.id))
 
     test.assertTrue(
         obj.id == objs_list[0].id == objs_iter[0].id ==
         objs_find[0].id == obj_get.id,
         "Object Ids returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
-                                           objs_find[0].id, obj_get.id,
-                                           obj.id))
+        " are not as expected: {4}" .format(objs_list[0].id, objs_iter[0].id,
+                                            objs_find[0].id, obj_get.id,
+                                            obj.id))
 
     test.assertTrue(
         obj.name == objs_list[0].name == objs_iter[0].name ==
         objs_find[0].name == obj_get.name,
         "Names returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
-                                           objs_find[0].id, obj_get.id,
-                                           obj.id))
+        " are not as expected: {4}" .format(objs_list[0].id, objs_iter[0].id,
+                                            objs_find[0].id, obj_get.id,
+                                            obj.id))
+
+
+def check_crud(test, service, iface, name_prefix,
+               create_func, cleanup_func, extra_test_func=None,
+               custom_check_delete=None):
+    """
+    Checks crud behaviour of a given cloudbridge service. The create_func will
+    be used as a factory function to create a service object and the
+    cleanup_func will be used to destroy the object. Once an object is created
+    using the create_func, all other standard behavioural tests can be run
+    against that object.
+
+    :type  test: ``TestCase``
+    :param test: The TestCase object to use
+
+    :type  service: ``CloudService``
+    :param service: The CloudService object under test. For example,
+                    a VolumeService object.
+
+    :type  iface: ``type``
+    :param iface: The type to test behaviour against. This type must be a
+                  subclass of ``CloudResource``.
+
+    :type  name_prefix: ``str``
+    :param name_prefix: The name to prefix all created objects with. This
+                        function will generated a new name with the
+                        specified name_prefix for each test object created
+                        and pass that name into the create_func
+
+    :type  create_func: ``func``
+    :param create_func: The create_func must accept the name of the object to
+                        create as a parameter and return the constructed
+                        object.
+
+    :type  cleanup_func: ``func``
+    :param cleanup_func: The cleanup_func must accept the created object
+                         and perform all cleanup tasks required to delete the
+                         object.
+
+    :type  extra_test_func: ``func``
+    :param extra_test_func: This function will be called to perform additional
+                            tests after object construction and initialization,
+                            but before object cleanup. It will receive the
+                            created object as a parameter.
+
+    :type  custom_check_delete: ``func``
+    :param custom_check_delete: If provided, this function will be called
+                                instead of the standard check_delete function
+                                to make sure that the object has been deleted.
+    """
+    name = "{0}-{1}".format(name_prefix, helpers.get_uuid())
+    obj = None
+    with helpers.cleanup_action(lambda: cleanup_func(obj)):
+        obj = create_func(name)
+        if issubclass(iface, ObjectLifeCycleMixin):
+            obj.wait_till_ready()
+        check_standard_behaviour(test, service, obj)
+        if extra_test_func:
+            extra_test_func(obj)
+    if custom_check_delete:
+        custom_check_delete(obj)
+    else:
+        check_delete(test, service, obj)
