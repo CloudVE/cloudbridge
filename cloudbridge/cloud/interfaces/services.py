@@ -640,11 +640,11 @@ class NetworkService(PageableObjectMixin, CloudService):
         .. code-block:: python
 
             # Print all subnets
-            for s in provider.network.subnets:
+            for s in provider.networking.subnets:
                 print(s.id, s.name)
 
             # Get subnet by ID
-            s = provider.network.subnets.get('subnet-id')
+            s = provider.networking.subnets.get('subnet-id')
             print(s.id, s.name)
 
         :rtype: :class:`.SubnetService`

@@ -115,7 +115,7 @@ assign a floating IP address to your instance. This can be done as follows:
 .. code-block:: python
 
     # List all the IP addresses and find the desired one
-    provider.network.floating_ips()
+    provider.networking.networks.floating_ips()
     # Assign the desired IP to the instance
     inst.add_floating_ip('149.165.168.143')
     inst.refresh()
