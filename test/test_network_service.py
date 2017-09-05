@@ -44,7 +44,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     "Floating IP address {0} should exist in the list {1}"
                     .format(ip.id, ipl))
                 # 2016-08: address filtering not implemented in moto
-                # empty_ipl = self.provider.network.floating_ips('dummy-net')
+                # empty_ipl = self.provider.networking.networks.floating_ips(
+                #   'dummy-net')
                 # self.assertFalse(
                 #     empty_ipl,
                 #     "Bogus network should not have any floating IPs: {0}"

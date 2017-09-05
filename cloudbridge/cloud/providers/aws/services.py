@@ -517,7 +517,7 @@ class AWSInstanceService(BaseInstanceService):
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
-        subnet = (self.provider.network.subnets.get(subnet)
+        subnet = (self.provider.networking.subnets.get(subnet)
                   if isinstance(subnet, str) else subnet)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if isinstance(
@@ -886,7 +886,7 @@ class AWSSubnetService(BaseSubnetService):
             if sn.tags.get('Name') == AWSSubnet.CB_DEFAULT_SUBNET_NAME:
                 return AWSSubnet(self.provider, sn)
         # No provider-default Subnet exists, try to create it (net + subnets)
-        default_net = self.provider.network.create(
+        default_net = self.provider.networking.networks.create(
             name=AWSNetwork.CB_DEFAULT_NETWORK_NAME, cidr_block='10.0.0.0/16')
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(

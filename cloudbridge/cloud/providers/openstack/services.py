@@ -571,7 +571,7 @@ class OpenStackInstanceService(BaseInstanceService):
             net_id = subnet.network_id
         else:
             subnet_id = subnet
-            net_id = (self.provider.network.subnets.get(subnet_id).network_id
+            net_id = (self.provider.networking.subnets.get(subnet_id).network_id
                       if subnet_id else None)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \

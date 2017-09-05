@@ -38,7 +38,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     def cleanup_sg(self, sg, net):
         with helpers.cleanup_action(
-                lambda: self.provider.network.delete(network_id=net.id)):
+                lambda: self.provider.networking.network.delete(
+                    network_id=net.id)):
             self.provider.security.security_groups.delete(group_id=sg.id)
 
     @helpers.skipIfNoService(['security.security_groups'])
