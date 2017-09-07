@@ -654,16 +654,6 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractproperty
-    def routers(self):
-        """
-        Returns a list of routers connected to this network.
-
-        :rtype: ``list`` of :class: `Router`
-        :return: list of routers
-        """
-        pass
-
-    @abstractproperty
     def floating_ips(self):
         """
         List floating (i.e., static) IP addresses.
