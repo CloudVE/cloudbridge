@@ -583,7 +583,8 @@ class OpenStackInstanceService(BaseInstanceService):
             net_id = subnet.network_id
         else:
             subnet_id = subnet
-            net_id = (self.provider.networking.subnets.get(subnet_id).network_id
+            net_id = (self.provider.networking.subnets
+                      .get(subnet_id).network_id
                       if subnet_id else None)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \
@@ -811,17 +812,6 @@ class OpenStackNetworkService(BaseNetworkService):
         # Nova returns a different object than Neutron so fetch the Neutron one
         ip = self.provider.neutron.list_floatingips(id=ip.id)['floatingips'][0]
         return OpenStackFloatingIP(self.provider, ip)
-
-    def routers(self):
-        routers = self.provider.neutron.list_routers().get('routers')
-        return [OpenStackRouter(self.provider, r) for r in routers]
-
-    def create_router(self, name=None):
-        OpenStackRouter.assert_valid_resource_name(name)
-
-        router = self.provider.neutron.create_router(
-            {'router': {'name': name}})
-        return OpenStackRouter(self.provider, router.get('router'))
 
 
 class OpenStackSubnetService(BaseSubnetService):
