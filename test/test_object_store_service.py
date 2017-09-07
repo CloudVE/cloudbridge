@@ -40,7 +40,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             create_bucket("cb")
 
         with self.assertRaises(InvalidNameException):
-            # names of length less than 63 should raise an exception
+            # names of length greater than 63 should raise an exception
             create_bucket("a" * 64)
 
         with self.assertRaises(InvalidNameException):
