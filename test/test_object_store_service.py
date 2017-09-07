@@ -10,6 +10,8 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 from unittest import skip
 
+from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
+from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
 import requests
@@ -23,16 +25,58 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         Create a new bucket, check whether the expected values are set,
         and delete it.
         """
-        name = "cbtestcreatebucket-{0}".format(uuid.uuid4())
-        test_bucket = self.provider.object_store.create(name)
-        with helpers.cleanup_action(lambda: test_bucket.delete()):
-            sit.check_standard_behaviour(
-                self, self.provider.object_store, test_bucket)
+        def create_bucket(name):
+            return self.provider.object_store.create(name)
 
-        sit.check_delete(self, self.provider.object_store, test_bucket)
+        def cleanup_bucket(bucket):
+            bucket.delete()
+
+        with self.assertRaises(InvalidNameException):
+            # underscores are not allowed in bucket names
+            create_bucket("cb_bucket")
+
+        with self.assertRaises(InvalidNameException):
+            # names of length less than 3 should raise an exception
+            create_bucket("cb")
+
+        with self.assertRaises(InvalidNameException):
+            # names of length less than 63 should raise an exception
+            create_bucket("a" * 64)
+
+        with self.assertRaises(InvalidNameException):
+            # bucket name cannot be an IP address
+            create_bucket("197.10.100.42")
+
+        sit.check_crud(self, self.provider.object_store, Bucket,
+                       "cb-crudbucket", create_bucket, cleanup_bucket,
+                       skip_name_check=True)
 
     @helpers.skipIfNoService(['object_store'])
-    def test_crud_bucket_objects(self):
+    def test_crud_bucket_object(self):
+        test_bucket = None
+
+        def create_bucket_obj(name):
+            obj = test_bucket.create_object(name)
+            # TODO: This is wrong. We shouldn't have to have a separate
+            # call to upload some content before being able to delete
+            # the content. Maybe the create_object method should accept
+            # the file content as a parameter.
+            obj.upload("dummy content")
+            return obj
+
+        def cleanup_bucket_obj(bucket_obj):
+            bucket_obj.delete()
+
+        with helpers.cleanup_action(lambda: test_bucket.delete()):
+            name = "cb-crudbucketobj-{0}".format(uuid.uuid4())
+            test_bucket = self.provider.object_store.create(name)
+
+            sit.check_crud(self, test_bucket, BucketObject,
+                           "cb_bucketobj", create_bucket_obj,
+                           cleanup_bucket_obj, skip_name_check=True)
+
+    @helpers.skipIfNoService(['object_store'])
+    def test_crud_bucket_object_properties(self):
         """
         Create a new bucket, upload some contents into the bucket, and
         check whether list properly detects the new content.
@@ -71,8 +115,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 # check iteration
                 iter_objs = list(test_bucket)
                 self.assertListEqual(iter_objs, objs)
-
-                sit.check_standard_behaviour(self, test_bucket, obj)
 
                 obj_too = test_bucket.get(obj_name)
                 self.assertTrue(

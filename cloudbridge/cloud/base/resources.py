@@ -11,6 +11,7 @@ import time
 
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -188,8 +189,17 @@ class BaseCloudResource(CloudResource):
     def __init__(self, provider):
         self.__provider = provider
 
-    def is_valid_resource_name(self, name):
-        return True if self.CB_NAME_PATTERN.match(name) else False
+    @staticmethod
+    def is_valid_resource_name(name):
+        return True if BaseCloudResource.CB_NAME_PATTERN.match(name) else False
+
+    @staticmethod
+    def assert_valid_resource_name(name):
+        if not BaseCloudResource.is_valid_resource_name(name):
+            raise InvalidNameException(
+                u"Invalid name: %s. Name must be at most 63 characters "
+                "long and consist of lowercase letters, numbers, "
+                "underscores, dashes or international characters" % name)
 
     @property
     def _provider(self):
@@ -748,8 +758,17 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
 
-    def is_valid_resource_name(self, name):
-        return True if self.CB_NAME_PATTERN.match(name) else False
+    @staticmethod
+    def is_valid_resource_name(name):
+        return True if BaseBucketObject.CB_NAME_PATTERN.match(name) else False
+
+    @staticmethod
+    def assert_valid_resource_name(name):
+        if not BaseBucketObject.is_valid_resource_name(name):
+            raise InvalidNameException(
+                u"Invalid object name: %s. Name must match criteria defined "
+                "in: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMeta"
+                "data.html#object-key-guidelines" % name)
 
     def save_content(self, target_stream):
         """
@@ -779,13 +798,22 @@ class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
     #
     # NOTE: The following regex is based on: https://stackoverflow.com/questio
     # ns/2063213/regular-expression-for-validating-dns-label-host-name
-    CB_NAME_PATTERN = re.compile(r"^(?![0-9]+$)(?!-)[a-zA-Z0-9-]{,63}(?<!-)$")
+    CB_NAME_PATTERN = re.compile(r"^(?![0-9]+$)(?!-)[a-z0-9-]{3,63}(?<!-)$")
 
     def __init__(self, provider):
         super(BaseBucket, self).__init__(provider)
 
-    def is_valid_resource_name(self, name):
-        return True if self.CB_NAME_PATTERN.match(name) else False
+    @staticmethod
+    def is_valid_resource_name(name):
+        return True if BaseBucket.CB_NAME_PATTERN.match(name) else False
+
+    @staticmethod
+    def assert_valid_resource_name(name):
+        if not BaseBucket.is_valid_resource_name(name):
+            raise InvalidNameException(
+                u"Invalid bucket name: %s. Name must match criteria defined "
+                "in: http://docs.aws.amazon.com/awscloudtrail/latest/userguide"
+                "/cloudtrail-s3-bucket-naming-requirements.html" % name)
 
     def __eq__(self, other):
         return (isinstance(other, Bucket) and
@@ -803,7 +831,7 @@ class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
-                                             'CloudBridgeNet')
+                                             'cloudbridge_net')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
@@ -833,7 +861,7 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
     CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
-                                            'CloudBridgeSubnet')
+                                            'cloudbridge_subnet')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
@@ -881,7 +909,7 @@ class BaseFloatingIP(BaseCloudResource, FloatingIP):
 class BaseRouter(BaseCloudResource, Router):
 
     CB_DEFAULT_ROUTER_NAME = os.environ.get('CB_DEFAULT_ROUTER_NAME',
-                                            'CloudBridgeRouter')
+                                            'cloudbridge_router')
 
     def __init__(self, provider):
         super(BaseRouter, self).__init__(provider)
@@ -901,7 +929,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):
 
     CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
-        'CB_DEFAULT_INET_GATEWAY_NAME', 'CloudBridgeInetGateway')
+        'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge_inetgateway')
 
     def __init__(self, provider):
         super(BaseInternetGateway, self).__init__(provider)

@@ -5,9 +5,13 @@ from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
+from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces import SnapshotState
 from cloudbridge.cloud.interfaces import VolumeState
+from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
+from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import Volume
 
 import six
 
@@ -20,23 +24,19 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         Create a new volume, check whether the expected values are set,
         and delete it
         """
-        name = "cb_createvol-{0}".format(helpers.get_uuid())
-        test_vol = self.provider.block_store.volumes.create(
-            name,
-            1,
-            helpers.get_provider_test_data(self.provider, "placement"))
+        def create_vol(name):
+            return self.provider.block_store.volumes.create(
+                name,
+                1,
+                helpers.get_provider_test_data(self.provider, "placement"))
 
         def cleanup_vol(vol):
             vol.delete()
             vol.wait_for([VolumeState.DELETED, VolumeState.UNKNOWN],
                          terminal_states=[VolumeState.ERROR])
 
-        with helpers.cleanup_action(lambda: cleanup_vol(test_vol)):
-            test_vol.wait_till_ready()
-            sit.check_standard_behaviour(
-                self, self.provider.block_store.volumes, test_vol)
-
-        sit.check_delete(self, self.provider.block_store.volumes, test_vol)
+        sit.check_crud(self, self.provider.block_store.volumes, Volume,
+                       "cb_createvol", create_vol, cleanup_vol)
 
     @helpers.skipIfNoService(['block_store.volumes'])
     def test_attach_detach_volume(self):
@@ -142,9 +142,10 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
-            snap_name = "cb_snap-{0}".format(name)
-            test_snap = test_vol.create_snapshot(name=snap_name,
-                                                 description=snap_name)
+
+            def create_snap(name):
+                return test_vol.create_snapshot(name=name,
+                                                description=name)
 
             def cleanup_snap(snap):
                 snap.delete()
@@ -152,39 +153,19 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     [SnapshotState.UNKNOWN],
                     terminal_states=[SnapshotState.ERROR])
 
-            with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
-                test_snap.wait_till_ready()
-                sit.check_standard_behaviour(
-                    self, self.provider.block_store.snapshots, test_snap)
-
-                # Test volume creation from a snapshot (via VolumeService)
-                sv_name = "cb_snapvol_{0}".format(name)
-                snap_vol = self.provider.block_store.volumes.create(
-                    sv_name,
-                    1,
-                    helpers.get_provider_test_data(self.provider, "placement"),
-                    snapshot=test_snap)
-                with helpers.cleanup_action(lambda: snap_vol.delete()):
-                    snap_vol.wait_till_ready()
-
-                # Test volume creation from a snapshot (via Snapshot)
-                snap_vol2 = test_snap.create_volume(
-                    helpers.get_provider_test_data(self.provider, "placement"))
-                with helpers.cleanup_action(lambda: snap_vol2.delete()):
-                    snap_vol2.wait_till_ready()
-
-            sit.check_delete(
-                self, self.provider.block_store.snapshots, test_snap)
+            sit.check_crud(self, self.provider.block_store.snapshots, Snapshot,
+                           "cb_snap", create_snap, cleanup_snap)
 
             # Test creation of a snap via SnapshotService
-            snap_two_name = "cb_snaptwo-{0}".format(name)
-            time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
-            test_snap_two = self.provider.block_store.snapshots.create(
-                name=snap_two_name, volume=test_vol, description=snap_two_name)
-            with helpers.cleanup_action(lambda: cleanup_snap(test_snap_two)):
-                test_snap_two.wait_till_ready()
-                sit.check_standard_behaviour(
-                    self, self.provider.block_store.snapshots, test_snap_two)
+            def create_snap2(name):
+                return self.provider.block_store.snapshots.create(
+                    name=name, volume=test_vol, description=name)
+
+            if not isinstance(self.provider, TestMockHelperMixin) and \
+               self.provider.PROVIDER_ID == ProviderList.AWS:
+                time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
+            sit.check_crud(self, self.provider.block_store.snapshots, Snapshot,
+                           "cb_snaptwo", create_snap2, cleanup_snap)
 
     @helpers.skipIfNoService(['block_store.snapshots'])
     def test_snapshot_properties(self):
@@ -227,3 +208,19 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 test_snap.refresh()
                 self.assertEqual(test_snap.name, 'snapnewname1')
                 self.assertEqual(test_snap.description, 'snapnewdescription1')
+
+                # Test volume creation from a snapshot (via VolumeService)
+                sv_name = "cb_snapvol_{0}".format(test_snap.name)
+                snap_vol = self.provider.block_store.volumes.create(
+                    sv_name,
+                    1,
+                    helpers.get_provider_test_data(self.provider, "placement"),
+                    snapshot=test_snap)
+                with helpers.cleanup_action(lambda: snap_vol.delete()):
+                    snap_vol.wait_till_ready()
+
+                # Test volume creation from a snapshot (via Snapshot)
+                snap_vol2 = test_snap.create_volume(
+                    helpers.get_provider_test_data(self.provider, "placement"))
+                with helpers.cleanup_action(lambda: snap_vol2.delete()):
+                    snap_vol2.wait_till_ready()
