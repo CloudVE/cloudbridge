@@ -831,7 +831,7 @@ class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
-                                             'cloudbridge_net')
+                                             'cloudbridge-net')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
@@ -861,7 +861,7 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
     CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
-                                            'cloudbridge_subnet')
+                                            'cloudbridge-subnet')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
@@ -909,7 +909,7 @@ class BaseFloatingIP(BaseCloudResource, FloatingIP):
 class BaseRouter(BaseCloudResource, Router):
 
     CB_DEFAULT_ROUTER_NAME = os.environ.get('CB_DEFAULT_ROUTER_NAME',
-                                            'cloudbridge_router')
+                                            'cloudbridge-router')
 
     def __init__(self, provider):
         super(BaseRouter, self).__init__(provider)
@@ -929,7 +929,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):
 
     CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
-        'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge_inetgateway')
+        'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge-inetgateway')
 
     def __init__(self, provider):
         super(BaseInternetGateway, self).__init__(provider)
