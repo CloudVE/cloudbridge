@@ -167,6 +167,8 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
+        OpenStackKeyPair.assert_valid_resource_name(name)
+
         kp = self.provider.nova.keypairs.create(name)
         if kp:
             return OpenStackKeyPair(self.provider, kp)
@@ -219,6 +221,8 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return: a SecurityGroup object
         """
+        OpenStackSecurityGroup.assert_valid_resource_name(name)
+
         sg = self.provider.nova.security_groups.create(name, description)
         if sg:
             return OpenStackSecurityGroup(self.provider, sg)
@@ -372,6 +376,8 @@ class OpenStackVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
+        OpenStackVolume.assert_valid_resource_name(name)
+
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, OpenStackSnapshot) and snapshot else snapshot
@@ -429,6 +435,8 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
+        OpenStackSnapshot.assert_valid_resource_name(name)
+
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
                      else volume)
 
@@ -484,6 +492,8 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket.
         """
+        OpenStackBucket.assert_valid_resource_name(name)
+
         self.provider.swift.put_container(name)
         return self.get(name)
 
@@ -561,6 +571,8 @@ class OpenStackInstanceService(BaseInstanceService):
                launch_config=None,
                **kwargs):
         """Create a new virtual machine instance."""
+        OpenStackInstance.assert_valid_resource_name(name)
+
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else \
@@ -773,6 +785,8 @@ class OpenStackNetworkService(BaseNetworkService):
                                      limit=limit, marker=marker)
 
     def create(self, name, cidr_block):
+        OpenStackNetwork.assert_valid_resource_name(name)
+
         net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})
         return OpenStackNetwork(self.provider, network.get('network'))
@@ -803,6 +817,8 @@ class OpenStackNetworkService(BaseNetworkService):
         return [OpenStackRouter(self.provider, r) for r in routers]
 
     def create_router(self, name=None):
+        OpenStackRouter.assert_valid_resource_name(name)
+
         router = self.provider.neutron.create_router(
             {'router': {'name': name}})
         return OpenStackRouter(self.provider, router.get('router'))
@@ -831,6 +847,8 @@ class OpenStackSubnetService(BaseSubnetService):
 
     def create(self, name, network, cidr_block, zone=None):
         """zone param is ignored."""
+        OpenStackSubnet.assert_valid_resource_name(name)
+
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
         subnet_info = {'name': name, 'network_id': network_id,
@@ -902,6 +920,8 @@ class OpenStackRouterService(BaseRouterService):
         https://developer.openstack.org/api-ref/networking/v2/
             ?expanded=delete-router-detail,create-router-detail#create-router
         """
+        OpenStackRouter.assert_valid_resource_name(name)
+
         body = {'router': {'name': name}} if name else None
         router = self.provider.neutron.create_router(body)
         return OpenStackRouter(self.provider, router.get('router'))
@@ -912,6 +932,8 @@ class OpenStackGatewayService(BaseGatewayService):
         super(OpenStackGatewayService, self).__init__(provider)
 
     def get_or_create_inet_gateway(self, name):
+        OpenStackInternetGateway.assert_valid_resource_name(name)
+
         for n in self.provider.networking.networks:
             if n.external:
                 return OpenStackInternetGateway(self.provider, n)

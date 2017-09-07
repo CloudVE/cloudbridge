@@ -10,6 +10,7 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 from unittest import skip
 
+from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
@@ -30,8 +31,25 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         def cleanup_bucket(bucket):
             bucket.delete()
 
+        with self.assertRaises(InvalidNameException):
+            # underscores are not allowed in bucket names
+            create_bucket("cb_bucket")
+
+        with self.assertRaises(InvalidNameException):
+            # names of length less than 3 should raise an exception
+            create_bucket("cb")
+
+        with self.assertRaises(InvalidNameException):
+            # names of length less than 63 should raise an exception
+            create_bucket("a" * 64)
+
+        with self.assertRaises(InvalidNameException):
+            # bucket name cannot be an IP address
+            create_bucket("197.10.100.42")
+
         sit.check_crud(self, self.provider.object_store, Bucket,
-                       "cb_crudbucket", create_bucket, cleanup_bucket)
+                       "cb-crudbucket", create_bucket, cleanup_bucket,
+                       skip_name_check=True)
 
     @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket_object(self):
@@ -50,11 +68,12 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             bucket_obj.delete()
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
-            name = "cb_crudbucketobj-{0}".format(uuid.uuid4())
+            name = "cb-crudbucketobj-{0}".format(uuid.uuid4())
             test_bucket = self.provider.object_store.create(name)
+
             sit.check_crud(self, test_bucket, BucketObject,
                            "cb_bucketobj", create_bucket_obj,
-                           cleanup_bucket_obj)
+                           cleanup_bucket_obj, skip_name_check=True)
 
     @helpers.skipIfNoService(['object_store'])
     def test_crud_bucket_object_properties(self):

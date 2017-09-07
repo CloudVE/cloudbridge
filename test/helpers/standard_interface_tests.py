@@ -131,7 +131,7 @@ def check_obj_name(test, obj):
             obj.name = "hello world"
         # setting upper case characters should raise an exception
         with test.assertRaises(InvalidNameException):
-            obj.name = "hello World"
+            obj.name = "helloWorld"
         # setting special characters should raise an exception
         with test.assertRaises(InvalidNameException):
             obj.name = "hello.world:how_goes_it"
@@ -143,7 +143,6 @@ def check_obj_name(test, obj):
         obj.refresh()
         test.assertEqual(obj.name, VALID_NAME)
         obj.name = original_name
-    pass
 
 
 def check_standard_behaviour(test, service, obj):
@@ -185,9 +184,29 @@ def check_standard_behaviour(test, service, obj):
                                             obj.id))
 
 
+def check_create(test, service, iface, name_prefix,
+                 create_func, cleanup_func):
+
+    # check create with invalid name
+    with test.assertRaises(InvalidNameException):
+        # spaces should raise an exception
+        create_func("hello world")
+    # check create with invalid name
+    with test.assertRaises(InvalidNameException):
+        # uppercase characters should raise an exception
+        create_func("helloWorld")
+    # setting special characters should raise an exception
+    with test.assertRaises(InvalidNameException):
+        create_func("hello.world:how_goes_it")
+    # setting a length > 63 should result in an exception
+    with test.assertRaises(InvalidNameException,
+                           msg="Name of length > 64 should be disallowed"):
+        create_func("a" * 64)
+
+
 def check_crud(test, service, iface, name_prefix,
                create_func, cleanup_func, extra_test_func=None,
-               custom_check_delete=None):
+               custom_check_delete=None, skip_name_check=False):
     """
     Checks crud behaviour of a given cloudbridge service. The create_func will
     be used as a factory function to create a service object and the
@@ -232,10 +251,18 @@ def check_crud(test, service, iface, name_prefix,
     :param custom_check_delete: If provided, this function will be called
                                 instead of the standard check_delete function
                                 to make sure that the object has been deleted.
+
+    :type  skip_name_check: ``boolean``
+    :param skip_name_check:  If True, the invalid name checking will be
+                             skipped.
     """
-    name = "{0}-{1}".format(name_prefix, helpers.get_uuid())
+
     obj = None
     with helpers.cleanup_action(lambda: cleanup_func(obj)):
+        if not skip_name_check:
+            check_create(test, service, iface, name_prefix,
+                         create_func, cleanup_func)
+        name = "{0}-{1}".format(name_prefix, helpers.get_uuid())
         obj = create_func(name)
         if issubclass(iface, ObjectLifeCycleMixin):
             obj.wait_till_ready()
