@@ -25,7 +25,6 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
@@ -270,11 +269,10 @@ class OpenStackInstance(BaseInstance):
         """
         Set the instance name.
         """
-        if self.is_valid_resource_name(value):
-            self._os_instance.name = value
-            self._os_instance.update(name=value)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+
+        self._os_instance.name = value
+        self._os_instance.update(name=value)
 
     @property
     def public_ips(self):
@@ -377,6 +375,8 @@ class OpenStackInstance(BaseInstance):
         """
         Create a new image based on this instance.
         """
+        self.assert_valid_resource_name(name)
+
         image_id = self._os_instance.create_image(name)
         return OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
@@ -498,11 +498,9 @@ class OpenStackVolume(BaseVolume):
         """
         Set the volume name.
         """
-        if self.is_valid_resource_name(value):
-            self._volume.name = value
-            self._volume.update(name=value)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._volume.name = value
+        self._volume.update(name=value)
 
     @property
     def description(self):
@@ -621,11 +619,9 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        if self.is_valid_resource_name(value):
-            self._snapshot.name = value
-            self._snapshot.update(name=value)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._snapshot.name = value
+        self._snapshot.update(name=value)
 
     @property
     def description(self):
@@ -719,12 +715,10 @@ class OpenStackNetwork(BaseNetwork):
         """
         Set the network name.
         """
-        if self.is_valid_resource_name(value):
-            self._provider.neutron.update_network(self.id,
-                                                  {'network': {'name': value}})
-            self.refresh()
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_network(self.id,
+                                              {'network': {'name': value}})
+        self.refresh()
 
     @property
     def external(self):
@@ -791,12 +785,10 @@ class OpenStackSubnet(BaseSubnet):
         """
         Set the subnet name.
         """
-        if self.is_valid_resource_name(value):
-            self._provider.neutron.update_subnet(
-                self.id, {'subnet': {'name': value}})
-            self._subnet['name'] = value
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_subnet(
+            self.id, {'subnet': {'name': value}})
+        self._subnet['name'] = value
 
     @property
     def cidr_block(self):
@@ -885,12 +877,10 @@ class OpenStackRouter(BaseRouter):
         """
         Set the router name.
         """
-        if self.is_valid_resource_name(value):
-            self._provider.neutron.update_router(
-                self.id, {'router': {'name': value}})
-            self.refresh()
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_router(
+            self.id, {'router': {'name': value}})
+        self.refresh()
 
     def refresh(self):
         self._router = self._provider.neutron.show_router(self.id)['router']
@@ -963,12 +953,10 @@ class OpenStackInternetGateway(BaseInternetGateway):
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        if self.is_valid_resource_name(value):
-            self._provider.neutron.update_network(self.id,
-                                                  {'network': {'name': value}})
-            self.refresh()
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_network(self.id,
+                                              {'network': {'name': value}})
+        self.refresh()
 
     @property
     def network_id(self):
