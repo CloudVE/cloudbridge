@@ -780,7 +780,6 @@ class AWSNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(AWSNetworkService, self).__init__(provider)
-        self._subnet_svc = AWSSubnetService(self.provider)
 
     def get(self, network_id):
         try:
@@ -819,10 +818,6 @@ class AWSNetworkService(BaseNetworkService):
                 terminal_states=[NetworkState.ERROR])
             cb_network.name = name
         return cb_network
-
-    @property
-    def subnets(self):
-        return self._subnet_svc
 
     @property
     def floating_ips(self):

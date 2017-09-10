@@ -50,9 +50,13 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                                        self.provider, 'placement'))
             with helpers.cleanup_action(lambda: sn.delete()):
                 self.assertTrue(
-                    sn.id in [s.id for s in net.subnets],
+                    sn in net.subnets,
                     "Subnet ID %s should be listed in network subnets %s."
                     % (sn.id, net.subnets))
+
+                self.assertListEqual(
+                    net.subnets, [sn],
+                    "Network should have exactly one subnet: %s." % sn.id)
 
                 self.assertIn(
                     net.id, sn.network_id,

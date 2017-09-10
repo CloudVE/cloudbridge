@@ -160,6 +160,11 @@ class BaseNetworkService(
     def __init__(self, provider):
         super(BaseNetworkService, self).__init__(provider)
 
+    @property
+    def subnets(self):
+        return [subnet for subnet in self.provider.subnets
+                if subnet.network_id == self.id]
+
     def delete(self, network_id):
         network = self.get(network_id)
         if network:
