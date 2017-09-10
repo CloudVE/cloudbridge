@@ -119,7 +119,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             "Floating IP {0} should have been deleted but still exists."
             .format(ip_id))
 
-    @helpers.skipIfNoService(['networking.networks.routers'])
+    @helpers.skipIfNoService(['networking.routers'])
     def test_crud_router(self):
 
         def _cleanup(net, subnet, router, gateway):

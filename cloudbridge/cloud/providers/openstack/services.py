@@ -904,7 +904,7 @@ class OpenStackRouterService(BaseRouterService):
         return ClientPagedResultList(self.provider, aws_routers, limit=limit,
                                      marker=marker)
 
-    def create(self, network, name=None):
+    def create(self, name, network):
         """
         ``network`` is not used by OpenStack.
 
