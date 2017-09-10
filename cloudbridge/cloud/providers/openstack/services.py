@@ -764,7 +764,6 @@ class OpenStackNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(OpenStackNetworkService, self).__init__(provider)
-        self._subnet_svc = OpenStackSubnetService(self.provider)
 
     def get(self, network_id):
         network = (n for n in self if n.id == network_id)
@@ -791,10 +790,6 @@ class OpenStackNetworkService(BaseNetworkService):
         net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})
         return OpenStackNetwork(self.provider, network.get('network'))
-
-    @property
-    def subnets(self):
-        return self._subnet_svc
 
     @property
     def floating_ips(self):
