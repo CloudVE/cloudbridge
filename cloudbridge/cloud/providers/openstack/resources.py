@@ -44,6 +44,7 @@ import swiftclient
 
 from swiftclient.service import SwiftService, SwiftUploadObject
 
+
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
 
@@ -816,7 +817,7 @@ class OpenStackSubnet(BaseSubnet):
     @property
     def state(self):
         return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \
-            else self.SubnetState.AVAILABLE
+             else SubnetState.AVAILABLE
 
     def refresh(self):
         subnet = self._provider.networking.subnets.get(self.id)
@@ -926,6 +927,7 @@ class OpenStackRouter(BaseRouter):
 
 
 class OpenStackInternetGateway(BaseInternetGateway):
+
     GATEWAY_STATE_MAP = {
         NetworkState.AVAILABLE: GatewayState.AVAILABLE,
         NetworkState.DOWN: GatewayState.ERROR,
