@@ -1,17 +1,16 @@
 """Provider implementation based on boto library for AWS-compatible clouds."""
-
+import logging as log
 import os
 
-import boto
-from boto.ec2.regioninfo import RegionInfo
+import boto3
 try:
     # These are installed only for the case of a dev instance
-    from httpretty import HTTPretty
+    from moto.packages.responses import responses
     from moto import mock_ec2
     from moto import mock_s3
 except ImportError:
     # TODO: Once library logging is configured, change this
-    print("[aws provider] moto library not available!")
+    log.debug('[aws provider] moto library not available!')
 
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
@@ -24,7 +23,7 @@ from .services import AWSSecurityService
 
 
 class AWSCloudProvider(BaseCloudProvider):
-
+    '''AWS cloud provider interface'''
     PROVIDER_ID = 'aws'
     AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
                                     "aws_instance_data.json"
@@ -33,30 +32,32 @@ class AWSCloudProvider(BaseCloudProvider):
         super(AWSCloudProvider, self).__init__(config)
 
         # Initialize cloud connection fields
-        self.a_key = self._get_config_value(
-            'aws_access_key', os.environ.get('AWS_ACCESS_KEY', None))
-        self.s_key = self._get_config_value(
-            'aws_secret_key', os.environ.get('AWS_SECRET_KEY', None))
-        self.session_token = self._get_config_value('aws_session_token', None)
-        # EC2 connection fields
-        self.ec2_is_secure = self._get_config_value('ec2_is_secure', True)
-        self.region_name = self._get_config_value(
-            'ec2_region_name', 'us-east-1')
-        self.region_endpoint = self._get_config_value(
-            'ec2_region_endpoint', 'ec2.us-east-1.amazonaws.com')
-        self.ec2_port = self._get_config_value('ec2_port', None)
-        self.ec2_conn_path = self._get_config_value('ec2_conn_path', '/')
-        self.ec2_validate_certs = self._get_config_value(
-            'ec2_validate_certs', False)
-        # S3 connection fields
-        self.s3_is_secure = self._get_config_value('s3_is_secure', True)
-        self.s3_host = self._get_config_value('s3_host', 's3.amazonaws.com')
-        self.s3_port = self._get_config_value('s3_port', None)
-        self.s3_conn_path = self._get_config_value('s3_conn_path', '/')
-        self.s3_validate_certs = self._get_config_value(
-            's3_validate_certs', False)
+        # These are passed as-is to Boto
+        self.region_name = self._get_config_value('aws_region_name',
+                                                  'us-east-1')
+        self.session_cfg = {
+            'aws_access_key_id': self._get_config_value(
+                'aws_access_key', os.environ.get('AWS_ACCESS_KEY', None)),
+            'aws_secret_access_key': self._get_config_value(
+                'aws_secret_key', os.environ.get('AWS_SECRET_KEY', None)),
+            'aws_session_token': self._get_config_value(
+                'aws_session_token', None)
+        }
+        self.ec2_cfg = {
+            'service_name': 'ec2',
+            'use_ssl': self._get_config_value('ec2_is_secure', True),
+            'verify': self._get_config_value('ec2_validate_certs', False),
+            'endpoint_url': self._get_config_value('ec2_endpoint_url', None)
+        }
+        self.s3_cfg = {
+            'service_name': 's3',
+            'use_ssl': self._get_config_value('s3_is_secure', True),
+            'verify': self._get_config_value('s3_validate_certs', False),
+            'endpoint_url': self._get_config_value('s3_endpoint_url', None)
+        }
 
         # service connections, lazily initialized
+        self._session = None
         self._ec2_conn = None
         self._vpc_conn = None
         self._s3_conn = None
@@ -69,16 +70,19 @@ class AWSCloudProvider(BaseCloudProvider):
         self._object_store = AWSObjectStoreService(self)
 
     @property
+    def session(self):
+        '''Get a low-level session object or create one if needed'''
+        if not self._session:
+            if self.config.debug_mode:
+                boto3.set_stream_logger(level=log.DEBUG)
+            self._session = boto3.session.Session(**self.session_cfg)
+        return self._session
+
+    @property
     def ec2_conn(self):
         if not self._ec2_conn:
             self._ec2_conn = self._connect_ec2()
         return self._ec2_conn
-
-    @property
-    def vpc_conn(self):
-        if not self._vpc_conn:
-            self._vpc_conn = self._connect_vpc()
-        return self._vpc_conn
 
     @property
     def s3_conn(self):
@@ -110,52 +114,16 @@ class AWSCloudProvider(BaseCloudProvider):
         """
         Get a boto ec2 connection object.
         """
-        r = RegionInfo(name=self.region_name, endpoint=self.region_endpoint)
-        return self._conect_ec2_region(r)
+        return self._conect_ec2_region()
 
-    def _conect_ec2_region(self, region):
-        ec2_conn = boto.connect_ec2(
-            aws_access_key_id=self.a_key,
-            aws_secret_access_key=self.s_key,
-            is_secure=self.ec2_is_secure,
-            region=region,
-            port=self.ec2_port,
-            path=self.ec2_conn_path,
-            validate_certs=self.ec2_validate_certs,
-            debug=2 if self.config.debug_mode else 0)
-        return ec2_conn
-
-    def _connect_vpc(self):
-        """
-        Get a boto VPC connection object.
-        """
-        r = RegionInfo(name=self.region_name, endpoint=self.region_endpoint)
-        vpc_conn = boto.connect_vpc(
-            aws_access_key_id=self.a_key,
-            aws_secret_access_key=self.s_key,
-            security_token=self.session_token,
-            is_secure=self.ec2_is_secure,
-            region=r,
-            port=self.ec2_port,
-            path=self.ec2_conn_path,
-            validate_certs=self.ec2_validate_certs,
-            debug=2 if self.config.debug_mode else 0)
-        return vpc_conn
+    def _conect_ec2_region(self, region=None):
+        '''Get an EC2 resource object'''
+        return self.session.resource(region_name=region or self.region_name,
+                                     **self.ec2_cfg)
 
     def _connect_s3(self):
-        """
-        Get a boto S3 connection object.
-        """
-        s3_conn = boto.connect_s3(aws_access_key_id=self.a_key,
-                                  aws_secret_access_key=self.s_key,
-                                  security_token=self.session_token,
-                                  is_secure=self.s3_is_secure,
-                                  port=self.s3_port,
-                                  host=self.s3_host,
-                                  path=self.s3_conn_path,
-                                  validate_certs=self.s3_validate_certs,
-                                  debug=2 if self.config.debug_mode else 0)
-        return s3_conn
+        '''Get an S3 resource object'''
+        return self.session.resource(**self.s3_cfg)
 
 
 class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
@@ -171,8 +139,8 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         self.ec2mock.start()
         self.s3mock = mock_s3()
         self.s3mock.start()
-        HTTPretty.register_uri(
-            HTTPretty.GET,
+        responses.add(
+            responses.GET,
             self.AWS_INSTANCE_DATA_DEFAULT_URL,
             body=u"""
 [
