@@ -559,7 +559,6 @@ class AzureInstanceService(BaseInstanceService):
 
         self.provider.azure_client.create_vm(instance_name, params)
         vm = self._provider.azure_client.get_vm(instance_name)
-        print(str(vm))
         return AzureInstance(self.provider, vm)
 
     def _resolve_launch_options(self, name, subnet=None, zone_id=None,
