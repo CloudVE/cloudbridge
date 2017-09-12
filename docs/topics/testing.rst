@@ -43,7 +43,7 @@ Specific environment and infrastructure
 If you’d like to run the tests on a specific environment only, say Python 2.7,
 against a specific infrastructure, say aws, use a command like this:
 ``tox -e py27-aws``. The available provider names are listed in the
-`ProviderList`_ class (e.g., ``aws`` or ``openstack``).  
+`ProviderList`_ class (e.g., ``aws`` or ``openstack``).
 
 Specific test cases
 ~~~~~~~~~~~~~~~~~~~~

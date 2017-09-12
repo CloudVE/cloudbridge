@@ -21,7 +21,7 @@ from swiftclient import client as swift_client
 
 from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
-from .services import OpenStackNetworkService
+from .services import OpenStackNetworkingService
 from .services import OpenStackObjectStoreService
 from .services import OpenStackSecurityService
 
@@ -33,7 +33,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
         super(OpenStackCloudProvider, self).__init__(config)
-        self.cloud_type = 'openstack'
 
         # Initialize cloud connection fields
         self.username = self._get_config_value(
@@ -66,7 +65,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         # Initialize provider services
         self._compute = OpenStackComputeService(self)
-        self._network = OpenStackNetworkService(self)
+        self._networking = OpenStackNetworkingService(self)
         self._security = OpenStackSecurityService(self)
         self._block_store = OpenStackBlockStoreService(self)
         self._object_store = OpenStackObjectStoreService(self)
@@ -153,8 +152,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):

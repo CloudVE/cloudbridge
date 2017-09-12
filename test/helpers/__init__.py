@@ -2,6 +2,7 @@ import functools
 import os
 import sys
 import unittest
+import uuid
 
 from contextlib import contextmanager
 
@@ -84,7 +85,7 @@ TEST_DATA_CONFIG = {
         "image": os.environ.get('CB_IMAGE_OS',
                                 '842b949c-ea76-48df-998d-8a41f2626243'),
         "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.tiny'),
-        "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
+        "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
     },
     "AzureCloudProvider": {
         "placement":
@@ -111,7 +112,8 @@ def create_test_network(provider, name):
     """
     Create a network with one subnet, returning the network and subnet objects.
     """
-    net = provider.network.create(name=name)
+    net = provider.networking.networks.create(name=name,
+                                              cidr_block='10.0.0.0/16')
     cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
     sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block), name=name,
                            zone=get_provider_test_data(provider, 'placement'))
@@ -123,7 +125,7 @@ def delete_test_network(network):
     Delete the supplied network, first deleting any contained subnets.
     """
     with cleanup_action(lambda: network.delete()):
-        for sn in network.subnets():
+        for sn in network.subnets:
             sn.delete()
 
 
@@ -166,7 +168,7 @@ def get_test_instance(provider, name, key_pair=None, security_groups=None,
 
 
 def get_test_fixtures_folder():
-    return os.path.join(os.path.dirname(__file__), 'fixtures/')
+    return os.path.join(os.path.dirname(__file__), '../fixtures/')
 
 
 def delete_test_instance(instance):
@@ -185,6 +187,10 @@ def cleanup_test_resources(instance=None, network=None, security_group=None,
             with cleanup_action(lambda: security_group.delete()
                                 if security_group else None):
                 delete_test_instance(instance)
+
+
+def get_uuid():
+    return str(uuid.uuid4())
 
 
 class ProviderTestBase(unittest.TestCase):
@@ -214,8 +220,8 @@ class ProviderTestBase(unittest.TestCase):
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
         config = {'default_wait_interval':
-                  self.get_provider_wait_interval(provider_class)
-                  }
+                      self.get_provider_wait_interval(provider_class),
+                  'default_result_limit': 1}
         return provider_class(config)
 
     @property

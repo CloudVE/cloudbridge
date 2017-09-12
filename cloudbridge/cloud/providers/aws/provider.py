@@ -18,7 +18,7 @@ from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 from .services import AWSBlockStoreService
 from .services import AWSComputeService
-from .services import AWSNetworkService
+from .services import AWSNetworkingService
 from .services import AWSObjectStoreService
 from .services import AWSSecurityService
 
@@ -31,7 +31,6 @@ class AWSCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
         super(AWSCloudProvider, self).__init__(config)
-        self.cloud_type = 'aws'
 
         # Initialize cloud connection fields
         self.a_key = self._get_config_value(
@@ -64,7 +63,7 @@ class AWSCloudProvider(BaseCloudProvider):
 
         # Initialize provider services
         self._compute = AWSComputeService(self)
-        self._network = AWSNetworkService(self)
+        self._networking = AWSNetworkingService(self)
         self._security = AWSSecurityService(self)
         self._block_store = AWSBlockStoreService(self)
         self._object_store = AWSObjectStoreService(self)
@@ -92,8 +91,8 @@ class AWSCloudProvider(BaseCloudProvider):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):
