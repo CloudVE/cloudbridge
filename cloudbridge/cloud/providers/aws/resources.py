@@ -1308,3 +1308,4 @@ class AWSLaunchConfig(BaseLaunchConfig):
         sns = net.subnets()
         if sns:
             self.network_interfaces.append(sns[0].id)
+            
