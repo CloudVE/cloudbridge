@@ -1005,7 +1005,7 @@ class AWSRegion(BaseRegion):
 
     @property
     def id(self):
-        return self._aws_region
+        return self._aws_region.get('RegionName')
 
     @property
     def name(self):
@@ -1016,15 +1016,15 @@ class AWSRegion(BaseRegion):
         """
         Accesss information about placement zones within this region.
         """
-        if self.id == self._provider.session.region_name:  # optimisation
+        if self.id == self._provider.region_name:  # optimisation
             conn = self._provider.ec2_conn
         else:
             conn = self._provider._conect_ec2_region(region_name=self.id)
 
         zones = (conn.meta.client.describe_availability_zones()
                  .get('AvailabilityZones', []))
-        return [AWSPlacementZone(self._provider, zone,
-                                 self._aws_region)
+        return [AWSPlacementZone(self._provider, zone.get('ZoneName'),
+                                 self.id)
                 for zone in zones]
 
 

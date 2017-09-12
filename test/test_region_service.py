@@ -63,9 +63,5 @@ class CloudRegionServiceTestCase(ProviderTestBase):
                                            six.string_types))
                 if test_zone == zone.name:
                     zone_find_count += 1
-        # TODO: Can't do a check for zone_find_count == 1 because Moto
-        # always returns the same zone for any region
-        self.assertTrue(zone_find_count > 0,
-                        "The test zone: {0} should appear exactly"
-                        " once in the list of regions, but was not found"
-                        .format(test_zone, zone_find_count))
+        # zone info cannot be repeated between regions
+        self.assertEqual(zone_find_count, 1)

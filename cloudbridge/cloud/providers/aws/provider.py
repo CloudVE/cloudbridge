@@ -114,11 +114,11 @@ class AWSCloudProvider(BaseCloudProvider):
         """
         Get a boto ec2 connection object.
         """
-        return self._conect_ec2_region()
+        return self._conect_ec2_region(region_name=self.region_name)
 
-    def _conect_ec2_region(self, region=None):
+    def _conect_ec2_region(self, region_name=None):
         '''Get an EC2 resource object'''
-        return self.session.resource(region_name=region or self.region_name,
+        return self.session.resource(region_name=region_name,
                                      **self.ec2_cfg)
 
     def _connect_s3(self):
