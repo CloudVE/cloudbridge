@@ -13,14 +13,16 @@ from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketObject, BaseFloatingIP, \
-    BaseInstance, BaseInstanceType, BaseKeyPair,\
-    BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
+    BaseInstance, BaseInstanceType, BaseInternetGateway, \
+    BaseKeyPair, BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
     BasePlacementZone, BaseRegion, BaseRouter, BaseSecurityGroup, \
     BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
     BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import InstanceState, VolumeState
+from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import Instance, \
-    MachineImageState, NetworkState, RouterState, SnapshotState
+    MachineImageState, NetworkState, RouterState, \
+    SnapshotState, SubnetState
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
@@ -93,10 +95,13 @@ class AzureSecurityGroup(BaseSecurityGroup):
 
     @name.setter
     def name(self, value):
-        self._security_group.tags.update(Name=value)
-        self._provider.azure_client. \
-            update_security_group_tags(self.id,
-                                       self._security_group.tags)
+        if self.is_valid_resource_name(value):
+            self._security_group.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_security_group_tags(self.id,
+                                           self._security_group.tags)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def description(self):
@@ -129,6 +134,19 @@ class AzureSecurityGroup(BaseSecurityGroup):
         except CloudError as cloudError:
             log.exception(cloudError.message)
             return False
+
+    def refresh(self):
+        """
+        Refreshes the security group with tags if required.
+        """
+        try:
+            self._security_group = self._provider.azure_client. \
+                get_security_group(self.id)
+            if not self._security_group.tags:
+                self._security_group.tags = {}
+        except (CloudError, ValueError) as cloudError:
+            log.exception(cloudError.message)
+            # The security group no longer exists and cannot be refreshed.
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
@@ -223,7 +241,7 @@ class AzureSecurityGroup(BaseSecurityGroup):
         js['rules'] = [json.loads(r) for r in json_rules]
         if js.get('network_id'):
             js.pop('network_id')  # Omit for consistency across cloud providers
-        return json.dumps(js, sort_keys=True)
+        return js
 
 
 class AzureSecurityGroupRule(BaseSecurityGroupRule):
@@ -416,6 +434,11 @@ class AzureBucket(BaseBucket):
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
+    def find(self, name, limit=None, marker=None):
+        objects = [obj for obj in self if obj.name == name]
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
+
     def delete(self, delete_contents=True):
         """
         Delete this bucket.
@@ -497,10 +520,13 @@ class AzureVolume(BaseVolume):
         Set the volume name.
         """
         # self._volume.name = value
-        self._volume.tags.update(Name=value)
-        self._provider.azure_client. \
-            update_disk_tags(self.id,
-                             self._volume.tags)
+        if self.is_valid_resource_name(value):
+            self._volume.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_disk_tags(self.id,
+                                 self._volume.tags)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def description(self):
@@ -685,10 +711,13 @@ class AzureSnapshot(BaseSnapshot):
         Set the snapshot name.
         """
         # self._snapshot.name = value
-        self._snapshot.tags.update(Name=value)
-        self._provider.azure_client. \
-            update_snapshot_tags(self.id,
-                                 self._snapshot.tags)
+        if self.is_valid_resource_name(value):
+            self._snapshot.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_snapshot_tags(self.id,
+                                     self._snapshot.tags)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def description(self):
@@ -801,9 +830,12 @@ class AzureMachineImage(BaseMachineImage):
         """
         Set the image name.
         """
-        self._image.tags.update(Name=value)
-        self._provider.azure_client. \
-            update_image_tags(self.id, self._image.tags)
+        if self.is_valid_resource_name(value):
+            self._image.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_image_tags(self.id, self._image.tags)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def description(self):
@@ -899,9 +931,12 @@ class AzureNetwork(BaseNetwork):
         """
         Set the network name.
         """
-        self._network.tags.update(Name=value)
-        self._provider.azure_client.\
-            update_network_tags(self.id, self._network.tags)
+        if self.is_valid_resource_name(value):
+            self._network.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_network_tags(self.id, self._network)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def external(self):
@@ -951,12 +986,13 @@ class AzureNetwork(BaseNetwork):
             log.exception(cloudError.message)
             return False
 
+    @property
     def subnets(self):
         """
         List all the subnets in this network
         :return:
         """
-        return self._provider.network.subnets.list(network=self.id)
+        return self._provider.networking.subnets.list(network=self.id)
 
     def create_subnet(self, cidr_block, name=None, zone=None):
         """
@@ -966,7 +1002,7 @@ class AzureNetwork(BaseNetwork):
         :param zone:
         :return:
         """
-        return self._provider.network.subnets.\
+        return self._provider.networking.subnets. \
             create(network=self.id, cidr_block=cidr_block, name=name)
 
 
@@ -1073,10 +1109,15 @@ class AzurePlacementZone(BasePlacementZone):
 
 
 class AzureSubnet(BaseSubnet):
+    _SUBNET_STATE_MAP = {
+        'InProgress': SubnetState.PENDING,
+        'Succeeded': SubnetState.AVAILABLE,
+    }
 
     def __init__(self, provider, subnet):
         super(AzureSubnet, self).__init__(provider)
         self._subnet = subnet
+        self._state = self._subnet.provisioning_state
         self._url_params = azure_helpers\
             .parse_url(SUBNET_RESOURCE_ID, subnet.id)
         self._network = self._provider.azure_client.\
@@ -1126,6 +1167,26 @@ class AzureSubnet(BaseSubnet):
         except CloudError as cloudError:
             log.exception(cloudError.message)
             return False
+
+    @property
+    def state(self):
+        return self._SUBNET_STATE_MAP.get(
+            self._state, NetworkState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this network by re-querying the cloud provider
+        for its latest state.
+        """
+        try:
+            self._network = self._provider.azure_client. \
+                get_network(self.id)
+            self._state = self._network.provisioning_state
+        except (CloudError, ValueError) as cloudError:
+            log.exception(cloudError.message)
+            # The network no longer exists and cannot be refreshed.
+            # set the state to unknown
+            self._state = 'unknown'
 
 
 class AzureInstance(BaseInstance):
@@ -1218,9 +1279,12 @@ class AzureInstance(BaseInstance):
         """
         Set the instance name.
         """
-        self._vm.tags.update(Name=value)
-        self._provider.azure_client.\
-            update_vm_tags(self.id, self._vm.tags)
+        if self.is_valid_resource_name(value):
+            self._vm.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_vm_tags(self.id, self._vm)
+        else:
+            raise InvalidNameException(value)
 
     @property
     def public_ips(self):
@@ -1620,25 +1684,19 @@ class AzureKeyPair(BaseKeyPair):
 
 
 class AzureRouter(BaseRouter):
-
-    def __init__(self, provider, router):
+    def __init__(self, provider, route_table):
         super(AzureRouter, self).__init__(provider)
-        self._router = router
-        self._ROUTE_CIDR = '0.0.0.0/0'
-        self._name = None
-        self._network_id = None
-        self._state = RouterState.DETACHED
-
-    def _route_table(self, subnet_id):
-        pass
+        self._route_table = route_table
+        if not self._route_table.tags:
+            self._route_table.tags = {}
 
     @property
     def id(self):
-        return self._name
+        return self._route_table.name
 
     @property
     def resource_id(self):
-        pass
+        return self._route_table.id
 
     @property
     def name(self):
@@ -1646,6 +1704,87 @@ class AzureRouter(BaseRouter):
         Get the router name.
 
         .. note:: the router must have a (case sensitive) tag ``Name``
+        """
+        return self._route_table.tags.get('Name', self._route_table.name)
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the router name.
+        """
+        if self.is_valid_resource_name(value):
+            self._route_table.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_route_table_tags(self._route_table.name,
+                                        self._route_table)
+        else:
+            raise InvalidNameException(value)
+
+    def refresh(self):
+        self._route_table = self._provider.azure_client. \
+            get_route_table(self._route_table.name)
+
+    @property
+    def state(self):
+        self.refresh()  # Explicitly refresh the local object
+        if self._route_table.subnets:
+            return RouterState.ATTACHED
+        return RouterState.DETACHED
+
+    @property
+    def network_id(self):
+        return None
+
+    def delete(self):
+        self._provider.azure_client. \
+            delete_route_table(self.name)
+
+    def attach_subnet(self, subnet):
+        subnet_id_parts = subnet.id.split('|$|')
+        if (len(subnet_id_parts) != 2):
+            pass
+        self._provider.azure_client. \
+            attach_subnet_to_route_table(subnet_id_parts[0],
+                                         subnet_id_parts[1],
+                                         self.resource_id)
+        self.refresh()
+
+    def detach_subnet(self, subnet):
+        subnet_id_parts = subnet.id.split('|$|')
+        if (len(subnet_id_parts) != 2):
+            pass
+        self._provider.azure_client. \
+            detach_subnet_to_route_table(subnet_id_parts[0],
+                                         subnet_id_parts[1],
+                                         self.resource_id)
+        self.refresh()
+
+    def attach_gateway(self, gateway):
+        pass
+
+    def detach_gateway(self, gateway):
+        pass
+
+
+class AzureInternetGateway(BaseInternetGateway):
+    def __init__(self, provider, gateway):
+        super(AzureInternetGateway, self).__init__(provider)
+        self._gateway = gateway
+        self._name = None
+        self._network_id = None
+        self._state = ''
+
+    @property
+    def id(self):
+        return self._name
+
+    @property
+    def name(self):
+        """
+        Get the gateway name.
+
+        .. note:: the gateway must have a (case sensitive) tag ``Name``
         """
         return self._name
 
@@ -1655,7 +1794,10 @@ class AzureRouter(BaseRouter):
         """
         Set the router name.
         """
-        self._name = value
+        if self.is_valid_resource_name(value):
+            self._name = value
+        else:
+            raise InvalidNameException(value)
 
     def refresh(self):
         pass
@@ -1666,36 +1808,7 @@ class AzureRouter(BaseRouter):
 
     @property
     def network_id(self):
-        return self._network_id
+        return None
 
     def delete(self):
-        pass
-
-    def attach_network(self, network_id):
-        self._network_id = network_id
-        self._state = RouterState.ATTACHED
-
-    def detach_network(self):
-        pass
-
-    def add_route(self, subnet_id):
-        """
-        Add a default route to this router.
-
-        For Azure, routes are added to a route table. A route table is assoc.
-        with a network vs. a subnet so we retrieve the network via the subnet.
-        Note that the subnet must belong to the same network as the router
-        is attached to.
-
-        Further, only a single route can be added, targeting the Internet
-        (i.e., destination CIDR block ``0.0.0.0/0``).
-        """
-        pass
-
-    def remove_route(self, subnet_id):
-        """
-        Remove the default Internet route from this router.
-
-        .. seealso:: ``add_route`` method
-        """
         pass

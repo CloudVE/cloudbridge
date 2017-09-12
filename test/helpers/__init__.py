@@ -222,6 +222,7 @@ class ProviderTestBase(unittest.TestCase):
         config = {'default_wait_interval':
                       self.get_provider_wait_interval(provider_class),
                   'default_result_limit': 1}
+
         return provider_class(config)
 
     @property

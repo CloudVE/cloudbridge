@@ -743,8 +743,8 @@ class OpenStackNetworkService(BaseNetworkService):
 
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
-                    for network in self.provider.neutron.list_networks()
-                        .get('networks') if network]
+                    for network in self.provider.neutron.list_networks().
+                        get('networks') if network]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
@@ -840,10 +840,10 @@ class OpenStackSubnetService(BaseSubnetService):
             router = self.provider.networking.routers.create(
                 OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
             router.attach_subnet(sn)
-            gteway = (self.provider.networking.gateways
-                .get_or_create_inet_gateway(
-                OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
-            ))
+            gteway = (self.provider.networking.
+                      gateways.
+                      get_or_create_inet_gateway
+                      (OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME))
             router.attach_gateway(gteway)
             return sn
         except NeutronClientException:

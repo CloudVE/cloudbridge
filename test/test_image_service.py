@@ -45,8 +45,11 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 if not isinstance(self.provider, TestMockHelperMixin):
                     # check image size
                     test_image.refresh()
-                    self.assertGreater(test_image.min_disk, 0, "Minimum disk"
-                                                               " size required by image is invalid")
+                    if not self.provider.PROVIDER_ID == 'azure':
+                        self.assertGreater(
+                            test_image.min_disk, 0,
+                            "Minimum disk size required by image is invalid")
+
             # TODO: Images take a long time to deregister on EC2. Needs
             # investigation
             sit.check_delete(self, self.provider.compute.images, test_image)
