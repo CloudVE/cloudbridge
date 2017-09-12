@@ -5,7 +5,7 @@ from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.providers.azure.azure_client import AzureClient
 from cloudbridge.cloud.providers.azure.services \
     import AzureBlockStoreService, AzureComputeService, \
-    AzureNetworkService, AzureObjectStoreService, AzureSecurityService
+    AzureNetworkingService, AzureObjectStoreService, AzureSecurityService
 
 
 from msrestazure.azure_exceptions import CloudError
@@ -18,7 +18,6 @@ class AzureCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
         super(AzureCloudProvider, self).__init__(config)
-        self.cloud_type = 'azure'
 
         # mandatory config values
         self.subscription_id = self. \
@@ -57,15 +56,15 @@ class AzureCloudProvider(BaseCloudProvider):
         self._object_store = AzureObjectStoreService(self)
         self._block_store = AzureBlockStoreService(self)
         self._compute = AzureComputeService(self)
-        self._network = AzureNetworkService(self)
+        self._networking = AzureNetworkingService(self)
 
     @property
     def compute(self):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):

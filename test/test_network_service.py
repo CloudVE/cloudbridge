@@ -23,7 +23,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             # check subnet
             subnet = self.provider.networking.subnets.create(
-                network=net, cidr_block="10.0.0.1/24", name=subnet_name)
+                network=net, cidr_block="10.0.1.0/24", name=subnet_name)
             with helpers.cleanup_action(
                 lambda:
                 self.provider.networking.subnets.delete(subnet=subnet)
@@ -145,7 +145,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             #             self.assertFalse(
             #                 router.network_id,
-            #                 "Router {0} should not be assoc. with a network {1}".format(
+            #                 "Router {0} should not be assoc.
+            # with a network {1}".format(
             #                     router.id, router.network_id))
 
             router.attach_subnet(sn)

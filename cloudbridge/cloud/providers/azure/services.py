@@ -6,23 +6,25 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService, \
-    BaseComputeService, BaseImageService, BaseInstanceService, \
-    BaseInstanceTypesService, BaseKeyPairService, \
-    BaseNetworkService, BaseObjectStoreService,\
-    BaseRegionService, BaseSecurityGroupService, BaseSecurityService, \
+    BaseComputeService, BaseGatewayService, BaseImageService, \
+    BaseInstanceService, BaseInstanceTypesService, \
+    BaseKeyPairService, BaseNetworkService, BaseNetworkingService, \
+    BaseObjectStoreService, BaseRegionService, BaseRouterService, \
+    BaseSecurityGroupService, BaseSecurityService, \
     BaseSnapshotService, BaseSubnetService, BaseVolumeService
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 
 from cloudbridge.cloud.interfaces.resources import InstanceType, \
-     MachineImage, Network, PlacementZone, SecurityGroup, \
-     Snapshot, Subnet, Volume
+    MachineImage, Network, PlacementZone, SecurityGroup, \
+    Snapshot, Subnet, Volume
 
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
 from .resources import AzureBucket, AzureFloatingIP, \
-    AzureInstance, AzureInstanceType, AzureKeyPair,\
+    AzureInstance, AzureInstanceType, \
+    AzureInternetGateway, AzureKeyPair, \
     AzureLaunchConfig, AzureMachineImage, \
     AzureNetwork, AzureRegion, AzureRouter, AzureSecurityGroup, \
     AzureSnapshot, AzureSubnet, AzureVolume
@@ -446,8 +448,8 @@ class AzureInstanceService(BaseInstanceService):
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
 
-        instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
-
+        instance_name = name.replace("_", "-") if name \
+            else "{0} - {1}".format("cb", uuid.uuid4())
         # Key_pair is mandatory in azure and it should not be None.
         if key_pair:
             key_pair = (self.provider.security.key_pairs.get(key_pair)
@@ -557,6 +559,7 @@ class AzureInstanceService(BaseInstanceService):
 
         self.provider.azure_client.create_vm(instance_name, params)
         vm = self._provider.azure_client.get_vm(instance_name)
+        print(str(vm))
         return AzureInstance(self.provider, vm)
 
     def _resolve_launch_options(self, name, subnet=None, zone_id=None,
@@ -782,6 +785,31 @@ class AzureInstanceTypesService(BaseInstanceTypesService):
                                      limit=limit, marker=marker)
 
 
+class AzureNetworkingService(BaseNetworkingService):
+    def __init__(self, provider):
+        super(AzureNetworkingService, self).__init__(provider)
+        self._network_service = AzureNetworkService(self.provider)
+        self._subnet_service = AzureSubnetService(self.provider)
+        self._router_service = AzureRouterService(self.provider)
+        self._gateway_service = AzureGatewayService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
+
+    @property
+    def routers(self):
+        return self._router_service
+
+    @property
+    def gateways(self):
+        return self._gateway_service
+
+
 class AzureNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(AzureNetworkService, self).__init__(provider)
@@ -806,7 +834,15 @@ class AzureNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def create(self, name=None):
+    def find(self, name, limit=None, marker=None):
+        filters = {'Name': name}
+        networks = [AzureNetwork(self.provider, network)
+                    for network in azure_helpers.filter(
+                self.provider.azure_client.list_networks(), filters)]
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
+
+    def create(self, name, cidr_block):
         # Azure requires CIDR block to be specified when creating a network
         # so set a default one and use the largest allowed netmask.
         network_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
@@ -816,15 +852,13 @@ class AzureNetworkService(BaseNetworkService):
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
-                'address_prefixes': ['10.0.0.0/16']
+                'address_prefixes': [cidr_block]
             },
             'tags': {'Name': name or AzureNetwork.CB_DEFAULT_NETWORK_NAME}
         }
-
         self.provider.azure_client.create_network(network_name, params)
         network = self.provider.azure_client.get_network(network_name)
         cb_network = AzureNetwork(self.provider, network)
-
         return cb_network
 
     def create_floating_ip(self):
@@ -843,6 +877,7 @@ class AzureNetworkService(BaseNetworkService):
     def subnets(self):
         return self._subnet_svc
 
+    @property
     def floating_ips(self, network_id=None):
         """
                List all floating ips.
@@ -850,7 +885,6 @@ class AzureNetworkService(BaseNetworkService):
         floating_ips = [AzureFloatingIP(self.provider, floating_ip)
                         for floating_ip in self.provider.azure_client.
                         list_floating_ips()]
-
         return ClientPagedResultList(self.provider, floating_ips)
 
     def routers(self):
@@ -914,6 +948,8 @@ class AzureSubnetService(BaseSubnetService):
         """
         try:
             subnet_id_parts = subnet_id.split('|$|')
+            if (len(subnet_id_parts) != 2):
+                return None
             azure_subnet = self.provider.azure_client.\
                 get_subnet(subnet_id_parts[0], subnet_id_parts[1])
             return AzureSubnet(self.provider,
@@ -989,18 +1025,20 @@ class AzureSubnetService(BaseSubnetService):
             return AzureSubnet(self.provider, subnet)
 
         # No provider-default Subnet exists, try to create it (net + subnets)
+        default_net_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
         try:
-            network = self.provider.azure_client\
-                .get_network(AzureNetwork.CB_DEFAULT_NETWORK_NAME)
+            network = self.provider.azure_client \
+                .get_network(default_net_name)
         except CloudError:
             # Azure raises the cloud error if the resource not available
             pass
 
         if not network:
-            self.provider.network.create()
+            network = self.provider.networking.networks.create(
+                name=default_net_name, cidr_block='10.0.0.0/16')
 
         subnet = self.provider.azure_client.create_subnet(
-            AzureNetwork.CB_DEFAULT_NETWORK_NAME,
+            network.id,
             AzureSubnet.CB_DEFAULT_SUBNET_NAME,
             {'address_prefix': default_cdir}
         )
@@ -1022,3 +1060,55 @@ class AzureSubnetService(BaseSubnetService):
             # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return False
+
+
+class AzureRouterService(BaseRouterService):
+    def __init__(self, provider):
+        super(AzureRouterService, self).__init__(provider)
+
+    def get(self, router_id):
+        try:
+            route = self.provider.azure_client.get_route_table(router_id)
+            return AzureRouter(self.provider, route)
+
+        except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloudError.message)
+            return None
+
+    def find(self, name, limit=None, marker=None):
+        filters = {'Name': name}
+        routes = [AzureRouter(self.provider, route)
+                  for route in azure_helpers.filter(
+                self.provider.azure_client.list_route_tables(), filters)]
+
+        return ClientPagedResultList(self.provider, routes,
+                                     limit=limit, marker=marker)
+
+    def list(self, limit=None, marker=None):
+        routes = [AzureRouter(self.provider, route)
+                  for route in
+                  self.provider.azure_client.list_route_tables()]
+        return ClientPagedResultList(self.provider,
+                                     routes,
+                                     limit=limit, marker=marker)
+
+    def create(self, name, network):
+        parameters = {"location": self.provider.region_name,
+                      'tags': {'Name': name}}
+        route = self.provider.azure_client. \
+            create_route_table(name, parameters)
+        return AzureRouter(self.provider, route)
+
+
+class AzureGatewayService(BaseGatewayService):
+    def __init__(self, provider):
+        super(AzureGatewayService, self).__init__(provider)
+
+    def get_or_create_inet_gateway(self, name):
+        gateway = AzureInternetGateway(self.provider, None)
+        gateway.name = name
+        return gateway
+
+    def delete(self, gateway):
+        pass
