@@ -684,6 +684,7 @@ class AzureSnapshot(BaseSnapshot):
         self._snapshot = snapshot
         self._description = None
         self._state = self._snapshot.provisioning_state
+        print("In init - " + self._state)
         if not self._snapshot.tags:
             self._snapshot.tags = {}
 
