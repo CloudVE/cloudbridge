@@ -166,10 +166,6 @@ def check_standard_behaviour(test, service, obj):
     obj_get = check_get(test, service, obj)
     check_get_non_existent(test, service)
 
-    objs_list[0].wait_till_ready()
-    objs_iter[0].wait_till_ready()
-    objs_find.wait_till_ready()
-
     test.assertTrue(
         obj.state == objs_list[0].state == objs_iter[0].state ==
         objs_find[0].state == obj_get.state,
