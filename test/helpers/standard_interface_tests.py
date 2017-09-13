@@ -82,12 +82,9 @@ def check_find_non_existent(test, service):
 
 def check_get(test, service, obj):
     get_obj = service.get(obj.id)
-    print("Actual - " + str(obj))
-    print("Get - " + str(get_obj))
-    test.assertEqual(get_obj.name, obj.name)
-    test.assertEqual(get_obj.resource_id, obj.resource_id)
-    test.assertEqual(get_obj.description, obj.description)
-    test.assertEqual(get_obj.size, obj.size)
+    print("Actual - " + str(obj.__dict__))
+    print("Get - " + str(get_obj.__dict__))
+    test.assertEqual(get_obj.source, obj.source)
     test.assertEqual(get_obj, obj)
     test.assertIsInstance(get_obj, type(obj))
     return get_obj
