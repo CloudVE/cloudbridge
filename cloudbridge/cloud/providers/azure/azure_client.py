@@ -138,8 +138,12 @@ class AzureClient(object):
             list_locations(self.subscription_id)
 
     def list_security_group(self):
-        return self.network_management_client.network_security_groups. \
+        sgl = self.network_management_client.network_security_groups. \
             list(self.resource_group)
+        print("List - " + str(sgl))
+        print("current page - " + str(sgl.current_page))
+        print("next_link - " + str(sgl.next_link))
+        return sgl
 
     def create_security_group(self, name, parameters):
         return self.network_management_client.network_security_groups. \
