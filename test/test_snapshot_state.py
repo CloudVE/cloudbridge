@@ -35,8 +35,6 @@ class CloudSnapshotServiceTestCase(ProviderTestBase):
                 test_snap.wait_till_ready()
                 print(test_snap.state)
                 for x in range(0, 20):
-                    obj = self.provider.block_store.snapshots.get(test_snap.id)
-                    print("Get - " + obj.state)
                     list_objs = self.provider.block_store.snapshots.list()
                     all_records = list_objs
                     while list_objs.is_truncated:
@@ -44,3 +42,5 @@ class CloudSnapshotServiceTestCase(ProviderTestBase):
                         all_records += list_objs
                     match_objs = [o for o in all_records if o.id == obj.id]
                     print("List - " + match_objs[0].state)
+                    # obj = self.provider.block_store.snapshots.get(test_snap.id)
+                    # print("Get - " + obj.state)
