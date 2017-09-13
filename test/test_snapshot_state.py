@@ -40,7 +40,7 @@ class CloudSnapshotServiceTestCase(ProviderTestBase):
                     while list_objs.is_truncated:
                         list_objs = self.provider.block_store.snapshots.list(marker=list_objs.marker)
                         all_records += list_objs
-                    match_objs = [o for o in all_records if o.id == obj.id]
+                    match_objs = [o for o in all_records if o.id == test_snap.id]
                     print("List - " + match_objs[0].state)
                     # obj = self.provider.block_store.snapshots.get(test_snap.id)
                     # print("Get - " + obj.state)
