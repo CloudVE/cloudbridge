@@ -84,7 +84,10 @@ def check_get(test, service, obj):
     get_obj = service.get(obj.id)
     print("Actual - " + str(obj.__dict__))
     print("Get - " + str(get_obj.__dict__))
-    test.assertEqual(get_obj.source, obj.source)
+    test.assertEqual(get_obj.name, obj.name)
+    test.assertEqual(get_obj._provider, obj._provider)
+    test.assertEqual(get_obj.id, obj.id)
+    test.assertEqual(get_obj.state, obj.state)
     test.assertEqual(get_obj, obj)
     test.assertIsInstance(get_obj, type(obj))
     return get_obj
