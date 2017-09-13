@@ -81,7 +81,6 @@ def check_find_non_existent(test, service):
 
 
 def check_get(test, service, obj):
-    obj.wait_till_ready()
     get_obj = service.get(obj.id)
     print("Actual - " + str(obj.__dict__))
     print("Get - " + str(get_obj.__dict__))
@@ -156,6 +155,7 @@ def check_standard_behaviour(test, service, obj):
     Checks standard behaviour in a given cloudbridge resource
     of a given service.
     """
+    obj.wait_till_ready()
     check_repr(test, obj)
     check_json(test, obj)
     check_obj_properties(test, obj)
