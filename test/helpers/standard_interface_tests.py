@@ -81,6 +81,7 @@ def check_find_non_existent(test, service):
 
 
 def check_get(test, service, obj):
+    obj.wait_till_ready()
     get_obj = service.get(obj.id)
     print("Actual - " + str(obj.__dict__))
     print("Get - " + str(get_obj.__dict__))
