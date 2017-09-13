@@ -219,25 +219,9 @@ class ProviderTestBase(unittest.TestCase):
         factory = CloudProviderFactory()
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
-        # config = {'default_wait_interval':
-        #               self.get_provider_wait_interval(provider_class),
-        #           'default_result_limit': 1}
-
-        config = {
-            'default_wait_interval':
-                self.get_provider_wait_interval(provider_class),
-            'azure_subscription_id':
-                '7904d702-e01c-4826-8519-f5a25c866a96',
-            'azure_client_id':
-                '69621fe1-f59f-43de-8799-269007c76b95',
-            'azure_secret':
-                'Orcw9U5Kd4cUDntDABg0dygN32RQ4FGBYyLRaJ/BlrM=',
-            'azure_tenant':
-                '75ec242e-054d-4b22-98a9-a4602ebb6027',
-            'azure_resource_group': 'cbtestrggg',
-            'azure_storage_account': 'cbtestsaa',
-            'azure_vm_default_user_name': 'cbtestuser'
-        }
+        config = {'default_wait_interval':
+                      self.get_provider_wait_interval(provider_class),
+                  'default_result_limit': 1}
 
         return provider_class(config)
 
