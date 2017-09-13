@@ -169,10 +169,10 @@ def check_standard_behaviour(test, service, obj):
     test.assertTrue(
         obj.state == objs_list[0].state == objs_iter[0].state ==
         objs_find[0].state == obj_get.state,
-        "Object Ids returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
-                                           objs_find[0].id, obj_get.id,
-                                           obj.id))
+        "Object States returned by list: {0}, iter: {1}, find: {2} and get: {3} "
+        " are not as expected: {4}".format(objs_list[0].state, objs_iter[0].state,
+                                           objs_find[0].state, obj_get.state,
+                                           obj.state))
 
     test.assertTrue(
         obj._provider == objs_list[0]._provider == objs_iter[0]._provider ==
