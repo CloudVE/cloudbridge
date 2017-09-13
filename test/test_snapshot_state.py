@@ -42,5 +42,6 @@ class CloudSnapshotServiceTestCase(ProviderTestBase):
                         all_records += list_objs
                     match_objs = [o for o in all_records if o.id == test_snap.id]
                     print("List - " + match_objs[0].state)
+                    time.sleep(5)
                     # obj = self.provider.block_store.snapshots.get(test_snap.id)
                     # print("Get - " + obj.state)
