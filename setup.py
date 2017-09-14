@@ -70,5 +70,5 @@ setup(name='cloudbridge',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: Implementation :: CPython',
           'Programming Language :: Python :: Implementation :: PyPy'],
-      test_suite="test.test_block_store_service.CloudBlockStoreServiceTestCase.test_crud_snapshot"
+      test_suite="test"
       )

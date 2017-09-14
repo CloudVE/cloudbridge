@@ -21,7 +21,7 @@ install:
   - pip install coveralls
   - pip install codecov
 script:
-  - tox -e $TOX_ENV
+  - travis_wait 110 tox -e $TOX_ENV
 after_success:
 #  - coveralls
   - codecov --token=bd85eb21-d28f-456d-bb7e-f59fb0543974

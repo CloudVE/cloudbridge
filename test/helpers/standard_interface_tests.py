@@ -33,8 +33,6 @@ def check_obj_properties(test, obj):
 
 
 def check_list(test, service, obj):
-    obj.wait_till_ready()
-    print("In List - " + obj.state)
     list_objs = service.list()
     test.assertIsInstance(list_objs, ResultList)
     all_records = list_objs
@@ -46,13 +44,10 @@ def check_list(test, service, obj):
         len(match_objs) == 1,
         "List objects for %s does not return the expected object id %s. Got %s"
         % (type(obj).__name__, obj.id, match_objs))
-    print("In List - " + match_objs[0].state)
     return match_objs
 
 
 def check_iter(test, service, obj):
-    obj.wait_till_ready()
-    print("In Iter - " + obj.state)
     # check iteration
     iter_objs = list(service)
     iter_ids = [o.id for o in service]
@@ -63,7 +58,6 @@ def check_iter(test, service, obj):
         len(match_objs) == 1,
         "Iter objects for %s does not return the expected object id %s. Got %s"
         % (type(obj).__name__, obj.id, match_objs))
-    print("In Iter - " + match_objs[0].state)
     return match_objs
 
 
@@ -87,14 +81,7 @@ def check_find_non_existent(test, service):
 
 
 def check_get(test, service, obj):
-    obj.wait_till_ready()
-    print("In Get - " + obj.state)
     get_obj = service.get(obj.id)
-    print("In Get - " + get_obj.state)
-    test.assertEqual(get_obj.name, obj.name)
-    test.assertEqual(get_obj._provider, obj._provider)
-    test.assertEqual(get_obj.id, obj.id)
-    test.assertEqual(get_obj.state, obj.state)
     test.assertEqual(get_obj, obj)
     test.assertIsInstance(get_obj, type(obj))
     return get_obj
@@ -172,27 +159,12 @@ def check_standard_behaviour(test, service, obj):
     obj_get = check_get(test, service, obj)
     check_get_non_existent(test, service)
 
-    print("Out List - " + objs_list[0].state)
-    print("Out Iter - " + objs_iter[0].state)
-    print("Out Get - " + obj_get.state)
-    print("Out Find - " + objs_find[0].state)
-
     test.assertTrue(
-        obj.state == objs_list[0].state == objs_iter[0].state ==
-        objs_find[0].state == obj_get.state,
-        "Object States returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}".format(objs_list[0].state, objs_iter[0].state,
-                                           objs_find[0].state, obj_get.state,
-                                           obj.state))
-
-    test.assertTrue(
-        obj._provider == objs_list[0]._provider == objs_iter[0]._provider ==
-        objs_find[0]._provider == obj_get._provider,
-        "Object Ids returned by list: {0}, iter: {1}, find: {2} and get: {3} "
+        obj == objs_list[0] == objs_iter[0] == objs_find[0] == obj_get,
+        "Objects returned by list: {0}, iter: {1}, find: {2} and get: {3} "
         " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
                                            objs_find[0].id, obj_get.id,
                                            obj.id))
-
 
     test.assertTrue(
         obj.id == objs_list[0].id == objs_iter[0].id ==
@@ -206,13 +178,6 @@ def check_standard_behaviour(test, service, obj):
         obj.name == objs_list[0].name == objs_iter[0].name ==
         objs_find[0].name == obj_get.name,
         "Names returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
-                                           objs_find[0].id, obj_get.id,
-                                           obj.id))
-
-    test.assertTrue(
-        obj == objs_list[0] == objs_iter[0] == objs_find[0] == obj_get,
-        "Objects returned by list: {0}, iter: {1}, find: {2} and get: {3} "
         " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
                                            objs_find[0].id, obj_get.id,
                                            obj.id))
