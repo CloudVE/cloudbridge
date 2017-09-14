@@ -46,13 +46,13 @@ class AWSCloudProvider(BaseCloudProvider):
         self.ec2_cfg = {
             'service_name': 'ec2',
             'use_ssl': self._get_config_value('ec2_is_secure', True),
-            'verify': self._get_config_value('ec2_validate_certs', False),
+            'verify': self._get_config_value('ec2_validate_certs', True),
             'endpoint_url': self._get_config_value('ec2_endpoint_url', None)
         }
         self.s3_cfg = {
             'service_name': 's3',
             'use_ssl': self._get_config_value('s3_is_secure', True),
-            'verify': self._get_config_value('s3_validate_certs', False),
+            'verify': self._get_config_value('s3_validate_certs', True),
             'endpoint_url': self._get_config_value('s3_endpoint_url', None)
         }
 
