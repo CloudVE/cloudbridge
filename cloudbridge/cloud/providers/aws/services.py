@@ -58,7 +58,7 @@ from .resources import AWSVolume
 
 class EC2ServiceFilter(object):
     '''
-        Generic AWS EC2 service filter interface
+    Generic AWS EC2 service filter interface
 
     :param AWSCloudProvider provider: AWS EC2 provider interface
     :param str service: Name of the EC2 service to use
@@ -71,7 +71,7 @@ class EC2ServiceFilter(object):
 
     def get(self, val, filter_name, wrapper=True):
         '''
-            Returns a single resource by filter
+        Returns a single resource by filter
 
         :param str val: Value to filter with
         :param str filter_name: Name of the filter to use
@@ -103,7 +103,7 @@ class EC2ServiceFilter(object):
 
     def find(self, val, filter_name, limit=None, marker=None):
         '''
-            Returns a list of resources by filter
+        Returns a list of resources by filter
 
         :param str val: Value to filter with
         :param str filter_name: Name of the filter to use
@@ -123,7 +123,7 @@ class EC2ServiceFilter(object):
 
     def create(self, method, **kwargs):
         '''
-            Creates a resource
+        Creates a resource
 
         :param str method: Service method to invoke
         :param object kwargs: Arguments to be passed as-is to
@@ -136,7 +136,7 @@ class EC2ServiceFilter(object):
 
     def delete(self, val, filter_name):
         '''
-            Deletes a resource by filter
+        Deletes a resource by filter
 
         :param str val: Value to filter with
         :param str filter_name: Name of the filter to use
@@ -163,22 +163,10 @@ class AWSSecurityService(BaseSecurityService):
 
     @property
     def key_pairs(self):
-        """
-        Provides access to key pairs for this provider.
-
-        :rtype: ``object`` of :class:`.KeyPairService`
-        :return: a KeyPairService object
-        """
         return self._key_pairs
 
     @property
     def security_groups(self):
-        """
-        Provides access to security groups for this provider.
-
-        :rtype: ``object`` of :class:`.SecurityGroupService`
-        :return: a SecurityGroupService object
-        """
         return self._security_groups
 
 
@@ -268,9 +256,6 @@ class AWSVolumeService(BaseVolumeService):
         return self.iface.list(limit=limit, marker=marker)
 
     def create(self, name, size, zone, snapshot=None, description=None):
-        """
-        Creates a new volume.
-        """
         AWSVolume.assert_valid_resource_name(name)
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
@@ -278,15 +263,17 @@ class AWSVolumeService(BaseVolumeService):
             snapshot, AWSSnapshot) and snapshot else snapshot
         params = {
             'Size': size,
-            'AvailabilityZone': zone_id
+            'AvailabilityZone': zone_id,
+            'SnapshotId': snapshot_id
         }
-        if snapshot_id:
-            params['SnapshotId'] = snapshot_id
+        # Filter out empty values to please Boto
+        params = {k: v for k, v in params.items()
+                  if v is not None}
         cb_vol = self.iface.create('create_volume', **params)
         # Wait until ready to tag instance
         cb_vol.wait_till_ready()
         cb_vol.name = name
-        if cb_vol.description:
+        if description:
             cb_vol.description = description
         return cb_vol
 

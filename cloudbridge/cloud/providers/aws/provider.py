@@ -1,68 +1,70 @@
-"""
-Provider implementation based on boto library for AWS-compatible clouds.
-"""
-
+"""Provider implementation based on boto library for AWS-compatible clouds."""
+import logging as log
 import os
 
 import boto3
 try:
     # These are installed only for the case of a dev instance
-    from httpretty import HTTPretty
-    from moto.ec2 import mock_ec2
-    from moto.s3 import mock_s3
+    from moto.packages.responses import responses
+    from moto import mock_ec2
+    from moto import mock_s3
 except ImportError:
     # TODO: Once library logging is configured, change this
-    print '[aws provider] moto library not available!'
+    log.debug('[aws provider] moto library not available!')
 
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 from .services import AWSBlockStoreService
 from .services import AWSComputeService
-from .services import AWSNetworkService
+from .services import AWSNetworkingService
 from .services import AWSObjectStoreService
 from .services import AWSSecurityService
-
-# pylint: disable=R0902
 
 
 class AWSCloudProvider(BaseCloudProvider):
     '''AWS cloud provider interface'''
     PROVIDER_ID = 'aws'
+    AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
+                                    "aws_instance_data.json"
 
     def __init__(self, config):
         super(AWSCloudProvider, self).__init__(config)
-        self.cloud_type = 'aws'
 
         # Initialize cloud connection fields
         # These are passed as-is to Boto
+        self.region_name = self._get_config_value('aws_region_name',
+                                                  'us-east-1')
         self.session_cfg = {
             'aws_access_key_id': self._get_config_value(
                 'aws_access_key', os.environ.get('AWS_ACCESS_KEY', None)),
             'aws_secret_access_key': self._get_config_value(
                 'aws_secret_key', os.environ.get('AWS_SECRET_KEY', None)),
-            'region_name': self._get_config_value(
-                'ec2_region_name', 'us-east-1')
+            'aws_session_token': self._get_config_value(
+                'aws_session_token', None)
         }
         self.ec2_cfg = {
             'service_name': 'ec2',
             'use_ssl': self._get_config_value('ec2_is_secure', True),
-            'verify': self._get_config_value('ec2_validate_certs', True)
+            'verify': self._get_config_value('ec2_validate_certs', True),
+            'endpoint_url': self._get_config_value('ec2_endpoint_url', None)
         }
         self.s3_cfg = {
             'service_name': 's3',
             'use_ssl': self._get_config_value('s3_is_secure', True),
-            'verify': self._get_config_value('s3_validate_certs', True)
+            'verify': self._get_config_value('s3_validate_certs', True),
+            'endpoint_url': self._get_config_value('s3_endpoint_url', None)
         }
 
-        # Service connections, lazily initialized
+        # service connections, lazily initialized
         self._session = None
         self._ec2_conn = None
+        self._vpc_conn = None
         self._s3_conn = None
 
         # Initialize provider services
         self._compute = AWSComputeService(self)
-        self._network = AWSNetworkService(self)
+        self._networking = AWSNetworkingService(self)
         self._security = AWSSecurityService(self)
         self._block_store = AWSBlockStoreService(self)
         self._object_store = AWSObjectStoreService(self)
@@ -70,26 +72,31 @@ class AWSCloudProvider(BaseCloudProvider):
     @property
     def session(self):
         '''Get a low-level session object or create one if needed'''
-        return self._session if self._session else \
-            boto3.session.Session(**self.session_cfg)
+        if not self._session:
+            if self.config.debug_mode:
+                boto3.set_stream_logger(level=log.DEBUG)
+            self._session = boto3.session.Session(**self.session_cfg)
+        return self._session
 
     @property
     def ec2_conn(self):
-        '''Get an EC2 connection object or create one if needed'''
-        return self._ec2_conn if self._ec2_conn else self._connect_ec2()
+        if not self._ec2_conn:
+            self._ec2_conn = self._connect_ec2()
+        return self._ec2_conn
 
     @property
     def s3_conn(self):
-        '''Get an S3 connection object or create one if needed'''
-        return self._s3_conn if self._s3_conn else self._connect_s3()
+        if not self._s3_conn:
+            self._s3_conn = self._connect_s3()
+        return self._s3_conn
 
     @property
     def compute(self):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):
@@ -104,8 +111,15 @@ class AWSCloudProvider(BaseCloudProvider):
         return self._object_store
 
     def _connect_ec2(self):
+        """
+        Get a boto ec2 connection object.
+        """
+        return self._conect_ec2_region(region_name=self.region_name)
+
+    def _conect_ec2_region(self, region_name=None):
         '''Get an EC2 resource object'''
-        return self.session.resource(**self.ec2_cfg)
+        return self.session.resource(region_name=region_name,
+                                     **self.ec2_cfg)
 
     def _connect_s3(self):
         '''Get an S3 resource object'''
@@ -125,42 +139,39 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         self.ec2mock.start()
         self.s3mock = mock_s3()
         self.s3mock.start()
-        HTTPretty.register_uri(
-            method="GET",
-            uri="https://d168wakzal7fp0.cloudfront.net/aws_instance_data.json",
-            body="""
+        responses.add(
+            responses.GET,
+            self.AWS_INSTANCE_DATA_DEFAULT_URL,
+            body=u"""
 [
   {
     "family": "General Purpose",
     "enhanced_networking": false,
     "vCPU": 1,
-    "generation": "previous",
+    "generation": "current",
     "ebs_iops": 0,
     "network_performance": "Low",
     "ebs_throughput": 0,
     "vpc": {
-      "ips_per_eni": 4,
+      "ips_per_eni": 2,
       "max_enis": 2
     },
     "arch": [
-      "i386",
       "x86_64"
     ],
-    "linux_virtualization_types": [],
+    "linux_virtualization_types": [
+        "HVM"
+    ],
     "ebs_optimized": false,
-    "storage": {
-      "ssd": false,
-      "devices": 1,
-      "size": 160
-    },
+    "storage": null,
     "max_bandwidth": 0,
-    "instance_type": "t1.micro",
-    "ECU": 1.0,
-    "memory": 1.7
+    "instance_type": "t2.nano",
+    "ECU": "variable",
+    "memory": 0.5,
+    "ebs_max_bandwidth": 0
   }
 ]
-"""
-        )
+""")
 
     def tearDownMock(self):
         """

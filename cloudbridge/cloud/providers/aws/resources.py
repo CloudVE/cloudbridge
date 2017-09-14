@@ -425,8 +425,11 @@ class AWSInstance(BaseInstance):
 
     @property
     def state(self):
-        return AWSInstance.INSTANCE_STATE_MAP.get(
-            self._ec2_instance.state['Name'], InstanceState.UNKNOWN)
+        try:
+            return AWSInstance.INSTANCE_STATE_MAP.get(
+                self._ec2_instance.state['Name'], InstanceState.UNKNOWN)
+        except AttributeError:
+            return InstanceState.UNKNOWN
 
     def refresh(self):
         """
@@ -476,7 +479,7 @@ class AWSVolume(BaseVolume):
 
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        for tag in self._volume.tags or list():
+        for tag in self._volume.tags or []:
             if tag.get('Key') == 'Name':
                 return tag.get('Value')
         return None
@@ -492,7 +495,7 @@ class AWSVolume(BaseVolume):
 
     @property
     def description(self):
-        for tag in self._volume.tags or list():
+        for tag in self._volume.tags or []:
             if tag.get('Key') == 'Description':
                 return tag.get('Value')
         return None
@@ -524,10 +527,10 @@ class AWSVolume(BaseVolume):
     def attachments(self):
         return [
             BaseAttachmentInfo(self,
-                               a.InstanceId,
-                               a.Device)
+                               a.get('InstanceId'),
+                               a.get('Device'))
             for a in self._volume.attachments
-        ] if self._volume.attachments else None
+        ][0] if self._volume.attachments else None
 
     def attach(self, instance, device):
         """
@@ -543,7 +546,8 @@ class AWSVolume(BaseVolume):
         """
         Detach this volume from an instance.
         """
-        for a in self.attachments:
+        a = self.attachments
+        if a:
             self._volume.detach_from_instance(
                 InstanceId=a.instance_id,
                 Device=a.device,
@@ -568,8 +572,11 @@ class AWSVolume(BaseVolume):
 
     @property
     def state(self):
-        return AWSVolume.VOLUME_STATE_MAP.get(
-            self._volume.state, VolumeState.UNKNOWN)
+        try:
+            return AWSVolume.VOLUME_STATE_MAP.get(
+                self._volume.state, VolumeState.UNKNOWN)
+        except AttributeError:
+            return VolumeState.UNKNOWN
 
     def refresh(self):
         """
@@ -650,8 +657,11 @@ class AWSSnapshot(BaseSnapshot):
 
     @property
     def state(self):
-        return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
-            self._snapshot.state, SnapshotState.UNKNOWN)
+        try:
+            return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
+                self._snapshot.state, SnapshotState.UNKNOWN)
+        except AttributeError:
+            return SnapshotState.UNKNOWN
 
     def refresh(self):
         """
@@ -679,7 +689,7 @@ class AWSSnapshot(BaseSnapshot):
             name=self.name,
             size=size,
             zone=placement,
-            snapshot=self._snapshot)
+            snapshot=self.id)
         cb_vol.wait_till_ready()
         cb_vol.name = "from_snap_{0}".format(self.name or self.id)
         return cb_vol
@@ -1069,8 +1079,11 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def state(self):
-        return AWSNetwork._NETWORK_STATE_MAP.get(
-            self._vpc.state, NetworkState.UNKNOWN)
+        try:
+            return AWSNetwork._NETWORK_STATE_MAP.get(
+                self._vpc.state, NetworkState.UNKNOWN)
+        except AttributeError:
+            return NetworkState.UNKNOWN
 
     @property
     def cidr_block(self):
@@ -1156,8 +1169,11 @@ class AWSSubnet(BaseSubnet):
 
     @property
     def state(self):
-        return self._SUBNET_STATE_MAP.get(
-            self._subnet.state, SubnetState.UNKNOWN)
+        try:
+            return self._SUBNET_STATE_MAP.get(
+                self._subnet.state, SubnetState.UNKNOWN)
+        except AttributeError:
+            return SubnetState.UNKNOWN
 
     def refresh(self):
         subnet = self._provider.networking.subnets.get(self.id)
