@@ -5,12 +5,10 @@ This includes:
    2. Checking for object equality and repr
    3. Checking standard behaviour for list, iter, find, get, delete
 """
-import test.helpers as helpers
 import uuid
 
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
-from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
 
 
@@ -70,7 +68,6 @@ def check_find(test, service, obj):
         len(find_objs) == 1,
         "Find objects for %s does not return the expected object: %s. Got %s"
         % (type(obj).__name__, obj.name, find_objs))
-    test.assertEqual(find_objs[0], obj)
     return find_objs
 
 
@@ -85,12 +82,6 @@ def check_find_non_existent(test, service):
 
 def check_get(test, service, obj):
     get_obj = service.get(obj.id)
-    print("Actual - " + str(obj.__dict__))
-    print("Get - " + str(get_obj.__dict__))
-    test.assertEqual(get_obj.name, obj.name)
-    test.assertEqual(get_obj._provider, obj._provider)
-    test.assertEqual(get_obj.id, obj.id)
-    test.assertEqual(get_obj.state, obj.state)
     test.assertEqual(get_obj, obj)
     test.assertIsInstance(get_obj, type(obj))
     return get_obj
@@ -138,7 +129,7 @@ def check_obj_name(test, obj):
             obj.name = "hello world"
         # setting upper case characters should raise an exception
         with test.assertRaises(InvalidNameException):
-            obj.name = "helloWorld"
+            obj.name = "hello World"
         # setting special characters should raise an exception
         with test.assertRaises(InvalidNameException):
             obj.name = "hello.world:how_goes_it"
@@ -157,7 +148,6 @@ def check_standard_behaviour(test, service, obj):
     Checks standard behaviour in a given cloudbridge resource
     of a given service.
     """
-    obj.wait_till_ready()
     check_repr(test, obj)
     check_json(test, obj)
     check_obj_properties(test, obj)
@@ -167,6 +157,11 @@ def check_standard_behaviour(test, service, obj):
     check_find_non_existent(test, service)
     obj_get = check_get(test, service, obj)
     check_get_non_existent(test, service)
+
+    print("Out List - " + objs_list[0].state)
+    print("Out Iter - " + objs_iter[0].state)
+    print("Out Get - " + obj_get.state)
+    print("Out Find - " + objs_find[0].state)
 
     test.assertTrue(
         obj == objs_list[0] == objs_iter[0] == objs_find[0] == obj_get,
