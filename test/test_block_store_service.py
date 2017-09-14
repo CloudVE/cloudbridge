@@ -155,7 +155,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
             with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready()
-                print(test_snap.state)
                 sit.check_standard_behaviour(
                     self, self.provider.block_store.snapshots, test_snap)
 

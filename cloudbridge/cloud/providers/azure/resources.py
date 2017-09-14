@@ -684,7 +684,6 @@ class AzureSnapshot(BaseSnapshot):
         self._snapshot = snapshot
         self._description = None
         self._state = self._snapshot.provisioning_state
-        print("In init - " + self._state)
         if not self._snapshot.tags:
             self._snapshot.tags = {}
 
@@ -760,7 +759,6 @@ class AzureSnapshot(BaseSnapshot):
             self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.id)
             self._state = self._snapshot.provisioning_state
-            print("In res - " + self._state)
         except (CloudError, ValueError) as cloudError:
             log.exception(cloudError.message)
             # The snapshot no longer exists and cannot be refreshed.

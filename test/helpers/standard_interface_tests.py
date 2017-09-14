@@ -33,6 +33,8 @@ def check_obj_properties(test, obj):
 
 
 def check_list(test, service, obj):
+    obj.wait_till_ready()
+    print("In List - " + obj.state)
     list_objs = service.list()
     test.assertIsInstance(list_objs, ResultList)
     all_records = list_objs
@@ -44,10 +46,13 @@ def check_list(test, service, obj):
         len(match_objs) == 1,
         "List objects for %s does not return the expected object id %s. Got %s"
         % (type(obj).__name__, obj.id, match_objs))
+    print("In List - " + match_objs[0].state)
     return match_objs
 
 
 def check_iter(test, service, obj):
+    obj.wait_till_ready()
+    print("In Iter - " + obj.state)
     # check iteration
     iter_objs = list(service)
     iter_ids = [o.id for o in service]
@@ -58,6 +63,7 @@ def check_iter(test, service, obj):
         len(match_objs) == 1,
         "Iter objects for %s does not return the expected object id %s. Got %s"
         % (type(obj).__name__, obj.id, match_objs))
+    print("In Iter - " + match_objs[0].state)
     return match_objs
 
 
@@ -81,9 +87,10 @@ def check_find_non_existent(test, service):
 
 
 def check_get(test, service, obj):
+    obj.wait_till_ready()
+    print("In Get - " + obj.state)
     get_obj = service.get(obj.id)
-    print("Actual - " + str(obj.__dict__))
-    print("Get - " + str(get_obj.__dict__))
+    print("In Get - " + get_obj.state)
     test.assertEqual(get_obj.name, obj.name)
     test.assertEqual(get_obj._provider, obj._provider)
     test.assertEqual(get_obj.id, obj.id)
@@ -155,7 +162,6 @@ def check_standard_behaviour(test, service, obj):
     Checks standard behaviour in a given cloudbridge resource
     of a given service.
     """
-    obj.wait_till_ready()
     check_repr(test, obj)
     check_json(test, obj)
     check_obj_properties(test, obj)
@@ -165,6 +171,11 @@ def check_standard_behaviour(test, service, obj):
     check_find_non_existent(test, service)
     obj_get = check_get(test, service, obj)
     check_get_non_existent(test, service)
+
+    print("Out List - " + objs_list[0].state)
+    print("Out Iter - " + objs_iter[0].state)
+    print("Out Get - " + obj_get.state)
+    print("Out Find - " + objs_find[0].state)
 
     test.assertTrue(
         obj.state == objs_list[0].state == objs_iter[0].state ==
