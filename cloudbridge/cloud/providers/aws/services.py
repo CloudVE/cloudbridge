@@ -198,6 +198,7 @@ class AWSKeyPairService(BaseKeyPairService):
         return self.iface.find(name, 'key-name', limit=limit, marker=marker)
 
     def create(self, name):
+        AWSKeyPair.assert_valid_resource_name(name)
         return self.iface.create('create_key_pair', KeyName=name)
 
 
@@ -222,8 +223,6 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
                 'Description': description,
                 'VpcId': network_id,
             }.items() if v is not None})
-        if not self.iface.wait_for_create(res.id, 'group-id'):
-            return None
         return res
 
     def find(self, name, limit=None, marker=None):

@@ -8,6 +8,7 @@ from datetime import datetime
 
 from boto.exception import EC2ResponseError
 from boto.s3.key import Key
+from botocore.exceptions import ClientError
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
@@ -720,52 +721,32 @@ class AWSSecurityGroup(BaseSecurityGroup):
     @property
     def rules(self):
         return [AWSSecurityGroupRule(self._provider, r, self)
-                for r in self._security_group.rules]
+                for r in self._security_group.ip_permissions]
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        """
-        Create a security group rule.
-
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
-        you are authorizing another group or you are authorizing some
-        ip-based rule.
-
-        :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
-
-        :type from_port: int
-        :param from_port: The beginning port number you are enabling
-
-        :type to_port: int
-        :param to_port: The ending port number you are enabling
-
-        :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block you are providing access to.
-
-        :type src_group: ``object`` of :class:`.SecurityGroup`
-        :param src_group: The Security Group you are granting access to.
-
-        :rtype: :class:``.SecurityGroupRule``
-        :return: Rule object if successful or ``None``.
-        """
         try:
-            if src_group and not isinstance(src_group, SecurityGroup):
-                src_group = self._provider.security.security_groups.get(
-                    src_group)
+            src_group_id = (
+                src_group.id if isinstance(src_group, SecurityGroup)
+                else src_group)
 
-            self._security_group.authorize_ingress(
-                IpProtocol=ip_protocol,
-                FromPort=from_port,
-                ToPort=to_port,
-                CidrIp=cidr_ip,
-                SourceSecurityGroupName=(src_group.name if src_group
-                                         else None)
-            )
+            ip_perm_entry = {
+                'IpProtocol': ip_protocol,
+                'FromPort': from_port,
+                'ToPort': to_port,
+                'IpRanges': [{'CidrIp': cidr_ip}] if cidr_ip else None,
+                'UserIdGroupPairs': [{
+                    'GroupId': src_group_id}
+                ] if src_group_id else None
+            }
+            # Filter out empty values to please Boto
+            ip_perms = [{k: v for k, v in ip_perm_entry.items()
+                         if v is not None}]
+            self._security_group.authorize_ingress(IpPermissions=ip_perms)
+            self._security_group.reload()
             return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                 src_group)
-        except EC2ResponseError as ec2e:
+                                 src_group_id)
+        except ClientError as ec2e:
             if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
                 return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
                                      src_group)
@@ -839,14 +820,20 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         return None
 
     @property
-    def group(self):
+    def group_id(self):
         if len(self._rule['UserIdGroupPairs']) > 0:
-            if self._rule['UserIdGroupPairs'][0]['GroupId']:
-                return AWSSecurityGroup(
-                    self._provider,
-                    self._provider.ec2_conn.SecurityGroup(
-                        self._rule['UserIdGroupPairs'][0]['GroupId']))
-        return None
+            return self._rule['UserIdGroupPairs'][0]['GroupId']
+        else:
+            return None
+
+    @property
+    def group(self):
+        if self.group_id:
+            return AWSSecurityGroup(
+                self._provider,
+                self._provider.ec2_conn.SecurityGroup(self.group_id))
+        else:
+            return None
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
@@ -856,17 +843,23 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         return js
 
     def delete(self):
-        if self.group:
-            # pylint:disable=protected-access
-            self.parent._security_group.revoke_ingress(
-                SourceSecurityGroupName=self.group.name)
-        else:
-            # pylint:disable=protected-access
-            self._security_group.revoke_ingress(
-                IpProtocol=self.ip_protocol,
-                FromPort=self.from_port,
-                ToPort=self.to_port,
-                CidrIp=self.cidr_ip)
+
+        ip_perm_entry = {
+            'IpProtocol': self.ip_protocol,
+            'FromPort': self.from_port,
+            'ToPort': self.to_port,
+            'IpRanges': [{'CidrIp': self.cidr_ip}] if self.cidr_ip else None,
+            'UserIdGroupPairs': [{
+                'GroupId': self.group_id}
+            ] if self.group_id else None
+        }
+
+        # Filter out empty values to please Boto
+        ip_perms = [{k: v for k, v in ip_perm_entry.items()
+                     if v is not None}]
+
+        self.parent._security_group.revoke_ingress(IpPermissions=ip_perms)
+        self.parent._security_group.reload()
 
 
 class AWSBucketObject(BaseBucketObject):
