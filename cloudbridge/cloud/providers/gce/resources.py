@@ -1422,7 +1422,7 @@ class GCESubnet(BaseSubnet):
 
     @property
     def zone(self):
-        raise NotImplementedError('To be implemented')
+        return None
 
     @property
     def delete(self):
