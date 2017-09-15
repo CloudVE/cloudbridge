@@ -626,9 +626,9 @@ class GCENetworkService(BaseNetworkService):
         except:
             return []
 
-    def _create(self, name, autoCreateSubnetworks):
+    def _create(self, name, create_subnetworks):
         """
-        Possible values for 'autoCreateSubnetworks' are:
+        Possible values for 'create_subnetworks' are:
 
         None: For creating a legacy (non-subnetted) network.
         True: For creating an auto mode VPC network. This also creates a
@@ -640,7 +640,7 @@ class GCENetworkService(BaseNetworkService):
         if len(networks) > 0:
             return networks[0]
         body = {'name': name,
-                'autoCreateSubnetworks': autoCreateSubnetworks}
+                'autoCreateSubnetworks': create_subnetworks}
         try:
             response = (self.provider
                             .gce_compute
