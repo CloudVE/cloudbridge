@@ -1,6 +1,5 @@
 """Services implemented by the AWS provider."""
 import string
-import time
 
 from botocore.exceptions import ClientError
 
@@ -115,7 +114,7 @@ class EC2ServiceFilter(object):
                     'Name': filter_name,
                     'Values': [val]
                 }])
-            ]
+            ] if val else []
         except ClientError:
             objs = list()
         return ClientPagedResultList(self.provider, objs,
@@ -673,8 +672,10 @@ class AWSNetworkService(BaseNetworkService):
 
     def create_floating_ip(self):
         ip = self.provider.ec2_conn.meta.client.allocate_address(
-            Domain='vpc')['AllocationId']
-        return AWSFloatingIP(self.provider, ip)
+            Domain='vpc')
+        return AWSFloatingIP(
+            self.provider,
+            self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
 
 
 class AWSSubnetService(BaseSubnetService):
@@ -712,21 +713,24 @@ class AWSSubnetService(BaseSubnetService):
         return res
 
     def get_or_create_default(self, zone=None):
-        filtr = {'availabilityZone': zone} if zone else None
-        sns = self.provider.vpc_conn.get_all_subnets(filters=filtr)
-        for sn in sns:
-            if sn.defaultForAz:
+        if zone:
+            snl = self.iface.find(zone, 'availabilityZone')
+        else:
+            snl = self.iface.service.limit(None)
+        for sn in snl:
+            if sn.default_for_az:
                 return AWSSubnet(self.provider, sn)
         # No provider-default Subnet exists, look for a library-default one
-        for sn in sns:
-            if sn.tags.get('Name') == AWSSubnet.CB_DEFAULT_SUBNET_NAME:
-                return AWSSubnet(self.provider, sn)
+        for sn in snl:
+            for tag in sn.tags or {}:
+                if (tag.get('Key') == 'Name' and
+                        tag.get('Value') == AWSSubnet.CB_DEFAULT_SUBNET_NAME):
+                    return AWSSubnet(self.provider, sn)
         # No provider-default Subnet exists, try to create it (net + subnets)
         default_net = self.provider.networking.networks.create(
             name=AWSNetwork.CB_DEFAULT_NETWORK_NAME, cidr_block='10.0.0.0/16')
         # Create a subnet in each of the region's zones
-        region = self.provider.compute.regions.get(
-            self.provider.vpc_conn.region.name)
+        region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
         for i, z in enumerate(region.zones):
             sn = self.create(AWSSubnet.CB_DEFAULT_SUBNET_NAME, default_net,
@@ -748,56 +752,42 @@ class AWSRouterService(BaseRouterService):
 
     def __init__(self, provider):
         super(AWSRouterService, self).__init__(provider)
+        self.iface = EC2ServiceFilter(self.provider, 'route_tables', AWSRouter)
 
     def get(self, router_id):
-        try:
-            routers = self.provider.vpc_conn.get_all_route_tables([router_id])
-            return AWSRouter(self.provider, routers[0]) if routers else None
-        except ClientError as ec2e:
-            if ec2e.code == 'InvalidRouteTableID.NotFound':
-                return None
-            elif ec2e.code == 'InvalidParameterValue':
-                # Occurs if id does not start with 'rtb-...'
-                return None
-            raise ec2e
+        return self.iface.get(router_id, 'route-table-id')
 
     def find(self, name, limit=None, marker=None):
-        filtr = {'tag:Name': name}
-        routers = self.provider.vpc_conn.get_all_route_tables(filters=filtr)
-        aws_routers = [AWSRouter(self.provider, r) for r in routers]
-        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
-                                     marker=marker)
+        return self.iface.find(name, 'tag:Name', limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        routers = self.provider.vpc_conn.get_all_route_tables()
-        aws_routers = [AWSRouter(self.provider, r) for r in routers]
-        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
-                                     marker=marker)
+        return self.iface.list(limit=limit, marker=marker)
 
     def create(self, name, network):
         AWSRouter.assert_valid_resource_name(name)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
-        router = self.provider.vpc_conn.create_route_table(vpc_id=network_id)
-        cb_router = AWSRouter(self.provider, router)
+        res = self.iface.create('create_route_table', **{
+            k: v for k, v in {
+                'VpcId': network_id
+            }.items() if v is not None})
         if name:
-            time.sleep(2)  # Some time is required
-            cb_router.name = name
-        return cb_router
+            res.name = name
+        return res
 
 
 class AWSGatewayService(BaseGatewayService):
 
     def __init__(self, provider):
         super(AWSGatewayService, self).__init__(provider)
-        self.iface_igws = EC2ServiceFilter(self.provider,
-                                           'internet_gateways', AWSRouter)
+        self.iface_igws = EC2ServiceFilter(self.provider, 'internet_gateways',
+                                           AWSInternetGateway)
 
     def get_or_create_inet_gateway(self, name):
         AWSInternetGateway.assert_valid_resource_name(name)
 
         cb_gateway = self.iface_igws.create('create_internet_gateway')
-        self.iface_igws.wait_for_create(cb_gateway.id, 'internet-gateway-id')
+        # self.iface_igws.wait_for_create(cb_gateway.id, 'internet-gateway-id')
         cb_gateway.name = name
         return cb_gateway
 

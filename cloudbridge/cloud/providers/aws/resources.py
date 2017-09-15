@@ -1207,7 +1207,7 @@ class AWSFloatingIP(BaseFloatingIP):
         return True if self._ip.instance_id else False
 
     def delete(self):
-        return self._ip.delete()
+        return self._ip.release()
 
 
 class AWSRouter(BaseRouter):
@@ -1227,7 +1227,7 @@ class AWSRouter(BaseRouter):
 
         .. note:: the router must have a (case sensitive) tag ``Name``
         """
-        for tag in self._router.tags or []:
+        for tag in self._route_table.tags or []:
             if tag.get('Key') == 'Name':
                 return tag.get('Value')
         return None
@@ -1239,7 +1239,7 @@ class AWSRouter(BaseRouter):
         Set the router name.
         """
         self.assert_valid_resource_name(value)
-        self._router.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self._route_table.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     def refresh(self):
         try:
@@ -1277,13 +1277,13 @@ class AWSRouter(BaseRouter):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
         return self._provider.ec2_conn.meta.client.attach_internet_gateway(
-            InternetGatewayId=gw_id, VpcId=self.vpc_id)
+            InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
 
     def detach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
         return self._provider.ec2_conn.meta.client.detach_internet_gateway(
-            InternetGatewayId=gw_id, VpcId=self.vpc_id)
+            InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
 
 
 class AWSInternetGateway(BaseInternetGateway):
