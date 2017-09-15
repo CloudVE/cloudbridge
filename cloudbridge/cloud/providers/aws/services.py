@@ -516,12 +516,15 @@ class AWSInstanceService(BaseInstanceService):
             if device.is_volume:
                 # Generate the device path
                 bdm['DeviceName'] = \
-                    '/dev/sd' + 'a1' if device.is_root else next(next_letter)
+                    '/dev/sd' + ('a1' if device.is_root else next(next_letter))
                 ebs_def = {}
                 if isinstance(device.source, Snapshot):
                     ebs_def['SnapshotId'] = device.source.id
                 elif isinstance(device.source, Volume):
-                    ebs_def['VolumeId'] = device.source.id
+                    # TODO: We could create a snapshot from the volume
+                    # and use that instead.
+                    # Not supported
+                    pass
                 elif isinstance(device.source, MachineImage):
                     # Not supported
                     pass
