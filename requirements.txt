@@ -1,2 +1,2 @@
-git+git://github.com/gvlproject/moto
+pydevd
 -e ".[dev]"

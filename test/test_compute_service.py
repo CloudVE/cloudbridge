@@ -122,10 +122,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 itype.name, expected_type,
                 "Instance type {0} does not match expected type {1}".format(
                     itype.name, expected_type))
-            if isinstance(self.provider, TestMockHelperMixin):
-                raise self.skipTest(
-                    "Skipping rest of test because Moto is not returning the"
-                    " instance's placement zone correctly")
+#             if isinstance(self.provider, TestMockHelperMixin):
+#                 raise self.skipTest(
+#                     "Skipping rest of test because Moto is not returning the"
+#                     " instance's placement zone correctly")
             find_zone = [zone for zone in
                          self.provider.compute.regions.current.zones
                          if zone.id == test_instance.zone_id]
