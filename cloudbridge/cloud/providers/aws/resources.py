@@ -108,9 +108,13 @@ class AWSMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        bdm = self._ec2_image.block_device_mapping.get(
-            self._ec2_image.root_device_name)
-        return bdm.size if bdm else None
+        vols = [bdm.get('Ebs', {}) for bdm in
+                self._ec2_image.block_device_mappings if
+                bdm.get('DeviceName') == self._ec2_image.root_device_name]
+        if vols:
+            return vols[0].get('VolumeSize')
+        else:
+            return None
 
     def delete(self):
         """
@@ -387,41 +391,49 @@ class AWSInstance(BaseInstance):
                 'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
                 'AllocationId':
                     None if not self._ec2_instance.vpc_id else
-                    ip_address.id if isinstance(ip_address, 'FloatingIP') else
+                    ip_address.id if isinstance(ip_address, AWSFloatingIP) else
                     [
                         x for x in
-                        self._provider.network.floating_ips()
+                        self._provider.networking.networks.floating_ips
                         if x.public_ip == ip_address
                     ][0].id
             }.items() if v is not None
         })
+        self.refresh()
 
     def remove_floating_ip(self, ip_address):
         """
         Remove a elastic IP address from this instance.
         """
-        ip_addr = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
-        if self._ec2_instance.vpc_id:
-            return self._provider.ec2_conn.disassociate_address(
-                association_id=ip_addr.association_id)
-        else:
-            return self._provider.ec2_conn.disassociate_address(
-                public_ip=ip_addr.public_ip)
+        return self._provider.ec2_conn.meta.client.disassociate_address(**{
+            k: v for k, v in {
+                'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
+                'AssociationId':
+                    None if not self._ec2_instance.vpc_id else
+                    ip_address._ip.association_id if
+                    isinstance(ip_address, AWSFloatingIP) else
+                    [
+                        x for x in
+                        self._ec2_instance.vpc_addresses.all()
+                        if x.public_ip == ip_address
+                    ][0].association_id
+            }.items() if v is not None
+        })
 
     def add_security_group(self, sg):
         """
         Add a security group to this instance
         """
         self._ec2_instance.modify_attribute(
-            'groupSet', [g.id for g in self._ec2_instance.groups] + [sg.id])
+            Groups=self.security_group_ids + [sg.id])
 
     def remove_security_group(self, sg):
         """
         Remove a security group from this instance
         """
         self._ec2_instance.modify_attribute(
-            'groupSet', [g.id for g in self._ec2_instance.groups
-                         if g.id != sg.id])
+            Groups=([sg_id for sg_id in self.security_group_ids
+                     if sg_id != sg.id]))
 
     @property
     def state(self):
@@ -442,9 +454,6 @@ class AWSInstance(BaseInstance):
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
             self._ec2_instance.state = {'Name': InstanceState.UNKNOWN}
-
-    def wait_till_ready(self, timeout=None, interval=None):
-        self._ec2_instance.wait_until_running()
 
     def wait_till_exists(self, timeout=None, interval=None):
         self._ec2_instance.wait_until_exists()

@@ -7,8 +7,8 @@ from test.helpers import standard_interface_tests as sit
 from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
+from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 
@@ -16,29 +16,40 @@ import six
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
+
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         name = "cb_instcrud-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
-        inst = None
         net = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                inst, net)):
-            net, subnet = helpers.create_test_network(self.provider, name)
-            inst = helpers.get_test_instance(self.provider, name,
+        subnet = None
+
+        def create_inst(name):
+            return helpers.get_test_instance(self.provider, name,
                                              subnet=subnet)
 
-            sit.check_standard_behaviour(
-                self, self.provider.compute.instances, inst)
-        deleted_inst = self.provider.compute.instances.get(
-            inst.id)
-        self.assertTrue(
-            deleted_inst is None or deleted_inst.state in (
-                InstanceState.TERMINATED,
-                InstanceState.UNKNOWN),
-            "Instance %s should have been deleted but still exists." %
-            name)
+        def cleanup_inst(inst):
+            inst.terminate()
+            inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN])
+
+        def check_deleted(inst):
+            deleted_inst = self.provider.compute.instances.get(
+                inst.id)
+            self.assertTrue(
+                deleted_inst is None or deleted_inst.state in (
+                    InstanceState.TERMINATED,
+                    InstanceState.UNKNOWN),
+                "Instance %s should have been deleted but still exists." %
+                name)
+
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                                               network=net)):
+            net, subnet = helpers.create_test_network(self.provider, name)
+
+            sit.check_crud(self, self.provider.compute.instances, Instance,
+                           "cb_instcrud", create_inst, cleanup_inst,
+                           custom_check_delete=check_deleted)
 
     def _is_valid_ip(self, address):
         try:
@@ -51,7 +62,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                               'security.security_groups',
                               'security.key_pairs'])
     def test_instance_properties(self):
-        name = "cb_instprops-{0}".format(helpers.get_uuid())
+        name = "cb_inst_props-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -122,10 +133,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 itype.name, expected_type,
                 "Instance type {0} does not match expected type {1}".format(
                     itype.name, expected_type))
-#             if isinstance(self.provider, TestMockHelperMixin):
-#                 raise self.skipTest(
-#                     "Skipping rest of test because Moto is not returning the"
-#                     " instance's placement zone correctly")
             find_zone = [zone for zone in
                          self.provider.compute.regions.current.zones
                          if zone.id == test_instance.zone_id]
@@ -151,8 +158,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # block_devices should be empty so far
         self.assertListEqual(
             lc.block_devices, [], "No block devices should have been"
-                                  " added to mappings list since the "
-                                  "configuration was invalid")
+            " added to mappings list since the configuration was"
+            " invalid")
 
         # Add a new volume
         lc.add_volume_device(size=1, delete_on_terminate=True)
@@ -165,7 +172,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         lc.add_volume_device(
             is_root=True,
             source=img,
-            size=img.min_disk if img and img.min_disk else 30,
+            size=img.min_disk if img and img.min_disk else 2,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
@@ -204,10 +211,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                 " not stable enough yet")
 
         test_vol = self.provider.block_store.volumes.create(
-            name,
-            1,
-            helpers.get_provider_test_data(self.provider,
-                                           "placement"))
+           name,
+           1,
+           helpers.get_provider_test_data(self.provider,
+                                          "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(name=name,
@@ -245,7 +252,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 lc.add_volume_device(
                     is_root=True,
                     source=img,
-                    size=img.min_disk if img and img.min_disk else 30,
+                    size=img.min_disk if img and img.min_disk else 2,
                     delete_on_terminate=True)
 
                 # Add all available ephemeral devices
@@ -276,8 +283,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         except WaitStateException as e:
                             self.fail("The block device mapped launch did not "
                                       " complete successfully: %s" % e)
-                            # TODO: Check instance attachments and make sure
-                            # they correspond to requested mappings
+                        # TODO: Check instance attachments and make sure they
+                        # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.security_groups'])
@@ -302,8 +309,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 sg in test_inst.security_groups, "Expected security group '%s'"
-                                                 " to be among instance "
-                                                 "security_groups: [%s]" %
+                " to be among instance security_groups: [%s]" %
                 (sg, test_inst.security_groups))
 
             # Check removing a security group from a running instance
@@ -311,22 +317,21 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 sg not in test_inst.security_groups, "Expected security group"
-                                                     " '%s' to be "
-                                                     "removed from instance "
-                                                     "security_groups: [%s]" %
+                " '%s' to be removed from instance security_groups: [%s]" %
                 (sg, test_inst.security_groups))
 
             # check floating ips
             router = self.provider.networking.routers.create(name, net)
             gateway = None
 
-            def cleanup_router():
+            def cleanup_router(router, gateway):
                 with helpers.cleanup_action(lambda: router.delete()):
                     with helpers.cleanup_action(lambda: gateway.delete()):
                         router.detach_subnet(subnet)
                         router.detach_gateway(gateway)
 
-            with helpers.cleanup_action(lambda: cleanup_router()):
+            with helpers.cleanup_action(lambda: cleanup_router(router,
+                                                               gateway)):
                 router.attach_subnet(subnet)
                 gateway = (self.provider.networking.gateways
                            .get_or_create_inet_gateway(name))
@@ -335,13 +340,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 fip = (self.provider.networking.networks
                        .create_floating_ip())
                 with helpers.cleanup_action(lambda: fip.delete()):
-                    test_inst.add_floating_ip(fip.public_ip)
+                    with helpers.cleanup_action(
+                            lambda: test_inst.remove_floating_ip(
+                                fip.public_ip)):
+                        test_inst.add_floating_ip(fip.public_ip)
+                        test_inst.refresh()
+                        # On Devstack, FloatingIP is listed under private_ips.
+                        self.assertIn(fip.public_ip, test_inst.public_ips +
+                                      test_inst.private_ips)
                     test_inst.refresh()
-                    self.assertIn(fip.public_ip, test_inst.public_ips)
-                    if isinstance(self.provider, TestMockHelperMixin):
-                        # TODO: Moto bug does not refresh removed public ip
-                        return
-                    # check whether removing an elastic ip works
-                    test_inst.remove_floating_ip(fip.public_ip)
-                    test_inst.refresh()
-                    self.assertNotIn(fip.public_ip, test_inst.public_ips)
+                    self.assertNotIn(
+                        fip.public_ip,
+                        test_inst.public_ips + test_inst.private_ips)
