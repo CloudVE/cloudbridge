@@ -55,7 +55,7 @@ from .resources import AWSVolume
 # cb.set_stream_logger(__name__)
 
 
-class EC2ServiceFilter(object):
+class GenericServiceFilter(object):
     '''
     Generic AWS EC2 service filter interface
 
@@ -63,9 +63,10 @@ class EC2ServiceFilter(object):
     :param str service: Name of the EC2 service to use
     :param BaseCloudResource cb_iface: CloudBridge class to use
     '''
-    def __init__(self, provider, service, cb_iface):
+    def __init__(self, provider, boto_conn, service, cb_iface):
         self.provider = provider
-        self.service = getattr(self.provider.ec2_conn, service)
+        self.boto_conn = boto_conn
+        self.service = getattr(self.boto_conn, service)
         self.iface = cb_iface
 
     def get(self, val, filter_name, wrapper=True):
@@ -128,7 +129,7 @@ class EC2ServiceFilter(object):
         :param object kwargs: Arguments to be passed as-is to
             the service method
         '''
-        res = getattr(self.provider.ec2_conn, method)(**kwargs)
+        res = getattr(self.boto_conn, method)(**kwargs)
         if isinstance(res, list):
             return [self.iface(self.provider, x) if x else None for x in res]
         return self.iface(self.provider, res) if res else None
@@ -149,6 +150,32 @@ class EC2ServiceFilter(object):
             except ClientError:
                 return False
         return True
+
+
+class EC2ServiceFilter(GenericServiceFilter):
+    '''
+    Generic AWS EC2 service filter interface
+
+    :param AWSCloudProvider provider: AWS EC2 provider interface
+    :param str service: Name of the EC2 service to use
+    :param BaseCloudResource cb_iface: CloudBridge class to use
+    '''
+    def __init__(self, provider, service, cb_iface):
+        super(EC2ServiceFilter, self).__init__(
+            provider, provider.ec2_conn, service, cb_iface)
+
+
+class S3ServiceFilter(GenericServiceFilter):
+    '''
+    Generic AWS S3 service filter interface
+
+    :param AWSCloudProvider provider: AWS provider interface
+    :param str service: Name of the S3 service to use
+    :param BaseCloudResource cb_iface: CloudBridge class to use
+    '''
+    def __init__(self, provider, service, cb_iface):
+        super(S3ServiceFilter, self).__init__(
+            provider, provider.s3_conn, service, cb_iface)
 
 
 class AWSSecurityService(BaseSecurityService):
@@ -313,6 +340,7 @@ class AWSObjectStoreService(BaseObjectStoreService):
 
     def __init__(self, provider):
         super(AWSObjectStoreService, self).__init__(provider)
+        self.iface = S3ServiceFilter(self.provider, 'buckets', AWSBucket)
 
     def get(self, bucket_id):
         """
@@ -320,12 +348,12 @@ class AWSObjectStoreService(BaseObjectStoreService):
         does not exist.
         """
         try:
-            # Make a call to make sure the bucket exists. While this would
-            # normally return a Bucket instance, there's an edge case where a
-            # 403 response can occur when the bucket exists but the
+            # Make a call to make sure the bucket exists. There's an edge case
+            # where a 403 response can occur when the bucket exists but the
             # user simply does not have permissions to access it. See below.
-            bucket = self.provider.s3_conn.get_bucket(bucket_id)
-            return AWSBucket(self.provider, bucket)
+            self.provider.s3_conn.meta.client.head_bucket(Bucket=bucket_id)
+            return AWSBucket(self.provider,
+                             self.provider.s3_conn.Bucket(bucket_id))
         except ClientError as e:
             # If 403, it means the bucket exists, but the user does not have
             # permissions to access the bucket. However, limited operations
@@ -333,7 +361,7 @@ class AWSObjectStoreService(BaseObjectStoreService):
             # Bucket instance to allow further operations.
             # http://stackoverflow.com/questions/32331456/using-boto-upload-file-to-s3-
             # sub-folder-when-i-have-no-permissions-on-listing-fo
-            if e.status == 403:
+            if e.response['Error']['Code'] == 403:
                 bucket = self.provider.s3_conn.get_bucket(bucket_id,
                                                           validate=False)
                 return AWSBucket(self.provider, bucket)
@@ -341,34 +369,24 @@ class AWSObjectStoreService(BaseObjectStoreService):
         return None
 
     def find(self, name, limit=None, marker=None):
-        """
-        Searches for a bucket by a given list of attributes.
-        """
-        buckets = [AWSBucket(self.provider, bucket)
-                   for bucket in self.provider.s3_conn.get_all_buckets()
-                   if name in bucket.name]
+        buckets = [bucket
+                   for bucket in self
+                   if name == bucket.name]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        """
-        List all containers.
-        """
-        buckets = [AWSBucket(self.provider, bucket)
-                   for bucket in self.provider.s3_conn.get_all_buckets()]
-        return ClientPagedResultList(self.provider, buckets,
-                                     limit=limit, marker=marker)
+        return self.iface.list(limit=limit, marker=marker)
 
     def create(self, name, location=None):
-        """
-        Create a new bucket.
-        """
         AWSBucket.assert_valid_resource_name(name)
 
-        bucket = self.provider.s3_conn.create_bucket(
-            name,
-            location=location if location else '')
-        return AWSBucket(self.provider, bucket)
+        self.iface.create(
+            'create_bucket', Bucket=name,
+            CreateBucketConfiguration={
+                'LocationConstraint': location or self.provider.region_name
+            })
+        return self.get(name)
 
 
 class AWSImageService(BaseImageService):

@@ -4,10 +4,6 @@ DataTypes used by this provider
 import hashlib
 import inspect
 
-from datetime import datetime
-
-from boto.exception import EC2ResponseError
-from boto.s3.key import Key
 from botocore.exceptions import ClientError
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
@@ -450,7 +446,7 @@ class AWSInstance(BaseInstance):
         """
         try:
             self._ec2_instance.reload()
-        except (EC2ResponseError, ValueError):
+        except ClientError:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
             self._ec2_instance.state = {'Name': InstanceState.UNKNOWN}
@@ -594,7 +590,7 @@ class AWSVolume(BaseVolume):
         """
         try:
             self._volume.reload()
-        except (EC2ResponseError, ValueError):
+        except ClientError:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
             self._volume.state = VolumeState.UNKNOWN
@@ -679,7 +675,7 @@ class AWSSnapshot(BaseSnapshot):
         """
         try:
             self._snapshot.reload()
-        except (EC2ResponseError, ValueError):
+        except ClientError:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
             self._snapshot.state = SnapshotState.UNKNOWN
@@ -883,59 +879,74 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
 class AWSBucketObject(BaseBucketObject):
 
-    def __init__(self, provider, key):
+    class BucketObjIterator():
+        CHUNK_SIZE = 4096
+
+        def __init__(self, body):
+            self.body = body
+
+        def __iter__(self):
+            while True:
+                data = self.read(self.CHUNK_SIZE)
+                if data:
+                    yield data
+                else:
+                    break
+
+        def read(self, length):
+            return self.body.read(amt=length)
+
+        def close(self):
+            return self.body.close()
+
+    def __init__(self, provider, obj):
         super(AWSBucketObject, self).__init__(provider)
-        self._key = key
+        self._obj = obj
 
     @property
     def id(self):
-        return self._key.name
+        return self._obj.key
 
     @property
     def name(self):
         """
         Get this object's name.
         """
-        return self._key.name
+        return self.id
 
     @property
     def size(self):
         """
         Get this object's size.
         """
-        return self._key.size
+        return self._obj.size
 
     @property
     def last_modified(self):
         """
         Get the date and time this object was last modified.
         """
-        if self._key.last_modified:
-            lm = datetime.strptime(self._key.last_modified,
-                                   "%Y-%m-%dT%H:%M:%S.%fZ")
-            return lm.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        else:
-            return None
+        return self._obj.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):
         """
         Returns this object's content as an
         iterable.
         """
-        return self._key
+        return self.BucketObjIterator(self._obj.get().get('Body'))
 
     def upload(self, data):
         """
         Set the contents of this object to the data read from the source
         string.
         """
-        self._key.set_contents_from_string(data)
+        self._obj.put(Body=data)
 
     def upload_from_file(self, path):
         """
         Store the contents of the file pointed by the "path" variable.
         """
-        self._key.set_contents_from_filename(path)
+        self._obj.upload_file(path)
 
     def delete(self):
         """
@@ -944,13 +955,16 @@ class AWSBucketObject(BaseBucketObject):
         :rtype: bool
         :return: True if successful
         """
-        self._key.delete()
+        self._obj.delete()
 
     def generate_url(self, expires_in=0):
         """
         Generate a URL to this object.
         """
-        return self._key.generate_url(expires_in=expires_in)
+        return self._provider.s3_conn.meta.client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
+            ExpiresIn=expires_in)
 
 
 class AWSBucket(BaseBucket):
@@ -974,10 +988,13 @@ class AWSBucket(BaseBucket):
         """
         Retrieve a given object from this bucket.
         """
-        key = Key(self._bucket, name)
-        if key and key.exists():
-            return AWSBucketObject(self._provider, key)
-        return None
+        try:
+            obj = self._bucket.Object(name)
+            # load() throws an error if object does not exist
+            obj.load()
+            return AWSBucketObject(self._provider, obj)
+        except ClientError:
+            return None
 
     def list(self, limit=None, marker=None, prefix=None):
         """
@@ -986,8 +1003,12 @@ class AWSBucket(BaseBucket):
         :rtype: BucketObject
         :return: List of all available BucketObjects within this bucket.
         """
+        if prefix:
+            boto_objs = self._bucket.objects.filter(Prefix=prefix)
+        else:
+            boto_objs = self._bucket.objects.all()
         objects = [AWSBucketObject(self._provider, obj)
-                   for obj in self._bucket.list(prefix=prefix)]
+                   for obj in boto_objs]
 
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
@@ -1005,8 +1026,8 @@ class AWSBucket(BaseBucket):
         self._bucket.delete()
 
     def create_object(self, name):
-        key = Key(self._bucket, name)
-        return AWSBucketObject(self._provider, key)
+        obj = self._bucket.Object(name)
+        return AWSBucketObject(self._provider, obj)
 
 
 class AWSRegion(BaseRegion):
@@ -1112,7 +1133,7 @@ class AWSNetwork(BaseNetwork):
         """
         try:
             self._vpc.reload()
-        except (EC2ResponseError, ValueError):
+        except ClientError:
             # The network no longer exists and cannot be refreshed.
             # set the status to unknown
             self._vpc.state = NetworkState.UNKNOWN
@@ -1253,7 +1274,7 @@ class AWSRouter(BaseRouter):
     def refresh(self):
         try:
             self._route_table.reload()
-        except (EC2ResponseError, ValueError):
+        except ClientError:
             self._route_table.associations = None
 
     @property
@@ -1325,7 +1346,7 @@ class AWSInternetGateway(BaseInternetGateway):
     def refresh(self):
         try:
             self._gateway.reload()
-        except (EC2ResponseError, ValueError):
+        except ClientError:
             self._gateway.state = GatewayState.UNKNOWN
 
     @property
