@@ -1,2 +1,2 @@
-pydevd
+git+git://github.com/spulec/moto
 -e ".[dev]"
