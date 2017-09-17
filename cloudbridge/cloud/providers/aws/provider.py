@@ -9,7 +9,6 @@ try:
     from moto import mock_ec2
     from moto import mock_s3
 except ImportError:
-    # TODO: Once library logging is configured, change this
     log.debug('[aws provider] moto library not available!')
 
 from cloudbridge.cloud.base import BaseCloudProvider
@@ -44,13 +43,11 @@ class AWSCloudProvider(BaseCloudProvider):
                 'aws_session_token', None)
         }
         self.ec2_cfg = {
-            'service_name': 'ec2',
             'use_ssl': self._get_config_value('ec2_is_secure', True),
             'verify': self._get_config_value('ec2_validate_certs', True),
             'endpoint_url': self._get_config_value('ec2_endpoint_url', None)
         }
         self.s3_cfg = {
-            'service_name': 's3',
             'use_ssl': self._get_config_value('s3_is_secure', True),
             'verify': self._get_config_value('s3_validate_certs', True),
             'endpoint_url': self._get_config_value('s3_endpoint_url', None)
@@ -75,7 +72,8 @@ class AWSCloudProvider(BaseCloudProvider):
         if not self._session:
             if self.config.debug_mode:
                 boto3.set_stream_logger(level=log.DEBUG)
-            self._session = boto3.session.Session(**self.session_cfg)
+            self._session = boto3.session.Session(
+                region_name=self.region_name, **self.session_cfg)
         return self._session
 
     @property
@@ -118,12 +116,13 @@ class AWSCloudProvider(BaseCloudProvider):
 
     def _conect_ec2_region(self, region_name=None):
         '''Get an EC2 resource object'''
-        return self.session.resource(region_name=region_name,
-                                     **self.ec2_cfg)
+        return self.session.resource(
+            'ec2', region_name=region_name, **self.ec2_cfg)
 
     def _connect_s3(self):
         '''Get an S3 resource object'''
-        return self.session.resource(**self.s3_cfg)
+        return self.session.resource(
+            's3', region_name=self.region_name, **self.s3_cfg)
 
 
 class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):

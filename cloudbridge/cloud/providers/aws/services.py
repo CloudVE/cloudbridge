@@ -93,11 +93,8 @@ class GenericServiceFilter(object):
 
     def list(self, limit=None, marker=None):
         '''Returns a list of resources'''
-        try:
-            objs = [self.iface(self.provider, obj)
-                    for obj in self.service.limit(limit)]
-        except ClientError:
-            objs = list()
+        objs = [self.iface(self.provider, obj)
+                for obj in self.service.limit(limit)]
         return ClientPagedResultList(self.provider, objs,
                                      limit=limit, marker=marker)
 
