@@ -36,7 +36,7 @@ REQS_FULL = REQS_BASE + REQS_AWS + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
-    'moto>=1.1.7',
+    'moto>=1.1.10',
     'sphinx>=1.3.1',
     'flake8>=3.3.0',
     'flake8-import-order>=0.12'] + REQS_FULL
