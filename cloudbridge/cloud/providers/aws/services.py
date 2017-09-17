@@ -377,12 +377,19 @@ class AWSObjectStoreService(BaseObjectStoreService):
 
     def create(self, name, location=None):
         AWSBucket.assert_valid_resource_name(name)
-
-        self.iface.create(
-            'create_bucket', Bucket=name,
-            CreateBucketConfiguration={
-                'LocationConstraint': location or self.provider.region_name
-            })
+        loc_constraint = location or self.provider.region_name
+        # Due to an API issue in S3, specifying us-east-1 as a
+        # LocationConstraint results in an InvalidLocationConstraint.
+        # Therefore, it must be special-cased and omitted altogether.
+        # See: https://github.com/boto/boto3/issues/125
+        if loc_constraint == 'us-east-1':
+            self.iface.create('create_bucket', Bucket=name)
+        else:
+            self.iface.create(
+                'create_bucket', Bucket=name,
+                CreateBucketConfiguration={
+                    'LocationConstraint': loc_constraint
+                })
         return self.get(name)
 
 
