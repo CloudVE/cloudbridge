@@ -93,7 +93,7 @@ class AWSMachineImage(BaseMachineImage):
 
         self._ec2_image.deregister()
         self.wait_for([MachineImageState.UNKNOWN, MachineImageState.ERROR])
-        snapshot = self._provider.block_store.snapshots.get(snapshot_id)
+        snapshot = self._provider.block_store.snapshots.get(snapshot_id[0])
         if snapshot:
             snapshot.delete()
 
