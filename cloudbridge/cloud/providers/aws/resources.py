@@ -36,6 +36,8 @@ from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
+from .helpers import trim_empty_params
+
 
 class AWSMachineImage(BaseMachineImage):
 
@@ -285,37 +287,30 @@ class AWSInstance(BaseInstance):
         return image
 
     def add_floating_ip(self, ip_address):
-        return self._provider.ec2_conn.meta.client.associate_address(**{
-            k: v for k, v in {
-                'InstanceId': self.id,
-                'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
-                'AllocationId':
-                    None if not self._ec2_instance.vpc_id else
-                    ip_address.id if isinstance(ip_address, AWSFloatingIP) else
-                    [
-                        x for x in
-                        self._provider.networking.networks.floating_ips
-                        if x.public_ip == ip_address
-                    ][0].id
-            }.items() if v is not None
-        })
+        allocation_id = (
+            None if not self._ec2_instance.vpc_id else
+            ip_address.id if isinstance(ip_address, AWSFloatingIP) else
+            [x for x in self._provider.networking.networks.floating_ips
+             if x.public_ip == ip_address][0].id)
+        params = trim_empty_params({
+            'InstanceId': self.id,
+            'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
+            'AllocationId': allocation_id})
+        self._provider.ec2_conn.meta.client.associate_address(**params)
         self.refresh()
 
     def remove_floating_ip(self, ip_address):
-        return self._provider.ec2_conn.meta.client.disassociate_address(**{
-            k: v for k, v in {
-                'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
-                'AssociationId':
-                    None if not self._ec2_instance.vpc_id else
-                    ip_address._ip.association_id if
-                    isinstance(ip_address, AWSFloatingIP) else
-                    [
-                        x for x in
-                        self._ec2_instance.vpc_addresses.all()
-                        if x.public_ip == ip_address
-                    ][0].association_id
-            }.items() if v is not None
-        })
+        association_id = (
+            None if not self._ec2_instance.vpc_id else
+            ip_address._ip.association_id
+            if isinstance(ip_address, AWSFloatingIP) else
+            [x for x in self._ec2_instance.vpc_addresses.all()
+             if x.public_ip == ip_address][0].association_id)
+        params = trim_empty_params({
+            'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
+            'AssociationId': association_id})
+        self._provider.ec2_conn.meta.client.disassociate_address(**params)
+        self.refresh()
 
     def add_security_group(self, sg):
         self._ec2_instance.modify_attribute(
@@ -594,8 +589,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
                 ] if src_group_id else None
             }
             # Filter out empty values to please Boto
-            ip_perms = [{k: v for k, v in ip_perm_entry.items()
-                         if v is not None}]
+            ip_perms = [trim_empty_params(ip_perm_entry)]
             self._security_group.authorize_ingress(IpPermissions=ip_perms)
             self._security_group.reload()
             return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
@@ -706,8 +700,7 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         }
 
         # Filter out empty values to please Boto
-        ip_perms = [{k: v for k, v in ip_perm_entry.items()
-                     if v is not None}]
+        ip_perms = [trim_empty_params(ip_perm_entry)]
 
         self.parent._security_group.revoke_ingress(IpPermissions=ip_perms)
         self.parent._security_group.reload()
