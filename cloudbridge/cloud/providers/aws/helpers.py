@@ -32,7 +32,7 @@ def trim_empty_params(params_dict):
 class BotoGenericService(object):
     '''
     Generic implementation of a Boto3 AWS service. Uses Boto3
-    resource, collection and paging primitives to implement
+    resource, collection and paging support to implement
     basic cloudbridge methods.
 
     :param AWSCloudProvider provider: CloudBridge AWS provider
@@ -139,18 +139,18 @@ class BotoGenericService(object):
         client = self.boto_conn.meta.client
         list_op = self._get_list_operation()
         paginator = client.get_paginator(list_op)
+        PaginationConfig = {}
         if limit:
-            PaginationConfig = {
-                'MaxItems': limit, 'PageSize': limit}
-        else:
-            PaginationConfig = None
-        params.update({'NextToken': marker,
-                       'PaginationConfig': PaginationConfig})
+            PaginationConfig = {'MaxItems': limit, 'PageSize': limit}
+        if marker:
+            PaginationConfig.update({'StartingToken': marker})
+        params.update({'PaginationConfig': PaginationConfig})
         args = trim_empty_params(params)
         pages = paginator.paginate(**args)
+        # resume_token is not populated unless the iterator is used
+        items = list(self._resource_iterator(collection, params, pages, limit))
         resume_token = pages.resume_token
-        return (resume_token,
-                self._resource_iterator(collection, params, pages, limit))
+        return (resume_token, items)
 
     def _make_query(self, collection, limit, marker):
         '''
@@ -178,9 +178,11 @@ class BotoGenericService(object):
         results = [self.cb_resource(self.provider, obj) for obj in boto_objs]
 
         if resume_token:
-            log.debug("Received a resume token, implying server pagination.")
-            return ServerPagedResultList(self.provider, results,
-                                         limit=limit, marker=resume_token)
+            log.debug("Received a resume token, using server pagination.")
+            return ServerPagedResultList(is_truncated=True,
+                                         marker=resume_token,
+                                         supports_total=False,
+                                         data=results)
         else:
             log.debug("Did not received a resume token, will page in client"
                       " if necessary.")
