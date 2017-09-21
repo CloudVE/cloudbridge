@@ -1213,11 +1213,18 @@ class GCENetwork(BaseNetwork):
 
     @property
     def external(self):
-        raise NotImplementedError("To be implemented")
+        """
+        All GCP networks can be connected to the Internet.
+        """
+        return True
 
     @property
     def state(self):
-        raise NotImplementedError("To be implemented")
+        """
+        When a GCP network created by the CloudBridge API, we wait until the
+        network is ready.
+        """
+        return NetworkState.AVAILABLE
 
     @property
     def cidr_block(self):
