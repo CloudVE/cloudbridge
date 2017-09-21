@@ -26,6 +26,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         Create a new bucket, check whether the expected values are set,
         and delete it.
         """
+
         def create_bucket(name):
             return self.provider.storage.buckets.create(name)
 
