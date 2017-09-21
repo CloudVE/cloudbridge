@@ -9,6 +9,7 @@ from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
+from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 
@@ -21,24 +22,34 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         name = "cb_instcrud-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
-        inst = None
         net = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                inst, net)):
-            net, subnet = helpers.create_test_network(self.provider, name)
-            inst = helpers.get_test_instance(self.provider, name,
+        subnet = None
+
+        def create_inst(name):
+            return helpers.get_test_instance(self.provider, name,
                                              subnet=subnet)
 
-            sit.check_standard_behaviour(
-                self, self.provider.compute.instances, inst)
-        deleted_inst = self.provider.compute.instances.get(
-            inst.id)
-        self.assertTrue(
-            deleted_inst is None or deleted_inst.state in (
-                InstanceState.TERMINATED,
-                InstanceState.UNKNOWN),
-            "Instance %s should have been deleted but still exists." %
-            name)
+        def cleanup_inst(inst):
+            inst.terminate()
+            inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN])
+
+        def check_deleted(inst):
+            deleted_inst = self.provider.compute.instances.get(
+                inst.id)
+            self.assertTrue(
+                deleted_inst is None or deleted_inst.state in (
+                    InstanceState.TERMINATED,
+                    InstanceState.UNKNOWN),
+                "Instance %s should have been deleted but still exists." %
+                name)
+
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                                               network=net)):
+            net, subnet = helpers.create_test_network(self.provider, name)
+
+            sit.check_crud(self, self.provider.compute.instances, Instance,
+                           "cb_instcrud", create_inst, cleanup_inst,
+                           custom_check_delete=check_deleted)
 
     def _is_valid_ip(self, address):
         try:
@@ -317,13 +328,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             router = self.provider.networking.routers.create(name, net)
             gateway = None
 
-            def cleanup_router():
+            def cleanup_router(router, gateway):
                 with helpers.cleanup_action(lambda: router.delete()):
                     with helpers.cleanup_action(lambda: gateway.delete()):
                         router.detach_subnet(subnet)
                         router.detach_gateway(gateway)
 
-            with helpers.cleanup_action(lambda: cleanup_router()):
+            with helpers.cleanup_action(lambda: cleanup_router(router,
+                                                               gateway)):
                 router.attach_subnet(subnet)
                 gateway = (self.provider.networking.gateways
                            .get_or_create_inet_gateway(name))
@@ -334,11 +346,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 with helpers.cleanup_action(lambda: fip.delete()):
                     test_inst.add_floating_ip(fip.public_ip)
                     test_inst.refresh()
-                    self.assertIn(fip.public_ip, test_inst.public_ips)
+                    # On Devstack, the floating IP is listed under private_ips.
+                    self.assertIn(fip.public_ip,
+                                  test_inst.public_ips + test_inst.private_ips)
                     if isinstance(self.provider, TestMockHelperMixin):
                         # TODO: Moto bug does not refresh removed public ip
                         return
                     # check whether removing an elastic ip works
                     test_inst.remove_floating_ip(fip.public_ip)
                     test_inst.refresh()
-                    self.assertNotIn(fip.public_ip, test_inst.public_ips)
+                    self.assertNotIn(
+                        fip.public_ip,
+                        test_inst.public_ips + test_inst.private_ips)

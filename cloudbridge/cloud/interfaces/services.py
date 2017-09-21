@@ -640,25 +640,15 @@ class NetworkService(PageableObjectMixin, CloudService):
         .. code-block:: python
 
             # Print all subnets
-            for s in provider.network.subnets:
+            for s in provider.networking.subnets:
                 print(s.id, s.name)
 
             # Get subnet by ID
-            s = provider.network.subnets.get('subnet-id')
+            s = provider.networking.subnets.get('subnet-id')
             print(s.id, s.name)
 
         :rtype: :class:`.SubnetService`
         :return: a SubnetService object
-        """
-        pass
-
-    @abstractproperty
-    def routers(self):
-        """
-        Returns a list of routers connected to this network.
-
-        :rtype: ``list`` of :class: `Router`
-        :return: list of routers
         """
         pass
 
