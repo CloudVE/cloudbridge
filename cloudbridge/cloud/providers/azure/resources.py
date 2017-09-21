@@ -390,7 +390,7 @@ class AzureBucketObject(BaseBucketObject):
         Generate a URL to this object.
         """
         return self._provider.azure_client.get_blob_url(
-            self._container.name, self.name)
+            self._container.name, self.name, expires_in)
 
 
 class AzureBucket(BaseBucket):
