@@ -44,7 +44,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 name)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                                               network=net)):
+                network=net)):
             net, subnet = helpers.create_test_network(self.provider, name)
 
             sit.check_crud(self, self.provider.compute.instances, Instance,

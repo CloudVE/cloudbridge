@@ -610,7 +610,7 @@ class OpenStackInstanceService(BaseInstanceService):
                     sg_list = security_groups
                 else:
                     sg_list = (self.provider.security.security_groups
-                               .find(name=sg) for sg in security_groups)
+                                   .find(name=sg) for sg in security_groups)
                     sg_list = (sg[0] for sg in sg_list if sg)
             sg_id_list = [sg.id for sg in sg_list]
             port_def = {

@@ -24,6 +24,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         Create a new volume, check whether the expected values are set,
         and delete it
         """
+
         def create_vol(name):
             return self.provider.block_store.volumes.create(
                 name,
@@ -162,7 +163,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     name=name, volume=test_vol, description=name)
 
             if not isinstance(self.provider, TestMockHelperMixin) and \
-               self.provider.PROVIDER_ID == ProviderList.AWS:
+                            self.provider.PROVIDER_ID == ProviderList.AWS:
                 time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
             sit.check_crud(self, self.provider.block_store.snapshots, Snapshot,
                            "cb_snaptwo", create_snap2, cleanup_snap)
