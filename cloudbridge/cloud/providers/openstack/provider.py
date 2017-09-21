@@ -107,8 +107,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
             return self._cached_keystone_session
 
         if self._keystone_version == 3:
-            from keystoneauth1.identity.v3 import Password as Password_v3
-            auth = Password_v3(auth_url=self.auth_url,
+            from keystoneauth1.identity import v3
+            auth = v3.Password(auth_url=self.auth_url,
                                username=self.username,
                                password=self.password,
                                user_domain_name=self.user_domain_name,
@@ -116,8 +116,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
                                project_name=self.project_name)
             self._cached_keystone_session = session.Session(auth=auth)
         else:
-            from keystoneauth1.identity.v2 import Password as Password_v2
-            auth = Password_v2(self.auth_url, username=self.username,
+            from keystoneauth1.identity import v2
+            auth = v2.Password(self.auth_url, username=self.username,
                                password=self.password,
                                tenant_name=self.project_name)
             self._cached_keystone_session = session.Session(auth=auth)

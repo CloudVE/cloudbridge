@@ -30,7 +30,7 @@ REQS_OPENSTACK = [
     'python-cinderclient>=1.9.0,<=2.0.1',
     'python-swiftclient>=3.2.0,<=3.3.0',
     'python-neutronclient>=6.0.0,<=6.1.0',
-    'python-keystoneclient>=3.8.0,<=3.10.0'
+    'python-keystoneclient>=3.13.0'
 ]
 REQS_FULL = REQS_BASE + REQS_AWS + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
