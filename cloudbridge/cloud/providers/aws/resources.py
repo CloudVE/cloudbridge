@@ -537,7 +537,11 @@ class AWSKeyPair(BaseKeyPair):
 
     @property
     def material(self):
-        return self._key_pair.key_material
+        # boto3 object will only have this field if the value is not empty
+        if hasattr(self._key_pair, 'key_material'):
+            return self._key_pair.key_material
+        else:
+            return None
 
 
 class AWSSecurityGroup(BaseSecurityGroup):
