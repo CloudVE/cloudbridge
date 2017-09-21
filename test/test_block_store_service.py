@@ -161,8 +161,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 return self.provider.block_store.snapshots.create(
                     name=name, volume=test_vol, description=name)
 
-            if not isinstance(self.provider, TestMockHelperMixin) and \
-               self.provider.PROVIDER_ID == ProviderList.AWS:
+            if (self.provider.PROVIDER_ID == ProviderList.AWS and
+                    not isinstance(self.provider, TestMockHelperMixin)):
                 time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
             sit.check_crud(self, self.provider.block_store.snapshots, Snapshot,
                            "cb_snaptwo", create_snap2, cleanup_snap)
