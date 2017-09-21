@@ -36,6 +36,7 @@ from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
+from .helpers import find_tag_value
 from .helpers import trim_empty_params
 
 
@@ -214,10 +215,7 @@ class AWSInstance(BaseInstance):
         """
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        for tag in self._ec2_instance.tags or []:
-            if tag.get('Key') == 'Name':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._ec2_instance.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -333,11 +331,11 @@ class AWSInstance(BaseInstance):
         try:
             self._ec2_instance.reload()
         except ClientError:
-            # The volume no longer exists and cannot be refreshed.
-            # set the status to unknown
+            # The instance no longer exists and cannot be refreshed.
+            # set the state to unknown
             self._ec2_instance.state = {'Name': InstanceState.UNKNOWN}
 
-    def wait_till_exists(self, timeout=None, interval=None):
+    def _wait_till_exists(self, timeout=None, interval=None):
         self._ec2_instance.wait_until_exists()
 
 
@@ -365,10 +363,7 @@ class AWSVolume(BaseVolume):
 
     @property
     def name(self):
-        for tag in self._volume.tags or []:
-            if tag.get('Key') == 'Name':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._volume.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -378,10 +373,7 @@ class AWSVolume(BaseVolume):
 
     @property
     def description(self):
-        for tag in self._volume.tags or []:
-            if tag.get('Key') == 'Description':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._volume.tags, 'Description')
 
     @description.setter
     def description(self, value):
@@ -479,10 +471,7 @@ class AWSSnapshot(BaseSnapshot):
 
     @property
     def name(self):
-        for tag in self._snapshot.tags or list():
-            if tag.get('Key') == 'Name':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._snapshot.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -492,10 +481,7 @@ class AWSSnapshot(BaseSnapshot):
 
     @property
     def description(self):
-        for tag in self._snapshot.tags or list():
-            if tag.get('Key') == 'Description':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._snapshot.tags, 'Description')
 
     @description.setter
     def description(self, value):
@@ -862,10 +848,7 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def name(self):
-        for tag in self._vpc.tags or []:
-            if tag.get('Key') == 'Name':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._vpc.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -932,10 +915,7 @@ class AWSSubnet(BaseSubnet):
 
     @property
     def name(self):
-        for tag in self._subnet.tags or []:
-            if tag.get('Key') == 'Name':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._subnet.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -1014,10 +994,7 @@ class AWSRouter(BaseRouter):
 
     @property
     def name(self):
-        for tag in self._route_table.tags or []:
-            if tag.get('Key') == 'Name':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._route_table.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -1083,10 +1060,7 @@ class AWSInternetGateway(BaseInternetGateway):
 
     @property
     def name(self):
-        for tag in self._gateway.tags or []:
-            if tag.get('Key') == 'Name':
-                return tag.get('Value')
-        return None
+        return find_tag_value(self._gateway.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ

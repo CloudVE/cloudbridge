@@ -75,50 +75,50 @@ class AWSKeyPairService(BaseKeyPairService):
 
     def __init__(self, provider):
         super(AWSKeyPairService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSKeyPair,
-                                    boto_collection_name='key_pairs')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSKeyPair,
+                                  boto_collection_name='key_pairs')
 
     def get(self, key_pair_id):
-        return self.iface.get(key_pair_id)
+        return self.svc.get(key_pair_id)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='key-name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='key-name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def create(self, name):
         AWSKeyPair.assert_valid_resource_name(name)
-        return self.iface.create('create_key_pair', KeyName=name)
+        return self.svc.create('create_key_pair', KeyName=name)
 
 
 class AWSSecurityGroupService(BaseSecurityGroupService):
 
     def __init__(self, provider):
         super(AWSSecurityGroupService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSSecurityGroup,
-                                    boto_collection_name='security_groups')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSSecurityGroup,
+                                  boto_collection_name='security_groups')
 
     def get(self, sg_id):
-        return self.iface.get(sg_id)
+        return self.svc.get(sg_id)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
     def create(self, name, description, network_id):
         AWSSecurityGroup.assert_valid_resource_name(name)
-        return self.iface.create('create_security_group', GroupName=name,
-                                 Description=description, VpcId=network_id)
+        return self.svc.create('create_security_group', GroupName=name,
+                               Description=description, VpcId=network_id)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='group-name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='group-name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def delete(self, group_id):
-        sg = self.iface.get(group_id)
+        sg = self.svc.get(group_id)
         if sg:
             sg.delete()
 
@@ -145,19 +145,19 @@ class AWSVolumeService(BaseVolumeService):
 
     def __init__(self, provider):
         super(AWSVolumeService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSVolume,
-                                    boto_collection_name='volumes')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSVolume,
+                                  boto_collection_name='volumes')
 
     def get(self, volume_id):
-        return self.iface.get(volume_id)
+        return self.svc.get(volume_id)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='tag:Name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='tag:Name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
     def create(self, name, size, zone, snapshot=None, description=None):
         AWSVolume.assert_valid_resource_name(name)
@@ -166,9 +166,9 @@ class AWSVolumeService(BaseVolumeService):
         snapshot_id = snapshot.id if isinstance(
             snapshot, AWSSnapshot) and snapshot else snapshot
 
-        cb_vol = self.iface.create('create_volume', Size=size,
-                                   AvailabilityZone=zone_id,
-                                   SnapshotId=snapshot_id)
+        cb_vol = self.svc.create('create_volume', Size=size,
+                                 AvailabilityZone=zone_id,
+                                 SnapshotId=snapshot_id)
         # Wait until ready to tag instance
         cb_vol.wait_till_ready()
         cb_vol.name = name
@@ -181,19 +181,19 @@ class AWSSnapshotService(BaseSnapshotService):
 
     def __init__(self, provider):
         super(AWSSnapshotService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSSnapshot,
-                                    boto_collection_name='snapshots')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSSnapshot,
+                                  boto_collection_name='snapshots')
 
     def get(self, snapshot_id):
-        return self.iface.get(snapshot_id)
+        return self.svc.get(snapshot_id)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='tag:Name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='tag:Name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
     def create(self, name, volume, description=None):
         """
@@ -203,8 +203,7 @@ class AWSSnapshotService(BaseSnapshotService):
 
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
-        cb_snap = self.iface.create('create_snapshot',
-                                    VolumeId=volume_id)
+        cb_snap = self.svc.create('create_snapshot', VolumeId=volume_id)
         # Wait until ready to tag instance
         cb_snap.wait_till_ready()
         cb_snap.name = name
@@ -217,9 +216,9 @@ class AWSObjectStoreService(BaseObjectStoreService):
 
     def __init__(self, provider):
         super(AWSObjectStoreService, self).__init__(provider)
-        self.iface = BotoS3Service(provider=self.provider,
-                                   cb_resource=AWSBucket,
-                                   boto_collection_name='buckets')
+        self.svc = BotoS3Service(provider=self.provider,
+                                 cb_resource=AWSBucket,
+                                 boto_collection_name='buckets')
 
     def get(self, bucket_id):
         """
@@ -255,7 +254,7 @@ class AWSObjectStoreService(BaseObjectStoreService):
                                      limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
     def create(self, name, location=None):
         AWSBucket.assert_valid_resource_name(name)
@@ -265,31 +264,31 @@ class AWSObjectStoreService(BaseObjectStoreService):
         # Therefore, it must be special-cased and omitted altogether.
         # See: https://github.com/boto/boto3/issues/125
         if loc_constraint == 'us-east-1':
-            return self.iface.create('create_bucket', Bucket=name)
+            return self.svc.create('create_bucket', Bucket=name)
         else:
-            return self.iface.create('create_bucket', Bucket=name,
-                                     CreateBucketConfiguration={
-                                         'LocationConstraint': loc_constraint
-                                     })
+            return self.svc.create('create_bucket', Bucket=name,
+                                   CreateBucketConfiguration={
+                                       'LocationConstraint': loc_constraint
+                                    })
 
 
 class AWSImageService(BaseImageService):
 
     def __init__(self, provider):
         super(AWSImageService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSMachineImage,
-                                    boto_collection_name='images')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSMachineImage,
+                                  boto_collection_name='images')
 
     def get(self, image_id):
-        return self.iface.get(image_id)
+        return self.svc.get(image_id)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
 
 class AWSComputeService(BaseComputeService):
@@ -322,9 +321,9 @@ class AWSInstanceService(BaseInstanceService):
 
     def __init__(self, provider):
         super(AWSInstanceService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSInstance,
-                                    boto_collection_name='instances')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSInstance,
+                                  boto_collection_name='instances')
 
     def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
@@ -349,21 +348,21 @@ class AWSInstanceService(BaseInstanceService):
             self._resolve_launch_options(subnet, zone_id, security_groups)
 
         placement = {'AvailabilityZone': zone_id} if zone_id else None
-        inst = self.iface.create('create_instances',
-                                 ImageId=image_id,
-                                 MinCount=1,
-                                 MaxCount=1,
-                                 KeyName=key_pair_name,
-                                 SecurityGroupIds=security_group_ids or None,
-                                 UserData=user_data,
-                                 InstanceType=instance_size,
-                                 Placement=placement,
-                                 BlockDeviceMappings=bdm,
-                                 SubnetId=subnet_id
-                                 )
+        inst = self.svc.create('create_instances',
+                               ImageId=image_id,
+                               MinCount=1,
+                               MaxCount=1,
+                               KeyName=key_pair_name,
+                               SecurityGroupIds=security_group_ids or None,
+                               UserData=user_data,
+                               InstanceType=instance_size,
+                               Placement=placement,
+                               BlockDeviceMappings=bdm,
+                               SubnetId=subnet_id
+                               )
         if inst and len(inst) == 1:
             # Wait until the resource exists
-            inst[0].wait_till_exists()
+            inst[0]._wait_till_exists()
             # Tag the instance w/ the name
             inst[0].name = name
             return inst[0]
@@ -455,14 +454,14 @@ class AWSInstanceService(BaseInstanceService):
         return AWSLaunchConfig(self.provider)
 
     def get(self, instance_id):
-        return self.iface.get(instance_id)
+        return self.svc.get(instance_id)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='tag:Name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='tag:Name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
 
 class AWSInstanceTypesService(BaseInstanceTypesService):
@@ -551,24 +550,24 @@ class AWSNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(AWSNetworkService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSNetwork,
-                                    boto_collection_name='vpcs')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSNetwork,
+                                  boto_collection_name='vpcs')
 
     def get(self, network_id):
-        return self.iface.get(network_id)
+        return self.svc.get(network_id)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='tag:Name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='tag:Name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def create(self, name, cidr_block):
         AWSNetwork.assert_valid_resource_name(name)
 
-        cb_net = self.iface.create('create_vpc', CidrBlock=cidr_block)
+        cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block)
         # Wait until ready to tag instance
         cb_net.wait_till_ready()
         if name:
@@ -577,10 +576,10 @@ class AWSNetworkService(BaseNetworkService):
 
     @property
     def floating_ips(self):
-        self.iface_fip = BotoEC2Service(provider=self.provider,
-                                        cb_resource=AWSFloatingIP,
-                                        boto_collection_name='vpc_addresses')
-        return self.iface_fip.list()
+        self.svc_fip = BotoEC2Service(provider=self.provider,
+                                      cb_resource=AWSFloatingIP,
+                                      boto_collection_name='vpc_addresses')
+        return self.svc_fip.list()
 
     def create_floating_ip(self):
         ip = self.provider.ec2_conn.meta.client.allocate_address(
@@ -594,44 +593,44 @@ class AWSSubnetService(BaseSubnetService):
 
     def __init__(self, provider):
         super(AWSSubnetService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSSubnet,
-                                    boto_collection_name='subnets')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSSubnet,
+                                  boto_collection_name='subnets')
 
     def get(self, subnet_id):
-        return self.iface.get(subnet_id)
+        return self.svc.get(subnet_id)
 
     def list(self, network=None, limit=None, marker=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         if network_id:
-            return self.iface.find(
+            return self.svc.find(
                 filter_name='VpcId', filter_value=network_id,
                 limit=limit, marker=marker)
         else:
-            return self.iface.list(limit=limit, marker=marker)
+            return self.svc.list(limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='tag:Name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='tag:Name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def create(self, name, network, cidr_block, zone=None):
         AWSSubnet.assert_valid_resource_name(name)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
-        subnet = self.iface.create('create_subnet',
-                                   VpcId=network_id,
-                                   CidrBlock=cidr_block,
-                                   AvailabilityZone=zone)
+        subnet = self.svc.create('create_subnet',
+                                 VpcId=network_id,
+                                 CidrBlock=cidr_block,
+                                 AvailabilityZone=zone)
         if name:
             subnet.name = name
         return subnet
 
     def get_or_create_default(self, zone=None):
         if zone:
-            snl = self.iface.find('availabilityZone', zone)
+            snl = self.svc.find('availabilityZone', zone)
         else:
-            snl = self.iface.list()
+            snl = self.svc.list()
         for sn in snl:
             # pylint:disable=protected-access
             if sn._subnet.default_for_az:
@@ -661,7 +660,7 @@ class AWSSubnetService(BaseSubnetService):
 
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
-        return self.iface.delete(subnet_id)
+        return self.svc.delete(subnet_id)
 
 
 class AWSRouterService(BaseRouterService):
@@ -669,26 +668,26 @@ class AWSRouterService(BaseRouterService):
 
     def __init__(self, provider):
         super(AWSRouterService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSRouter,
-                                    boto_collection_name='route_tables')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSRouter,
+                                  boto_collection_name='route_tables')
 
     def get(self, router_id):
-        return self.iface.get(router_id)
+        return self.svc.get(router_id)
 
     def find(self, name, limit=None, marker=None):
-        return self.iface.find(filter_name='tag:Name', filter_value=name,
-                               limit=limit, marker=marker)
+        return self.svc.find(filter_name='tag:Name', filter_value=name,
+                             limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        return self.iface.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker)
 
     def create(self, name, network):
         AWSRouter.assert_valid_resource_name(name)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
-        cb_router = self.iface.create('create_route_table', VpcId=network_id)
+        cb_router = self.svc.create('create_route_table', VpcId=network_id)
         if name:
             cb_router.name = name
         return cb_router
@@ -698,19 +697,18 @@ class AWSGatewayService(BaseGatewayService):
 
     def __init__(self, provider):
         super(AWSGatewayService, self).__init__(provider)
-        self.iface = BotoEC2Service(provider=self.provider,
-                                    cb_resource=AWSInternetGateway,
-                                    boto_collection_name='internet_gateways')
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSInternetGateway,
+                                  boto_collection_name='internet_gateways')
 
     def get_or_create_inet_gateway(self, name):
         AWSInternetGateway.assert_valid_resource_name(name)
 
-        cb_gateway = self.iface.create('create_internet_gateway')
-        # self.iface_igws.wait_for_create(cb_gateway.id, 'internet-gateway-id')
+        cb_gateway = self.svc.create('create_internet_gateway')
         cb_gateway.name = name
         return cb_gateway
 
     def delete(self, gateway_id):
-        gateway = self.iface.get(gateway_id)
+        gateway = self.svc.get(gateway_id)
         if gateway:
             gateway.delete()

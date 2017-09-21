@@ -10,7 +10,7 @@ from cloudbridge.cloud.base.resources import ServerPagedResultList
 
 
 def trim_empty_params(params_dict):
-    '''
+    """
     Given a dict containing potentially null values, trims out
     all the null values. This is to please Boto, which throws
     a parameter validation exception for NoneType arguments.
@@ -25,23 +25,48 @@ def trim_empty_params(params_dict):
             'GroupName': 'abc',
             'VpcId': 'xyz',
         }
-    '''
+    """
     return {k: v for k, v in params_dict.items() if v is not None}
 
 
+def find_tag_value(tags, key):
+    """
+    Finds the value associated with a given key from a list of AWS tags.
+
+    :type tags: list of ``dict``
+    :param tags: The AWS tag list to search through
+
+    :type key: ``str``
+    :param key: Name of the tag to search for
+    """
+    for tag in tags or []:
+        if tag.get('Key') == key:
+            return tag.get('Value')
+    return None
+
+
 class BotoGenericService(object):
-    '''
+    """
     Generic implementation of a Boto3 AWS service. Uses Boto3
     resource, collection and paging support to implement
     basic cloudbridge methods.
-
-    :param AWSCloudProvider provider: CloudBridge AWS provider
-    :param CloudResource cb_iface: CloudBridge class to wrap results in
-    :param Boto3.Resource boto_conn: Boto top level service resource
-                                     (e.g. EC2, S3) connection.
-    :param str boto_collection_name: Boto collection name
-    '''
+    """
     def __init__(self, provider, cb_resource, boto_conn, boto_collection_name):
+        """
+        :type provider: :class:`AWSCloudProvider`
+        :param provider: CloudBridge AWS provider to use
+
+        :type cb_resource: :class:`CloudResource`
+        :param cb_resource: CloudBridge Resource class to wrap results in
+
+        :type boto_conn: :class:`Boto3.Resource`
+        :param boto_conn: Boto top level service resource (e.g. EC2, S3)
+                          connection.
+
+        :type boto_collection_name: ``str``
+        :param boto_collection_name: Boto collection name that corresponds
+                                    to the CloudBridge resource (e.g. key_pair)
+        """
         self.provider = provider
         self.cb_resource = cb_resource
         self.boto_conn = boto_conn
@@ -67,12 +92,12 @@ class BotoGenericService(object):
         return getattr(self.boto_conn, resource_model.name)
 
     def get(self, resource_id):
-        '''
+        """
         Returns a single resource.
 
-        :param str resource_id: ID of the boto resource to fetch
-        :returns: CloudBridge object or None
-        '''
+        :type resource_id: ``str``
+        :param resource_id: ID of the boto resource to fetch
+        """
         try:
             log.debug("Retrieving resource: %s with id: %s",
                       self.boto_collection_model.name, resource_id)
@@ -90,30 +115,30 @@ class BotoGenericService(object):
                 raise e
 
     def _get_list_operation(self):
-        '''
+        """
         This function discovers the list operation for a particular resource
         collection. For example, given the resource collection model for
         KeyPair, it returns the list operation for it, as describe_key_pairs.
-        '''
+        """
         return xform_name(self.boto_collection_model.request.operation)
 
     def _to_boto_resource(self, collection, params, page):
-        '''
+        """
         This function duplicates some of the logic of the pages() method in
         boto.resources.collection.ResourceCollection. It will convert a raw
         json response to the corresponding Boto resource. It's necessary
         because paginators() return json responses, and there's no direct way
         to convert a paginated json response to a Boto Resource.
-        '''
+        """
         return collection._handler(collection._parent, params, page)
 
     def _resource_iterator(self, collection, params, pages, limit):
-        '''
+        """
         Iterates through the pages of a paginated result, converting the
         objects to BotoResources as necessary. This duplicates the logic in
         boto's ResourceCollection(). pending issue:
         https://github.com/boto/boto3/issues/1268
-        '''
+        """
         count = 0
         for page in pages:
             for item in self._to_boto_resource(collection, params, page):
@@ -123,12 +148,12 @@ class BotoGenericService(object):
                 yield item
 
     def _get_paginated_results(self, limit, marker, collection):
-        '''
+        """
         If a Boto Paginator is available, use it. The results
         are converted back into BotoResources by directly accessing
         protected members of ResourceCollection. This logic can be removed
         depending on issue: https://github.com/boto/boto3/issues/1268.
-        '''
+        """
         cleaned_params = collection._params.copy()
         cleaned_params.pop('limit', None)
         cleaned_params.pop('page_size', None)
@@ -153,11 +178,11 @@ class BotoGenericService(object):
         return (resume_token, items)
 
     def _make_query(self, collection, limit, marker):
-        '''
+        """
         Decide between server or client pagination,
         depending on the availability of a Boto Paginator.
         See issue: https://github.com/boto/boto3/issues/1268
-        '''
+        """
         client = self.boto_conn.meta.client
         list_op = self._get_list_operation()
         if client.can_paginate(list_op):
@@ -190,12 +215,15 @@ class BotoGenericService(object):
                                          limit=limit, marker=marker)
 
     def find(self, filter_name, filter_value, limit=None, marker=None):
-        '''
+        """
         Returns a list of resources by filter
 
-        :param str filter_name: Name of the filter to use
-        :param str filter_value: Value to filter with
-        '''
+        :type filter_name: ``str``
+        :param filter_name: Name of the filter to use
+
+        :type filter_value: ``str``
+        :param filter_value: Value to filter with
+        """
         collection = self.boto_collection
         collection = collection.filter(Filters=[{
             'Name': filter_name,
@@ -204,13 +232,15 @@ class BotoGenericService(object):
         return self.list(limit=limit, marker=marker, collection=collection)
 
     def create(self, boto_method, **kwargs):
-        '''
+        """
         Creates a resource
 
-        :param str boto_method: AWS Service method to invoke
-        :param object kwargs: Arguments to be passed as-is to
-            the service method
-        '''
+        :type boto_method: ``str``
+        :param boto_method: AWS Service method to invoke
+
+        :type kwargs: ``dict``
+        :param kwargs: Arguments to be passed as-is to the service method
+        """
         trimmed_args = trim_empty_params(kwargs)
         result = getattr(self.boto_conn, boto_method)(**trimmed_args)
         if isinstance(result, list):
@@ -220,41 +250,56 @@ class BotoGenericService(object):
             return self.cb_resource(self.provider, result) if result else None
 
     def delete(self, resource_id):
-        '''
+        """
         Deletes a resource by id
 
-        :param str id: ID of the resource
-        '''
+        :type resource_id: ``str``
+        :param resource_id: ID of the resource
+        """
         res = self.get(resource_id)
         if res:
             res.delete()
 
 
 class BotoEC2Service(BotoGenericService):
-    '''
+    """
     Boto EC2 service implementation
-
-    :param AWSCloudProvider provider: CloudBridge AWS provider
-    :param CloudResource cb_iface: CloudBridge class to wrap results in
-    :param str boto_collection_name: Boto collection name (e.g. key_pairs)
-    '''
+    """
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
+        """
+        :type provider: :class:`AWSCloudProvider`
+        :param provider: CloudBridge AWS provider to use
+
+        :type cb_resource: :class:`CloudResource`
+        :param cb_resource: CloudBridge Resource class to wrap results in
+
+        :type boto_collection_name: ``str``
+        :param boto_collection_name: Boto collection name that corresponds
+                                    to the CloudBridge resource (e.g. key_pair)
+        """
         super(BotoEC2Service, self).__init__(
             provider, cb_resource, provider.ec2_conn,
             boto_collection_name)
 
 
 class BotoS3Service(BotoGenericService):
-    '''
+    """
     Boto S3 service implementation
-
-    :param AWSCloudProvider provider: CloudBridge AWS provider
-    :param CloudResource cb_iface: CloudBridge class to wrap results in
-    :param str boto_collection_name: Boto collection name (e.g. key_pairs)
-    '''
+    """
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
+        """
+        :type provider: :class:`AWSCloudProvider`
+        :param provider: CloudBridge AWS provider to use
+
+        :type cb_resource: :class:`CloudResource`
+        :param cb_resource: CloudBridge Resource class to wrap results in
+
+        :type boto_collection_name: ``str``
+        :param boto_collection_name: Boto collection name that corresponds
+                                    to the CloudBridge resource (e.g. key_pair)
+        """
         super(BotoS3Service, self).__init__(
             provider, cb_resource, provider.s3_conn,
             boto_collection_name)
