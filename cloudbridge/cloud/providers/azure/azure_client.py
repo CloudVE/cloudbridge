@@ -8,6 +8,7 @@ from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
+from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
 from azure.storage.table import TableService
 
@@ -138,12 +139,8 @@ class AzureClient(object):
             list_locations(self.subscription_id)
 
     def list_security_group(self):
-        sgl = self.network_management_client.network_security_groups. \
+        return self.network_management_client.network_security_groups. \
             list(self.resource_group)
-        print("List - " + str(sgl))
-        print("current page - " + str(sgl.current_page))
-        print("next_link - " + str(sgl.next_link))
-        return sgl
 
     def create_security_group(self, name, parameters):
         return self.network_management_client.network_security_groups. \
@@ -206,8 +203,12 @@ class AzureClient(object):
     def delete_blob(self, container_name, blob_name):
         self.blob_service.delete_blob(container_name, blob_name)
 
-    def get_blob_url(self, container_name, blob_name):
-        return self.blob_service.make_blob_url(container_name, blob_name)
+    def get_blob_url(self, container_name, blob_name, expiry_time):
+        sas = self.blob_service.generate_blob_shared_access_signature(
+            container_name, blob_name, permission=BlobPermissions.READ,
+            expiry=expiry_time)
+        return self.blob_service.make_blob_url(container_name, blob_name,
+                                               sas_token=sas)
 
     def get_blob_content(self, container_name, blob_name):
         out_stream = BytesIO()
@@ -510,8 +511,7 @@ class AzureClient(object):
                 self.resource_group,
                 network_name,
                 subnet_name,
-                subnet_info
-            )
+                subnet_info)
             subnet_info = result_create.result()
 
         return subnet_info

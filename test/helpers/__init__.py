@@ -203,9 +203,10 @@ class ProviderTestBase(unittest.TestCase):
         factory = CloudProviderFactory()
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
-        config = {'default_wait_interval':
-                      self.get_provider_wait_interval(provider_class),
-                  'default_result_limit': 1}
+        config = {
+            'default_wait_interval':
+                self.get_provider_wait_interval(provider_class),
+            'default_result_limit': 1}
 
         return provider_class(config)
 

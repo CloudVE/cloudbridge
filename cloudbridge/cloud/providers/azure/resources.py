@@ -180,7 +180,7 @@ class AzureSecurityGroup(BaseSecurityGroup):
             return self._create_rule(ip_protocol, from_port, to_port, cidr_ip)
         elif src_group:
             result = None
-            sg = (self._provicer.security.security_groups.get(src_group)
+            sg = (self._provider.security.security_groups.get(src_group)
                   if isinstance(src_group, str) else src_group)
             for rule in sg.rules:
                 result = self._create_rule(rule.ip_protocol, rule.from_port,
@@ -390,7 +390,7 @@ class AzureBucketObject(BaseBucketObject):
         Generate a URL to this object.
         """
         return self._provider.azure_client.get_blob_url(
-            self._container.name, self.name)
+            self._container.name, self.name, expires_in)
 
 
 class AzureBucket(BaseBucket):
