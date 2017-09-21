@@ -20,7 +20,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_crud_instance(self):
         name = "CBInstCrud-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         inst = None
@@ -99,7 +99,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_instance_properties(self):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -215,7 +215,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         lc.add_volume_device(
             is_root=True,
             source=img,
-            size=img.min_disk if img and img.min_disk else 2,
+            size=img.min_disk if img and img.min_disk else 30,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
@@ -249,7 +249,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_block_device_mapping_attachments(self):
         name = "CBInstBlkAttch-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
 
         # Comment out BDM tests because OpenStack is not stable enough yet
         if True:
@@ -298,7 +298,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 lc.add_volume_device(
                     is_root=True,
                     source=img,
-                    size=img.min_disk if img and img.min_disk else 2,
+                    size=img.min_disk if img and img.min_disk else 30,
                     delete_on_terminate=True)
 
                 # Add all available ephemeral devices
@@ -319,6 +319,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         self.provider,
                         name,
                         subnet=subnet,
+                        zone=helpers.get_provider_test_data(self.provider,
+                                                            'placement'),
                         launch_config=lc)
 
                     with helpers.cleanup_action(lambda:
@@ -337,7 +339,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_instance_methods(self):
         name = "CBInstProps-{0}-{1}".format(
             self.provider.name,
-            uuid.uuid4())
+            uuid.uuid4().hex[:6])
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values

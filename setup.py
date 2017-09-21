@@ -1,4 +1,3 @@
-"""Library install script for setuptools."""
 import ast
 import os
 import re
@@ -25,7 +24,18 @@ openstack_reqs = ['requests<2.13.0',
                   'python-neutronclient>=6.0.0,<=6.1.0',
                   'python-keystoneclient>=3.8.0,<=3.10.0']
 aws_reqs = ['boto>=2.38.0,<=2.46.1']
-full_reqs = base_reqs + aws_reqs + openstack_reqs
+
+azure_reqs = ['msrest==0.4.7',
+              'msrestazure==0.4.7',
+              'azure-common==1.1.5',
+              'azure-mgmt-resource==1.0.0rc1',
+              'azure-mgmt-compute==1.0.0rc1',
+              'azure-mgmt-network==1.0.0rc1',
+              'azure-mgmt-storage==1.0.0rc1',
+              'azure-storage==0.34.0',
+              'pysftp==0.2.9']
+
+full_reqs = base_reqs + aws_reqs + openstack_reqs + azure_reqs
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 dev_reqs = (['tox>=2.1.1', 'moto<1.0.0', 'sphinx>=1.3.1', 'flake8>=3.3.0',
              'flake8-import-order>=0.12', 'httpretty==0.8.10'] + full_reqs)
