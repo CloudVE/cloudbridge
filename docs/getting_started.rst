@@ -91,16 +91,31 @@ on disk as a read-only file.
     import os
     os.chmod('cloudbridge_intro.pem', 0400)
 
-Create a security group
------------------------
-Next, we need to create a security group and add a rule to allow ssh access.
-A security group needs to be associated with a private network, so we'll also
-need to fetch it.
+Create a network
+----------------
+A cloudbridge instance should be launched into a private subnet. We'll create
+a private network and subnet, and make sure it has internet connectivity, by
+attaching an internet gateway to the subnet via a router.
 
 .. code-block:: python
 
-    provider.network.list()  # Find a desired network ID
-    net = provider.network.get('desired network ID')
+    net = self.provider.networking.networks.create(
+        name='my-network', cidr_block='10.0.0.0/16')
+    sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
+    router = self.provider.networking.routers.create(network=net, name='my-router')
+    router.attach_subnet(sn)
+    gateway = self.provider.networking.gateways.get_or_create_inet_gateway(name)
+    router.attach_gateway(gateway)
+
+
+Create a security group
+-----------------------
+Next, we need to create a security group and add a rule to allow ssh access.
+A security group needs to be associated with a private network.
+
+.. code-block:: python
+
+    net = provider.networking.networks.get('desired network ID')
     sg = provider.security.security_groups.create(
         'cloudbridge_intro', 'A security group used by CloudBridge', net.id)
     sg.add_rule('tcp', 22, 22, '0.0.0.0/0')
@@ -114,17 +129,26 @@ also add the network interface as a launch argument.
 .. code-block:: python
 
     img = provider.compute.images.get(image_id)
-    inst_type = sorted([t for t in provider.compute.instance_types.list()
+    inst_type = sorted([t for t in provider.compute.instance_types
                         if t.vcpus >= 2 and t.ram >= 4],
                        key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
         name='CloudBridge-intro', image=img, instance_type=inst_type,
-        network=net, key_pair=kp, security_groups=[sg])
+        subnet=subnet, key_pair=kp, security_groups=[sg])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
     inst.state
     # 'running'
+
+.. note ::
+
+   Note that we iterated through provider.compute.instance_types directly
+   instead of calling provider.compute.instance_types.list(). This is
+   because we need to iterate through all records in this case. The list()
+   method may not always return all records, depending on the global limit
+   for records, necessitating that additional records be paged in. See
+   :doc:`topics/paging_and_iteration`.
 
 Assign a public IP address
 --------------------------
@@ -134,7 +158,7 @@ and then associate it with the instance.
 
 .. code-block:: python
 
-    fip = provider.network.create_floating_ip()
+    fip = provider.networking.networks.create_floating_ip()
     inst.add_floating_ip(fip.public_ip)
     inst.refresh()
     inst.public_ips
@@ -157,8 +181,9 @@ To wrap things up, let's clean up all the resources we have created
     sg.delete()
     kp.delete()
     os.remove('cloudbridge_intro.pem')
-    router.remove_route(sn.id)
-    router.detach_network()
+    router.detach_gateway(gateway)
+    router.detach_subnet(subnet)
+    gateway.delete()
     router.delete()
     sn.delete()
     net.delete()

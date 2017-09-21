@@ -7,8 +7,13 @@ from datetime import datetime
 from io import BytesIO
 from test import helpers
 from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
 from unittest import skip
 
+from cloudbridge.cloud.factory import ProviderList
+from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
+from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
+from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
 import requests
@@ -22,62 +27,64 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         Create a new bucket, check whether the expected values are set,
         and delete it.
         """
-        name = "cbtestcreatebucket-{0}".format(uuid.uuid4().hex[:6])
-        test_bucket = self.provider.object_store.create(name)
-        with helpers.cleanup_action(lambda: test_bucket.delete()):
-            self.assertTrue(
-                test_bucket.id in repr(test_bucket),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
+        def create_bucket(name):
+            return self.provider.object_store.create(name)
 
-            buckets = self.provider.object_store.list()
+        def cleanup_bucket(bucket):
+            bucket.delete()
 
-            list_buckets = [c for c in buckets if c.name == name]
-            self.assertTrue(
-                len(list_buckets) == 1,
-                "List buckets does not return the expected bucket %s" %
-                name)
+        with self.assertRaises(InvalidNameException):
+            # underscores are not allowed in bucket names
+            create_bucket("cb_bucket")
 
-            # check iteration
-            iter_buckets = [c for c in self.provider.object_store
-                            if c.name == name]
-            self.assertTrue(
-                len(iter_buckets) == 1,
-                "Iter buckets does not return the expected bucket %s" %
-                name)
+        with self.assertRaises(InvalidNameException):
+            # names of length less than 3 should raise an exception
+            create_bucket("cb")
 
-            # check find
-            find_buckets = self.provider.object_store.find(name=name)
-            self.assertTrue(
-                len(find_buckets) == 1,
-                "Find buckets does not return the expected bucket %s" %
-                name)
+        with self.assertRaises(InvalidNameException):
+            # names of length greater than 63 should raise an exception
+            create_bucket("a" * 64)
 
-            get_bucket = self.provider.object_store.get(
-                test_bucket.id)
-            self.assertTrue(
-                list_buckets[0] ==
-                get_bucket == test_bucket,
-                "Objects returned by list: {0} and get: {1} are not as "
-                " expected: {2}" .format(list_buckets[0].id,
-                                         get_bucket.id,
-                                         test_bucket.name))
+        with self.assertRaises(InvalidNameException):
+            # bucket name cannot be an IP address
+            create_bucket("197.10.100.42")
 
-        buckets = self.provider.object_store.list()
-        found_buckets = [c for c in buckets if c.name == name]
-        self.assertTrue(
-            len(found_buckets) == 0,
-            "Bucket %s should have been deleted but still exists." %
-            name)
+        sit.check_crud(self, self.provider.object_store, Bucket,
+                       "cb-crudbucket", create_bucket, cleanup_bucket,
+                       skip_name_check=True)
 
     @helpers.skipIfNoService(['object_store'])
-    def test_crud_bucket_objects(self):
+    def test_crud_bucket_object(self):
+        test_bucket = None
+
+        def create_bucket_obj(name):
+            obj = test_bucket.create_object(name)
+            # TODO: This is wrong. We shouldn't have to have a separate
+            # call to upload some content before being able to delete
+            # the content. Maybe the create_object method should accept
+            # the file content as a parameter.
+            obj.upload("dummy content")
+            return obj
+
+        def cleanup_bucket_obj(bucket_obj):
+            bucket_obj.delete()
+
+        with helpers.cleanup_action(lambda: test_bucket.delete()):
+            name = "cb-crudbucketobj-{0}".format(uuid.uuid4())
+            test_bucket = self.provider.object_store.create(name)
+
+            sit.check_crud(self, test_bucket, BucketObject,
+                           "cb_bucketobj", create_bucket_obj,
+                           cleanup_bucket_obj, skip_name_check=True)
+
+    @helpers.skipIfNoService(['object_store'])
+    def test_crud_bucket_object_properties(self):
         """
         Create a new bucket, upload some contents into the bucket, and
         check whether list properly detects the new content.
         Delete everything afterwards.
         """
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4().hex[:6])
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
 
         # ensure that the bucket is empty
@@ -88,11 +95,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             obj_name_prefix = "hello"
             obj_name = obj_name_prefix + "_world.txt"
             obj = test_bucket.create_object(obj_name)
-
-            self.assertTrue(
-                obj.id in repr(obj),
-                "repr(obj) should contain the object id so that the object"
-                " can be reconstructed, but does not. eval(repr(obj)) == obj")
 
             with helpers.cleanup_action(lambda: obj.delete()):
                 # TODO: This is wrong. We shouldn't have to have a separate
@@ -116,21 +118,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 iter_objs = list(test_bucket)
                 self.assertListEqual(iter_objs, objs)
 
-                found_objs = [o for o in objs if o.name == obj_name]
-                self.assertTrue(
-                    len(found_objs) == 1,
-                    "List bucket objects does not return the expected"
-                    " object %s" % obj_name)
-
-                get_bucket_obj = test_bucket.get(obj_name)
-                self.assertTrue(
-                    found_objs[0] ==
-                    get_bucket_obj == obj,
-                    "Objects returned by list: {0} and get: {1} are not as "
-                    " expected: {2}" .format(found_objs[0].id,
-                                             get_bucket_obj.id,
-                                             obj.id))
-
                 obj_too = test_bucket.get(obj_name)
                 self.assertTrue(
                     isinstance(obj_too, BucketObject),
@@ -143,16 +130,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     'with and without a prefix, are expected to be equal, '
                     'but its detected otherwise.')
 
-            objs = test_bucket.list()
-            found_objs = [o for o in objs if o.name == obj_name]
-            self.assertTrue(
-                len(found_objs) == 0,
-                "Object %s should have been deleted but still exists." %
-                obj_name)
+            sit.check_delete(self, test_bucket, obj)
 
     @helpers.skipIfNoService(['object_store'])
     def test_upload_download_bucket_content(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4().hex[:6])
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
@@ -173,10 +155,12 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
 
-    @skip("Skip until OpenStack implementation is provided")
     @helpers.skipIfNoService(['object_store'])
     def test_generate_url(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4().hex[:6])
+        if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
+            raise self.skipTest("Skip until OpenStack impl is provided")
+
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
@@ -190,11 +174,15 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 obj.save_content(target_stream)
 
                 url = obj.generate_url(100)
+                if isinstance(self.provider, TestMockHelperMixin):
+                    raise self.skipTest(
+                        "Skipping rest of test - mock providers can't"
+                        " access generated url")
                 self.assertEqual(requests.get(url).content, content)
 
     @helpers.skipIfNoService(['object_store'])
     def test_upload_download_bucket_content_from_file(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4().hex[:6])
+        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):

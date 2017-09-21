@@ -1,16 +1,21 @@
 """
 Base implementation for services available through a provider
 """
+from cloudbridge.cloud.interfaces.resources import Router
+
 from cloudbridge.cloud.interfaces.services import BlockStoreService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
+from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import InstanceTypesService
 from cloudbridge.cloud.interfaces.services import KeyPairService
 from cloudbridge.cloud.interfaces.services import NetworkService
+from cloudbridge.cloud.interfaces.services import NetworkingService
 from cloudbridge.cloud.interfaces.services import ObjectStoreService
 from cloudbridge.cloud.interfaces.services import RegionService
+from cloudbridge.cloud.interfaces.services import RouterService
 from cloudbridge.cloud.interfaces.services import SecurityGroupService
 from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
@@ -114,13 +119,13 @@ class BaseInstanceTypesService(
         super(BaseInstanceTypesService, self).__init__(provider)
 
     def get(self, instance_type_id):
-        itype = (t for t in self.list() if t.id == instance_type_id)
+        itype = (t for t in self if t.id == instance_type_id)
         return next(itype, None)
 
     def find(self, **kwargs):
         name = kwargs.get('name')
         if name:
-            return [itype for itype in self.list() if itype.name == name]
+            return [itype for itype in self if itype.name == name]
         else:
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
@@ -139,12 +144,26 @@ class BaseRegionService(
     def __init__(self, provider):
         super(BaseRegionService, self).__init__(provider)
 
+    def find(self, name):
+        return [region for region in self if region.name == name]
+
+
+class BaseNetworkingService(NetworkingService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseNetworkingService, self).__init__(provider)
+
 
 class BaseNetworkService(
         BasePageableObjectMixin, NetworkService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseNetworkService, self).__init__(provider)
+
+    @property
+    def subnets(self):
+        return [subnet for subnet in self.provider.subnets
+                if subnet.network_id == self.id]
 
     def delete(self, network_id):
         network = self.get(network_id)
@@ -158,3 +177,33 @@ class BaseSubnetService(
 
     def __init__(self, provider):
         super(BaseSubnetService, self).__init__(provider)
+
+    def find(self, **kwargs):
+        name = kwargs.get('name')
+        if name:
+            return [subnet for subnet in self if subnet.name == name]
+        else:
+            raise TypeError(
+                "Invalid parameters for search. Supported attributes: {name}")
+
+
+class BaseRouterService(
+        BasePageableObjectMixin, RouterService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseRouterService, self).__init__(provider)
+
+    def delete(self, router):
+        if isinstance(router, Router):
+            router.delete()
+        else:
+            router = self.get(router)
+            if router:
+                router.delete()
+
+
+class BaseGatewayService(
+        GatewayService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseGatewayService, self).__init__(provider)

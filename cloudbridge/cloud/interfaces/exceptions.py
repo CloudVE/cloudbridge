@@ -36,3 +36,13 @@ class ProviderConnectionException(CloudBridgeBaseException):
     settings are invalid.
     """
     pass
+
+
+class InvalidNameException(CloudBridgeBaseException):
+    """
+    Marker interface for any attempt to set an invalid name on
+    a cloudbridge resource.An example would be setting uppercase
+    letters, which are not allowed in a resource name.
+    """
+    def __init__(self, msg):
+        super(InvalidNameException, self).__init__(msg)

@@ -11,13 +11,16 @@ from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBlockStoreService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
+from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
+from cloudbridge.cloud.base.services import BaseRouterService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
@@ -41,6 +44,7 @@ from .resources import OpenStackBucket
 from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
 from .resources import OpenStackInstanceType
+from .resources import OpenStackInternetGateway
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
 from .resources import OpenStackNetwork
@@ -90,13 +94,14 @@ class OpenStackSecurityService(BaseSecurityService):
         """
         keystone = self.provider.keystone
         if hasattr(keystone, 'ec2'):
-            user_creds = [cred for cred in keystone.ec2.list(keystone.user_id)
-                          if cred.tenant_id == keystone.tenant_id]
+            user_id = keystone.session.get_user_id()
+            user_creds = [cred for cred in keystone.ec2.list(user_id) if
+                          cred.tenant_id == keystone.session.get_project_id()]
             if user_creds:
                 return user_creds[0]
             else:
-                return keystone.ec2.create(keystone.user_id,
-                                           keystone.tenant_id)
+                return keystone.ec2.create(
+                    user_id, keystone.session.get_project_id())
 
         return None
 
@@ -105,21 +110,12 @@ class OpenStackSecurityService(BaseSecurityService):
         A provider specific method than returns the ec2 endpoints if
         available.
         """
-        service_catalog = self.provider.keystone.service_catalog.get_data()
-        current_region = self.provider.compute.regions.current.id
-        ec2_url = [endpoint.get('publicURL')
-                   for svc in service_catalog
-                   for endpoint in svc.get('endpoints', [])
-                   if endpoint.get('region', None) ==
-                   current_region and svc.get('type', None) == 'ec2']
-        s3_url = [endpoint.get('publicURL')
-                  for svc in service_catalog
-                  for endpoint in svc.get('endpoints', [])
-                  if endpoint.get('region', None) ==
-                  current_region and svc.get('type', None) == 's3']
+        keystone = self.provider.keystone
+        ec2_url = keystone.session.get_endpoint(service_type='ec2')
+        s3_url = keystone.session.get_endpoint(service_type='s3')
 
-        return {'ec2_endpoint': ec2_url[0] if ec2_url else None,
-                's3_endpoint': s3_url[0] if s3_url else None}
+        return {'ec2_endpoint': ec2_url,
+                's3_endpoint': s3_url}
 
 
 class OpenStackKeyPairService(BaseKeyPairService):
@@ -171,6 +167,8 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
+        OpenStackKeyPair.assert_valid_resource_name(name)
+
         kp = self.provider.nova.keypairs.create(name)
         if kp:
             return OpenStackKeyPair(self.provider, kp)
@@ -223,6 +221,8 @@ class OpenStackSecurityGroupService(BaseSecurityGroupService):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return: a SecurityGroup object
         """
+        OpenStackSecurityGroup.assert_valid_resource_name(name)
+
         sg = self.provider.nova.security_groups.create(name, description)
         if sg:
             return OpenStackSecurityGroup(self.provider, sg)
@@ -288,13 +288,9 @@ class OpenStackImageService(BaseImageService):
         """
         List all images.
         """
-        if marker is None:
-            os_images = self.provider.nova.images.list(
-                limit=oshelpers.os_result_limit(self.provider, limit))
-        else:
-            os_images = self.provider.nova.images.list(
-                limit=oshelpers.os_result_limit(self.provider, limit),
-                marker=marker)
+        os_images = self.provider.nova.images.list(
+            limit=oshelpers.os_result_limit(self.provider, limit),
+            marker=marker)
 
         cb_images = [
             OpenStackMachineImage(self.provider, img)
@@ -380,6 +376,8 @@ class OpenStackVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
+        OpenStackVolume.assert_valid_resource_name(name)
+
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, OpenStackSnapshot) and snapshot else snapshot
@@ -437,6 +435,8 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
+        OpenStackSnapshot.assert_valid_resource_name(name)
+
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
                      else volume)
 
@@ -492,6 +492,8 @@ class OpenStackObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket.
         """
+        OpenStackBucket.assert_valid_resource_name(name)
+
         self.provider.swift.put_container(name)
         return self.get(name)
 
@@ -569,31 +571,68 @@ class OpenStackInstanceService(BaseInstanceService):
                launch_config=None,
                **kwargs):
         """Create a new virtual machine instance."""
+        OpenStackInstance.assert_valid_resource_name(name)
+
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else \
             self.provider.compute.instance_types.find(
                 name=instance_type)[0].id
-        network_id = subnet.network_id if isinstance(subnet, Subnet) else None
-        if not network_id and subnet:
-            network_id = (self.provider.network.subnets.get(subnet).network_id
-                          if isinstance(subnet, str) else None)
+        if isinstance(subnet, Subnet):
+            subnet_id = subnet.id
+            net_id = subnet.network_id
+        else:
+            subnet_id = subnet
+            net_id = (self.provider.networking.subnets
+                      .get(subnet_id).network_id
+                      if subnet_id else None)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
-        if security_groups:
-            if isinstance(security_groups, list) and \
-                    isinstance(security_groups[0], SecurityGroup):
-                security_groups_list = [sg.name for sg in security_groups]
-            else:
-                security_groups_list = security_groups
-        else:
-            security_groups_list = None
         bdm = None
         if launch_config:
             bdm = self._to_block_device_mapping(launch_config)
 
-        log.debug("Launching in network %s" % network_id)
+        # Security groups must be passed in as a list of IDs and attached to a
+        # port if a port is being created. Otherwise, the security groups must
+        # be passed in as a list of names to the servers.create() call.
+        # OpenStack will respect the port's security groups first and then
+        # fall-back to the named security groups.
+        sg_name_list = []
+        nics = None
+        if subnet_id:
+            log.debug("Creating network port for %s in subnet: %s" %
+                      (name, subnet_id))
+            sg_list = []
+            if security_groups:
+                if isinstance(security_groups, list) and \
+                        isinstance(security_groups[0], SecurityGroup):
+                    sg_list = security_groups
+                else:
+                    sg_list = (self.provider.security.security_groups
+                               .find(name=sg) for sg in security_groups)
+                    sg_list = (sg[0] for sg in sg_list if sg)
+            sg_id_list = [sg.id for sg in sg_list]
+            port_def = {
+                "port": {
+                    "admin_state_up": True,
+                    "name": name,
+                    "network_id": net_id,
+                    "fixed_ips": [{"subnet_id": subnet_id}],
+                    "security_groups": sg_id_list
+                }
+            }
+            port_id = self.provider.neutron.create_port(port_def)['port']['id']
+            nics = [{'net-id': net_id, 'port-id': port_id}]
+        else:
+            if security_groups:
+                if isinstance(security_groups, list) and \
+                        isinstance(security_groups[0], SecurityGroup):
+                    sg_name_list = [sg.name for sg in security_groups]
+                else:
+                    sg_name_list = security_groups
+
+        log.debug("Launching in subnet %s" % subnet_id)
         os_instance = self.provider.nova.servers.create(
             name,
             None if self._has_root_device(launch_config) else image_id,
@@ -602,10 +641,10 @@ class OpenStackInstanceService(BaseInstanceService):
             max_count=1,
             availability_zone=zone_id,
             key_name=key_pair_name,
-            security_groups=security_groups_list,
+            security_groups=sg_name_list,
             userdata=user_data,
             block_device_mapping_v2=bdm,
-            nics=[{'net-id': network_id}] if network_id else None)
+            nics=nics)
         return OpenStackInstance(self.provider, os_instance)
 
     def _to_block_device_mapping(self, launch_config):
@@ -696,38 +735,69 @@ class OpenStackInstanceService(BaseInstanceService):
             return None
 
 
+class OpenStackNetworkingService(BaseNetworkingService):
+
+    def __init__(self, provider):
+        super(OpenStackNetworkingService, self).__init__(provider)
+        self._network_service = OpenStackNetworkService(self.provider)
+        self._subnet_service = OpenStackSubnetService(self.provider)
+        self._router_service = OpenStackRouterService(self.provider)
+        self._gateway_service = OpenStackGatewayService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
+
+    @property
+    def routers(self):
+        return self._router_service
+
+    @property
+    def gateways(self):
+        return self._gateway_service
+
+
 class OpenStackNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(OpenStackNetworkService, self).__init__(provider)
-        self._subnet_svc = OpenStackSubnetService(self.provider)
 
     def get(self, network_id):
-        network = (n for n in self.list() if n.id == network_id)
+        network = (n for n in self if n.id == network_id)
         return next(network, None)
 
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks()
-                    .get('networks', [])]
+                    .get('networks') if network]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def create(self, name=''):
+    def find(self, name, limit=None, marker=None):
+        networks = [OpenStackNetwork(self.provider, network)
+                    for network in self.provider.neutron.list_networks(
+                        name=name)
+                    .get('networks') if network]
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
+
+    def create(self, name, cidr_block):
+        OpenStackNetwork.assert_valid_resource_name(name)
+
         net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})
         return OpenStackNetwork(self.provider, network.get('network'))
 
     @property
-    def subnets(self):
-        return self._subnet_svc
-
-    def floating_ips(self, network_id=None):
-        if network_id:
-            al = self.provider.neutron.list_floatingips(
-                floating_network_id=network_id)['floatingips']
-        else:
-            al = self.provider.neutron.list_floatingips()['floatingips']
+    def floating_ips(self):
+        # if network_id:
+        #    al = self.provider.neutron.list_floatingips(
+        #        floating_network_id=network_id)['floatingips']
+        al = self.provider.neutron.list_floatingips()['floatingips']
         return [OpenStackFloatingIP(self.provider, a) for a in al]
 
     def create_floating_ip(self):
@@ -739,15 +809,6 @@ class OpenStackNetworkService(BaseNetworkService):
         ip = self.provider.neutron.list_floatingips(id=ip.id)['floatingips'][0]
         return OpenStackFloatingIP(self.provider, ip)
 
-    def routers(self):
-        routers = self.provider.neutron.list_routers().get('routers')
-        return [OpenStackRouter(self.provider, r) for r in routers]
-
-    def create_router(self, name=None):
-        router = self.provider.neutron.create_router(
-            {'router': {'name': name}})
-        return OpenStackRouter(self.provider, router.get('router'))
-
 
 class OpenStackSubnetService(BaseSubnetService):
 
@@ -755,21 +816,25 @@ class OpenStackSubnetService(BaseSubnetService):
         super(OpenStackSubnetService, self).__init__(provider)
 
     def get(self, subnet_id):
-        subnet = (s for s in self.list() if s.id == subnet_id)
+        subnet = (s for s in self if s.id == subnet_id)
         return next(subnet, None)
 
-    def list(self, network=None):
+    def list(self, network=None, limit=None, marker=None):
         if network:
             network_id = (network.id if isinstance(network, OpenStackNetwork)
                           else network)
-            subnets = self.list()
-            return [subnet for subnet in subnets if network_id in
-                    subnet.network_id]
-        subnets = self.provider.neutron.list_subnets().get('subnets', [])
-        return [OpenStackSubnet(self.provider, subnet) for subnet in subnets]
+            subnets = [subnet for subnet in self.list() if network_id ==
+                       subnet.network_id]
+        else:
+            subnets = [OpenStackSubnet(self.provider, subnet) for subnet in
+                       self.provider.neutron.list_subnets().get('subnets', [])]
+        return ClientPagedResultList(self.provider, subnets,
+                                     limit=limit, marker=marker)
 
-    def create(self, network, cidr_block, name='', zone=None):
+    def create(self, name, network, cidr_block, zone=None):
         """zone param is ignored."""
+        OpenStackSubnet.assert_valid_resource_name(name)
+
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
         subnet_info = {'name': name, 'network_id': network_id,
@@ -783,22 +848,23 @@ class OpenStackSubnetService(BaseSubnetService):
         Subnet zone is not supported by OpenStack and is thus ignored.
         """
         try:
-            for sn in self.list():
-                if sn.name == OpenStackSubnet.CB_DEFAULT_SUBNET_NAME:
-                    return sn
+            sn = self.find(name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
+            if sn:
+                return sn[0]
             # No default; create one
-            net = self.provider.network.create(
-                OpenStackNetwork.CB_DEFAULT_NETWORK_NAME)
-            sn = net.create_subnet(cidr_block='10.0.0.0/24',
-                                   name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
-            router = self.provider.network.create_router(
-                OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
-            for n in self.provider.network.list():
-                if n.external:
-                    external_net = n
-                    break
-            router.attach_network(external_net.id)
-            router.add_route(sn.id)
+            net = self.provider.networking.networks.create(
+                name=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME,
+                cidr_block='10.0.0.0/16')
+            sn = net.create_subnet(name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME,
+                                   cidr_block='10.0.0.0/24')
+            router = self.provider.networking.routers.create(
+                network=net, name=OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
+            router.attach_subnet(sn)
+            gteway = (self.provider.networking.gateways
+                      .get_or_create_inet_gateway(
+                          OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                          ))
+            router.attach_gateway(gteway)
             return sn
         except NeutronClientException:
             return None
@@ -811,3 +877,55 @@ class OpenStackSubnetService(BaseSubnetService):
         if subnet_id not in self.list():
             return True
         return False
+
+
+class OpenStackRouterService(BaseRouterService):
+
+    def __init__(self, provider):
+        super(OpenStackRouterService, self).__init__(provider)
+
+    def get(self, router_id):
+        router = (r for r in self if r.id == router_id)
+        return next(router, None)
+
+    def list(self, limit=None, marker=None):
+        routers = self.provider.neutron.list_routers().get('routers')
+        os_routers = [OpenStackRouter(self.provider, r) for r in routers]
+        return ClientPagedResultList(self.provider, os_routers, limit=limit,
+                                     marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        aws_routers = [r for r in self if r.name == name]
+        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
+                                     marker=marker)
+
+    def create(self, name, network):
+        """
+        ``network`` is not used by OpenStack.
+
+        However, the API seems to indicate it is a (required) param?!
+        https://developer.openstack.org/api-ref/networking/v2/
+            ?expanded=delete-router-detail,create-router-detail#create-router
+        """
+        OpenStackRouter.assert_valid_resource_name(name)
+
+        body = {'router': {'name': name}} if name else None
+        router = self.provider.neutron.create_router(body)
+        return OpenStackRouter(self.provider, router.get('router'))
+
+
+class OpenStackGatewayService(BaseGatewayService):
+
+    def __init__(self, provider):
+        super(OpenStackGatewayService, self).__init__(provider)
+
+    def get_or_create_inet_gateway(self, name):
+        OpenStackInternetGateway.assert_valid_resource_name(name)
+
+        for n in self.provider.networking.networks:
+            if n.external:
+                return OpenStackInternetGateway(self.provider, n)
+        return None
+
+    def delete(self, gateway):
+        gateway.delete()

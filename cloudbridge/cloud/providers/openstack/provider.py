@@ -21,7 +21,7 @@ from swiftclient import client as swift_client
 
 from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
-from .services import OpenStackNetworkService
+from .services import OpenStackNetworkingService
 from .services import OpenStackObjectStoreService
 from .services import OpenStackSecurityService
 
@@ -33,7 +33,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
         super(OpenStackCloudProvider, self).__init__(config)
-        self.cloud_type = 'openstack'
 
         # Initialize cloud connection fields
         self.username = self._get_config_value(
@@ -66,7 +65,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         # Initialize provider services
         self._compute = OpenStackComputeService(self)
-        self._network = OpenStackNetworkService(self)
+        self._networking = OpenStackNetworkingService(self)
         self._security = OpenStackSecurityService(self)
         self._block_store = OpenStackBlockStoreService(self)
         self._object_store = OpenStackObjectStoreService(self)
@@ -108,8 +107,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
             return self._cached_keystone_session
 
         if self._keystone_version == 3:
-            from keystoneauth1.identity.v3 import Password as Password_v3
-            auth = Password_v3(auth_url=self.auth_url,
+            from keystoneauth1.identity import v3
+            auth = v3.Password(auth_url=self.auth_url,
                                username=self.username,
                                password=self.password,
                                user_domain_name=self.user_domain_name,
@@ -117,8 +116,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
                                project_name=self.project_name)
             self._cached_keystone_session = session.Session(auth=auth)
         else:
-            from keystoneauth1.identity.v2 import Password as Password_v2
-            auth = Password_v2(self.auth_url, username=self.username,
+            from keystoneauth1.identity import v2
+            auth = v2.Password(self.auth_url, username=self.username,
                                password=self.password,
                                tenant_name=self.project_name)
             self._cached_keystone_session = session.Session(auth=auth)
@@ -153,8 +152,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):

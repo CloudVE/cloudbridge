@@ -3,7 +3,6 @@ DataTypes used by this provider
 """
 import inspect
 import ipaddress
-import json
 
 import os
 
@@ -13,6 +12,7 @@ from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInstanceType
+from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
@@ -24,12 +24,15 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
+from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
@@ -40,6 +43,7 @@ import novaclient.exceptions as novaex
 import swiftclient
 
 from swiftclient.service import SwiftService, SwiftUploadObject
+
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
@@ -265,8 +269,10 @@ class OpenStackInstance(BaseInstance):
         """
         Set the instance name.
         """
+        self.assert_valid_resource_name(value)
+
         self._os_instance.name = value
-        self._os_instance.update()
+        self._os_instance.update(name=value)
 
     @property
     def public_ips(self):
@@ -318,6 +324,11 @@ class OpenStackInstance(BaseInstance):
         """
         Permanently terminate this instance.
         """
+        # delete the port we created when launching
+        # Assumption: it's the first interface in the list
+        iface_list = self._os_instance.interface_list()
+        if iface_list:
+            self._provider.neutron.delete_port(iface_list[0].port_id)
         self._os_instance.delete()
 
     @property
@@ -343,8 +354,8 @@ class OpenStackInstance(BaseInstance):
         """
         Get the security groups associated with this instance.
         """
-        return [self._provider.security.security_groups.find(group['name'])[0]
-                for group in self._os_instance.security_groups]
+        return [OpenStackSecurityGroup(self._provider, group)
+                for group in self._os_instance.list_security_group()]
 
     @property
     def security_group_ids(self):
@@ -364,6 +375,8 @@ class OpenStackInstance(BaseInstance):
         """
         Create a new image based on this instance.
         """
+        self.assert_valid_resource_name(name)
+
         image_id = self._os_instance.create_image(name)
         return OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
@@ -485,6 +498,7 @@ class OpenStackVolume(BaseVolume):
         """
         Set the volume name.
         """
+        self.assert_valid_resource_name(value)
         self._volume.name = value
         self._volume.update(name=value)
 
@@ -605,6 +619,7 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
+        self.assert_valid_resource_name(value)
         self._snapshot.name = value
         self._snapshot.update(name=value)
 
@@ -658,7 +673,7 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        vol_name = "Created from {0} ({1})".format(self.id, self.name)
+        vol_name = "from_snap_{0}".format(self.id or self.name)
         size = size if size else self._snapshot.size
         os_vol = self._provider.cinder.volumes.create(
             size, name=vol_name, availability_zone=placement,
@@ -695,6 +710,16 @@ class OpenStackNetwork(BaseNetwork):
     def name(self):
         return self._network.get('name', None)
 
+    @name.setter
+    def name(self, value):  # pylint:disable=arguments-differ
+        """
+        Set the network name.
+        """
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_network(self.id,
+                                              {'network': {'name': value}})
+        self.refresh()
+
     @property
     def external(self):
         return self._network.get('router:external', False)
@@ -713,28 +738,31 @@ class OpenStackNetwork(BaseNetwork):
 
     def delete(self):
         if self.id in str(self._provider.neutron.list_networks()):
+            # If there are ports associated with the network, it won't delete
+            ports = self._provider.neutron.list_ports(
+                network_id=self.id).get('ports', [])
+            for port in ports:
+                self._provider.neutron.delete_port(port.get('id'))
             self._provider.neutron.delete_network(self.id)
         # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_networks()):
             return True
 
+    @property
     def subnets(self):
         subnets = (self._provider.neutron.list_subnets(network_id=self.id)
                    .get('subnets', []))
         return [OpenStackSubnet(self._provider, subnet) for subnet in subnets]
 
-    def create_subnet(self, cidr_block, name='', zone=None):
-        """OpenStack has no support for subnet zones so the value is ignored"""
-        subnet_info = {'name': name, 'network_id': self.id,
-                       'cidr': cidr_block, 'ip_version': 4}
-        subnet = (self._provider.neutron.create_subnet({'subnet': subnet_info})
-                  .get('subnet'))
-        return OpenStackSubnet(self._provider, subnet)
-
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
-        net = self._provider.neutron.list_networks(id=self.id).get('networks')
-        self._network = net[0] if net else {}
+        network = self._provider.networking.networks.get(self.id)
+        if network:
+            # pylint:disable=protected-access
+            self._network = network._network
+        else:
+            # subnet no longer exists
+            self._network.state = NetworkState.UNKNOWN
 
 
 class OpenStackSubnet(BaseSubnet):
@@ -742,6 +770,7 @@ class OpenStackSubnet(BaseSubnet):
     def __init__(self, provider, subnet):
         super(OpenStackSubnet, self).__init__(provider)
         self._subnet = subnet
+        self._state = None
 
     @property
     def id(self):
@@ -750,6 +779,16 @@ class OpenStackSubnet(BaseSubnet):
     @property
     def name(self):
         return self._subnet.get('name', None)
+
+    @name.setter
+    def name(self, value):  # pylint:disable=arguments-differ
+        """
+        Set the subnet name.
+        """
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_subnet(
+            self.id, {'subnet': {'name': value}})
+        self._subnet['name'] = value
 
     @property
     def cidr_block(self):
@@ -774,6 +813,21 @@ class OpenStackSubnet(BaseSubnet):
         # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_subnets()):
             return True
+
+    @property
+    def state(self):
+        return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \
+             else SubnetState.AVAILABLE
+
+    def refresh(self):
+        subnet = self._provider.networking.subnets.get(self.id)
+        if subnet:
+            # pylint:disable=protected-access
+            self._subnet = subnet._subnet
+            self._state = SubnetState.AVAILABLE
+        else:
+            # subnet no longer exists
+            self._state = SubnetState.UNKNOWN
 
 
 class OpenStackFloatingIP(BaseFloatingIP):
@@ -818,6 +872,16 @@ class OpenStackRouter(BaseRouter):
     def name(self):
         return self._router.get('name', None)
 
+    @name.setter
+    def name(self, value):  # pylint:disable=arguments-differ
+        """
+        Set the router name.
+        """
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_router(
+            self.id, {'router': {'name': value}})
+        self.refresh()
+
     def refresh(self):
         self._router = self._provider.neutron.show_router(self.id)['router']
 
@@ -836,39 +900,86 @@ class OpenStackRouter(BaseRouter):
 
     def delete(self):
         self._provider.neutron.delete_router(self.id)
-        # Adhere to the interface docs
-        if self.id not in str(self._provider.neutron.list_routers()):
-            return True
 
-    def attach_network(self, network_id):
-        self._router = self._provider.neutron.add_gateway_router(
-            self.id, {'network_id': network_id}).get('router', self._router)
-        if self.network_id and self.network_id == network_id:
-            return True
-        return False
-
-    def detach_network(self):
-        self._router = self._provider.neutron.remove_gateway_router(
-            self.id).get('router', self._router)
-        if not self.network_id:
-            return True
-        return False
-
-    def add_route(self, subnet_id):
-        router_interface = {'subnet_id': subnet_id}
+    def attach_subnet(self, subnet):
+        router_interface = {'subnet_id': subnet.id}
         ret = self._provider.neutron.add_interface_router(
             self.id, router_interface)
-        if subnet_id in ret.get('subnet_ids', ""):
+        if subnet.id in ret.get('subnet_ids', ""):
             return True
         return False
 
-    def remove_route(self, subnet_id):
-        router_interface = {'subnet_id': subnet_id}
+    def detach_subnet(self, subnet):
+        router_interface = {'subnet_id': subnet.id}
         ret = self._provider.neutron.remove_interface_router(
             self.id, router_interface)
-        if subnet_id in ret.get('subnet_ids', ""):
+        if subnet.id in ret.get('subnet_ids', ""):
             return True
         return False
+
+    def attach_gateway(self, gateway):
+        self._provider.neutron.add_gateway_router(
+            self.id, {'network_id': gateway.id})
+
+    def detach_gateway(self, gateway):
+        self._provider.neutron.remove_gateway_router(
+            self.id).get('router', self._router)
+
+
+class OpenStackInternetGateway(BaseInternetGateway):
+
+    GATEWAY_STATE_MAP = {
+        NetworkState.AVAILABLE: GatewayState.AVAILABLE,
+        NetworkState.DOWN: GatewayState.ERROR,
+        NetworkState.ERROR: GatewayState.ERROR,
+        NetworkState.PENDING: GatewayState.CONFIGURING,
+        NetworkState.UNKNOWN: GatewayState.UNKNOWN
+    }
+
+    def __init__(self, provider, gateway_net):
+        super(OpenStackInternetGateway, self).__init__(provider)
+        if isinstance(gateway_net, OpenStackNetwork):
+            gateway_net = gateway_net._network
+        self._gateway_net = gateway_net
+
+    @property
+    def id(self):
+        return self._gateway_net.get('id', None)
+
+    @property
+    def name(self):
+        return self._gateway_net.get('name', None)
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_network(self.id,
+                                              {'network': {'name': value}})
+        self.refresh()
+
+    @property
+    def network_id(self):
+        return self._gateway_net.id
+
+    def refresh(self):
+        """Refresh the state of this network by re-querying the provider."""
+        network = self._provider.networking.networks.get(self.id)
+        if network:
+            # pylint:disable=protected-access
+            self._gateway_net = network._network
+        else:
+            # subnet no longer exists
+            self._gateway_net.state = NetworkState.UNKNOWN
+
+    @property
+    def state(self):
+        return self.GATEWAY_STATE_MAP.get(
+            self._gateway_net.state, GatewayState.UNKNOWN)
+
+    def delete(self):
+        """Do nothing on openstack"""
+        pass
 
 
 class OpenStackKeyPair(BaseKeyPair):
@@ -998,8 +1109,8 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
         js = {k: v for(k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
-        js['rules'] = [json.loads(r) for r in json_rules]
-        return json.dumps(js, sort_keys=True)
+        js['rules'] = json_rules
+        return js
 
 
 class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
@@ -1030,12 +1141,10 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def group(self):
-        cg = self._rule.get('group', {}).get('name')
-        if cg:
-            security_groups = self._provider.nova.security_groups.list()
-            for sg in security_groups:
-                if sg.name == cg:
-                    return OpenStackSecurityGroup(self._provider, sg)
+        sg_name = self._rule.get('group', {}).get('name')
+        if sg_name:
+            sg = self._provider.security.security_groups.find(name=sg_name)
+            return sg[0] if sg else None
         return None
 
     def to_json(self):
@@ -1043,7 +1152,7 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
         js = {k: v for(k, v) in attr if not k.startswith('_')}
         js['group'] = self.group.id if self.group else ''
         js['parent'] = self.parent.id if self.parent else ''
-        return json.dumps(js, sort_keys=True)
+        return js
 
     def delete(self):
         return self._provider.nova.security_group_rules.delete(self.id)
@@ -1210,6 +1319,11 @@ class OpenStackBucket(BaseBucket):
             self._provider,
             cb_objects,
             limit)
+
+    def find(self, name, limit=None, marker=None):
+        objects = [obj for obj in self if obj.name == name]
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
 
     def delete(self, delete_contents=False):
         """

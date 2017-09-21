@@ -1,5 +1,3 @@
-import uuid
-
 from test import helpers
 from test.helpers import ProviderTestBase
 
@@ -14,7 +12,7 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
         """
         Test object life cycle methods by using a volume.
         """
-        name = "CBUnitTestLifeCycle-{0}".format(uuid.uuid4())
+        name = "cb_objlifecycle-{0}".format(helpers.get_uuid())
         test_vol = self.provider.block_store.volumes.create(
             name,
             1,
