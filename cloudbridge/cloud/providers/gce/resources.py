@@ -828,8 +828,8 @@ class GCEInstance(BaseInstance):
         machine_type_uri = self._gce_instance.get('machineType')
         if machine_type_uri is None:
             return None
-        instance_type = self._provider.get_gce_resource_data(machine_type_uri)
-        return instance_type.get('name', None)
+        parsed_uri = self._provider.parse_url(machine_type_uri)
+        return parsed_uri.parameters['machineType']
 
     @property
     def instance_type(self):
@@ -839,8 +839,8 @@ class GCEInstance(BaseInstance):
         machine_type_uri = self._gce_instance.get('machineType')
         if machine_type_uri is None:
             return None
-        instance_type = self._provider.get_gce_resource_data(machine_type_uri)
-        return GCEInstanceType(self._provider, instance_type)
+        parsed_uri = self._provider.parse_url(machine_type_uri)
+        return GCEInstanceType(self._provider, parsed_uri.get())
 
     def reboot(self):
         """
@@ -896,8 +896,8 @@ class GCEInstance(BaseInstance):
             return None
         for disk in self._gce_instance['disks']:
             if 'boot' in disk and disk['boot']:
-                return self._provider.get_gce_resource_data(
-                    disk['source']).get('sourceImage')
+                disk_resource = self._provider.parse_url(disk['source']).get()
+                return disk_resource.get('sourceImage')
         return None
 
     @property
@@ -908,8 +908,7 @@ class GCEInstance(BaseInstance):
         zone_uri = self._gce_instance.get('zone')
         if zone_uri is None:
             return None
-        zone = self._provider.get_gce_resource_data(zone_uri)
-        return zone.get('name', None)
+        return self._provider.parse_url(zone_uri).parameters['zone']
 
     @property
     def security_groups(self):
@@ -958,8 +957,7 @@ class GCEInstance(BaseInstance):
             if 'boot' in disk and disk['boot']:
                 image_body = {
                     'name': name,
-                    'sourceDisk': self._provider.get_gce_resource_data(
-                        disk['source']).get('selfLink')
+                    'sourceDisk': disk['source']
                 }
                 operation = (self._provider
                              .gce_compute
@@ -1183,8 +1181,8 @@ class GCEInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        self._gce_instance = self._provider.get_gce_resource_data(
-            self._gce_instance.get('selfLink'))
+        self_link = self._gce_instance.get('selfLink')
+        self._gce_instance = self._provider.parse_url(self_link).get()
 
     def add_security_group(self, sg):
         raise NotImplementedError('To be implemented.')
@@ -1512,13 +1510,13 @@ class GCEVolume(BaseVolume):
     @property
     def source(self):
         if 'sourceSnapshot' in self._volume:
+            snapshot_uri = self._volume.get('sourceSnapshot')
             return GCESnapshot(self._provider,
-                               self._provider.get_gce_resource_data(
-                                   self._volume.get('sourceSnapshot')))
+                               self._provider.parse_url(snapshot_uri).get())
         if 'sourceImage' in self._volume:
+            image_uri = self._volume.get('sourceImage')
             return GCEMachineImage(self._provider,
-                                   self._provider.get_gce_resource_data(
-                                       self._volume.get('sourceImage')))
+                                   self._provider.parse_url(image_uri).get())
         return None
 
     @property
@@ -1570,8 +1568,8 @@ class GCEVolume(BaseVolume):
         # Check whether this volume is attached to an instance.
         if not self.attachments:
             return
-        instance_data = self._provider.get_gce_resource_data(
-            self.attachments.instance_id)
+        parsed_uri = self._provider.parse_url(self.attachments.instance_id)
+        instance_data = parsed_uri.get()
         # Check whether the instance has this volume attached.
         if 'disks' not in instance_data:
             return
@@ -1620,8 +1618,8 @@ class GCEVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        self._volume = self._provider.get_gce_resource_data(
-            self._volume.get('selfLink'))
+        self_link = self._volume.get('selfLink')
+        self._volume = self._provider.parse_url(self_link).get()
 
 
 class GCESnapshot(BaseSnapshot):
@@ -1684,8 +1682,8 @@ class GCESnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        self._snapshot = self._provider.get_gce_resource_data(
-            self._snapshot.get('selfLink'))
+        self_link = self._snapshot.get('selfLink')
+        self._snapshot = self._provider.parse_url(self_link).get()
 
     def delete(self):
         """
