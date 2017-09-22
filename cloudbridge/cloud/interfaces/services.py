@@ -64,24 +64,24 @@ class ComputeService(CloudService):
         pass
 
     @abstractproperty
-    def instance_types(self):
+    def vm_types(self):
         """
-        Provides access to all Instance type related services in this provider.
+        Provides access to all VM type related services in this provider.
 
         Example:
 
         .. code-block:: python
 
-            # list all instance sizes
-            for inst_type in provider.compute.instance_types:
-                print(inst_type.id, inst_type.name)
+            # list all VM sizes
+            for vm_type in provider.compute.vm_types:
+                print(vm_type.id, vm_type.name)
 
             # find a specific size by name
-            inst_type = provider.compute.instance_types.find(name='m1.small')
-            print(inst_type.vcpus)
+            vm_type = provider.compute.vm_types.find(name='m1.small')
+            print(vm_type.vcpus)
 
-        :rtype: :class:`.InstanceTypeService`
-        :return: an InstanceTypeService object
+        :rtype: :class:`.VMTypeService`
+        :return: an VMTypeService object
         """
         pass
 
@@ -96,7 +96,7 @@ class ComputeService(CloudService):
 
             # launch a new instance
             image = provider.compute.images.find(name='Ubuntu 14.04')[0]
-            size = provider.compute.instance_types.find(name='m1.small')
+            size = provider.compute.vm_types.find(name='m1.small')
             instance = provider.compute.instances.create('Hello', image, size)
             print(instance.id, instance.name)
 
@@ -205,7 +205,7 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, image, instance_type, subnet, zone=None,
+    def create(self, name, image, vm_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -219,8 +219,8 @@ class InstanceService(PageableObjectMixin, CloudService):
         :param image: The MachineImage object or id to boot the virtual machine
                       with
 
-        :type  instance_type: ``InstanceType`` or ``str``
-        :param instance_type: The InstanceType or name, specifying the size of
+        :type  vm_type: ``VMType`` or ``str``
+        :param vm_type: The VMType or name, specifying the size of
                               the instance to boot into
 
         :type  subnet:  ``Subnet`` or ``str``
@@ -1191,34 +1191,34 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
         pass
 
 
-class InstanceTypesService(PageableObjectMixin, CloudService):
+class VMTypeService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, instance_type_id):
+    def get(self, vm_type_id):
         """
-        Returns an InstanceType given its ID. Returns ``None`` if the
-        InstanceType does not exist.
+        Returns an VMType given its ID. Returns ``None`` if the
+        VMType does not exist.
 
         Example:
 
         .. code-block:: python
 
-            itype = provider.compute.instance_types.get('my_itype_id')
-            print(itype.id, itype.name)
+            vm_type = provider.compute.vm_types.get('my_vm_type_id')
+            print(vm_type.id, vm_type.name)
 
-        :rtype: :class:`.InstanceType`
-        :return:  an InstanceType instance
+        :rtype: :class:`.VMType`
+        :return:  an VMType instance
         """
         pass
 
     @abstractmethod
     def list(self, limit=None, marker=None):
         """
-        List all instance types.
+        List all VM types.
 
-        :rtype: ``list`` of :class:`.InstanceType`
-        :return: list of InstanceType objects
+        :rtype: ``list`` of :class:`.VMType`
+        :return: list of VMType objects
         """
         pass
 
@@ -1227,7 +1227,7 @@ class InstanceTypesService(PageableObjectMixin, CloudService):
         """
         Searches for an instance by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.InstanceType`
+        :rtype: ``object`` of :class:`.VMType`
         :return: an Instance object
         """
         pass

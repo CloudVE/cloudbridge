@@ -469,25 +469,25 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractproperty
-    def instance_type_id(self):
+    def vm_type_id(self):
         """
-        Get the instance type id for this instance. This will typically be a
+        Get the vm type id for this instance. This will typically be a
         string value like 'm1.large'. On OpenStack, this may be a number or
-        UUID. To get the full :class:``.InstanceType``
-        object, you can use the instance.instance_type property instead.
+        UUID. To get the full :class:``.VMType``
+        object, you can use the instance.vm_type property instead.
 
         :rtype: ``str``
-        :return: Instance type name for this instance (e.g., ``m1.large``)
+        :return: VM type name for this instance (e.g., ``m1.large``)
         """
         pass
 
     @abstractproperty
-    def instance_type(self):
+    def vm_type(self):
         """
-        Retrieve full instance type information for this instance.
+        Retrieve full VM type information for this instance.
 
-        :rtype: :class:`.InstanceType`
-        :return: Instance type for this instance
+        :rtype: :class:`.VMType`
+        :return: VM type for this instance
         """
         pass
 
@@ -651,7 +651,7 @@ class LaunchConfig(object):
         lc = provider.compute.instances.create_launch_config()
         lc.add_block_device(...)
 
-        inst = provider.compute.instances.create(name, image, instance_type,
+        inst = provider.compute.instances.create(name, image, vm_type,
                                                  network, launch_config=lc)
     """
 
@@ -661,13 +661,13 @@ class LaunchConfig(object):
         Adds a new ephemeral block device mapping to the boot configuration.
         This can be used to add existing ephemeral devices to the instance.
         (The total number of ephemeral devices available for a particular
-        InstanceType can be determined by querying the InstanceTypes service).
+        VMType can be determined by querying the VMType service).
         Note that on some services, such as AWS, ephemeral devices must be
         added in as a device mapping at instance creation time, and cannot be
         added afterwards.
 
         Note that the device name, such as /dev/sda1, cannot be selected at
-        present, since this tends to be provider and instance type specific.
+        present, since this tends to be provider and VM type specific.
         However, the order of device addition coupled with device type will
         generally determine naming order, with devices added first getting
         lower letters than instances added later.
@@ -679,8 +679,8 @@ class LaunchConfig(object):
             lc = provider.compute.instances.create_launch_config()
 
             # 1. Add all available ephemeral devices
-            inst_type = provider.compute.instance_types.find(name='m1.tiny')[0]
-            for i in range(inst_type.num_ephemeral_disks):
+            vm_type = provider.compute.vm_types.find(name='m1.tiny')[0]
+            for i in range(vm_type.num_ephemeral_disks):
                 lc.add_ephemeral_device()
         """
         pass
@@ -698,7 +698,7 @@ class LaunchConfig(object):
         devices to the instance.
 
         Note that the device name, such as /dev/sda1, cannot be selected at
-        present, since this tends to be provider and instance type specific.
+        present, since this tends to be provider and VM type specific.
         However, the order of device addition coupled with device type will
         generally determine naming order, with devices added first getting
         lower letters than instances added later (except when is_root is set).
@@ -1579,17 +1579,17 @@ class PlacementZone(CloudResource):
         pass
 
 
-class InstanceType(CloudResource):
+class VMType(CloudResource):
 
     """
-    An instance type object.
+    A VM type object.
     """
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def family(self):
         """
-        The family/group that this instance type belongs to.
+        The family/group that this VM type belongs to.
 
         For example, General Purpose Instances or High-Memory Instances. If
         the provider does not support such a grouping, it may return ``None``.
@@ -1602,7 +1602,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def vcpus(self):
         """
-        The number of VCPUs supported by this instance type.
+        The number of VCPUs supported by this VM type.
 
         :rtype: ``int``
         :return: Number of VCPUs.
@@ -1612,7 +1612,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def ram(self):
         """
-        The amount of RAM (in MB) supported by this instance type.
+        The amount of RAM (in MB) supported by this VM type.
 
         :rtype: ``int``
         :return: Total RAM (in MB).
@@ -1622,7 +1622,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def size_root_disk(self):
         """
-        The size of this instance types's root disk (in GB).
+        The size of this VM types's root disk (in GB).
 
         :rtype: ``int``
         :return: Size of root disk (in GB).
@@ -1632,7 +1632,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def size_ephemeral_disks(self):
         """
-        The size of this instance types's total ephemeral storage (in GB).
+        The size of this VM types's total ephemeral storage (in GB).
 
         :rtype: ``int``
         :return: Size of ephemeral disks (in GB).
@@ -1642,7 +1642,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def num_ephemeral_disks(self):
         """
-        The total number of ephemeral disks on this instance type.
+        The total number of ephemeral disks on this VM type.
 
         :rtype: ``int``
         :return: Number of ephemeral disks available.
@@ -1652,7 +1652,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def size_total_disk(self):
         """
-        The total disk space available on this instance type
+        The total disk space available on this VM type
         (root_disk + ephemeral).
 
         :rtype: ``int``
@@ -1667,7 +1667,7 @@ class InstanceType(CloudResource):
         nested dictionaries, but all key value pairs are strings or integers.
 
         :rtype: ``dict``
-        :return: Extra attributes for this instance type.
+        :return: Extra attributes for this VM type.
         """
         pass
 

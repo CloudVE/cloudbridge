@@ -9,8 +9,8 @@ from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import Instance
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import VMType
 
 import six
 
@@ -118,21 +118,21 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 self._is_valid_ip(ip_address),
                 "Instance must have a valid IP address")
-            self.assertIsInstance(test_instance.instance_type_id,
+            self.assertIsInstance(test_instance.vm_type_id,
                                   six.string_types)
-            itype = self.provider.compute.instance_types.get(
-                test_instance.instance_type_id)
+            vm_type = self.provider.compute.vm_types.get(
+                test_instance.vm_type_id)
             self.assertEqual(
-                itype, test_instance.instance_type,
-                "Instance type {0} does not match expected type {1}".format(
-                    itype.name, test_instance.instance_type))
-            self.assertIsInstance(itype, InstanceType)
+                vm_type, test_instance.vm_type,
+                "VM type {0} does not match expected type {1}".format(
+                    vm_type.name, test_instance.vm_type))
+            self.assertIsInstance(vm_type, VMType)
             expected_type = helpers.get_provider_test_data(self.provider,
-                                                           'instance_type')
+                                                           'vm_type')
             self.assertEqual(
-                itype.name, expected_type,
-                "Instance type {0} does not match expected type {1}".format(
-                    itype.name, expected_type))
+                vm_type.name, expected_type,
+                "VM type {0} does not match expected type {1}".format(
+                    vm_type.name, expected_type))
             find_zone = [zone for zone in
                          self.provider.compute.regions.current.zones
                          if zone.id == test_instance.zone_id]
@@ -141,7 +141,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                              " found in zones list")
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
-                              'compute.instance_types'])
+                              'compute.vm_types'])
     def test_block_device_mapping_launch_config(self):
         lc = self.provider.compute.instances.create_launch_config()
 
@@ -187,22 +187,22 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 delete_on_terminate=True)
 
         # Add all available ephemeral devices
-        instance_type_name = helpers.get_provider_test_data(
+        vm_type_name = helpers.get_provider_test_data(
             self.provider,
-            "instance_type")
-        inst_type = self.provider.compute.instance_types.find(
-            name=instance_type_name)[0]
-        for _ in range(inst_type.num_ephemeral_disks):
+            "vm_type")
+        vm_type = self.provider.compute.vm_types.find(
+            name=vm_type_name)[0]
+        for _ in range(vm_type.num_ephemeral_disks):
             lc.add_ephemeral_device()
 
         # block_devices should be populated
         self.assertTrue(
-            len(lc.block_devices) == 2 + inst_type.num_ephemeral_disks,
+            len(lc.block_devices) == 2 + vm_type.num_ephemeral_disks,
             "Expected %d total block devices bit found %d" %
-            (2 + inst_type.num_ephemeral_disks, len(lc.block_devices)))
+            (2 + vm_type.num_ephemeral_disks, len(lc.block_devices)))
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
-                              'compute.instance_types', 'block_store.volumes'])
+                              'compute.vm_types', 'block_store.volumes'])
     def test_block_device_mapping_attachments(self):
         name = "cb_blkattch-{0}".format(helpers.get_uuid())
 
@@ -256,12 +256,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     delete_on_terminate=True)
 
                 # Add all available ephemeral devices
-                instance_type_name = helpers.get_provider_test_data(
+                vm_type_name = helpers.get_provider_test_data(
                     self.provider,
-                    "instance_type")
-                inst_type = self.provider.compute.instance_types.find(
-                    name=instance_type_name)[0]
-                for _ in range(inst_type.num_ephemeral_disks):
+                    "vm_type")
+                vm_type = self.provider.compute.vm_types.find(
+                    name=vm_type_name)[0]
+                for _ in range(vm_type.num_ephemeral_disks):
                     lc.add_ephemeral_device()
 
                 net, subnet = helpers.create_test_network(self.provider, name)

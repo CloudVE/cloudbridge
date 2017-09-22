@@ -21,7 +21,6 @@ from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import InternetGateway
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import LaunchConfig
@@ -41,6 +40,7 @@ from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
@@ -362,13 +362,13 @@ class BasePageableObjectMixin(PageableObjectMixin):
                 yield result
 
 
-class BaseInstanceType(BaseCloudResource, InstanceType):
+class BaseVMType(BaseCloudResource, VMType):
 
     def __init__(self, provider):
-        super(BaseInstanceType, self).__init__(provider)
+        super(BaseVMType, self).__init__(provider)
 
     def __eq__(self, other):
-        return (isinstance(other, InstanceType) and
+        return (isinstance(other, VMType) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)

@@ -123,7 +123,7 @@ class CloudProvider(object):
         .. code-block:: python
 
             regions = provider.compute.regions.list()
-            instance_types = provider.compute.instance_types.list()
+            vm_types = provider.compute.vm_types.list()
             instances = provider.compute.instances.list()
             images = provider.compute.images.list()
 

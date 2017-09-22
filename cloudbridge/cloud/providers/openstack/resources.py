@@ -11,7 +11,6 @@ from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
-from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
@@ -23,6 +22,7 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.resources import GatewayState
@@ -169,10 +169,10 @@ class OpenStackPlacementZone(BasePlacementZone):
         return self._os_region
 
 
-class OpenStackInstanceType(BaseInstanceType):
+class OpenStackVMType(BaseVMType):
 
     def __init__(self, provider, os_flavor):
-        super(OpenStackInstanceType, self).__init__(provider)
+        super(OpenStackVMType, self).__init__(provider)
         self._os_flavor = os_flavor
 
     @property
@@ -299,20 +299,20 @@ class OpenStackInstance(BaseInstance):
                 if ipaddress.ip_address(address).is_private]
 
     @property
-    def instance_type_id(self):
+    def vm_type_id(self):
         """
-        Get the instance type name.
+        Get the VM type name.
         """
         return self._os_instance.flavor.get('id')
 
     @property
-    def instance_type(self):
+    def vm_type(self):
         """
-        Get the instance type object.
+        Get the VM type object.
         """
         flavor = self._provider.nova.flavors.get(
             self._os_instance.flavor.get('id'))
-        return OpenStackInstanceType(self._provider, flavor)
+        return OpenStackVMType(self._provider, flavor)
 
     def reboot(self):
         """
@@ -320,9 +320,9 @@ class OpenStackInstance(BaseInstance):
         """
         self._os_instance.reboot()
 
-    def terminate(self):
+    def delete(self):
         """
-        Permanently terminate this instance.
+        Permanently delete this instance.
         """
         # delete the port we created when launching
         # Assumption: it's the first interface in the list
