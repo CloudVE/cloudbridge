@@ -78,13 +78,13 @@ def skipIfNoService(services):
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
         "image": os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS', 't2.nano'),
+        "vm_type": os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
         "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     "OpenStackCloudProvider": {
         "image": os.environ.get('CB_IMAGE_OS',
                                 '842b949c-ea76-48df-998d-8a41f2626243'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.tiny'),
+        "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
         "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
     },
     "AzureCloudProvider": {
@@ -140,7 +140,7 @@ def create_test_instance(
     instance = provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
-        get_provider_test_data(provider, 'instance_type'),
+        get_provider_test_data(provider, 'vm_type'),
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
         key_pair=key_pair or kp,

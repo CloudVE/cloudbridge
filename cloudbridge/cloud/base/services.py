@@ -9,7 +9,6 @@ from cloudbridge.cloud.interfaces.services import ComputeService
 from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
-from cloudbridge.cloud.interfaces.services import InstanceTypesService
 from cloudbridge.cloud.interfaces.services import KeyPairService
 from cloudbridge.cloud.interfaces.services import NetworkService
 from cloudbridge.cloud.interfaces.services import NetworkingService
@@ -20,6 +19,7 @@ from cloudbridge.cloud.interfaces.services import SecurityGroupService
 from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
 from cloudbridge.cloud.interfaces.services import SubnetService
+from cloudbridge.cloud.interfaces.services import VMTypeService
 from cloudbridge.cloud.interfaces.services import VolumeService
 
 from .resources import BasePageableObjectMixin
@@ -112,15 +112,15 @@ class BaseSecurityGroupService(
         super(BaseSecurityGroupService, self).__init__(provider)
 
 
-class BaseInstanceTypesService(
-        BasePageableObjectMixin, InstanceTypesService, BaseCloudService):
+class BaseVMTypeService(
+        BasePageableObjectMixin, VMTypeService, BaseCloudService):
 
     def __init__(self, provider):
-        super(BaseInstanceTypesService, self).__init__(provider)
+        super(BaseVMTypeService, self).__init__(provider)
 
-    def get(self, instance_type_id):
-        itype = (t for t in self if t.id == instance_type_id)
-        return next(itype, None)
+    def get(self, vm_type_id):
+        vm_type = (t for t in self if t.id == vm_type_id)
+        return next(vm_type, None)
 
     def find(self, **kwargs):
         name = kwargs.get('name')

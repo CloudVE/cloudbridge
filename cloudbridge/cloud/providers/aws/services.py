@@ -9,7 +9,6 @@ from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
-from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseNetworkingService
@@ -20,15 +19,16 @@ from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 
 import requests
@@ -39,7 +39,6 @@ from .helpers import BotoS3Service
 from .resources import AWSBucket
 from .resources import AWSFloatingIP
 from .resources import AWSInstance
-from .resources import AWSInstanceType
 from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
@@ -50,6 +49,7 @@ from .resources import AWSRouter
 from .resources import AWSSecurityGroup
 from .resources import AWSSnapshot
 from .resources import AWSSubnet
+from .resources import AWSVMType
 from .resources import AWSVolume
 
 
@@ -295,7 +295,7 @@ class AWSComputeService(BaseComputeService):
 
     def __init__(self, provider):
         super(AWSComputeService, self).__init__(provider)
-        self._instance_type_svc = AWSInstanceTypesService(self.provider)
+        self._vm_type_svc = AWSVMTypeService(self.provider)
         self._instance_svc = AWSInstanceService(self.provider)
         self._region_svc = AWSRegionService(self.provider)
         self._images_svc = AWSImageService(self.provider)
@@ -305,8 +305,8 @@ class AWSComputeService(BaseComputeService):
         return self._images_svc
 
     @property
-    def instance_types(self):
-        return self._instance_type_svc
+    def vm_types(self):
+        return self._vm_type_svc
 
     @property
     def instances(self):
@@ -325,14 +325,14 @@ class AWSInstanceService(BaseInstanceService):
                                   cb_resource=AWSInstance,
                                   boto_collection_name='instances')
 
-    def create(self, name, image, instance_type, subnet, zone=None,
+    def create(self, name, image, vm_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
         AWSInstance.assert_valid_resource_name(name)
 
         image_id = image.id if isinstance(image, MachineImage) else image
-        instance_size = instance_type.id if \
-            isinstance(instance_type, InstanceType) else instance_type
+        vm_size = vm_type.id if \
+            isinstance(vm_type, VMType) else vm_type
         subnet = (self.provider.networking.subnets.get(subnet)
                   if isinstance(subnet, str) else subnet)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
@@ -355,7 +355,7 @@ class AWSInstanceService(BaseInstanceService):
                                KeyName=key_pair_name,
                                SecurityGroupIds=security_group_ids or None,
                                UserData=user_data,
-                               InstanceType=instance_size,
+                               InstanceType=vm_size,
                                Placement=placement,
                                BlockDeviceMappings=bdm,
                                SubnetId=subnet_id
@@ -464,10 +464,10 @@ class AWSInstanceService(BaseInstanceService):
         return self.svc.list(limit=limit, marker=marker)
 
 
-class AWSInstanceTypesService(BaseInstanceTypesService):
+class AWSVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
-        super(AWSInstanceTypesService, self).__init__(provider)
+        super(AWSVMTypeService, self).__init__(provider)
 
     @property
     def instance_data(self):
@@ -489,9 +489,9 @@ class AWSInstanceTypesService(BaseInstanceTypesService):
         return r.json()
 
     def list(self, limit=None, marker=None):
-        inst_types = [AWSInstanceType(self.provider, inst_type)
-                      for inst_type in self.instance_data]
-        return ClientPagedResultList(self.provider, inst_types,
+        vm_types = [AWSVMType(self.provider, vm_type)
+                    for vm_type in self.instance_data]
+        return ClientPagedResultList(self.provider, vm_types,
                                      limit=limit, marker=marker)
 
 

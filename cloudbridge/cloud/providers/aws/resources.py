@@ -11,7 +11,6 @@ from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
-from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
@@ -24,6 +23,7 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.resources import GatewayState
@@ -137,10 +137,10 @@ class AWSPlacementZone(BasePlacementZone):
         return self._aws_region
 
 
-class AWSInstanceType(BaseInstanceType):
+class AWSVMType(BaseVMType):
 
     def __init__(self, provider, instance_dict):
-        super(AWSInstanceType, self).__init__(provider)
+        super(AWSVMType, self).__init__(provider)
         self._inst_dict = instance_dict
 
     @property
@@ -232,12 +232,12 @@ class AWSInstance(BaseInstance):
         return [self._ec2_instance.private_ip_address]
 
     @property
-    def instance_type_id(self):
+    def vm_type_id(self):
         return self._ec2_instance.instance_type
 
     @property
-    def instance_type(self):
-        return self._provider.compute.instance_types.find(
+    def vm_type(self):
+        return self._provider.compute.vm_types.find(
             name=self._ec2_instance.instance_type)[0]
 
     def reboot(self):

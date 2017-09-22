@@ -14,7 +14,6 @@ from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
-from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseNetworkingService
@@ -25,14 +24,15 @@ from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
@@ -43,7 +43,6 @@ from novaclient.exceptions import NotFound as NovaNotFound
 from .resources import OpenStackBucket
 from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
-from .resources import OpenStackInstanceType
 from .resources import OpenStackInternetGateway
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
@@ -53,6 +52,7 @@ from .resources import OpenStackRouter
 from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
 from .resources import OpenStackSubnet
+from .resources import OpenStackVMType
 from .resources import OpenStackVolume
 
 log = logging.getLogger(__name__)
@@ -298,14 +298,14 @@ class OpenStackImageService(BaseImageService):
         return oshelpers.to_server_paged_list(self.provider, cb_images, limit)
 
 
-class OpenStackInstanceTypesService(BaseInstanceTypesService):
+class OpenStackVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
-        super(OpenStackInstanceTypesService, self).__init__(provider)
+        super(OpenStackVMTypeService, self).__init__(provider)
 
     def list(self, limit=None, marker=None):
         cb_itypes = [
-            OpenStackInstanceType(self.provider, obj)
+            OpenStackVMType(self.provider, obj)
             for obj in self.provider.nova.flavors.list(
                 limit=oshelpers.os_result_limit(self.provider, limit),
                 marker=marker)]
@@ -539,7 +539,7 @@ class OpenStackComputeService(BaseComputeService):
 
     def __init__(self, provider):
         super(OpenStackComputeService, self).__init__(provider)
-        self._instance_type_svc = OpenStackInstanceTypesService(self.provider)
+        self._vm_type_svc = OpenStackVMTypeService(self.provider)
         self._instance_svc = OpenStackInstanceService(self.provider)
         self._region_svc = OpenStackRegionService(self.provider)
         self._images_svc = OpenStackImageService(self.provider)
@@ -549,8 +549,8 @@ class OpenStackComputeService(BaseComputeService):
         return self._images_svc
 
     @property
-    def instance_types(self):
-        return self._instance_type_svc
+    def vm_types(self):
+        return self._vm_type_svc
 
     @property
     def instances(self):
@@ -566,7 +566,7 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet, zone=None,
+    def create(self, name, image, vm_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -574,10 +574,10 @@ class OpenStackInstanceService(BaseInstanceService):
         OpenStackInstance.assert_valid_resource_name(name)
 
         image_id = image.id if isinstance(image, MachineImage) else image
-        instance_size = instance_type.id if \
-            isinstance(instance_type, InstanceType) else \
-            self.provider.compute.instance_types.find(
-                name=instance_type)[0].id
+        vm_size = vm_type.id if \
+            isinstance(vm_type, VMType) else \
+            self.provider.compute.vm_types.find(
+                name=vm_type)[0].id
         if isinstance(subnet, Subnet):
             subnet_id = subnet.id
             net_id = subnet.network_id
@@ -636,7 +636,7 @@ class OpenStackInstanceService(BaseInstanceService):
         os_instance = self.provider.nova.servers.create(
             name,
             None if self._has_root_device(launch_config) else image_id,
-            instance_size,
+            vm_size,
             min_count=1,
             max_count=1,
             availability_zone=zone_id,
