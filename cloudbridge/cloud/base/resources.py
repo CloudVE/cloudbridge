@@ -34,12 +34,12 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Region
 from cloudbridge.cloud.interfaces.resources import ResultList
 from cloudbridge.cloud.interfaces.resources import Router
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
-from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import VMFirewall
+from cloudbridge.cloud.interfaces.resources import VMFirewallRule
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
@@ -395,7 +395,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
                 # check from most to least likely mutables
                 self.state == other.state and
                 self.name == other.name and
-                self.security_groups == other.security_groups and
+                self.vm_firewalls == other.vm_firewalls and
                 self.public_ips == other.public_ips and
                 self.private_ips == other.private_ips and
                 self.image_id == other.image_id)
@@ -618,17 +618,17 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         return "<CBKeyPair: {0}>".format(self.name)
 
 
-class BaseSecurityGroup(BaseCloudResource, SecurityGroup):
+class BaseVMFirewall(BaseCloudResource, VMFirewall):
 
-    def __init__(self, provider, security_group):
-        super(BaseSecurityGroup, self).__init__(provider)
-        self._security_group = security_group
+    def __init__(self, provider, vm_firewall):
+        super(BaseVMFirewall, self).__init__(provider)
+        self._vm_firewall = vm_firewall
 
     def __eq__(self, other):
         """
-        Check if all the defined rules match across both security groups.
+        Check if all the defined rules match across both VM firewalls.
         """
-        return (isinstance(other, SecurityGroup) and
+        return (isinstance(other, VMFirewall) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 len(self.rules) == len(other.rules) and  # Shortcut
@@ -640,53 +640,53 @@ class BaseSecurityGroup(BaseCloudResource, SecurityGroup):
     @property
     def id(self):
         """
-        Get the ID of this security group.
+        Get the ID of this VM firewall.
 
         :rtype: str
-        :return: Security group ID
+        :return: VM firewall ID
         """
-        return self._security_group.id
+        return self._vm_firewall.id
 
     @property
     def name(self):
         """
-        Return the name of this security group.
+        Return the name of this VM firewall.
         """
-        return self._security_group.name
+        return self._vm_firewall.name
 
     @property
     def description(self):
         """
-        Return the description of this security group.
+        Return the description of this VM firewall.
         """
-        return self._security_group.description
+        return self._vm_firewall.description
 
     def delete(self):
         """
-        Delete this security group.
+        Delete this VM firewall.
         """
-        return self._security_group.delete()
+        return self._vm_firewall.delete()
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
                                             self.id, self.name)
 
 
-class BaseSecurityGroupRule(BaseCloudResource, SecurityGroupRule):
+class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
 
     def __init__(self, provider, rule, parent):
-        super(BaseSecurityGroupRule, self).__init__(provider)
+        super(BaseVMFirewallRule, self).__init__(provider)
         self._rule = rule
         self.parent = parent
 
     def name(self):
         """
-        Security group rules don't support names, so pass
+        VM firewall rules don't support names, so pass
         """
         pass
 
     def __repr__(self):
-        return ("<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}; grp: {3}>"
+        return ("<CBVMFirewallRule: IP: {0}; from: {1}; to: {2}; grp: {3}>"
                 .format(self.ip_protocol, self.from_port, self.to_port,
                         self.group))
 
@@ -893,7 +893,7 @@ class BaseFloatingIP(BaseCloudResource, FloatingIP):
 
     def name(self):
         """
-        Security group rules don't support names, so pass
+        VM firewall rules don't support names, so pass
         """
         pass
 

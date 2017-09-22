@@ -15,10 +15,10 @@ from cloudbridge.cloud.interfaces.services import NetworkingService
 from cloudbridge.cloud.interfaces.services import ObjectStoreService
 from cloudbridge.cloud.interfaces.services import RegionService
 from cloudbridge.cloud.interfaces.services import RouterService
-from cloudbridge.cloud.interfaces.services import SecurityGroupService
 from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
 from cloudbridge.cloud.interfaces.services import SubnetService
+from cloudbridge.cloud.interfaces.services import VMFirewallService
 from cloudbridge.cloud.interfaces.services import VMTypeService
 from cloudbridge.cloud.interfaces.services import VolumeService
 
@@ -105,11 +105,11 @@ class BaseKeyPairService(
         return True
 
 
-class BaseSecurityGroupService(
-        BasePageableObjectMixin, SecurityGroupService, BaseCloudService):
+class BaseVMFirewallService(
+        BasePageableObjectMixin, VMFirewallService, BaseCloudService):
 
     def __init__(self, provider):
-        super(BaseSecurityGroupService, self).__init__(provider)
+        super(BaseVMFirewallService, self).__init__(provider)
 
 
 class BaseVMTypeService(

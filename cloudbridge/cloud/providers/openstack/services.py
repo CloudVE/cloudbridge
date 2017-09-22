@@ -20,18 +20,18 @@ from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseRouterService
-from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
@@ -49,9 +49,9 @@ from .resources import OpenStackMachineImage
 from .resources import OpenStackNetwork
 from .resources import OpenStackRegion
 from .resources import OpenStackRouter
-from .resources import OpenStackSecurityGroup
 from .resources import OpenStackSnapshot
 from .resources import OpenStackSubnet
+from .resources import OpenStackVMFirewall
 from .resources import OpenStackVMType
 from .resources import OpenStackVolume
 
@@ -65,7 +65,7 @@ class OpenStackSecurityService(BaseSecurityService):
 
         # Initialize provider services
         self._key_pairs = OpenStackKeyPairService(provider)
-        self._security_groups = OpenStackSecurityGroupService(provider)
+        self._vm_firewalls = OpenStackVMFirewallService(provider)
 
     @property
     def key_pairs(self):
@@ -78,14 +78,14 @@ class OpenStackSecurityService(BaseSecurityService):
         return self._key_pairs
 
     @property
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Provides access to security groups for this provider.
+        Provides access to VM firewalls for this provider.
 
-        :rtype: ``object`` of :class:`.SecurityGroupService`
-        :return: a SecurityGroupService object
+        :rtype: ``object`` of :class:`.VMFirewallService`
+        :return: a VMFirewallService object
         """
-        return self._security_groups
+        return self._vm_firewalls
 
     def get_or_create_ec2_credentials(self):
         """
@@ -175,85 +175,86 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return None
 
 
-class OpenStackSecurityGroupService(BaseSecurityGroupService):
+class OpenStackVMFirewallService(BaseVMFirewallService):
 
     def __init__(self, provider):
-        super(OpenStackSecurityGroupService, self).__init__(provider)
+        super(OpenStackVMFirewallService, self).__init__(provider)
 
-    def get(self, sg_id):
+    def get(self, firewall_id):
         """
-        Returns a SecurityGroup given its id.
+        Returns a VMFirewall given its id.
         """
         try:
-            return OpenStackSecurityGroup(
-                self.provider, self.provider.nova.security_groups.get(sg_id))
+            return OpenStackVMFirewall(
+                self.provider,
+                self.provider.nova.security_groups.get(firewall_id))
         except NovaNotFound:
             return None
 
     def list(self, limit=None, marker=None):
         """
-        List all security groups associated with this account.
+        List all VM firewalls associated with this account.
 
-        :rtype: ``list`` of :class:`.SecurityGroup`
-        :return:  list of SecurityGroup objects
+        :rtype: ``list`` of :class:`.VMFirewall`
+        :return:  list of VMFirewall objects
         """
 
-        sgs = [OpenStackSecurityGroup(self.provider, sg)
-               for sg in self.provider.nova.security_groups.list()]
+        firewalls = [OpenStackVMFirewall(self.provider, fw)
+                     for fw in self.provider.nova.security_groups.list()]
 
-        return ClientPagedResultList(self.provider, sgs,
+        return ClientPagedResultList(self.provider, firewalls,
                                      limit=limit, marker=marker)
 
     def create(self, name, description, network_id):
         """
-        Create a new security group under the current account.
+        Create a new VM firewall under the current account.
 
         :type name: str
-        :param name: The name of the new security group.
+        :param name: The name of the new VM firewall.
 
         :type description: str
-        :param description: The description of the new security group.
+        :param description: The description of the new VM firewall.
 
         :type  network_id: ``None``
         :param network_id: Not applicable for OpenStack (yet) so any value is
                            ignored.
 
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return: a SecurityGroup object
+        :rtype: ``object`` of :class:`.VMFirewall`
+        :return: a VMFirewall object
         """
-        OpenStackSecurityGroup.assert_valid_resource_name(name)
+        OpenStackVMFirewall.assert_valid_resource_name(name)
 
         sg = self.provider.nova.security_groups.create(name, description)
         if sg:
-            return OpenStackSecurityGroup(self.provider, sg)
+            return OpenStackVMFirewall(self.provider, sg)
         return None
 
     def find(self, name, limit=None, marker=None):
         """
-        Get all security groups associated with your account.
+        Get all VM firewalls associated with your account.
         """
         sgs = self.provider.nova.security_groups.findall(name=name)
-        results = [OpenStackSecurityGroup(self.provider, sg)
+        results = [OpenStackVMFirewall(self.provider, sg)
                    for sg in sgs]
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
         """
-        Delete an existing SecurityGroup.
+        Delete an existing VMFirewall.
 
         :type group_id: str
-        :param group_id: The security group ID to be deleted.
+        :param group_id: The VM firewall ID to be deleted.
 
         :rtype: ``bool``
-        :return:  ``True`` if the security group does not exist, ``False``
+        :return:  ``True`` if the VM firewall does not exist, ``False``
                   otherwise. Note that this implies that the group may not have
                   been deleted by this method but instead has not existed in
                   the first place.
         """
-        sg = self.get(group_id)
-        if sg:
-            sg.delete()
+        firewall = self.get(group_id)
+        if firewall:
+            firewall.delete()
         return True
 
 
@@ -567,7 +568,7 @@ class OpenStackInstanceService(BaseInstanceService):
         super(OpenStackInstanceService, self).__init__(provider)
 
     def create(self, name, image, vm_type, subnet, zone=None,
-               key_pair=None, security_groups=None, user_data=None,
+               key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None,
                **kwargs):
         """Create a new virtual machine instance."""
@@ -604,13 +605,13 @@ class OpenStackInstanceService(BaseInstanceService):
             log.debug("Creating network port for %s in subnet: %s" %
                       (name, subnet_id))
             sg_list = []
-            if security_groups:
-                if isinstance(security_groups, list) and \
-                        isinstance(security_groups[0], SecurityGroup):
-                    sg_list = security_groups
+            if vm_firewalls:
+                if isinstance(vm_firewalls, list) and \
+                        isinstance(vm_firewalls[0], VMFirewall):
+                    sg_list = vm_firewalls
                 else:
-                    sg_list = (self.provider.security.security_groups
-                                   .find(name=sg) for sg in security_groups)
+                    sg_list = (self.provider.security.vm_firewalls
+                               .find(name=sg) for sg in vm_firewalls)
                     sg_list = (sg[0] for sg in sg_list if sg)
             sg_id_list = [sg.id for sg in sg_list]
             port_def = {
@@ -625,12 +626,12 @@ class OpenStackInstanceService(BaseInstanceService):
             port_id = self.provider.neutron.create_port(port_def)['port']['id']
             nics = [{'net-id': net_id, 'port-id': port_id}]
         else:
-            if security_groups:
-                if isinstance(security_groups, list) and \
-                        isinstance(security_groups[0], SecurityGroup):
-                    sg_name_list = [sg.name for sg in security_groups]
+            if vm_firewalls:
+                if isinstance(vm_firewalls, list) and \
+                        isinstance(vm_firewalls[0], VMFirewall):
+                    sg_name_list = [sg.name for sg in vm_firewalls]
                 else:
-                    sg_name_list = security_groups
+                    sg_name_list = vm_firewalls
 
         log.debug("Launching in subnet %s" % subnet_id)
         os_instance = self.provider.nova.servers.create(
@@ -736,6 +737,7 @@ class OpenStackInstanceService(BaseInstanceService):
 
 
 class OpenStackNetworkingService(BaseNetworkingService):
+
     def __init__(self, provider):
         super(OpenStackNetworkingService, self).__init__(provider)
         self._network_service = OpenStackNetworkService(self.provider)
@@ -771,16 +773,16 @@ class OpenStackNetworkService(BaseNetworkService):
 
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
-                    for network in self.provider.neutron.list_networks().
-                    get('networks') if network]
+                    for network in self.provider.neutron.list_networks()
+                    .get('networks') if network]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks(
-                name=name)
-                        .get('networks') if network]
+                        name=name)
+                    .get('networks') if network]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
@@ -859,10 +861,10 @@ class OpenStackSubnetService(BaseSubnetService):
             router = self.provider.networking.routers.create(
                 network=net, name=OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
             router.attach_subnet(sn)
-            gteway = (self.provider.networking.
-                      gateways.
-                      get_or_create_inet_gateway
-                      (OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME))
+            gteway = (self.provider.networking.gateways
+                      .get_or_create_inet_gateway(
+                          OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                          ))
             router.attach_gateway(gteway)
             return sn
         except NeutronClientException:
@@ -879,6 +881,7 @@ class OpenStackSubnetService(BaseSubnetService):
 
 
 class OpenStackRouterService(BaseRouterService):
+
     def __init__(self, provider):
         super(OpenStackRouterService, self).__init__(provider)
 
@@ -913,6 +916,7 @@ class OpenStackRouterService(BaseRouterService):
 
 
 class OpenStackGatewayService(BaseGatewayService):
+
     def __init__(self, provider):
         super(OpenStackGatewayService, self).__init__(provider)
 

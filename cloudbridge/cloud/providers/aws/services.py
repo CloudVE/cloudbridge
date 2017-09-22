@@ -15,10 +15,10 @@ from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseRouterService
-from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
@@ -26,8 +26,8 @@ from cloudbridge.cloud.interfaces.exceptions \
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 
@@ -46,9 +46,9 @@ from .resources import AWSMachineImage
 from .resources import AWSNetwork
 from .resources import AWSRegion
 from .resources import AWSRouter
-from .resources import AWSSecurityGroup
 from .resources import AWSSnapshot
 from .resources import AWSSubnet
+from .resources import AWSVMFirewall
 from .resources import AWSVMType
 from .resources import AWSVolume
 
@@ -60,15 +60,15 @@ class AWSSecurityService(BaseSecurityService):
 
         # Initialize provider services
         self._key_pairs = AWSKeyPairService(provider)
-        self._security_groups = AWSSecurityGroupService(provider)
+        self._vm_firewalls = AWSVMFirewallService(provider)
 
     @property
     def key_pairs(self):
         return self._key_pairs
 
     @property
-    def security_groups(self):
-        return self._security_groups
+    def vm_firewalls(self):
+        return self._vm_firewalls
 
 
 class AWSKeyPairService(BaseKeyPairService):
@@ -94,22 +94,22 @@ class AWSKeyPairService(BaseKeyPairService):
         return self.svc.create('create_key_pair', KeyName=name)
 
 
-class AWSSecurityGroupService(BaseSecurityGroupService):
+class AWSVMFirewallService(BaseVMFirewallService):
 
     def __init__(self, provider):
-        super(AWSSecurityGroupService, self).__init__(provider)
+        super(AWSVMFirewallService, self).__init__(provider)
         self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSSecurityGroup,
+                                  cb_resource=AWSVMFirewall,
                                   boto_collection_name='security_groups')
 
-    def get(self, sg_id):
-        return self.svc.get(sg_id)
+    def get(self, firewall_id):
+        return self.svc.get(firewall_id)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
     def create(self, name, description, network_id):
-        AWSSecurityGroup.assert_valid_resource_name(name)
+        AWSVMFirewall.assert_valid_resource_name(name)
         return self.svc.create('create_security_group', GroupName=name,
                                Description=description, VpcId=network_id)
 
@@ -117,10 +117,10 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         return self.svc.find(filter_name='group-name', filter_value=name,
                              limit=limit, marker=marker)
 
-    def delete(self, group_id):
-        sg = self.svc.get(group_id)
-        if sg:
-            sg.delete()
+    def delete(self, firewall_id):
+        firewall = self.svc.get(firewall_id)
+        if firewall:
+            firewall.delete()
 
 
 class AWSBlockStoreService(BaseBlockStoreService):
@@ -326,7 +326,7 @@ class AWSInstanceService(BaseInstanceService):
                                   boto_collection_name='instances')
 
     def create(self, name, image, vm_type, subnet, zone=None,
-               key_pair=None, security_groups=None, user_data=None,
+               key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         AWSInstance.assert_valid_resource_name(name)
 
@@ -344,8 +344,8 @@ class AWSInstanceService(BaseInstanceService):
         else:
             bdm = None
 
-        subnet_id, zone_id, security_group_ids = \
-            self._resolve_launch_options(subnet, zone_id, security_groups)
+        subnet_id, zone_id, vm_firewall_ids = \
+            self._resolve_launch_options(subnet, zone_id, vm_firewalls)
 
         placement = {'AvailabilityZone': zone_id} if zone_id else None
         inst = self.svc.create('create_instances',
@@ -353,7 +353,7 @@ class AWSInstanceService(BaseInstanceService):
                                MinCount=1,
                                MaxCount=1,
                                KeyName=key_pair_name,
-                               SecurityGroupIds=security_group_ids or None,
+                               SecurityGroupIds=vm_firewall_ids or None,
                                UserData=user_data,
                                InstanceType=vm_size,
                                Placement=placement,
@@ -370,7 +370,7 @@ class AWSInstanceService(BaseInstanceService):
             'Expected a single object response, got a list: %s' % inst)
 
     def _resolve_launch_options(self, subnet=None, zone_id=None,
-                                security_groups=None):
+                                vm_firewalls=None):
         """
         Work out interdependent launch options.
 
@@ -383,23 +383,23 @@ class AWSInstanceService(BaseInstanceService):
         :type zone_id: ``str``
         :param zone_id: ID of the zone where the launch should happen.
 
-        :type security_groups: ``list`` of ``id``
-        :param zone_id: List of security group IDs.
+        :type vm_firewalls: ``list`` of ``id``
+        :param vm_firewalls: List of firewall IDs.
 
         :rtype: triplet of ``str``
-        :return: Subnet ID, zone ID and security group IDs for launch.
+        :return: Subnet ID, zone ID and VM firewall IDs for launch.
 
         :raise ValueError: In case a conflicting combination is found.
         """
         if subnet:
             # subnet's zone takes precedence
             zone_id = subnet.zone.id
-        if isinstance(security_groups, list) and isinstance(
-                security_groups[0], SecurityGroup):
-            security_group_ids = [sg.id for sg in security_groups]
+        if isinstance(vm_firewalls, list) and isinstance(
+                vm_firewalls[0], VMFirewall):
+            vm_firewall_ids = [fw.id for fw in vm_firewalls]
         else:
-            security_group_ids = security_groups
-        return subnet.id, zone_id, security_group_ids
+            vm_firewall_ids = vm_firewalls
+        return subnet.id, zone_id, vm_firewall_ids
 
     def _process_block_device_mappings(self, launch_config, zone=None):
         """
