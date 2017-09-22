@@ -35,6 +35,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             self.assertIsNotNone(
                 kp.material,
                 "KeyPair material is empty but it should not be.")
+            # get the keypair again - keypair material should now be empty
+            kp = self.provider.security.key_pairs.get(kp.id)
+            self.assertIsNone(kp.material,
+                              "Keypair material should now be empty")
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_crud_security_group(self):
