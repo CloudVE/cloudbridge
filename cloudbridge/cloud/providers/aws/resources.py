@@ -197,7 +197,7 @@ class AWSInstance(BaseInstance):
         'pending': InstanceState.PENDING,
         'running': InstanceState.RUNNING,
         'shutting-down': InstanceState.CONFIGURING,
-        'terminated': InstanceState.TERMINATED,
+        'terminated': InstanceState.DELETED,
         'stopping': InstanceState.CONFIGURING,
         'stopped': InstanceState.STOPPED
     }
@@ -243,7 +243,7 @@ class AWSInstance(BaseInstance):
     def reboot(self):
         self._ec2_instance.reboot()
 
-    def terminate(self):
+    def delete(self):
         self._ec2_instance.terminate()
 
     @property

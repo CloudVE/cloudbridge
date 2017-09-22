@@ -30,15 +30,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                              subnet=subnet)
 
         def cleanup_inst(inst):
-            inst.terminate()
-            inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN])
+            inst.delete()
+            inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN])
 
         def check_deleted(inst):
             deleted_inst = self.provider.compute.instances.get(
                 inst.id)
             self.assertTrue(
                 deleted_inst is None or deleted_inst.state in (
-                    InstanceState.TERMINATED,
+                    InstanceState.DELETED,
                     InstanceState.UNKNOWN),
                 "Instance %s should have been deleted but still exists." %
                 name)

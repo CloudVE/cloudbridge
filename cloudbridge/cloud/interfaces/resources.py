@@ -210,7 +210,7 @@ class ObjectLifeCycleMixin(object):
         .. code-block:: python
 
             instance.wait_for(
-                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                [InstanceState.DELETED, InstanceState.UNKNOWN],
                 terminal_states=[InstanceState.ERROR])
 
         :type target_states: ``list`` of states
@@ -421,7 +421,7 @@ class InstanceState(object):
     :cvar CONFIGURING: Instance is being reconfigured in some way.
     :cvar RUNNING: Instance is running.
     :cvar REBOOTING: Instance is rebooting.
-    :cvar TERMINATED: Instance is terminated. No further operations possible.
+    :cvar DELETED: Instance is deleted. No further operations possible.
     :cvar STOPPED: Instance is stopped. Instance can be resumed.
     :cvar ERROR: Instance is in an error state. No further operations possible.
 
@@ -431,7 +431,7 @@ class InstanceState(object):
     CONFIGURING = "configuring"
     RUNNING = "running"
     REBOOTING = "rebooting"
-    TERMINATED = "terminated"
+    DELETED = "deleted"
     STOPPED = "stopped"
     ERROR = "error"
 
@@ -502,9 +502,9 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def terminate(self):
+    def delete(self):
         """
-        Permanently terminate this instance.
+        Permanently delete this instance.
         """
         pass
 

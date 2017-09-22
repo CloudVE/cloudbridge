@@ -403,7 +403,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [InstanceState.RUNNING],
-            terminal_states=[InstanceState.TERMINATED, InstanceState.ERROR],
+            terminal_states=[InstanceState.DELETED, InstanceState.ERROR],
             timeout=timeout,
             interval=interval)
 
