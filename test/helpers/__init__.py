@@ -173,8 +173,8 @@ def get_test_fixtures_folder():
 
 def delete_test_instance(instance):
     if instance:
-        instance.terminate()
-        instance.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
+        instance.delete()
+        instance.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                           terminal_states=[InstanceState.ERROR])
 
 

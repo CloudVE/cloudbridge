@@ -227,7 +227,7 @@ class OpenStackInstance(BaseInstance):
     INSTANCE_STATE_MAP = {
         'ACTIVE': InstanceState.RUNNING,
         'BUILD': InstanceState.PENDING,
-        'DELETED': InstanceState.TERMINATED,
+        'DELETED': InstanceState.DELETED,
         'ERROR': InstanceState.ERROR,
         'HARD_REBOOT': InstanceState.REBOOTING,
         'PASSWORD': InstanceState.PENDING,
