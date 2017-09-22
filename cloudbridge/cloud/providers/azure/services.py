@@ -108,6 +108,7 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.
         """
+        AzureSecurityGroup.assert_valid_resource_name(name)
         parameters = {"location": self.provider.region_name,
                       'tags': {'Name': name}}
 
@@ -184,6 +185,7 @@ class AzureKeyPairService(BaseKeyPairService):
                                      limit, marker)
 
     def create(self, name):
+        AzureKeyPair.assert_valid_resource_name(name)
 
         key_pair = self.get(name)
 
@@ -249,6 +251,7 @@ class AzureObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket.
         """
+        AzureBucket.assert_valid_resource_name(name)
         bucket = self.provider.azure_client.create_container(name.lower())
         return AzureBucket(self.provider, bucket)
 
@@ -310,6 +313,7 @@ class AzureVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
+        AzureVolume.assert_valid_resource_name(name)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot = (self.provider.block_store.snapshots.get(snapshot)
                     if snapshot and isinstance(snapshot, str) else snapshot)
@@ -388,6 +392,7 @@ class AzureSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
+        AzureSnapshot.assert_valid_resource_name(name)
         volume = (self.provider.block_store.volumes.get(volume)
                   if isinstance(volume, str) else volume)
 
@@ -450,6 +455,9 @@ class AzureInstanceService(BaseInstanceService):
 
         instance_name = name.replace("_", "-") if name \
             else "{0} - {1}".format("cb", uuid.uuid4())
+
+        AzureInstance.assert_valid_resource_name(instance_name)
+
         # Key_pair is mandatory in azure and it should not be None.
         if key_pair:
             key_pair = (self.provider.security.key_pairs.get(key_pair)
@@ -465,9 +473,9 @@ class AzureInstanceService(BaseInstanceService):
             isinstance(instance_type, InstanceType) else instance_type
 
         if not subnet:
-            subnet = self.provider.network.subnets.get_or_create_default()
+            subnet = self.provider.networking.subnets.get_or_create_default()
         else:
-            subnet = (self.provider.network.subnets.get(subnet)
+            subnet = (self.provider.networking.subnets.get(subnet)
                       if isinstance(subnet, str) else subnet)
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
@@ -812,7 +820,6 @@ class AzureNetworkingService(BaseNetworkingService):
 class AzureNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(AzureNetworkService, self).__init__(provider)
-        self._subnet_svc = AzureSubnetService(self.provider)
 
     def get(self, network_id):
         try:
@@ -848,6 +855,8 @@ class AzureNetworkService(BaseNetworkService):
         if name:
             network_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
+        AzureNetwork.assert_valid_resource_name(network_name)
+
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
@@ -873,10 +882,6 @@ class AzureNetworkService(BaseNetworkService):
         return AzureFloatingIP(self.provider, floating_ip)
 
     @property
-    def subnets(self):
-        return self._subnet_svc
-
-    @property
     def floating_ips(self, network_id=None):
         """
                List all floating ips.
@@ -885,14 +890,6 @@ class AzureNetworkService(BaseNetworkService):
                         for floating_ip in self.provider.azure_client.
                         list_floating_ips()]
         return ClientPagedResultList(self.provider, floating_ips)
-
-    def routers(self):
-        return ClientPagedResultList(self.provider, [])
-
-    def create_router(self, name=None):
-        ar = AzureRouter(self.provider, None)
-        ar.name = name
-        return ar
 
     def delete(self, network_id):
         """
@@ -986,6 +983,7 @@ class AzureSubnetService(BaseSubnetService):
         """
         Create subnet
         """
+        AzureSubnet.assert_valid_resource_name(name)
         network_id = network.id \
             if isinstance(network, Network) else network
 
@@ -1093,6 +1091,7 @@ class AzureRouterService(BaseRouterService):
                                      limit=limit, marker=marker)
 
     def create(self, name, network):
+        AzureRouter.assert_valid_resource_name(name)
         parameters = {"location": self.provider.region_name,
                       'tags': {'Name': name}}
         route = self.provider.azure_client. \
@@ -1105,6 +1104,8 @@ class AzureGatewayService(BaseGatewayService):
         super(AzureGatewayService, self).__init__(provider)
 
     def get_or_create_inet_gateway(self, name):
+        AzureInternetGateway.assert_valid_resource_name(name)
+
         gateway = AzureInternetGateway(self.provider, None)
         gateway.name = name
         return gateway

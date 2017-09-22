@@ -19,7 +19,6 @@ from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
     BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import InstanceState, VolumeState
-from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, RouterState, \
     SnapshotState, SubnetState
@@ -95,13 +94,11 @@ class AzureSecurityGroup(BaseSecurityGroup):
 
     @name.setter
     def name(self, value):
-        if self.is_valid_resource_name(value):
-            self._security_group.tags.update(Name=value)
-            self._provider.azure_client. \
-                update_security_group_tags(self.id,
-                                           self._security_group.tags)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._security_group.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_security_group_tags(self.id,
+                                       self._security_group.tags)
 
     @property
     def description(self):
@@ -520,13 +517,11 @@ class AzureVolume(BaseVolume):
         Set the volume name.
         """
         # self._volume.name = value
-        if self.is_valid_resource_name(value):
-            self._volume.tags.update(Name=value)
-            self._provider.azure_client. \
-                update_disk_tags(self.id,
-                                 self._volume.tags)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._volume.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_disk_tags(self.id,
+                             self._volume.tags)
 
     @property
     def description(self):
@@ -710,14 +705,11 @@ class AzureSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        # self._snapshot.name = value
-        if self.is_valid_resource_name(value):
-            self._snapshot.tags.update(Name=value)
-            self._provider.azure_client. \
-                update_snapshot_tags(self.id,
-                                     self._snapshot.tags)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._snapshot.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_snapshot_tags(self.id,
+                                 self._snapshot.tags)
 
     @property
     def description(self):
@@ -830,12 +822,10 @@ class AzureMachineImage(BaseMachineImage):
         """
         Set the image name.
         """
-        if self.is_valid_resource_name(value):
-            self._image.tags.update(Name=value)
-            self._provider.azure_client. \
-                update_image_tags(self.id, self._image.tags)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._image.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_image_tags(self.id, self._image.tags)
 
     @property
     def description(self):
@@ -931,12 +921,10 @@ class AzureNetwork(BaseNetwork):
         """
         Set the network name.
         """
-        if self.is_valid_resource_name(value):
-            self._network.tags.update(Name=value)
-            self._provider.azure_client. \
-                update_network_tags(self.id, self._network)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._network.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_network_tags(self.id, self._network)
 
     @property
     def external(self):
@@ -1279,12 +1267,10 @@ class AzureInstance(BaseInstance):
         """
         Set the instance name.
         """
-        if self.is_valid_resource_name(value):
-            self._vm.tags.update(Name=value)
-            self._provider.azure_client. \
-                update_vm_tags(self.id, self._vm)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._vm.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_vm_tags(self.id, self._vm)
 
     @property
     def public_ips(self):
@@ -1409,6 +1395,8 @@ class AzureInstance(BaseInstance):
         so we have modified the Cloud Bridge interface to pass
         the private key file path
         """
+
+        self.assert_valid_resource_name(name)
 
         if not self._state == 'VM generalized':
             if not self._state == 'VM running':
@@ -1713,13 +1701,11 @@ class AzureRouter(BaseRouter):
         """
         Set the router name.
         """
-        if self.is_valid_resource_name(value):
-            self._route_table.tags.update(Name=value)
-            self._provider.azure_client. \
-                update_route_table_tags(self._route_table.name,
-                                        self._route_table)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._route_table.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_route_table_tags(self._route_table.name,
+                                    self._route_table)
 
     def refresh(self):
         self._route_table = self._provider.azure_client. \
@@ -1794,10 +1780,8 @@ class AzureInternetGateway(BaseInternetGateway):
         """
         Set the router name.
         """
-        if self.is_valid_resource_name(value):
-            self._name = value
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._name = value
 
     def refresh(self):
         pass

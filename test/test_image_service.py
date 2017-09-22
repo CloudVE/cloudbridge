@@ -37,8 +37,10 @@ class CloudImageServiceTestCase(ProviderTestBase):
             if not isinstance(self.provider, TestMockHelperMixin):
                 # check image size
                 img.refresh()
-                self.assertGreater(img.min_disk, 0, "Minimum disk"
-                                                    " size required by image is invalid")
+                if not self.provider.PROVIDER_ID == 'azure':
+                    self.assertGreater(img.min_disk, 0, "Minimum disk"
+                                                        " size required by "
+                                                        "image is invalid")
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):

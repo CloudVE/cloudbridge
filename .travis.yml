@@ -12,10 +12,14 @@ matrix:
       env: TOX_ENV=py27-aws
     - python: 2.7
       env: TOX_ENV=py27-openstack
+    - python: 2.7
+      env: TOX_ENV=py27-azure
     - python: 3.6
       env: TOX_ENV=py36-aws
     - python: 3.6
       env: TOX_ENV=py36-openstack
+    - python: 3.6
+      env: TOX_ENV=py36-azure
     - python: pypy-5.3.1
       env: TOX_ENV=pypy-aws
     - python: pypy-5.3.1
@@ -52,7 +56,7 @@ install:
     - pip install coveralls
     - pip install codecov
 script:
-    - tox -e $TOX_ENV
+    - travis_wait 110 tox -e $TOX_ENV
 after_success:
     - |
       case "$TRAVIS_EVENT_TYPE" in
