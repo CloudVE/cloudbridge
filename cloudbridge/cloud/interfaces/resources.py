@@ -539,22 +539,22 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
 #         pass
 
     @abstractproperty
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Get the security groups associated with this instance.
+        Get the firewalls (security groups) associated with this instance.
 
-        :rtype: list or :class:`.SecurityGroup` objects
-        :return: A list of SecurityGroup objects associated with this instance.
+        :rtype: list or :class:`.VMFirewall` objects
+        :return: A list of VMFirewall objects associated with this instance.
         """
         pass
 
     @abstractproperty
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         """
-        Get the IDs of the security groups associated with this instance.
+        Get the IDs of the VM firewalls associated with this instance.
 
         :rtype: list or :class:``str``
-        :return: A list of the SecurityGroup IDs associated with this instance.
+        :return: A list of the VMFirewall IDs associated with this instance.
         """
         pass
 
@@ -599,22 +599,22 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, firewall):
         """
-        Add a security group to this instance
+        Add a VM firewall to this instance
 
-        :type sg: ``SecurityGroup``
-        :param sg: The SecurityGroup to associate with the instance.
+        :type firewall: ``VMFirewall``
+        :param firewall: The VMFirewall to associate with the instance.
         """
         pass
 
     @abstractmethod
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, firewall):
         """
-        Remove a security group from this instance
+        Remove a VM firewall from this instance
 
-        :type sg: ``SecurityGroup``
-        :param sg: The SecurityGroup to associate with the instance.
+        :type firewall: ``VMFirewall``
+        :param firewall: The VMFirewall to associate with the instance.
         """
         pass
 
@@ -1672,24 +1672,24 @@ class VMType(CloudResource):
         pass
 
 
-class SecurityGroup(CloudResource):
+class VMFirewall(CloudResource):
 
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def description(self):
         """
-        Return the description of this security group.
+        Return the description of this VM firewall.
 
         :rtype: ``str``
-        :return: A description of this security group.
+        :return: A description of this VM firewall.
         """
         pass
 
     @abstractproperty
     def network_id(self):
         """
-        Network ID with which this security group is associated.
+        Network ID with which this VM firewall is associated.
 
         :rtype: ``str``
         :return: Provider-supplied network ID or ``None`` is not available.
@@ -1699,17 +1699,17 @@ class SecurityGroup(CloudResource):
     @abstractproperty
     def rules(self):
         """
-        Get the list of rules for this security group.
+        Get the list of rules for this VM firewall.
 
-        :rtype: list of :class:`.SecurityGroupRule`
-        :return: A list of security group rule objects.
+        :rtype: list of :class:`.VMFirewallRule`
+        :return: A list of VM firewall rule objects.
         """
         pass
 
     @abstractmethod
     def delete(self):
         """
-        Delete this security group.
+        Delete this VM firewall.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
@@ -1718,12 +1718,12 @@ class SecurityGroup(CloudResource):
 
     @abstractmethod
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+                 cidr_ip=None, src_firewall=None):
         """
-        Create a security group rule. If the rule already exists, simply
+        Create a VM firewall rule. If the rule already exists, simply
         returns it.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        You need to pass in either ``src_firewall`` OR ``ip_protocol`` AND
         ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
         you are authorizing another group or you are authorizing some
         ip-based rule.
@@ -1740,20 +1740,20 @@ class SecurityGroup(CloudResource):
         :type cidr_ip: ``str`` or list of ``str``
         :param cidr_ip: The CIDR block you are providing access to.
 
-        :type src_group: :class:`.SecurityGroup`
-        :param src_group: The Security Group object you are granting access to.
+        :type src_firewall: :class:`.VMFirewall`
+        :param src_firewall: The VM firewall object you are granting access to.
 
-        :rtype: :class:`.SecurityGroupRule`
+        :rtype: :class:`.VMFirewallRule`
         :return: Rule object if successful or ``None``.
         """
         pass
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+                 cidr_ip=None, src_firewall=None):
         """
-        Get a security group rule with the specified parameters.
+        Get a VM firewall rule with the specified parameters.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        You need to pass in either ``src_firewall`` OR ``ip_protocol`` AND
         ``from_port``, ``to_port``, and ``cidr_ip``. Note that when retrieving
         a group rule, this method will return only one rule although possibly
         several rules exist for the group rule. In that case, use the
@@ -1771,19 +1771,19 @@ class SecurityGroup(CloudResource):
         :type cidr_ip: ``str`` or list of ``str``
         :param cidr_ip: The CIDR block you are providing access to.
 
-        :type src_group: :class:`.SecurityGroup`
-        :param src_group: The Security Group object you are granting access to.
+        :type src_firewall: :class:`.VMFirewall`
+        :param src_firewall: The VM firewall object you are granting access to.
 
-        :rtype: :class:`.SecurityGroupRule`
-        :return: Role object if one can be found or ``None``.
+        :rtype: :class:`.VMFirewallRule`
+        :return: Rule object if one can be found or ``None``.
         """
         pass
 
 
-class SecurityGroupRule(CloudResource):
+class VMFirewallRule(CloudResource):
 
     """
-    Represents a security group rule.
+    Represents a VM firewall rule.
     """
     __metaclass__ = ABCMeta
 
@@ -1820,7 +1820,7 @@ class SecurityGroupRule(CloudResource):
     @abstractproperty
     def cidr_ip(self):
         """
-        CIDR block this security group is providing access to.
+        CIDR block this VM firewall is providing access to.
 
         :rtype: ``str``
         :return: CIDR block.
@@ -1830,10 +1830,10 @@ class SecurityGroupRule(CloudResource):
     @abstractproperty
     def group(self):
         """
-        Security group given access permissions by this rule.
+        VM firewall given access permissions by this rule.
 
-        :rtype: :class:``.SecurityGroup``
-        :return: The Security Group with granting access.
+        :rtype: :class:``.VMFirewall``
+        :return: The VM firewall with granting access.
         """
         pass
 

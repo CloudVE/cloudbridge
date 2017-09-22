@@ -122,7 +122,7 @@ def delete_test_network(network):
 
 def create_test_instance(
         provider, instance_name, subnet, launch_config=None,
-        key_pair=None, security_groups=None):
+        key_pair=None, vm_firewalls=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
@@ -130,11 +130,11 @@ def create_test_instance(
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
         key_pair=key_pair,
-        security_groups=security_groups,
+        vm_firewalls=vm_firewalls,
         launch_config=launch_config)
 
 
-def get_test_instance(provider, name, key_pair=None, security_groups=None,
+def get_test_instance(provider, name, key_pair=None, vm_firewalls=None,
                       subnet=None):
     launch_config = None
     instance = create_test_instance(
@@ -142,7 +142,7 @@ def get_test_instance(provider, name, key_pair=None, security_groups=None,
         name,
         subnet=subnet,
         key_pair=key_pair,
-        security_groups=security_groups,
+        vm_firewalls=vm_firewalls,
         launch_config=launch_config)
     instance.wait_till_ready()
     return instance
@@ -159,14 +159,14 @@ def delete_test_instance(instance):
                           terminal_states=[InstanceState.ERROR])
 
 
-def cleanup_test_resources(instance=None, network=None, security_group=None,
+def cleanup_test_resources(instance=None, network=None, vm_firewall=None,
                            key_pair=None):
     """Clean up any combination of supplied resources."""
     with cleanup_action(lambda: delete_test_network(network)
                         if network else None):
         with cleanup_action(lambda: key_pair.delete() if key_pair else None):
-            with cleanup_action(lambda: security_group.delete()
-                                if security_group else None):
+            with cleanup_action(lambda: vm_firewall.delete()
+                                if vm_firewall else None):
                 delete_test_instance(instance)
 
 

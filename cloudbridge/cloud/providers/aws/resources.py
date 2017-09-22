@@ -19,10 +19,10 @@ from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSecurityGroup
-from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -31,9 +31,9 @@ from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
 from .helpers import find_tag_value
@@ -255,14 +255,14 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.placement.get('AvailabilityZone')
 
     @property
-    def security_groups(self):
+    def vm_firewalls(self):
         return [
-            self._provider.security.security_groups.get(group_id)
-            for group_id in self.security_group_ids
+            self._provider.security.vm_firewalls.get(fw_id)
+            for fw_id in self.vm_firewall_ids
         ]
 
     @property
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         return list(set([
             group.get('GroupId') for group in
             self._ec2_instance.security_groups
@@ -310,14 +310,14 @@ class AWSInstance(BaseInstance):
         self._provider.ec2_conn.meta.client.disassociate_address(**params)
         self.refresh()
 
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, firewall):
         self._ec2_instance.modify_attribute(
-            Groups=self.security_group_ids + [sg.id])
+            Groups=self.vm_firewall_ids + [firewall.id])
 
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, firewall):
         self._ec2_instance.modify_attribute(
-            Groups=([sg_id for sg_id in self.security_group_ids
-                     if sg_id != sg.id]))
+            Groups=([fw_id for fw_id in self.vm_firewall_ids
+                     if fw_id != firewall.id]))
 
     @property
     def state(self):
@@ -544,30 +544,30 @@ class AWSKeyPair(BaseKeyPair):
             return None
 
 
-class AWSSecurityGroup(BaseSecurityGroup):
+class AWSVMFirewall(BaseVMFirewall):
 
-    def __init__(self, provider, security_group):
-        super(AWSSecurityGroup, self).__init__(provider, security_group)
+    def __init__(self, provider, _vm_firewall):
+        super(AWSVMFirewall, self).__init__(provider, _vm_firewall)
 
     @property
     def name(self):
-        return self._security_group.group_name
+        return self._vm_firewall.group_name
 
     @property
     def network_id(self):
-        return self._security_group.vpc_id
+        return self._vm_firewall.vpc_id
 
     @property
     def rules(self):
-        return [AWSSecurityGroupRule(self._provider, r, self)
-                for r in self._security_group.ip_permissions]
+        return [AWSVMFirewallRule(self._provider, r, self)
+                for r in self._vm_firewall.ip_permissions]
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+                 cidr_ip=None, src_firewall=None):
         try:
-            src_group_id = (
-                src_group.id if isinstance(src_group, SecurityGroup)
-                else src_group)
+            src_firewall_id = (
+                src_firewall.id if isinstance(src_firewall, VMFirewall)
+                else src_firewall)
 
             ip_perm_entry = {
                 'IpProtocol': ip_protocol,
@@ -575,27 +575,28 @@ class AWSSecurityGroup(BaseSecurityGroup):
                 'ToPort': to_port,
                 'IpRanges': [{'CidrIp': cidr_ip}] if cidr_ip else None,
                 'UserIdGroupPairs': [{
-                    'GroupId': src_group_id}
-                ] if src_group_id else None
+                    'GroupId': src_firewall_id}
+                ] if src_firewall_id else None
             }
             # Filter out empty values to please Boto
             ip_perms = [trim_empty_params(ip_perm_entry)]
-            self._security_group.authorize_ingress(IpPermissions=ip_perms)
-            self._security_group.reload()
+            self._vm_firewall.authorize_ingress(IpPermissions=ip_perms)
+            self._vm_firewall.reload()
             return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                 src_group_id)
+                                 src_firewall_id)
         except ClientError as ec2e:
             if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
                 return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                     src_group)
+                                     src_firewall)
             else:
                 raise ec2e
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        src_group_id = (src_group.id if isinstance(src_group, SecurityGroup)
-                        else src_group)
-        for rule in self._security_group.ip_permissions:
+                 cidr_ip=None, src_firewall=None):
+        src_firewall_id = (
+            src_firewall.id if isinstance(src_firewall, VMFirewall)
+            else src_firewall)
+        for rule in self._vm_firewall.ip_permissions:
             if ip_protocol and rule['IpProtocol'] != ip_protocol:
                 continue
             elif from_port and rule['FromPort'] != from_port:
@@ -605,12 +606,12 @@ class AWSSecurityGroup(BaseSecurityGroup):
             elif cidr_ip:
                 if cidr_ip not in [x['CidrIp'] for x in rule['IpRanges']]:
                     continue
-            elif src_group_id:
-                if src_group_id not in [
+            elif src_firewall_id:
+                if src_firewall_id not in [
                     group_pair.get('GroupId') for group_pair in
                         rule.get('UserIdGroupPairs', [])]:
                     continue
-            return AWSSecurityGroupRule(self._provider, rule, self)
+            return AWSVMFirewallRule(self._provider, rule, self)
         return None
 
     def to_json(self):
@@ -623,10 +624,10 @@ class AWSSecurityGroup(BaseSecurityGroup):
         return js
 
 
-class AWSSecurityGroupRule(BaseSecurityGroupRule):
+class AWSVMFirewallRule(BaseVMFirewallRule):
 
     def __init__(self, provider, rule, parent):
-        super(AWSSecurityGroupRule, self).__init__(provider, rule, parent)
+        super(AWSVMFirewallRule, self).__init__(provider, rule, parent)
 
     @property
     def id(self):
@@ -664,7 +665,7 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
     @property
     def group(self):
         if self.group_id:
-            return AWSSecurityGroup(
+            return AWSVMFirewall(
                 self._provider,
                 self._provider.ec2_conn.SecurityGroup(self.group_id))
         else:
@@ -692,8 +693,8 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         # Filter out empty values to please Boto
         ip_perms = [trim_empty_params(ip_perm_entry)]
 
-        self.parent._security_group.revoke_ingress(IpPermissions=ip_perms)
-        self.parent._security_group.reload()
+        self.parent._vm_firewall.revoke_ingress(IpPermissions=ip_perms)
+        self.parent._vm_firewall.reload()
 
 
 class AWSBucketObject(BaseBucketObject):

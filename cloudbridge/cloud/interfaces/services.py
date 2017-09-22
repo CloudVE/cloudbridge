@@ -206,7 +206,7 @@ class InstanceService(PageableObjectMixin, CloudService):
 
     @abstractmethod
     def create(self, name, image, vm_type, subnet, zone=None,
-               key_pair=None, security_groups=None, user_data=None,
+               key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None,
                **kwargs):
         """
@@ -246,16 +246,16 @@ class InstanceService(PageableObjectMixin, CloudService):
         :param key_pair: The KeyPair object or its name, to set for the
                          instance.
 
-        :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a
-                                list of ``str`` object IDs
-        :param security_groups: A list of ``SecurityGroup`` objects or a list
-                                of ``SecurityGroup`` IDs, which should be
-                                assigned to this instance.
+        :type  vm_firewalls: A ``list`` of ``VMFirewall`` objects or a
+                             list of ``str`` object IDs
+        :param vm_firewalls: A list of ``VMFirewall`` objects or a list
+                             of ``VMFirewall`` IDs, which should be
+                             assigned to this instance.
 
-                                The security groups must be associated with the
-                                same network as the supplied subnet. Use
-                                ``network.security_groups`` to retrieve a list
-                                of security groups belonging to a network.
+                             The VM firewalls must be associated with the
+                             same network as the supplied subnet. Use
+                             ``network.vm_firewalls`` to retrieve a list
+                             of firewalls belonging to a network.
 
         :type  user_data: ``str``
         :param user_data: An extra userdata object which is compatible with
@@ -1008,24 +1008,24 @@ class SecurityService(CloudService):
         pass
 
     @abstractproperty
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Provides access to security groups for this provider.
+        Provides access to firewalls (security groups) for this provider.
 
         Example:
 
         .. code-block:: python
 
-            # print all security groups
-            for sg in provider.security.security_groups:
-                print(sg.id, sg.name)
+            # print all VM firewalls
+            for fw in provider.security.vm_firewalls:
+                print(fw.id, fw.name)
 
-            # find security group by name
-            sg = provider.security.security_groups.find(name='my_sg')[0]
-            print(sg.id, sg.name)
+            # find firewall by name
+            fw = provider.security.vm_firewalls.find(name='my_vm_fw')[0]
+            print(fw.id, fw.name)
 
-        :rtype: :class:`.SecurityGroupService`
-        :return: a SecurityGroupService object
+        :rtype: :class:`.VMFirewallService`
+        :return: a VMFirewallService object
         """
         pass
 
@@ -1093,7 +1093,7 @@ class KeyPairService(PageableObjectMixin, CloudService):
     @abstractmethod
     def delete(self, key_pair_id):
         """
-        Delete an existing SecurityGroup.
+        Delete an existing VMFirewall.
 
         :type key_pair_id: str
         :param key_pair_id: The id of the key pair to be deleted.
@@ -1106,70 +1106,70 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
 
-class SecurityGroupService(PageableObjectMixin, CloudService):
+class VMFirewallService(PageableObjectMixin, CloudService):
 
     """
-    Base interface for security groups.
+    Base interface for VM firewalls.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, security_group_id):
+    def get(self, vm_firewall_id):
         """
-        Returns a SecurityGroup given its ID. Returns ``None`` if the
-        SecurityGroup does not exist.
+        Returns a VMFirewall given its ID. Returns ``None`` if the
+        VMFirewall does not exist.
 
         Example:
 
         .. code-block:: python
 
-            sg = provider.security.security_groups.get('my_sg_id')
-            print(sg.id, sg.name)
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            print(fw.id, fw.name)
 
-        :rtype: :class:`.SecurityGroup`
-        :return:  a SecurityGroup instance
+        :rtype: :class:`.VMFirewall`
+        :return:  a VMFirewall instance
         """
         pass
 
     @abstractmethod
     def list(self, limit=None, marker=None):
         """
-        List all security groups associated with this account.
+        List all VM firewalls associated with this account.
 
-        :rtype: ``list`` of :class:`.SecurityGroup`
-        :return:  list of SecurityGroup objects
+        :rtype: ``list`` of :class:`.VMFirewall`
+        :return:  list of VMFirewall objects
         """
         pass
 
     @abstractmethod
     def create(self, name, description, network_id):
         """
-        Create a new SecurityGroup.
+        Create a new VMFirewall.
 
         :type name: str
-        :param name: The name of the new security group.
+        :param name: The name of the new VM firewall.
 
         :type description: str
-        :param description: The description of the new security group.
+        :param description: The description of the new VM firewall.
 
         :type  network_id: ``str``
-        :param network_id: Network ID under which to create the security group.
+        :param network_id: Network ID under which to create the VM firewall.
 
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return:  A SecurityGroup instance or ``None`` if one was not created.
+        :rtype: ``object`` of :class:`.VMFirewall`
+        :return:  A VMFirewall instance or ``None`` if one was not created.
         """
         pass
 
     @abstractmethod
     def find(self, name, limit=None, marker=None):
         """
-        Get security groups associated with your account filtered by name.
+        Get VM firewalls associated with your account filtered by name.
 
         :type name: str
-        :param name: The name of the security group to retrieve.
+        :param name: The name of the VM firewall to retrieve.
 
-        :rtype: list of :class:`SecurityGroup`
-        :return: A list of SecurityGroup objects or an empty list if none
+        :rtype: list of :class:`VMFirewall`
+        :return: A list of VMFirewall objects or an empty list if none
                  found.
         """
         pass
@@ -1177,13 +1177,13 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
     @abstractmethod
     def delete(self, group_id):
         """
-        Delete an existing SecurityGroup.
+        Delete an existing VMFirewall.
 
         :type group_id: str
-        :param group_id: The security group ID to be deleted.
+        :param group_id: The VM firewall ID to be deleted.
 
         :rtype: ``bool``
-        :return:  ``True`` if the security group does not exist, ``False``
+        :return:  ``True`` if the VM firewall does not exist, ``False``
                   otherwise. Note that this implies that the group may not have
                   been deleted by this method but instead has not existed in
                   the first place.

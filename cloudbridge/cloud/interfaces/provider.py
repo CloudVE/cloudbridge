@@ -163,7 +163,7 @@ class CloudProvider(object):
         .. code-block:: python
 
             keypairs = provider.security.keypairs.list()
-            security_groups = provider.security.security_groups.list()
+            vm_firewalls = provider.security.vm_firewalls.list()
 
 
         :rtype: ``object`` of :class:`.SecurityService`

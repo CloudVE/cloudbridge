@@ -4,7 +4,7 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
 from cloudbridge.cloud.interfaces.resources import KeyPair
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
+from cloudbridge.cloud.interfaces.resources import VMFirewall
 
 
 class CloudSecurityServiceTestCase(ProviderTestBase):
@@ -40,135 +40,135 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             self.assertIsNone(kp.material,
                               "Keypair material should now be empty")
 
-    @helpers.skipIfNoService(['security.security_groups'])
-    def test_crud_security_group(self):
-        name = 'cb_crudsg-{0}'.format(helpers.get_uuid())
+    @helpers.skipIfNoService(['security.vm_firewalls'])
+    def test_crud_vm_firewall(self):
+        name = 'cb_crudfw-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
 
-        def create_sg(name):
-            return self.provider.security.security_groups.create(
+        def create_fw(name):
+            return self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
 
-        def cleanup_sg(sg):
-            sg.delete()
+        def cleanup_fw(fw):
+            fw.delete()
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 network=net)):
             net, _ = helpers.create_test_network(self.provider, name)
 
-            sit.check_crud(self, self.provider.security.security_groups,
-                           SecurityGroup, "cb_crudsg", create_sg, cleanup_sg)
+            sit.check_crud(self, self.provider.security.vm_firewalls,
+                           VMFirewall, "cb_crudfw", create_fw, cleanup_fw)
 
-    @helpers.skipIfNoService(['security.security_groups'])
-    def test_security_group_properties(self):
-        name = 'cb_propsg-{0}'.format(helpers.get_uuid())
+    @helpers.skipIfNoService(['security.vm_firewalls'])
+    def test_vm_firewall_properties(self):
+        name = 'cb_propfw-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
-        sg = None
+        fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net, security_group=sg)):
+                network=net, vm_firewall=fw)):
             net, _ = helpers.create_test_network(self.provider, name)
-            sg = self.provider.security.security_groups.create(
+            fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
 
-            self.assertEqual(name, sg.description)
+            self.assertEqual(name, fw.description)
 
-            rule = sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
+            rule = fw.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
                                cidr_ip='0.0.0.0/0')
-            found_rule = sg.get_rule(ip_protocol='tcp', from_port=1111,
+            found_rule = fw.get_rule(ip_protocol='tcp', from_port=1111,
                                      to_port=1111, cidr_ip='0.0.0.0/0')
             self.assertTrue(
                 rule == found_rule,
-                "Expected rule {0} not found in security group: {0}".format(
-                    rule, sg.rules))
+                "Expected rule {0} not found in VM firewall: {0}".format(
+                    rule, fw.rules))
 
             object_keys = (
-                sg.rules[0].ip_protocol,
-                sg.rules[0].from_port,
-                sg.rules[0].to_port)
+                fw.rules[0].ip_protocol,
+                fw.rules[0].from_port,
+                fw.rules[0].to_port)
             self.assertTrue(
-                all(str(key) in repr(sg.rules[0]) for key in object_keys),
+                all(str(key) in repr(fw.rules[0]) for key in object_keys),
                 "repr(obj) should contain ip_protocol, form_port, and to_port"
                 " so that the object can be reconstructed, but does not:"
-                " {0}; {1}".format(sg.rules[0], object_keys))
+                " {0}; {1}".format(fw.rules[0], object_keys))
             self.assertTrue(
-                sg == sg,
-                "The same security groups should be equal?")
+                fw == fw,
+                "The same VM firewalls should be equal?")
             self.assertFalse(
-                sg != sg,
-                "The same security groups should still be equal?")
+                fw != fw,
+                "The same VM firewalls should still be equal?")
 
-        sit.check_delete(self, self.provider.security.security_groups, sg)
-        sgl = self.provider.security.security_groups.list()
-        found_sg = [g for g in sgl if g.name == name]
+        sit.check_delete(self, self.provider.security.vm_firewalls, fw)
+        fwl = self.provider.security.vm_firewalls.list()
+        found_fw = [f for f in fwl if f.name == name]
         self.assertTrue(
-            len(found_sg) == 0,
-            "Security group {0} should have been deleted but still exists."
+            len(found_fw) == 0,
+            "VM firewall {0} should have been deleted but still exists."
             .format(name))
 
-    @helpers.skipIfNoService(['security.security_groups'])
-    def test_security_group_rule_add_twice(self):
-        name = 'cb_sgruletwice-{0}'.format(helpers.get_uuid())
+    @helpers.skipIfNoService(['security.vm_firewalls'])
+    def test_vm_firewall_rule_add_twice(self):
+        name = 'cb_fwruletwice-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
-        sg = None
+        fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net, security_group=sg)):
+                network=net, vm_firewall=fw)):
 
             net, _ = helpers.create_test_network(self.provider, name)
-            sg = self.provider.security.security_groups.create(
+            fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
 
-            rule = sg.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
+            rule = fw.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
                                cidr_ip='0.0.0.0/0')
             # attempting to add the same rule twice should succeed
-            same_rule = sg.add_rule(ip_protocol='tcp', from_port=1111,
+            same_rule = fw.add_rule(ip_protocol='tcp', from_port=1111,
                                     to_port=1111, cidr_ip='0.0.0.0/0')
             self.assertTrue(
                 rule == same_rule,
-                "Expected rule {0} not found in security group: {0}".format(
-                    same_rule, sg.rules))
+                "Expected rule {0} not found in VM firewall: {0}".format(
+                    same_rule, fw.rules))
 
-    @helpers.skipIfNoService(['security.security_groups'])
-    def test_security_group_group_rule(self):
-        name = 'cb_sgrule-{0}'.format(helpers.get_uuid())
+    @helpers.skipIfNoService(['security.vm_firewalls'])
+    def test_vm_firewall_group_rule(self):
+        name = 'cb_fwrule-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
-        sg = None
+        fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net, security_group=sg)):
+                network=net, vm_firewall=fw)):
             net, _ = helpers.create_test_network(self.provider, name)
-            sg = self.provider.security.security_groups.create(
+            fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
             self.assertTrue(
-                len(sg.rules) == 0,
-                "Expected no security group group rule. Got {0}."
-                .format(sg.rules))
-            rule = sg.add_rule(src_group=sg, ip_protocol='tcp', from_port=1,
+                len(fw.rules) == 0,
+                "Expected no VM firewall group rule. Got {0}."
+                .format(fw.rules))
+            rule = fw.add_rule(src_firewall=fw, ip_protocol='tcp', from_port=1,
                                to_port=65535)
             self.assertTrue(
                 rule.group.name == name,
-                "Expected security group rule name {0}. Got {1}."
+                "Expected VM firewall rule name {0}. Got {1}."
                 .format(name, rule.group.name))
-            for r in sg.rules:
+            for r in fw.rules:
                 r.delete()
-            sg = self.provider.security.security_groups.get(sg.id)  # update
+            fw = self.provider.security.vm_firewalls.get(fw.id)  # update
             self.assertTrue(
-                len(sg.rules) == 0,
-                "Deleting SecurityGroupRule should delete it: {0}".format(
-                    sg.rules))
-        sgl = self.provider.security.security_groups.list()
-        found_sg = [g for g in sgl if g.name == name]
+                len(fw.rules) == 0,
+                "Deleting VMFirewallRule should delete it: {0}".format(
+                    fw.rules))
+        fwl = self.provider.security.vm_firewalls.list()
+        found_fw = [f for f in fwl if f.name == name]
         self.assertTrue(
-            len(found_sg) == 0,
-            "Security group {0} should have been deleted but still exists."
+            len(found_fw) == 0,
+            "VM firewall {0} should have been deleted but still exists."
             .format(name))

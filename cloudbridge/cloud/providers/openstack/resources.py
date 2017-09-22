@@ -18,10 +18,10 @@ from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSecurityGroup
-from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -30,9 +30,9 @@ from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
@@ -350,19 +350,19 @@ class OpenStackInstance(BaseInstance):
         return getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None)
 
     @property
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Get the security groups associated with this instance.
+        Get the VM firewalls associated with this instance.
         """
-        return [OpenStackSecurityGroup(self._provider, group)
+        return [OpenStackVMFirewall(self._provider, group)
                 for group in self._os_instance.list_security_group()]
 
     @property
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         """
-        Get the security groups IDs associated with this instance.
+        Get the VM firewall IDs associated with this instance.
         """
-        return [group.id for group in self.security_groups]
+        return [group.id for group in self.vm_firewalls]
 
     @property
     def key_pair_name(self):
@@ -393,17 +393,17 @@ class OpenStackInstance(BaseInstance):
         """
         self._os_instance.remove_floating_ip(ip_address)
 
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, firewall):
         """
-        Add a security group to this instance
+        Add a VM firewall to this instance
         """
-        self._os_instance.add_security_group(sg.id)
+        self._os_instance.add_security_group(firewall.id)
 
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, firewall):
         """
-        Remove a security group from this instance
+        Remove a VM firewall from this instance
         """
-        self._os_instance.remove_security_group(sg.id)
+        self._os_instance.remove_security_group(firewall.id)
 
     @property
     def state(self):
@@ -999,10 +999,10 @@ class OpenStackKeyPair(BaseKeyPair):
         return getattr(self._key_pair, 'private_key', None)
 
 
-class OpenStackSecurityGroup(BaseSecurityGroup):
+class OpenStackVMFirewall(BaseVMFirewall):
 
-    def __init__(self, provider, security_group):
-        super(OpenStackSecurityGroup, self).__init__(provider, security_group)
+    def __init__(self, provider, vm_firewall):
+        super(OpenStackVMFirewall, self).__init__(provider, vm_firewall)
 
     @property
     def network_id(self):
@@ -1016,17 +1016,17 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
     @property
     def rules(self):
         # Update SG object; otherwise, recently added rules do now show
-        self._security_group = self._provider.nova.security_groups.get(
-            self._security_group)
-        return [OpenStackSecurityGroupRule(self._provider, r, self)
-                for r in self._security_group.rules]
+        self._vm_firewall = self._provider.nova.security_groups.get(
+            self.id)
+        return [OpenStackVMFirewallRule(self._provider, r, self)
+                for r in self._vm_firewall.rules]
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+                 cidr_ip=None, src_firewall=None):
         """
-        Create a security group rule.
+        Create a VM firewall rule.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        You need to pass in either ``src_firewall`` OR ``ip_protocol`` AND
         ``from_port``, ``to_port``, ``cidr_ip``.  In other words, either
         you are authorizing another group or you are authorizing some
         ip-based rule.
@@ -1043,34 +1043,34 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         :type cidr_ip: str or list of strings
         :param cidr_ip: The CIDR block you are providing access to.
 
-        :type src_group: ``object`` of :class:`.SecurityGroup`
-        :param src_group: The Security Group you are granting access to.
+        :type src_firewall: ``object`` of :class:`.VMFirewall`
+        :param src_firewall: The VM firewall you are granting access to.
 
-        :rtype: :class:``.SecurityGroupRule``
+        :rtype: :class:``.VMFirewallRule``
         :return: Rule object if successful or ``None``.
         """
-        if src_group:
-            if not isinstance(src_group, SecurityGroup):
-                src_group = self._provider.security.security_groups.get(
-                    src_group)
+        if src_firewall:
+            if not isinstance(src_firewall, VMFirewall):
+                src_firewall = self._provider.security.vm_firewalls.get(
+                    src_firewall)
             existing_rule = self.get_rule(ip_protocol=ip_protocol,
                                           from_port=from_port,
                                           to_port=to_port,
-                                          src_group=src_group)
+                                          src_firewall=src_firewall)
             if existing_rule:
                 return existing_rule
 
             rule = self._provider.nova.security_group_rules.create(
-                parent_group_id=self._security_group.id,
+                parent_group_id=self.id,
                 ip_protocol=ip_protocol,
                 from_port=from_port,
                 to_port=to_port,
-                group_id=src_group.id)
+                group_id=src_firewall.id)
             if rule:
                 # We can only return one Rule so default to TCP (ie, last in
                 # the for loop above).
-                return OpenStackSecurityGroupRule(self._provider,
-                                                  rule.to_dict(), self)
+                return OpenStackVMFirewallRule(self._provider,
+                                               rule.to_dict(), self)
         else:
             existing_rule = self.get_rule(ip_protocol=ip_protocol,
                                           from_port=from_port,
@@ -1080,29 +1080,29 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
                 return existing_rule
 
             rule = self._provider.nova.security_group_rules.create(
-                parent_group_id=self._security_group.id,
+                parent_group_id=self.id,
                 ip_protocol=ip_protocol,
                 from_port=from_port,
                 to_port=to_port,
                 cidr=cidr_ip)
             if rule:
-                return OpenStackSecurityGroupRule(self._provider,
-                                                  rule.to_dict(), self)
+                return OpenStackVMFirewallRule(self._provider,
+                                               rule.to_dict(), self)
         return None
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+                 cidr_ip=None, src_firewall=None):
         # Update SG object; otherwise, recently added rules do not show
         self._security_group = self._provider.nova.security_groups.get(
-            self._security_group)
-        for rule in self._security_group.rules:
+            self.id)
+        for rule in self._vm_firewall.rules:
             if (rule['ip_protocol'] == ip_protocol and
                 rule['from_port'] == from_port and
                 rule['to_port'] == to_port and
                 (rule['ip_range'].get('cidr') == cidr_ip or
-                 (rule['group'].get('name') == src_group.name if src_group
-                  else False))):
-                return OpenStackSecurityGroupRule(self._provider, rule, self)
+                 (rule['group'].get('name') == src_firewall.name
+                  if src_firewall else False))):
+                return OpenStackVMFirewallRule(self._provider, rule, self)
         return None
 
     def to_json(self):
@@ -1113,10 +1113,10 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         return js
 
 
-class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
+class OpenStackVMFirewallRule(BaseVMFirewallRule):
 
     def __init__(self, provider, rule, parent):
-        super(OpenStackSecurityGroupRule, self).__init__(
+        super(OpenStackVMFirewallRule, self).__init__(
             provider, rule, parent)
 
     @property
@@ -1141,10 +1141,10 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def group(self):
-        sg_name = self._rule.get('group', {}).get('name')
-        if sg_name:
-            sg = self._provider.security.security_groups.find(name=sg_name)
-            return sg[0] if sg else None
+        fw_name = self._rule.get('group', {}).get('name')
+        if fw_name:
+            fw = self._provider.security.vm_firewalls.find(name=fw_name)
+            return fw[0] if fw else None
         return None
 
     def to_json(self):
