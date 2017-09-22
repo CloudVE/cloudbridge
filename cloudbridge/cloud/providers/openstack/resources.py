@@ -25,7 +25,6 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
@@ -44,6 +43,7 @@ import novaclient.exceptions as novaex
 import swiftclient
 
 from swiftclient.service import SwiftService, SwiftUploadObject
+
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
@@ -269,11 +269,10 @@ class OpenStackInstance(BaseInstance):
         """
         Set the instance name.
         """
-        if self.is_valid_resource_name(value):
-            self._os_instance.name = value
-            self._os_instance.update()
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+
+        self._os_instance.name = value
+        self._os_instance.update(name=value)
 
     @property
     def public_ips(self):
@@ -325,6 +324,11 @@ class OpenStackInstance(BaseInstance):
         """
         Permanently terminate this instance.
         """
+        # delete the port we created when launching
+        # Assumption: it's the first interface in the list
+        iface_list = self._os_instance.interface_list()
+        if iface_list:
+            self._provider.neutron.delete_port(iface_list[0].port_id)
         self._os_instance.delete()
 
     @property
@@ -350,8 +354,8 @@ class OpenStackInstance(BaseInstance):
         """
         Get the security groups associated with this instance.
         """
-        return [self._provider.security.security_groups.find(group['name'])[0]
-                for group in self._os_instance.security_groups]
+        return [OpenStackSecurityGroup(self._provider, group)
+                for group in self._os_instance.list_security_group()]
 
     @property
     def security_group_ids(self):
@@ -371,6 +375,8 @@ class OpenStackInstance(BaseInstance):
         """
         Create a new image based on this instance.
         """
+        self.assert_valid_resource_name(name)
+
         image_id = self._os_instance.create_image(name)
         return OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
@@ -492,11 +498,9 @@ class OpenStackVolume(BaseVolume):
         """
         Set the volume name.
         """
-        if self.is_valid_resource_name(value):
-            self._volume.name = value
-            self._volume.update(name=value)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._volume.name = value
+        self._volume.update(name=value)
 
     @property
     def description(self):
@@ -615,11 +619,9 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        if self.is_valid_resource_name(value):
-            self._snapshot.name = value
-            self._snapshot.update(name=value)
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._snapshot.name = value
+        self._snapshot.update(name=value)
 
     @property
     def description(self):
@@ -713,12 +715,10 @@ class OpenStackNetwork(BaseNetwork):
         """
         Set the network name.
         """
-        if self.is_valid_resource_name(value):
-            self._provider.neutron.update_network(self.id,
-                                                  {'network': {'name': value}})
-            self.refresh()
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_network(self.id,
+                                              {'network': {'name': value}})
+        self.refresh()
 
     @property
     def external(self):
@@ -785,12 +785,10 @@ class OpenStackSubnet(BaseSubnet):
         """
         Set the subnet name.
         """
-        if self.is_valid_resource_name(value):
-            self._provider.neutron.update_subnet(
-                self.id, {'subnet': {'name': value}})
-            self._subnet['name'] = value
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_subnet(
+            self.id, {'subnet': {'name': value}})
+        self._subnet['name'] = value
 
     @property
     def cidr_block(self):
@@ -819,7 +817,7 @@ class OpenStackSubnet(BaseSubnet):
     @property
     def state(self):
         return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \
-            else self.SubnetState.AVAILABLE
+            else SubnetState.AVAILABLE
 
     def refresh(self):
         subnet = self._provider.networking.subnets.get(self.id)
@@ -879,11 +877,10 @@ class OpenStackRouter(BaseRouter):
         """
         Set the router name.
         """
-        if self.is_valid_resource_name(value):
-            self._provider.neutron.update_router(
-                self.id, {'router': {'name': value}})
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_router(
+            self.id, {'router': {'name': value}})
+        self.refresh()
 
     def refresh(self):
         self._router = self._provider.neutron.show_router(self.id)['router']
@@ -921,15 +918,16 @@ class OpenStackRouter(BaseRouter):
         return False
 
     def attach_gateway(self, gateway):
-        self._router = self._provider.neutron.add_gateway_router(
+        self._provider.neutron.add_gateway_router(
             self.id, {'network_id': gateway.id})
 
     def detach_gateway(self, gateway):
-        self._router = self._provider.neutron.remove_gateway_router(
+        self._provider.neutron.remove_gateway_router(
             self.id).get('router', self._router)
 
 
 class OpenStackInternetGateway(BaseInternetGateway):
+
     GATEWAY_STATE_MAP = {
         NetworkState.AVAILABLE: GatewayState.AVAILABLE,
         NetworkState.DOWN: GatewayState.ERROR,
@@ -955,12 +953,10 @@ class OpenStackInternetGateway(BaseInternetGateway):
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        if self.is_valid_resource_name(value):
-            self._provider.neutron.update_network(self.id,
-                                                  {'network': {'name': value}})
-            self.refresh()
-        else:
-            raise InvalidNameException(value)
+        self.assert_valid_resource_name(value)
+        self._provider.neutron.update_network(self.id,
+                                              {'network': {'name': value}})
+        self.refresh()
 
     @property
     def network_id(self):
@@ -1145,12 +1141,10 @@ class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def group(self):
-        cg = self._rule.get('group', {}).get('name')
-        if cg:
-            security_groups = self._provider.nova.security_groups.list()
-            for sg in security_groups:
-                if sg.name == cg:
-                    return OpenStackSecurityGroup(self._provider, sg)
+        sg_name = self._rule.get('group', {}).get('name')
+        if sg_name:
+            sg = self._provider.security.security_groups.find(name=sg_name)
+            return sg[0] if sg else None
         return None
 
     def to_json(self):

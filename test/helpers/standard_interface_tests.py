@@ -5,10 +5,12 @@ This includes:
    2. Checking for object equality and repr
    3. Checking standard behaviour for list, iter, find, get, delete
 """
+import test.helpers as helpers
 import uuid
 
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
+from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
 
 
@@ -129,7 +131,7 @@ def check_obj_name(test, obj):
             obj.name = "hello world"
         # setting upper case characters should raise an exception
         with test.assertRaises(InvalidNameException):
-            obj.name = "hello World"
+            obj.name = "helloWorld"
         # setting special characters should raise an exception
         with test.assertRaises(InvalidNameException):
             obj.name = "hello.world:how_goes_it"
@@ -141,7 +143,6 @@ def check_obj_name(test, obj):
         obj.refresh()
         test.assertEqual(obj.name, VALID_NAME)
         obj.name = original_name
-    pass
 
 
 def check_standard_behaviour(test, service, obj):
@@ -181,3 +182,93 @@ def check_standard_behaviour(test, service, obj):
         " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
                                            objs_find[0].id, obj_get.id,
                                            obj.id))
+
+
+def check_create(test, service, iface, name_prefix,
+                 create_func, cleanup_func):
+    # check create with invalid name
+    with test.assertRaises(InvalidNameException):
+        # spaces should raise an exception
+        create_func("hello world")
+    # check create with invalid name
+    with test.assertRaises(InvalidNameException):
+        # uppercase characters should raise an exception
+        create_func("helloWorld")
+    # setting special characters should raise an exception
+    with test.assertRaises(InvalidNameException):
+        create_func("hello.world:how_goes_it")
+    # setting a length > 63 should result in an exception
+    with test.assertRaises(InvalidNameException,
+                           msg="Name of length > 64 should be disallowed"):
+        create_func("a" * 64)
+
+
+def check_crud(test, service, iface, name_prefix,
+               create_func, cleanup_func, extra_test_func=None,
+               custom_check_delete=None, skip_name_check=False):
+    """
+    Checks crud behaviour of a given cloudbridge service. The create_func will
+    be used as a factory function to create a service object and the
+    cleanup_func will be used to destroy the object. Once an object is created
+    using the create_func, all other standard behavioural tests can be run
+    against that object.
+
+    :type  test: ``TestCase``
+    :param test: The TestCase object to use
+
+    :type  service: ``CloudService``
+    :param service: The CloudService object under test. For example,
+                    a VolumeService object.
+
+    :type  iface: ``type``
+    :param iface: The type to test behaviour against. This type must be a
+                  subclass of ``CloudResource``.
+
+    :type  name_prefix: ``str``
+    :param name_prefix: The name to prefix all created objects with. This
+                        function will generated a new name with the
+                        specified name_prefix for each test object created
+                        and pass that name into the create_func
+
+    :type  create_func: ``func``
+    :param create_func: The create_func must accept the name of the object to
+                        create as a parameter and return the constructed
+                        object.
+
+    :type  cleanup_func: ``func``
+    :param cleanup_func: The cleanup_func must accept the created object
+                         and perform all cleanup tasks required to delete the
+                         object.
+
+    :type  extra_test_func: ``func``
+    :param extra_test_func: This function will be called to perform additional
+                            tests after object construction and initialization,
+                            but before object cleanup. It will receive the
+                            created object as a parameter.
+
+    :type  custom_check_delete: ``func``
+    :param custom_check_delete: If provided, this function will be called
+                                instead of the standard check_delete function
+                                to make sure that the object has been deleted.
+
+    :type  skip_name_check: ``boolean``
+    :param skip_name_check:  If True, the invalid name checking will be
+                             skipped.
+    """
+
+    obj = None
+    with helpers.cleanup_action(lambda: cleanup_func(obj)):
+        if not skip_name_check:
+            check_create(test, service, iface, name_prefix,
+                         create_func, cleanup_func)
+        name = "{0}-{1}".format(name_prefix, helpers.get_uuid())
+        obj = create_func(name)
+        if issubclass(iface, ObjectLifeCycleMixin):
+            obj.wait_till_ready()
+        check_standard_behaviour(test, service, obj)
+        if extra_test_func:
+            extra_test_func(obj)
+    if custom_check_delete:
+        custom_check_delete(obj)
+    else:
+        check_delete(test, service, obj)

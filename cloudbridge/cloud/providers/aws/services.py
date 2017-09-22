@@ -152,6 +152,8 @@ class AWSKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
+        AWSKeyPair.assert_valid_resource_name(name)
+
         kp = self.provider.ec2_conn.create_key_pair(name)
         if kp:
             return AWSKeyPair(self.provider, kp)
@@ -209,6 +211,8 @@ class AWSSecurityGroupService(BaseSecurityGroupService):
         :rtype: ``object`` of :class:`.SecurityGroup`
         :return:  A SecurityGroup instance or ``None`` if one was not created.
         """
+        AWSSecurityGroup.assert_valid_resource_name(name)
+
         sg = self.provider.ec2_conn.create_security_group(name, description,
                                                           network_id)
         if sg:
@@ -308,6 +312,8 @@ class AWSVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
+        AWSVolume.assert_valid_resource_name(name)
+
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, AWSSnapshot) and snapshot else snapshot
@@ -368,6 +374,8 @@ class AWSSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
+        AWSSnapshot.assert_valid_resource_name(name)
+
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
         ec2_snap = self.provider.ec2_conn.create_snapshot(
@@ -434,6 +442,8 @@ class AWSObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket.
         """
+        AWSBucket.assert_valid_resource_name(name)
+
         bucket = self.provider.s3_conn.create_bucket(
             name,
             location=location if location else '')
@@ -514,10 +524,12 @@ class AWSInstanceService(BaseInstanceService):
     def create(self, name, image, instance_type, subnet, zone=None,
                key_pair=None, security_groups=None, user_data=None,
                launch_config=None, **kwargs):
+        AWSInstance.assert_valid_resource_name(name)
+
         image_id = image.id if isinstance(image, MachineImage) else image
         instance_size = instance_type.id if \
             isinstance(instance_type, InstanceType) else instance_type
-        subnet = (self.provider.network.subnets.get(subnet)
+        subnet = (self.provider.networking.subnets.get(subnet)
                   if isinstance(subnet, str) else subnet)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         key_pair_name = key_pair.name if isinstance(
@@ -767,7 +779,6 @@ class AWSNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(AWSNetworkService, self).__init__(provider)
-        self._subnet_svc = AWSSubnetService(self.provider)
 
     def get(self, network_id):
         try:
@@ -796,6 +807,8 @@ class AWSNetworkService(BaseNetworkService):
                                      limit=limit, marker=marker)
 
     def create(self, name, cidr_block):
+        AWSNetwork.assert_valid_resource_name(name)
+
         network = self.provider.vpc_conn.create_vpc(cidr_block=cidr_block)
         cb_network = AWSNetwork(self.provider, network)
         if name:
@@ -804,10 +817,6 @@ class AWSNetworkService(BaseNetworkService):
                 terminal_states=[NetworkState.ERROR])
             cb_network.name = name
         return cb_network
-
-    @property
-    def subnets(self):
-        return self._subnet_svc
 
     @property
     def floating_ips(self):
@@ -820,18 +829,6 @@ class AWSNetworkService(BaseNetworkService):
     def create_floating_ip(self):
         ip = self.provider.ec2_conn.allocate_address(domain='vpc')
         return AWSFloatingIP(self.provider, ip)
-
-    def routers(self):
-        routers = self.provider.vpc_conn.get_all_internet_gateways()
-        return [AWSRouter(self.provider, r) for r in routers]
-
-    def create_router(self, name=None):
-        router = self.provider.vpc_conn.create_internet_gateway()
-        cb_router = AWSRouter(self.provider, router)
-        if name:
-            time.sleep(2)  # Some time is required
-            cb_router.name = name
-        return cb_router
 
 
 class AWSSubnetService(BaseSubnetService):
@@ -863,6 +860,8 @@ class AWSSubnetService(BaseSubnetService):
                                      limit=limit, marker=marker)
 
     def create(self, name, network, cidr_block, zone=None):
+        AWSSubnet.assert_valid_resource_name(name)
+
         network_id = network.id if isinstance(network, AWSNetwork) else network
         subnet = self.provider.vpc_conn.create_subnet(network_id, cidr_block,
                                                       availability_zone=zone)
@@ -885,7 +884,7 @@ class AWSSubnetService(BaseSubnetService):
             if sn.tags.get('Name') == AWSSubnet.CB_DEFAULT_SUBNET_NAME:
                 return AWSSubnet(self.provider, sn)
         # No provider-default Subnet exists, try to create it (net + subnets)
-        default_net = self.provider.network.create(
+        default_net = self.provider.networking.networks.create(
             name=AWSNetwork.CB_DEFAULT_NETWORK_NAME, cidr_block='10.0.0.0/16')
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(
@@ -938,6 +937,8 @@ class AWSRouterService(BaseRouterService):
                                      marker=marker)
 
     def create(self, name, network):
+        AWSRouter.assert_valid_resource_name(name)
+
         network_id = network.id if isinstance(network, AWSNetwork) else network
         router = self.provider.vpc_conn.create_route_table(vpc_id=network_id)
         cb_router = AWSRouter(self.provider, router)
@@ -952,6 +953,8 @@ class AWSGatewayService(BaseGatewayService):
         super(AWSGatewayService, self).__init__(provider)
 
     def get_or_create_inet_gateway(self, name):
+        AWSInternetGateway.assert_valid_resource_name(name)
+
         gateway = self.provider.vpc_conn.create_internet_gateway()
         cb_gateway = AWSInternetGateway(self.provider, gateway)
         cb_gateway.wait_till_ready()

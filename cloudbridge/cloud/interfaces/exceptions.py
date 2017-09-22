@@ -45,8 +45,5 @@ class InvalidNameException(CloudBridgeBaseException):
     letters, which are not allowed in a resource name.
     """
 
-    def __init__(self, name):
-        super(InvalidNameException, self).__init__(
-            u"Invalid name: %s. Name must be at most 63 characters long"
-            " and consist of lowercase letters, numbers, underscores, dashes"
-            " or international characters" % name)
+    def __init__(self, msg):
+        super(InvalidNameException, self).__init__(msg)
