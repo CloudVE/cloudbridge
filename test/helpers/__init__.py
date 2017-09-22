@@ -118,8 +118,7 @@ def delete_test_network(network):
     """
     with cleanup_action(lambda: network.delete()):
         for sn in network.subnets:
-            with cleanup_action(lambda: sn.delete()):
-                pass
+            sn.delete()
 
 
 def create_test_instance(

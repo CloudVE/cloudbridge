@@ -76,7 +76,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_subnet(name):
             return self.provider.networking.subnets.create(
-                network=net, cidr_block="10.0.0.1/24", name=name)
+                network=net, cidr_block="10.0.0.0/24", name=name)
 
         def cleanup_subnet(subnet):
             self.provider.networking.subnets.delete(subnet=subnet)
