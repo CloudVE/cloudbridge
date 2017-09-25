@@ -631,7 +631,6 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         return (isinstance(other, VMFirewall) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
-                len(self.rules) == len(other.rules) and  # Shortcut
                 set(self.rules) == set(other.rules))
 
     def __ne__(self, other):
@@ -672,29 +671,85 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
                                             self.id, self.name)
 
 
+class BaseVMFirewallRuleContainer(BasePageableObjectMixin):
+
+    def __init__(self, provider, firewall):
+        self.__provider = provider
+        self.firewall = firewall
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def get(self, rule_id):
+        matches = [rule for rule in self if rule.id == rule_id]
+        if matches:
+            return matches[0]
+        else:
+            return None
+
+    def find(self, **kwargs):
+        matches = self
+
+        def filter_by(prop_name, rules):
+            prop_val = kwargs.pop(prop_name, None)
+            if prop_val:
+                match = [r for r in rules if getattr(r, prop_name) == prop_val]
+                return match
+            return rules
+
+        matches = filter_by('name', matches)
+        matches = filter_by('direction', matches)
+        matches = filter_by('protocol', matches)
+        matches = filter_by('from_port', matches)
+        matches = filter_by('to_port', matches)
+        matches = filter_by('cidr', matches)
+        matches = filter_by('src_dest_fw', matches)
+        matches = filter_by('src_dest_fw_id', matches)
+        limit = kwargs.pop('limit', None)
+        marker = kwargs.pop('marker', None)
+
+        return ClientPagedResultList(self._provider, matches,
+                                     limit=limit, marker=marker)
+
+    def delete(self, rule_id):
+        rule = self.get(rule_id)
+        if rule:
+            rule.delete()
+
+
 class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
 
-    def __init__(self, provider, rule, parent):
-        super(BaseVMFirewallRule, self).__init__(provider)
+    def __init__(self, parent_fw, rule):
+        # pylint:disable=protected-access
+        super(BaseVMFirewallRule, self).__init__(
+            parent_fw._provider)
+        self.firewall = parent_fw
         self._rule = rule
-        self.parent = parent
 
+        # Cache name
+        self._name = "{0}-{1}-{2}-{3}-{4}-{5}".format(
+            self.direction, self.protocol, self.from_port, self.to_port,
+            self.cidr, self.src_dest_fw_id).lower()
+
+    @property
     def name(self):
-        """
-        VM firewall rules don't support names, so pass
-        """
-        pass
+        return self._name
 
     def __repr__(self):
-        return ("<CBVMFirewallRule: IP: {0}; from: {1}; to: {2}; grp: {3}>"
-                .format(self.ip_protocol, self.from_port, self.to_port,
-                        self.group))
+        return ("<CBVMFirewallRule: id: {0}; direction: {1}; protocol: {2};"
+                " from: {3}; to: {4}; cidr: {5}, src_dest_fw: {6}>"
+                .format(self.id, self.direction, self.protocol, self.from_port,
+                        self.to_port, self.cidr, self.src_dest_fw_id))
 
     def __eq__(self, other):
-        return self.ip_protocol == other.ip_protocol and \
-            self.from_port == other.from_port and \
-            self.to_port == other.to_port and \
-            self.cidr_ip == other.cidr_ip
+        return (isinstance(other, VMFirewallRule) and
+                self.direction == other.direction and
+                self.protocol == other.protocol and
+                self.from_port == other.from_port and
+                self.to_port == other.to_port and
+                self.cidr == other.cidr and
+                self.src_dest_fw_id == other.src_dest_fw_id)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -703,12 +758,19 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
         """
         Return a hash-based interpretation of all of the object's field values.
 
-        This is requried for operations on hashed collections including
+        This is requeried for operations on hashed collections including
         ``set``, ``frozenset``, and ``dict``.
         """
-        return hash("{0}{1}{2}{3}{4}".format(self.ip_protocol, self.from_port,
-                                             self.to_port, self.cidr_ip,
-                                             self.group))
+        return hash("{0}{1}{2}{3}{4}{5}".format(
+            self.direction, self.protocol, self.from_port, self.to_port,
+            self.cidr, self.src_dest_fw_id))
+
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        js = {k: v for (k, v) in attr if not k.startswith('_')}
+        js['src_dest_fw'] = self.src_dest_fw_id
+        js['firewall'] = self.firewall.id
+        return js
 
 
 class BasePlacementZone(BaseCloudResource, PlacementZone):

@@ -22,9 +22,11 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
@@ -32,7 +34,7 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
-from cloudbridge.cloud.interfaces.resources import VMFirewall
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
@@ -1003,6 +1005,7 @@ class OpenStackVMFirewall(BaseVMFirewall):
 
     def __init__(self, provider, vm_firewall):
         super(OpenStackVMFirewall, self).__init__(provider, vm_firewall)
+        self._rule_svc = OpenStackVMFirewallRuleContainer(provider, self)
 
     @property
     def network_id(self):
@@ -1015,95 +1018,11 @@ class OpenStackVMFirewall(BaseVMFirewall):
 
     @property
     def rules(self):
-        # Update SG object; otherwise, recently added rules do now show
+        return self._rule_svc
+
+    def refresh(self):
         self._vm_firewall = self._provider.nova.security_groups.get(
             self.id)
-        return [OpenStackVMFirewallRule(self._provider, r, self)
-                for r in self._vm_firewall.rules]
-
-    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_firewall=None):
-        """
-        Create a VM firewall rule.
-
-        You need to pass in either ``src_firewall`` OR ``ip_protocol`` AND
-        ``from_port``, ``to_port``, ``cidr_ip``.  In other words, either
-        you are authorizing another group or you are authorizing some
-        ip-based rule.
-
-        :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
-
-        :type from_port: int
-        :param from_port: The beginning port number you are enabling
-
-        :type to_port: int
-        :param to_port: The ending port number you are enabling
-
-        :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block you are providing access to.
-
-        :type src_firewall: ``object`` of :class:`.VMFirewall`
-        :param src_firewall: The VM firewall you are granting access to.
-
-        :rtype: :class:``.VMFirewallRule``
-        :return: Rule object if successful or ``None``.
-        """
-        if src_firewall:
-            if not isinstance(src_firewall, VMFirewall):
-                src_firewall = self._provider.security.vm_firewalls.get(
-                    src_firewall)
-            existing_rule = self.get_rule(ip_protocol=ip_protocol,
-                                          from_port=from_port,
-                                          to_port=to_port,
-                                          src_firewall=src_firewall)
-            if existing_rule:
-                return existing_rule
-
-            rule = self._provider.nova.security_group_rules.create(
-                parent_group_id=self.id,
-                ip_protocol=ip_protocol,
-                from_port=from_port,
-                to_port=to_port,
-                group_id=src_firewall.id)
-            if rule:
-                # We can only return one Rule so default to TCP (ie, last in
-                # the for loop above).
-                return OpenStackVMFirewallRule(self._provider,
-                                               rule.to_dict(), self)
-        else:
-            existing_rule = self.get_rule(ip_protocol=ip_protocol,
-                                          from_port=from_port,
-                                          to_port=to_port,
-                                          cidr_ip=cidr_ip)
-            if existing_rule:
-                return existing_rule
-
-            rule = self._provider.nova.security_group_rules.create(
-                parent_group_id=self.id,
-                ip_protocol=ip_protocol,
-                from_port=from_port,
-                to_port=to_port,
-                cidr=cidr_ip)
-            if rule:
-                return OpenStackVMFirewallRule(self._provider,
-                                               rule.to_dict(), self)
-        return None
-
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_firewall=None):
-        # Update SG object; otherwise, recently added rules do not show
-        self._security_group = self._provider.nova.security_groups.get(
-            self.id)
-        for rule in self._vm_firewall.rules:
-            if (rule['ip_protocol'] == ip_protocol and
-                rule['from_port'] == from_port and
-                rule['to_port'] == to_port and
-                (rule['ip_range'].get('cidr') == cidr_ip or
-                 (rule['group'].get('name') == src_firewall.name
-                  if src_firewall else False))):
-                return OpenStackVMFirewallRule(self._provider, rule, self)
-        return None
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -1113,49 +1032,99 @@ class OpenStackVMFirewall(BaseVMFirewall):
         return js
 
 
+class OpenStackVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
+
+    def __init__(self, provider, firewall):
+        super(OpenStackVMFirewallRuleContainer, self).__init__(
+            provider, firewall)
+
+    def list(self, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [OpenStackVMFirewallRule(self.firewall, r)
+                 for r in self.firewall._vm_firewall.rules]
+        return ClientPagedResultList(self._provider, rules,
+                                     limit=limit, marker=marker)
+
+    def create(self,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (src_dest_fw.id if isinstance(src_dest_fw,
+                                                       OpenStackVMFirewall)
+                          else src_dest_fw)
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                # pylint:disable=protected-access
+                rule = self._provider.nova.security_group_rules.create(
+                                parent_group_id=self.firewall.id,
+                                ip_protocol=protocol,
+                                from_port=from_port,
+                                to_port=to_port,
+                                cidr=cidr,
+                                group_id=src_dest_fw_id)
+            elif direction == TrafficDirection.OUTBOUND:
+                pass
+            else:
+                raise InvalidValueException("direction", direction)
+            self.firewall.refresh()
+            return OpenStackVMFirewallRule(self.firewall, rule.to_dict())
+        except novaex.BadRequest as e:
+            self.firewall.refresh()
+            existing = self.find(
+                direction=direction, protocol=protocol, from_port=from_port,
+                to_port=to_port, cidr=cidr, src_dest_fw_id=src_dest_fw_id)
+            if existing:
+                return existing[0]
+            else:
+                raise e
+
+
 class OpenStackVMFirewallRule(BaseVMFirewallRule):
 
-    def __init__(self, provider, rule, parent):
-        super(OpenStackVMFirewallRule, self).__init__(
-            provider, rule, parent)
+    def __init__(self, parent_fw, rule):
+        super(OpenStackVMFirewallRule, self).__init__(parent_fw, rule)
 
     @property
     def id(self):
         return self._rule.get('id')
 
     @property
-    def ip_protocol(self):
+    def direction(self):
+        return TrafficDirection.INBOUND
+
+    @property
+    def protocol(self):
         return self._rule.get('ip_protocol')
 
     @property
     def from_port(self):
-        return int(self._rule.get('from_port') or 0)
+        return self._rule.get('from_port')
 
     @property
     def to_port(self):
-        return int(self._rule.get('to_port') or 0)
+        return self._rule.get('to_port')
 
     @property
-    def cidr_ip(self):
+    def cidr(self):
         return self._rule.get('ip_range', {}).get('cidr')
 
     @property
-    def group(self):
+    def src_dest_fw_id(self):
+        fw = self.src_dest_fw
+        if fw:
+            return fw.id
+        return None
+
+    @property
+    def src_dest_fw(self):
         fw_name = self._rule.get('group', {}).get('name')
         if fw_name:
             fw = self._provider.security.vm_firewalls.find(name=fw_name)
             return fw[0] if fw else None
         return None
 
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
-        js['group'] = self.group.id if self.group else ''
-        js['parent'] = self.parent.id if self.parent else ''
-        return js
-
     def delete(self):
-        return self._provider.nova.security_group_rules.delete(self.id)
+        self._provider.nova.security_group_rules.delete(self.id)
+        self.firewall.refresh()
 
 
 class OpenStackBucketObject(BaseBucketObject):

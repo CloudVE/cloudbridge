@@ -181,9 +181,6 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         super(OpenStackVMFirewallService, self).__init__(provider)
 
     def get(self, firewall_id):
-        """
-        Returns a VMFirewall given its id.
-        """
         try:
             return OpenStackVMFirewall(
                 self.provider,
@@ -192,13 +189,6 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
             return None
 
     def list(self, limit=None, marker=None):
-        """
-        List all VM firewalls associated with this account.
-
-        :rtype: ``list`` of :class:`.VMFirewall`
-        :return:  list of VMFirewall objects
-        """
-
         firewalls = [OpenStackVMFirewall(self.provider, fw)
                      for fw in self.provider.nova.security_groups.list()]
 
@@ -206,22 +196,6 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                                      limit=limit, marker=marker)
 
     def create(self, name, description, network_id):
-        """
-        Create a new VM firewall under the current account.
-
-        :type name: str
-        :param name: The name of the new VM firewall.
-
-        :type description: str
-        :param description: The description of the new VM firewall.
-
-        :type  network_id: ``None``
-        :param network_id: Not applicable for OpenStack (yet) so any value is
-                           ignored.
-
-        :rtype: ``object`` of :class:`.VMFirewall`
-        :return: a VMFirewall object
-        """
         OpenStackVMFirewall.assert_valid_resource_name(name)
 
         sg = self.provider.nova.security_groups.create(name, description)
@@ -230,9 +204,6 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         return None
 
     def find(self, name, limit=None, marker=None):
-        """
-        Get all VM firewalls associated with your account.
-        """
         sgs = self.provider.nova.security_groups.findall(name=name)
         results = [OpenStackVMFirewall(self.provider, sg)
                    for sg in sgs]
@@ -240,18 +211,6 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
-        """
-        Delete an existing VMFirewall.
-
-        :type group_id: str
-        :param group_id: The VM firewall ID to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the VM firewall does not exist, ``False``
-                  otherwise. Note that this implies that the group may not have
-                  been deleted by this method but instead has not existed in
-                  the first place.
-        """
         firewall = self.get(group_id)
         if firewall:
             firewall.delete()
