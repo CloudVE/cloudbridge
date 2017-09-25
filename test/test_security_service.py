@@ -4,7 +4,9 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
 from cloudbridge.cloud.interfaces.resources import KeyPair
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
+from cloudbridge.cloud.interfaces.resources import VMFirewallRule
 
 
 class CloudSecurityServiceTestCase(ProviderTestBase):
@@ -78,38 +80,33 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
             self.assertEqual(name, fw.description)
 
-            rule = fw.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
-                               cidr_ip='0.0.0.0/0')
-            found_rule = fw.get_rule(ip_protocol='tcp', from_port=1111,
-                                     to_port=1111, cidr_ip='0.0.0.0/0')
-            self.assertTrue(
-                rule == found_rule,
-                "Expected rule {0} not found in VM firewall: {0}".format(
-                    rule, fw.rules))
+    @helpers.skipIfNoService(['security.vm_firewalls'])
+    def test_crud_vm_firewall_rules(self):
+        name = 'cb_crudfw_rules-{0}'.format(helpers.get_uuid())
 
-            object_keys = (
-                fw.rules[0].ip_protocol,
-                fw.rules[0].from_port,
-                fw.rules[0].to_port)
-            self.assertTrue(
-                all(str(key) in repr(fw.rules[0]) for key in object_keys),
-                "repr(obj) should contain ip_protocol, form_port, and to_port"
-                " so that the object can be reconstructed, but does not:"
-                " {0}; {1}".format(fw.rules[0], object_keys))
-            self.assertTrue(
-                fw == fw,
-                "The same VM firewalls should be equal?")
-            self.assertFalse(
-                fw != fw,
-                "The same VM firewalls should still be equal?")
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        net = None
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                network=net)):
+            net, _ = helpers.create_test_network(self.provider, name)
 
-        sit.check_delete(self, self.provider.security.vm_firewalls, fw)
-        fwl = self.provider.security.vm_firewalls.list()
-        found_fw = [f for f in fwl if f.name == name]
-        self.assertTrue(
-            len(found_fw) == 0,
-            "VM firewall {0} should have been deleted but still exists."
-            .format(name))
+            fw = None
+            with helpers.cleanup_action(lambda: fw.delete()):
+                fw = self.provider.security.vm_firewalls.create(
+                    name=name, description=name, network_id=net.id)
+
+                def create_fw_rule(name):
+                    return fw.rules.create(
+                        direction=TrafficDirection.INBOUND, protocol='tcp',
+                        from_port=1111, to_port=1111, cidr='0.0.0.0/0')
+
+                def cleanup_fw_rule(rule):
+                    rule.delete()
+
+                sit.check_crud(self, fw.rules, VMFirewallRule, "cb_crudfwrule",
+                               create_fw_rule, cleanup_fw_rule,
+                               skip_name_check=True)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_rule_add_twice(self):
@@ -126,15 +123,14 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
 
-            rule = fw.add_rule(ip_protocol='tcp', from_port=1111, to_port=1111,
-                               cidr_ip='0.0.0.0/0')
+            rule = fw.rules.create(
+                direction=TrafficDirection.INBOUND, protocol='tcp',
+                from_port=1111, to_port=1111, cidr='0.0.0.0/0')
             # attempting to add the same rule twice should succeed
-            same_rule = fw.add_rule(ip_protocol='tcp', from_port=1111,
-                                    to_port=1111, cidr_ip='0.0.0.0/0')
-            self.assertTrue(
-                rule == same_rule,
-                "Expected rule {0} not found in VM firewall: {0}".format(
-                    same_rule, fw.rules))
+            same_rule = fw.rules.create(
+                direction=TrafficDirection.INBOUND, protocol='tcp',
+                from_port=1111, to_port=1111, cidr='0.0.0.0/0')
+            self.assertEqual(rule, same_rule)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_group_rule(self):
@@ -149,21 +145,25 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             net, _ = helpers.create_test_network(self.provider, name)
             fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
+            rules = list(fw.rules)
             self.assertTrue(
-                len(fw.rules) == 0,
-                "Expected no VM firewall group rule. Got {0}."
-                .format(fw.rules))
-            rule = fw.add_rule(src_firewall=fw, ip_protocol='tcp', from_port=1,
-                               to_port=65535)
+                len(rules) == 1, "Expected a single VM firewall rule allowing"
+                " all outbound traffic. Got {0}.".format(rules))
+            self.assertEqual(
+                rules[0].direction, TrafficDirection.OUTBOUND,
+                "Expected rule to be outbound. Got {0}.".format(rules))
+            rule = fw.rules.create(
+                direction=TrafficDirection.INBOUND, src_dest_fw=fw,
+                protocol='tcp', from_port=1, to_port=65535)
             self.assertTrue(
-                rule.group.name == name,
+                rule.src_dest_fw.name == name,
                 "Expected VM firewall rule name {0}. Got {1}."
-                .format(name, rule.group.name))
+                .format(name, rule.src_dest_fw.name))
             for r in fw.rules:
                 r.delete()
             fw = self.provider.security.vm_firewalls.get(fw.id)  # update
             self.assertTrue(
-                len(fw.rules) == 0,
+                len(list(fw.rules)) == 0,
                 "Deleting VMFirewallRule should delete it: {0}".format(
                     fw.rules))
         fwl = self.provider.security.vm_firewalls.list()

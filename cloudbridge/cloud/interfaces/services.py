@@ -1181,12 +1181,6 @@ class VMFirewallService(PageableObjectMixin, CloudService):
 
         :type group_id: str
         :param group_id: The VM firewall ID to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the VM firewall does not exist, ``False``
-                  otherwise. Note that this implies that the group may not have
-                  been deleted by this method but instead has not existed in
-                  the first place.
         """
         pass
 

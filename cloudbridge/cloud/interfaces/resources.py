@@ -2,6 +2,7 @@
 Specifications for data objects exposed through a provider or service
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+from enum import Enum
 
 
 class CloudServiceType(object):
@@ -1706,30 +1707,71 @@ class VMFirewall(CloudResource):
         """
         pass
 
-    @abstractmethod
-    def delete(self):
-        """
-        Delete this VM firewall.
 
-        :rtype: ``bool``
-        :return: ``True`` if successful.
+class VMFirewallRuleContainer(PageableObjectMixin, CloudResource):
+    """
+    Base interface for Firewall rules.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, rule_id):
+        """
+        Returns a firewall rule given its ID. Returns ``None`` if the
+        rule does not exist.
+
+        Example:
+
+        .. code-block:: python
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            rule = fw.rules.get('rule_id')
+            print(rule.id, rule.name)
+
+        :rtype: :class:`.FirewallRule`
+        :return:  a FirewallRule instance
         """
         pass
 
     @abstractmethod
-    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_firewall=None):
+    def list(self, limit=None, marker=None):
+        """
+        List all firewall rules associated with this firewall.
+
+        :rtype: ``list`` of :class:`.FirewallRule`
+        :return:  list of Firewall rule objects
+        """
+        pass
+
+    @abstractmethod
+    def create(self,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
         """
         Create a VM firewall rule. If the rule already exists, simply
         returns it.
 
-        You need to pass in either ``src_firewall`` OR ``ip_protocol`` AND
+        Example:
+
+        .. code-block:: python
+            import TafficDirection from cloudbridge.cloud.interfaces.resources
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
+                            from_port=80, to_port=80, cidr='10.0.0.0/16')
+            fw.rules.create(TrafficDirection.INBOUND, src_dest_fw=fw)
+            fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
+
+        You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
         ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
         you are authorizing another group or you are authorizing some
-        ip-based rule.
+        IP-based rule.
 
-        :type ip_protocol: ``str``
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+        :type direction: :class:``.TrafficDirection``
+        :param direction: Either ``TrafficDirection.INBOUND`` |
+                          ``TrafficDirection.OUTBOUND``
+
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
         :type from_port: ``int``
         :param from_port: The beginning port number you are enabling.
@@ -1737,30 +1779,30 @@ class VMFirewall(CloudResource):
         :type to_port: ``int``
         :param to_port: The ending port number you are enabling.
 
-        :type cidr_ip: ``str`` or list of ``str``
-        :param cidr_ip: The CIDR block you are providing access to.
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
 
-        :type src_firewall: :class:`.VMFirewall`
-        :param src_firewall: The VM firewall object you are granting access to.
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
 
         :rtype: :class:`.VMFirewallRule`
         :return: Rule object if successful or ``None``.
         """
         pass
 
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_firewall=None):
+    @abstractmethod
+    def find(self, **kwargs):
         """
-        Get a VM firewall rule with the specified parameters.
+        Find a firewall rule associated with your account filtered by the given
+        parameters.
 
-        You need to pass in either ``src_firewall`` OR ``ip_protocol`` AND
-        ``from_port``, ``to_port``, and ``cidr_ip``. Note that when retrieving
-        a group rule, this method will return only one rule although possibly
-        several rules exist for the group rule. In that case, use the
-        ``.rules`` property and filter the results as desired.
+        :type name: str
+        :param name: The name of the VM firewall to retrieve.
 
-        :type ip_protocol: ``str``
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
         :type from_port: ``int``
         :param from_port: The beginning port number you are enabling.
@@ -1768,16 +1810,39 @@ class VMFirewall(CloudResource):
         :type to_port: ``int``
         :param to_port: The ending port number you are enabling.
 
-        :type cidr_ip: ``str`` or list of ``str``
-        :param cidr_ip: The CIDR block you are providing access to.
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
 
-        :type src_firewall: :class:`.VMFirewall`
-        :param src_firewall: The VM firewall object you are granting access to.
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
 
-        :rtype: :class:`.VMFirewallRule`
-        :return: Rule object if one can be found or ``None``.
+        :type src_dest_fw_id: :class:`.str`
+        :param src_dest_fw_id: The VM firewall id which is the
+                               source/destination of the traffic, depending on
+                               whether it's ingress/egress traffic.
+
+        :rtype: list of :class:`VMFirewallRule`
+        :return: A list of VMFirewall objects or an empty list if none
+                 found.
         """
         pass
+
+    @abstractmethod
+    def delete(self, rule_id):
+        """
+        Delete an existing VMFirewall rule.
+
+        :type rule_id: str
+        :param rule_id: The VM firewall rule to be deleted.
+        """
+        pass
+
+
+class TrafficDirection(Enum):
+    INBOUND = 'inbound'
+    OUTBOUND = 'outbound'
 
 
 class VMFirewallRule(CloudResource):
@@ -1788,7 +1853,18 @@ class VMFirewallRule(CloudResource):
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def ip_protocol(self):
+    def direction(self):
+        """
+        Direction of traffic to which this rule applies.
+        Either TrafficDirection.INBOUND | TrafficDirection.OUTBOUND
+
+        :rtype: ``str``
+        :return: Direction of traffic to which this rule applies
+        """
+        pass
+
+    @abstractproperty
+    def protocol(self):
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
 
@@ -1818,7 +1894,7 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def cidr_ip(self):
+    def cidr(self):
         """
         CIDR block this VM firewall is providing access to.
 
@@ -1828,12 +1904,22 @@ class VMFirewallRule(CloudResource):
         pass
 
     @abstractproperty
-    def group(self):
+    def src_dest_fw_id(self):
+        """
+        VM firewall id given access permissions by this rule.
+
+        :rtype: ``str``
+        :return: The VM firewall granted access.
+        """
+        pass
+
+    @abstractproperty
+    def src_dest_fw(self):
         """
         VM firewall given access permissions by this rule.
 
         :rtype: :class:``.VMFirewall``
-        :return: The VM firewall with granting access.
+        :return: The VM firewall granted access.
         """
         pass
 

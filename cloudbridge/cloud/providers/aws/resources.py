@@ -23,9 +23,11 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
@@ -33,7 +35,7 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
-from cloudbridge.cloud.interfaces.resources import VMFirewall
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
 from .helpers import find_tag_value
@@ -548,6 +550,7 @@ class AWSVMFirewall(BaseVMFirewall):
 
     def __init__(self, provider, _vm_firewall):
         super(AWSVMFirewall, self).__init__(provider, _vm_firewall)
+        self._rule_container = AWSVMFirewallRuleContainer(provider, self)
 
     @property
     def name(self):
@@ -559,60 +562,10 @@ class AWSVMFirewall(BaseVMFirewall):
 
     @property
     def rules(self):
-        return [AWSVMFirewallRule(self._provider, r, self)
-                for r in self._vm_firewall.ip_permissions]
+        return self._rule_container
 
-    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_firewall=None):
-        try:
-            src_firewall_id = (
-                src_firewall.id if isinstance(src_firewall, VMFirewall)
-                else src_firewall)
-
-            ip_perm_entry = {
-                'IpProtocol': ip_protocol,
-                'FromPort': from_port,
-                'ToPort': to_port,
-                'IpRanges': [{'CidrIp': cidr_ip}] if cidr_ip else None,
-                'UserIdGroupPairs': [{
-                    'GroupId': src_firewall_id}
-                ] if src_firewall_id else None
-            }
-            # Filter out empty values to please Boto
-            ip_perms = [trim_empty_params(ip_perm_entry)]
-            self._vm_firewall.authorize_ingress(IpPermissions=ip_perms)
-            self._vm_firewall.reload()
-            return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                 src_firewall_id)
-        except ClientError as ec2e:
-            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
-                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                     src_firewall)
-            else:
-                raise ec2e
-
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_firewall=None):
-        src_firewall_id = (
-            src_firewall.id if isinstance(src_firewall, VMFirewall)
-            else src_firewall)
-        for rule in self._vm_firewall.ip_permissions:
-            if ip_protocol and rule['IpProtocol'] != ip_protocol:
-                continue
-            elif from_port and rule['FromPort'] != from_port:
-                continue
-            elif to_port and rule['ToPort'] != to_port:
-                continue
-            elif cidr_ip:
-                if cidr_ip not in [x['CidrIp'] for x in rule['IpRanges']]:
-                    continue
-            elif src_firewall_id:
-                if src_firewall_id not in [
-                    group_pair.get('GroupId') for group_pair in
-                        rule.get('UserIdGroupPairs', [])]:
-                    continue
-            return AWSVMFirewallRule(self._provider, rule, self)
-        return None
+    def refresh(self):
+        self._vm_firewall.reload()
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not inspect.isroutine(a))
@@ -624,77 +577,137 @@ class AWSVMFirewall(BaseVMFirewall):
         return js
 
 
+class AWSVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
+
+    def __init__(self, provider, firewall):
+        super(AWSVMFirewallRuleContainer, self).__init__(provider, firewall)
+
+    def list(self, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [AWSVMFirewallRule(self.firewall,
+                                   TrafficDirection.INBOUND, r)
+                 for r in self.firewall._vm_firewall.ip_permissions]
+        rules = rules + [
+            AWSVMFirewallRule(
+                self.firewall, TrafficDirection.OUTBOUND, r)
+            for r in self.firewall._vm_firewall.ip_permissions_egress]
+        return ClientPagedResultList(self._provider, rules,
+                                     limit=limit, marker=marker)
+
+    def create(self,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (
+            src_dest_fw.id if isinstance(src_dest_fw, AWSVMFirewall)
+            else src_dest_fw)
+
+        ip_perm_entry = AWSVMFirewallRule._construct_ip_perms(
+            protocol, from_port, to_port, cidr, src_dest_fw_id)
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                # pylint:disable=protected-access
+                self.firewall._vm_firewall.authorize_ingress(
+                    IpPermissions=ip_perms)
+            elif direction == TrafficDirection.OUTBOUND:
+                # pylint:disable=protected-access
+                self.firewall._vm_firewall.authorize_egress(
+                    IpPermissions=ip_perms)
+            else:
+                raise InvalidValueException("direction", direction)
+            self.firewall.refresh()
+            return AWSVMFirewallRule(self.firewall, direction, ip_perm_entry)
+        except ClientError as ec2e:
+            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
+                return AWSVMFirewallRule(
+                    self.firewall, direction, ip_perm_entry)
+            else:
+                raise ec2e
+
+
 class AWSVMFirewallRule(BaseVMFirewallRule):
 
-    def __init__(self, provider, rule, parent):
-        super(AWSVMFirewallRule, self).__init__(provider, rule, parent)
+    def __init__(self, parent_fw, direction, rule):
+        self._direction = direction
+        super(AWSVMFirewallRule, self).__init__(parent_fw, rule)
+
+        # cache id
+        md5 = hashlib.md5()
+        md5.update(self._name.encode('ascii'))
+        self._id = md5.hexdigest()
 
     @property
     def id(self):
-        md5 = hashlib.md5()
-        md5.update("{0}-{1}-{2}-{3}".format(
-            self.ip_protocol, self.from_port, self.to_port, self.cidr_ip)
-            .encode('ascii'))
-        return md5.hexdigest()
+        return self._id
 
     @property
-    def ip_protocol(self):
+    def direction(self):
+        return self._direction
+
+    @property
+    def protocol(self):
         return self._rule.get('IpProtocol')
 
     @property
     def from_port(self):
-        return self._rule.get('FromPort', 0)
+        return self._rule.get('FromPort')
 
     @property
     def to_port(self):
-        return self._rule.get('ToPort', 0)
+        return self._rule.get('ToPort')
 
     @property
-    def cidr_ip(self):
-        if len(self._rule.get('IpRanges', [])) > 0:
+    def cidr(self):
+        if len(self._rule.get('IpRanges') or []) > 0:
             return self._rule['IpRanges'][0].get('CidrIp')
         return None
 
     @property
-    def group_id(self):
-        if len(self._rule['UserIdGroupPairs']) > 0:
+    def src_dest_fw_id(self):
+        if len(self._rule.get('UserIdGroupPairs') or []) > 0:
             return self._rule['UserIdGroupPairs'][0]['GroupId']
         else:
             return None
 
     @property
-    def group(self):
-        if self.group_id:
+    def src_dest_fw(self):
+        if self.src_dest_fw_id:
             return AWSVMFirewall(
                 self._provider,
-                self._provider.ec2_conn.SecurityGroup(self.group_id))
+                self._provider.ec2_conn.SecurityGroup(self.src_dest_fw_id))
         else:
             return None
 
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
-        js = {k: v for (k, v) in attr if not k.startswith('_')}
-        js['group'] = self.group.id if self.group else ''
-        js['parent'] = self.parent.id if self.parent else ''
-        return js
+    @staticmethod
+    def _construct_ip_perms(protocol, from_port, to_port, cidr,
+                            src_dest_fw_id):
+        return {
+            'IpProtocol': protocol,
+            'FromPort': from_port,
+            'ToPort': to_port,
+            'IpRanges': [{'CidrIp': cidr}] if cidr else None,
+            'UserIdGroupPairs': [{
+                'GroupId': src_dest_fw_id}
+            ] if src_dest_fw_id else None
+        }
 
     def delete(self):
-
-        ip_perm_entry = {
-            'IpProtocol': self.ip_protocol,
-            'FromPort': self.from_port,
-            'ToPort': self.to_port,
-            'IpRanges': [{'CidrIp': self.cidr_ip}] if self.cidr_ip else None,
-            'UserIdGroupPairs': [{
-                'GroupId': self.group_id}
-            ] if self.group_id else None
-        }
+        ip_perm_entry = self._construct_ip_perms(
+            self.protocol, self.from_port, self.to_port,
+            self.cidr, self.src_dest_fw_id)
 
         # Filter out empty values to please Boto
         ip_perms = [trim_empty_params(ip_perm_entry)]
 
-        self.parent._vm_firewall.revoke_ingress(IpPermissions=ip_perms)
-        self.parent._vm_firewall.reload()
+        # pylint:disable=protected-access
+        if self.direction == TrafficDirection.INBOUND:
+            self.firewall._vm_firewall.revoke_ingress(
+                IpPermissions=ip_perms)
+        else:
+            self.firewall._vm_firewall.revoke_egress(
+                IpPermissions=ip_perms)
+        self.firewall.refresh()
 
 
 class AWSBucketObject(BaseBucketObject):
