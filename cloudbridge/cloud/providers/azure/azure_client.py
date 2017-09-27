@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 from io import BytesIO
@@ -204,9 +205,11 @@ class AzureClient(object):
         self.blob_service.delete_blob(container_name, blob_name)
 
     def get_blob_url(self, container_name, blob_name, expiry_time):
+        expiry_date = datetime.datetime.now() + datetime.timedelta(
+            seconds=expiry_time)
         sas = self.blob_service.generate_blob_shared_access_signature(
             container_name, blob_name, permission=BlobPermissions.READ,
-            expiry=expiry_time)
+            expiry=expiry_date)
         return self.blob_service.make_blob_url(container_name, blob_name,
                                                sas_token=sas)
 
