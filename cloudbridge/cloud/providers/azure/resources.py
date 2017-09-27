@@ -463,7 +463,7 @@ class AzureVolume(BaseVolume):
     def _update_state(self):
         if not self._volume.provisioning_state == 'Succeeded':
             self._state = self._volume.provisioning_state
-        elif self._volume.owner_id:
+        elif self._volume.managed_by:
             self._state = 'Attached'
         else:
             self._state = 'Unattached'
@@ -544,9 +544,9 @@ class AzureVolume(BaseVolume):
         to the BaseAttachmentInfo
         :return:
         """
-        if self._volume.owner_id:
+        if self._volume.managed_by:
             url_params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID,
-                                                 self._volume.owner_id)
+                                                 self._volume.managed_by)
             return BaseAttachmentInfo(self,
                                       url_params.get(VM_NAME),
                                       None)
@@ -708,7 +708,7 @@ class AzureSnapshot(BaseSnapshot):
     def volume_id(self):
         url_params = azure_helpers. \
             parse_url(VOLUME_RESOURCE_ID,
-                      self._snapshot.creation_data.source_uri)
+                      self._snapshot.creation_data.source_resource_id)
         return url_params.get(VOLUME_NAME)
 
     @property
