@@ -511,7 +511,7 @@ class AWSRegionService(BaseRegionService):
         regions = [
             AWSRegion(self.provider, region) for region in
             self.provider.ec2_conn.meta.client.describe_regions()
-                .get('Regions', [])]
+            .get('Regions', [])]
         return ClientPagedResultList(self.provider, regions,
                                      limit=limit, marker=marker)
 
@@ -640,7 +640,7 @@ class AWSSubnetService(BaseSubnetService):
             # pylint:disable=protected-access
             for tag in sn._subnet.tags or {}:
                 if (tag.get('Key') == 'Name' and
-                            tag.get('Value') == AWSSubnet.CB_DEFAULT_SUBNET_NAME):
+                        tag.get('Value') == AWSSubnet.CB_DEFAULT_SUBNET_NAME):
                     return sn
         # No provider-default Subnet exists, try to create it (net + subnets)
         default_net = self.provider.networking.networks.create(

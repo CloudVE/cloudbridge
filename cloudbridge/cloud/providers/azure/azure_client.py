@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 from io import BytesIO
@@ -205,9 +206,11 @@ class AzureClient(object):
         self.blob_service.delete_blob(container_name, blob_name)
 
     def get_blob_url(self, container_name, blob_name, expiry_time):
+        expiry_date = datetime.datetime.now() + datetime.timedelta(
+            seconds=expiry_time)
         sas = self.blob_service.generate_blob_shared_access_signature(
             container_name, blob_name, permission=BlobPermissions.READ,
-            expiry=expiry_time)
+            expiry=expiry_date)
         return self.blob_service.make_blob_url(container_name, blob_name,
                                                sas_token=sas)
 
@@ -509,10 +512,10 @@ class AzureClient(object):
 
             result_create = self.network_management_client. \
                 subnets.create_or_update(
-                self.resource_group,
-                network_name,
-                subnet_name,
-                subnet_info)
+                 self.resource_group,
+                 network_name,
+                 subnet_name,
+                 subnet_info)
             subnet_info = result_create.result()
 
         return subnet_info
@@ -531,10 +534,10 @@ class AzureClient(object):
 
             result_create = self.network_management_client. \
                 subnets.create_or_update(
-                self.resource_group,
-                network_name,
-                subnet_name,
-                subnet_info)
+                 self.resource_group,
+                 network_name,
+                 subnet_name,
+                 subnet_info)
             subnet_info = result_create.result()
 
         return subnet_info
@@ -550,8 +553,8 @@ class AzureClient(object):
     def create_route_table(self, route_table_name, params):
         return self.network_management_client. \
             route_tables.create_or_update(
-            self.resource_group,
-            route_table_name, params).result()
+             self.resource_group,
+             route_table_name, params).result()
 
     def update_route_table_tags(self, route_table_name, tags):
         self.network_management_client.route_tables. \

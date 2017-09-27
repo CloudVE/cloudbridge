@@ -882,7 +882,7 @@ class AzureNetworkService(BaseNetworkService):
         return AzureFloatingIP(self.provider, floating_ip)
 
     @property
-    def floating_ips(self, network_id=None):
+    def floating_ips(self):
         """
                List all floating ips.
         """
