@@ -4,10 +4,7 @@ DataTypes used by this provider
 import hashlib
 import inspect
 
-from datetime import datetime
-
-from boto.exception import EC2ResponseError
-from boto.s3.key import Key
+from botocore.exceptions import ClientError
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
@@ -39,15 +36,20 @@ from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
-from retrying import retry
+from .helpers import find_tag_value
+from .helpers import trim_empty_params
 
 
 class AWSMachineImage(BaseMachineImage):
 
     IMAGE_STATE_MAP = {
         'pending': MachineImageState.PENDING,
+        'transient': MachineImageState.PENDING,
         'available': MachineImageState.AVAILABLE,
-        'failed': MachineImageState.ERROR
+        'deregistered': MachineImageState.ERROR,
+        'failed': MachineImageState.ERROR,
+        'error': MachineImageState.ERROR,
+        'invalid': MachineImageState.ERROR
     }
 
     def __init__(self, provider, image):
@@ -60,70 +62,54 @@ class AWSMachineImage(BaseMachineImage):
 
     @property
     def id(self):
-        """
-        Get the image identifier.
-
-        :rtype: ``str``
-        :return: ID for this instance as returned by the cloud middleware.
-        """
         return self._ec2_image.id
 
     @property
     def name(self):
-        """
-        Get the image name.
-
-        :rtype: ``str``
-        :return: Name for this image as returned by the cloud middleware.
-        """
-        return self._ec2_image.name
+        try:
+            return self._ec2_image.name
+        except AttributeError:
+            return None
 
     @property
     def description(self):
-        """
-        Get the image description.
-
-        :rtype: ``str``
-        :return: Description for this image as returned by the cloud middleware
-        """
-        return self._ec2_image.description
+        try:
+            return self._ec2_image.description
+        except AttributeError:
+            return None
 
     @property
     def min_disk(self):
-        """
-        Returns the minimum size of the disk that's required to
-        boot this image (in GB)
-
-        :rtype: ``int``
-        :return: The minimum disk size needed by this image
-        """
-        bdm = self._ec2_image.block_device_mapping.get(
-            self._ec2_image.root_device_name)
-        return bdm.size if bdm else None
+        vols = [bdm.get('Ebs', {}) for bdm in
+                self._ec2_image.block_device_mappings if
+                bdm.get('DeviceName') == self._ec2_image.root_device_name]
+        if vols:
+            return vols[0].get('VolumeSize')
+        else:
+            return None
 
     def delete(self):
-        """
-        Delete this image
-        """
-        self._ec2_image.deregister(delete_snapshot=True)
+        snapshot_id = [
+            bdm.get('Ebs', {}).get('SnapshotId') for bdm in
+            self._ec2_image.block_device_mappings if
+            bdm.get('DeviceName') == self._ec2_image.root_device_name]
+
+        self._ec2_image.deregister()
+        self.wait_for([MachineImageState.UNKNOWN, MachineImageState.ERROR])
+        snapshot = self._provider.block_store.snapshots.get(snapshot_id[0])
+        if snapshot:
+            snapshot.delete()
 
     @property
     def state(self):
-        return AWSMachineImage.IMAGE_STATE_MAP.get(
-            self._ec2_image.state, MachineImageState.UNKNOWN)
+        try:
+            return AWSMachineImage.IMAGE_STATE_MAP.get(
+                self._ec2_image.state, MachineImageState.UNKNOWN)
+        except AttributeError:
+            return MachineImageState.UNKNOWN
 
     def refresh(self):
-        """
-        Refreshes the state of this instance by re-querying the cloud provider
-        for its latest state.
-        """
-        image = self._provider.compute.images.get(self.id)
-        if image:
-            # pylint:disable=protected-access
-            self._ec2_image = image._ec2_image
-        else:
-            # image no longer exists
-            self._ec2_image.state = "unknown"
+        self._ec2_image.reload()
 
 
 class AWSPlacementZone(BasePlacementZone):
@@ -140,32 +126,14 @@ class AWSPlacementZone(BasePlacementZone):
 
     @property
     def id(self):
-        """
-        Get the zone id
-
-        :rtype: ``str``
-        :return: ID for this zone as returned by the cloud middleware.
-        """
         return self._aws_zone
 
     @property
     def name(self):
-        """
-        Get the zone name.
-
-        :rtype: ``str``
-        :return: Name for this zone as returned by the cloud middleware.
-        """
         return self._aws_zone
 
     @property
     def region_name(self):
-        """
-        Get the region that this zone belongs to.
-
-        :rtype: ``str``
-        :return: Name of this zone's region as returned by the cloud middleware
-        """
         return self._aws_region
 
 
@@ -240,177 +208,135 @@ class AWSInstance(BaseInstance):
 
     @property
     def id(self):
-        """
-        Get the instance identifier.
-        """
         return self._ec2_instance.id
 
     @property
     def name(self):
         """
-        Get the instance name.
-
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
-        return self._ec2_instance.tags.get('Name')
+        return find_tag_value(self._ec2_instance.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        """
-        Set the instance name.
-        """
         self.assert_valid_resource_name(value)
-        self._ec2_instance.add_tag('Name', value)
+        self._ec2_instance.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def public_ips(self):
-        """
-        Get all the public IP addresses for this instance.
-        """
-        return [self._ec2_instance.ip_address]
+        return [self._ec2_instance.public_ip_address]
 
     @property
     def private_ips(self):
-        """
-        Get all the private IP addresses for this instance.
-        """
         return [self._ec2_instance.private_ip_address]
 
     @property
     def instance_type_id(self):
-        """
-        Get the instance type name.
-        """
         return self._ec2_instance.instance_type
 
     @property
     def instance_type(self):
-        """
-        Get the instance type.
-        """
         return self._provider.compute.instance_types.find(
             name=self._ec2_instance.instance_type)[0]
 
     def reboot(self):
-        """
-        Reboot this instance (using the cloud middleware API).
-        """
         self._ec2_instance.reboot()
 
     def terminate(self):
-        """
-        Permanently terminate this instance.
-        """
         self._ec2_instance.terminate()
 
     @property
     def image_id(self):
-        """
-        Get the image ID for this insance.
-        """
         return self._ec2_instance.image_id
 
     @property
     def zone_id(self):
-        """
-        Get the placement zone id where this instance is running.
-        """
-        return self._ec2_instance.placement
+        return self._ec2_instance.placement.get('AvailabilityZone')
 
     @property
     def security_groups(self):
-        """
-        Get the security groups associated with this instance.
-        """
-        # boto instance.groups field returns a ``Group`` object so need to
-        # convert that into a ``SecurityGroup`` object before creating a
-        # cloudbridge SecurityGroup object
-        return [self._provider.security.security_groups.get(group.id)
-                for group in self._ec2_instance.groups]
+        return [
+            self._provider.security.security_groups.get(group_id)
+            for group_id in self.security_group_ids
+            ]
 
     @property
     def security_group_ids(self):
-        """
-        Get the security groups IDs associated with this instance.
-        """
-        return [group.id for group in self._ec2_instance.groups]
+        return list(set([
+                            group.get('GroupId') for group in
+                            self._ec2_instance.security_groups
+                            ]))
 
     @property
     def key_pair_name(self):
-        """
-        Get the name of the key pair associated with this instance.
-        """
         return self._ec2_instance.key_name
 
     def create_image(self, name):
-        """
-        Create a new image based on this instance.
-        """
         self.assert_valid_resource_name(name)
 
-        image_id = self._ec2_instance.create_image(name)
-        # Sometimes, the image takes a while to register, so retry a few times
-        # if the image cannot be found
-        retry_decorator = retry(retry_on_result=lambda result: result is None,
-                                stop_max_attempt_number=3, wait_fixed=1000)
-        image = retry_decorator(self._provider.compute.images.get)(image_id)
+        image = AWSMachineImage(self._provider,
+                                self._ec2_instance.create_image(Name=name))
+        # Wait for the image to exist
+        self._provider.ec2_conn.meta.client.get_waiter('image_exists').wait(
+            ImageIds=[image.id])
+        # Return the image
+        image.refresh()
         return image
 
     def add_floating_ip(self, ip_address):
-        """
-        Add an elastic IP address to this instance.
-        """
-        if self._ec2_instance.vpc_id:
-            aid = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
-            return self._provider.ec2_conn.associate_address(
-                self._ec2_instance.id, allocation_id=aid.allocation_id)
-        else:
-            return self._ec2_instance.use_ip(ip_address)
+        allocation_id = (
+            None if not self._ec2_instance.vpc_id else
+            ip_address.id if isinstance(ip_address, AWSFloatingIP) else
+            [x for x in self._provider.networking.networks.floating_ips
+             if x.public_ip == ip_address][0].id)
+        params = trim_empty_params({
+            'InstanceId': self.id,
+            'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
+            'AllocationId': allocation_id})
+        self._provider.ec2_conn.meta.client.associate_address(**params)
+        self.refresh()
 
     def remove_floating_ip(self, ip_address):
-        """
-        Remove a elastic IP address from this instance.
-        """
-        ip_addr = self._provider._vpc_conn.get_all_addresses([ip_address])[0]
-        if self._ec2_instance.vpc_id:
-            return self._provider.ec2_conn.disassociate_address(
-                association_id=ip_addr.association_id)
-        else:
-            return self._provider.ec2_conn.disassociate_address(
-                public_ip=ip_addr.public_ip)
+        association_id = (
+            None if not self._ec2_instance.vpc_id else
+            ip_address._ip.association_id
+            if isinstance(ip_address, AWSFloatingIP) else
+            [x for x in self._ec2_instance.vpc_addresses.all()
+             if x.public_ip == ip_address][0].association_id)
+        params = trim_empty_params({
+            'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
+            'AssociationId': association_id})
+        self._provider.ec2_conn.meta.client.disassociate_address(**params)
+        self.refresh()
 
     def add_security_group(self, sg):
-        """
-        Add a security group to this instance
-        """
         self._ec2_instance.modify_attribute(
-            'groupSet', [g.id for g in self._ec2_instance.groups] + [sg.id])
+            Groups=self.security_group_ids + [sg.id])
 
     def remove_security_group(self, sg):
-        """
-        Remove a security group from this instance
-        """
         self._ec2_instance.modify_attribute(
-            'groupSet', [g.id for g in self._ec2_instance.groups
-                         if g.id != sg.id])
+            Groups=([sg_id for sg_id in self.security_group_ids
+                     if sg_id != sg.id]))
 
     @property
     def state(self):
-        return AWSInstance.INSTANCE_STATE_MAP.get(
-            self._ec2_instance.state, InstanceState.UNKNOWN)
+        try:
+            return AWSInstance.INSTANCE_STATE_MAP.get(
+                self._ec2_instance.state['Name'], InstanceState.UNKNOWN)
+        except AttributeError:
+            return InstanceState.UNKNOWN
 
     def refresh(self):
-        """
-        Refreshes the state of this instance by re-querying the cloud provider
-        for its latest state.
-        """
         try:
-            self._ec2_instance.update(validate=True)
-        except (EC2ResponseError, ValueError):
-            # The volume no longer exists and cannot be refreshed.
-            # set the status to unknown
-            self._ec2_instance.status = 'unknown'
+            self._ec2_instance.reload()
+        except ClientError:
+            # The instance no longer exists and cannot be refreshed.
+            # set the state to unknown
+            self._ec2_instance.state = {'Name': InstanceState.UNKNOWN}
+
+    def _wait_till_exists(self, timeout=None, interval=None):
+        self._ec2_instance.wait_until_exists()
 
 
 class AWSVolume(BaseVolume):
@@ -437,29 +363,21 @@ class AWSVolume(BaseVolume):
 
     @property
     def name(self):
-        """
-        Get the volume name.
-
-        .. note:: an instance must have a (case sensitive) tag ``Name``
-        """
-        return self._volume.tags.get('Name')
+        return find_tag_value(self._volume.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        """
-        Set the volume name.
-        """
         self.assert_valid_resource_name(value)
-        self._volume.add_tag('Name', value)
+        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def description(self):
-        return self._volume.tags.get('Description')
+        return find_tag_value(self._volume.tags, 'Description')
 
     @description.setter
     def description(self, value):
-        self._volume.add_tag('Description', value)
+        self._volume.create_tags(Tags=[{'Key': 'Description', 'Value': value}])
 
     @property
     def size(self):
@@ -471,7 +389,7 @@ class AWSVolume(BaseVolume):
 
     @property
     def zone_id(self):
-        return self._volume.zone
+        return self._volume.availability_zone
 
     @property
     def source(self):
@@ -482,61 +400,54 @@ class AWSVolume(BaseVolume):
 
     @property
     def attachments(self):
-        if self._volume.attach_data and self._volume.attach_data.id:
-            return BaseAttachmentInfo(self,
-                                      self._volume.attach_data.instance_id,
-                                      self._volume.attach_data.device)
-        else:
-            return None
+        return [
+            BaseAttachmentInfo(self,
+                               a.get('InstanceId'),
+                               a.get('Device'))
+            for a in self._volume.attachments
+            ][0] if self._volume.attachments else None
 
     def attach(self, instance, device):
-        """
-        Attach this volume to an instance.
-        """
         instance_id = instance.id if isinstance(
             instance,
             AWSInstance) else instance
-        self._volume.attach(instance_id, device)
+        self._volume.attach_to_instance(InstanceId=instance_id,
+                                        Device=device)
 
     def detach(self, force=False):
-        """
-        Detach this volume from an instance.
-        """
-        self._volume.detach()
+        a = self.attachments
+        if a:
+            self._volume.detach_from_instance(
+                InstanceId=a.instance_id,
+                Device=a.device,
+                Force=force)
 
     def create_snapshot(self, name, description=None):
-        """
-        Create a snapshot of this Volume.
-        """
         snap = AWSSnapshot(
             self._provider,
             self._volume.create_snapshot(
-                description=description))
+                Description=description))
         snap.name = name
         return snap
 
     def delete(self):
-        """
-        Delete this volume.
-        """
         self._volume.delete()
 
     @property
     def state(self):
-        return AWSVolume.VOLUME_STATE_MAP.get(
-            self._volume.status, VolumeState.UNKNOWN)
+        try:
+            return AWSVolume.VOLUME_STATE_MAP.get(
+                self._volume.state, VolumeState.UNKNOWN)
+        except AttributeError:
+            return VolumeState.UNKNOWN
 
     def refresh(self):
-        """
-        Refreshes the state of this volume by re-querying the cloud provider
-        for its latest state.
-        """
         try:
-            self._volume.update(validate=True)
-        except (EC2ResponseError, ValueError):
+            self._volume.reload()
+        except ClientError:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._volume.status = 'unknown'
+            self._volume.state = VolumeState.UNKNOWN
 
 
 class AWSSnapshot(BaseSnapshot):
@@ -545,6 +456,7 @@ class AWSSnapshot(BaseSnapshot):
     # ApiReference-cmd-DescribeSnapshots.html
     SNAPSHOT_STATE_MAP = {
         'pending': SnapshotState.PENDING,
+        'deleting': SnapshotState.PENDING,
         'completed': SnapshotState.AVAILABLE,
         'error': SnapshotState.ERROR
     }
@@ -559,29 +471,22 @@ class AWSSnapshot(BaseSnapshot):
 
     @property
     def name(self):
-        """
-        Get the snapshot name.
-
-        .. note:: an instance must have a (case sensitive) tag ``Name``
-        """
-        return self._snapshot.tags.get('Name')
+        return find_tag_value(self._snapshot.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        """
-        Set the snapshot name.
-        """
         self.assert_valid_resource_name(value)
-        self._snapshot.add_tag('Name', value)
+        self._snapshot.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def description(self):
-        return self._snapshot.tags.get('Description')
+        return find_tag_value(self._snapshot.tags, 'Description')
 
     @description.setter
     def description(self, value):
-        self._snapshot.add_tag('Description', value)
+        self._snapshot.create_tags(Tags=[{
+            'Key': 'Description', 'Value': value}])
 
     @property
     def size(self):
@@ -597,35 +502,31 @@ class AWSSnapshot(BaseSnapshot):
 
     @property
     def state(self):
-        return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
-            self._snapshot.status, SnapshotState.UNKNOWN)
+        try:
+            return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
+                self._snapshot.state, SnapshotState.UNKNOWN)
+        except AttributeError:
+            return SnapshotState.UNKNOWN
 
     def refresh(self):
-        """
-        Refreshes the state of this snapshot by re-querying the cloud provider
-        for its latest state.
-        """
         try:
-            self._snapshot.update(validate=True)
-        except (EC2ResponseError, ValueError):
+            self._snapshot.reload()
+        except ClientError:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._snapshot.status = 'unknown'
+            self._snapshot.state = SnapshotState.UNKNOWN
 
     def delete(self):
-        """
-        Delete this snapshot.
-        """
         self._snapshot.delete()
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
-        """
-        Create a new Volume from this Snapshot.
-        """
-        ec2_vol = self._snapshot.create_volume(placement, size, volume_type,
-                                               iops)
-        cb_vol = AWSVolume(self._provider, ec2_vol)
-        cb_vol.name = "from_snap_{0}".format(self.id or self.name)
+        cb_vol = self._provider.block_store.volumes.create(
+            name=self.name,
+            size=size,
+            zone=placement,
+            snapshot=self.id)
+        cb_vol.wait_till_ready()
+        cb_vol.name = "from_snap_{0}".format(self.name or self.id)
         return cb_vol
 
 
@@ -636,14 +537,7 @@ class AWSKeyPair(BaseKeyPair):
 
     @property
     def material(self):
-        """
-        Unencrypted private key.
-
-        :rtype: str
-        :return: Unencrypted private key or ``None`` if not available.
-
-        """
-        return self._key_pair.material
+        return self._key_pair.key_material
 
 
 class AWSSecurityGroup(BaseSecurityGroup):
@@ -652,79 +546,71 @@ class AWSSecurityGroup(BaseSecurityGroup):
         super(AWSSecurityGroup, self).__init__(provider, security_group)
 
     @property
+    def name(self):
+        return self._security_group.group_name
+
+    @property
     def network_id(self):
         return self._security_group.vpc_id
 
     @property
     def rules(self):
         return [AWSSecurityGroupRule(self._provider, r, self)
-                for r in self._security_group.rules]
+                for r in self._security_group.ip_permissions]
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        """
-        Create a security group rule.
-
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
-        you are authorizing another group or you are authorizing some
-        ip-based rule.
-
-        :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
-
-        :type from_port: int
-        :param from_port: The beginning port number you are enabling
-
-        :type to_port: int
-        :param to_port: The ending port number you are enabling
-
-        :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block you are providing access to.
-
-        :type src_group: ``object`` of :class:`.SecurityGroup`
-        :param src_group: The Security Group you are granting access to.
-
-        :rtype: :class:``.SecurityGroupRule``
-        :return: Rule object if successful or ``None``.
-        """
         try:
-            if src_group and not isinstance(src_group, SecurityGroup):
-                src_group = self._provider.security.security_groups.get(
-                    src_group)
+            src_group_id = (
+                src_group.id if isinstance(src_group, SecurityGroup)
+                else src_group)
 
-            if self._security_group.authorize(
-                    ip_protocol=ip_protocol,
-                    from_port=from_port,
-                    to_port=to_port,
-                    cidr_ip=cidr_ip,
-                    # pylint:disable=protected-access
-                    src_group=src_group._security_group if src_group
-                    else None):
-                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                     src_group)
-        except EC2ResponseError as ec2e:
-            if ec2e.code == "InvalidPermission.Duplicate":
+            ip_perm_entry = {
+                'IpProtocol': ip_protocol,
+                'FromPort': from_port,
+                'ToPort': to_port,
+                'IpRanges': [{'CidrIp': cidr_ip}] if cidr_ip else None,
+                'UserIdGroupPairs': [{
+                    'GroupId': src_group_id}
+                ] if src_group_id else None
+            }
+            # Filter out empty values to please Boto
+            ip_perms = [trim_empty_params(ip_perm_entry)]
+            self._security_group.authorize_ingress(IpPermissions=ip_perms)
+            self._security_group.reload()
+            return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
+                                 src_group_id)
+        except ClientError as ec2e:
+            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
                 return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
                                      src_group)
             else:
                 raise ec2e
-        return None
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        for rule in self._security_group.rules:
-            if (rule.ip_protocol == ip_protocol and
-                rule.from_port == from_port and
-                rule.to_port == to_port and
-                rule.grants[0].cidr_ip == cidr_ip) or \
-                    (rule.grants[0].group_id == src_group.id if src_group and
-                        hasattr(rule.grants[0], 'group_id') else False):
-                return AWSSecurityGroupRule(self._provider, rule, self)
+        src_group_id = (src_group.id if isinstance(src_group, SecurityGroup)
+                        else src_group)
+        for rule in self._security_group.ip_permissions:
+            if ip_protocol and rule['IpProtocol'] != ip_protocol:
+                continue
+            elif from_port and rule['FromPort'] != from_port:
+                continue
+            elif to_port and rule['ToPort'] != to_port:
+                continue
+            elif cidr_ip:
+                if cidr_ip not in [x['CidrIp'] for x in rule['IpRanges']]:
+                    continue
+            elif src_group_id:
+                if src_group_id not in [
+                    group_pair.get('GroupId') for group_pair in
+                    rule.get('UserIdGroupPairs', [])]:
+                    continue
+            return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        attr = inspect.getmembers(self, lambda a: not inspect.isroutine(a))
         js = {k: v for (k, v) in attr if not k.startswith('_')}
         json_rules = [r.to_json() for r in self.rules]
         js['rules'] = json_rules
@@ -740,9 +626,6 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def id(self):
-        """
-        AWS does not support rule IDs so compose one.
-        """
         md5 = hashlib.md5()
         md5.update("{0}-{1}-{2}-{3}".format(
             self.ip_protocol, self.from_port, self.to_port, self.cidr_ip)
@@ -751,34 +634,37 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
     @property
     def ip_protocol(self):
-        return self._rule.ip_protocol
+        return self._rule.get('IpProtocol')
 
     @property
     def from_port(self):
-        if str(self._rule.from_port).isdigit():
-            return int(self._rule.from_port)
-        return 0
+        return self._rule.get('FromPort', 0)
 
     @property
     def to_port(self):
-        if str(self._rule.to_port).isdigit():
-            return int(self._rule.to_port)
-        return 0
+        return self._rule.get('ToPort', 0)
 
     @property
     def cidr_ip(self):
-        if len(self._rule.grants) > 0:
-            return self._rule.grants[0].cidr_ip
+        if len(self._rule.get('IpRanges', [])) > 0:
+            return self._rule['IpRanges'][0].get('CidrIp')
         return None
 
     @property
+    def group_id(self):
+        if len(self._rule['UserIdGroupPairs']) > 0:
+            return self._rule['UserIdGroupPairs'][0]['GroupId']
+        else:
+            return None
+
+    @property
     def group(self):
-        if len(self._rule.grants) > 0:
-            if self._rule.grants[0].group_id:
-                cg = self._provider.ec2_conn.get_all_security_groups(
-                    group_ids=[self._rule.grants[0].group_id])[0]
-                return AWSSecurityGroup(self._provider, cg)
-        return None
+        if self.group_id:
+            return AWSSecurityGroup(
+                self._provider,
+                self._provider.ec2_conn.SecurityGroup(self.group_id))
+        else:
+            return None
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
@@ -788,91 +674,82 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
         return js
 
     def delete(self):
-        if self.group:
-            # pylint:disable=protected-access
-            self.parent._security_group.revoke(
-                ip_protocol=self.ip_protocol,
-                from_port=self.from_port,
-                to_port=self.to_port,
-                src_group=self.group._security_group)
-        else:
-            # pylint:disable=protected-access
-            self.parent._security_group.revoke(self.ip_protocol,
-                                               self.from_port,
-                                               self.to_port,
-                                               self.cidr_ip)
+
+        ip_perm_entry = {
+            'IpProtocol': self.ip_protocol,
+            'FromPort': self.from_port,
+            'ToPort': self.to_port,
+            'IpRanges': [{'CidrIp': self.cidr_ip}] if self.cidr_ip else None,
+            'UserIdGroupPairs': [{
+                'GroupId': self.group_id}
+            ] if self.group_id else None
+        }
+
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        self.parent._security_group.revoke_ingress(IpPermissions=ip_perms)
+        self.parent._security_group.reload()
 
 
 class AWSBucketObject(BaseBucketObject):
+    class BucketObjIterator():
+        CHUNK_SIZE = 4096
 
-    def __init__(self, provider, key):
+        def __init__(self, body):
+            self.body = body
+
+        def __iter__(self):
+            while True:
+                data = self.read(self.CHUNK_SIZE)
+                if data:
+                    yield data
+                else:
+                    break
+
+        def read(self, length):
+            return self.body.read(amt=length)
+
+        def close(self):
+            return self.body.close()
+
+    def __init__(self, provider, obj):
         super(AWSBucketObject, self).__init__(provider)
-        self._key = key
+        self._obj = obj
 
     @property
     def id(self):
-        return self._key.name
+        return self._obj.key
 
     @property
     def name(self):
-        """
-        Get this object's name.
-        """
-        return self._key.name
+        return self.id
 
     @property
     def size(self):
-        """
-        Get this object's size.
-        """
-        return self._key.size
+        return self._obj.size
 
     @property
     def last_modified(self):
-        """
-        Get the date and time this object was last modified.
-        """
-        if self._key.last_modified:
-            lm = datetime.strptime(self._key.last_modified,
-                                   "%Y-%m-%dT%H:%M:%S.%fZ")
-            return lm.strftime("%Y-%m-%dT%H:%M:%S.%f")
-        else:
-            return None
+        return self._obj.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):
-        """
-        Returns this object's content as an
-        iterable.
-        """
-        return self._key
+        return self.BucketObjIterator(self._obj.get().get('Body'))
 
     def upload(self, data):
-        """
-        Set the contents of this object to the data read from the source
-        string.
-        """
-        self._key.set_contents_from_string(data)
+        self._obj.put(Body=data)
 
     def upload_from_file(self, path):
-        """
-        Store the contents of the file pointed by the "path" variable.
-        """
-        self._key.set_contents_from_filename(path)
+        self._obj.upload_file(path)
 
     def delete(self):
-        """
-        Delete this object.
-
-        :rtype: bool
-        :return: True if successful
-        """
-        self._key.delete()
+        self._obj.delete()
 
     def generate_url(self, expires_in=0):
-        """
-        Generate a URL to this object.
-        """
-        return self._key.generate_url(expires_in=expires_in)
+        return self._provider.s3_conn.meta.client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
+            ExpiresIn=expires_in)
 
 
 class AWSBucket(BaseBucket):
@@ -887,29 +764,24 @@ class AWSBucket(BaseBucket):
 
     @property
     def name(self):
-        """
-        Get this bucket's name.
-        """
         return self._bucket.name
 
     def get(self, name):
-        """
-        Retrieve a given object from this bucket.
-        """
-        key = Key(self._bucket, name)
-        if key and key.exists():
-            return AWSBucketObject(self._provider, key)
-        return None
+        try:
+            obj = self._bucket.Object(name)
+            # load() throws an error if object does not exist
+            obj.load()
+            return AWSBucketObject(self._provider, obj)
+        except ClientError:
+            return None
 
     def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-
-        :rtype: BucketObject
-        :return: List of all available BucketObjects within this bucket.
-        """
+        if prefix:
+            boto_objs = self._bucket.objects.filter(Prefix=prefix)
+        else:
+            boto_objs = self._bucket.objects.all()
         objects = [AWSBucketObject(self._provider, obj)
-                   for obj in self._bucket.list(prefix=prefix)]
+                   for obj in boto_objs]
 
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
@@ -921,14 +793,11 @@ class AWSBucket(BaseBucket):
                                      limit=limit, marker=marker)
 
     def delete(self, delete_contents=False):
-        """
-        Delete this bucket.
-        """
         self._bucket.delete()
 
     def create_object(self, name):
-        key = Key(self._bucket, name)
-        return AWSBucketObject(self._provider, key)
+        obj = self._bucket.Object(name)
+        return AWSBucketObject(self._provider, obj)
 
 
 class AWSRegion(BaseRegion):
@@ -939,30 +808,24 @@ class AWSRegion(BaseRegion):
 
     @property
     def id(self):
-        return self._aws_region.name
+        return self._aws_region.get('RegionName')
 
     @property
     def name(self):
-        return self._aws_region.name
+        return self.id
 
     @property
     def zones(self):
-        """
-        Accesss information about placement zones within this region.
-        """
-        if self.name == self._provider.region_name:  # optimisation
-            zones = self._provider.ec2_conn.get_all_zones()
-            return [AWSPlacementZone(self._provider, zone.name,
-                                     self._provider.region_name)
-                    for zone in zones]
+        if self.id == self._provider.region_name:  # optimisation
+            conn = self._provider.ec2_conn
         else:
-            region = [region for region in
-                      self._provider.ec2_conn.get_all_regions()
-                      if self.name == region.name][0]
-            conn = self._provider._conect_ec2_region(region)
-            zones = conn.get_all_zones()
-            return [AWSPlacementZone(self._provider, zone.name, region.name)
-                    for zone in zones]
+            conn = self._provider._conect_ec2_region(region_name=self.id)
+
+        zones = (conn.meta.client.describe_availability_zones()
+                 .get('AvailabilityZones', []))
+        return [AWSPlacementZone(self._provider, zone.get('ZoneName'),
+                                 self.id)
+                for zone in zones]
 
 
 class AWSNetwork(BaseNetwork):
@@ -984,21 +847,13 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def name(self):
-        """
-        Get the network name.
-
-        .. note:: the network must have a (case sensitive) tag ``Name``
-        """
-        return self._vpc.tags.get('Name')
+        return find_tag_value(self._vpc.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        """
-        Set the network name.
-        """
         self.assert_valid_resource_name(value)
-        self._vpc.add_tag('Name', value)
+        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def external(self):
@@ -1010,8 +865,11 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def state(self):
-        return AWSNetwork._NETWORK_STATE_MAP.get(
-            self._vpc.state, NetworkState.UNKNOWN)
+        try:
+            return AWSNetwork._NETWORK_STATE_MAP.get(
+                self._vpc.state, NetworkState.UNKNOWN)
+        except AttributeError:
+            return NetworkState.UNKNOWN
 
     @property
     def cidr_block(self):
@@ -1022,21 +880,20 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def subnets(self):
-        flter = {'vpc-id': self.id}
-        subnets = self._provider.vpc_conn.get_all_subnets(filters=flter)
-        return [AWSSubnet(self._provider, subnet) for subnet in subnets]
+        return [AWSSubnet(self._provider, s) for s in self._vpc.subnets.all()]
 
     def refresh(self):
-        """
-        Refreshes the state of this instance by re-querying the cloud provider
-        for its latest state.
-        """
         try:
-            self._vpc.update(validate=True)
-        except (EC2ResponseError, ValueError):
+            self._vpc.reload()
+        except ClientError:
             # The network no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._vpc.state = 'unknown'
+            self._vpc.state = NetworkState.UNKNOWN
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self._provider.ec2_conn.meta.client.get_waiter('vpc_available').wait(
+            VpcIds=[self.id])
+        self.refresh()
 
 
 class AWSSubnet(BaseSubnet):
@@ -1056,21 +913,13 @@ class AWSSubnet(BaseSubnet):
 
     @property
     def name(self):
-        """
-        Get the subnet name.
-
-        .. note:: the subnet must have a (case sensitive) tag ``Name``
-        """
-        return self._subnet.tags.get('Name')
+        return find_tag_value(self._subnet.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        """
-        Set the subnet name.
-        """
         self.assert_valid_resource_name(value)
-        self._subnet.add_tag('Name', value)
+        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def cidr_block(self):
@@ -1086,12 +935,15 @@ class AWSSubnet(BaseSubnet):
                                 self._provider.region_name)
 
     def delete(self):
-        return self._provider.vpc_conn.delete_subnet(subnet_id=self.id)
+        self._subnet.delete()
 
     @property
     def state(self):
-        return self._SUBNET_STATE_MAP.get(
-            self._subnet.state, NetworkState.UNKNOWN)
+        try:
+            return self._SUBNET_STATE_MAP.get(
+                self._subnet.state, SubnetState.UNKNOWN)
+        except AttributeError:
+            return SubnetState.UNKNOWN
 
     def refresh(self):
         subnet = self._provider.networking.subnets.get(self.id)
@@ -1100,7 +952,7 @@ class AWSSubnet(BaseSubnet):
             self._subnet = subnet._subnet
         else:
             # subnet no longer exists
-            self._subnet.state = "unknown"
+            self._subnet.state = SubnetState.UNKNOWN
 
 
 class AWSFloatingIP(BaseFloatingIP):
@@ -1125,7 +977,7 @@ class AWSFloatingIP(BaseFloatingIP):
         return True if self._ip.instance_id else False
 
     def delete(self):
-        return self._ip.delete()
+        return self._ip.release()
 
 
 class AWSRouter(BaseRouter):
@@ -1139,25 +991,19 @@ class AWSRouter(BaseRouter):
 
     @property
     def name(self):
-        """
-        Get the router name.
-
-        .. note:: the router must have a (case sensitive) tag ``Name``
-        """
-        return self._route_table.tags.get('Name')
+        return find_tag_value(self._route_table.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        """
-        Set the router name.
-        """
         self.assert_valid_resource_name(value)
-        self._route_table.add_tag('Name', value)
+        self._route_table.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     def refresh(self):
-        self._route_table = self._provider.vpc_conn.get_all_route_tables(
-            [self.id])[0]
+        try:
+            self._route_table.reload()
+        except ClientError:
+            self._route_table.associations = None
 
     @property
     def state(self):
@@ -1170,27 +1016,32 @@ class AWSRouter(BaseRouter):
         return self._route_table.vpc_id
 
     def delete(self):
-        self._provider.vpc_conn.delete_route_table(self.id)
+        self._route_table.delete()
 
     def attach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
-        self._provider.vpc_conn.associate_route_table(self.id, subnet_id)
+        self._route_table.associate_with_subnet(SubnetId=subnet_id)
         self.refresh()
 
     def detach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
-        association_ids = [a.id for a in self._route_table.associations
-                           if a.subnet_id == subnet_id]
-        for a_id in association_ids:
-            self._provider.vpc_conn.disassociate_route_table(a_id)
+        associations = [a for a in self._route_table.associations
+                        if a.subnet_id == subnet_id]
+        for a in associations:
+            a.delete()
+        self.refresh()
 
     def attach_gateway(self, gateway):
-        return self._provider.vpc_conn.attach_internet_gateway(
-            gateway.id, self.network_id)
+        gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
+                 else gateway)
+        return self._provider.ec2_conn.meta.client.attach_internet_gateway(
+            InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
 
     def detach_gateway(self, gateway):
-        return self._provider.vpc_conn.detach_internet_gateway(
-            gateway.id, self.network_id)
+        gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
+                 else gateway)
+        return self._provider.ec2_conn.meta.client.detach_internet_gateway(
+            InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
 
 
 class AWSInternetGateway(BaseInternetGateway):
@@ -1205,27 +1056,18 @@ class AWSInternetGateway(BaseInternetGateway):
 
     @property
     def name(self):
-        """
-        Get the gateway name.
-
-        .. note:: the gateway must have a (case sensitive) tag ``Name``
-        """
-        return self._gateway.tags.get('Name')
+        return find_tag_value(self._gateway.tags, 'Name')
 
     @name.setter
     # pylint:disable=arguments-differ
     def name(self, value):
-        """
-        Set the router name.
-        """
         self.assert_valid_resource_name(value)
-        self._gateway.add_tag('Name', value)
+        self._gateway.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     def refresh(self):
-        gateways = self._provider.vpc_conn.get_all_internet_gateways([self.id])
-        if gateways:
-            self._gateway = gateways[0]
-        else:
+        try:
+            self._gateway.reload()
+        except ClientError:
             self._gateway.state = GatewayState.UNKNOWN
 
     @property
@@ -1238,11 +1080,11 @@ class AWSInternetGateway(BaseInternetGateway):
     @property
     def network_id(self):
         if self._gateway.attachments:
-            return self._gateway.attachments[0].vpc_id
+            return self._gateway.attachments[0].get('VpcId')
         return None
 
     def delete(self):
-        return self._provider._vpc_conn.delete_internet_gateway(self.id)
+        self._gateway.delete()
 
 
 class AWSLaunchConfig(BaseLaunchConfig):

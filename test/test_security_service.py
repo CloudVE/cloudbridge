@@ -1,11 +1,8 @@
 """Test cloudbridge.security modules."""
-import unittest
-
 from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
 
@@ -63,7 +60,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group_properties(self):
-        """Test properties of a security group."""
         name = 'cb_propsg-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
@@ -113,12 +109,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group_rule_add_twice(self):
-        """Test whether adding the same rule twice succeeds."""
-        if isinstance(self.provider, TestMockHelperMixin):
-            raise unittest.SkipTest(
-                "Mock provider returns InvalidParameterValue: "
-                "Value security_group is invalid for parameter.")
-
         name = 'cb_sgruletwice-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
@@ -143,7 +133,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.security_groups'])
     def test_security_group_group_rule(self):
-        """Test for proper creation of a security group rule."""
         name = 'cb_sgrule-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow

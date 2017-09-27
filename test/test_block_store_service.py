@@ -24,7 +24,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         Create a new volume, check whether the expected values are set,
         and delete it
         """
-
         def create_vol(name):
             return self.provider.block_store.volumes.create(
                 name,
@@ -115,9 +114,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(test_vol.attachments.volume, test_vol)
                 self.assertEqual(test_vol.attachments.instance_id,
                                  test_instance.id)
-                if not self.provider.PROVIDER_ID == 'azure':
-                    self.assertEqual(test_vol.attachments.device,
-                                     "/dev/sda2")
+                self.assertEqual(test_vol.attachments.device,
+                                 "/dev/sda2")
                 test_vol.detach()
                 test_vol.name = 'newvolname1'
                 test_vol.wait_for(
@@ -163,8 +161,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 return self.provider.block_store.snapshots.create(
                     name=name, volume=test_vol, description=name)
 
-            if not isinstance(self.provider, TestMockHelperMixin) and \
-                            self.provider.PROVIDER_ID == ProviderList.AWS:
+            if (self.provider.PROVIDER_ID == ProviderList.AWS and
+                    not isinstance(self.provider, TestMockHelperMixin)):
                 time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
             sit.check_crud(self, self.provider.block_store.snapshots, Snapshot,
                            "cb_snaptwo", create_snap2, cleanup_snap)
