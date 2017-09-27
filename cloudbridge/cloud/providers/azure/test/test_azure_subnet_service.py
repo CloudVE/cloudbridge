@@ -50,7 +50,7 @@ class AzureSubnetServiceTestCase(ProviderTestBase):
 
     def test_azure_create_and_delete_from_resource_subnet(self):
         network_id = 'CloudBridgeNet4'
-        subnet = self.provider.network.\
+        subnet = self.provider.network. \
             subnets.create(network=network_id,
                            cidr_block='10.0.0.0/24')
         self.assertIsNotNone(subnet.zone)
@@ -62,7 +62,7 @@ class AzureSubnetServiceTestCase(ProviderTestBase):
 
     def test_azure_create_and_delete_from_service_subnet(self):
         network_id = 'CloudBridgeNet4'
-        subnet = self.provider.network.\
+        subnet = self.provider.network. \
             subnets.create(network=network_id,
                            name='test', cidr_block='10.0.0.0/24')
         self.assertIsNotNone(subnet)
@@ -72,7 +72,7 @@ class AzureSubnetServiceTestCase(ProviderTestBase):
         self.assertFalse(deleted)
 
     def test_azure_create_or_get_default_subnet(self):
-        subnet = self.provider.network.\
+        subnet = self.provider.network. \
             subnets.get_or_create_default()
         self.assertIsNotNone(subnet)
         subnet = self.provider.network. \

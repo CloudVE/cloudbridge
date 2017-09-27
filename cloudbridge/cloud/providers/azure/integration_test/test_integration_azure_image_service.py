@@ -1,12 +1,11 @@
 from cloudbridge.cloud.providers.azure.integration_test import helpers
-from cloudbridge.cloud.providers.azure.\
+from cloudbridge.cloud.providers.azure. \
     integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationImageServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.images'])
     def test_azure_image_service(self):
-
         images_list = self.provider.compute.images.list()
         print("Images List" + str(images_list))
         print("List count - " + str(len(images_list)))
@@ -14,7 +13,7 @@ class AzureIntegrationImageServiceTestCase(ProviderTestBase):
         print(str(images_list[0].name))
 
         if images_list.total_results > 0:
-            found_images_list = self.provider.compute.images.\
+            found_images_list = self.provider.compute.images. \
                 find(images_list[0].name)
             print("Find Images  count - {0}".
                   format(str(found_images_list.total_results)))

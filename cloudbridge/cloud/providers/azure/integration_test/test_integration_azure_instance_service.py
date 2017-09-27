@@ -1,7 +1,7 @@
 import uuid
 
 from cloudbridge.cloud.providers.azure.integration_test import helpers
-from cloudbridge.cloud.providers.azure.\
+from cloudbridge.cloud.providers.azure. \
     integration_test.helpers import ProviderTestBase
 
 
@@ -21,7 +21,7 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
 
         self.assertIsNotNone(img)
 
-        key_pair = self.provider.security.\
+        key_pair = self.provider.security. \
             key_pairs.create(key_pair_name)
 
         self.assertIsNotNone(key_pair)
@@ -40,7 +40,7 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
 
         self.assertIsNotNone(subnet)
 
-        sg = self.provider.security.security_groups.\
+        sg = self.provider.security.security_groups. \
             create(security_group_name,
                    'A security group used by CloudBridge', '')
 
@@ -60,14 +60,14 @@ class AzureIntegrationInstanceServiceTestCase(ProviderTestBase):
 
         lc = self.provider.compute.instances.create_launch_config()
 
-        volume = self.provider.block_store.\
+        volume = self.provider.block_store. \
             volumes.create('CbAzure-Vol-{0}'.format(uuid.uuid4().hex[:6]), 30)
 
         volume.wait_till_ready()
 
         self.assertIsNotNone(volume)
 
-        snapshot = volume.\
+        snapshot = volume. \
             create_snapshot('CbAzure-Snap-{0}'.format(uuid.uuid4().hex[:6]))
 
         snapshot.wait_till_ready()

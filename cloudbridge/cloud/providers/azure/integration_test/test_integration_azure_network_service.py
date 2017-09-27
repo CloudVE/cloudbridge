@@ -1,7 +1,7 @@
 import uuid
 
 from cloudbridge.cloud.providers.azure.integration_test import helpers
-from cloudbridge.cloud.providers.azure.\
+from cloudbridge.cloud.providers.azure. \
     integration_test.helpers import ProviderTestBase
 
 
@@ -11,7 +11,7 @@ class AzureIntegrationNetworkServiceTestCase(ProviderTestBase):
         name = 'intgtestnetworkservice-{0}'.format(uuid.uuid4().hex[:6])
         net = self.provider.network.create(name=name)
         with helpers.cleanup_action(
-            lambda:
+                lambda:
                 self.provider.network.delete(network_id=net.id)
         ):
             # test list method
@@ -44,7 +44,7 @@ class AzureIntegrationNetworkServiceTestCase(ProviderTestBase):
                 self.assertFalse(
                     ip.private_ip,
                     "Floating IP should not have a private IP value ({0})."
-                    .format(ip.private_ip))
+                        .format(ip.private_ip))
                 self.assertFalse(
                     ip.in_use(),
                     "Newly created floating IP address should not be in use.")
@@ -60,4 +60,4 @@ class AzureIntegrationNetworkServiceTestCase(ProviderTestBase):
         self.assertEqual(
             len(found_net), 0,
             "Network {0} should have been deleted but still exists."
-            .format(name))
+                .format(name))

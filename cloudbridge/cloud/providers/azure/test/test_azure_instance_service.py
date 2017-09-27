@@ -43,7 +43,7 @@ class AzureInstanceServiceTestCase(ProviderTestBase):
         inst_type = [t for t in self.provider.compute.instance_types.list()
                      if t.name == 'Standard_DS1_v2'][0]
         sg_id = 'sg2'
-        sg = self.provider.security.\
+        sg = self.provider.security. \
             security_groups.get(sg_id)
 
         subnet = self.provider.network.subnets.list()[0]

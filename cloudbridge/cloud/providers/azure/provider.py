@@ -7,7 +7,6 @@ from cloudbridge.cloud.providers.azure.services \
     import AzureBlockStoreService, AzureComputeService, \
     AzureNetworkingService, AzureObjectStoreService, AzureSecurityService
 
-
 from msrestazure.azure_exceptions import CloudError
 
 log = logging.getLogger(__name__)
@@ -81,7 +80,6 @@ class AzureCloudProvider(BaseCloudProvider):
     @property
     def azure_client(self):
         if not self._azure_client:
-
             # create a dict with both optional and mandatory configuration
             # values to pass to the azureclient class, rather
             # than passing the provider object and taking a dependency.
