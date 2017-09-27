@@ -1,7 +1,7 @@
 import uuid
 
 from cloudbridge.cloud.providers.azure.integration_test import helpers
-from cloudbridge.cloud.providers.azure.\
+from cloudbridge.cloud.providers.azure. \
     integration_test.helpers import ProviderTestBase
 
 
@@ -28,7 +28,7 @@ class AzureIntegrationSecurityServiceTestCase(ProviderTestBase):
         print(str(get.rules))
         self.assertEqual(get.name, sg_name)
 
-        get_notfound = self.provider.security.\
+        get_notfound = self.provider.security. \
             security_groups.get("SecgrupDontFindMe")
         self.assertEqual(get_notfound, None)
 

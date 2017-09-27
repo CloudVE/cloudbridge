@@ -38,12 +38,12 @@ REQS_OPENSTACK = [
 ]
 REQS_FULL = REQS_BASE + REQS_AWS + REQS_OPENSTACK + REQS_AZURE
 REQS_DEV = ([
-    'tox>=2.1.1',
-    'moto>=1.1.11',
-    'sphinx>=1.3.1',
-    'flake8>=3.3.0',
-    'flake8-import-order>=0.12'] + REQS_FULL
-)
+                'tox>=2.1.1',
+                'moto>=1.1.11',
+                'sphinx>=1.3.1',
+                'flake8>=3.3.0',
+                'flake8-import-order>=0.12'] + REQS_FULL
+            )
 
 setup(
     name='cloudbridge',

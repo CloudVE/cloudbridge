@@ -51,6 +51,7 @@ class BotoGenericService(object):
     resource, collection and paging support to implement
     basic cloudbridge methods.
     """
+
     def __init__(self, provider, cb_resource, boto_conn, boto_collection_name):
         """
         :type provider: :class:`AWSCloudProvider`
@@ -108,7 +109,7 @@ class BotoGenericService(object):
         except ClientError as e:
             error_code = e.response['Error']['Code']
             if any(status in error_code for status in
-                    ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
+                   ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
                 log.debug("Object not found: %s", resource_id)
                 return None
             else:
@@ -228,7 +229,7 @@ class BotoGenericService(object):
         collection = collection.filter(Filters=[{
             'Name': filter_name,
             'Values': [filter_value]
-            }])
+        }])
         return self.list(limit=limit, marker=marker, collection=collection)
 
     def create(self, boto_method, **kwargs):
@@ -265,6 +266,7 @@ class BotoEC2Service(BotoGenericService):
     """
     Boto EC2 service implementation
     """
+
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
         """
@@ -287,6 +289,7 @@ class BotoS3Service(BotoGenericService):
     """
     Boto S3 service implementation
     """
+
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
         """

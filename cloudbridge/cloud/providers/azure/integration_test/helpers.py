@@ -208,7 +208,7 @@ class ProviderTestBase(unittest.TestCase):
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
         config = {'default_wait_interval':
-                  self.get_provider_wait_interval(provider_class),
+                      self.get_provider_wait_interval(provider_class),
                   'azure_subscription_id':
                       '7904d702-e01c-4826-8519-f5a25c866a96',
                   'azure_client_id':

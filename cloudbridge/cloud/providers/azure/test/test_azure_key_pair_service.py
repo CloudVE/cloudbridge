@@ -36,7 +36,7 @@ class AzureKeyPairServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_azure_keypair_get_notExist(self):
         keypair_id = 'KeyPairNotExist'
-        keypair_get_not_exist = self.provider.security.\
+        keypair_get_not_exist = self.provider.security. \
             key_pairs.get(keypair_id)
         print("Get Key Pair Not Exist - " + str(keypair_get_not_exist))
         self.assertIsNone(keypair_get_not_exist)

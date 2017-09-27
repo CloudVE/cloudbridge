@@ -1,13 +1,12 @@
 from cloudbridge.cloud.providers.azure.integration_test import helpers
 
-from cloudbridge.cloud.providers.azure.\
+from cloudbridge.cloud.providers.azure. \
     integration_test.helpers import ProviderTestBase
 
 
 class AzureIntegrationInstanceTypeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.images'])
     def test_azure_instance_type_service(self):
-
         instance_type_list = self.provider.compute.instance_types.list()
         print("List Instance Types - " + str(instance_type_list))
         print("List Instance Type Properties - ")
