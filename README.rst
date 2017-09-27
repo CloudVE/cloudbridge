@@ -3,27 +3,27 @@ different cloud providers, reducing or eliminating the need to write
 conditional code for each cloud.
 
 .. image:: https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat
-   :target: https://landscape.io/github/gvlproject/cloudbridge/master
+:target: https://landscape.io/github/gvlproject/cloudbridge/master
    :alt: Landscape Code Health
 
 .. image:: https://coveralls.io/repos/gvlproject/cloudbridge/badge.svg?branch=master&service=github
-   :target: https://coveralls.io/github/gvlproject/cloudbridge?branch=master
+:target: https://coveralls.io/github/gvlproject/cloudbridge?branch=master
    :alt: Code Coverage
 
 .. image:: https://travis-ci.org/gvlproject/cloudbridge.svg?branch=master
-   :target: https://travis-ci.org/gvlproject/cloudbridge
+:target: https://travis-ci.org/gvlproject/cloudbridge
    :alt: Travis Build Status
 
 .. image:: https://codeclimate.com/github/gvlproject/cloudbridge/badges/gpa.svg
-   :target: https://codeclimate.com/github/gvlproject/cloudbridge
+:target: https://codeclimate.com/github/gvlproject/cloudbridge
    :alt: Code Climate
 
 .. image:: https://img.shields.io/pypi/v/cloudbridge.svg
-   :target: https://pypi.python.org/pypi/cloudbridge/
+:target: https://pypi.python.org/pypi/cloudbridge/
    :alt: latest version available on PyPI
 
 .. image:: https://readthedocs.org/projects/cloudbridge/badge/?version=latest
-   :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
+:target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
 

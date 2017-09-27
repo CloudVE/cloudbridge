@@ -159,7 +159,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             #             self.assertFalse(
             #                 router.network_id,
-            #                 "Router {0} should not be assoc. with a network {1}".format(
+            #                 "Router {0} should not be assoc.
+            # with a network {1}".format(
             #                     router.id, router.network_id))
 
             router.attach_subnet(sn)

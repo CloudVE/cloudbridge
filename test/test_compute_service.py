@@ -157,8 +157,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # block_devices should be empty so far
         self.assertListEqual(
             lc.block_devices, [], "No block devices should have been"
-            " added to mappings list since the configuration was"
-            " invalid")
+                                  " added to mappings list since the configuration was"
+                                  " invalid")
 
         # Add a new volume
         lc.add_volume_device(size=1, delete_on_terminate=True)
@@ -282,7 +282,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         except WaitStateException as e:
                             self.fail("The block device mapped launch did not "
                                       " complete successfully: %s" % e)
-                            # TODO: Check instance attachments and make sure they
+                            # TODO: Check instance attachments and make sure
+                            # they
                             # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
@@ -308,7 +309,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 sg in test_inst.security_groups, "Expected security group '%s'"
-                                                 " to be among instance security_groups: [%s]" %
+                                                 " to be among instance "
+                                                 "security_groups: [%s]" %
                 (sg, test_inst.security_groups))
 
             # Check removing a security group from a running instance
@@ -316,7 +318,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 sg not in test_inst.security_groups, "Expected security group"
-                                                     " '%s' to be removed from instance security_groups: [%s]" %
+                                                     " '%s' to be removed "
+                                                     "from instance "
+                                                     "security_groups: [%s]" %
                 (sg, test_inst.security_groups))
 
             # check floating ips
