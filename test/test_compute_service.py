@@ -157,7 +157,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # block_devices should be empty so far
         self.assertListEqual(
             lc.block_devices, [], "No block devices should have been"
-                                  " added to mappings list since the configuration was"
+                                  " added to mappings list since the"
+                                  "configuration was"
                                   " invalid")
 
         # Add a new volume

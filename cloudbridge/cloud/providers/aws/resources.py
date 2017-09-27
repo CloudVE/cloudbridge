@@ -604,8 +604,8 @@ class AWSSecurityGroup(BaseSecurityGroup):
             elif src_group_id:
                 if src_group_id not in [
                     group_pair.get('GroupId') for group_pair in
-                    rule.get('UserIdGroupPairs', [])]:
-                    continue
+                        rule.get('UserIdGroupPairs', [])]:
+                        continue
             return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 

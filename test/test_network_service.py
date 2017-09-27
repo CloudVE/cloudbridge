@@ -111,7 +111,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             self.assertFalse(
                 ip.private_ip,
                 "Floating IP should not have a private IP value ({0})."
-                    .format(ip.private_ip))
+                .format(ip.private_ip))
             self.assertFalse(
                 ip.in_use(),
                 "Newly created floating IP address should not be in use.")
