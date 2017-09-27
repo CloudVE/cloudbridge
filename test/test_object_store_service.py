@@ -10,7 +10,9 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 from unittest import skip
 
+from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
+from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
@@ -154,9 +156,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
 
-    @skip("Skip until OpenStack implementation is provided")
     @helpers.skipIfNoService(['object_store'])
     def test_generate_url(self):
+        if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
+            raise self.skipTest("Skip until OpenStack impl is provided")
+
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.object_store.create(name)
 
@@ -171,6 +175,10 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 obj.save_content(target_stream)
 
                 url = obj.generate_url(100)
+                if isinstance(self.provider, TestMockHelperMixin):
+                    raise self.skipTest(
+                        "Skipping rest of test - mock providers can't"
+                        " access generated url")
                 self.assertEqual(requests.get(url).content, content)
 
     @helpers.skipIfNoService(['object_store'])

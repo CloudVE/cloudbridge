@@ -51,15 +51,18 @@ class CloudInterfaceTestCase(ProviderTestBase):
                 "Mock providers are not expected to"
                 " authenticate correctly")
 
-        cloned_provider = CloudProviderFactory().create_provider(
-            self.provider.PROVIDER_ID, self.provider.config)
+        # Mock up test by clearing credentials on a per provider basis
+        cloned_config = self.provider.config.copy()
+        if self.provider.PROVIDER_ID == 'aws':
+            cloned_config['aws_access_key'] = "dummy_a_key"
+            cloned_config['aws_secret_key'] = "dummy_s_key"
+        elif self.provider.PROVIDER_ID == 'openstack':
+            cloned_config['os_username'] = "cb_dummy"
+            cloned_config['os_password'] = "cb_dummy"
+        elif self.provider.PROVIDER_ID == 'azure':
+            cloned_config['subscription_id'] = "cb_dummy"
 
         with self.assertRaises(ProviderConnectionException):
-            # Mock up test by clearing credentials on a per provider basis
-            if cloned_provider.PROVIDER_ID == 'aws':
-                cloned_provider.a_key = "dummy_a_key"
-                cloned_provider.s_key = "dummy_s_key"
-            elif cloned_provider.PROVIDER_ID == 'openstack':
-                cloned_provider.username = "cb_dummy"
-                cloned_provider.password = "cb_dummy"
+            cloned_provider = CloudProviderFactory().create_provider(
+                self.provider.PROVIDER_ID, cloned_config)
             cloned_provider.authenticate()

@@ -3,7 +3,6 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
 from cloudbridge.cloud.interfaces import MachineImageState
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import MachineImage
 
 
@@ -33,12 +32,10 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 [MachineImageState.UNKNOWN, MachineImageState.ERROR])
 
         def extra_tests(img):
-            # TODO: Fix moto so that the BDM is populated correctly
-            if not isinstance(self.provider, TestMockHelperMixin):
-                # check image size
-                img.refresh()
-                self.assertGreater(img.min_disk, 0, "Minimum disk"
-                                                    " size required by image is invalid")
+            # check image size
+            img.refresh()
+            self.assertGreater(img.min_disk, 0, "Minimum disk"
+                               " size required by image is invalid")
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):

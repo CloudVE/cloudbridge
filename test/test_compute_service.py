@@ -7,7 +7,6 @@ from test.helpers import standard_interface_tests as sit
 from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceType
@@ -133,10 +132,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 itype.name, expected_type,
                 "Instance type {0} does not match expected type {1}".format(
                     itype.name, expected_type))
-            if isinstance(self.provider, TestMockHelperMixin):
-                raise self.skipTest(
-                    "Skipping rest of test because Moto is not returning the"
-                    " instance's placement zone correctly")
             find_zone = [zone for zone in
                          self.provider.compute.regions.current.zones
                          if zone.id == test_instance.zone_id]
@@ -176,7 +171,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         lc.add_volume_device(
             is_root=True,
             source=img,
-            size=img.min_disk if img and img.min_disk else 2,
+            size=img.min_disk if img and img.min_disk else 30,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
@@ -256,7 +251,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 lc.add_volume_device(
                     is_root=True,
                     source=img,
-                    size=img.min_disk if img and img.min_disk else 2,
+                    size=img.min_disk if img and img.min_disk else 30,
                     delete_on_terminate=True)
 
                 # Add all available ephemeral devices
@@ -344,16 +339,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 fip = (self.provider.networking.networks
                        .create_floating_ip())
                 with helpers.cleanup_action(lambda: fip.delete()):
-                    test_inst.add_floating_ip(fip.public_ip)
-                    test_inst.refresh()
-                    # On Devstack, the floating IP is listed under private_ips.
-                    self.assertIn(fip.public_ip,
-                                  test_inst.public_ips + test_inst.private_ips)
-                    if isinstance(self.provider, TestMockHelperMixin):
-                        # TODO: Moto bug does not refresh removed public ip
-                        return
-                    # check whether removing an elastic ip works
-                    test_inst.remove_floating_ip(fip.public_ip)
+                    with helpers.cleanup_action(
+                            lambda: test_inst.remove_floating_ip(
+                                fip.public_ip)):
+                        test_inst.add_floating_ip(fip.public_ip)
+                        test_inst.refresh()
+                        # On Devstack, FloatingIP is listed under private_ips.
+                        self.assertIn(fip.public_ip, test_inst.public_ips +
+                                      test_inst.private_ips)
                     test_inst.refresh()
                     self.assertNotIn(
                         fip.public_ip,
