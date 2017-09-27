@@ -6,7 +6,7 @@ from io import BytesIO
 from azure.common import AzureException
 from azure.mgmt.compute.models import CreationData, DataDisk, \
     Disk, DiskCreateOption, Image, InstanceViewStatus, \
-    ManagedDiskParameters, NetworkProfile, OSDisk, Snapshot,\
+    ManagedDiskParameters, NetworkProfile, OSDisk, Snapshot, \
     StorageProfile, VirtualMachine, \
     VirtualMachineInstanceView, VirtualMachineSize
 
@@ -244,8 +244,8 @@ class MockAzureClient:
 
     vm1 = VirtualMachine(location='eastus')
     vm1.name = 'VM1'
-    vm1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
-             '/resourceGroups/cloudbridge'\
+    vm1.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+             '/resourceGroups/cloudbridge' \
              '/providers/Microsoft.Compute/virtualMachines/VM1'
     vm1.provisioning_state = 'Succeeded'
     vm1.storage_profile = StorageProfile()
@@ -255,7 +255,7 @@ class MockAzureClient:
         InstanceViewStatus(display_status='VM running'),
         InstanceViewStatus(display_status='VM running'),
     ]
-    data_disk_id = '/subscriptions'\
+    data_disk_id = '/subscriptions' \
                    '/7904d702-e01c-4826-8519-f5a25c866a96' \
                    '/resourceGroups/cloudbridge' \
                    '/providers/Microsoft.Compute/disks/Volume2'
@@ -471,7 +471,7 @@ class MockAzureClient:
         network = VirtualNetwork()
         network.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
                      '/resourceGroups/cloudbridge/providers' \
-                     '/Microsoft.Network/virtualNetworks/{0}'.\
+                     '/Microsoft.Network/virtualNetworks/{0}'. \
             format(name)
         network.name = name
         network.address_space = AddressSpace()
@@ -599,8 +599,8 @@ class MockAzureClient:
         volume.tags = params.get('tags', None)
         if disk_name.startswith('attach'):
             volume.owner_id = \
-                '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96'\
-                '/resourceGroups/cloudbridge'\
+                '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
+                '/resourceGroups/cloudbridge' \
                 '/providers/Microsoft.Compute/virtualMachines/VM1'
         self.volumes.append(volume)
         return volume
@@ -644,7 +644,7 @@ class MockAzureClient:
         snapshot.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
                       '/resourceGroups/cloudbridge' \
                       '/providers/Microsoft.Compute/Snapshots/{0}'.format(
-                        snapshot_name)
+            snapshot_name)
         snapshot.name = snapshot_name
         snapshot.disk_size_gb = 30
         snapshot.creation_data = \
@@ -683,7 +683,7 @@ class MockAzureClient:
         volume.id = '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a96' \
                     '/resourceGroups/cloudbridge/providers' \
                     '/Microsoft.Compute/disks/{0}'.format(
-                        disk_name)
+            disk_name)
         volume.name = disk_name
         volume.disk_size_gb = 50
         volume.creation_data = CreationData(
@@ -708,10 +708,10 @@ class MockAzureClient:
                     managed_disk = \
                         ManagedDiskParameters(id=disk_id)
                     params.storage_profile.data_disks.remove(data_disk)
-                    params.storage_profile.\
-                        data_disks\
+                    params.storage_profile. \
+                        data_disks \
                         .append(DataDisk(managed_disk=managed_disk,
-                                lun=lun, create_option=create_option))
+                                         lun=lun, create_option=create_option))
 
             return params
 

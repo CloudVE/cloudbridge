@@ -3,7 +3,6 @@ from cloudbridge.cloud.providers.azure.test.helpers import ProviderTestBase
 
 
 class AzureInstanceTypeServiceTestCase(ProviderTestBase):
-
     @helpers.skipIfNoService(['compute.instance_types'])
     def test_azure_instance_type_list(self):
         instance_type_list = self.provider.compute.instance_types.list()

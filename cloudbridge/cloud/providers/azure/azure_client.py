@@ -18,6 +18,7 @@ class AzureClient(object):
     """
     Azure client is the wrapper on top of azure python sdk
     """
+
     def __init__(self, config):
         self._config = config
         self.subscription_id = config.get('azure_subscription_id')
@@ -347,22 +348,22 @@ class AzureClient(object):
             list(self.region_name)
 
     def list_subnets(self, network_name):
-        return self.network_management_client.subnets.\
+        return self.network_management_client.subnets. \
             list(self.resource_group, network_name)
 
     def get_subnet(self, network_name, subnet_name):
-        return self.network_management_client.subnets.\
+        return self.network_management_client.subnets. \
             get(self.resource_group, network_name, subnet_name)
 
     def create_subnet(self, network_name,
                       subnet_name, params):
         result_create = self.network_management_client \
             .subnets.create_or_update(
-                self.resource_group,
-                network_name,
-                subnet_name,
-                params
-            )
+            self.resource_group,
+            network_name,
+            subnet_name,
+            params
+        )
         subnet_info = result_create.result()
 
         return subnet_info
@@ -370,10 +371,10 @@ class AzureClient(object):
     def delete_subnet(self, network_name, subnet_name):
         result_delete = self.network_management_client \
             .subnets.delete(
-                self.resource_group,
-                network_name,
-                subnet_name
-            )
+            self.resource_group,
+            network_name,
+            subnet_name
+        )
         result_delete.wait()
 
     def list_vm(self):
@@ -436,10 +437,10 @@ class AzureClient(object):
     def create_nic(self, nic_name, params):
         async_nic_creation = self.network_management_client. \
             network_interfaces.create_or_update(
-                self.resource_group,
-                nic_name,
-                params
-            )
+            self.resource_group,
+            nic_name,
+            params
+        )
         nic_info = async_nic_creation.result()
 
         return nic_info

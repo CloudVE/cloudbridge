@@ -41,7 +41,7 @@ Mandatory variables     Optional Variables
 AZURE_SUBSCRIPTION_ID   AZURE_REGION_NAME
 AZURE_CLIENT_ID		    AZURE_RESOURCE_GROUP
 AZURE_SECRET		    AZURE_STORAGE_ACCOUNT_NAME
-AZURE_TENANT                
+AZURE_TENANT
 ======================  ==================
 
 

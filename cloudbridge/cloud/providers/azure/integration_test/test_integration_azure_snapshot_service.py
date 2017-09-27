@@ -4,7 +4,6 @@ from cloudbridge.cloud.providers.azure.integration_test import helpers
 
 
 class AzureIntegrationSnapshotServiceTestCase(helpers.ProviderTestBase):
-
     @helpers.skipIfNoService(['block_store'])
     def test_azure_snapshot_service(self):
         snapshot_name = '{0}'.format(uuid.uuid4().hex[:6])
@@ -19,7 +18,7 @@ class AzureIntegrationSnapshotServiceTestCase(helpers.ProviderTestBase):
 
         self.assertTrue(vol is not None, 'Volume not created')
 
-        snapshot = self.provider.block_store.\
+        snapshot = self.provider.block_store. \
             snapshots.create(snapshot_name, vol)
         snapshot.wait_till_ready()
         self.assertTrue(snapshot is not None, 'Snapshot not created')
