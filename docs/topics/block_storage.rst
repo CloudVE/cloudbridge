@@ -14,7 +14,7 @@ performed via the :class:`.VolumeService`. To start, let's create a 1GB volume.
 
 .. code-block:: python
 
-    vol = provider.storage.volumes.create('CloudBridge-vol', 1, 'us-east-1e')
+    vol = provider.storage.volumes.create('cloudbridge-vol', 1, 'us-east-1e')
     vol.wait_till_ready()
     provider.storage.volumes.list()
 
@@ -55,7 +55,7 @@ long time for a snapshot to become ready, particularly on AWS.
 In order to make use of a snapshot, it is necessary to create a volume from it::
 
     vol = provider.storage.volumes.create(
-        'CloudBridge-snap-vol', 1, 'us-east-1e', snapshot=snap)
+        'cloudbridge-snap-vol', 1, 'us-east-1e', snapshot=snap)
 
 The newly created volume behaves just like any other volume and can be attached
 to an instance for use.

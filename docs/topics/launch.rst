@@ -48,7 +48,7 @@ Once we have all the desired pieces, we'll use them to launch an instance:
 .. code-block:: python
 
     inst = provider.compute.instances.create(
-        name='CloudBridge-VPC', image=img, vm_type=vm_type,
+        name='cloudbridge-vpc', image=img, vm_type=vm_type,
         subnet=subnet, key_pair=kp, vm_firewalls=[fw])
 
 Private networking
@@ -71,7 +71,7 @@ that subnet.
     router.attach_gateway(gateway)
 
     inst = provider.compute.instances.create(
-        name='CloudBridge-VPC', image=img, vm_type=vm_type,
+        name='cloudbridge-vpc', image=img, vm_type=vm_type,
         subnet=sn, key_pair=kp, vm_firewalls=[fw])
 
 For more information on how to create and setup a private network, take a look
@@ -93,7 +93,7 @@ refer to :class:`.LaunchConfig`.
     lc = provider.compute.instances.create_launch_config()
     lc.add_volume_device(source=img, size=11, is_root=True)
     inst = provider.compute.instances.create(
-        name='CloudBridge-BDM', image=img,  vm_type=vm_type,
+        name='cloudbridge-bdm', image=img,  vm_type=vm_type,
         launch_config=lc, key_pair=kp, vm_firewalls=[fw])
 
 where ``img`` is the :class:`.Image` object to use for the root volume.
