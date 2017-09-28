@@ -83,6 +83,5 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy'],
-    test_suite="test.test_network_service."
-               "CloudNetworkServiceTestCase.test_floating_ip_properties"
+    test_suite="test"
 )
