@@ -355,18 +355,17 @@ class OpenStackInstance(BaseInstance):
 
     @property
     def vm_firewalls(self):
-        """
-        Get the VM firewalls associated with this instance.
-        """
-        return [OpenStackVMFirewall(self._provider, group)
-                for group in self._os_instance.list_security_group()]
+        return [
+            self._provider.security.vm_firewalls.get(group.id)
+            for group in self._os_instance.list_security_group()
+        ]
 
     @property
     def vm_firewall_ids(self):
         """
         Get the VM firewall IDs associated with this instance.
         """
-        return [group.id for group in self.vm_firewalls]
+        return [fw.id for fw in self.vm_firewalls]
 
     @property
     def key_pair_name(self):
