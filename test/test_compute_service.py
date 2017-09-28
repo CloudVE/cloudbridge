@@ -112,12 +112,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             ip_address = test_instance.public_ips[0] \
                 if test_instance.public_ips and test_instance.public_ips[0] \
                 else ip_private
+            # Convert to unicode for py27 compatibility with ipaddress()
+            ip_address = u"{}".format(ip_address)
             self.assertIsNotNone(
                 ip_address,
                 "Instance must have either a public IP or a private IP")
             self.assertTrue(
                 self._is_valid_ip(ip_address),
-                "Instance must have a valid IP address")
+                "Instance must have a valid IP address. Got: %s" % ip_address)
             self.assertIsInstance(test_instance.vm_type_id,
                                   six.string_types)
             vm_type = self.provider.compute.vm_types.get(
