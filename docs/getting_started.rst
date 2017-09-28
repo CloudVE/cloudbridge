@@ -11,6 +11,9 @@ CloudBridge is available on PyPI so to install the latest available version,
 run::
 
     pip install --upgrade cloudbridge
+    
+For common issues during setup, check the following section:
+`Common Setup Issues <topics/troubleshooting.html>`
 
 Create a provider
 -----------------
@@ -108,17 +111,18 @@ attaching an internet gateway to the subnet via a router.
     router.attach_gateway(gateway)
 
 
-Create a security group
+Create a VM firewall
 -----------------------
-Next, we need to create a security group and add a rule to allow ssh access.
-A security group needs to be associated with a private network.
+Next, we need to create a VM firewall (also commonly known as a security group)
+and add a rule to allow ssh access. A VM firewall needs to be associated with
+a private network.
 
 .. code-block:: python
 
     net = provider.networking.networks.get('desired network ID')
-    sg = provider.security.security_groups.create(
-        'cloudbridge_intro', 'A security group used by CloudBridge', net.id)
-    sg.add_rule('tcp', 22, 22, '0.0.0.0/0')
+    fw = provider.security.vm_firewalls.create(
+        'cloudbridge_intro', 'A VM firewall used by CloudBridge', net.id)
+    fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
 Launch an instance
 ------------------
@@ -129,12 +133,12 @@ also add the network interface as a launch argument.
 .. code-block:: python
 
     img = provider.compute.images.get(image_id)
-    inst_type = sorted([t for t in provider.compute.instance_types
-                        if t.vcpus >= 2 and t.ram >= 4],
-                       key=lambda x: x.vcpus*x.ram)[0]
+    vm_type = sorted([t for t in provider.compute.vm_types
+                      if t.vcpus >= 2 and t.ram >= 4],
+                      key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
-        name='CloudBridge-intro', image=img, instance_type=inst_type,
-        subnet=subnet, key_pair=kp, security_groups=[sg])
+        name='CloudBridge-intro', image=img, vm_type=vm_type,
+        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
@@ -143,8 +147,8 @@ also add the network interface as a launch argument.
 
 .. note ::
 
-   Note that we iterated through provider.compute.instance_types directly
-   instead of calling provider.compute.instance_types.list(). This is
+   Note that we iterated through provider.compute.vm_types directly
+   instead of calling provider.compute.vm_types.list(). This is
    because we need to iterate through all records in this case. The list()
    method may not always return all records, depending on the global limit
    for records, necessitating that additional records be paged in. See
@@ -158,8 +162,8 @@ and then associate it with the instance.
 
 .. code-block:: python
 
-    fip = provider.networking.networks.create_floating_ip()
-    inst.add_floating_ip(fip.public_ip)
+    fip = provider.networking.floating_ips.create()
+    inst.add_floating_ip(fip)
     inst.refresh()
     inst.public_ips
     # [u'54.166.125.219']
@@ -178,7 +182,7 @@ To wrap things up, let's clean up all the resources we have created
     inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
                    terminal_states=[InstanceState.ERROR])  # Blocking call
     fip.delete()
-    sg.delete()
+    fw.delete()
     kp.delete()
     os.remove('cloudbridge_intro.pem')
     router.detach_gateway(gateway)

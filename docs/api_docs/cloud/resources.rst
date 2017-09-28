@@ -8,9 +8,24 @@ CloudServiceType
 .. autoclass:: cloudbridge.cloud.interfaces.resources.CloudServiceType
     :members:
 
+CloudResource
+-------------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.CloudResource
+    :members:
+
+Configuration
+-------------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.Configuration
+    :members:
+
 ObjectLifeCycleMixin
 --------------------
 .. autoclass:: cloudbridge.cloud.interfaces.resources.ObjectLifeCycleMixin
+    :members:
+
+PageableObjectMixin
+--------------------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.PageableObjectMixin
     :members:
 
 ResultList
@@ -43,14 +58,49 @@ MachineImage
 .. autoclass:: cloudbridge.cloud.interfaces.resources.MachineImage
     :members:
 
+NetworkState
+------------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.NetworkState
+    :members:
+
 Network
 -------
 .. autoclass:: cloudbridge.cloud.interfaces.resources.Network
     :members:
 
+SubnetState
+------------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.SubnetState
+    :members:
+
 Subnet
 ------
 .. autoclass:: cloudbridge.cloud.interfaces.resources.Subnet
+    :members:
+
+FloatingIP
+----------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.FloatingIP
+    :members:
+
+RouterState
+------------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.RouterState
+    :members:
+
+Router
+------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.Router
+    :members:
+
+Gateway
+--------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.Gateway
+    :members:
+
+InternetGateway
+---------------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.InternetGateway
     :members:
 
 VolumeState
@@ -88,19 +138,24 @@ PlacementZone
 .. autoclass:: cloudbridge.cloud.interfaces.resources.PlacementZone
     :members:
 
-InstanceType
+VMType
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.InstanceType
+.. autoclass:: cloudbridge.cloud.interfaces.resources.VMType
     :members:
 
-SecurityGroup
+VMFirewall
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.SecurityGroup
+.. autoclass:: cloudbridge.cloud.interfaces.resources.VMFirewall
     :members:
 
-SecurityGroupRule
+VMFirewallRule
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.SecurityGroupRule
+.. autoclass:: cloudbridge.cloud.interfaces.resources.VMFirewallRule
+    :members:
+
+TrafficDirection
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.resources.TrafficDirection
     :members:
 
 BucketObject

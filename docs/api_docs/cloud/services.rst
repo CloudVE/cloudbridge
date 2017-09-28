@@ -48,6 +48,31 @@ NetworkService
 .. autoclass:: cloudbridge.cloud.interfaces.services.NetworkService
     :members:
 
+SubnetService
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.SubnetService
+    :members:
+
+FloatingIPService
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.FloatingIPService
+    :members:
+
+RouterService
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.RouterService
+    :members:
+
+GatewayService
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.GatewayService
+    :members:
+
+BucketService
+---------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.BucketService
+    :members:
+
 SecurityService
 ---------------
 .. autoclass:: cloudbridge.cloud.interfaces.services.SecurityService
@@ -58,14 +83,14 @@ KeyPairService
 .. autoclass:: cloudbridge.cloud.interfaces.services.KeyPairService
     :members:
 
-SecurityGroupService
+VMFirewallService
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.SecurityGroupService
+.. autoclass:: cloudbridge.cloud.interfaces.services.VMFirewallService
     :members:
 
-InstanceTypesService
+VMTypesService
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.InstanceTypesService
+.. autoclass:: cloudbridge.cloud.interfaces.services.VMTypesService
     :members:
 
 RegionService
