@@ -40,6 +40,8 @@ from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
 from keystoneclient.v3.regions import Region
 
+from neutronclient.common.exceptions import PortNotFoundClient
+
 import novaclient.exceptions as novaex
 
 from openstack.exceptions import HttpException
@@ -745,7 +747,12 @@ class OpenStackNetwork(BaseNetwork):
             ports = self._provider.neutron.list_ports(
                 network_id=self.id).get('ports', [])
             for port in ports:
-                self._provider.neutron.delete_port(port.get('id'))
+                try:
+                    self._provider.neutron.delete_port(port.get('id'))
+                except PortNotFoundClient:
+                    # Ports could have already been deleted if instances
+                    # are terminated etc. so exceptions can be safely ignored
+                    pass
             self._provider.neutron.delete_network(self.id)
         # Adhere to the interface docs
         if self.id not in str(self._provider.neutron.list_networks()):
