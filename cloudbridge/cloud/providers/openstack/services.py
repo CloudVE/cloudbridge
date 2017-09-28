@@ -40,6 +40,8 @@ from neutronclient.common.exceptions import NeutronClientException
 
 from novaclient.exceptions import NotFound as NovaNotFound
 
+from openstack.exceptions import ResourceNotFound
+
 from .resources import OpenStackBucket
 from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
@@ -184,13 +186,14 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         try:
             return OpenStackVMFirewall(
                 self.provider,
-                self.provider.nova.security_groups.get(firewall_id))
-        except NovaNotFound:
+                self.provider.os_conn.network.get_security_group(firewall_id))
+        except ResourceNotFound:
             return None
 
     def list(self, limit=None, marker=None):
-        firewalls = [OpenStackVMFirewall(self.provider, fw)
-                     for fw in self.provider.nova.security_groups.list()]
+        firewalls = [
+            OpenStackVMFirewall(self.provider, fw)
+            for fw in self.provider.os_conn.network.security_groups()]
 
         return ClientPagedResultList(self.provider, firewalls,
                                      limit=limit, marker=marker)
@@ -198,15 +201,16 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
     def create(self, name, description, network_id):
         OpenStackVMFirewall.assert_valid_resource_name(name)
 
-        sg = self.provider.nova.security_groups.create(name, description)
+        sg = self.provider.os_conn.network.create_security_group(
+            name=name, description=description)
         if sg:
             return OpenStackVMFirewall(self.provider, sg)
         return None
 
     def find(self, name, limit=None, marker=None):
-        sgs = self.provider.nova.security_groups.findall(name=name)
+        sgs = [self.provider.os_conn.network.find_security_group(name)]
         results = [OpenStackVMFirewall(self.provider, sg)
-                   for sg in sgs]
+                   for sg in sgs if sg]
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 

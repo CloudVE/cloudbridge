@@ -737,10 +737,11 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
         return self._name
 
     def __repr__(self):
-        return ("<CBVMFirewallRule: id: {0}; direction: {1}; protocol: {2};"
-                " from: {3}; to: {4}; cidr: {5}, src_dest_fw: {6}>"
-                .format(self.id, self.direction, self.protocol, self.from_port,
-                        self.to_port, self.cidr, self.src_dest_fw_id))
+        return ("<{0}: id: {1}; direction: {2}; protocol: {3};  from: {4};"
+                " to: {5}; cidr: {6}, src_dest_fw: {7}>"
+                .format(self.__class__.__name__, self.id, self.direction,
+                        self.protocol, self.from_port, self.to_port, self.cidr,
+                        self.src_dest_fw_id))
 
     def __eq__(self, other):
         return (isinstance(other, VMFirewallRule) and

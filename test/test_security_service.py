@@ -109,6 +109,29 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                                skip_name_check=True)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
+    def test_vm_firewall_rule_properties(self):
+        name = 'cb_propfwrule-{0}'.format(helpers.get_uuid())
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        net = None
+        fw = None
+        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                network=net, vm_firewall=fw)):
+            net, _ = helpers.create_test_network(self.provider, name)
+            fw = self.provider.security.vm_firewalls.create(
+                name=name, description=name, network_id=net.id)
+
+            rule = fw.rules.create(
+                direction=TrafficDirection.INBOUND, protocol='tcp',
+                from_port=1111, to_port=1111, cidr='0.0.0.0/0')
+            self.assertEqual(rule.direction, TrafficDirection.INBOUND)
+            self.assertEqual(rule.protocol, 'tcp')
+            self.assertEqual(rule.from_port, 1111)
+            self.assertEqual(rule.to_port, 1111)
+            self.assertEqual(rule.cidr, '0.0.0.0/0')
+
+    @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_rule_add_twice(self):
         name = 'cb_fwruletwice-{0}'.format(helpers.get_uuid())
 
@@ -147,7 +170,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 name=name, description=name, network_id=net.id)
             rules = list(fw.rules)
             self.assertTrue(
-                len(rules) == 1, "Expected a single VM firewall rule allowing"
+                # TODO: This should be made consistent across all providers.
+                # Currently, OpenStack creates two rules, one for IPV6 and
+                # another for IPV4
+                len(rules) >= 1, "Expected a single VM firewall rule allowing"
                 " all outbound traffic. Got {0}.".format(rules))
             self.assertEqual(
                 rules[0].direction, TrafficDirection.OUTBOUND,

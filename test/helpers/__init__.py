@@ -1,6 +1,7 @@
 import functools
 import os
 import sys
+import traceback
 import unittest
 import uuid
 
@@ -46,11 +47,13 @@ def cleanup_action(cleanup_func):
             cleanup_func()
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
+            traceback.print_exc()
         reraise(ex_class, ex_val, ex_traceback)
     try:
         cleanup_func()
     except Exception as e:
         print("Error during cleanup: {0}".format(e))
+        traceback.print_exc()
 
 
 def skipIfNoService(services):
