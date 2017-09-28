@@ -8,6 +8,7 @@ import os
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
@@ -1253,6 +1254,7 @@ class OpenStackBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(OpenStackBucket, self).__init__(provider)
         self._bucket = bucket
+        self._object_container = OpenStackBucketContainer(provider, self)
 
     @property
     def id(self):
@@ -1260,10 +1262,20 @@ class OpenStackBucket(BaseBucket):
 
     @property
     def name(self):
-        """
-        Get this bucket's name.
-        """
         return self._bucket.get("name")
+
+    @property
+    def objects(self):
+        return self._object_container
+
+    def delete(self, delete_contents=False):
+        self._provider.swift.delete_container(self.name)
+
+
+class OpenStackBucketContainer(BaseBucketContainer):
+
+    def __init__(self, provider, bucket):
+        super(OpenStackBucketContainer, self).__init__(provider, bucket)
 
     def get(self, name):
         """
@@ -1274,9 +1286,9 @@ class OpenStackBucket(BaseBucket):
         return the first element.
         """
         _, object_list = self._provider.swift.get_container(
-            self.name, prefix=name)
+            self.bucket.name, prefix=name)
         if object_list:
-            return OpenStackBucketObject(self._provider, self,
+            return OpenStackBucketObject(self._provider, self.bucket,
                                          object_list[0])
         else:
             return None
@@ -1289,10 +1301,11 @@ class OpenStackBucket(BaseBucket):
         :return: List of all available BucketObjects within this bucket.
         """
         _, object_list = self._provider.swift.get_container(
-            self.name, limit=oshelpers.os_result_limit(self._provider, limit),
+            self.bucket.name,
+            limit=oshelpers.os_result_limit(self._provider, limit),
             marker=marker, prefix=prefix)
         cb_objects = [OpenStackBucketObject(
-            self._provider, self, obj) for obj in object_list]
+            self._provider, self.bucket, obj) for obj in object_list]
 
         return oshelpers.to_server_paged_list(
             self._provider,
@@ -1304,12 +1317,6 @@ class OpenStackBucket(BaseBucket):
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
-    def delete(self, delete_contents=False):
-        """
-        Delete this bucket.
-        """
-        self._provider.swift.delete_container(self.name)
-
-    def create_object(self, object_name):
-        self._provider.swift.put_object(self.name, object_name, None)
+    def create(self, object_name):
+        self._provider.swift.put_object(self.bucket.name, object_name, None)
         return self.get(object_name)

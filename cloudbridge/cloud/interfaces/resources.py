@@ -1697,15 +1697,17 @@ class VMFirewall(CloudResource):
     @abstractproperty
     def rules(self):
         """
-        Get the list of rules for this VM firewall.
+        Get a container for the rules belonging to this VM firewall. This
+        object can be used for further operations on rules, such as get,
+        list, create etc.
 
-        :rtype: list of :class:`.VMFirewallRule`
-        :return: A list of VM firewall rule objects.
+        :rtype: An object of :class:`.VMFirewallRuleContainer`
+        :return: A VMFirewallRuleContainer for further operations
         """
         pass
 
 
-class VMFirewallRuleContainer(PageableObjectMixin, CloudResource):
+class VMFirewallRuleContainer(PageableObjectMixin):
     """
     Base interface for Firewall rules.
     """
@@ -2034,7 +2036,7 @@ class BucketObject(CloudResource):
         pass
 
 
-class Bucket(PageableObjectMixin, CloudResource):
+class Bucket(CloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -2049,6 +2051,53 @@ class Bucket(PageableObjectMixin, CloudResource):
         :return: Name for this instance as returned by the cloud middleware.
         """
         pass
+
+    @abstractproperty
+    def objects(self):
+        """
+        Get a container for the objects belonging to this Buckets. This
+        object can be used to iterate through bucket objects, as well as
+        perform further operations on buckets, such as get, list, create etc.
+
+        .. code-block:: python
+
+            # Show all objects in bucket
+            print(list(bucket.objects))
+
+            # Find an object by name
+            print(bucket.objects.find(name='my_obj.txt'))
+
+            # Get first page of bucket list
+            print(bucket.objects.list())
+
+            # Create a new object within this bucket
+            obj = bucket.objects.create('my_obj.txt')
+
+        :rtype: :class:`.BucketContainer`
+        :return: A BucketContainer for further operations.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, delete_contents=False):
+        """
+        Delete this bucket.
+
+        :type delete_contents: ``bool``
+        :param delete_contents: If ``True``, all objects within the bucket
+                                will be deleted.
+
+        :rtype: ``bool``
+        :return: ``True`` if successful.
+        """
+        pass
+
+
+class BucketContainer(PageableObjectMixin):
+    """
+    A container service for objects within a bucket
+    """
+    __metaclass__ = ABCMeta
 
     @abstractmethod
     def get(self, name):
@@ -2077,7 +2126,7 @@ class Bucket(PageableObjectMixin, CloudResource):
         :type prefix: ``str``
         :param prefix: Prefix criteria by which to filter listed objects.
 
-        :rtype: :class:``.BucketObject``
+        :rtype: List of ``objects`` of :class:``.BucketObject``
         :return: List of all available BucketObjects within this bucket.
         """
         pass
@@ -2085,29 +2134,15 @@ class Bucket(PageableObjectMixin, CloudResource):
     @abstractmethod
     def find(self, name):
         """
-        Searches for an instance by a given name
+        Searches for an object by a given name
 
-        :rtype: List of ``object`` of :class:`.BucketObject`
+        :rtype: List of ``objects`` of :class:`.BucketObject`
         :return: A list of BucketObjects matching the supplied attributes.
         """
         pass
 
     @abstractmethod
-    def delete(self, delete_contents=False):
-        """
-        Delete this bucket.
-
-        :type delete_contents: ``bool``
-        :param delete_contents: If ``True``, all objects within the bucket
-                                will be deleted.
-
-        :rtype: ``bool``
-        :return: ``True`` if successful.
-        """
-        pass
-
-    @abstractmethod
-    def create_object(self, name):
+    def create(self, name):
         """
         Create a new object within this bucket.
 
