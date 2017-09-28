@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
@@ -776,6 +777,7 @@ class AWSBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(AWSBucket, self).__init__(provider)
         self._bucket = bucket
+        self._object_container = AWSBucketContainer(provider, self)
 
     @property
     def id(self):
@@ -785,9 +787,22 @@ class AWSBucket(BaseBucket):
     def name(self):
         return self._bucket.name
 
+    @property
+    def objects(self):
+        return self._object_container
+
+    def delete(self, delete_contents=False):
+        self._bucket.delete()
+
+
+class AWSBucketContainer(BaseBucketContainer):
+
+    def __init__(self, provider, bucket):
+        super(AWSBucketContainer, self).__init__(provider, bucket)
+
     def get(self, name):
         try:
-            obj = self._bucket.Object(name)
+            obj = self.bucket._bucket.Object(name)
             # load() throws an error if object does not exist
             obj.load()
             return AWSBucketObject(self._provider, obj)
@@ -796,9 +811,9 @@ class AWSBucket(BaseBucket):
 
     def list(self, limit=None, marker=None, prefix=None):
         if prefix:
-            boto_objs = self._bucket.objects.filter(Prefix=prefix)
+            boto_objs = self.bucket._bucket.objects.filter(Prefix=prefix)
         else:
-            boto_objs = self._bucket.objects.all()
+            boto_objs = self.bucket._bucket.objects.all()
         objects = [AWSBucketObject(self._provider, obj)
                    for obj in boto_objs]
 
@@ -811,11 +826,8 @@ class AWSBucket(BaseBucket):
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
-    def delete(self, delete_contents=False):
-        self._bucket.delete()
-
-    def create_object(self, name):
-        obj = self._bucket.Object(name)
+    def create(self, name):
+        obj = self.bucket._bucket.Object(name)
         return AWSBucketObject(self._provider, obj)
 
 

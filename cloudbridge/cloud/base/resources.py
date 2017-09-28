@@ -15,6 +15,7 @@ from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
+from cloudbridge.cloud.interfaces.resources import BucketContainer
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
@@ -40,6 +41,7 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMFirewallRule
+from cloudbridge.cloud.interfaces.resources import VMFirewallRuleContainer
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
@@ -667,7 +669,8 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
                                             self.id, self.name)
 
 
-class BaseVMFirewallRuleContainer(BasePageableObjectMixin):
+class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
+                                  VMFirewallRuleContainer):
 
     def __init__(self, provider, firewall):
         self.__provider = provider
@@ -853,7 +856,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                                       self.name)
 
 
-class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
+class BaseBucket(BaseCloudResource, Bucket):
 
     # Regular expression for valid bucket names.
     # They, must match the following criteria: http://docs.aws.amazon.com/aws
@@ -889,6 +892,17 @@ class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
                                       self.name)
+
+
+class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
+
+    def __init__(self, provider, bucket):
+        self.__provider = provider
+        self.bucket = bucket
+
+    @property
+    def _provider(self):
+        return self.__provider
 
 
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
