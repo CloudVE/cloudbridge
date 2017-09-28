@@ -3,7 +3,7 @@ Base implementation for services available through a provider
 """
 from cloudbridge.cloud.interfaces.resources import Router
 
-from cloudbridge.cloud.interfaces.services import BlockStoreService
+from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
 from cloudbridge.cloud.interfaces.services import FloatingIPService
@@ -13,11 +13,11 @@ from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import KeyPairService
 from cloudbridge.cloud.interfaces.services import NetworkService
 from cloudbridge.cloud.interfaces.services import NetworkingService
-from cloudbridge.cloud.interfaces.services import ObjectStoreService
 from cloudbridge.cloud.interfaces.services import RegionService
 from cloudbridge.cloud.interfaces.services import RouterService
 from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
+from cloudbridge.cloud.interfaces.services import StorageService
 from cloudbridge.cloud.interfaces.services import SubnetService
 from cloudbridge.cloud.interfaces.services import VMFirewallService
 from cloudbridge.cloud.interfaces.services import VMTypeService
@@ -56,10 +56,10 @@ class BaseSnapshotService(
         super(BaseSnapshotService, self).__init__(provider)
 
 
-class BaseBlockStoreService(BlockStoreService, BaseCloudService):
+class BaseStorageService(StorageService, BaseCloudService):
 
     def __init__(self, provider):
-        super(BaseBlockStoreService, self).__init__(provider)
+        super(BaseStorageService, self).__init__(provider)
 
 
 class BaseImageService(
@@ -69,11 +69,11 @@ class BaseImageService(
         super(BaseImageService, self).__init__(provider)
 
 
-class BaseObjectStoreService(
-        BasePageableObjectMixin, ObjectStoreService, BaseCloudService):
+class BaseBucketService(
+        BasePageableObjectMixin, BucketService, BaseCloudService):
 
     def __init__(self, provider):
-        super(BaseObjectStoreService, self).__init__(provider)
+        super(BaseBucketService, self).__init__(provider)
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):

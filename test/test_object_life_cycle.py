@@ -7,13 +7,13 @@ from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
 class CloudObjectLifeCycleTestCase(ProviderTestBase):
 
-    @helpers.skipIfNoService(['block_store.volumes'])
+    @helpers.skipIfNoService(['storage.volumes'])
     def test_object_life_cycle(self):
         """
         Test object life cycle methods by using a volume.
         """
         name = "cb_objlifecycle-{0}".format(helpers.get_uuid())
-        test_vol = self.provider.block_store.volumes.create(
+        test_vol = self.provider.storage.volumes.create(
             name,
             1,
             helpers.get_provider_test_data(self.provider, "placement"))

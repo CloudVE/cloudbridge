@@ -14,11 +14,10 @@ except ImportError:
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
-from .services import AWSBlockStoreService
 from .services import AWSComputeService
 from .services import AWSNetworkingService
-from .services import AWSObjectStoreService
 from .services import AWSSecurityService
+from .services import AWSStorageService
 
 
 class AWSCloudProvider(BaseCloudProvider):
@@ -63,8 +62,7 @@ class AWSCloudProvider(BaseCloudProvider):
         self._compute = AWSComputeService(self)
         self._networking = AWSNetworkingService(self)
         self._security = AWSSecurityService(self)
-        self._block_store = AWSBlockStoreService(self)
-        self._object_store = AWSObjectStoreService(self)
+        self._storage = AWSStorageService(self)
 
     @property
     def session(self):
@@ -101,12 +99,8 @@ class AWSCloudProvider(BaseCloudProvider):
         return self._security
 
     @property
-    def block_store(self):
-        return self._block_store
-
-    @property
-    def object_store(self):
-        return self._object_store
+    def storage(self):
+        return self._storage
 
     def _connect_ec2(self):
         """

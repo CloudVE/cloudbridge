@@ -531,7 +531,7 @@ class OpenStackVolume(BaseVolume):
     @property
     def source(self):
         if self._volume.snapshot_id:
-            return self._provider.block_store.snapshots.get(
+            return self._provider.storage.snapshots.get(
                 self._volume.snapshot_id)
         return None
 
@@ -564,7 +564,7 @@ class OpenStackVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.block_store.snapshots.create(
+        return self._provider.storage.snapshots.create(
             name, self, description=description)
 
     def delete(self):
@@ -583,7 +583,7 @@ class OpenStackVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        vol = self._provider.block_store.volumes.get(
+        vol = self._provider.storage.volumes.get(
             self.id)
         if vol:
             self._volume = vol._volume  # pylint:disable=protected-access
@@ -659,7 +659,7 @@ class OpenStackSnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        snap = self._provider.block_store.snapshots.get(
+        snap = self._provider.storage.snapshots.get(
             self.id)
         if snap:
             self._snapshot = snap._snapshot  # pylint:disable=protected-access
