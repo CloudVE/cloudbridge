@@ -289,6 +289,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
+                              'networking.floating_ips',
                               'security.vm_firewalls'])
     def test_instance_methods(self):
         name = "cb_instmethods-{0}".format(helpers.get_uuid())
@@ -339,8 +340,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                            .get_or_create_inet_gateway(name))
                 router.attach_gateway(gateway)
                 # check whether adding an elastic ip works
-                fip = (self.provider.networking.networks
-                       .create_floating_ip())
+                fip = self.provider.networking.floating_ips.create()
                 with helpers.cleanup_action(lambda: fip.delete()):
                     with helpers.cleanup_action(
                             lambda: test_inst.remove_floating_ip(

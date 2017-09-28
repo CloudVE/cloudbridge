@@ -954,11 +954,12 @@ class BaseFloatingIP(BaseCloudResource, FloatingIP):
     def __init__(self, provider):
         super(BaseFloatingIP, self).__init__(provider)
 
+    @property
     def name(self):
         """
         VM firewall rules don't support names, so pass
         """
-        pass
+        return self.public_ip
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
