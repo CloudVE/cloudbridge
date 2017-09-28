@@ -266,7 +266,7 @@
        font-size="12.6452"
        style="font-size:12.64519978px;line-height:0%;font-family:ArialMT">security</text>
 </a><a
-     xlink:href="../api_docs/cloud/services.html#blockstoreservice"
+     xlink:href="../api_docs/cloud/services.html#storageservice"
      id="svg_18"
      transform="translate(-4.35911,-74.104872)"><path
        id="svg_13"
@@ -291,7 +291,7 @@
        font-size="11.2402"
        style="font-size:11.24020004px;line-height:0%;font-family:ArialMT">images</text>
 </a><a
-     xlink:href="../api_docs/cloud/services.html#instancetypesservice"
+     xlink:href="../api_docs/cloud/services.html#vmtypesservice"
      id="svg_23"
      transform="translate(-4.35911,-74.104872)"><path
        id="svg_34"
@@ -340,7 +340,7 @@
        font-size="11.2402"
        style="font-size:11.24020004px;line-height:0%;font-family:ArialMT">keypairs</text>
 </a><a
-     xlink:href="../api_docs/cloud/services.html#securitygroupservice"
+     xlink:href="../api_docs/cloud/services.html#vmfirewallservice"
      id="svg_29"
      transform="translate(-4.35911,-74.104872)"><path
        id="svg_43"
@@ -401,7 +401,7 @@
        font-size="11.2402"
        style="font-size:11.24020004px;line-height:0%;font-family:ArialMT">BucketObject</text>
 </a><a
-     xlink:href="../api_docs/cloud/resources.html#securitygrouprule"
+     xlink:href="../api_docs/cloud/resources.html#vmfirewallrule"
      id="svg_35"
      transform="translate(-4.35911,-74.104872)"><path
        id="svg_12"
@@ -414,7 +414,7 @@
        x="487.66019"
        y="394.80569">VMFirewallRule</text>
 </a><a
-     xlink:href="../api_docs/cloud/resources.html#securitygroup"
+     xlink:href="../api_docs/cloud/resources.html#vmfirewall"
      id="svg_36"
      transform="translate(-4.35911,-74.104872)"><path
        id="svg_61"
@@ -499,7 +499,7 @@
        font-size="11.2402"
        style="font-size:11.24020004px;line-height:0%;font-family:ArialMT">Instance</text>
 </a><a
-     xlink:href="../api_docs/cloud/resources.html#instancetype"
+     xlink:href="../api_docs/cloud/resources.html#vmtype"
      id="svg_47"
      transform="translate(-4.35911,-74.104872)"><path
        id="e24_46"
@@ -625,7 +625,7 @@
        font-size="12.6452"
        style="font-size:12.64519978px;line-height:0%;font-family:ArialMT">networking</text>
 </a><a
-     xlink:href="../api_docs/cloud/services.html#cloudbridge.cloud.interfaces.services.NetworkingService.subnets"
+     xlink:href="../api_docs/cloud/services.html#subnetservice"
      id="svg_38-3"
      transform="translate(-142.15911,136.27478)"><path
        id="svg_58-7"
@@ -709,7 +709,7 @@
      inkscape:connector-curvature="0"
      d="m 171.04089,565.29513 -0.7,0.7 1.9,-0.7 -1.9,-0.7 z"
      style="stroke:#000000" /><a
-     xlink:href="../api_docs/cloud/services.html#cloudbridge.cloud.interfaces.services.NetworkingService.subnets"
+     xlink:href="../api_docs/cloud/services.html#routerservice"
      id="svg_38-3_1_"
      transform="translate(-142.15911,136.27478)"><path
        id="svg_58-7_1_"
@@ -721,7 +721,7 @@
        font-size="11.2402"
        style="font-size:11.24020004px;line-height:0%;font-family:ArialMT">routers</text>
 </a><a
-     xlink:href="../api_docs/cloud/resources.html#subnet"
+     xlink:href="../api_docs/cloud/resources.html#router"
      id="a3500_2_"
      transform="translate(124.27193,135.68572)"><path
        id="path3502_3_"
@@ -770,7 +770,7 @@
      style="stroke:#000000" /><a
      transform="translate(-141.94556,163.20862)"
      id="svg_38-3_1_-4"
-     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/services.html#cloudbridge.cloud.interfaces.services.NetworkingService.subnets"><path
+     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/services.html#floatingipservice"><path
        id="svg_58-7_1_-8"
        inkscape:connector-curvature="0"
        d="m 313.5,422.3 v 0 c 0,-1.9 1.6,-3.5 3.5,-3.5 h 96.1 c 0.9,0 1.8,0.3 2.4,1 0.6,0.6 1,1.5 1,2.4 V 436 c 0,1.9 -1.6,3.5 -3.5,3.5 h -96 v 0 c -1.9,0 -3.5,-1.6 -3.5,-3.5 z"
@@ -783,7 +783,7 @@
 </a><a
      transform="translate(124.48548,162.61956)"
      id="a3500_2_-9"
-     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/resources.html#subnet"><path
+     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/resources.html#floatingip"><path
        id="path3502_3_-0"
        inkscape:connector-curvature="0"
        d="m 211.1,422.5 v 0 c 0,-1.9 1.6,-3.5 3.5,-3.5 h 96.1 c 0.9,0 1.8,0.3 2.4,1 0.6,0.6 1,1.5 1,2.4 v 13.8 c 0,1.9 -1.6,3.5 -3.5,3.5 h -96.2 v 0 c -1.9,0 -3.5,-1.6 -3.5,-3.5 z"
@@ -816,7 +816,7 @@
      style="stroke:#000000" /><a
      transform="translate(-141.94556,191.20862)"
      id="svg_38-3_1_-4-0"
-     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/services.html#cloudbridge.cloud.interfaces.services.NetworkingService.subnets"><path
+     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/services.html#gatewayservice"><path
        id="svg_58-7_1_-8-2"
        inkscape:connector-curvature="0"
        d="m 313.5,422.3 v 0 c 0,-1.9 1.6,-3.5 3.5,-3.5 h 96.1 c 0.9,0 1.8,0.3 2.4,1 0.6,0.6 1,1.5 1,2.4 V 436 c 0,1.9 -1.6,3.5 -3.5,3.5 h -96 v 0 c -1.9,0 -3.5,-1.6 -3.5,-3.5 z"
@@ -829,7 +829,7 @@
 </a><a
      transform="translate(124.48548,190.61956)"
      id="a3500_2_-9-9"
-     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/resources.html#subnet"><path
+     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/resources.html#internetgateway"><path
        id="path3502_3_-0-9"
        inkscape:connector-curvature="0"
        d="m 211.1,422.5 v 0 c 0,-1.9 1.6,-3.5 3.5,-3.5 h 96.1 c 0.9,0 1.8,0.3 2.4,1 0.6,0.6 1,1.5 1,2.4 v 13.8 c 0,1.9 -1.6,3.5 -3.5,3.5 h -96.2 v 0 c -1.9,0 -3.5,-1.6 -3.5,-3.5 z"
@@ -855,7 +855,7 @@
      style="fill:none;stroke:#000000;stroke-width:0.73930001" /><a
      transform="translate(-4.88461,-47.98267)"
      id="svg_32-7"
-     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/services.html#snapshotservice"><path
+     xlink:href="/Applications/Inkscape.app/../api_docs/cloud/services.html#bucketservice"><path
        id="svg_22-9"
        inkscape:connector-curvature="0"
        d="m 175.3,483.7 v 0 c 0,-1.9 1.6,-3.5 3.5,-3.5 h 96.1 c 0.9,0 1.8,0.3 2.4,1 0.6,0.6 1,1.5 1,2.4 v 13.8 c 0,1.9 -1.6,3.5 -3.5,3.5 h -96.2 v 0 c -1.9,0 -3.5,-1.6 -3.5,-3.5 z"
