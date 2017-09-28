@@ -36,7 +36,7 @@ REQS_OPENSTACK = [
     'python-neutronclient>=6.0.0,<=6.1.0',
     'python-keystoneclient>=3.13.0'
 ]
-REQS_FULL = REQS_BASE + REQS_AWS + REQS_OPENSTACK + REQS_AZURE
+REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
 REQS_DEV = ([
                 'tox>=2.1.1',
                 'moto>=1.1.11',
