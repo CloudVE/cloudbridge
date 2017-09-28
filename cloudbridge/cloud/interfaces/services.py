@@ -623,11 +623,6 @@ class NetworkService(PageableObjectMixin, CloudService):
 
         :type network_id: ``str``
         :param network_id: The ID of the network to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the network does not exist, ``False`` otherwise.
-                  Note that this implies that the network may not have been
-                  deleted by this method but instead has not existed at all.
         """
         pass
 
@@ -650,33 +645,6 @@ class NetworkService(PageableObjectMixin, CloudService):
 
         :rtype: :class:`.SubnetService`
         :return: a SubnetService object
-        """
-        pass
-
-    @abstractproperty
-    def floating_ips(self):
-        """
-        List floating (i.e., static) IP addresses.
-
-        :type network_id: ``str``
-        :param network_id: The ID of the network by which to filter the IPs.
-
-        :rtype: ``list`` of :class:`FloatingIP`
-        :return: list of floating IP objects
-        """
-        pass
-
-    @abstractmethod
-    def create_floating_ip(self):
-        """
-        Allocate a new floating (i.e., static) IP address.
-
-        :type network_id: ``str``
-        :param network_id: The ID of the network with which to associate the
-                           new IP address.
-
-        :rtype: :class:`FloatingIP`
-        :return: floating IP object
         """
         pass
 
@@ -768,11 +736,67 @@ class SubnetService(PageableObjectMixin, CloudService):
 
         :type subnet: :class:`.Subnet` object or ``str``
         :param subnet: Subnet object or ID of the subnet to delete.
+        """
+        pass
 
-        :rtype: ``bool``
-        :return:  ``True`` if the subnet does not exist, ``False`` otherwise.
-                  Note that this implies that the subnet may not have been
-                  deleted by this method but instead has not existed at all.
+
+class FloatingIPService(PageableObjectMixin, CloudService):
+
+    """
+    Base interface for a FloatingIP Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, fip_id):
+        """
+        Returns a FloatingIP given its ID or ``None`` if not found.
+
+        :type fip_id: ``str``
+        :param fip_id: The ID of the FloatingIP to retrieve.
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return: a FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List floating (i.e., static) IP addresses.
+
+        :rtype: ``list`` of :class:`.FloatingIP`
+        :return: list of FloatingIP objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, name):
+        """
+        Searches for a FloatingIP by a given list of attributes.
+
+        :rtype: List of ``object`` of :class:`.FloatingIP`
+        :return: A list of FloatingIP objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self):
+        """
+        Allocate a new floating (i.e., static) IP address.
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return:  A FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, fip_id):
+        """
+        Delete an existing FloatingIP.
+
+        :type fip_id: ``str``
+        :param fip_id: The ID of the FloatingIP to be deleted.
         """
         pass
 

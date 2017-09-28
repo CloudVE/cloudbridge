@@ -754,9 +754,6 @@ class OpenStackNetwork(BaseNetwork):
                     # are terminated etc. so exceptions can be safely ignored
                     pass
             self._provider.neutron.delete_network(self.id)
-        # Adhere to the interface docs
-        if self.id not in str(self._provider.neutron.list_networks()):
-            return True
 
     @property
     def subnets(self):
@@ -820,9 +817,6 @@ class OpenStackSubnet(BaseSubnet):
     def delete(self):
         if self.id in str(self._provider.neutron.list_subnets()):
             self._provider.neutron.delete_subnet(self.id)
-        # Adhere to the interface docs
-        if self.id not in str(self._provider.neutron.list_subnets()):
-            return True
 
     @property
     def state(self):
@@ -863,9 +857,6 @@ class OpenStackFloatingIP(BaseFloatingIP):
 
     def delete(self):
         self._provider.neutron.delete_floatingip(self.id)
-        # Adhere to the interface docs
-        if self.id not in str(self._provider.neutron.list_floatingips()):
-            return True
 
 
 class OpenStackRouter(BaseRouter):

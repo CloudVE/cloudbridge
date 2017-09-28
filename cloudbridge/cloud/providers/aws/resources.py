@@ -290,7 +290,7 @@ class AWSInstance(BaseInstance):
         allocation_id = (
             None if not self._ec2_instance.vpc_id else
             ip_address.id if isinstance(ip_address, AWSFloatingIP) else
-            [x for x in self._provider.networking.networks.floating_ips
+            [x for x in self._provider.networking.floating_ips
              if x.public_ip == ip_address][0].id)
         params = trim_empty_params({
             'InstanceId': self.id,
@@ -895,7 +895,7 @@ class AWSNetwork(BaseNetwork):
         return self._vpc.cidr_block
 
     def delete(self):
-        return self._vpc.delete()
+        self._vpc.delete()
 
     @property
     def subnets(self):
@@ -997,7 +997,7 @@ class AWSFloatingIP(BaseFloatingIP):
         return True if self._ip.instance_id else False
 
     def delete(self):
-        return self._ip.release()
+        self._ip.release()
 
 
 class AWSRouter(BaseRouter):

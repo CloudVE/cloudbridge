@@ -6,6 +6,7 @@ from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BlockStoreService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
+from cloudbridge.cloud.interfaces.services import FloatingIPService
 from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
@@ -169,7 +170,6 @@ class BaseNetworkService(
         network = self.get(network_id)
         if network:
             network.delete()
-        return True
 
 
 class BaseSubnetService(
@@ -185,6 +185,27 @@ class BaseSubnetService(
         else:
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
+
+
+class BaseFloatingIPService(
+        BasePageableObjectMixin, FloatingIPService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseFloatingIPService, self).__init__(provider)
+
+    def find(self, **kwargs):
+        if 'name' in kwargs:
+            name = kwargs.get('name')
+            if name:
+                return [fip for fip in self if fip.name == name]
+        else:
+            raise TypeError(
+                "Invalid parameters for search. Supported attributes: {name}")
+
+    def delete(self, fip_id):
+        floating_ip = self.get(fip_id)
+        if floating_ip:
+            floating_ip.delete()
 
 
 class BaseRouterService(
