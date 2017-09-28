@@ -42,6 +42,8 @@ from keystoneclient.v3.regions import Region
 
 import novaclient.exceptions as novaex
 
+from openstack.exceptions import HttpException
+
 import swiftclient
 
 from swiftclient.service import SwiftService, SwiftUploadObject
@@ -1020,8 +1022,11 @@ class OpenStackVMFirewall(BaseVMFirewall):
     def rules(self):
         return self._rule_svc
 
+    def delete(self):
+        return self._vm_firewall.delete(self._provider.os_conn.session)
+
     def refresh(self):
-        self._vm_firewall = self._provider.nova.security_groups.get(
+        self._vm_firewall = self._provider.os_conn.network.get_security_group(
             self.id)
 
     def to_json(self):
@@ -1041,7 +1046,7 @@ class OpenStackVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
     def list(self, limit=None, marker=None):
         # pylint:disable=protected-access
         rules = [OpenStackVMFirewallRule(self.firewall, r)
-                 for r in self.firewall._vm_firewall.rules]
+                 for r in self.firewall._vm_firewall.security_group_rules]
         return ClientPagedResultList(self._provider, rules,
                                      limit=limit, marker=marker)
 
@@ -1053,26 +1058,29 @@ class OpenStackVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
 
         try:
             if direction == TrafficDirection.INBOUND:
-                # pylint:disable=protected-access
-                rule = self._provider.nova.security_group_rules.create(
-                                parent_group_id=self.firewall.id,
-                                ip_protocol=protocol,
-                                from_port=from_port,
-                                to_port=to_port,
-                                cidr=cidr,
-                                group_id=src_dest_fw_id)
+                os_direction = 'ingress'
             elif direction == TrafficDirection.OUTBOUND:
-                pass
+                os_direction = 'egress'
             else:
                 raise InvalidValueException("direction", direction)
+            # pylint:disable=protected-access
+            rule = self._provider.os_conn.network.create_security_group_rule(
+                security_group_id=self.firewall.id,
+                direction=os_direction,
+                port_range_max=to_port,
+                port_range_min=from_port,
+                protocol=protocol,
+                remote_ip_prefix=cidr,
+                remote_group_id=src_dest_fw_id)
             self.firewall.refresh()
             return OpenStackVMFirewallRule(self.firewall, rule.to_dict())
-        except novaex.BadRequest as e:
+        except HttpException as e:
             self.firewall.refresh()
-            existing = self.find(
-                direction=direction, protocol=protocol, from_port=from_port,
-                to_port=to_port, cidr=cidr, src_dest_fw_id=src_dest_fw_id)
-            if existing:
+            # 409=Conflict, raised for duplicate rule
+            if e.http_status == 409:
+                existing = self.find(direction=direction, protocol=protocol,
+                                     from_port=from_port, to_port=to_port,
+                                     cidr=cidr, src_dest_fw_id=src_dest_fw_id)
                 return existing[0]
             else:
                 raise e
@@ -1089,23 +1097,29 @@ class OpenStackVMFirewallRule(BaseVMFirewallRule):
 
     @property
     def direction(self):
-        return TrafficDirection.INBOUND
+        direction = self._rule.get('direction')
+        if direction == 'ingress':
+            return TrafficDirection.INBOUND
+        elif direction == 'egress':
+            return TrafficDirection.OUTBOUND
+        else:
+            return None
 
     @property
     def protocol(self):
-        return self._rule.get('ip_protocol')
+        return self._rule.get('protocol')
 
     @property
     def from_port(self):
-        return self._rule.get('from_port')
+        return self._rule.get('port_range_min')
 
     @property
     def to_port(self):
-        return self._rule.get('to_port')
+        return self._rule.get('port_range_max')
 
     @property
     def cidr(self):
-        return self._rule.get('ip_range', {}).get('cidr')
+        return self._rule.get('remote_ip_prefix')
 
     @property
     def src_dest_fw_id(self):
@@ -1116,14 +1130,13 @@ class OpenStackVMFirewallRule(BaseVMFirewallRule):
 
     @property
     def src_dest_fw(self):
-        fw_name = self._rule.get('group', {}).get('name')
-        if fw_name:
-            fw = self._provider.security.vm_firewalls.find(name=fw_name)
-            return fw[0] if fw else None
+        fw_id = self._rule.get('remote_group_id')
+        if fw_id:
+            return self._provider.security.vm_firewalls.get(fw_id)
         return None
 
     def delete(self):
-        self._provider.nova.security_group_rules.delete(self.id)
+        self._provider.os_conn.network.delete_security_group_rule(self.id)
         self.firewall.refresh()
 
 
