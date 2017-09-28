@@ -121,7 +121,7 @@ a private network.
 
     net = provider.networking.networks.get('desired network ID')
     fw = provider.security.vm_firewalls.create(
-        'cloudbridge_intro', 'A VM firewall used by CloudBridge', net.id)
+        'cloudbridge-intro', 'A VM firewall used by CloudBridge', net.id)
     fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
 Launch an instance
@@ -137,7 +137,7 @@ also add the network interface as a launch argument.
                       if t.vcpus >= 2 and t.ram >= 4],
                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
-        name='CloudBridge-intro', image=img, vm_type=vm_type,
+        name='cloudbridge-intro', image=img, vm_type=vm_type,
         subnet=subnet, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
