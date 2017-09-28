@@ -1,4 +1,5 @@
 import test.helpers as helpers
+import time
 
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
@@ -92,6 +93,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_floating_ip_properties(self):
         # Check floating IP address
         ip = self.provider.networking.networks.create_floating_ip()
+        time.sleep(10)
         ip_id = ip.id
         with helpers.cleanup_action(lambda: ip.delete()):
             ipl = self.provider.networking.networks.floating_ips

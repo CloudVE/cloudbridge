@@ -24,13 +24,15 @@ REQS_BASE = [
     'retrying>=1.3.3'
 ]
 REQS_AWS = ['boto3']
-REQS_AZURE = ['azure-common==1.1.5',
-              'azure-mgmt-resource==1.0.0rc1',
-              'azure-mgmt-compute==1.0.0rc1',
-              'azure-mgmt-network==1.0.0rc1',
-              'azure-mgmt-storage==1.0.0rc1',
-              'azure-storage==0.34.0',
-              'pysftp==0.2.9']
+REQS_AZURE = ['msrest>=0.4.7',
+              'msrestazure>=0.4.7',
+              'azure-common>=1.1.5',
+              'azure-mgmt-resource>=1.0.0rc1',
+              'azure-mgmt-compute>=1.0.0rc1',
+              'azure-mgmt-network>=1.0.0rc1',
+              'azure-mgmt-storage>=1.0.0rc1',
+              'azure-storage>=0.34.0',
+              'pysftp>=0.2.9']
 REQS_OPENSTACK = [
     'python-novaclient==7.0.0',
     'python-glanceclient>=2.5.0,<=2.6.0',
@@ -81,5 +83,6 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy'],
-    test_suite="test"
+    test_suite="test.test_network_service."
+               "CloudNetworkServiceTestCase.test_floating_ip_properties"
 )
