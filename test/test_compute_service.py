@@ -59,7 +59,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         return True
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
-                              'security.security_groups',
+                              'security.vm_firewalls',
                               'security.key_pairs'])
     def test_instance_properties(self):
         name = "cb_inst_props-{0}".format(helpers.get_uuid())
@@ -68,17 +68,17 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # the cleanup method access to the most current values
         test_instance = None
         net = None
-        sg = None
+        fw = None
         kp = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_instance, net, sg, kp)):
+                test_instance, net, fw, kp)):
             net, subnet = helpers.create_test_network(self.provider, name)
             kp = self.provider.security.key_pairs.create(name=name)
-            sg = self.provider.security.security_groups.create(
+            fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
             test_instance = helpers.get_test_instance(self.provider,
                                                       name, key_pair=kp,
-                                                      security_groups=[sg],
+                                                      vm_firewalls=[fw],
                                                       subnet=subnet)
             self.assertEqual(
                 test_instance.name, name,
@@ -98,26 +98,28 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertEqual(
                 test_instance.key_pair_name,
                 kp.name)
-            self.assertIsInstance(test_instance.security_groups, list)
+            self.assertIsInstance(test_instance.vm_firewalls, list)
             self.assertEqual(
-                test_instance.security_groups[0],
-                sg)
-            self.assertIsInstance(test_instance.security_group_ids, list)
+                test_instance.vm_firewalls[0],
+                fw)
+            self.assertIsInstance(test_instance.vm_firewall_ids, list)
             self.assertEqual(
-                test_instance.security_group_ids[0],
-                sg.id)
+                test_instance.vm_firewall_ids[0],
+                fw.id)
             # Must have either a public or a private ip
             ip_private = test_instance.private_ips[0] \
                 if test_instance.private_ips else None
             ip_address = test_instance.public_ips[0] \
                 if test_instance.public_ips and test_instance.public_ips[0] \
                 else ip_private
+            # Convert to unicode for py27 compatibility with ipaddress()
+            ip_address = u"{}".format(ip_address)
             self.assertIsNotNone(
                 ip_address,
                 "Instance must have either a public IP or a private IP")
             self.assertTrue(
                 self._is_valid_ip(ip_address),
-                "Instance must have a valid IP address")
+                "Instance must have a valid IP address. Got: %s" % ip_address)
             self.assertIsInstance(test_instance.vm_type_id,
                                   six.string_types)
             vm_type = self.provider.compute.vm_types.get(
@@ -287,7 +289,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
-                              'security.security_groups'])
+                              'security.vm_firewalls'])
     def test_instance_methods(self):
         name = "cb_instmethods-{0}".format(helpers.get_uuid())
 
@@ -295,30 +297,30 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # the cleanup method access to the most current values
         test_inst = None
         net = None
-        sg = None
+        fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_inst, net, sg)):
+                test_inst, net, fw)):
             net, subnet = helpers.create_test_network(self.provider, name)
             test_inst = helpers.get_test_instance(self.provider, name,
                                                   subnet=subnet)
-            sg = self.provider.security.security_groups.create(
+            fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
 
-            # Check adding a security group to a running instance
-            test_inst.add_security_group(sg)
+            # Check adding a VM firewall to a running instance
+            test_inst.add_vm_firewall(fw)
             test_inst.refresh()
             self.assertTrue(
-                sg in test_inst.security_groups, "Expected security group '%s'"
-                " to be among instance security_groups: [%s]" %
-                (sg, test_inst.security_groups))
+                fw in test_inst.vm_firewalls, "Expected VM firewall '%s'"
+                " to be among instance vm_firewalls: [%s]" %
+                (fw, test_inst.vm_firewalls))
 
-            # Check removing a security group from a running instance
-            test_inst.remove_security_group(sg)
+            # Check removing a VM firewall from a running instance
+            test_inst.remove_vm_firewall(fw)
             test_inst.refresh()
             self.assertTrue(
-                sg not in test_inst.security_groups, "Expected security group"
-                " '%s' to be removed from instance security_groups: [%s]" %
-                (sg, test_inst.security_groups))
+                fw not in test_inst.vm_firewalls, "Expected VM firewall"
+                " '%s' to be removed from instance vm_firewalls: [%s]" %
+                (fw, test_inst.vm_firewalls))
 
             # check floating ips
             router = self.provider.networking.routers.create(name, net)

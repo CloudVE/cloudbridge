@@ -2,6 +2,7 @@
 Specifications for data objects exposed through a provider or service
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+from enum import Enum
 
 
 class CloudServiceType(object):
@@ -539,22 +540,22 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
 #         pass
 
     @abstractproperty
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Get the security groups associated with this instance.
+        Get the firewalls (security groups) associated with this instance.
 
-        :rtype: list or :class:`.SecurityGroup` objects
-        :return: A list of SecurityGroup objects associated with this instance.
+        :rtype: list or :class:`.VMFirewall` objects
+        :return: A list of VMFirewall objects associated with this instance.
         """
         pass
 
     @abstractproperty
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         """
-        Get the IDs of the security groups associated with this instance.
+        Get the IDs of the VM firewalls associated with this instance.
 
         :rtype: list or :class:``str``
-        :return: A list of the SecurityGroup IDs associated with this instance.
+        :return: A list of the VMFirewall IDs associated with this instance.
         """
         pass
 
@@ -599,22 +600,22 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, firewall):
         """
-        Add a security group to this instance
+        Add a VM firewall to this instance
 
-        :type sg: ``SecurityGroup``
-        :param sg: The SecurityGroup to associate with the instance.
+        :type firewall: ``VMFirewall``
+        :param firewall: The VMFirewall to associate with the instance.
         """
         pass
 
     @abstractmethod
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, firewall):
         """
-        Remove a security group from this instance
+        Remove a VM firewall from this instance
 
-        :type sg: ``SecurityGroup``
-        :param sg: The SecurityGroup to associate with the instance.
+        :type firewall: ``VMFirewall``
+        :param firewall: The VMFirewall to associate with the instance.
         """
         pass
 
@@ -1672,24 +1673,24 @@ class VMType(CloudResource):
         pass
 
 
-class SecurityGroup(CloudResource):
+class VMFirewall(CloudResource):
 
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def description(self):
         """
-        Return the description of this security group.
+        Return the description of this VM firewall.
 
         :rtype: ``str``
-        :return: A description of this security group.
+        :return: A description of this VM firewall.
         """
         pass
 
     @abstractproperty
     def network_id(self):
         """
-        Network ID with which this security group is associated.
+        Network ID with which this VM firewall is associated.
 
         :rtype: ``str``
         :return: Provider-supplied network ID or ``None`` is not available.
@@ -1699,37 +1700,78 @@ class SecurityGroup(CloudResource):
     @abstractproperty
     def rules(self):
         """
-        Get the list of rules for this security group.
+        Get the list of rules for this VM firewall.
 
-        :rtype: list of :class:`.SecurityGroupRule`
-        :return: A list of security group rule objects.
+        :rtype: list of :class:`.VMFirewallRule`
+        :return: A list of VM firewall rule objects.
+        """
+        pass
+
+
+class VMFirewallRuleContainer(PageableObjectMixin, CloudResource):
+    """
+    Base interface for Firewall rules.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, rule_id):
+        """
+        Returns a firewall rule given its ID. Returns ``None`` if the
+        rule does not exist.
+
+        Example:
+
+        .. code-block:: python
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            rule = fw.rules.get('rule_id')
+            print(rule.id, rule.name)
+
+        :rtype: :class:`.FirewallRule`
+        :return:  a FirewallRule instance
         """
         pass
 
     @abstractmethod
-    def delete(self):
+    def list(self, limit=None, marker=None):
         """
-        Delete this security group.
+        List all firewall rules associated with this firewall.
 
-        :rtype: ``bool``
-        :return: ``True`` if successful.
+        :rtype: ``list`` of :class:`.FirewallRule`
+        :return:  list of Firewall rule objects
         """
         pass
 
     @abstractmethod
-    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+    def create(self,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
         """
-        Create a security group rule. If the rule already exists, simply
+        Create a VM firewall rule. If the rule already exists, simply
         returns it.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        Example:
+
+        .. code-block:: python
+            import TafficDirection from cloudbridge.cloud.interfaces.resources
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
+                            from_port=80, to_port=80, cidr='10.0.0.0/16')
+            fw.rules.create(TrafficDirection.INBOUND, src_dest_fw=fw)
+            fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
+
+        You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
         ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
         you are authorizing another group or you are authorizing some
-        ip-based rule.
+        IP-based rule.
 
-        :type ip_protocol: ``str``
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+        :type direction: :class:``.TrafficDirection``
+        :param direction: Either ``TrafficDirection.INBOUND`` |
+                          ``TrafficDirection.OUTBOUND``
+
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
         :type from_port: ``int``
         :param from_port: The beginning port number you are enabling.
@@ -1737,30 +1779,30 @@ class SecurityGroup(CloudResource):
         :type to_port: ``int``
         :param to_port: The ending port number you are enabling.
 
-        :type cidr_ip: ``str`` or list of ``str``
-        :param cidr_ip: The CIDR block you are providing access to.
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
 
-        :type src_group: :class:`.SecurityGroup`
-        :param src_group: The Security Group object you are granting access to.
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
 
-        :rtype: :class:`.SecurityGroupRule`
+        :rtype: :class:`.VMFirewallRule`
         :return: Rule object if successful or ``None``.
         """
         pass
 
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+    @abstractmethod
+    def find(self, **kwargs):
         """
-        Get a security group rule with the specified parameters.
+        Find a firewall rule associated with your account filtered by the given
+        parameters.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
-        ``from_port``, ``to_port``, and ``cidr_ip``. Note that when retrieving
-        a group rule, this method will return only one rule although possibly
-        several rules exist for the group rule. In that case, use the
-        ``.rules`` property and filter the results as desired.
+        :type name: str
+        :param name: The name of the VM firewall to retrieve.
 
-        :type ip_protocol: ``str``
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
         :type from_port: ``int``
         :param from_port: The beginning port number you are enabling.
@@ -1768,27 +1810,61 @@ class SecurityGroup(CloudResource):
         :type to_port: ``int``
         :param to_port: The ending port number you are enabling.
 
-        :type cidr_ip: ``str`` or list of ``str``
-        :param cidr_ip: The CIDR block you are providing access to.
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
 
-        :type src_group: :class:`.SecurityGroup`
-        :param src_group: The Security Group object you are granting access to.
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
 
-        :rtype: :class:`.SecurityGroupRule`
-        :return: Role object if one can be found or ``None``.
+        :type src_dest_fw_id: :class:`.str`
+        :param src_dest_fw_id: The VM firewall id which is the
+                               source/destination of the traffic, depending on
+                               whether it's ingress/egress traffic.
+
+        :rtype: list of :class:`VMFirewallRule`
+        :return: A list of VMFirewall objects or an empty list if none
+                 found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, rule_id):
+        """
+        Delete an existing VMFirewall rule.
+
+        :type rule_id: str
+        :param rule_id: The VM firewall rule to be deleted.
         """
         pass
 
 
-class SecurityGroupRule(CloudResource):
+class TrafficDirection(Enum):
+    INBOUND = 'inbound'
+    OUTBOUND = 'outbound'
+
+
+class VMFirewallRule(CloudResource):
 
     """
-    Represents a security group rule.
+    Represents a VM firewall rule.
     """
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def ip_protocol(self):
+    def direction(self):
+        """
+        Direction of traffic to which this rule applies.
+        Either TrafficDirection.INBOUND | TrafficDirection.OUTBOUND
+
+        :rtype: ``str``
+        :return: Direction of traffic to which this rule applies
+        """
+        pass
+
+    @abstractproperty
+    def protocol(self):
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
 
@@ -1818,9 +1894,9 @@ class SecurityGroupRule(CloudResource):
         pass
 
     @abstractproperty
-    def cidr_ip(self):
+    def cidr(self):
         """
-        CIDR block this security group is providing access to.
+        CIDR block this VM firewall is providing access to.
 
         :rtype: ``str``
         :return: CIDR block.
@@ -1828,12 +1904,22 @@ class SecurityGroupRule(CloudResource):
         pass
 
     @abstractproperty
-    def group(self):
+    def src_dest_fw_id(self):
         """
-        Security group given access permissions by this rule.
+        VM firewall id given access permissions by this rule.
 
-        :rtype: :class:``.SecurityGroup``
-        :return: The Security Group with granting access.
+        :rtype: ``str``
+        :return: The VM firewall granted access.
+        """
+        pass
+
+    @abstractproperty
+    def src_dest_fw(self):
+        """
+        VM firewall given access permissions by this rule.
+
+        :rtype: :class:``.VMFirewall``
+        :return: The VM firewall granted access.
         """
         pass
 
