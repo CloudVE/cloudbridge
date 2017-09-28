@@ -4,7 +4,7 @@ import string
 from botocore.exceptions import ClientError
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.services import BaseBlockStoreService
+from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
@@ -13,11 +13,11 @@ from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseNetworkingService
-from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseRouterService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
@@ -124,14 +124,15 @@ class AWSVMFirewallService(BaseVMFirewallService):
             firewall.delete()
 
 
-class AWSBlockStoreService(BaseBlockStoreService):
+class AWSStorageService(BaseStorageService):
 
     def __init__(self, provider):
-        super(AWSBlockStoreService, self).__init__(provider)
+        super(AWSStorageService, self).__init__(provider)
 
         # Initialize provider services
         self._volume_svc = AWSVolumeService(self.provider)
         self._snapshot_svc = AWSSnapshotService(self.provider)
+        self._bucket_svc = AWSBucketService(self.provider)
 
     @property
     def volumes(self):
@@ -140,6 +141,10 @@ class AWSBlockStoreService(BaseBlockStoreService):
     @property
     def snapshots(self):
         return self._snapshot_svc
+
+    @property
+    def buckets(self):
+        return self._bucket_svc
 
 
 class AWSVolumeService(BaseVolumeService):
@@ -213,10 +218,10 @@ class AWSSnapshotService(BaseSnapshotService):
         return cb_snap
 
 
-class AWSObjectStoreService(BaseObjectStoreService):
+class AWSBucketService(BaseBucketService):
 
     def __init__(self, provider):
-        super(AWSObjectStoreService, self).__init__(provider)
+        super(AWSBucketService, self).__init__(provider)
         self.svc = BotoS3Service(provider=self.provider,
                                  cb_resource=AWSBucket,
                                  boto_collection_name='buckets')

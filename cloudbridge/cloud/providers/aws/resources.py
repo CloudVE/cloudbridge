@@ -98,7 +98,7 @@ class AWSMachineImage(BaseMachineImage):
 
         self._ec2_image.deregister()
         self.wait_for([MachineImageState.UNKNOWN, MachineImageState.ERROR])
-        snapshot = self._provider.block_store.snapshots.get(snapshot_id[0])
+        snapshot = self._provider.storage.snapshots.get(snapshot_id[0])
         if snapshot:
             snapshot.delete()
 
@@ -396,7 +396,7 @@ class AWSVolume(BaseVolume):
     @property
     def source(self):
         if self._volume.snapshot_id:
-            return self._provider.block_store.snapshots.get(
+            return self._provider.storage.snapshots.get(
                 self._volume.snapshot_id)
         return None
 
@@ -522,7 +522,7 @@ class AWSSnapshot(BaseSnapshot):
         self._snapshot.delete()
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
-        cb_vol = self._provider.block_store.volumes.create(
+        cb_vol = self._provider.storage.volumes.create(
             name=self.name,
             size=size,
             zone=placement,

@@ -408,11 +408,12 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
 
-class BlockStoreService(CloudService):
+class StorageService(CloudService):
 
     """
-    The Block Store Service interface provides access to block device services,
-    such as volume and snapshot services in the provider.
+    The Storage Service interface provides access to block device services,
+    such as volume and snapshot services, as well as object store services,
+    such as buckets, in the provider.
     """
     __metaclass__ = ABCMeta
 
@@ -426,11 +427,11 @@ class BlockStoreService(CloudService):
         .. code-block:: python
 
             # print all volumes
-            for vol in provider.block_store.volumes:
+            for vol in provider.storage.volumes:
                 print(vol.id, vol.name)
 
             # find volume by name
-            vol = provider.block_store.volumes.find(name='my_vol')[0]
+            vol = provider.storage.volumes.find(name='my_vol')[0]
             print(vol.id, vol.name)
 
         :rtype: :class:`.VolumeService`
@@ -448,15 +449,37 @@ class BlockStoreService(CloudService):
         .. code-block:: python
 
             # print all snapshots
-            for snap in provider.block_store.snapshots:
+            for snap in provider.storage.snapshots:
                 print(snap.id, snap.name)
 
             # find snapshot by name
-            snap = provider.block_store.snapshots.find(name='my_snap')[0]
+            snap = provider.storage.snapshots.find(name='my_snap')[0]
             print(snap.id, snap.name)
 
         :rtype: :class:`.SnapshotService`
-        :return: an SnapshotService object
+        :return: a SnapshotService object
+        """
+        pass
+
+    @abstractproperty
+    def buckets(self):
+        """
+        Provides access to object storage services in this provider.
+
+        Example:
+
+        .. code-block:: python
+
+            # print all buckets
+            for bucket in provider.storage.buckets:
+                print(bucket.id, bucket.name)
+
+            # find bucket by name
+            bucket = provider.storage.buckets.find(name='my_bucket')[0]
+            print(bucket.id, bucket.name)
+
+        :rtype: :class:`.BucketService`
+        :return: a BucketService object
         """
         pass
 
@@ -908,11 +931,11 @@ class GatewayService(CloudService):
         pass
 
 
-class ObjectStoreService(PageableObjectMixin, CloudService):
+class BucketService(PageableObjectMixin, CloudService):
 
     """
-    The Object Storage Service interface provides access to the underlying
-    object store capabilities of this provider. This service is optional and
+    The Bucket Service interface provides access to the underlying
+    object storage capabilities of this provider. This service is optional and
     the :func:`CloudProvider.has_service()` method should be used to verify its
     availability before using the service.
     """
@@ -929,7 +952,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
 
         .. code-block:: python
 
-            bucket = provider.object_store.get('my_bucket_id')
+            bucket = provider.storage.buckets.get('my_bucket_id')
             print(bucket.id, bucket.name)
 
         :rtype: :class:`.Bucket`
@@ -946,7 +969,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
 
         .. code-block:: python
 
-            buckets = provider.object_store.find(name='my_bucket_name')
+            buckets = provider.storage.buckets.find(name='my_bucket_name')
             for bucket in buckets:
                 print(bucket.id, bucket.name)
 
@@ -964,7 +987,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
 
         .. code-block:: python
 
-            buckets = provider.object_store.find(name='my_bucket_name')
+            buckets = provider.storage.buckets.find(name='my_bucket_name')
             for bucket in buckets:
                 print(bucket.id, bucket.name)
 
@@ -985,7 +1008,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
 
         .. code-block:: python
 
-            bucket = provider.object_store.create('my_bucket_name')
+            bucket = provider.storage.buckets.create('my_bucket_name')
             print(bucket.name)
 
 

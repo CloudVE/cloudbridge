@@ -28,9 +28,9 @@ SnapshotService
 .. autoclass:: cloudbridge.cloud.interfaces.services.SnapshotService
     :members:
 
-BlockStoreService
+StorageService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.BlockStoreService
+.. autoclass:: cloudbridge.cloud.interfaces.services.StorageService
     :members:
 
 ImageService
@@ -46,11 +46,6 @@ NetworkingService
 NetworkService
 -----------------
 .. autoclass:: cloudbridge.cloud.interfaces.services.NetworkService
-    :members:
-
-ObjectStoreService
-------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.ObjectStoreService
     :members:
 
 SecurityService

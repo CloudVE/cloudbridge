@@ -69,10 +69,10 @@ Once you have a reference to a provider, explore the cloud platform:
 
 .. code-block:: python
 
-    provider.compute.images.list()
     provider.security.security_groups.list()
-    provider.block_store.snapshots.list()
-    provider.object_store.list()
+    provider.compute.instance_types.list()
+    provider.storage.snapshots.list()
+    provider.storage.buckets.list()
 
 This will demonstrate the fact that the library was properly installed and your
 provider object is setup correctly but it is not very interesting. Therefore,

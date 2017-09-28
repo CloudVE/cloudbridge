@@ -204,7 +204,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             (2 + vm_type.num_ephemeral_disks, len(lc.block_devices)))
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
-                              'compute.vm_types', 'block_store.volumes'])
+                              'compute.vm_types', 'storage.volumes'])
     def test_block_device_mapping_attachments(self):
         name = "cb_blkattch-{0}".format(helpers.get_uuid())
 
@@ -212,7 +212,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             raise self.skipTest("Not running BDM tests because OpenStack is"
                                 " not stable enough yet")
 
-        test_vol = self.provider.block_store.volumes.create(
+        test_vol = self.provider.storage.volumes.create(
            name,
            1,
            helpers.get_provider_test_data(self.provider,

@@ -22,11 +22,10 @@ from openstack import profile
 
 from swiftclient import client as swift_client
 
-from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
 from .services import OpenStackNetworkingService
-from .services import OpenStackObjectStoreService
 from .services import OpenStackSecurityService
+from .services import OpenStackStorageService
 
 
 class OpenStackCloudProvider(BaseCloudProvider):
@@ -71,8 +70,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self._compute = OpenStackComputeService(self)
         self._networking = OpenStackNetworkingService(self)
         self._security = OpenStackSecurityService(self)
-        self._block_store = OpenStackBlockStoreService(self)
-        self._object_store = OpenStackObjectStoreService(self)
+        self._storage = OpenStackStorageService(self)
 
     @property
     def nova(self):
@@ -185,12 +183,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._security
 
     @property
-    def block_store(self):
-        return self._block_store
-
-    @property
-    def object_store(self):
-        return self._object_store
+    def storage(self):
+        return self._storage
 
     def _connect_nova(self):
         return self._connect_nova_region(self.region_name)

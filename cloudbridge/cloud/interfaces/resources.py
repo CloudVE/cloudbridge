@@ -13,16 +13,15 @@ class CloudServiceType(object):
     Providers can implement the ``has_service`` method and clients can check
     for the availability of a service with::
 
-        if (provider.has_service(CloudServiceTypes.OBJECTSTORE))
+        if (provider.has_service(CloudServiceTypes.BUCKET))
             ...
 
     """
     COMPUTE = 'compute'
     IMAGE = 'image'
     SECURITY = 'security'
-    VOLUME = 'volume'
-    BLOCKSTORE = 'block_store'
-    OBJECTSTORE = 'object_store'
+    VOLUME = 'storage.volumes'
+    BUCKET = 'storage.buckets'
 
 
 class CloudResource(object):
@@ -714,7 +713,7 @@ class LaunchConfig(object):
             lc.add_volume_device(size=100, delete_on_terminate=True)
 
             # 2. Create and attach a volume based on a snapshot
-            snap = provider.block_store.snapshots.get('<my_snapshot_id>')
+            snap = provider.storage.snapshots.get('<my_snapshot_id>')
             lc.add_volume_device(source=snap)
 
             # 3. Create+attach a volume based on an image and set it as root

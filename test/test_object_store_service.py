@@ -21,14 +21,14 @@ import requests
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
-    @helpers.skipIfNoService(['object_store'])
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket(self):
         """
         Create a new bucket, check whether the expected values are set,
         and delete it.
         """
         def create_bucket(name):
-            return self.provider.object_store.create(name)
+            return self.provider.storage.buckets.create(name)
 
         def cleanup_bucket(bucket):
             bucket.delete()
@@ -49,11 +49,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             # bucket name cannot be an IP address
             create_bucket("197.10.100.42")
 
-        sit.check_crud(self, self.provider.object_store, Bucket,
+        sit.check_crud(self, self.provider.storage.buckets, Bucket,
                        "cb-crudbucket", create_bucket, cleanup_bucket,
                        skip_name_check=True)
 
-    @helpers.skipIfNoService(['object_store'])
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket_object(self):
         test_bucket = None
 
@@ -71,13 +71,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             name = "cb-crudbucketobj-{0}".format(uuid.uuid4())
-            test_bucket = self.provider.object_store.create(name)
+            test_bucket = self.provider.storage.buckets.create(name)
 
             sit.check_crud(self, test_bucket, BucketObject,
                            "cb_bucketobj", create_bucket_obj,
                            cleanup_bucket_obj, skip_name_check=True)
 
-    @helpers.skipIfNoService(['object_store'])
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket_object_properties(self):
         """
         Create a new bucket, upload some contents into the bucket, and
@@ -85,7 +85,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         Delete everything afterwards.
         """
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
-        test_bucket = self.provider.object_store.create(name)
+        test_bucket = self.provider.storage.buckets.create(name)
 
         # ensure that the bucket is empty
         objects = test_bucket.list()
@@ -132,10 +132,10 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
             sit.check_delete(self, test_bucket, obj)
 
-    @helpers.skipIfNoService(['object_store'])
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content(self):
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
-        test_bucket = self.provider.object_store.create(name)
+        test_bucket = self.provider.storage.buckets.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
@@ -155,13 +155,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     target_stream2.write(data)
                 self.assertEqual(target_stream2.getvalue(), content)
 
-    @helpers.skipIfNoService(['object_store'])
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_generate_url(self):
         if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
             raise self.skipTest("Skip until OpenStack impl is provided")
 
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
-        test_bucket = self.provider.object_store.create(name)
+        test_bucket = self.provider.storage.buckets.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
@@ -180,10 +180,10 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                         " access generated url")
                 self.assertEqual(requests.get(url).content, content)
 
-    @helpers.skipIfNoService(['object_store'])
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_from_file(self):
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
-        test_bucket = self.provider.object_store.create(name)
+        test_bucket = self.provider.storage.buckets.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
@@ -199,7 +199,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     self.assertEqual(target_stream.getvalue(), f.read())
 
     @skip("Skip unless you want to test swift objects bigger than 5 Gig")
-    @helpers.skipIfNoService(['object_store'])
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_with_large_file(self):
         """
         Creates a 6 Gig file in the temp directory, then uploads it to
@@ -214,7 +214,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: os.remove(six_gig_file)):
             download_file = "{0}/cbtestfile-{1}".format(temp_dir, file_name)
             bucket_name = "cbtestbucketlargeobjs-{0}".format(uuid.uuid4())
-            test_bucket = self.provider.object_store.create(bucket_name)
+            test_bucket = self.provider.storage.buckets.create(bucket_name)
             with helpers.cleanup_action(lambda: test_bucket.delete()):
                 test_obj = test_bucket.create_object(file_name)
                 with helpers.cleanup_action(lambda: test_obj.delete()):

@@ -9,7 +9,7 @@ from cinderclient.exceptions import NotFound as CinderNotFound
 
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.services import BaseBlockStoreService
+from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
@@ -18,11 +18,11 @@ from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseNetworkingService
-from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseRouterService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
@@ -278,14 +278,15 @@ class OpenStackVMTypeService(BaseVMTypeService):
         return oshelpers.to_server_paged_list(self.provider, cb_itypes, limit)
 
 
-class OpenStackBlockStoreService(BaseBlockStoreService):
+class OpenStackStorageService(BaseStorageService):
 
     def __init__(self, provider):
-        super(OpenStackBlockStoreService, self).__init__(provider)
+        super(OpenStackStorageService, self).__init__(provider)
 
         # Initialize provider services
         self._volume_svc = OpenStackVolumeService(self.provider)
         self._snapshot_svc = OpenStackSnapshotService(self.provider)
+        self._bucket_svc = OpenStackBucketService(self.provider)
 
     @property
     def volumes(self):
@@ -294,6 +295,10 @@ class OpenStackBlockStoreService(BaseBlockStoreService):
     @property
     def snapshots(self):
         return self._snapshot_svc
+
+    @property
+    def buckets(self):
+        return self._bucket_svc
 
 
 class OpenStackVolumeService(BaseVolumeService):
@@ -411,10 +416,10 @@ class OpenStackSnapshotService(BaseSnapshotService):
         return OpenStackSnapshot(self.provider, os_snap)
 
 
-class OpenStackObjectStoreService(BaseObjectStoreService):
+class OpenStackBucketService(BaseBucketService):
 
     def __init__(self, provider):
-        super(OpenStackObjectStoreService, self).__init__(provider)
+        super(OpenStackBucketService, self).__init__(provider)
 
     def get(self, bucket_id):
         """
