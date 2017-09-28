@@ -70,7 +70,7 @@ Once you have a reference to a provider, explore the cloud platform:
 .. code-block:: python
 
     provider.security.security_groups.list()
-    provider.compute.instance_types.list()
+    provider.compute.vm_types.list()
     provider.storage.snapshots.list()
     provider.storage.buckets.list()
 
