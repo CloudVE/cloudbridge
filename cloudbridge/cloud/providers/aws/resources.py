@@ -108,7 +108,8 @@ class AWSMachineImage(BaseMachineImage):
         try:
             return AWSMachineImage.IMAGE_STATE_MAP.get(
                 self._ec2_image.state, MachineImageState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return MachineImageState.UNKNOWN
 
     def refresh(self):
@@ -327,7 +328,8 @@ class AWSInstance(BaseInstance):
         try:
             return AWSInstance.INSTANCE_STATE_MAP.get(
                 self._ec2_instance.state['Name'], InstanceState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return InstanceState.UNKNOWN
 
     def refresh(self):
@@ -441,7 +443,8 @@ class AWSVolume(BaseVolume):
         try:
             return AWSVolume.VOLUME_STATE_MAP.get(
                 self._volume.state, VolumeState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return VolumeState.UNKNOWN
 
     def refresh(self):
@@ -508,7 +511,8 @@ class AWSSnapshot(BaseSnapshot):
         try:
             return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
                 self._snapshot.state, SnapshotState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return SnapshotState.UNKNOWN
 
     def refresh(self):
@@ -899,7 +903,8 @@ class AWSNetwork(BaseNetwork):
         try:
             return AWSNetwork._NETWORK_STATE_MAP.get(
                 self._vpc.state, NetworkState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return NetworkState.UNKNOWN
 
     @property
@@ -974,7 +979,8 @@ class AWSSubnet(BaseSubnet):
         try:
             return self._SUBNET_STATE_MAP.get(
                 self._subnet.state, SubnetState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return SubnetState.UNKNOWN
 
     def refresh(self):
