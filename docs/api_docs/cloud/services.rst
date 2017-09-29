@@ -88,9 +88,9 @@ VMFirewallService
 .. autoclass:: cloudbridge.cloud.interfaces.services.VMFirewallService
     :members:
 
-VMTypesService
+VMTypeService
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.VMTypesService
+.. autoclass:: cloudbridge.cloud.interfaces.services.VMTypeService
     :members:
 
 RegionService

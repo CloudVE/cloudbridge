@@ -152,6 +152,7 @@ VMFirewallRule
 -----------------
 .. autoclass:: cloudbridge.cloud.interfaces.resources.VMFirewallRule
     :members:
+    :undoc-members:
 
 TrafficDirection
 -----------------

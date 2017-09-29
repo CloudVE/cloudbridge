@@ -18,7 +18,7 @@ performed via the :class:`.VolumeService`. To start, let's create a 1GB volume.
     vol.wait_till_ready()
     provider.storage.volumes.list()
 
-Next, let's attach the volume to a running instance as device ``/dev/sdh``::
+Next, let's attach the volume to a running instance as device ``/dev/sdh``:
 
     vol.attach('i-dbf37022', '/dev/sdh')
     vol.refresh()
