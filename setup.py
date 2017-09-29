@@ -30,7 +30,7 @@ REQS_AZURE = ['msrest>=0.4.7',
               'pysftp==0.2.9']
 REQS_OPENSTACK = [
     'openstacksdk',
-    'python-novaclient==7.0.0',
+    'python-novaclient>=7.0.0',
     'python-glanceclient>=2.5.0,<=2.6.0',
     'python-cinderclient>=1.9.0,<=2.0.1',
     'python-swiftclient>=3.2.0,<=3.3.0',

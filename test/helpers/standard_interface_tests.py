@@ -70,6 +70,7 @@ def check_find(test, service, obj):
         len(find_objs) == 1,
         "Find objects for %s does not return the expected object: %s. Got %s"
         % (type(obj).__name__, obj.name, find_objs))
+    test.assertEqual(find_objs[0], obj)
     return find_objs
 
 
