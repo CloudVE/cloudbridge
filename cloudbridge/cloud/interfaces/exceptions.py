@@ -28,6 +28,15 @@ class InvalidConfigurationException(CloudBridgeBaseException):
     pass
 
 
+class ProviderInternalException(CloudBridgeBaseException):
+    """
+    Marker interface for provider specific errors.
+    Thrown when CloudBridge encounters an error internal to a
+    provider.
+    """
+    pass
+
+
 class ProviderConnectionException(CloudBridgeBaseException):
     """
     Marker interface for connection errors to a cloud provider.

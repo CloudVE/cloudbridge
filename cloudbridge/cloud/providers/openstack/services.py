@@ -27,6 +27,7 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.exceptions import ProviderInternalException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -843,24 +844,28 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
         super(OpenStackFloatingIPService, self).__init__(provider)
 
     def get(self, fip_id):
-        floating_ip = (fip for fip in self if fip.id == fip_id)
-        return next(floating_ip, None)
+        try:
+            return OpenStackFloatingIP(
+                self.provider, self.provider.os_conn.network.get_ip(fip_id))
+        except ResourceNotFound:
+            return None
 
     def list(self, limit=None, marker=None):
         fips = [OpenStackFloatingIP(self.provider, fip)
-                for fip in self.provider.neutron.list_floatingips()
-                .get('floatingips') if fip]
+                for fip in self.provider.os_conn.network.ips()]
         return ClientPagedResultList(self.provider, fips,
                                      limit=limit, marker=marker)
 
     def create(self):
-        # OpenStack requires a floating IP to be associated with a pool,
-        # so just choose the first one available...
-        ip_pool_name = self.provider.nova.floating_ip_pools.list()[0].name
-        ip = self.provider.nova.floating_ips.create(ip_pool_name)
-        # Nova returns a different object than Neutron so fetch the Neutron one
-        ip = self.provider.neutron.list_floatingips(id=ip.id)['floatingips'][0]
-        return OpenStackFloatingIP(self.provider, ip)
+        # OpenStack requires a floating IP to be associated with an external,
+        # network, so choose the first external network found
+        for n in self.provider.networking.networks:
+            if n.external:
+                return OpenStackFloatingIP(
+                    self.provider, self.provider.os_conn.network.create_ip(
+                        floating_network_id=n.id))
+        raise ProviderInternalException(
+            "This OpenStack cloud has no designated external network")
 
 
 class OpenStackRouterService(BaseRouterService):

@@ -343,9 +343,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 fip = self.provider.networking.floating_ips.create()
                 with helpers.cleanup_action(lambda: fip.delete()):
                     with helpers.cleanup_action(
-                            lambda: test_inst.remove_floating_ip(
-                                fip.public_ip)):
-                        test_inst.add_floating_ip(fip.public_ip)
+                            lambda: test_inst.remove_floating_ip(fip)):
+                        test_inst.add_floating_ip(fip)
                         test_inst.refresh()
                         # On Devstack, FloatingIP is listed under private_ips.
                         self.assertIn(fip.public_ip, test_inst.public_ips +
