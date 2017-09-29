@@ -60,12 +60,13 @@ class OpenStackMachineImage(BaseMachineImage):
 
     # ref: http://docs.openstack.org/developer/glance/statuses.html
     IMAGE_STATE_MAP = {
-        'QUEUED': MachineImageState.PENDING,
-        'SAVING': MachineImageState.PENDING,
-        'ACTIVE': MachineImageState.AVAILABLE,
-        'KILLED': MachineImageState.ERROR,
-        'DELETED': MachineImageState.ERROR,
-        'PENDING_DELETE': MachineImageState.ERROR
+        'queued': MachineImageState.PENDING,
+        'saving': MachineImageState.PENDING,
+        'active': MachineImageState.AVAILABLE,
+        'killed': MachineImageState.ERROR,
+        'deleted': MachineImageState.ERROR,
+        'pending_delete': MachineImageState.ERROR,
+        'deactivated': MachineImageState.ERROR
     }
 
     def __init__(self, provider, os_image):
@@ -106,13 +107,13 @@ class OpenStackMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        return self._os_image.minDisk
+        return self._os_image.min_disk
 
     def delete(self):
         """
         Delete this image
         """
-        self._os_image.delete()
+        self._os_image.delete(self._provider.os_conn.session)
 
     @property
     def state(self):

@@ -233,8 +233,8 @@ class OpenStackImageService(BaseImageService):
         """
         try:
             return OpenStackMachineImage(
-                self.provider, self.provider.nova.images.get(image_id))
-        except NovaNotFound:
+                self.provider, self.provider.os_conn.image.get_image(image_id))
+        except ResourceNotFound:
             return None
 
     def find(self, name, limit=None, marker=None):
@@ -243,7 +243,7 @@ class OpenStackImageService(BaseImageService):
         """
         regex = fnmatch.translate(name)
         cb_images = [
-            OpenStackMachineImage(self.provider, img)
+            img
             for img in self
             if img.name and re.search(regex, img.name)]
 
@@ -253,7 +253,7 @@ class OpenStackImageService(BaseImageService):
         """
         List all images.
         """
-        os_images = self.provider.nova.images.list(
+        os_images = self.provider.os_conn.image.images(
             limit=oshelpers.os_result_limit(self.provider, limit),
             marker=marker)
 
