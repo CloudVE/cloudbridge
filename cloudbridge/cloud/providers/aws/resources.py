@@ -288,29 +288,24 @@ class AWSInstance(BaseInstance):
         image.refresh()
         return image
 
-    def add_floating_ip(self, ip_address):
-        allocation_id = (
-            None if not self._ec2_instance.vpc_id else
-            ip_address.id if isinstance(ip_address, AWSFloatingIP) else
-            [x for x in self._provider.networking.floating_ips
-             if x.public_ip == ip_address][0].id)
+    def add_floating_ip(self, floating_ip):
+        fip = (
+            floating_ip if isinstance(floating_ip, AWSFloatingIP) else
+            self._provider.networking.floating_ips.get(floating_ip))
         params = trim_empty_params({
             'InstanceId': self.id,
-            'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
-            'AllocationId': allocation_id})
+            'PublicIp': None if self._ec2_instance.vpc_id else fip.public_ip,
+            'AllocationId': fip._ip.allocation_id})
         self._provider.ec2_conn.meta.client.associate_address(**params)
         self.refresh()
 
-    def remove_floating_ip(self, ip_address):
-        association_id = (
-            None if not self._ec2_instance.vpc_id else
-            ip_address._ip.association_id
-            if isinstance(ip_address, AWSFloatingIP) else
-            [x for x in self._ec2_instance.vpc_addresses.all()
-             if x.public_ip == ip_address][0].association_id)
+    def remove_floating_ip(self, floating_ip):
+        fip = (
+            floating_ip if isinstance(floating_ip, AWSFloatingIP) else
+            self._provider.networking.floating_ips.get(floating_ip))
         params = trim_empty_params({
-            'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
-            'AssociationId': association_id})
+            'PublicIp': None if self._ec2_instance.vpc_id else fip.public_ip,
+            'AssociationId': fip._ip.association_id})
         self._provider.ec2_conn.meta.client.disassociate_address(**params)
         self.refresh()
 
@@ -1011,6 +1006,7 @@ class AWSFloatingIP(BaseFloatingIP):
     def private_ip(self):
         return self._ip.private_ip_address
 
+    @property
     def in_use(self):
         return True if self._ip.instance_id else False
 

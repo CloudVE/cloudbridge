@@ -579,22 +579,22 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def add_floating_ip(self, ip_address):
+    def add_floating_ip(self, floating_ip):
         """
         Add a public IP address to this instance.
 
-        :type ip_address: ``str``
-        :param ip_address: The IP address to associate with the instance.
+        :type floating_ip: :class:``.FloatingIP``
+        :param floating_ip: The FloatingIP to associate with the instance.
         """
         pass
 
     @abstractmethod
-    def remove_floating_ip(self, ip_address):
+    def remove_floating_ip(self, floating_ip):
         """
         Remove a public IP address from this instance.
 
-        :type ip_address: ``str``
-        :param ip_address: The IP address to remove from the instance.
+        :type floating_ip: :class:``.FloatingIP``
+        :param floating_ip: The IP address to remove from the instance.
         """
         pass
 
@@ -603,7 +603,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Add a VM firewall to this instance
 
-        :type firewall: ``VMFirewall``
+        :type firewall: :class:``.VMFirewall``
         :param firewall: The VMFirewall to associate with the instance.
         """
         pass
@@ -976,7 +976,7 @@ class FloatingIP(CloudResource):
         """
         pass
 
-    @abstractmethod
+    @abstractproperty
     def in_use(self):
         """
         Whether the address is in use or not.

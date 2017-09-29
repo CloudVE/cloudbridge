@@ -388,17 +388,17 @@ class OpenStackInstance(BaseInstance):
         return OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
 
-    def add_floating_ip(self, ip_address):
+    def add_floating_ip(self, floating_ip):
         """
         Add a floating IP address to this instance.
         """
-        self._os_instance.add_floating_ip(ip_address)
+        self._os_instance.add_floating_ip(floating_ip.public_ip)
 
-    def remove_floating_ip(self, ip_address):
+    def remove_floating_ip(self, floating_ip):
         """
         Remove a floating IP address from this instance.
         """
-        self._os_instance.remove_floating_ip(ip_address)
+        self._os_instance.remove_floating_ip(floating_ip.public_ip)
 
     def add_vm_firewall(self, firewall):
         """
@@ -844,21 +844,22 @@ class OpenStackFloatingIP(BaseFloatingIP):
 
     @property
     def id(self):
-        return self._ip.get('id', None)
+        return self._ip.id
 
     @property
     def public_ip(self):
-        return self._ip.get('floating_ip_address', None)
+        return self._ip.floating_ip_address
 
     @property
     def private_ip(self):
-        return self._ip.get('fixed_ip_address', None)
+        return self._ip.fixed_ip_address
 
+    @property
     def in_use(self):
-        return bool(self._ip.get('port_id', None))
+        return bool(self._ip.port_id)
 
     def delete(self):
-        self._provider.neutron.delete_floatingip(self.id)
+        self._ip.delete(self._provider.os_conn.session)
 
 
 class OpenStackRouter(BaseRouter):

@@ -121,7 +121,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Floating IP should not have a private IP value ({0})."
                 .format(fip.private_ip))
             self.assertFalse(
-                fip.in_use(),
+                fip.in_use,
                 "Newly created floating IP address should not be in use.")
 
     @helpers.skipIfNoService(['networking.routers'])
