@@ -38,7 +38,7 @@ To locate and download this uploaded file again, you can do the following:
     obj = bucket.objects.find('my-data.txt')[0]
     print("Size: {0}, Modified: {1}".format(obj.size, obj.last_modified))
     with open('/tmp/myfile.txt', 'wb') as f:
-        test_obj.save_content(f)
+        obj.save_content(f)
  
 
 Using tokens for authentication
