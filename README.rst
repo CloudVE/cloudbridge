@@ -10,10 +10,6 @@ conditional code for each cloud.
    :target: https://coveralls.io/github/gvlproject/cloudbridge?branch=master
    :alt: Code Coverage
 
-.. image:: https://travis-ci.org/gvlproject/cloudbridge.svg?branch=master
-   :target: https://travis-ci.org/gvlproject/cloudbridge
-   :alt: Travis Build Status
-
 .. image:: https://codeclimate.com/github/gvlproject/cloudbridge/badges/gpa.svg
    :target: https://codeclimate.com/github/gvlproject/cloudbridge
    :alt: Code Climate
@@ -26,6 +22,38 @@ conditional code for each cloud.
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
+
+.. |aws-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/1
+.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/3
+.. |aws-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/5
+
+.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/2
+.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/4
+.. |os-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/6
+
+.. |azure-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/azure_dev/2
+.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/azure_dev/5
+.. |azure-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/azure_dev/8
+
+.. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/gce/3
+.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/gce/6
+.. |gce-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/gce/9
+
+
+Build Status
+~~~~~~~~~~~~
+
++--------------------------+--------------+--------------+--------------+
+| **Provider/Environment** | py27         | py36         | pypy         |
++--------------------------+--------------+--------------+--------------+
+| **aws**                  | |aws-py27|   | |aws-py36|   | |aws-pypy|   |
++--------------------------+--------------+--------------+--------------+
+| **openstack**            | |os-py27|    | |os-py36|    | |os-pypy|    |
++--------------------------+--------------+--------------+--------------+
+| **azure (alpha)**        | |azure-py27| | |azure-py36| | |azure-py36| |
++--------------------------+--------------+--------------+--------------+
+| **gce (alpha)**          | |gce-py27|   | |gce-py36|   | |gce-pypy|   |
++--------------------------+--------------+--------------+--------------+
 
 Installation
 ~~~~~~~~~~~~
