@@ -160,9 +160,25 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for an instance by a given list of attributes.
+
+        :type  name: ``str``
+        :param name: The name to search for
+
+        :type  limit: ``int``
+        :param limit: The maximum number of objects to return. Note that the
+                      maximum is not guaranteed to be honoured, and a lower
+                      maximum may be enforced depending on the provider. In
+                      such a case, the returned ResultList's is_truncated
+                      property can be used to determine whether more records
+                      are available.
+
+        :type  marker: ``str``
+        :param marker: The marker is an opaque identifier used to assist
+                       in paging through very long lists of objects. It is
+                       returned on each invocation of the list method.
 
         :rtype: List of ``object`` of :class:`.Instance`
         :return: A list of Instance objects matching the supplied attributes.
@@ -605,7 +621,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a network by a given list of attributes.
 
@@ -692,6 +708,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
+    # pylint:disable=arguments-differ
     def list(self, network=None, limit=None, marker=None):
         """
         List all subnets or filter them by the supplied network ID.
@@ -701,6 +718,16 @@ class SubnetService(PageableObjectMixin, CloudService):
 
         :rtype: ``list`` of :class:`.Subnet`
         :return: list of Subnet objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for a subnet by a given list of attributes.
+
+        :rtype: List of ``object`` of :class:`.Subnet`
+        :return: A list of Subnet objects matching the supplied attributes.
         """
         pass
 
@@ -863,16 +890,16 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network, name=None):
+    def create(self, name, network):
         """
         Create a new router.
-
-        :type network: :class:`.Network` object or ``str``
-        :param network: Network object or ID under which to create the router.
 
         :type name: ``str``
         :param name: A router name. The name will be set if the provider
                      supports it.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID under which to create the router.
 
         :rtype: ``object`` of :class:`.Router`
         :return:  A Router object
@@ -958,7 +985,7 @@ class BucketService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a bucket by a given list of attributes.
 

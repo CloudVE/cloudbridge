@@ -346,7 +346,7 @@ class AWSInstanceService(BaseInstanceService):
             key_pair,
             KeyPair) else key_pair
         if launch_config:
-            bdm = self._process_block_device_mappings(launch_config, zone_id)
+            bdm = self._process_block_device_mappings(launch_config)
         else:
             bdm = None
 
@@ -368,6 +368,7 @@ class AWSInstanceService(BaseInstanceService):
                                )
         if inst and len(inst) == 1:
             # Wait until the resource exists
+            # pylint:disable=protected-access
             inst[0]._wait_till_exists()
             # Tag the instance w/ the name
             inst[0].name = name
@@ -407,7 +408,7 @@ class AWSInstanceService(BaseInstanceService):
             vm_firewall_ids = vm_firewalls
         return subnet.id, zone_id, vm_firewall_ids
 
-    def _process_block_device_mappings(self, launch_config, zone=None):
+    def _process_block_device_mappings(self, launch_config):
         """
         Processes block device mapping information
         and returns a Boto BlockDeviceMapping object. If new volumes

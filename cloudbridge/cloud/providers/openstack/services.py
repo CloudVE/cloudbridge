@@ -572,8 +572,8 @@ class OpenStackInstanceService(BaseInstanceService):
         sg_name_list = []
         nics = None
         if subnet_id:
-            log.debug("Creating network port for %s in subnet: %s" %
-                      (name, subnet_id))
+            log.debug("Creating network port for %s in subnet: %s",
+                      name, subnet_id)
             sg_list = []
             if vm_firewalls:
                 if isinstance(vm_firewalls, list) and \
@@ -603,7 +603,7 @@ class OpenStackInstanceService(BaseInstanceService):
                 else:
                     sg_name_list = vm_firewalls
 
-        log.debug("Launching in subnet %s" % subnet_id)
+        log.debug("Launching in subnet %s", subnet_id)
         os_instance = self.provider.nova.servers.create(
             name,
             None if self._has_root_device(launch_config) else image_id,

@@ -139,7 +139,9 @@ class OpenStackPlacementZone(BasePlacementZone):
     def __init__(self, provider, zone, region):
         super(OpenStackPlacementZone, self).__init__(provider)
         if isinstance(zone, OpenStackPlacementZone):
-            self._os_zone = zone._os_zone  # pylint:disable=protected-access
+            # pylint:disable=protected-access
+            self._os_zone = zone._os_zone
+            # pylint:disable=protected-access
             self._os_region = zone._os_region
         else:
             self._os_zone = zone
@@ -265,6 +267,7 @@ class OpenStackInstance(BaseInstance):
         return self._os_instance.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         """
         Get the instance name.
@@ -457,6 +460,7 @@ class OpenStackRegion(BaseRegion):
             zones = self._provider.nova.availability_zones.list(detailed=False)
         else:
             try:
+                # pylint:disable=protected-access
                 region_nova = self._provider._connect_nova_region(self.name)
                 zones = region_nova.availability_zones.list(detailed=False)
             except novaex.EndpointNotFound:
@@ -494,6 +498,7 @@ class OpenStackVolume(BaseVolume):
         return self._volume.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         """
         Get the volume name.
@@ -501,7 +506,8 @@ class OpenStackVolume(BaseVolume):
         return self._volume.name
 
     @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    # pylint:disable=arguments-differ
+    def name(self, value):
         """
         Set the volume name.
         """
@@ -615,6 +621,7 @@ class OpenStackSnapshot(BaseSnapshot):
         return self._snapshot.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         """
         Get the snapshot name.
@@ -622,7 +629,8 @@ class OpenStackSnapshot(BaseSnapshot):
         return self._snapshot.name
 
     @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    # pylint:disable=arguments-differ
+    def name(self, value):
         """
         Set the snapshot name.
         """
@@ -943,6 +951,7 @@ class OpenStackInternetGateway(BaseInternetGateway):
     def __init__(self, provider, gateway_net):
         super(OpenStackInternetGateway, self).__init__(provider)
         if isinstance(gateway_net, OpenStackNetwork):
+            # pylint:disable=protected-access
             gateway_net = gateway_net._network
         self._gateway_net = gateway_net
 
@@ -1205,6 +1214,7 @@ class OpenStackBucketObject(BaseBucketObject):
                 upload_options['segment_size'] = FIVE_GIG
 
         # remap the swift service's connection factory method
+        # pylint:disable=protected-access
         swiftclient.service.get_conn = self._provider._connect_swift
 
         result = True
@@ -1229,6 +1239,7 @@ class OpenStackBucketObject(BaseBucketObject):
         """
 
         # remap the swift service's connection factory method
+        # pylint:disable=protected-access
         swiftclient.service.get_conn = self._provider._connect_swift
 
         result = True

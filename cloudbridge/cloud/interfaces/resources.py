@@ -860,17 +860,17 @@ class Network(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, cidr_block, name=None, zone=None):
+    def create_subnet(self, name, cidr_block, zone=None):
         """
         Create a new network subnet and associate it with this Network.
+
+        :type name: ``str``
+        :param name: The subnet name. The name will be set if the
+                     provider supports it.
 
         :type cidr_block: ``str``
         :param cidr_block: CIDR block within this Network to assign to the
                            subnet.
-
-        :type name: ``str``
-        :param name: An optional subnet name. The name will be set if the
-                     provider supports it.
 
         :type zone: ``str``
         :param zone: Placement zone where to create the subnet. Some providers
@@ -2113,6 +2113,7 @@ class BucketContainer(PageableObjectMixin):
         pass
 
     @abstractmethod
+    # pylint:disable=arguments-differ
     def list(self, limit=None, marker=None, prefix=None):
         """
         List objects in this bucket.
@@ -2132,12 +2133,18 @@ class BucketContainer(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for an object by a given name
 
         :rtype: List of ``objects`` of :class:`.BucketObject`
         :return: A list of BucketObjects matching the supplied attributes.
+
+        :type limit: ``int``
+        :param limit: Maximum number of elements to return.
+
+        :type marker: ``int``
+        :param marker: Fetch results after this offset.
         """
         pass
 
