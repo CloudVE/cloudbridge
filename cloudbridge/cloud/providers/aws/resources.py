@@ -215,6 +215,7 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         """
         .. note:: an instance must have a (case sensitive) tag ``Name``
@@ -295,6 +296,7 @@ class AWSInstance(BaseInstance):
         params = trim_empty_params({
             'InstanceId': self.id,
             'PublicIp': None if self._ec2_instance.vpc_id else fip.public_ip,
+            # pylint:disable=protected-access
             'AllocationId': fip._ip.allocation_id})
         self._provider.ec2_conn.meta.client.associate_address(**params)
         self.refresh()
@@ -305,6 +307,7 @@ class AWSInstance(BaseInstance):
             self._provider.networking.floating_ips.get(floating_ip))
         params = trim_empty_params({
             'PublicIp': None if self._ec2_instance.vpc_id else fip.public_ip,
+            # pylint:disable=protected-access
             'AssociationId': fip._ip.association_id})
         self._provider.ec2_conn.meta.client.disassociate_address(**params)
         self.refresh()
@@ -335,6 +338,7 @@ class AWSInstance(BaseInstance):
             # set the state to unknown
             self._ec2_instance.state = {'Name': InstanceState.UNKNOWN}
 
+    # pylint:disable=unused-argument
     def _wait_till_exists(self, timeout=None, interval=None):
         self._ec2_instance.wait_until_exists()
 
@@ -362,6 +366,7 @@ class AWSVolume(BaseVolume):
         return self._volume.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         return find_tag_value(self._volume.tags, 'Name')
 
@@ -471,6 +476,7 @@ class AWSSnapshot(BaseSnapshot):
         return self._snapshot.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         return find_tag_value(self._snapshot.tags, 'Name')
 
@@ -600,6 +606,7 @@ class AWSVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
             src_dest_fw.id if isinstance(src_dest_fw, AWSVMFirewall)
             else src_dest_fw)
 
+        # pylint:disable=protected-access
         ip_perm_entry = AWSVMFirewallRule._construct_ip_perms(
             protocol, from_port, to_port, cidr, src_dest_fw_id)
         # Filter out empty values to please Boto
@@ -801,6 +808,7 @@ class AWSBucketContainer(BaseBucketContainer):
 
     def get(self, name):
         try:
+            # pylint:disable=protected-access
             obj = self.bucket._bucket.Object(name)
             # load() throws an error if object does not exist
             obj.load()
@@ -810,8 +818,10 @@ class AWSBucketContainer(BaseBucketContainer):
 
     def list(self, limit=None, marker=None, prefix=None):
         if prefix:
+            # pylint:disable=protected-access
             boto_objs = self.bucket._bucket.objects.filter(Prefix=prefix)
         else:
+            # pylint:disable=protected-access
             boto_objs = self.bucket._bucket.objects.all()
         objects = [AWSBucketObject(self._provider, obj)
                    for obj in boto_objs]
@@ -826,6 +836,7 @@ class AWSBucketContainer(BaseBucketContainer):
                                      limit=limit, marker=marker)
 
     def create(self, name):
+        # pylint:disable=protected-access
         obj = self.bucket._bucket.Object(name)
         return AWSBucketObject(self._provider, obj)
 
@@ -849,6 +860,7 @@ class AWSRegion(BaseRegion):
         if self.id == self._provider.region_name:  # optimisation
             conn = self._provider.ec2_conn
         else:
+            # pylint:disable=protected-access
             conn = self._provider._conect_ec2_region(region_name=self.id)
 
         zones = (conn.meta.client.describe_availability_zones()

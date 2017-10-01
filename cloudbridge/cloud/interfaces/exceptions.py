@@ -65,6 +65,6 @@ class InvalidValueException(CloudBridgeBaseException):
     TrafficDirection.OUTBOUND.
     """
     def __init__(self, param, value):
-        super(InvalidNameException, self).__init__(
+        super(InvalidValueException, self).__init__(
             "Param %s has been given an unrecognised value %s" %
             (param, value))

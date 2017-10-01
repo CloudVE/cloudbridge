@@ -79,12 +79,12 @@ class BotoGenericService(object):
             boto_conn, self.boto_collection_model)
 
     def _infer_collection_model(self, conn, collection_name):
-        log.debug("Retrieving boto model for collection: %s" % collection_name)
+        log.debug("Retrieving boto model for collection: %s", collection_name)
         return next(col for col in conn.meta.resource_model.collections
                     if col.name == collection_name)
 
     def _infer_boto_resource(self, conn, collection_model):
-        log.debug("Retrieving resource model for collection: %s" %
+        log.debug("Retrieving resource model for collection: %s",
                   collection_model.name)
         resource_model = next(
             sr for sr in conn.meta.resource_model.subresources
@@ -130,6 +130,7 @@ class BotoGenericService(object):
         because paginators() return json responses, and there's no direct way
         to convert a paginated json response to a Boto Resource.
         """
+        # pylint:disable=protected-access
         return collection._handler(collection._parent, params, page)
 
     def _resource_iterator(self, collection, params, pages, limit):
@@ -154,9 +155,11 @@ class BotoGenericService(object):
         protected members of ResourceCollection. This logic can be removed
         depending on issue: https://github.com/boto/boto3/issues/1268.
         """
+        # pylint:disable=protected-access
         cleaned_params = collection._params.copy()
         cleaned_params.pop('limit', None)
         cleaned_params.pop('page_size', None)
+        # pylint:disable=protected-access
         params = create_request_parameters(
             collection._parent, collection._model.request)
         merge_dicts(params, cleaned_params, append_lists=True)
