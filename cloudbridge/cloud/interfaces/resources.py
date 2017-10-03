@@ -1752,7 +1752,7 @@ class VMFirewallRuleContainer(PageableObjectMixin):
         Example:
 
         .. code-block:: python
-            import TafficDirection from cloudbridge.cloud.interfaces.resources
+            from cloudbridge.cloud.interfaces.resources import TrafficDirection
 
             fw = provider.security.vm_firewalls.get('my_fw_id')
             fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
