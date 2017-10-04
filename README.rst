@@ -1,3 +1,6 @@
+.. image:: https://badge.waffle.io/gvlproject/cloudbridge.png?label=in%20progress&title=In%20Progress 
+ :target: https://waffle.io/gvlproject/cloudbridge?utm_source=badge
+ :alt: 'Waffle.io - Issues in progress'
 CloudBridge aims to provide a simple layer of abstraction over
 different cloud providers, reducing or eliminating the need to write
 conditional code for each cloud.
