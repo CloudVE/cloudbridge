@@ -1,6 +1,8 @@
 """
 Base implementation for services available through a provider
 """
+import logging
+
 from cloudbridge.cloud.interfaces.resources import Router
 
 from cloudbridge.cloud.interfaces.services import BucketService
@@ -25,6 +27,7 @@ from cloudbridge.cloud.interfaces.services import VolumeService
 
 from .resources import BasePageableObjectMixin
 
+log = logging.getLogger(__name__)
 
 class BaseCloudService(CloudService):
 
@@ -100,6 +103,7 @@ class BaseKeyPairService(
                   that the key may not have been deleted by this method but
                   instead has not existed in the first place.
         """
+        log.info("Deleting the existing key pair %s", key_pair_id)
         kp = self.get(key_pair_id)
         if kp:
             kp.delete()
@@ -125,9 +129,12 @@ class BaseVMTypeService(
 
     def find(self, **kwargs):
         name = kwargs.get('name')
+        log.info("Searching for VMTypeService with the: name %s...", name)
         if name:
             return [itype for itype in self if itype.name == name]
         else:
+            log.exception("TypeError exception raised. Invalid parameters "
+                          "used for search.")
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
 
@@ -169,6 +176,7 @@ class BaseNetworkService(
     def delete(self, network_id):
         network = self.get(network_id)
         if network:
+            log.info("Deleting network %s", network_id)
             network.delete()
 
 
@@ -180,9 +188,12 @@ class BaseSubnetService(
 
     def find(self, **kwargs):
         name = kwargs.get('name')
+        log.info("Searching for SubnetService with the name: %s...", name)
         if name:
             return [subnet for subnet in self if subnet.name == name]
         else:
+            log.exception("TypeError exception raised. Invalid parameters "
+                          "used for search.")
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
 
@@ -196,9 +207,13 @@ class BaseFloatingIPService(
     def find(self, **kwargs):
         if 'name' in kwargs:
             name = kwargs.get('name')
+            log.info("Searching for FloatingIPService with the "
+                     "name: %s...", name)
             if name:
                 return [fip for fip in self if fip.name == name]
         else:
+            log.exception("TypeError exception raised. Invalid parameters "
+                          "used for search.")
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
 
@@ -216,10 +231,13 @@ class BaseRouterService(
 
     def delete(self, router):
         if isinstance(router, Router):
+            log.info("Router %s successful deleted.", router)
             router.delete()
         else:
+            log.info("Getting router %s", router)
             router = self.get(router)
             if router:
+                log.info("Router %s successful deleted.", router)
                 router.delete()
 
 
