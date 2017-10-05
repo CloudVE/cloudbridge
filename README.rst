@@ -22,6 +22,9 @@ conditional code for each cloud.
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
+.. image:: https://badge.waffle.io/gvlproject/cloudbridge.png?label=in%20progress&title=In%20Progress 
+   :target: https://waffle.io/gvlproject/cloudbridge?utm_source=badge
+   :alt: 'Waffle.io - Issues in progress'
 
 .. |aws-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/1
 .. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/3
