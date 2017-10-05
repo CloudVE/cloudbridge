@@ -198,6 +198,7 @@ class BaseCloudResource(CloudResource):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseCloudResource.is_valid_resource_name(name):
+            log.exception("InvalidNameException raised on %s", name)
             raise InvalidNameException(
                 u"Invalid name: %s. Name must be at most 63 characters "
                 "long and consist of lowercase letters, numbers, "
@@ -442,6 +443,8 @@ class BaseLaunchConfig(LaunchConfig):
         block_device = self._validate_volume_device(
             source=source, is_root=is_root, size=size,
             delete_on_terminate=delete_on_terminate)
+        log.debug("Appending %s to the block_devices list",
+                  block_device)
         self.block_devices.append(block_device)
 
     def _validate_volume_device(self, source=None, is_root=None,
@@ -451,21 +454,29 @@ class BaseLaunchConfig(LaunchConfig):
         InvalidConfigurationException if the configuration is incorrect.
         """
         if source is None and not size:
+            log.exception("Raised InvalidConfigurationException, no"
+                          " size argument specified.")
             raise InvalidConfigurationException(
                 "A size must be specified for a blank new volume")
 
         if source and \
                 not isinstance(source, (Snapshot, Volume, MachineImage)):
+            log.exception("InvalidConfigurationException raised, "
+                          "source argument not specified correctly.")
             raise InvalidConfigurationException(
                 "Source must be a Snapshot, Volume, MachineImage or None")
         if size:
             if not isinstance(size, six.integer_types) or not size > 0:
+                log.exception("InvalidConfigurationException raised, "
+                              " size argument must be greater than 0.")
                 raise InvalidConfigurationException(
                     "The size must be None or a number greater than 0")
 
         if is_root:
             for bd in self.block_devices:
                 if bd.is_root:
+                    log.exception("InvalidConfigurationException raised,"
+                                  "%s has already been marked as root", bd)
                     raise InvalidConfigurationException(
                         "An existing block device: {0} has already been"
                         " marked as root. There can only be one root device.")
@@ -831,6 +842,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseBucketObject.is_valid_resource_name(name):
+            log.exception("InvalidNameException raised on %s", name)
             raise InvalidNameException(
                 u"Invalid object name: %s. Name must match criteria defined "
                 "in: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMeta"
@@ -876,6 +888,7 @@ class BaseBucket(BaseCloudResource, Bucket):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseBucket.is_valid_resource_name(name):
+            log.exception("InvalidNameException raised on %s", name)
             raise InvalidNameException(
                 u"Invalid bucket name: %s. Name must match criteria defined "
                 "in: http://docs.aws.amazon.com/awscloudtrail/latest/userguide"

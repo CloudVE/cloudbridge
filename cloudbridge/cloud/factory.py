@@ -25,7 +25,7 @@ class CloudProviderFactory(object):
 
     def __init__(self):
         self.provider_list = defaultdict(dict)
-        log.debug("Providers List: " + self.provider_list)
+        log.debug("Providers List: %s", self.provider_list)
 
     def register_provider_class(self, cls):
         """
@@ -77,18 +77,18 @@ class CloudProviderFactory(object):
             log.debug("Importing provider: " + modname)
             self._import_provider(modname)
 
-
     def _import_provider(self, module_name):
         """
         Imports and registers providers from the given module name.
         Raises an ImportError if the import does not succeed.
         """
+        log.info("Importing providers from %s", module_name)
         module = importlib.import_module(
             "{0}.{1}".format(providers.__name__,
                              module_name))
         classes = inspect.getmembers(module, inspect.isclass)
         for _, cls in classes:
-            log.debug("Registering the class: " + cls)
+            log.info("Registering the provider: %s", cls)
             self.register_provider_class(cls)
 
     def list_providers(self):
@@ -109,7 +109,7 @@ class CloudProviderFactory(object):
         """
         if not self.provider_list:
             self.discover_providers()
-        log.debug("List of available providers: " + self.provider_list)
+        log.info("List of available providers: %s", self.provider_list)
         return self.provider_list
 
     def create_provider(self, name, config):
@@ -130,12 +130,17 @@ class CloudProviderFactory(object):
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
         """
+        log.info("Searching provider with the name %s on %s",
+                 name, config)
         provider_class = self.get_provider_class(name)
         if provider_class is None:
+            log.exception("A provider with the name %s could not "
+                          "be found", name)
             raise NotImplementedError(
                 'A provider with name {0} could not be'
                 ' found'.format(name))
-        log.debug("Provider name: " + name + " config details:" + config)
+        log.debug("Found provider name: %s with these config "
+                  " details: %s", name, config)
         return provider_class(config)
 
     def get_provider_class(self, name, get_mock=False):
@@ -150,14 +155,18 @@ class CloudProviderFactory(object):
         :return: A class corresponding to the requested provider or ``None``
                  if the provider was not found.
         """
+        log.debug("Returning a class for the %s provider", name)
         impl = self.list_providers().get(name)
         if impl:
             if get_mock and impl.get("mock_class"):
+                log.debug("param get_mock set to True, returning "
+                          "a mock version of the provider %s", name)
                 return impl["mock_class"]
             else:
+                log.debug("Returning the real version of %s", name)
                 return impl["class"]
         else:
-            log.debug("Provider with the name: " + name + "not found")
+            log.debug("Provider with the name: %s not found", name)
             return None
 
     def get_all_provider_classes(self, get_mock=False):
@@ -175,8 +184,10 @@ class CloudProviderFactory(object):
         all_providers = []
         for impl in self.list_providers().values():
             if get_mock and impl.get("mock_class"):
+                log.debug("param get_mock set to True, appending "
+                          "a mock version of the provider %s", impl)
                 all_providers.append(impl["mock_class"])
             else:
                 all_providers.append(impl["class"])
-        log.debug("List of provider classes: " + all_providers)        
+        log.info("List of provider classes: %s", all_providers)
         return all_providers
