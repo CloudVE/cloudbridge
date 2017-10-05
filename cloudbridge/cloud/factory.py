@@ -25,6 +25,7 @@ class CloudProviderFactory(object):
 
     def __init__(self):
         self.provider_list = defaultdict(dict)
+        log.debug("Providers List: " + self.provider_list)
 
     def register_provider_class(self, cls):
         """
@@ -45,6 +46,7 @@ class CloudProviderFactory(object):
         if isinstance(cls, type) and issubclass(cls, CloudProvider):
             if hasattr(cls, "PROVIDER_ID"):
                 provider_id = getattr(cls, "PROVIDER_ID")
+                log.debug("Cloud provider: " + provider_id)
                 if issubclass(cls, TestMockHelperMixin):
                     if self.provider_list.get(provider_id, {}).get(
                             'mock_class'):
@@ -72,7 +74,9 @@ class CloudProviderFactory(object):
         Note that this methods does not guard against a failed import.
         """
         for _, modname, _ in pkgutil.iter_modules(providers.__path__):
+            log.debug("Importing provider: " + modname)
             self._import_provider(modname)
+
 
     def _import_provider(self, module_name):
         """
@@ -84,6 +88,7 @@ class CloudProviderFactory(object):
                              module_name))
         classes = inspect.getmembers(module, inspect.isclass)
         for _, cls in classes:
+            log.debug("Registering the class: " + cls)
             self.register_provider_class(cls)
 
     def list_providers(self):
@@ -104,6 +109,7 @@ class CloudProviderFactory(object):
         """
         if not self.provider_list:
             self.discover_providers()
+        log.debug("List of available providers: " + self.provider_list)
         return self.provider_list
 
     def create_provider(self, name, config):
@@ -129,6 +135,7 @@ class CloudProviderFactory(object):
             raise NotImplementedError(
                 'A provider with name {0} could not be'
                 ' found'.format(name))
+        log.debug("Provider name: " + name + " config details:" + config)
         return provider_class(config)
 
     def get_provider_class(self, name, get_mock=False):
@@ -150,6 +157,7 @@ class CloudProviderFactory(object):
             else:
                 return impl["class"]
         else:
+            log.debug("Provider with the name: " + name + "not found")
             return None
 
     def get_all_provider_classes(self, get_mock=False):
@@ -170,4 +178,5 @@ class CloudProviderFactory(object):
                 all_providers.append(impl["mock_class"])
             else:
                 all_providers.append(impl["class"])
+        log.debug("List of provider classes: " + all_providers)        
         return all_providers
