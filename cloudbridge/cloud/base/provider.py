@@ -1,6 +1,7 @@
 """Base implementation of a provider interface."""
 import functools
 import os
+import logging
 from os.path import expanduser
 try:
     from configparser import ConfigParser
@@ -11,6 +12,7 @@ from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 from cloudbridge.cloud.interfaces.resources import Configuration
 
+log = logging.getLogger(__name__)
 
 DEFAULT_RESULT_LIMIT = 50
 DEFAULT_WAIT_TIMEOUT = 600
@@ -37,6 +39,8 @@ class BaseConfiguration(Configuration):
         :rtype: ``int``
         :return: The maximum number of results to return
         """
+        log.debug("Maximum number of results for list methods "
+                  + DEFAULT_RESULT_LIMIT)
         return self.get('default_result_limit', DEFAULT_RESULT_LIMIT)
 
     @property
@@ -44,6 +48,8 @@ class BaseConfiguration(Configuration):
         """
         Gets the default wait timeout for LifeCycleObjects.
         """
+        log.debug("Default wait timeout for LifeCycleObjects "
+                  + DEFAULT_WAIT_TIMEOUT)
         return self.get('default_wait_timeout', DEFAULT_WAIT_TIMEOUT)
 
     @property
@@ -51,6 +57,8 @@ class BaseConfiguration(Configuration):
         """
         Gets the default wait interval for LifeCycleObjects.
         """
+        log.debug("Default wait interfal for LifeCycleObjects "
+                  + DEFAULT_WAIT_INTERVAL)
         return self.get('default_wait_interval', DEFAULT_WAIT_INTERVAL)
 
     @property
@@ -94,6 +102,7 @@ class BaseCloudProvider(CloudProvider):
             self.security.security_groups.list()
             return True
         except Exception as e:
+            log.debug("ProviderConnectionException ocurred")
             raise ProviderConnectionException(
                 "Authentication with cloud provider failed: %s" % (e,))
 
@@ -113,11 +122,15 @@ class BaseCloudProvider(CloudProvider):
         """
         try:
             if self._deepgetattr(self, service_type):
+                log.debug("This provider supports "
+                          + service_type)
                 return True
         except AttributeError:
             pass  # Undefined service type
         except NotImplementedError:
             pass  # service not implemented
+        log.debug("This provider doesn't support "
+                  + service_type)
         return False
 
     def _get_config_value(self, key, default_value):
