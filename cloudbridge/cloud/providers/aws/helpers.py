@@ -26,6 +26,7 @@ def trim_empty_params(params_dict):
             'VpcId': 'xyz',
         }
     """
+    log.debug("Removing null values from %s", params_dict)
     return {k: v for k, v in params_dict.items() if v is not None}
 
 
@@ -39,8 +40,10 @@ def find_tag_value(tags, key):
     :type key: ``str``
     :param key: Name of the tag to search for
     """
+    log.info("Searching for %s in %s", key, tags)
     for tag in tags or []:
         if tag.get('Key') == key:
+            log.info("Found %s, returning %s", key, tag.get('Value'))
             return tag.get('Value')
     return None
 
@@ -247,6 +250,8 @@ class BotoGenericService(object):
         :type kwargs: ``dict``
         :param kwargs: Arguments to be passed as-is to the service method
         """
+        log.debug("Creating a resource by invoking %s on these arguments",
+                  boto_method, **kwargs)
         trimmed_args = trim_empty_params(kwargs)
         result = getattr(self.boto_conn, boto_method)(**trimmed_args)
         if isinstance(result, list):
@@ -262,6 +267,7 @@ class BotoGenericService(object):
         :type resource_id: ``str``
         :param resource_id: ID of the resource
         """
+        log.info("Delete the resource with the id %s", resource_id)
         res = self.get(resource_id)
         if res:
             res.delete()

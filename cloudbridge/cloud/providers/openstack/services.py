@@ -131,10 +131,12 @@ class OpenStackKeyPairService(BaseKeyPairService):
         """
         Returns a KeyPair given its id.
         """
+        log.debug("Returning KeyPair with the id %s", key_pair_id)
         try:
             return OpenStackKeyPair(
                 self.provider, self.provider.nova.keypairs.get(key_pair_id))
         except NovaNotFound:
+            log.exception("NovaNotFound exception raised")
             return None
 
     def list(self, limit=None, marker=None):
@@ -144,10 +146,11 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :rtype: ``list`` of :class:`.KeyPair`
         :return:  list of KeyPair objects
         """
-
         keypairs = self.provider.nova.keypairs.list()
         results = [OpenStackKeyPair(self.provider, kp)
                    for kp in keypairs]
+        log.debug("Listing all key pairs associated with OpenStack "
+                  "Account: %s", results)
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
@@ -158,6 +161,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
         keypairs = self.provider.nova.keypairs.findall(name=name)
         results = [OpenStackKeyPair(self.provider, kp)
                    for kp in keypairs]
+        log.debug("Searching for %s in: %s", name, keypairs)
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
@@ -171,11 +175,13 @@ class OpenStackKeyPairService(BaseKeyPairService):
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A key pair instance or ``None`` if one was not be created.
         """
+        log.debug("Creating a new key pair with the name: %s", name)
         OpenStackKeyPair.assert_valid_resource_name(name)
 
         kp = self.provider.nova.keypairs.create(name)
         if kp:
             return OpenStackKeyPair(self.provider, kp)
+        log.exception("Key Pair with the name %s already exists", name)
         return None
 
 
@@ -185,11 +191,13 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         super(OpenStackVMFirewallService, self).__init__(provider)
 
     def get(self, firewall_id):
+        log.debug("Getting OpenStack VM Firewall with the id: %s", firewall_id)
         try:
             return OpenStackVMFirewall(
                 self.provider,
                 self.provider.os_conn.network.get_security_group(firewall_id))
         except ResourceNotFound:
+            log.exception("Firewall %s not found.", firewall_id)
             return None
 
     def list(self, limit=None, marker=None):
@@ -202,7 +210,9 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
 
     def create(self, name, description, network_id):
         OpenStackVMFirewall.assert_valid_resource_name(name)
-
+        log.debug("Creating OpenStack VM Firewall with the params: "
+                  "[name: %s network id: %s description: %s]", name,
+                  network_id, description)
         sg = self.provider.os_conn.network.create_security_group(
             name=name, description=description)
         if sg:
@@ -210,6 +220,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         return None
 
     def find(self, name, limit=None, marker=None):
+        log.debug("Searching for %s", name)
         sgs = [self.provider.os_conn.network.find_security_group(name)]
         results = [OpenStackVMFirewall(self.provider, sg)
                    for sg in sgs if sg]
@@ -217,6 +228,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
+        log.debug("Deleting OpenStack Firewall with the id: %s", group_id)
         firewall = self.get(group_id)
         if firewall:
             firewall.delete()
@@ -232,16 +244,20 @@ class OpenStackImageService(BaseImageService):
         """
         Returns an Image given its id
         """
+        log.debug("Getting OpenStack Image with the id: %s", image_id)
         try:
             return OpenStackMachineImage(
                 self.provider, self.provider.os_conn.image.get_image(image_id))
         except ResourceNotFound:
+            log.exception("ResourceNotFound exception raised, %s not found",
+                          image_id)
             return None
 
     def find(self, name, limit=None, marker=None):
         """
         Searches for an image by a given list of attributes
         """
+        log.debug("Searching for the OpenStack image with the name: %s", name)
         regex = fnmatch.translate(name)
         cb_images = [
             img
@@ -319,16 +335,19 @@ class OpenStackVolumeService(BaseVolumeService):
         """
         Returns a volume given its id.
         """
+        log.debug("Getting OpenStack Volume with the id: %s", volume_id)
         try:
             return OpenStackVolume(
                 self.provider, self.provider.cinder.volumes.get(volume_id))
         except CinderNotFound:
+            log.exception("CinderNotFound exception raised.")
             return None
 
     def find(self, name, limit=None, marker=None):
         """
         Searches for a volume by a given list of attributes.
         """
+        log.debug("Searching for an OpenStack Volume with the name %s", name)
         search_opts = {'name': name}
         cb_vols = [
             OpenStackVolume(self.provider, vol)
@@ -355,6 +374,9 @@ class OpenStackVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
+        log.debug("Creating a new volume with the params: "
+                  "[name: %s size: %s zone: %s snapshot: %s description: %s]",
+                  name, size, zone, snapshot, description)
         OpenStackVolume.assert_valid_resource_name(name)
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
@@ -376,11 +398,13 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         Returns a snapshot given its id.
         """
+        log.debug("Getting OpenStack snapshot with the id: %s", snapshot_id)
         try:
             return OpenStackSnapshot(
                 self.provider,
                 self.provider.cinder.volume_snapshots.get(snapshot_id))
         except CinderNotFound:
+            log.exception("CinderNotFound exception raised.")
             return None
 
     def find(self, name, limit=None, marker=None):
@@ -391,6 +415,8 @@ class OpenStackSnapshotService(BaseSnapshotService):
                        'limit': oshelpers.os_result_limit(self.provider,
                                                           limit),
                        'marker': marker}
+        log.debug("Searching for an OpenStack volume with the following "
+                  "params: %s", search_opts)
         cb_snaps = [
             OpenStackSnapshot(self.provider, snap) for
             snap in self.provider.cinder.volume_snapshots.list(search_opts)
@@ -414,6 +440,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
+        log.debug("Creating a new snapshot of the %s volume.", name)
         OpenStackSnapshot.assert_valid_resource_name(name)
 
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
@@ -435,6 +462,7 @@ class OpenStackBucketService(BaseBucketService):
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
+        log.debug("Getting OpenStack bucket with the id: %s", bucket_id)
         _, container_list = self.provider.swift.get_account(
             prefix=bucket_id)
         if container_list:
@@ -442,12 +470,14 @@ class OpenStackBucketService(BaseBucketService):
                                    next((c for c in container_list
                                          if c['name'] == bucket_id), None))
         else:
+            log.exception("OpenStack Bucket does not exist.")
             return None
 
     def find(self, name, limit=None, marker=None):
         """
         Searches for a bucket by a given list of attributes.
         """
+        log.debug("Searching for the OpenStack Bucket with the name: %s", name)
         _, container_list = self.provider.swift.get_account(
             limit=oshelpers.os_result_limit(self.provider, limit),
             marker=marker)
@@ -471,6 +501,7 @@ class OpenStackBucketService(BaseBucketService):
         """
         Create a new bucket.
         """
+        log.debug("Creating a new OpenStack Bucket with the name: %s", name)
         OpenStackBucket.assert_valid_resource_name(name)
 
         self.provider.swift.put_container(name)
@@ -483,6 +514,7 @@ class OpenStackRegionService(BaseRegionService):
         super(OpenStackRegionService, self).__init__(provider)
 
     def get(self, region_id):
+        log.debug("Getting OpenStack Region with the id: %s", region_id)
         region = (r for r in self.list() if r.id == region_id)
         return next(region, None)
 
@@ -751,6 +783,7 @@ class OpenStackNetworkService(BaseNetworkService):
         super(OpenStackNetworkService, self).__init__(provider)
 
     def get(self, network_id):
+        log.debug("Getting OpenStack Network with the id: %s", network_id)
         network = (n for n in self if n.id == network_id)
         return next(network, None)
 
@@ -762,6 +795,8 @@ class OpenStackNetworkService(BaseNetworkService):
                                      limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
+        log.debug("Searching for the OpenStack Network with the "
+                  "name: %s", name)
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks(
                         name=name)
@@ -770,6 +805,8 @@ class OpenStackNetworkService(BaseNetworkService):
                                      limit=limit, marker=marker)
 
     def create(self, name, cidr_block):
+        log.debug("Creating OpenStack Network with the params: "
+                  "[name: %s Cinder Block: %s]", name, cidr_block)
         OpenStackNetwork.assert_valid_resource_name(name)
 
         net_info = {'name': name}
@@ -783,6 +820,7 @@ class OpenStackSubnetService(BaseSubnetService):
         super(OpenStackSubnetService, self).__init__(provider)
 
     def get(self, subnet_id):
+        log.debug("Getting OpenStack Subnet with the id: %s", subnet_id)
         subnet = (s for s in self if s.id == subnet_id)
         return next(subnet, None)
 
@@ -800,6 +838,9 @@ class OpenStackSubnetService(BaseSubnetService):
 
     def create(self, name, network, cidr_block, zone=None):
         """zone param is ignored."""
+        log.debug("Creating OpenStack Subnet with the params: "
+                  "[Name: %s Network: %s Cinder Block: %s Zone: -ignored-]",
+                  name, network, cidr_block)
         OpenStackSubnet.assert_valid_resource_name(name)
 
         network_id = (network.id if isinstance(network, OpenStackNetwork)
@@ -837,6 +878,7 @@ class OpenStackSubnetService(BaseSubnetService):
             return None
 
     def delete(self, subnet):
+        log.debug("Deleting subnet: %s", subnet)
         subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
                      else subnet)
         self.provider.neutron.delete_subnet(subnet_id)
@@ -882,6 +924,7 @@ class OpenStackRouterService(BaseRouterService):
         super(OpenStackRouterService, self).__init__(provider)
 
     def get(self, router_id):
+        log.debug("Getting OpenStack Router with the id: %s", router_id)
         router = (r for r in self if r.id == router_id)
         return next(router, None)
 
@@ -892,6 +935,8 @@ class OpenStackRouterService(BaseRouterService):
                                      marker=marker)
 
     def find(self, name, limit=None, marker=None):
+        log.debug("Searching for OpenStack Router with the params: "
+                  "[name: %s, limit: %s, marker: %s]", name, limit, marker)
         aws_routers = [r for r in self if r.name == name]
         return ClientPagedResultList(self.provider, aws_routers, limit=limit,
                                      marker=marker)
@@ -904,6 +949,7 @@ class OpenStackRouterService(BaseRouterService):
         https://developer.openstack.org/api-ref/networking/v2/
             ?expanded=delete-router-detail,create-router-detail#create-router
         """
+        log.debug("Creating OpenStack Router with the name: %s", name)
         OpenStackRouter.assert_valid_resource_name(name)
 
         body = {'router': {'name': name}} if name else None
@@ -925,4 +971,5 @@ class OpenStackGatewayService(BaseGatewayService):
         return None
 
     def delete(self, gateway):
+        log.debug("Deleting OpenStack Gateway: %s", gateway)
         gateway.delete()

@@ -1,7 +1,7 @@
 """Base implementation of a provider interface."""
 import functools
-import os
 import logging
+import os
 from os.path import expanduser
 try:
     from configparser import ConfigParser
@@ -39,8 +39,8 @@ class BaseConfiguration(Configuration):
         :rtype: ``int``
         :return: The maximum number of results to return
         """
-        log.debug("Maximum number of results for list methods "
-                  + DEFAULT_RESULT_LIMIT)
+        log.debug("Maximum number of results for list methods %s",
+                  DEFAULT_RESULT_LIMIT)
         return self.get('default_result_limit', DEFAULT_RESULT_LIMIT)
 
     @property
@@ -48,8 +48,8 @@ class BaseConfiguration(Configuration):
         """
         Gets the default wait timeout for LifeCycleObjects.
         """
-        log.debug("Default wait timeout for LifeCycleObjects "
-                  + DEFAULT_WAIT_TIMEOUT)
+        log.debug("Default wait timeout for LifeCycleObjects %s ",
+                  DEFAULT_WAIT_TIMEOUT)
         return self.get('default_wait_timeout', DEFAULT_WAIT_TIMEOUT)
 
     @property
@@ -57,8 +57,8 @@ class BaseConfiguration(Configuration):
         """
         Gets the default wait interval for LifeCycleObjects.
         """
-        log.debug("Default wait interfal for LifeCycleObjects "
-                  + DEFAULT_WAIT_INTERVAL)
+        log.debug("Default wait interfal for LifeCycleObjects  %s",
+                  DEFAULT_WAIT_INTERVAL)
         return self.get('default_wait_interval', DEFAULT_WAIT_INTERVAL)
 
     @property
@@ -98,11 +98,12 @@ class BaseCloudProvider(CloudProvider):
         check whether cloud credentials work. Providers should override with
         more efficient implementations.
         """
+        log.debug("Checking if cloud credential works...")
         try:
             self.security.security_groups.list()
             return True
         except Exception as e:
-            log.debug("ProviderConnectionException ocurred")
+            log.exception("ProviderConnectionException ocurred", e)
             raise ProviderConnectionException(
                 "Authentication with cloud provider failed: %s" % (e,))
 
@@ -120,17 +121,18 @@ class BaseCloudProvider(CloudProvider):
         :rtype: bool
         :return: ``True`` if the service type is supported.
         """
+        log.info("Checking if provider supports %s", service_type)
         try:
             if self._deepgetattr(self, service_type):
-                log.debug("This provider supports "
-                          + service_type)
+                log.info("This provider supports %s",
+                         service_type)
                 return True
         except AttributeError:
             pass  # Undefined service type
         except NotImplementedError:
             pass  # service not implemented
-        log.debug("This provider doesn't support "
-                  + service_type)
+        log.info("This provider doesn't support %s",
+                 service_type)
         return False
 
     def _get_config_value(self, key, default_value):
@@ -146,6 +148,8 @@ class BaseCloudProvider(CloudProvider):
 
         :return: a configuration value for the supplied ``key``
         """
+        log.info("Extracting a configuration value using the key %s "
+                 "and value %s", key, default_value)
         if isinstance(self.config, dict) and self.config.get(key):
             return self.config.get(key, default_value)
         elif hasattr(self.config, key) and getattr(self.config, key):
