@@ -294,7 +294,10 @@ class AWSImageService(BaseImageService):
                              limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
-        return self.svc.list(limit=limit, marker=marker)
+        # Filter images by current account owner; otherwise, the call is
+        # very slow
+        return self.svc.find('owner-id', self.provider.account_id,
+                             limit=limit, marker=marker)
 
 
 class AWSComputeService(BaseComputeService):
