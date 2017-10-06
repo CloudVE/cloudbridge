@@ -102,6 +102,10 @@ class AWSCloudProvider(BaseCloudProvider):
     def storage(self):
         return self._storage
 
+    @property
+    def account_id(self):
+        return self.session.client('sts').get_caller_identity()['Account']
+
     def _connect_ec2(self):
         """
         Get a boto ec2 connection object.
