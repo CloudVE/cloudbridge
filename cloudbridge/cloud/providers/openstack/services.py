@@ -136,7 +136,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
             return OpenStackKeyPair(
                 self.provider, self.provider.nova.keypairs.get(key_pair_id))
         except NovaNotFound:
-            log.exception("NovaNotFound exception raised")
+            log.debug("KeyPair %s was not found.", key_pair_id)
             return None
 
     def list(self, limit=None, marker=None):
@@ -181,7 +181,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
         kp = self.provider.nova.keypairs.create(name)
         if kp:
             return OpenStackKeyPair(self.provider, kp)
-        log.exception("Key Pair with the name %s already exists", name)
+        log.debug("Key Pair with the name %s already exists", name)
         return None
 
 
@@ -197,7 +197,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                 self.provider,
                 self.provider.os_conn.network.get_security_group(firewall_id))
         except ResourceNotFound:
-            log.exception("Firewall %s not found.", firewall_id)
+            log.debug("Firewall %s not found.", firewall_id)
             return None
 
     def list(self, limit=None, marker=None):
@@ -249,8 +249,8 @@ class OpenStackImageService(BaseImageService):
             return OpenStackMachineImage(
                 self.provider, self.provider.os_conn.image.get_image(image_id))
         except ResourceNotFound:
-            log.exception("ResourceNotFound exception raised, %s not found",
-                          image_id)
+            log.debug("ResourceNotFound exception raised, %s not found",
+                      image_id)
             return None
 
     def find(self, name, limit=None, marker=None):
@@ -340,7 +340,7 @@ class OpenStackVolumeService(BaseVolumeService):
             return OpenStackVolume(
                 self.provider, self.provider.cinder.volumes.get(volume_id))
         except CinderNotFound:
-            log.exception("CinderNotFound exception raised.")
+            log.debug("Volume %s was not found.", volume_id)
             return None
 
     def find(self, name, limit=None, marker=None):
@@ -404,7 +404,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
                 self.provider,
                 self.provider.cinder.volume_snapshots.get(snapshot_id))
         except CinderNotFound:
-            log.exception("CinderNotFound exception raised.")
+            log.debug("Snapshot %s was not found.", snapshot_id)
             return None
 
     def find(self, name, limit=None, marker=None):
@@ -470,7 +470,7 @@ class OpenStackBucketService(BaseBucketService):
                                    next((c for c in container_list
                                          if c['name'] == bucket_id), None))
         else:
-            log.exception("OpenStack Bucket does not exist.")
+            log.debug("Bucket %s was not found.", bucket_id)
             return None
 
     def find(self, name, limit=None, marker=None):
@@ -743,6 +743,7 @@ class OpenStackInstanceService(BaseInstanceService):
             os_instance = self.provider.nova.servers.get(instance_id)
             return OpenStackInstance(self.provider, os_instance)
         except NovaNotFound:
+            log.debug("Instance %s was not found.", instance_id)
             return None
 
 
