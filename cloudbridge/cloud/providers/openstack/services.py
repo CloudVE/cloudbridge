@@ -250,11 +250,19 @@ class OpenStackImageService(BaseImageService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_images, limit)
 
-    def list(self, limit=None, marker=None):
+    def list(self, filter_by_owner=True, limit=None, marker=None):
         """
         List all images.
         """
+        project_id = None
+        if filter_by_owner:
+            try:
+                project_id = self.provider.keystone.projects.list(
+                    name=self.provider.project_name)[0].id
+            except IndexError:
+                pass
         os_images = self.provider.os_conn.image.images(
+            owner=project_id,
             limit=oshelpers.os_result_limit(self.provider, limit),
             marker=marker)
 
