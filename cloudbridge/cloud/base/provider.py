@@ -48,7 +48,7 @@ class BaseConfiguration(Configuration):
         """
         Gets the default wait timeout for LifeCycleObjects.
         """
-        log.debug("Default wait timeout for LifeCycleObjects %s ",
+        log.debug("Default wait timeout for LifeCycleObjects %s",
                   DEFAULT_WAIT_TIMEOUT)
         return self.get('default_wait_timeout', DEFAULT_WAIT_TIMEOUT)
 
@@ -57,7 +57,7 @@ class BaseConfiguration(Configuration):
         """
         Gets the default wait interval for LifeCycleObjects.
         """
-        log.debug("Default wait interfal for LifeCycleObjects  %s",
+        log.debug("Default wait interfal for LifeCycleObjects %s",
                   DEFAULT_WAIT_INTERVAL)
         return self.get('default_wait_interval', DEFAULT_WAIT_INTERVAL)
 
@@ -103,7 +103,7 @@ class BaseCloudProvider(CloudProvider):
             self.security.key_pairs.list()
             return True
         except Exception as e:
-            log.exception("ProviderConnectionException ocurred", e)
+            log.exception("ProviderConnectionException occurred")
             raise ProviderConnectionException(
                 "Authentication with cloud provider failed: %s" % (e,))
 
@@ -148,8 +148,7 @@ class BaseCloudProvider(CloudProvider):
 
         :return: a configuration value for the supplied ``key``
         """
-        log.info("Extracting a configuration value using the key %s "
-                 "and value %s", key, default_value)
+        log.info("Getting config key: %s with default: %s", key, default_value)
         if isinstance(self.config, dict) and self.config.get(key):
             return self.config.get(key, default_value)
         elif hasattr(self.config, key) and getattr(self.config, key):

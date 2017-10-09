@@ -278,9 +278,9 @@ class AWSBucketService(BaseBucketService):
             # http://stackoverflow.com/questions/32331456/using-boto-upload-file-to-s3-
             # sub-folder-when-i-have-no-permissions-on-listing-fo
             if e.response['Error']['Code'] == 403:
-                log.exception("AWS Bucket %s already exists but user doesn't "
-                              "have enough permissions to access the bucket",
-                              bucket_id)
+                log.warning("AWS Bucket %s already exists but user doesn't "
+                            "have enough permissions to access the bucket",
+                            bucket_id)
                 bucket = self.provider.s3_conn.get_bucket(bucket_id,
                                                           validate=False)
                 return AWSBucket(self.provider, bucket)

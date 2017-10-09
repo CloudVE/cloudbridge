@@ -198,7 +198,7 @@ class BaseCloudResource(CloudResource):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseCloudResource.is_valid_resource_name(name):
-            log.exception("InvalidNameException raised on %s", name)
+            log.debug("InvalidNameException raised on %s", name, exc_info=True)
             raise InvalidNameException(
                 u"Invalid name: %s. Name must be at most 63 characters "
                 "long and consist of lowercase letters, numbers, "
@@ -842,7 +842,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseBucketObject.is_valid_resource_name(name):
-            log.exception("InvalidNameException raised on %s", name)
+            log.debug("InvalidNameException raised on %s", name, exc_info=True)
             raise InvalidNameException(
                 u"Invalid object name: %s. Name must match criteria defined "
                 "in: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMeta"
@@ -888,7 +888,7 @@ class BaseBucket(BaseCloudResource, Bucket):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseBucket.is_valid_resource_name(name):
-            log.exception("InvalidNameException raised on %s", name)
+            log.debug("Invalid resource name %s", name, exc_info=True)
             raise InvalidNameException(
                 u"Invalid bucket name: %s. Name must match criteria defined "
                 "in: http://docs.aws.amazon.com/awscloudtrail/latest/userguide"

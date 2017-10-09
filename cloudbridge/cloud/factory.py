@@ -46,7 +46,6 @@ class CloudProviderFactory(object):
         if isinstance(cls, type) and issubclass(cls, CloudProvider):
             if hasattr(cls, "PROVIDER_ID"):
                 provider_id = getattr(cls, "PROVIDER_ID")
-                log.debug("Cloud provider: " + provider_id)
                 if issubclass(cls, TestMockHelperMixin):
                     if self.provider_list.get(provider_id, {}).get(
                             'mock_class'):
@@ -74,7 +73,7 @@ class CloudProviderFactory(object):
         Note that this methods does not guard against a failed import.
         """
         for _, modname, _ in pkgutil.iter_modules(providers.__path__):
-            log.debug("Importing provider: " + modname)
+            log.debug("Importing provider: %s", modname)
             self._import_provider(modname)
 
     def _import_provider(self, module_name):
