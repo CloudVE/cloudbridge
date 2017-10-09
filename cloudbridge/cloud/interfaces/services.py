@@ -529,9 +529,16 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, filter_by_owner=True, limit=None, marker=None):
         """
         List all images.
+
+        :type  filter_by_owner: ``bool``
+        :param filter_by_owner: If ``True``, return only images owned
+                                by the current user. Else, return all
+                                public images available from the provider.
+                                Note that fetching all images may take a
+                                long time.
 
         :rtype: ``list`` of :class:`.Image`
         :return:  list of image objects
