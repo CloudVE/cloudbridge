@@ -51,7 +51,6 @@ class BotoGenericService(object):
     resource, collection and paging support to implement
     basic cloudbridge methods.
     """
-
     def __init__(self, provider, cb_resource, boto_conn, boto_collection_name):
         """
         :type provider: :class:`AWSCloudProvider`
@@ -109,7 +108,7 @@ class BotoGenericService(object):
         except ClientError as e:
             error_code = e.response['Error']['Code']
             if any(status in error_code for status in
-                   ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
+                    ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
                 log.debug("Object not found: %s", resource_id)
                 return None
             else:
@@ -199,8 +198,8 @@ class BotoGenericService(object):
             # Do not limit, let the ClientPagedResultList enforce limit
             return (None, collection)
 
-    def list(self, limit=None, marker=None, collection=None):
-        collection = collection or self.boto_collection.filter()
+    def list(self, limit=None, marker=None, collection=None, **kwargs):
+        collection = collection or self.boto_collection.filter(**kwargs)
         resume_token, boto_objs = self._make_query(collection, limit, marker)
 
         # Wrap in CB objects.
@@ -218,7 +217,8 @@ class BotoGenericService(object):
             return ClientPagedResultList(self.provider, results,
                                          limit=limit, marker=marker)
 
-    def find(self, filter_name, filter_value, limit=None, marker=None):
+    def find(self, filter_name, filter_value, limit=None, marker=None,
+             **kwargs):
         """
         Returns a list of resources by filter
 
@@ -232,7 +232,9 @@ class BotoGenericService(object):
         collection = collection.filter(Filters=[{
             'Name': filter_name,
             'Values': [filter_value]
-        }])
+            }])
+        if kwargs:
+            collection = collection.filter(**kwargs)
         return self.list(limit=limit, marker=marker, collection=collection)
 
     def create(self, boto_method, **kwargs):
@@ -269,7 +271,6 @@ class BotoEC2Service(BotoGenericService):
     """
     Boto EC2 service implementation
     """
-
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
         """
@@ -292,7 +293,6 @@ class BotoS3Service(BotoGenericService):
     """
     Boto S3 service implementation
     """
-
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
         """
