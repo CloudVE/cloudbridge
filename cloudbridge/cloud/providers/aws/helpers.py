@@ -198,8 +198,8 @@ class BotoGenericService(object):
             # Do not limit, let the ClientPagedResultList enforce limit
             return (None, collection)
 
-    def list(self, limit=None, marker=None, collection=None):
-        collection = collection or self.boto_collection.filter()
+    def list(self, limit=None, marker=None, collection=None, **kwargs):
+        collection = collection or self.boto_collection.filter(**kwargs)
         resume_token, boto_objs = self._make_query(collection, limit, marker)
 
         # Wrap in CB objects.
@@ -217,7 +217,8 @@ class BotoGenericService(object):
             return ClientPagedResultList(self.provider, results,
                                          limit=limit, marker=marker)
 
-    def find(self, filter_name, filter_value, limit=None, marker=None):
+    def find(self, filter_name, filter_value, limit=None, marker=None,
+             **kwargs):
         """
         Returns a list of resources by filter
 
@@ -232,6 +233,8 @@ class BotoGenericService(object):
             'Name': filter_name,
             'Values': [filter_value]
             }])
+        if kwargs:
+            collection = collection.filter(**kwargs)
         return self.list(limit=limit, marker=marker, collection=collection)
 
     def create(self, boto_method, **kwargs):
