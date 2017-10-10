@@ -4,6 +4,7 @@ DataTypes used by this provider
 import inspect
 import ipaddress
 
+import logging
 import os
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
@@ -54,6 +55,8 @@ from swiftclient.service import SwiftService, SwiftUploadObject
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
+
+log = logging.getLogger(__name__)
 
 
 class OpenStackMachineImage(BaseMachineImage):
@@ -125,6 +128,7 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
+        log.debug("Refreshing OpenStack Machine Image")
         image = self._provider.compute.images.get(self.id)
         if image:
             self._os_image = image._os_image  # pylint:disable=protected-access
@@ -385,6 +389,7 @@ class OpenStackInstance(BaseInstance):
         """
         Create a new image based on this instance.
         """
+        log.debug("Creating OpenStack Image with the name %s", name)
         self.assert_valid_resource_name(name)
 
         image_id = self._os_instance.create_image(name)
@@ -395,24 +400,28 @@ class OpenStackInstance(BaseInstance):
         """
         Add a floating IP address to this instance.
         """
+        log.debug("Adding floating IP adress: %s", floating_ip)
         self._os_instance.add_floating_ip(floating_ip.public_ip)
 
     def remove_floating_ip(self, floating_ip):
         """
         Remove a floating IP address from this instance.
         """
+        log.debug("Removing floating IP adress: %s", floating_ip)
         self._os_instance.remove_floating_ip(floating_ip.public_ip)
 
     def add_vm_firewall(self, firewall):
         """
         Add a VM firewall to this instance
         """
+        log.debug("Adding firewall: %s", firewall)
         self._os_instance.add_security_group(firewall.id)
 
     def remove_vm_firewall(self, firewall):
         """
         Remove a VM firewall from this instance
         """
+        log.debug("Removing firewall: %s", firewall)
         self._os_instance.remove_security_group(firewall.id)
 
     @property
@@ -557,6 +566,7 @@ class OpenStackVolume(BaseVolume):
         """
         Attach this volume to an instance.
         """
+        log.debug("Attaching %s to %s instance", device, instance)
         instance_id = instance.id if isinstance(
             instance,
             OpenStackInstance) else instance
@@ -572,6 +582,8 @@ class OpenStackVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
+        log.debug("Creating snapchat of volume: %s with the "
+                  "description: %s", name, description)
         return self._provider.storage.snapshots.create(
             name, self, description=description)
 
