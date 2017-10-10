@@ -149,7 +149,6 @@ class BaseRegionService(
 
 
 class BaseNetworkingService(NetworkingService, BaseCloudService):
-
     def __init__(self, provider):
         super(BaseNetworkingService, self).__init__(provider)
 
@@ -188,8 +187,7 @@ class BaseSubnetService(
 
 
 class BaseRouterService(
-        BasePageableObjectMixin, RouterService, BaseCloudService):
-
+     BasePageableObjectMixin, RouterService, BaseCloudService):
     def __init__(self, provider):
         super(BaseRouterService, self).__init__(provider)
 
@@ -203,7 +201,6 @@ class BaseRouterService(
 
 
 class BaseGatewayService(
-        GatewayService, BaseCloudService):
-
+     GatewayService, BaseCloudService):
     def __init__(self, provider):
         super(BaseGatewayService, self).__init__(provider)

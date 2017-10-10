@@ -2,12 +2,10 @@ import logging
 import os
 
 from cloudbridge.cloud.base import BaseCloudProvider
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.providers.azure.azure_client import AzureClient
-from cloudbridge.cloud.providers.azure.mock_azure_client import MockAzureClient
 from cloudbridge.cloud.providers.azure.services \
     import AzureBlockStoreService, AzureComputeService, \
-    AzureNetworkService, AzureObjectStoreService, AzureSecurityService
+    AzureNetworkingService, AzureObjectStoreService, AzureSecurityService
 
 
 from msrestazure.azure_exceptions import CloudError
@@ -18,9 +16,8 @@ log = logging.getLogger(__name__)
 class AzureCloudProvider(BaseCloudProvider):
     PROVIDER_ID = 'azure'
 
-    def __init__(self, config, azureclient=None):
+    def __init__(self, config):
         super(AzureCloudProvider, self).__init__(config)
-        self.cloud_type = 'azure'
 
         # mandatory config values
         self.subscription_id = self. \
@@ -53,22 +50,21 @@ class AzureCloudProvider(BaseCloudProvider):
             'azure_public_key_storage_table_name', os.environ.get
             ('AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME', 'cbcerts'))
 
-        self._mock_azure_client = azureclient
         self._azure_client = None
 
         self._security = AzureSecurityService(self)
         self._object_store = AzureObjectStoreService(self)
         self._block_store = AzureBlockStoreService(self)
         self._compute = AzureComputeService(self)
-        self._network = AzureNetworkService(self)
+        self._networking = AzureNetworkingService(self)
 
     @property
     def compute(self):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):
@@ -102,8 +98,7 @@ class AzureCloudProvider(BaseCloudProvider):
                     self.public_key_storage_table_name
             }
 
-            self._azure_client = \
-                self._mock_azure_client or AzureClient(provider_config)
+            self._azure_client = AzureClient(provider_config)
             self._initialize()
         return self._azure_client
 
@@ -133,15 +128,3 @@ class AzureCloudProvider(BaseCloudProvider):
             self._azure_client. \
                 create_storage_account(self.storage_account,
                                        storage_account_params)
-
-
-class MockAzureCloudProvider(AzureCloudProvider, TestMockHelperMixin):
-    def __init__(self, config):
-        super(MockAzureCloudProvider, self).__init__(config,
-                                                     MockAzureClient(self))
-
-    def setUpMock(self):
-        pass
-
-    def tearDownMock(self):
-        pass

@@ -259,14 +259,14 @@ class AWSInstance(BaseInstance):
         return [
             self._provider.security.security_groups.get(group_id)
             for group_id in self.security_group_ids
-        ]
+            ]
 
     @property
     def security_group_ids(self):
         return list(set([
-            group.get('GroupId') for group in
-            self._ec2_instance.security_groups
-        ]))
+                            group.get('GroupId') for group in
+                            self._ec2_instance.security_groups
+                            ]))
 
     @property
     def key_pair_name(self):
@@ -405,7 +405,7 @@ class AWSVolume(BaseVolume):
                                a.get('InstanceId'),
                                a.get('Device'))
             for a in self._volume.attachments
-        ][0] if self._volume.attachments else None
+            ][0] if self._volume.attachments else None
 
     def attach(self, instance, device):
         instance_id = instance.id if isinstance(
@@ -605,7 +605,7 @@ class AWSSecurityGroup(BaseSecurityGroup):
                 if src_group_id not in [
                     group_pair.get('GroupId') for group_pair in
                         rule.get('UserIdGroupPairs', [])]:
-                    continue
+                        continue
             return AWSSecurityGroupRule(self._provider, rule, self)
         return None
 
@@ -693,7 +693,6 @@ class AWSSecurityGroupRule(BaseSecurityGroupRule):
 
 
 class AWSBucketObject(BaseBucketObject):
-
     class BucketObjIterator():
         CHUNK_SIZE = 4096
 
@@ -898,7 +897,6 @@ class AWSNetwork(BaseNetwork):
 
 
 class AWSSubnet(BaseSubnet):
-
     # http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeSubnets.html
     _SUBNET_STATE_MAP = {
         'pending': SubnetState.PENDING,
@@ -983,7 +981,6 @@ class AWSFloatingIP(BaseFloatingIP):
 
 
 class AWSRouter(BaseRouter):
-
     def __init__(self, provider, route_table):
         super(AWSRouter, self).__init__(provider)
         self._route_table = route_table
@@ -1048,7 +1045,6 @@ class AWSRouter(BaseRouter):
 
 
 class AWSInternetGateway(BaseInternetGateway):
-
     def __init__(self, provider, gateway):
         super(AWSInternetGateway, self).__init__(provider)
         self._gateway = gateway

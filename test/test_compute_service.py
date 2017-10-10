@@ -16,7 +16,6 @@ import six
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
-
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         name = "cb_instcrud-{0}".format(helpers.get_uuid())
@@ -44,7 +43,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 name)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                                               network=net)):
+                network=net)):
             net, subnet = helpers.create_test_network(self.provider, name)
 
             sit.check_crud(self, self.provider.compute.instances, Instance,
@@ -158,8 +157,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # block_devices should be empty so far
         self.assertListEqual(
             lc.block_devices, [], "No block devices should have been"
-            " added to mappings list since the configuration was"
-            " invalid")
+                                  " added to mappings list since the"
+                                  "configuration was"
+                                  " invalid")
 
         # Add a new volume
         lc.add_volume_device(size=1, delete_on_terminate=True)
@@ -211,10 +211,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                 " not stable enough yet")
 
         test_vol = self.provider.block_store.volumes.create(
-           name,
-           1,
-           helpers.get_provider_test_data(self.provider,
-                                          "placement"))
+            name,
+            1,
+            helpers.get_provider_test_data(self.provider,
+                                           "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(name=name,
@@ -283,8 +283,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         except WaitStateException as e:
                             self.fail("The block device mapped launch did not "
                                       " complete successfully: %s" % e)
-                        # TODO: Check instance attachments and make sure they
-                        # correspond to requested mappings
+                            # TODO: Check instance attachments and make sure
+                            # they
+                            # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.security_groups'])
@@ -309,7 +310,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 sg in test_inst.security_groups, "Expected security group '%s'"
-                " to be among instance security_groups: [%s]" %
+                                                 " to be among instance "
+                                                 "security_groups: [%s]" %
                 (sg, test_inst.security_groups))
 
             # Check removing a security group from a running instance
@@ -317,7 +319,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 sg not in test_inst.security_groups, "Expected security group"
-                " '%s' to be removed from instance security_groups: [%s]" %
+                                                     " '%s' to be removed "
+                                                     "from instance "
+                                                     "security_groups: [%s]" %
                 (sg, test_inst.security_groups))
 
             # check floating ips

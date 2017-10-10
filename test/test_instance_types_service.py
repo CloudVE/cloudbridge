@@ -10,7 +10,6 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.instance_types'])
     def test_instance_type_properties(self):
-
         for inst_type in self.provider.compute.instance_types:
             sit.check_repr(self, inst_type)
             self.assertIsNotNone(
@@ -73,4 +72,4 @@ class CloudInstanceTypesServiceTestCase(ProviderTestBase):
             name=instance_type_name)[0]
 
         sit.check_standard_behaviour(
-                self, self.provider.compute.instance_types, inst_type)
+            self, self.provider.compute.instance_types, inst_type)

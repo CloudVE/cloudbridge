@@ -610,7 +610,7 @@ class OpenStackInstanceService(BaseInstanceService):
                     sg_list = security_groups
                 else:
                     sg_list = (self.provider.security.security_groups
-                               .find(name=sg) for sg in security_groups)
+                                   .find(name=sg) for sg in security_groups)
                     sg_list = (sg[0] for sg in sg_list if sg)
             sg_id_list = [sg.id for sg in sg_list]
             port_def = {
@@ -736,7 +736,6 @@ class OpenStackInstanceService(BaseInstanceService):
 
 
 class OpenStackNetworkingService(BaseNetworkingService):
-
     def __init__(self, provider):
         super(OpenStackNetworkingService, self).__init__(provider)
         self._network_service = OpenStackNetworkService(self.provider)
@@ -772,16 +771,16 @@ class OpenStackNetworkService(BaseNetworkService):
 
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
-                    for network in self.provider.neutron.list_networks()
-                    .get('networks') if network]
+                    for network in self.provider.neutron.list_networks().
+                    get('networks') if network]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
     def find(self, name, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks(
-                        name=name)
-                    .get('networks') if network]
+                name=name)
+                        .get('networks') if network]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
@@ -860,10 +859,10 @@ class OpenStackSubnetService(BaseSubnetService):
             router = self.provider.networking.routers.create(
                 network=net, name=OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
             router.attach_subnet(sn)
-            gteway = (self.provider.networking.gateways
-                      .get_or_create_inet_gateway(
-                          OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
-                          ))
+            gteway = (self.provider.networking.
+                      gateways.
+                      get_or_create_inet_gateway
+                      (OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME))
             router.attach_gateway(gteway)
             return sn
         except NeutronClientException:
@@ -880,7 +879,6 @@ class OpenStackSubnetService(BaseSubnetService):
 
 
 class OpenStackRouterService(BaseRouterService):
-
     def __init__(self, provider):
         super(OpenStackRouterService, self).__init__(provider)
 
@@ -915,7 +913,6 @@ class OpenStackRouterService(BaseRouterService):
 
 
 class OpenStackGatewayService(BaseGatewayService):
-
     def __init__(self, provider):
         super(OpenStackGatewayService, self).__init__(provider)
 

@@ -60,7 +60,7 @@ class CloudInterfaceTestCase(ProviderTestBase):
             cloned_config['os_username'] = "cb_dummy"
             cloned_config['os_password'] = "cb_dummy"
         elif self.provider.PROVIDER_ID == 'azure':
-            cloned_config['subscription_id'] = "cb_dummy"
+            cloned_config['azure_subscription_id'] = "cb_dummy"
 
         with self.assertRaises(ProviderConnectionException):
             cloned_provider = CloudProviderFactory().create_provider(

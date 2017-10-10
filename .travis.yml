@@ -58,7 +58,7 @@ install:
     - pip install coveralls
     - pip install codecov
 script:
-    - tox -e $TOX_ENV
+    - travis_wait 110 tox -e $TOX_ENV
 after_success:
     - |
       case "$TRAVIS_EVENT_TYPE" in
