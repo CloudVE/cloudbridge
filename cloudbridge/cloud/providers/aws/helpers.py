@@ -250,8 +250,8 @@ class BotoGenericService(object):
         :type kwargs: ``dict``
         :param kwargs: Arguments to be passed as-is to the service method
         """
-        log.debug("Creating a resource by invoking %s on these arguments",
-                  boto_method, **kwargs)
+        log.debug("Creating a resource by invoking %s on these arguments: %s",
+                  boto_method, kwargs)
         trimmed_args = trim_empty_params(kwargs)
         result = getattr(self.boto_conn, boto_method)(**trimmed_args)
         if isinstance(result, list):
