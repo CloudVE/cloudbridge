@@ -1,3 +1,4 @@
+"""A set of AWS-specific helper methods used by the framework."""
 import logging as log
 from boto3.resources.params import create_request_parameters
 
@@ -109,14 +110,14 @@ class BotoGenericService(object):
             obj.load()
             log.debug("Successfully Retrieved: %s", obj)
             return self.cb_resource(self.provider, obj)
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
+        except ClientError as exc:
+            error_code = exc.response['Error']['Code']
             if any(status in error_code for status in
-                    ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
+                   ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
                 log.debug("Object not found: %s", resource_id)
                 return None
             else:
-                raise e
+                raise exc
 
     def _get_list_operation(self):
         """
@@ -203,6 +204,14 @@ class BotoGenericService(object):
             return (None, collection)
 
     def list(self, limit=None, marker=None, collection=None, **kwargs):
+        """
+        List a set of resources.
+
+        :type  collection: ``ResourceCollection``
+        :param collection: Boto resource collection object corresponding to the
+                           current resource. See http://boto3.readthedocs.io/
+                           en/latest/guide/collections.html
+        """
         collection = collection or self.boto_collection.filter(**kwargs)
         resume_token, boto_objs = self._make_query(collection, limit, marker)
 
@@ -224,7 +233,7 @@ class BotoGenericService(object):
     def find(self, filter_name, filter_value, limit=None, marker=None,
              **kwargs):
         """
-        Returns a list of resources by filter
+        Return a list of resources by filter.
 
         :type filter_name: ``str``
         :param filter_name: Name of the filter to use
@@ -298,7 +307,7 @@ class BotoEC2Service(BotoGenericService):
 
 class BotoS3Service(BotoGenericService):
     """
-    Boto S3 service implementation
+    Boto S3 service implementation.
     """
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
