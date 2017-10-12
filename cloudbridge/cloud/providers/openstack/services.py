@@ -272,11 +272,7 @@ class OpenStackImageService(BaseImageService):
         """
         project_id = None
         if filter_by_owner:
-            try:
-                project_id = self.provider.keystone.projects.list(
-                    name=self.provider.project_name)[0].id
-            except IndexError:
-                pass
+            project_id = self.provider.os_conn.session.get_project_id()
         os_images = self.provider.os_conn.image.images(
             owner=project_id,
             limit=oshelpers.os_result_limit(self.provider, limit),
