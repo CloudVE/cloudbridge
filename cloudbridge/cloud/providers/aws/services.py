@@ -378,7 +378,7 @@ class AWSInstanceService(BaseInstanceService):
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         log.debug("Creating AWS Instance Service with the params "
-                  "[name: %s image: %s type: %s sunbnet: %s zone: %s "
+                  "[name: %s image: %s type: %s subnet: %s zone: %s "
                   "key pair: %s firewalls: %s user data: %s config %s "
                   "others: %s]", name, image, vm_type, subnet, zone,
                   key_pair, vm_firewalls, user_data, launch_config, **kwargs)
