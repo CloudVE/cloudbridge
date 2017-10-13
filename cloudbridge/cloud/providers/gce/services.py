@@ -498,9 +498,10 @@ class GCEInstanceService(BaseInstanceService):
                          .execute())
         if 'zone' not in operation:
             return None
-        gce_zone = self.provider.get_gce_resource_data(operation['zone'])
+        zone_url = self.provider.parse_url(operation['zone'])
         instance_id = operation.get('targetLink')
-        self.provider.wait_for_operation(operation, zone=gce_zone.get('name'))
+        self.provider.wait_for_operation(operation,
+                                         zone=zone_url.parameters['zone'])
         return self.get(instance_id)
 
     def get(self, instance_id):
@@ -512,9 +513,9 @@ class GCEInstanceService(BaseInstanceService):
         as its id.
         """
         try:
-            response = self.provider.get_gce_resource_data(instance_id)
-            if response:
-                return GCEInstance(self.provider, response)
+            return GCEInstance(
+                    self.provider,
+                    self.provider.parse_url(instance_id).get_resource())
         except googleapiclient.errors.HttpError as http_error:
             # If the instance is not found, the API will raise
             # googleapiclient.errors.HttpError.
@@ -870,9 +871,8 @@ class GCEVolumeService(BaseVolumeService):
         Returns a volume given its id.
         """
         try:
-            response = self.provider.get_gce_resource_data(volume_id)
-            if response:
-                return GCEVolume(self.provider, response)
+            return GCEVolume(self.provider,
+                             self.provider.parse_url(volume_id).get_resource())
         except googleapiclient.errors.HttpError as http_error:
             # If the volume is not found, the API will raise
             # googleapiclient.errors.HttpError.
@@ -978,9 +978,9 @@ class GCESnapshotService(BaseSnapshotService):
         Returns a snapshot given its id.
         """
         try:
-            response = self.provider.get_gce_resource_data(snapshot_id)
-            if response:
-                return GCESnapshot(self.provider, response)
+            return GCESnapshot(
+                    self.provider,
+                    self.provider.parse_url(snapshot_id).get_resource())
         except googleapiclient.errors.HttpError as http_error:
             # If the volume is not found, the API will raise
             # googleapiclient.errors.HttpError.
@@ -1055,8 +1055,9 @@ class GCESnapshotService(BaseSnapshotService):
                          .execute())
         if 'zone' not in operation:
             return None
-        gce_zone = self.provider.get_gce_resource_data(operation['zone'])
-        self.provider.wait_for_operation(operation, zone=gce_zone.get('name'))
+        zone_url = self.provider.parse_url(operation['zone'])
+        self.provider.wait_for_operation(operation,
+                                         zone=zone_url.parameters['zone'])
         snapshots = self.provider.block_store.snapshots.find(name=name)
         if snapshots:
             return snapshots[0]
