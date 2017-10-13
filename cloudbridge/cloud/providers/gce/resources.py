@@ -840,7 +840,7 @@ class GCEInstance(BaseInstance):
         if machine_type_uri is None:
             return None
         parsed_uri = self._provider.parse_url(machine_type_uri)
-        return GCEInstanceType(self._provider, parsed_uri.get())
+        return GCEInstanceType(self._provider, parsed_uri.get_resource())
 
     def reboot(self):
         """
@@ -896,8 +896,8 @@ class GCEInstance(BaseInstance):
             return None
         for disk in self._gce_instance['disks']:
             if 'boot' in disk and disk['boot']:
-                disk_resource = self._provider.parse_url(disk['source']).get()
-                return disk_resource.get('sourceImage')
+                disk_url = self._provider.parse_url(disk['source'])
+                return disk_url.get_resource().get('sourceImage')
         return None
 
     @property
@@ -1182,7 +1182,7 @@ class GCEInstance(BaseInstance):
         for its latest state.
         """
         self_link = self._gce_instance.get('selfLink')
-        self._gce_instance = self._provider.parse_url(self_link).get()
+        self._gce_instance = self._provider.parse_url(self_link).get_resource()
 
     def add_security_group(self, sg):
         raise NotImplementedError('To be implemented.')
@@ -1273,14 +1273,15 @@ class GCEFloatingIP(BaseFloatingIP):
             if len(floating_ip['users']) > 1:
                 cb.log.warning('Address "%s" in use by more than one resource',
                                floating_ip['address'])
-            resource = provider.parse_url(floating_ip['users'][0]).get()
+            resource_parsed_url = provider.parse_url(floating_ip['users'][0])
+            resource = resource_parsed_url.get_resource()
             if resource['kind'] == 'compute#forwardingRule':
                 self._rule = resource
-                target = provider.parse_url(resource['target']).get()
+                target = provider.parse_url(resource['target']).get_resource()
                 if target['kind'] == 'compute#targetInstance':
                     url = provider.parse_url(target['instance'])
                     try:
-                        self._target_instance = url.get()
+                        self._target_instance = url.get_resource()
                     except:
                         self._target_instance = GCEFloatingIP._DEAD_INSTANCE
                 else:
@@ -1351,7 +1352,8 @@ class GCERouter(BaseRouter):
         return self._router['name']
 
     def refresh(self):
-        self._router = self._provider.parse_url(self._router['selfLink']).get()
+        parsed_url = self._provider.parse_url(self._router['selfLink'])
+        self._router = parsed_url.get_resource()
 
     @property
     def state(self):
@@ -1360,7 +1362,8 @@ class GCERouter(BaseRouter):
 
     @property
     def network_id(self):
-        network = self._provider.parse_url(self._router['network']).get()
+        parsed_url = self._provider.parse_url(self._router['network'])
+        network = parsed_url.get_resource()
         return network['id']
 
     def delete(self):
@@ -1419,7 +1422,7 @@ class GCESubnet(BaseSubnet):
 
     @property
     def network_id(self):
-        return self._provider.parse_url(self.network_url).get()['id']
+        return self._provider.parse_url(self.network_url).get_resource()['id']
 
     @property
     def region(self):
@@ -1511,12 +1514,14 @@ class GCEVolume(BaseVolume):
     def source(self):
         if 'sourceSnapshot' in self._volume:
             snapshot_uri = self._volume.get('sourceSnapshot')
-            return GCESnapshot(self._provider,
-                               self._provider.parse_url(snapshot_uri).get())
+            return GCESnapshot(
+                    self._provider,
+                    self._provider.parse_url(snapshot_uri).get_resource())
         if 'sourceImage' in self._volume:
             image_uri = self._volume.get('sourceImage')
-            return GCEMachineImage(self._provider,
-                                   self._provider.parse_url(image_uri).get())
+            return GCEMachineImage(
+                    self._provider,
+                    self._provider.parse_url(image_uri).get_resource())
         return None
 
     @property
@@ -1569,7 +1574,7 @@ class GCEVolume(BaseVolume):
         if not self.attachments:
             return
         parsed_uri = self._provider.parse_url(self.attachments.instance_id)
-        instance_data = parsed_uri.get()
+        instance_data = parsed_uri.get_resource()
         # Check whether the instance has this volume attached.
         if 'disks' not in instance_data:
             return
@@ -1619,7 +1624,7 @@ class GCEVolume(BaseVolume):
         for its latest state.
         """
         self_link = self._volume.get('selfLink')
-        self._volume = self._provider.parse_url(self_link).get()
+        self._volume = self._provider.parse_url(self_link).get_resource()
 
 
 class GCESnapshot(BaseSnapshot):
@@ -1683,7 +1688,7 @@ class GCESnapshot(BaseSnapshot):
         for its latest state.
         """
         self_link = self._snapshot.get('selfLink')
-        self._snapshot = self._provider.parse_url(self_link).get()
+        self._snapshot = self._provider.parse_url(self_link).get_resource()
 
     def delete(self):
         """

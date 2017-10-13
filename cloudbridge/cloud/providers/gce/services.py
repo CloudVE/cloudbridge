@@ -513,8 +513,9 @@ class GCEInstanceService(BaseInstanceService):
         as its id.
         """
         try:
-            return GCEInstance(self.provider,
-                               self.provider.parse_url(instance_id).get())
+            return GCEInstance(
+                    self.provider,
+                    self.provider.parse_url(instance_id).get_resource())
         except googleapiclient.errors.HttpError as http_error:
             # If the instance is not found, the API will raise
             # googleapiclient.errors.HttpError.
@@ -871,7 +872,7 @@ class GCEVolumeService(BaseVolumeService):
         """
         try:
             return GCEVolume(self.provider,
-                             self.provider.parse_url(volume_id).get())
+                             self.provider.parse_url(volume_id).get_resource())
         except googleapiclient.errors.HttpError as http_error:
             # If the volume is not found, the API will raise
             # googleapiclient.errors.HttpError.
@@ -977,8 +978,9 @@ class GCESnapshotService(BaseSnapshotService):
         Returns a snapshot given its id.
         """
         try:
-            return GCESnapshot(self.provider,
-                               self.provider.parse_url(snapshot_id).get())
+            return GCESnapshot(
+                    self.provider,
+                    self.provider.parse_url(snapshot_id).get_resource())
         except googleapiclient.errors.HttpError as http_error:
             # If the volume is not found, the API will raise
             # googleapiclient.errors.HttpError.

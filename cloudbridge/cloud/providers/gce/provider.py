@@ -29,7 +29,26 @@ class GCPResourceUrl(object):
         self._connection = connection
         self.parameters = {}
 
-    def get(self):
+    def get_resource(self):
+        """
+        The format of the returned resource is explained in details in
+        https://cloud.google.com/compute/docs/reference/latest/ and
+        https://cloud.google.com/storage/docs/json_api/v1/.
+
+        Example:
+            When requesting a subnetwork resource the output looks like:
+
+            {'kind': 'compute#subnetwork',
+             'id': '6662746501848591938',
+             'creationTimestamp': '2017-10-13T12:53:17.445-07:00',
+             'name': 'testsubnet-2',
+             'network': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/global/networks/testnet',
+             'ipCidrRange': '10.128.0.0/20',
+             'gatewayAddress': '10.128.0.1',
+             'region': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1',
+             'selfLink': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1/subnetworks/testsubnet-2',
+             'privateIpGoogleAccess': false}
+        """
         discovery_object = getattr(self._connection, self._resource)()
         return discovery_object.get(**self.parameters).execute()
 
@@ -42,7 +61,7 @@ class GCPResources(object):
         # Resource descriptions are already pulled into the internal
         # _resourceDesc field of the connection.
         #
-        # TODO: We could fetch compute resource descriptions from
+        # FIX_IF_NEEDED: We could fetch compute resource descriptions from
         # https://www.googleapis.com/discovery/v1/apis/compute/v1/rest and
         # storage resource descriptions from
         # https://www.googleapis.com/discovery/v1/apis/storage/v1/rest
@@ -110,6 +129,18 @@ class GCPResources(object):
         Build a GCPResourceUrl from a resource's URL string. One can then call
         the get() method on the returned object to fetch resource details from
         GCP servers.
+
+        Example:
+            If the input url is the following
+            
+            https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1/subnetworks/testsubnet-2
+            
+            then parse_url will return a GCPResourceURL and the parameters
+            field of the returned object will look like:
+
+            {'project': 'galaxy-on-gcp',
+             'region': 'us-central1',
+             'subnetwork': 'testsubnet-2'}
         """
         url = url.strip()
         if url.startswith(self._root_url):
