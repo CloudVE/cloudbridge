@@ -54,6 +54,7 @@ before_install:
            ;;
       esac
 install:
+    - pip install -U setuptools
     - pip install tox
     - pip install coveralls
     - pip install codecov
