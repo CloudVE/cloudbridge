@@ -12,15 +12,14 @@ from cloudbridge.cloud.base.resources import ServerPagedResultList
 
 def trim_empty_params(params_dict):
     """
-    Given a dict containing potentially empty values, trim out
-    all the empty values. This is to please Boto3, which throws
+    Given a dict containing potentially null values, trims out
+    all the null values. This is to please Boto, which throws
     a parameter validation exception for NoneType arguments.
     e.g. Given
         {
             'GroupName': 'abc',
             'Description': None,
             'VpcId': 'xyz',
-            'UserData: {}
         }
     returns:
         {
@@ -28,8 +27,8 @@ def trim_empty_params(params_dict):
             'VpcId': 'xyz'
         }
     """
-    log.debug("Removing empty values from %s", params_dict)
-    return {k: v for k, v in params_dict.items() if v}
+    log.debug("Removing null values from %s", params_dict)
+    return {k: v for k, v in params_dict.items() if v is not None}
 
 
 def find_tag_value(tags, key):
