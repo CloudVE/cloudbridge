@@ -125,7 +125,7 @@ def delete_test_network(network):
 
 def create_test_instance(
         provider, instance_name, subnet, launch_config=None,
-        key_pair=None, vm_firewalls=None):
+        key_pair=None, vm_firewalls=None, user_data=None):
     return provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
@@ -134,11 +134,12 @@ def create_test_instance(
         zone=get_provider_test_data(provider, 'placement'),
         key_pair=key_pair,
         vm_firewalls=vm_firewalls,
-        launch_config=launch_config)
+        launch_config=launch_config,
+        user_data=user_data)
 
 
 def get_test_instance(provider, name, key_pair=None, vm_firewalls=None,
-                      subnet=None):
+                      subnet=None, user_data=None):
     launch_config = None
     instance = create_test_instance(
         provider,
@@ -146,7 +147,8 @@ def get_test_instance(provider, name, key_pair=None, vm_firewalls=None,
         subnet=subnet,
         key_pair=key_pair,
         vm_firewalls=vm_firewalls,
-        launch_config=launch_config)
+        launch_config=launch_config,
+        user_data=user_data)
     instance.wait_till_ready()
     return instance
 
