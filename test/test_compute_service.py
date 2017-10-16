@@ -26,8 +26,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         subnet = None
 
         def create_inst(name):
+            # Also test whether sending in an empty_dict for user_data
+            # results in an automatic conversion to string.
             return helpers.get_test_instance(self.provider, name,
-                                             subnet=subnet)
+                                             subnet=subnet, user_data={})
 
         def cleanup_inst(inst):
             inst.delete()

@@ -408,7 +408,7 @@ class AWSInstanceService(BaseInstanceService):
                                MaxCount=1,
                                KeyName=key_pair_name,
                                SecurityGroupIds=vm_firewall_ids or None,
-                               UserData=user_data or None,
+                               UserData=str(user_data) or None,
                                InstanceType=vm_size,
                                Placement=placement,
                                BlockDeviceMappings=bdm,

@@ -649,7 +649,7 @@ class OpenStackInstanceService(BaseInstanceService):
             availability_zone=zone_id,
             key_name=key_pair_name,
             security_groups=sg_name_list,
-            userdata=user_data or None,
+            userdata=str(user_data) or None,
             block_device_mapping_v2=bdm,
             nics=nics)
         return OpenStackInstance(self.provider, os_instance)
