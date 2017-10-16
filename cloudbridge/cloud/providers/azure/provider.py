@@ -38,8 +38,9 @@ class AzureCloudProvider(BaseCloudProvider):
                                                    'cloudbridge'))
 
         self.storage_account = self._get_config_value(
-            'azure_storage_account', os.environ.get
-            ('AZURE_STORAGE_ACCOUNT', 'cloudbridgestorage'))
+            'azure_storage_account',
+            os.environ.get('AZURE_STORAGE_ACCOUNT',
+                           self.resource_group + 'storage'))
 
         self.vm_default_user_name = self._get_config_value(
             'azure_vm_default_user_name', os.environ.get
