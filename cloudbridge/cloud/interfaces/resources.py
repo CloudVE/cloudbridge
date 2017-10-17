@@ -2,6 +2,7 @@
 Specifications for data objects exposed through a provider or service
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
+from enum import Enum
 
 
 class CloudServiceType(object):
@@ -12,16 +13,15 @@ class CloudServiceType(object):
     Providers can implement the ``has_service`` method and clients can check
     for the availability of a service with::
 
-        if (provider.has_service(CloudServiceTypes.OBJECTSTORE))
+        if (provider.has_service(CloudServiceTypes.BUCKET))
             ...
 
     """
     COMPUTE = 'compute'
     IMAGE = 'image'
     SECURITY = 'security'
-    VOLUME = 'volume'
-    BLOCKSTORE = 'block_store'
-    OBJECTSTORE = 'object_store'
+    VOLUME = 'storage.volumes'
+    BUCKET = 'storage.buckets'
 
 
 class CloudResource(object):
@@ -210,7 +210,7 @@ class ObjectLifeCycleMixin(object):
         .. code-block:: python
 
             instance.wait_for(
-                [InstanceState.TERMINATED, InstanceState.UNKNOWN],
+                [InstanceState.DELETED, InstanceState.UNKNOWN],
                 terminal_states=[InstanceState.ERROR])
 
         :type target_states: ``list`` of states
@@ -421,7 +421,7 @@ class InstanceState(object):
     :cvar CONFIGURING: Instance is being reconfigured in some way.
     :cvar RUNNING: Instance is running.
     :cvar REBOOTING: Instance is rebooting.
-    :cvar TERMINATED: Instance is terminated. No further operations possible.
+    :cvar DELETED: Instance is deleted. No further operations possible.
     :cvar STOPPED: Instance is stopped. Instance can be resumed.
     :cvar ERROR: Instance is in an error state. No further operations possible.
 
@@ -431,7 +431,7 @@ class InstanceState(object):
     CONFIGURING = "configuring"
     RUNNING = "running"
     REBOOTING = "rebooting"
-    TERMINATED = "terminated"
+    DELETED = "deleted"
     STOPPED = "stopped"
     ERROR = "error"
 
@@ -469,25 +469,25 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractproperty
-    def instance_type_id(self):
+    def vm_type_id(self):
         """
-        Get the instance type id for this instance. This will typically be a
+        Get the vm type id for this instance. This will typically be a
         string value like 'm1.large'. On OpenStack, this may be a number or
-        UUID. To get the full :class:``.InstanceType``
-        object, you can use the instance.instance_type property instead.
+        UUID. To get the full :class:``.VMType``
+        object, you can use the instance.vm_type property instead.
 
         :rtype: ``str``
-        :return: Instance type name for this instance (e.g., ``m1.large``)
+        :return: VM type name for this instance (e.g., ``m1.large``)
         """
         pass
 
     @abstractproperty
-    def instance_type(self):
+    def vm_type(self):
         """
-        Retrieve full instance type information for this instance.
+        Retrieve full VM type information for this instance.
 
-        :rtype: :class:`.InstanceType`
-        :return: Instance type for this instance
+        :rtype: :class:`.VMType`
+        :return: VM type for this instance
         """
         pass
 
@@ -502,9 +502,9 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def terminate(self):
+    def delete(self):
         """
-        Permanently terminate this instance.
+        Permanently delete this instance.
         """
         pass
 
@@ -539,22 +539,22 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
 #         pass
 
     @abstractproperty
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Get the security groups associated with this instance.
+        Get the firewalls (security groups) associated with this instance.
 
-        :rtype: list or :class:`.SecurityGroup` objects
-        :return: A list of SecurityGroup objects associated with this instance.
+        :rtype: list or :class:`.VMFirewall` objects
+        :return: A list of VMFirewall objects associated with this instance.
         """
         pass
 
     @abstractproperty
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         """
-        Get the IDs of the security groups associated with this instance.
+        Get the IDs of the VM firewalls associated with this instance.
 
         :rtype: list or :class:``str``
-        :return: A list of the SecurityGroup IDs associated with this instance.
+        :return: A list of the VMFirewall IDs associated with this instance.
         """
         pass
 
@@ -579,42 +579,42 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def add_floating_ip(self, ip_address):
+    def add_floating_ip(self, floating_ip):
         """
         Add a public IP address to this instance.
 
-        :type ip_address: ``str``
-        :param ip_address: The IP address to associate with the instance.
+        :type floating_ip: :class:``.FloatingIP``
+        :param floating_ip: The FloatingIP to associate with the instance.
         """
         pass
 
     @abstractmethod
-    def remove_floating_ip(self, ip_address):
+    def remove_floating_ip(self, floating_ip):
         """
         Remove a public IP address from this instance.
 
-        :type ip_address: ``str``
-        :param ip_address: The IP address to remove from the instance.
+        :type floating_ip: :class:``.FloatingIP``
+        :param floating_ip: The IP address to remove from the instance.
         """
         pass
 
     @abstractmethod
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, firewall):
         """
-        Add a security group to this instance
+        Add a VM firewall to this instance
 
-        :type sg: ``SecurityGroup``
-        :param sg: The SecurityGroup to associate with the instance.
+        :type firewall: :class:``.VMFirewall``
+        :param firewall: The VMFirewall to associate with the instance.
         """
         pass
 
     @abstractmethod
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, firewall):
         """
-        Remove a security group from this instance
+        Remove a VM firewall from this instance
 
-        :type sg: ``SecurityGroup``
-        :param sg: The SecurityGroup to associate with the instance.
+        :type firewall: ``VMFirewall``
+        :param firewall: The VMFirewall to associate with the instance.
         """
         pass
 
@@ -651,7 +651,7 @@ class LaunchConfig(object):
         lc = provider.compute.instances.create_launch_config()
         lc.add_block_device(...)
 
-        inst = provider.compute.instances.create(name, image, instance_type,
+        inst = provider.compute.instances.create(name, image, vm_type,
                                                  network, launch_config=lc)
     """
 
@@ -661,13 +661,13 @@ class LaunchConfig(object):
         Adds a new ephemeral block device mapping to the boot configuration.
         This can be used to add existing ephemeral devices to the instance.
         (The total number of ephemeral devices available for a particular
-        InstanceType can be determined by querying the InstanceTypes service).
+        VMType can be determined by querying the VMType service).
         Note that on some services, such as AWS, ephemeral devices must be
         added in as a device mapping at instance creation time, and cannot be
         added afterwards.
 
         Note that the device name, such as /dev/sda1, cannot be selected at
-        present, since this tends to be provider and instance type specific.
+        present, since this tends to be provider and VM type specific.
         However, the order of device addition coupled with device type will
         generally determine naming order, with devices added first getting
         lower letters than instances added later.
@@ -679,8 +679,8 @@ class LaunchConfig(object):
             lc = provider.compute.instances.create_launch_config()
 
             # 1. Add all available ephemeral devices
-            inst_type = provider.compute.instance_types.find(name='m1.tiny')[0]
-            for i in range(inst_type.num_ephemeral_disks):
+            vm_type = provider.compute.vm_types.find(name='m1.tiny')[0]
+            for i in range(vm_type.num_ephemeral_disks):
                 lc.add_ephemeral_device()
         """
         pass
@@ -698,7 +698,7 @@ class LaunchConfig(object):
         devices to the instance.
 
         Note that the device name, such as /dev/sda1, cannot be selected at
-        present, since this tends to be provider and instance type specific.
+        present, since this tends to be provider and VM type specific.
         However, the order of device addition coupled with device type will
         generally determine naming order, with devices added first getting
         lower letters than instances added later (except when is_root is set).
@@ -713,7 +713,7 @@ class LaunchConfig(object):
             lc.add_volume_device(size=100, delete_on_terminate=True)
 
             # 2. Create and attach a volume based on a snapshot
-            snap = provider.block_store.snapshots.get('<my_snapshot_id>')
+            snap = provider.storage.snapshots.get('<my_snapshot_id>')
             lc.add_volume_device(source=snap)
 
             # 3. Create+attach a volume based on an image and set it as root
@@ -860,17 +860,17 @@ class Network(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, cidr_block, name=None, zone=None):
+    def create_subnet(self, name, cidr_block, zone=None):
         """
         Create a new network subnet and associate it with this Network.
+
+        :type name: ``str``
+        :param name: The subnet name. The name will be set if the
+                     provider supports it.
 
         :type cidr_block: ``str``
         :param cidr_block: CIDR block within this Network to assign to the
                            subnet.
-
-        :type name: ``str``
-        :param name: An optional subnet name. The name will be set if the
-                     provider supports it.
 
         :type zone: ``str``
         :param zone: Placement zone where to create the subnet. Some providers
@@ -975,7 +975,7 @@ class FloatingIP(CloudResource):
         """
         pass
 
-    @abstractmethod
+    @abstractproperty
     def in_use(self):
         """
         Whether the address is in use or not.
@@ -1577,17 +1577,17 @@ class PlacementZone(CloudResource):
         pass
 
 
-class InstanceType(CloudResource):
+class VMType(CloudResource):
 
     """
-    An instance type object.
+    A VM type object.
     """
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def family(self):
         """
-        The family/group that this instance type belongs to.
+        The family/group that this VM type belongs to.
 
         For example, General Purpose Instances or High-Memory Instances. If
         the provider does not support such a grouping, it may return ``None``.
@@ -1600,7 +1600,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def vcpus(self):
         """
-        The number of VCPUs supported by this instance type.
+        The number of VCPUs supported by this VM type.
 
         :rtype: ``int``
         :return: Number of VCPUs.
@@ -1610,7 +1610,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def ram(self):
         """
-        The amount of RAM (in MB) supported by this instance type.
+        The amount of RAM (in MB) supported by this VM type.
 
         :rtype: ``int``
         :return: Total RAM (in MB).
@@ -1620,7 +1620,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def size_root_disk(self):
         """
-        The size of this instance types's root disk (in GB).
+        The size of this VM types's root disk (in GB).
 
         :rtype: ``int``
         :return: Size of root disk (in GB).
@@ -1630,7 +1630,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def size_ephemeral_disks(self):
         """
-        The size of this instance types's total ephemeral storage (in GB).
+        The size of this VM types's total ephemeral storage (in GB).
 
         :rtype: ``int``
         :return: Size of ephemeral disks (in GB).
@@ -1640,7 +1640,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def num_ephemeral_disks(self):
         """
-        The total number of ephemeral disks on this instance type.
+        The total number of ephemeral disks on this VM type.
 
         :rtype: ``int``
         :return: Number of ephemeral disks available.
@@ -1650,7 +1650,7 @@ class InstanceType(CloudResource):
     @abstractproperty
     def size_total_disk(self):
         """
-        The total disk space available on this instance type
+        The total disk space available on this VM type
         (root_disk + ephemeral).
 
         :rtype: ``int``
@@ -1665,29 +1665,29 @@ class InstanceType(CloudResource):
         nested dictionaries, but all key value pairs are strings or integers.
 
         :rtype: ``dict``
-        :return: Extra attributes for this instance type.
+        :return: Extra attributes for this VM type.
         """
         pass
 
 
-class SecurityGroup(CloudResource):
+class VMFirewall(CloudResource):
 
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def description(self):
         """
-        Return the description of this security group.
+        Return the description of this VM firewall.
 
         :rtype: ``str``
-        :return: A description of this security group.
+        :return: A description of this VM firewall.
         """
         pass
 
     @abstractproperty
     def network_id(self):
         """
-        Network ID with which this security group is associated.
+        Network ID with which this VM firewall is associated.
 
         :rtype: ``str``
         :return: Provider-supplied network ID or ``None`` is not available.
@@ -1697,37 +1697,80 @@ class SecurityGroup(CloudResource):
     @abstractproperty
     def rules(self):
         """
-        Get the list of rules for this security group.
+        Get a container for the rules belonging to this VM firewall. This
+        object can be used for further operations on rules, such as get,
+        list, create etc.
 
-        :rtype: list of :class:`.SecurityGroupRule`
-        :return: A list of security group rule objects.
+        :rtype: An object of :class:`.VMFirewallRuleContainer`
+        :return: A VMFirewallRuleContainer for further operations
+        """
+        pass
+
+
+class VMFirewallRuleContainer(PageableObjectMixin):
+    """
+    Base interface for Firewall rules.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, rule_id):
+        """
+        Returns a firewall rule given its ID. Returns ``None`` if the
+        rule does not exist.
+
+        Example:
+
+        .. code-block:: python
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            rule = fw.rules.get('rule_id')
+            print(rule.id, rule.name)
+
+        :rtype: :class:`.FirewallRule`
+        :return:  a FirewallRule instance
         """
         pass
 
     @abstractmethod
-    def delete(self):
+    def list(self, limit=None, marker=None):
         """
-        Delete this security group.
+        List all firewall rules associated with this firewall.
 
-        :rtype: ``bool``
-        :return: ``True`` if successful.
+        :rtype: ``list`` of :class:`.FirewallRule`
+        :return:  list of Firewall rule objects
         """
         pass
 
     @abstractmethod
-    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+    def create(self,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
         """
-        Create a security group rule. If the rule already exists, simply
+        Create a VM firewall rule. If the rule already exists, simply
         returns it.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
+        Example:
+
+        .. code-block:: python
+            from cloudbridge.cloud.interfaces.resources import TrafficDirection
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
+                            from_port=80, to_port=80, cidr='10.0.0.0/16')
+            fw.rules.create(TrafficDirection.INBOUND, src_dest_fw=fw)
+            fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
+
+        You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
         ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
         you are authorizing another group or you are authorizing some
-        ip-based rule.
+        IP-based rule.
 
-        :type ip_protocol: ``str``
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+        :type direction: :class:``.TrafficDirection``
+        :param direction: Either ``TrafficDirection.INBOUND`` |
+                          ``TrafficDirection.OUTBOUND``
+
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
         :type from_port: ``int``
         :param from_port: The beginning port number you are enabling.
@@ -1735,30 +1778,30 @@ class SecurityGroup(CloudResource):
         :type to_port: ``int``
         :param to_port: The ending port number you are enabling.
 
-        :type cidr_ip: ``str`` or list of ``str``
-        :param cidr_ip: The CIDR block you are providing access to.
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
 
-        :type src_group: :class:`.SecurityGroup`
-        :param src_group: The Security Group object you are granting access to.
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
 
-        :rtype: :class:`.SecurityGroupRule`
+        :rtype: :class:`.VMFirewallRule`
         :return: Rule object if successful or ``None``.
         """
         pass
 
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+    @abstractmethod
+    def find(self, **kwargs):
         """
-        Get a security group rule with the specified parameters.
+        Find a firewall rule associated with your account filtered by the given
+        parameters.
 
-        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
-        ``from_port``, ``to_port``, and ``cidr_ip``. Note that when retrieving
-        a group rule, this method will return only one rule although possibly
-        several rules exist for the group rule. In that case, use the
-        ``.rules`` property and filter the results as desired.
+        :type name: str
+        :param name: The name of the VM firewall to retrieve.
 
-        :type ip_protocol: ``str``
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
 
         :type from_port: ``int``
         :param from_port: The beginning port number you are enabling.
@@ -1766,27 +1809,61 @@ class SecurityGroup(CloudResource):
         :type to_port: ``int``
         :param to_port: The ending port number you are enabling.
 
-        :type cidr_ip: ``str`` or list of ``str``
-        :param cidr_ip: The CIDR block you are providing access to.
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
 
-        :type src_group: :class:`.SecurityGroup`
-        :param src_group: The Security Group object you are granting access to.
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
 
-        :rtype: :class:`.SecurityGroupRule`
-        :return: Role object if one can be found or ``None``.
+        :type src_dest_fw_id: :class:`.str`
+        :param src_dest_fw_id: The VM firewall id which is the
+                               source/destination of the traffic, depending on
+                               whether it's ingress/egress traffic.
+
+        :rtype: list of :class:`VMFirewallRule`
+        :return: A list of VMFirewall objects or an empty list if none
+                 found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, rule_id):
+        """
+        Delete an existing VMFirewall rule.
+
+        :type rule_id: str
+        :param rule_id: The VM firewall rule to be deleted.
         """
         pass
 
 
-class SecurityGroupRule(CloudResource):
+class TrafficDirection(Enum):
+    INBOUND = 'inbound'
+    OUTBOUND = 'outbound'
+
+
+class VMFirewallRule(CloudResource):
 
     """
-    Represents a security group rule.
+    Represents a VM firewall rule.
     """
     __metaclass__ = ABCMeta
 
     @abstractproperty
-    def ip_protocol(self):
+    def direction(self):
+        """
+        Direction of traffic to which this rule applies.
+        Either TrafficDirection.INBOUND | TrafficDirection.OUTBOUND
+
+        :rtype: ``str``
+        :return: Direction of traffic to which this rule applies
+        """
+        pass
+
+    @abstractproperty
+    def protocol(self):
         """
         IP protocol used. Either ``tcp`` | ``udp`` | ``icmp``.
 
@@ -1816,9 +1893,9 @@ class SecurityGroupRule(CloudResource):
         pass
 
     @abstractproperty
-    def cidr_ip(self):
+    def cidr(self):
         """
-        CIDR block this security group is providing access to.
+        CIDR block this VM firewall is providing access to.
 
         :rtype: ``str``
         :return: CIDR block.
@@ -1826,12 +1903,22 @@ class SecurityGroupRule(CloudResource):
         pass
 
     @abstractproperty
-    def group(self):
+    def src_dest_fw_id(self):
         """
-        Security group given access permissions by this rule.
+        VM firewall id given access permissions by this rule.
 
-        :rtype: :class:``.SecurityGroup``
-        :return: The Security Group with granting access.
+        :rtype: ``str``
+        :return: The VM firewall granted access.
+        """
+        pass
+
+    @abstractproperty
+    def src_dest_fw(self):
+        """
+        VM firewall given access permissions by this rule.
+
+        :rtype: :class:``.VMFirewall``
+        :return: The VM firewall granted access.
         """
         pass
 
@@ -1949,7 +2036,7 @@ class BucketObject(CloudResource):
         pass
 
 
-class Bucket(PageableObjectMixin, CloudResource):
+class Bucket(CloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -1965,45 +2052,29 @@ class Bucket(PageableObjectMixin, CloudResource):
         """
         pass
 
-    @abstractmethod
-    def get(self, name):
+    @abstractproperty
+    def objects(self):
         """
-        Retrieve a given object from this bucket.
+        Get a container for the objects belonging to this Buckets. This
+        object can be used to iterate through bucket objects, as well as
+        perform further operations on buckets, such as get, list, create etc.
 
-        :type name: ``str``
-        :param name: The identifier of the object to retrieve
+        .. code-block:: python
 
-        :rtype: :class:``.BucketObject``
-        :return: The BucketObject or ``None`` if it cannot be found.
-        """
-        pass
+            # Show all objects in bucket
+            print(list(bucket.objects))
 
-    @abstractmethod
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List objects in this bucket.
+            # Find an object by name
+            print(bucket.objects.find(name='my_obj.txt'))
 
-        :type limit: ``int``
-        :param limit: Maximum number of elements to return.
+            # Get first page of bucket list
+            print(bucket.objects.list())
 
-        :type marker: ``int``
-        :param marker: Fetch results after this offset.
+            # Create a new object within this bucket
+            obj = bucket.objects.create('my_obj.txt')
 
-        :type prefix: ``str``
-        :param prefix: Prefix criteria by which to filter listed objects.
-
-        :rtype: :class:``.BucketObject``
-        :return: List of all available BucketObjects within this bucket.
-        """
-        pass
-
-    @abstractmethod
-    def find(self, name):
-        """
-        Searches for an instance by a given name
-
-        :rtype: List of ``object`` of :class:`.BucketObject`
-        :return: A list of BucketObjects matching the supplied attributes.
+        :rtype: :class:`.BucketContainer`
+        :return: A BucketContainer for further operations.
         """
         pass
 
@@ -2021,8 +2092,64 @@ class Bucket(PageableObjectMixin, CloudResource):
         """
         pass
 
+
+class BucketContainer(PageableObjectMixin):
+    """
+    A container service for objects within a bucket
+    """
+    __metaclass__ = ABCMeta
+
     @abstractmethod
-    def create_object(self, name):
+    def get(self, name):
+        """
+        Retrieve a given object from this bucket.
+
+        :type name: ``str``
+        :param name: The identifier of the object to retrieve
+
+        :rtype: :class:``.BucketObject``
+        :return: The BucketObject or ``None`` if it cannot be found.
+        """
+        pass
+
+    @abstractmethod
+    # pylint:disable=arguments-differ
+    def list(self, limit=None, marker=None, prefix=None):
+        """
+        List objects in this bucket.
+
+        :type limit: ``int``
+        :param limit: Maximum number of elements to return.
+
+        :type marker: ``int``
+        :param marker: Fetch results after this offset.
+
+        :type prefix: ``str``
+        :param prefix: Prefix criteria by which to filter listed objects.
+
+        :rtype: List of ``objects`` of :class:``.BucketObject``
+        :return: List of all available BucketObjects within this bucket.
+        """
+        pass
+
+    @abstractmethod
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for an object by a given name
+
+        :rtype: List of ``objects`` of :class:`.BucketObject`
+        :return: A list of BucketObjects matching the supplied attributes.
+
+        :type limit: ``int``
+        :param limit: Maximum number of elements to return.
+
+        :type marker: ``int``
+        :param marker: Fetch results after this offset.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, name):
         """
         Create a new object within this bucket.
 

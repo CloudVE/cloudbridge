@@ -4,14 +4,15 @@ DataTypes used by this provider
 import inspect
 import ipaddress
 
+import logging
 import os
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
-from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
@@ -19,26 +20,33 @@ from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSecurityGroup
-from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
+from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
 from keystoneclient.v3.regions import Region
 
+from neutronclient.common.exceptions import PortNotFoundClient
+
 import novaclient.exceptions as novaex
+
+from openstack.exceptions import HttpException
 
 import swiftclient
 
@@ -48,17 +56,20 @@ from swiftclient.service import SwiftService, SwiftUploadObject
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
 
+log = logging.getLogger(__name__)
+
 
 class OpenStackMachineImage(BaseMachineImage):
 
     # ref: http://docs.openstack.org/developer/glance/statuses.html
     IMAGE_STATE_MAP = {
-        'QUEUED': MachineImageState.PENDING,
-        'SAVING': MachineImageState.PENDING,
-        'ACTIVE': MachineImageState.AVAILABLE,
-        'KILLED': MachineImageState.ERROR,
-        'DELETED': MachineImageState.ERROR,
-        'PENDING_DELETE': MachineImageState.ERROR
+        'queued': MachineImageState.PENDING,
+        'saving': MachineImageState.PENDING,
+        'active': MachineImageState.AVAILABLE,
+        'killed': MachineImageState.ERROR,
+        'deleted': MachineImageState.ERROR,
+        'pending_delete': MachineImageState.ERROR,
+        'deactivated': MachineImageState.ERROR
     }
 
     def __init__(self, provider, os_image):
@@ -99,13 +110,13 @@ class OpenStackMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        return self._os_image.minDisk
+        return self._os_image.min_disk
 
     def delete(self):
         """
         Delete this image
         """
-        self._os_image.delete()
+        self._os_image.delete(self._provider.os_conn.session)
 
     @property
     def state(self):
@@ -117,6 +128,7 @@ class OpenStackMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
+        log.debug("Refreshing OpenStack Machine Image")
         image = self._provider.compute.images.get(self.id)
         if image:
             self._os_image = image._os_image  # pylint:disable=protected-access
@@ -131,7 +143,9 @@ class OpenStackPlacementZone(BasePlacementZone):
     def __init__(self, provider, zone, region):
         super(OpenStackPlacementZone, self).__init__(provider)
         if isinstance(zone, OpenStackPlacementZone):
-            self._os_zone = zone._os_zone  # pylint:disable=protected-access
+            # pylint:disable=protected-access
+            self._os_zone = zone._os_zone
+            # pylint:disable=protected-access
             self._os_region = zone._os_region
         else:
             self._os_zone = zone
@@ -169,10 +183,10 @@ class OpenStackPlacementZone(BasePlacementZone):
         return self._os_region
 
 
-class OpenStackInstanceType(BaseInstanceType):
+class OpenStackVMType(BaseVMType):
 
     def __init__(self, provider, os_flavor):
-        super(OpenStackInstanceType, self).__init__(provider)
+        super(OpenStackVMType, self).__init__(provider)
         self._os_flavor = os_flavor
 
     @property
@@ -227,7 +241,7 @@ class OpenStackInstance(BaseInstance):
     INSTANCE_STATE_MAP = {
         'ACTIVE': InstanceState.RUNNING,
         'BUILD': InstanceState.PENDING,
-        'DELETED': InstanceState.TERMINATED,
+        'DELETED': InstanceState.DELETED,
         'ERROR': InstanceState.ERROR,
         'HARD_REBOOT': InstanceState.REBOOTING,
         'PASSWORD': InstanceState.PENDING,
@@ -257,6 +271,7 @@ class OpenStackInstance(BaseInstance):
         return self._os_instance.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         """
         Get the instance name.
@@ -299,20 +314,20 @@ class OpenStackInstance(BaseInstance):
                 if ipaddress.ip_address(address).is_private]
 
     @property
-    def instance_type_id(self):
+    def vm_type_id(self):
         """
-        Get the instance type name.
+        Get the VM type name.
         """
         return self._os_instance.flavor.get('id')
 
     @property
-    def instance_type(self):
+    def vm_type(self):
         """
-        Get the instance type object.
+        Get the VM type object.
         """
         flavor = self._provider.nova.flavors.get(
             self._os_instance.flavor.get('id'))
-        return OpenStackInstanceType(self._provider, flavor)
+        return OpenStackVMType(self._provider, flavor)
 
     def reboot(self):
         """
@@ -320,9 +335,9 @@ class OpenStackInstance(BaseInstance):
         """
         self._os_instance.reboot()
 
-    def terminate(self):
+    def delete(self):
         """
-        Permanently terminate this instance.
+        Permanently delete this instance.
         """
         # delete the port we created when launching
         # Assumption: it's the first interface in the list
@@ -350,19 +365,18 @@ class OpenStackInstance(BaseInstance):
         return getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None)
 
     @property
-    def security_groups(self):
-        """
-        Get the security groups associated with this instance.
-        """
-        return [OpenStackSecurityGroup(self._provider, group)
-                for group in self._os_instance.list_security_group()]
+    def vm_firewalls(self):
+        return [
+            self._provider.security.vm_firewalls.get(group.id)
+            for group in self._os_instance.list_security_group()
+        ]
 
     @property
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         """
-        Get the security groups IDs associated with this instance.
+        Get the VM firewall IDs associated with this instance.
         """
-        return [group.id for group in self.security_groups]
+        return [fw.id for fw in self.vm_firewalls]
 
     @property
     def key_pair_name(self):
@@ -375,35 +389,40 @@ class OpenStackInstance(BaseInstance):
         """
         Create a new image based on this instance.
         """
+        log.debug("Creating OpenStack Image with the name %s", name)
         self.assert_valid_resource_name(name)
 
         image_id = self._os_instance.create_image(name)
         return OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
 
-    def add_floating_ip(self, ip_address):
+    def add_floating_ip(self, floating_ip):
         """
         Add a floating IP address to this instance.
         """
-        self._os_instance.add_floating_ip(ip_address)
+        log.debug("Adding floating IP adress: %s", floating_ip)
+        self._os_instance.add_floating_ip(floating_ip.public_ip)
 
-    def remove_floating_ip(self, ip_address):
+    def remove_floating_ip(self, floating_ip):
         """
         Remove a floating IP address from this instance.
         """
-        self._os_instance.remove_floating_ip(ip_address)
+        log.debug("Removing floating IP adress: %s", floating_ip)
+        self._os_instance.remove_floating_ip(floating_ip.public_ip)
 
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, firewall):
         """
-        Add a security group to this instance
+        Add a VM firewall to this instance
         """
-        self._os_instance.add_security_group(sg.id)
+        log.debug("Adding firewall: %s", firewall)
+        self._os_instance.add_security_group(firewall.id)
 
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, firewall):
         """
-        Remove a security group from this instance
+        Remove a VM firewall from this instance
         """
-        self._os_instance.remove_security_group(sg.id)
+        log.debug("Removing firewall: %s", firewall)
+        self._os_instance.remove_security_group(firewall.id)
 
     @property
     def state(self):
@@ -450,6 +469,7 @@ class OpenStackRegion(BaseRegion):
             zones = self._provider.nova.availability_zones.list(detailed=False)
         else:
             try:
+                # pylint:disable=protected-access
                 region_nova = self._provider._connect_nova_region(self.name)
                 zones = region_nova.availability_zones.list(detailed=False)
             except novaex.EndpointNotFound:
@@ -487,6 +507,7 @@ class OpenStackVolume(BaseVolume):
         return self._volume.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         """
         Get the volume name.
@@ -494,7 +515,8 @@ class OpenStackVolume(BaseVolume):
         return self._volume.name
 
     @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    # pylint:disable=arguments-differ
+    def name(self, value):
         """
         Set the volume name.
         """
@@ -526,7 +548,7 @@ class OpenStackVolume(BaseVolume):
     @property
     def source(self):
         if self._volume.snapshot_id:
-            return self._provider.block_store.snapshots.get(
+            return self._provider.storage.snapshots.get(
                 self._volume.snapshot_id)
         return None
 
@@ -544,6 +566,7 @@ class OpenStackVolume(BaseVolume):
         """
         Attach this volume to an instance.
         """
+        log.debug("Attaching %s to %s instance", device, instance)
         instance_id = instance.id if isinstance(
             instance,
             OpenStackInstance) else instance
@@ -559,7 +582,9 @@ class OpenStackVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.block_store.snapshots.create(
+        log.debug("Creating snapchat of volume: %s with the "
+                  "description: %s", name, description)
+        return self._provider.storage.snapshots.create(
             name, self, description=description)
 
     def delete(self):
@@ -578,7 +603,7 @@ class OpenStackVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        vol = self._provider.block_store.volumes.get(
+        vol = self._provider.storage.volumes.get(
             self.id)
         if vol:
             self._volume = vol._volume  # pylint:disable=protected-access
@@ -608,6 +633,7 @@ class OpenStackSnapshot(BaseSnapshot):
         return self._snapshot.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         """
         Get the snapshot name.
@@ -615,7 +641,8 @@ class OpenStackSnapshot(BaseSnapshot):
         return self._snapshot.name
 
     @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    # pylint:disable=arguments-differ
+    def name(self, value):
         """
         Set the snapshot name.
         """
@@ -654,7 +681,7 @@ class OpenStackSnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        snap = self._provider.block_store.snapshots.get(
+        snap = self._provider.storage.snapshots.get(
             self.id)
         if snap:
             self._snapshot = snap._snapshot  # pylint:disable=protected-access
@@ -742,11 +769,13 @@ class OpenStackNetwork(BaseNetwork):
             ports = self._provider.neutron.list_ports(
                 network_id=self.id).get('ports', [])
             for port in ports:
-                self._provider.neutron.delete_port(port.get('id'))
+                try:
+                    self._provider.neutron.delete_port(port.get('id'))
+                except PortNotFoundClient:
+                    # Ports could have already been deleted if instances
+                    # are terminated etc. so exceptions can be safely ignored
+                    pass
             self._provider.neutron.delete_network(self.id)
-        # Adhere to the interface docs
-        if self.id not in str(self._provider.neutron.list_networks()):
-            return True
 
     @property
     def subnets(self):
@@ -810,9 +839,6 @@ class OpenStackSubnet(BaseSubnet):
     def delete(self):
         if self.id in str(self._provider.neutron.list_subnets()):
             self._provider.neutron.delete_subnet(self.id)
-        # Adhere to the interface docs
-        if self.id not in str(self._provider.neutron.list_subnets()):
-            return True
 
     @property
     def state(self):
@@ -838,24 +864,22 @@ class OpenStackFloatingIP(BaseFloatingIP):
 
     @property
     def id(self):
-        return self._ip.get('id', None)
+        return self._ip.id
 
     @property
     def public_ip(self):
-        return self._ip.get('floating_ip_address', None)
+        return self._ip.floating_ip_address
 
     @property
     def private_ip(self):
-        return self._ip.get('fixed_ip_address', None)
+        return self._ip.fixed_ip_address
 
+    @property
     def in_use(self):
-        return bool(self._ip.get('port_id', None))
+        return bool(self._ip.port_id)
 
     def delete(self):
-        self._provider.neutron.delete_floatingip(self.id)
-        # Adhere to the interface docs
-        if self.id not in str(self._provider.neutron.list_floatingips()):
-            return True
+        self._ip.delete(self._provider.os_conn.session)
 
 
 class OpenStackRouter(BaseRouter):
@@ -939,6 +963,7 @@ class OpenStackInternetGateway(BaseInternetGateway):
     def __init__(self, provider, gateway_net):
         super(OpenStackInternetGateway, self).__init__(provider)
         if isinstance(gateway_net, OpenStackNetwork):
+            # pylint:disable=protected-access
             gateway_net = gateway_net._network
         self._gateway_net = gateway_net
 
@@ -999,10 +1024,11 @@ class OpenStackKeyPair(BaseKeyPair):
         return getattr(self._key_pair, 'private_key', None)
 
 
-class OpenStackSecurityGroup(BaseSecurityGroup):
+class OpenStackVMFirewall(BaseVMFirewall):
 
-    def __init__(self, provider, security_group):
-        super(OpenStackSecurityGroup, self).__init__(provider, security_group)
+    def __init__(self, provider, vm_firewall):
+        super(OpenStackVMFirewall, self).__init__(provider, vm_firewall)
+        self._rule_svc = OpenStackVMFirewallRuleContainer(provider, self)
 
     @property
     def network_id(self):
@@ -1015,95 +1041,14 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
 
     @property
     def rules(self):
-        # Update SG object; otherwise, recently added rules do now show
-        self._security_group = self._provider.nova.security_groups.get(
-            self._security_group)
-        return [OpenStackSecurityGroupRule(self._provider, r, self)
-                for r in self._security_group.rules]
+        return self._rule_svc
 
-    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        """
-        Create a security group rule.
+    def delete(self):
+        return self._vm_firewall.delete(self._provider.os_conn.session)
 
-        You need to pass in either ``src_group`` OR ``ip_protocol`` AND
-        ``from_port``, ``to_port``, ``cidr_ip``.  In other words, either
-        you are authorizing another group or you are authorizing some
-        ip-based rule.
-
-        :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
-
-        :type from_port: int
-        :param from_port: The beginning port number you are enabling
-
-        :type to_port: int
-        :param to_port: The ending port number you are enabling
-
-        :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block you are providing access to.
-
-        :type src_group: ``object`` of :class:`.SecurityGroup`
-        :param src_group: The Security Group you are granting access to.
-
-        :rtype: :class:``.SecurityGroupRule``
-        :return: Rule object if successful or ``None``.
-        """
-        if src_group:
-            if not isinstance(src_group, SecurityGroup):
-                src_group = self._provider.security.security_groups.get(
-                    src_group)
-            existing_rule = self.get_rule(ip_protocol=ip_protocol,
-                                          from_port=from_port,
-                                          to_port=to_port,
-                                          src_group=src_group)
-            if existing_rule:
-                return existing_rule
-
-            rule = self._provider.nova.security_group_rules.create(
-                parent_group_id=self._security_group.id,
-                ip_protocol=ip_protocol,
-                from_port=from_port,
-                to_port=to_port,
-                group_id=src_group.id)
-            if rule:
-                # We can only return one Rule so default to TCP (ie, last in
-                # the for loop above).
-                return OpenStackSecurityGroupRule(self._provider,
-                                                  rule.to_dict(), self)
-        else:
-            existing_rule = self.get_rule(ip_protocol=ip_protocol,
-                                          from_port=from_port,
-                                          to_port=to_port,
-                                          cidr_ip=cidr_ip)
-            if existing_rule:
-                return existing_rule
-
-            rule = self._provider.nova.security_group_rules.create(
-                parent_group_id=self._security_group.id,
-                ip_protocol=ip_protocol,
-                from_port=from_port,
-                to_port=to_port,
-                cidr=cidr_ip)
-            if rule:
-                return OpenStackSecurityGroupRule(self._provider,
-                                                  rule.to_dict(), self)
-        return None
-
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        # Update SG object; otherwise, recently added rules do not show
-        self._security_group = self._provider.nova.security_groups.get(
-            self._security_group)
-        for rule in self._security_group.rules:
-            if (rule['ip_protocol'] == ip_protocol and
-                rule['from_port'] == from_port and
-                rule['to_port'] == to_port and
-                (rule['ip_range'].get('cidr') == cidr_ip or
-                 (rule['group'].get('name') == src_group.name if src_group
-                  else False))):
-                return OpenStackSecurityGroupRule(self._provider, rule, self)
-        return None
+    def refresh(self):
+        self._vm_firewall = self._provider.os_conn.network.get_security_group(
+            self.id)
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -1113,49 +1058,107 @@ class OpenStackSecurityGroup(BaseSecurityGroup):
         return js
 
 
-class OpenStackSecurityGroupRule(BaseSecurityGroupRule):
+class OpenStackVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
 
-    def __init__(self, provider, rule, parent):
-        super(OpenStackSecurityGroupRule, self).__init__(
-            provider, rule, parent)
+    def __init__(self, provider, firewall):
+        super(OpenStackVMFirewallRuleContainer, self).__init__(
+            provider, firewall)
+
+    def list(self, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [OpenStackVMFirewallRule(self.firewall, r)
+                 for r in self.firewall._vm_firewall.security_group_rules]
+        return ClientPagedResultList(self._provider, rules,
+                                     limit=limit, marker=marker)
+
+    def create(self,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (src_dest_fw.id if isinstance(src_dest_fw,
+                                                       OpenStackVMFirewall)
+                          else src_dest_fw)
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                os_direction = 'ingress'
+            elif direction == TrafficDirection.OUTBOUND:
+                os_direction = 'egress'
+            else:
+                raise InvalidValueException("direction", direction)
+            # pylint:disable=protected-access
+            rule = self._provider.os_conn.network.create_security_group_rule(
+                security_group_id=self.firewall.id,
+                direction=os_direction,
+                port_range_max=to_port,
+                port_range_min=from_port,
+                protocol=protocol,
+                remote_ip_prefix=cidr,
+                remote_group_id=src_dest_fw_id)
+            self.firewall.refresh()
+            return OpenStackVMFirewallRule(self.firewall, rule.to_dict())
+        except HttpException as e:
+            self.firewall.refresh()
+            # 409=Conflict, raised for duplicate rule
+            if e.http_status == 409:
+                existing = self.find(direction=direction, protocol=protocol,
+                                     from_port=from_port, to_port=to_port,
+                                     cidr=cidr, src_dest_fw_id=src_dest_fw_id)
+                return existing[0]
+            else:
+                raise e
+
+
+class OpenStackVMFirewallRule(BaseVMFirewallRule):
+
+    def __init__(self, parent_fw, rule):
+        super(OpenStackVMFirewallRule, self).__init__(parent_fw, rule)
 
     @property
     def id(self):
         return self._rule.get('id')
 
     @property
-    def ip_protocol(self):
-        return self._rule.get('ip_protocol')
+    def direction(self):
+        direction = self._rule.get('direction')
+        if direction == 'ingress':
+            return TrafficDirection.INBOUND
+        elif direction == 'egress':
+            return TrafficDirection.OUTBOUND
+        else:
+            return None
+
+    @property
+    def protocol(self):
+        return self._rule.get('protocol')
 
     @property
     def from_port(self):
-        return int(self._rule.get('from_port') or 0)
+        return self._rule.get('port_range_min')
 
     @property
     def to_port(self):
-        return int(self._rule.get('to_port') or 0)
+        return self._rule.get('port_range_max')
 
     @property
-    def cidr_ip(self):
-        return self._rule.get('ip_range', {}).get('cidr')
+    def cidr(self):
+        return self._rule.get('remote_ip_prefix')
 
     @property
-    def group(self):
-        sg_name = self._rule.get('group', {}).get('name')
-        if sg_name:
-            sg = self._provider.security.security_groups.find(name=sg_name)
-            return sg[0] if sg else None
+    def src_dest_fw_id(self):
+        fw = self.src_dest_fw
+        if fw:
+            return fw.id
         return None
 
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
-        js['group'] = self.group.id if self.group else ''
-        js['parent'] = self.parent.id if self.parent else ''
-        return js
+    @property
+    def src_dest_fw(self):
+        fw_id = self._rule.get('remote_group_id')
+        if fw_id:
+            return self._provider.security.vm_firewalls.get(fw_id)
+        return None
 
     def delete(self):
-        return self._provider.nova.security_group_rules.delete(self.id)
+        self._provider.os_conn.network.delete_security_group_rule(self.id)
+        self.firewall.refresh()
 
 
 class OpenStackBucketObject(BaseBucketObject):
@@ -1223,6 +1226,7 @@ class OpenStackBucketObject(BaseBucketObject):
                 upload_options['segment_size'] = FIVE_GIG
 
         # remap the swift service's connection factory method
+        # pylint:disable=protected-access
         swiftclient.service.get_conn = self._provider._connect_swift
 
         result = True
@@ -1247,6 +1251,7 @@ class OpenStackBucketObject(BaseBucketObject):
         """
 
         # remap the swift service's connection factory method
+        # pylint:disable=protected-access
         swiftclient.service.get_conn = self._provider._connect_swift
 
         result = True
@@ -1274,6 +1279,7 @@ class OpenStackBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(OpenStackBucket, self).__init__(provider)
         self._bucket = bucket
+        self._object_container = OpenStackBucketContainer(provider, self)
 
     @property
     def id(self):
@@ -1281,10 +1287,20 @@ class OpenStackBucket(BaseBucket):
 
     @property
     def name(self):
-        """
-        Get this bucket's name.
-        """
         return self._bucket.get("name")
+
+    @property
+    def objects(self):
+        return self._object_container
+
+    def delete(self, delete_contents=False):
+        self._provider.swift.delete_container(self.name)
+
+
+class OpenStackBucketContainer(BaseBucketContainer):
+
+    def __init__(self, provider, bucket):
+        super(OpenStackBucketContainer, self).__init__(provider, bucket)
 
     def get(self, name):
         """
@@ -1295,9 +1311,9 @@ class OpenStackBucket(BaseBucket):
         return the first element.
         """
         _, object_list = self._provider.swift.get_container(
-            self.name, prefix=name)
+            self.bucket.name, prefix=name)
         if object_list:
-            return OpenStackBucketObject(self._provider, self,
+            return OpenStackBucketObject(self._provider, self.bucket,
                                          object_list[0])
         else:
             return None
@@ -1310,10 +1326,11 @@ class OpenStackBucket(BaseBucket):
         :return: List of all available BucketObjects within this bucket.
         """
         _, object_list = self._provider.swift.get_container(
-            self.name, limit=oshelpers.os_result_limit(self._provider, limit),
+            self.bucket.name,
+            limit=oshelpers.os_result_limit(self._provider, limit),
             marker=marker, prefix=prefix)
         cb_objects = [OpenStackBucketObject(
-            self._provider, self, obj) for obj in object_list]
+            self._provider, self.bucket, obj) for obj in object_list]
 
         return oshelpers.to_server_paged_list(
             self._provider,
@@ -1325,12 +1342,6 @@ class OpenStackBucket(BaseBucket):
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
-    def delete(self, delete_contents=False):
-        """
-        Delete this bucket.
-        """
-        self._provider.swift.delete_container(self.name)
-
-    def create_object(self, object_name):
-        self._provider.swift.put_object(self.name, object_name, None)
+    def create(self, object_name):
+        self._provider.swift.put_object(self.bucket.name, object_name, None)
         return self.get(object_name)

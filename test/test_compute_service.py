@@ -9,13 +9,14 @@ from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import Instance
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import VMType
 
 import six
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
+
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         name = "cb_instcrud-{0}".format(helpers.get_uuid())
@@ -25,25 +26,27 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         subnet = None
 
         def create_inst(name):
+            # Also test whether sending in an empty_dict for user_data
+            # results in an automatic conversion to string.
             return helpers.get_test_instance(self.provider, name,
-                                             subnet=subnet)
+                                             subnet=subnet, user_data={})
 
         def cleanup_inst(inst):
-            inst.terminate()
-            inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN])
+            inst.delete()
+            inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN])
 
         def check_deleted(inst):
             deleted_inst = self.provider.compute.instances.get(
                 inst.id)
             self.assertTrue(
                 deleted_inst is None or deleted_inst.state in (
-                    InstanceState.TERMINATED,
+                    InstanceState.DELETED,
                     InstanceState.UNKNOWN),
                 "Instance %s should have been deleted but still exists." %
                 name)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net)):
+                                               network=net)):
             net, subnet = helpers.create_test_network(self.provider, name)
 
             sit.check_crud(self, self.provider.compute.instances, Instance,
@@ -58,7 +61,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         return True
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
-                              'security.security_groups',
+                              'security.vm_firewalls',
                               'security.key_pairs'])
     def test_instance_properties(self):
         name = "cb_inst_props-{0}".format(helpers.get_uuid())
@@ -67,17 +70,17 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # the cleanup method access to the most current values
         test_instance = None
         net = None
-        sg = None
+        fw = None
         kp = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_instance, net, sg, kp)):
+                test_instance, net, fw, kp)):
             net, subnet = helpers.create_test_network(self.provider, name)
             kp = self.provider.security.key_pairs.create(name=name)
-            sg = self.provider.security.security_groups.create(
+            fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
             test_instance = helpers.get_test_instance(self.provider,
                                                       name, key_pair=kp,
-                                                      security_groups=[sg],
+                                                      vm_firewalls=[fw],
                                                       subnet=subnet)
             self.assertEqual(
                 test_instance.name, name,
@@ -97,41 +100,43 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertEqual(
                 test_instance.key_pair_name,
                 kp.name)
-            self.assertIsInstance(test_instance.security_groups, list)
+            self.assertIsInstance(test_instance.vm_firewalls, list)
             self.assertEqual(
-                test_instance.security_groups[0],
-                sg)
-            self.assertIsInstance(test_instance.security_group_ids, list)
+                test_instance.vm_firewalls[0],
+                fw)
+            self.assertIsInstance(test_instance.vm_firewall_ids, list)
             self.assertEqual(
-                test_instance.security_group_ids[0],
-                sg.id)
+                test_instance.vm_firewall_ids[0],
+                fw.id)
             # Must have either a public or a private ip
             ip_private = test_instance.private_ips[0] \
                 if test_instance.private_ips else None
             ip_address = test_instance.public_ips[0] \
                 if test_instance.public_ips and test_instance.public_ips[0] \
                 else ip_private
+            # Convert to unicode for py27 compatibility with ipaddress()
+            ip_address = u"{}".format(ip_address)
             self.assertIsNotNone(
                 ip_address,
                 "Instance must have either a public IP or a private IP")
             self.assertTrue(
                 self._is_valid_ip(ip_address),
-                "Instance must have a valid IP address")
-            self.assertIsInstance(test_instance.instance_type_id,
+                "Instance must have a valid IP address. Got: %s" % ip_address)
+            self.assertIsInstance(test_instance.vm_type_id,
                                   six.string_types)
-            itype = self.provider.compute.instance_types.get(
-                test_instance.instance_type_id)
+            vm_type = self.provider.compute.vm_types.get(
+                test_instance.vm_type_id)
             self.assertEqual(
-                itype, test_instance.instance_type,
-                "Instance type {0} does not match expected type {1}".format(
-                    itype.name, test_instance.instance_type))
-            self.assertIsInstance(itype, InstanceType)
+                vm_type, test_instance.vm_type,
+                "VM type {0} does not match expected type {1}".format(
+                    vm_type.name, test_instance.vm_type))
+            self.assertIsInstance(vm_type, VMType)
             expected_type = helpers.get_provider_test_data(self.provider,
-                                                           'instance_type')
+                                                           'vm_type')
             self.assertEqual(
-                itype.name, expected_type,
-                "Instance type {0} does not match expected type {1}".format(
-                    itype.name, expected_type))
+                vm_type.name, expected_type,
+                "VM type {0} does not match expected type {1}".format(
+                    vm_type.name, expected_type))
             find_zone = [zone for zone in
                          self.provider.compute.regions.current.zones
                          if zone.id == test_instance.zone_id]
@@ -140,7 +145,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                              " found in zones list")
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
-                              'compute.instance_types'])
+                              'compute.vm_types'])
     def test_block_device_mapping_launch_config(self):
         lc = self.provider.compute.instances.create_launch_config()
 
@@ -157,9 +162,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # block_devices should be empty so far
         self.assertListEqual(
             lc.block_devices, [], "No block devices should have been"
-                                  " added to mappings list since the"
-                                  "configuration was"
-                                  " invalid")
+            " added to mappings list since the configuration was"
+            " invalid")
 
         # Add a new volume
         lc.add_volume_device(size=1, delete_on_terminate=True)
@@ -187,22 +191,22 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 delete_on_terminate=True)
 
         # Add all available ephemeral devices
-        instance_type_name = helpers.get_provider_test_data(
+        vm_type_name = helpers.get_provider_test_data(
             self.provider,
-            "instance_type")
-        inst_type = self.provider.compute.instance_types.find(
-            name=instance_type_name)[0]
-        for _ in range(inst_type.num_ephemeral_disks):
+            "vm_type")
+        vm_type = self.provider.compute.vm_types.find(
+            name=vm_type_name)[0]
+        for _ in range(vm_type.num_ephemeral_disks):
             lc.add_ephemeral_device()
 
         # block_devices should be populated
         self.assertTrue(
-            len(lc.block_devices) == 2 + inst_type.num_ephemeral_disks,
+            len(lc.block_devices) == 2 + vm_type.num_ephemeral_disks,
             "Expected %d total block devices bit found %d" %
-            (2 + inst_type.num_ephemeral_disks, len(lc.block_devices)))
+            (2 + vm_type.num_ephemeral_disks, len(lc.block_devices)))
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
-                              'compute.instance_types', 'block_store.volumes'])
+                              'compute.vm_types', 'storage.volumes'])
     def test_block_device_mapping_attachments(self):
         name = "cb_blkattch-{0}".format(helpers.get_uuid())
 
@@ -210,11 +214,11 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             raise self.skipTest("Not running BDM tests because OpenStack is"
                                 " not stable enough yet")
 
-        test_vol = self.provider.block_store.volumes.create(
-            name,
-            1,
-            helpers.get_provider_test_data(self.provider,
-                                           "placement"))
+        test_vol = self.provider.storage.volumes.create(
+           name,
+           1,
+           helpers.get_provider_test_data(self.provider,
+                                          "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(name=name,
@@ -256,12 +260,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     delete_on_terminate=True)
 
                 # Add all available ephemeral devices
-                instance_type_name = helpers.get_provider_test_data(
+                vm_type_name = helpers.get_provider_test_data(
                     self.provider,
-                    "instance_type")
-                inst_type = self.provider.compute.instance_types.find(
-                    name=instance_type_name)[0]
-                for _ in range(inst_type.num_ephemeral_disks):
+                    "vm_type")
+                vm_type = self.provider.compute.vm_types.find(
+                    name=vm_type_name)[0]
+                for _ in range(vm_type.num_ephemeral_disks):
                     lc.add_ephemeral_device()
 
                 net, subnet = helpers.create_test_network(self.provider, name)
@@ -283,12 +287,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         except WaitStateException as e:
                             self.fail("The block device mapped launch did not "
                                       " complete successfully: %s" % e)
-                            # TODO: Check instance attachments and make sure
-                            # they
-                            # correspond to requested mappings
+                        # TODO: Check instance attachments and make sure they
+                        # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
-                              'security.security_groups'])
+                              'networking.floating_ips',
+                              'security.vm_firewalls'])
     def test_instance_methods(self):
         name = "cb_instmethods-{0}".format(helpers.get_uuid())
 
@@ -296,33 +300,30 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # the cleanup method access to the most current values
         test_inst = None
         net = None
-        sg = None
+        fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_inst, net, sg)):
+                test_inst, net, fw)):
             net, subnet = helpers.create_test_network(self.provider, name)
             test_inst = helpers.get_test_instance(self.provider, name,
                                                   subnet=subnet)
-            sg = self.provider.security.security_groups.create(
+            fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
 
-            # Check adding a security group to a running instance
-            test_inst.add_security_group(sg)
+            # Check adding a VM firewall to a running instance
+            test_inst.add_vm_firewall(fw)
             test_inst.refresh()
             self.assertTrue(
-                sg in test_inst.security_groups, "Expected security group '%s'"
-                                                 " to be among instance "
-                                                 "security_groups: [%s]" %
-                (sg, test_inst.security_groups))
+                fw in test_inst.vm_firewalls, "Expected VM firewall '%s'"
+                " to be among instance vm_firewalls: [%s]" %
+                (fw, test_inst.vm_firewalls))
 
-            # Check removing a security group from a running instance
-            test_inst.remove_security_group(sg)
+            # Check removing a VM firewall from a running instance
+            test_inst.remove_vm_firewall(fw)
             test_inst.refresh()
             self.assertTrue(
-                sg not in test_inst.security_groups, "Expected security group"
-                                                     " '%s' to be removed "
-                                                     "from instance "
-                                                     "security_groups: [%s]" %
-                (sg, test_inst.security_groups))
+                fw not in test_inst.vm_firewalls, "Expected VM firewall"
+                " '%s' to be removed from instance vm_firewalls: [%s]" %
+                (fw, test_inst.vm_firewalls))
 
             # check floating ips
             router = self.provider.networking.routers.create(name, net)
@@ -341,13 +342,11 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                            .get_or_create_inet_gateway(name))
                 router.attach_gateway(gateway)
                 # check whether adding an elastic ip works
-                fip = (self.provider.networking.networks
-                       .create_floating_ip())
+                fip = self.provider.networking.floating_ips.create()
                 with helpers.cleanup_action(lambda: fip.delete()):
                     with helpers.cleanup_action(
-                            lambda: test_inst.remove_floating_ip(
-                                fip.public_ip)):
-                        test_inst.add_floating_ip(fip.public_ip)
+                            lambda: test_inst.remove_floating_ip(fip)):
+                        test_inst.add_floating_ip(fip)
                         test_inst.refresh()
                         # On Devstack, FloatingIP is listed under private_ips.
                         self.assertIn(fip.public_ip, test_inst.public_ips +

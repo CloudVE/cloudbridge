@@ -17,13 +17,15 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from novaclient import shell as nova_shell
 
+from openstack import connection
+from openstack import profile
+
 from swiftclient import client as swift_client
 
-from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
 from .services import OpenStackNetworkingService
-from .services import OpenStackObjectStoreService
 from .services import OpenStackSecurityService
+from .services import OpenStackStorageService
 
 
 class OpenStackCloudProvider(BaseCloudProvider):
@@ -59,6 +61,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self._cinder = None
         self._swift = None
         self._neutron = None
+        self._os_conn = None
 
         # Additional cached variables
         self._cached_keystone_session = None
@@ -67,8 +70,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self._compute = OpenStackComputeService(self)
         self._networking = OpenStackNetworkingService(self)
         self._security = OpenStackSecurityService(self)
-        self._block_store = OpenStackBlockStoreService(self)
-        self._object_store = OpenStackObjectStoreService(self)
+        self._storage = OpenStackStorageService(self)
 
     @property
     def nova(self):
@@ -123,6 +125,21 @@ class OpenStackCloudProvider(BaseCloudProvider):
             self._cached_keystone_session = session.Session(auth=auth)
         return self._cached_keystone_session
 
+    def _connect_openstack(self):
+        prof = profile.Profile()
+        prof.set_region(profile.Profile.ALL, self.region_name)
+
+        return connection.Connection(
+            profile=prof,
+            user_agent='cloudbridge',
+            auth_url=self.auth_url,
+            project_name=self.project_name,
+            username=self.username,
+            password=self.password,
+            user_domain_name=self.user_domain_name,
+            project_domain_name=self.project_domain_name
+        )
+
 #     @property
 #     def glance(self):
 #         if not self._glance:
@@ -148,6 +165,12 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._neutron
 
     @property
+    def os_conn(self):
+        if not self._os_conn:
+            self._os_conn = self._connect_openstack()
+        return self._os_conn
+
+    @property
     def compute(self):
         return self._compute
 
@@ -160,12 +183,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._security
 
     @property
-    def block_store(self):
-        return self._block_store
-
-    @property
-    def object_store(self):
-        return self._object_store
+    def storage(self):
+        return self._storage
 
     def _connect_nova(self):
         return self._connect_nova_region(self.region_name)

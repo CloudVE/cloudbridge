@@ -1,28 +1,33 @@
 """
 Base implementation for services available through a provider
 """
+import logging
+
 from cloudbridge.cloud.interfaces.resources import Router
 
-from cloudbridge.cloud.interfaces.services import BlockStoreService
+from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
+from cloudbridge.cloud.interfaces.services import FloatingIPService
 from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
-from cloudbridge.cloud.interfaces.services import InstanceTypesService
 from cloudbridge.cloud.interfaces.services import KeyPairService
 from cloudbridge.cloud.interfaces.services import NetworkService
 from cloudbridge.cloud.interfaces.services import NetworkingService
-from cloudbridge.cloud.interfaces.services import ObjectStoreService
 from cloudbridge.cloud.interfaces.services import RegionService
 from cloudbridge.cloud.interfaces.services import RouterService
-from cloudbridge.cloud.interfaces.services import SecurityGroupService
 from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
+from cloudbridge.cloud.interfaces.services import StorageService
 from cloudbridge.cloud.interfaces.services import SubnetService
+from cloudbridge.cloud.interfaces.services import VMFirewallService
+from cloudbridge.cloud.interfaces.services import VMTypeService
 from cloudbridge.cloud.interfaces.services import VolumeService
 
 from .resources import BasePageableObjectMixin
+
+log = logging.getLogger(__name__)
 
 
 class BaseCloudService(CloudService):
@@ -55,10 +60,10 @@ class BaseSnapshotService(
         super(BaseSnapshotService, self).__init__(provider)
 
 
-class BaseBlockStoreService(BlockStoreService, BaseCloudService):
+class BaseStorageService(StorageService, BaseCloudService):
 
     def __init__(self, provider):
-        super(BaseBlockStoreService, self).__init__(provider)
+        super(BaseStorageService, self).__init__(provider)
 
 
 class BaseImageService(
@@ -68,11 +73,11 @@ class BaseImageService(
         super(BaseImageService, self).__init__(provider)
 
 
-class BaseObjectStoreService(
-        BasePageableObjectMixin, ObjectStoreService, BaseCloudService):
+class BaseBucketService(
+        BasePageableObjectMixin, BucketService, BaseCloudService):
 
     def __init__(self, provider):
-        super(BaseObjectStoreService, self).__init__(provider)
+        super(BaseBucketService, self).__init__(provider)
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):
@@ -99,34 +104,38 @@ class BaseKeyPairService(
                   that the key may not have been deleted by this method but
                   instead has not existed in the first place.
         """
+        log.info("Deleting the existing key pair %s", key_pair_id)
         kp = self.get(key_pair_id)
         if kp:
             kp.delete()
         return True
 
 
-class BaseSecurityGroupService(
-        BasePageableObjectMixin, SecurityGroupService, BaseCloudService):
+class BaseVMFirewallService(
+        BasePageableObjectMixin, VMFirewallService, BaseCloudService):
 
     def __init__(self, provider):
-        super(BaseSecurityGroupService, self).__init__(provider)
+        super(BaseVMFirewallService, self).__init__(provider)
 
 
-class BaseInstanceTypesService(
-        BasePageableObjectMixin, InstanceTypesService, BaseCloudService):
+class BaseVMTypeService(
+        BasePageableObjectMixin, VMTypeService, BaseCloudService):
 
     def __init__(self, provider):
-        super(BaseInstanceTypesService, self).__init__(provider)
+        super(BaseVMTypeService, self).__init__(provider)
 
-    def get(self, instance_type_id):
-        itype = (t for t in self if t.id == instance_type_id)
-        return next(itype, None)
+    def get(self, vm_type_id):
+        vm_type = (t for t in self if t.id == vm_type_id)
+        return next(vm_type, None)
 
     def find(self, **kwargs):
         name = kwargs.get('name')
+        log.info("Searching for VMTypeService with the: name %s ...", name)
         if name:
             return [itype for itype in self if itype.name == name]
         else:
+            log.exception("TypeError exception raised. Invalid parameters "
+                          "used for search.")
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
 
@@ -167,8 +176,8 @@ class BaseNetworkService(
     def delete(self, network_id):
         network = self.get(network_id)
         if network:
+            log.info("Deleting network %s", network_id)
             network.delete()
-        return True
 
 
 class BaseSubnetService(
@@ -179,11 +188,39 @@ class BaseSubnetService(
 
     def find(self, **kwargs):
         name = kwargs.get('name')
+        log.info("Searching for SubnetService with the name: %s ...", name)
         if name:
             return [subnet for subnet in self if subnet.name == name]
         else:
+            log.exception("TypeError exception raised. Invalid parameters "
+                          "used for search.")
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
+
+
+class BaseFloatingIPService(
+        BasePageableObjectMixin, FloatingIPService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseFloatingIPService, self).__init__(provider)
+
+    def find(self, **kwargs):
+        if 'name' in kwargs:
+            name = kwargs.get('name')
+            log.info("Searching for FloatingIPService with the "
+                     "name: %s...", name)
+            if name:
+                return [fip for fip in self if fip.name == name]
+        else:
+            log.exception("TypeError exception raised. Invalid parameters "
+                          "used for search.")
+            raise TypeError(
+                "Invalid parameters for search. Supported attributes: {name}")
+
+    def delete(self, fip_id):
+        floating_ip = self.get(fip_id)
+        if floating_ip:
+            floating_ip.delete()
 
 
 class BaseRouterService(
@@ -193,10 +230,13 @@ class BaseRouterService(
 
     def delete(self, router):
         if isinstance(router, Router):
+            log.info("Router %s successful deleted.", router)
             router.delete()
         else:
+            log.info("Getting router %s", router)
             router = self.get(router)
             if router:
+                log.info("Router %s successful deleted.", router)
                 router.delete()
 
 

@@ -1,6 +1,7 @@
 import functools
 import os
 import sys
+import traceback
 import unittest
 import uuid
 
@@ -46,11 +47,13 @@ def cleanup_action(cleanup_func):
             cleanup_func()
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
+            traceback.print_exc()
         reraise(ex_class, ex_val, ex_traceback)
     try:
         cleanup_func()
     except Exception as e:
         print("Error during cleanup: {0}".format(e))
+        traceback.print_exc()
 
 
 def skipIfNoService(services):
@@ -78,13 +81,13 @@ def skipIfNoService(services):
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
         "image": os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_AWS', 't2.nano'),
+        "vm_type": os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
         "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     "OpenStackCloudProvider": {
         "image": os.environ.get('CB_IMAGE_OS',
                                 '842b949c-ea76-48df-998d-8a41f2626243'),
-        "instance_type": os.environ.get('CB_INSTANCE_TYPE_OS', 'm1.tiny'),
+        "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
         "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
     },
     "AzureCloudProvider": {
@@ -92,8 +95,8 @@ TEST_DATA_CONFIG = {
             os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
             os.environ.get('CB_IMAGE_AZURE', 'CbTest-Img'),
-        "instance_type":
-            os.environ.get('CB_INSTANCE_TYPE_AZURE', 'Standard_DS1_v2'),
+        "vm_type":
+            os.environ.get('CB_VM_TYPE_AZURE', 'Standard_DS1_v2'),
     }
 }
 
@@ -132,7 +135,7 @@ def delete_test_network(network):
 
 def create_test_instance(
         provider, instance_name, subnet, launch_config=None,
-        key_pair=None, security_groups=None):
+        key_pair=None, vm_firewalls=None, user_data=None):
 
     kp = None
     if not key_pair:
@@ -141,12 +144,13 @@ def create_test_instance(
     instance = provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
-        get_provider_test_data(provider, 'instance_type'),
+        get_provider_test_data(provider, 'vm_type'),
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
-        key_pair=key_pair or kp,
-        security_groups=security_groups,
-        launch_config=launch_config)
+        key_pair=key_pair,
+        vm_firewalls=vm_firewalls,
+        launch_config=launch_config,
+        user_data=user_data)
 
     if kp:
         kp.delete()
@@ -154,16 +158,17 @@ def create_test_instance(
     return instance
 
 
-def get_test_instance(provider, name, key_pair=None, security_groups=None,
-                      subnet=None):
+def get_test_instance(provider, name, key_pair=None, vm_firewalls=None,
+                      subnet=None, user_data=None):
     launch_config = None
     instance = create_test_instance(
         provider,
         name,
         subnet=subnet,
         key_pair=key_pair,
-        security_groups=security_groups,
-        launch_config=launch_config)
+        vm_firewalls=vm_firewalls,
+        launch_config=launch_config,
+        user_data=user_data)
     instance.wait_till_ready()
     return instance
 
@@ -174,19 +179,19 @@ def get_test_fixtures_folder():
 
 def delete_test_instance(instance):
     if instance:
-        instance.terminate()
-        instance.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
+        instance.delete()
+        instance.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                           terminal_states=[InstanceState.ERROR])
 
 
-def cleanup_test_resources(instance=None, network=None, security_group=None,
+def cleanup_test_resources(instance=None, network=None, vm_firewall=None,
                            key_pair=None):
     """Clean up any combination of supplied resources."""
     with cleanup_action(lambda: delete_test_network(network)
                         if network else None):
         with cleanup_action(lambda: key_pair.delete() if key_pair else None):
-            with cleanup_action(lambda: security_group.delete()
-                                if security_group else None):
+            with cleanup_action(lambda: vm_firewall.delete()
+                                if vm_firewall else None):
                 delete_test_instance(instance)
 
 
@@ -195,6 +200,7 @@ def get_uuid():
 
 
 class ProviderTestBase(unittest.TestCase):
+
     _provider = None
 
     def setUp(self):
@@ -213,17 +219,15 @@ class ProviderTestBase(unittest.TestCase):
             return 1
 
     def create_provider_instance(self):
-        provider_name = os.environ.get("CB_TEST_PROVIDER", "azure")
+        provider_name = os.environ.get("CB_TEST_PROVIDER", "aws")
         use_mock_drivers = parse_bool(
-            os.environ.get("CB_USE_MOCK_PROVIDERS", "False"))
+            os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
         factory = CloudProviderFactory()
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
-        config = {
-            'default_wait_interval':
-                self.get_provider_wait_interval(provider_class),
-            'default_result_limit': 1}
-
+        config = {'default_wait_interval':
+                  self.get_provider_wait_interval(provider_class),
+                  'default_result_limit': 1}
         return provider_class(config)
 
     @property

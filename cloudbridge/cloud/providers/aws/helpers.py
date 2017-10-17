@@ -1,3 +1,4 @@
+"""A set of AWS-specific helper methods used by the framework."""
 import logging as log
 from boto3.resources.params import create_request_parameters
 
@@ -17,15 +18,16 @@ def trim_empty_params(params_dict):
     e.g. Given
         {
             'GroupName': 'abc',
-            'Description': None
+            'Description': None,
             'VpcId': 'xyz',
         }
     returns:
         {
             'GroupName': 'abc',
-            'VpcId': 'xyz',
+            'VpcId': 'xyz'
         }
     """
+    log.debug("Removing null values from %s", params_dict)
     return {k: v for k, v in params_dict.items() if v is not None}
 
 
@@ -39,8 +41,10 @@ def find_tag_value(tags, key):
     :type key: ``str``
     :param key: Name of the tag to search for
     """
+    log.info("Searching for %s in %s", key, tags)
     for tag in tags or []:
         if tag.get('Key') == key:
+            log.info("Found %s, returning %s", key, tag.get('Value'))
             return tag.get('Value')
     return None
 
@@ -51,7 +55,6 @@ class BotoGenericService(object):
     resource, collection and paging support to implement
     basic cloudbridge methods.
     """
-
     def __init__(self, provider, cb_resource, boto_conn, boto_collection_name):
         """
         :type provider: :class:`AWSCloudProvider`
@@ -80,12 +83,12 @@ class BotoGenericService(object):
             boto_conn, self.boto_collection_model)
 
     def _infer_collection_model(self, conn, collection_name):
-        log.debug("Retrieving boto model for collection: %s" % collection_name)
+        log.debug("Retrieving boto model for collection: %s", collection_name)
         return next(col for col in conn.meta.resource_model.collections
                     if col.name == collection_name)
 
     def _infer_boto_resource(self, conn, collection_model):
-        log.debug("Retrieving resource model for collection: %s" %
+        log.debug("Retrieving resource model for collection: %s",
                   collection_model.name)
         resource_model = next(
             sr for sr in conn.meta.resource_model.subresources
@@ -106,14 +109,14 @@ class BotoGenericService(object):
             obj.load()
             log.debug("Successfully Retrieved: %s", obj)
             return self.cb_resource(self.provider, obj)
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
+        except ClientError as exc:
+            error_code = exc.response['Error']['Code']
             if any(status in error_code for status in
                    ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
                 log.debug("Object not found: %s", resource_id)
                 return None
             else:
-                raise e
+                raise exc
 
     def _get_list_operation(self):
         """
@@ -131,6 +134,7 @@ class BotoGenericService(object):
         because paginators() return json responses, and there's no direct way
         to convert a paginated json response to a Boto Resource.
         """
+        # pylint:disable=protected-access
         return collection._handler(collection._parent, params, page)
 
     def _resource_iterator(self, collection, params, pages, limit):
@@ -155,9 +159,11 @@ class BotoGenericService(object):
         protected members of ResourceCollection. This logic can be removed
         depending on issue: https://github.com/boto/boto3/issues/1268.
         """
+        # pylint:disable=protected-access
         cleaned_params = collection._params.copy()
         cleaned_params.pop('limit', None)
         cleaned_params.pop('page_size', None)
+        # pylint:disable=protected-access
         params = create_request_parameters(
             collection._parent, collection._model.request)
         merge_dicts(params, cleaned_params, append_lists=True)
@@ -196,8 +202,16 @@ class BotoGenericService(object):
             # Do not limit, let the ClientPagedResultList enforce limit
             return (None, collection)
 
-    def list(self, limit=None, marker=None, collection=None):
-        collection = collection or self.boto_collection.filter()
+    def list(self, limit=None, marker=None, collection=None, **kwargs):
+        """
+        List a set of resources.
+
+        :type  collection: ``ResourceCollection``
+        :param collection: Boto resource collection object corresponding to the
+                           current resource. See http://boto3.readthedocs.io/
+                           en/latest/guide/collections.html
+        """
+        collection = collection or self.boto_collection.filter(**kwargs)
         resume_token, boto_objs = self._make_query(collection, limit, marker)
 
         # Wrap in CB objects.
@@ -215,9 +229,10 @@ class BotoGenericService(object):
             return ClientPagedResultList(self.provider, results,
                                          limit=limit, marker=marker)
 
-    def find(self, filter_name, filter_value, limit=None, marker=None):
+    def find(self, filter_name, filter_value, limit=None, marker=None,
+             **kwargs):
         """
-        Returns a list of resources by filter
+        Return a list of resources by filter.
 
         :type filter_name: ``str``
         :param filter_name: Name of the filter to use
@@ -229,7 +244,9 @@ class BotoGenericService(object):
         collection = collection.filter(Filters=[{
             'Name': filter_name,
             'Values': [filter_value]
-        }])
+            }])
+        if kwargs:
+            collection = collection.filter(**kwargs)
         return self.list(limit=limit, marker=marker, collection=collection)
 
     def create(self, boto_method, **kwargs):
@@ -242,6 +259,8 @@ class BotoGenericService(object):
         :type kwargs: ``dict``
         :param kwargs: Arguments to be passed as-is to the service method
         """
+        log.debug("Creating a resource by invoking %s on these arguments: %s",
+                  boto_method, kwargs)
         trimmed_args = trim_empty_params(kwargs)
         result = getattr(self.boto_conn, boto_method)(**trimmed_args)
         if isinstance(result, list):
@@ -257,6 +276,7 @@ class BotoGenericService(object):
         :type resource_id: ``str``
         :param resource_id: ID of the resource
         """
+        log.info("Delete the resource with the id %s", resource_id)
         res = self.get(resource_id)
         if res:
             res.delete()
@@ -266,7 +286,6 @@ class BotoEC2Service(BotoGenericService):
     """
     Boto EC2 service implementation
     """
-
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
         """
@@ -287,9 +306,8 @@ class BotoEC2Service(BotoGenericService):
 
 class BotoS3Service(BotoGenericService):
     """
-    Boto S3 service implementation
+    Boto S3 service implementation.
     """
-
     def __init__(self, provider, cb_resource,
                  boto_collection_name):
         """
