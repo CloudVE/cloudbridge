@@ -179,7 +179,7 @@ To wrap things up, let's clean up all the resources we have created
 
     inst.terminate()
     from cloudbridge.cloud.interfaces import InstanceState
-    inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
+    inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                    terminal_states=[InstanceState.ERROR])  # Blocking call
     fip.delete()
     fw.delete()

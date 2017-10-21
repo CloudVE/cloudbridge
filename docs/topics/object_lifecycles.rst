@@ -31,14 +31,14 @@ follows:
 
     self.wait_for(
         [InstanceState.RUNNING],
-        terminal_states=[InstanceState.TERMINATED, InstanceState.ERROR],
+        terminal_states=[InstanceState.DELETED, InstanceState.ERROR],
         timeout=timeout,
         interval=interval)
 
 This would cause the wait_for method to repeatedly call refresh() till the
 object's state reaches RUNNING. It will raise a :class:`WaitStateException`
 if the timeout expires, or the object reaches a terminal state, such as
-TERMINATED or ERROR, in which case it is no longer reasonable to wait for the
+DELETED or ERROR, in which case it is no longer reasonable to wait for the
 object to reach a running state.
 
 Informational states and actionable states
@@ -76,7 +76,7 @@ CONFIGURING           informational   Instance is being reconfigured in some
                                       way and may not be usable.
 RUNNING               actionable      Instance is running.
 REBOOTING             informational   Instance is rebooting.
-TERMINATED            actionable      Instance is terminated. No further
+DELETED               actionable      Instance is deleted. No further
                                       operations possible.
 STOPPED               actionable      Instance is stopped. Instance can be
                                       resumed.
