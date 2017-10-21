@@ -71,9 +71,10 @@ will override environment values.
 
     ## For Azure
     config = {'azure_subscription_id': '<your_subscription_id>',
-              'azure_client_Id': '<your_client_Id>',
+              'azure_client_id': '<your_client_Id>',
               'azure_secret': '<your_secret>',
-              'azure_tenant': '<your_tenant>'}
+              'azure_tenant': '<your_tenant>',
+              'azure_resource_group': '<your resource group>'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
 
 For Azure, Create service principle credentials from the following link : 
