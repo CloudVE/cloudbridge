@@ -15,21 +15,31 @@ and 4 GB RAM.
 .. code-block:: python
 
     img = provider.compute.images.get('ami-f4cc1de2')  # Ubuntu 16.04 on AWS
-    inst_type = sorted([t for t in provider.compute.instance_types.list()
-                        if t.vcpus >= 2 and t.ram >= 4],
-                       key=lambda x: x.vcpus*x.ram)[0]
+    vm_type = sorted([t for t in provider.compute.vm_types
+                      if t.vcpus >= 2 and t.ram >= 4],
+                      key=lambda x: x.vcpus*x.ram)[0]
+
+In addition, CloudBridge instances must be launched into a private subnet.
+While it is possible to create complex network configurations as shown in the
+`Private networking`_ section, if you don't particularly care where the
+instance is launched, CloudBridge provides a convenience function to quickly
+obtain a default subnet for use.
+
+.. code-block:: python
+
+    subnet = provider.networking.subnets.get_or_create_default()
 
 When launching an instance, you can also specify several optional arguments
-such as the security group, a key pair, or instance user data. To allow you to
-connect to the launched instances, we will also supply those parameters (note
-that we're making an assumption here these resources exist; if you don't have
-those resources under your account, take a look at the
+such as the firewall (a.k.a security group), a key pair, or instance user data.
+To allow you to connect to the launched instances, we will also supply those
+parameters (note that we're making an assumption here these resources exist;
+if you don't have those resources under your account, take a look at the
 `Getting Started <../getting_started.html>`_ guide).
 
 .. code-block:: python
 
     kp = provider.security.key_pairs.find(name='cloudbridge_intro')[0]
-    sg = provider.security.security_groups.list()[0]
+    fw = provider.security.vm_firewalls.list()[0]
 
 Launch an instance
 ------------------
@@ -38,24 +48,31 @@ Once we have all the desired pieces, we'll use them to launch an instance:
 .. code-block:: python
 
     inst = provider.compute.instances.create(
-        name='CloudBridge-VPC', image=img, instance_type=inst_type,
-        key_pair=kp, security_groups=[sg])
+        name='cloudbridge-vpc', image=img, vm_type=vm_type,
+        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
 
 Private networking
 ~~~~~~~~~~~~~~~~~~
 Private networking gives you control over the networking setup for your
 instance(s) and is considered the preferred method for launching instances. To
-launch an instance with an explicit private network, supply a subnet within
-a network as an additional argument to the ``create`` method:
+launch an instance with an explicit private network, you can create a custom
+network and make sure it has internet connectivity. You can then launch into
+that subnet.
 
 .. code-block:: python
 
-    provider.network.list()  # Find a desired network ID
-    net = provider.network.get('desired network ID')
-    sn = net.subnets()[0]  # Get a handle on the desired subnet to launch with
+    net = self.provider.networking.networks.create(
+        name='my-network', cidr_block='10.0.0.0/16')
+    sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
+    # make sure subnet has internet access
+    router = self.provider.networking.routers.create(network=net, name='my-router')
+    router.attach_subnet(sn)
+    gateway = self.provider.networking.gateways.get_or_create_inet_gateway(name)
+    router.attach_gateway(gateway)
+
     inst = provider.compute.instances.create(
-        name='CloudBridge-VPC', image=img, instance_type=inst_type,
-        subnet=sn, key_pair=kp, security_groups=[sg])
+        name='cloudbridge-vpc', image=img, vm_type=vm_type,
+        subnet=sn, key_pair=kp, vm_firewalls=[fw])
 
 For more information on how to create and setup a private network, take a look
 at `Networking <./networking.html>`_.
@@ -76,8 +93,8 @@ refer to :class:`.LaunchConfig`.
     lc = provider.compute.instances.create_launch_config()
     lc.add_volume_device(source=img, size=11, is_root=True)
     inst = provider.compute.instances.create(
-        name='CloudBridge-BDM', image=img,  instance_type=inst_type,
-        launch_config=lc, key_pair=kp, security_groups=[sg])
+        name='cloudbridge-bdm', image=img,  vm_type=vm_type,
+        launch_config=lc, key_pair=kp, vm_firewalls=[fw])
 
 where ``img`` is the :class:`.Image` object to use for the root volume.
 
@@ -97,10 +114,10 @@ assign a floating IP address to your instance. This can be done as follows:
 
 .. code-block:: python
 
-    # List all the IP addresses and find the desired one
-    provider.network.floating_ips()
+    # Create a new floating IP address
+    fip = provider.networking.floating_ips.create()
     # Assign the desired IP to the instance
-    inst.add_floating_ip('149.165.168.143')
+    inst.add_floating_ip(fip)
     inst.refresh()
     inst.public_ips
     # [u'149.165.168.143']

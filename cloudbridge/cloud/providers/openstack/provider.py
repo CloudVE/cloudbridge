@@ -17,13 +17,15 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 from novaclient import shell as nova_shell
 
+from openstack import connection
+from openstack import profile
+
 from swiftclient import client as swift_client
 
-from .services import OpenStackBlockStoreService
 from .services import OpenStackComputeService
-from .services import OpenStackNetworkService
-from .services import OpenStackObjectStoreService
+from .services import OpenStackNetworkingService
 from .services import OpenStackSecurityService
+from .services import OpenStackStorageService
 
 
 class OpenStackCloudProvider(BaseCloudProvider):
@@ -33,7 +35,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def __init__(self, config):
         super(OpenStackCloudProvider, self).__init__(config)
-        self.cloud_type = 'openstack'
 
         # Initialize cloud connection fields
         self.username = self._get_config_value(
@@ -60,16 +61,16 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self._cinder = None
         self._swift = None
         self._neutron = None
+        self._os_conn = None
 
         # Additional cached variables
         self._cached_keystone_session = None
 
         # Initialize provider services
         self._compute = OpenStackComputeService(self)
-        self._network = OpenStackNetworkService(self)
+        self._networking = OpenStackNetworkingService(self)
         self._security = OpenStackSecurityService(self)
-        self._block_store = OpenStackBlockStoreService(self)
-        self._object_store = OpenStackObjectStoreService(self)
+        self._storage = OpenStackStorageService(self)
 
     @property
     def nova(self):
@@ -108,8 +109,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
             return self._cached_keystone_session
 
         if self._keystone_version == 3:
-            from keystoneauth1.identity.v3 import Password as Password_v3
-            auth = Password_v3(auth_url=self.auth_url,
+            from keystoneauth1.identity import v3
+            auth = v3.Password(auth_url=self.auth_url,
                                username=self.username,
                                password=self.password,
                                user_domain_name=self.user_domain_name,
@@ -117,12 +118,27 @@ class OpenStackCloudProvider(BaseCloudProvider):
                                project_name=self.project_name)
             self._cached_keystone_session = session.Session(auth=auth)
         else:
-            from keystoneauth1.identity.v2 import Password as Password_v2
-            auth = Password_v2(self.auth_url, username=self.username,
+            from keystoneauth1.identity import v2
+            auth = v2.Password(self.auth_url, username=self.username,
                                password=self.password,
                                tenant_name=self.project_name)
             self._cached_keystone_session = session.Session(auth=auth)
         return self._cached_keystone_session
+
+    def _connect_openstack(self):
+        prof = profile.Profile()
+        prof.set_region(profile.Profile.ALL, self.region_name)
+
+        return connection.Connection(
+            profile=prof,
+            user_agent='cloudbridge',
+            auth_url=self.auth_url,
+            project_name=self.project_name,
+            username=self.username,
+            password=self.password,
+            user_domain_name=self.user_domain_name,
+            project_domain_name=self.project_domain_name
+        )
 
 #     @property
 #     def glance(self):
@@ -149,24 +165,26 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._neutron
 
     @property
+    def os_conn(self):
+        if not self._os_conn:
+            self._os_conn = self._connect_openstack()
+        return self._os_conn
+
+    @property
     def compute(self):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):
         return self._security
 
     @property
-    def block_store(self):
-        return self._block_store
-
-    @property
-    def object_store(self):
-        return self._object_store
+    def storage(self):
+        return self._storage
 
     def _connect_nova(self):
         return self._connect_nova_region(self.region_name)
