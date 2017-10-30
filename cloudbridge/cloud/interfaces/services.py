@@ -740,7 +740,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, network_id, cidr_block, zone=zone):
+    def create(self, name, network_id, cidr_block, zone):
         """
         Create a new subnet within the supplied network.
 
