@@ -573,7 +573,7 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, name, image, vm_type, subnet, zone=None,
+    def create(self, name, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -833,7 +833,7 @@ class OpenStackSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, name, network, cidr_block, zone=None):
+    def create(self, name, network, cidr_block, zone):
         """zone param is ignored."""
         log.debug("Creating OpenStack Subnet with the params: "
                   "[Name: %s Network: %s Cinder Block: %s Zone: -ignored-]",
@@ -848,7 +848,7 @@ class OpenStackSubnetService(BaseSubnetService):
                   .get('subnet'))
         return OpenStackSubnet(self.provider, subnet)
 
-    def get_or_create_default(self, zone=None):
+    def get_or_create_default(self, zone):
         """
         Subnet zone is not supported by OpenStack and is thus ignored.
         """
