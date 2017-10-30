@@ -686,7 +686,7 @@ class AWSSubnetService(BaseSubnetService):
             subnet.name = name
         return subnet
 
-    def get_or_create_default(self, zone=None):
+    def get_or_create_default(self, zone):
         if zone:
             snl = self.svc.find('availabilityZone', zone)
         else:
