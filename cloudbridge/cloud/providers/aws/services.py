@@ -374,7 +374,7 @@ class AWSInstanceService(BaseInstanceService):
                                   cb_resource=AWSInstance,
                                   boto_collection_name='instances')
 
-    def create(self, name, image, vm_type, subnet, zone=None,
+    def create(self, name, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         log.debug("Creating AWS Instance Service with the params "
@@ -670,7 +670,7 @@ class AWSSubnetService(BaseSubnetService):
         return self.svc.find(filter_name='tag:Name', filter_value=name,
                              limit=limit, marker=marker)
 
-    def create(self, name, network, cidr_block, zone=None):
+    def create(self, name, network, cidr_block, zone):
         log.debug("Creating AWS Subnet Service with the params "
                   "[name: %s network: %s block: %s zone: %s]",
                   name, network, cidr_block, zone)
