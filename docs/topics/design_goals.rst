@@ -10,7 +10,7 @@ Design Goals
    against each provider to make sure their application is compatible.
 
 3. Opt for a minimum set of features that a cloud provider will support,
-   instead of  a lowest common denominator approach. This means that reasonably
+   instead of a lowest common denominator approach. This means that reasonably
    mature clouds like Amazon and OpenStack are used as the benchmark against
    which functionality & features are determined. Therefore, there is a
    definite expectation that the cloud infrastructure will support a compute

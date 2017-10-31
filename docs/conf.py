@@ -55,7 +55,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'cloudbridge'
-copyright = u'2015, GVL and Galaxy Projects'
+copyright = u'2017, GVL and Galaxy Projects'
 author = u'GVL and Galaxy Projects'
 
 # The version info for the project you're documenting, acts as replacement for
