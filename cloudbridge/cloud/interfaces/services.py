@@ -964,6 +964,16 @@ class GatewayService(CloudService):
         """
         pass
 
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all available internet gateways.
+
+        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
+        :return: Current list of internet gateways.
+        """
+        pass
+
 
 class BucketService(PageableObjectMixin, CloudService):
 

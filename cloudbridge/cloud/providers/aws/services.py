@@ -803,3 +803,7 @@ class AWSGatewayService(BaseGatewayService):
         gateway = self.svc.get(gateway_id)
         if gateway:
             gateway.delete()
+
+    def list(self, limit=None, marker=None):
+        log.debug("Listing current AWS internet gateways.")
+        return self.svc.list(limit=None, marker=None)
