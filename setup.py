@@ -21,7 +21,8 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
 REQS_BASE = [
     'bunch>=1.0.1',
     'six>=1.10.0',
-    'retrying>=1.3.3'
+    'retrying>=1.3.3',
+    'oslo.i18n>=3.15.3'
 ]
 REQS_AWS = ['boto3']
 REQS_OPENSTACK = [
@@ -31,7 +32,8 @@ REQS_OPENSTACK = [
     'python-cinderclient>=1.9.0',
     'python-swiftclient>=3.2.0',
     'python-neutronclient>=6.0.0',
-    'python-keystoneclient>=3.13.0'
+    'python-keystoneclient>=3.13.0',
+    'requests>=2.14.2'
 ]
 REQS_FULL = REQS_BASE + REQS_AWS + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail

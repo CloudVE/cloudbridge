@@ -42,11 +42,14 @@ class GCPResourceUrl(object):
              'id': '6662746501848591938',
              'creationTimestamp': '2017-10-13T12:53:17.445-07:00',
              'name': 'testsubnet-2',
-             'network': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/global/networks/testnet',
+             'network':
+                     'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/global/networks/testnet',
              'ipCidrRange': '10.128.0.0/20',
              'gatewayAddress': '10.128.0.1',
-             'region': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1',
-             'selfLink': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1/subnetworks/testsubnet-2',
+             'region':
+                     'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1',
+             'selfLink':
+                     'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1/subnetworks/testsubnet-2',
              'privateIpGoogleAccess': false}
         """
         discovery_object = getattr(self._connection, self._resource)()
@@ -132,9 +135,9 @@ class GCPResources(object):
 
         Example:
             If the input url is the following
-            
+
             https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1/subnetworks/testsubnet-2
-            
+
             then parse_url will return a GCPResourceURL and the parameters
             field of the returned object will look like:
 

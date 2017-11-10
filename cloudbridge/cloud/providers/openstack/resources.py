@@ -3,7 +3,6 @@ DataTypes used by this provider
 """
 import inspect
 import ipaddress
-
 import logging
 import os
 
@@ -49,7 +48,6 @@ import novaclient.exceptions as novaex
 from openstack.exceptions import HttpException
 
 import swiftclient
-
 from swiftclient.service import SwiftService, SwiftUploadObject
 
 

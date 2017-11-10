@@ -4,7 +4,6 @@ Base implementation for services available through a provider
 import logging
 
 from cloudbridge.cloud.interfaces.resources import Router
-
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService

@@ -330,7 +330,8 @@ class GCERegionService(BaseRegionService):
                                region=region_id)
                           .execute())
         # Handle the case when region_id is not valid
-        except googleapiclient.errors.HttpError:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
         if region:
             return GCERegion(self.provider, region)
@@ -624,7 +625,8 @@ class GCENetworkService(BaseNetworkService):
                 for network in response['items']:
                     networks.append(GCENetwork(self.provider, network))
             return networks
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return []
 
     def _create(self, name, create_subnetworks):
@@ -654,7 +656,8 @@ class GCENetworkService(BaseNetworkService):
             self.provider.wait_for_operation(response)
             networks = self.list(filter='name eq %s' % name)
             return None if len(networks) == 0 else networks[0]
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def create(self, name):
@@ -682,7 +685,8 @@ class GCENetworkService(BaseNetworkService):
             # TODO: if network_id is given, filter out IPs that are assigned to
             # resources in a different network.
             return ips
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return []
 
     def create_floating_ip(self, region=None):
@@ -704,7 +708,8 @@ class GCENetworkService(BaseNetworkService):
             for ip in ips:
                 if ip.id == response['targetId']:
                     return ip
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def routers(self, region=None):
@@ -717,7 +722,8 @@ class GCENetworkService(BaseNetworkService):
                                            region=region):
                 routers.append(GCERouter(self.provider, router))
             return routers
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return []
 
     def create_router(self, name=None, network=None, region=None):
@@ -742,7 +748,8 @@ class GCENetworkService(BaseNetworkService):
             for router in routers:
                 if router.id == response['targetId']:
                     return router
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
 
@@ -812,7 +819,8 @@ class GCESubnetService(BaseSubnetService):
             for subnet in subnets:
                 if subnet.id == response['targetId']:
                     return subnet
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def get_or_create_default(self, zone=None):
@@ -1091,7 +1099,8 @@ class GCSObjectStoreService(BaseObjectStoreService):
                                    bucket_id)
                 return None
             return GCSBucket(self.provider, response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def find(self, name, limit=None, marker=None):
@@ -1126,7 +1135,8 @@ class GCSObjectStoreService(BaseObjectStoreService):
             return ServerPagedResultList('nextPageToken' in response,
                                          response.get('nextPageToken'),
                                          False, data=buckets)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return ServerPagedResultList(False, None, False, data=[])
 
     def create(self, name, location=None):
@@ -1146,5 +1156,6 @@ class GCSObjectStoreService(BaseObjectStoreService):
             if 'error' in response:
                 return None
             return GCSBucket(self.provider, response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None

@@ -30,6 +30,7 @@ from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VolumeState
@@ -306,7 +307,8 @@ class GCEFirewallsDelegate(object):
                             .execute())
             self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return False
         finally:
             self._update_list_response()
@@ -404,7 +406,8 @@ class GCEFirewallsDelegate(object):
                                     firewall=firewall['name'])
                             .execute())
             self._provider.wait_for_operation(response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return False
         # TODO: process the response and handle errors.
         return True
@@ -1239,7 +1242,8 @@ class GCENetwork(BaseNetwork):
             if 'error' in response:
                 return False
             self._provider.wait_for_operation(response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return False
         return True
 
@@ -1282,7 +1286,7 @@ class GCEFloatingIP(BaseFloatingIP):
                     url = provider.parse_url(target['instance'])
                     try:
                         self._target_instance = url.get_resource()
-                    except:
+                    except googleapiclient.errors.HttpError:
                         self._target_instance = GCEFloatingIP._DEAD_INSTANCE
                 else:
                     cb.log.warning('Address "%s" is forwarded to a %s',
@@ -1829,7 +1833,8 @@ class GCSBucket(BaseBucket):
             if 'error' in response:
                 return None
             return GCSObject(self._provider, self, response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def list(self, limit=None, marker=None, prefix=None):
@@ -1857,7 +1862,8 @@ class GCSBucket(BaseBucket):
             return ServerPagedResultList('nextPageToken' in response,
                                          response.get('nextPageToken'),
                                          False, data=objects)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return ServerPagedResultList(False, None, False, data=[])
 
     def delete(self, delete_contents=False):
@@ -1892,5 +1898,6 @@ class GCSBucket(BaseBucket):
             if 'error' in response:
                 return None
             return response
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
