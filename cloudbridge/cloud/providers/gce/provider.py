@@ -168,7 +168,7 @@ class GCPResources(object):
         short name, then we build the GCPResourceUrl object by constructing
         the resource URL with default project, region, zone values.
         """
-        # If identifier is a valid GCP resource URL, the parse it.
+        # If identifier is a valid GCP resource URL, then parse it.
         if identifier.startswith(self._root_url):
             return self.parse_url(identifier)
         # Otherwise, construct resource URL with default values.
