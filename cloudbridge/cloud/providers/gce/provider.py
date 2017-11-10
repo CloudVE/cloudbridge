@@ -16,7 +16,7 @@ from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
 from .services import GCEComputeService
-from .services import GCENetworkService
+from .services import GCENetworkingService
 from .services import GCESecurityService
 from .services import GCPStorageService
 
@@ -196,7 +196,7 @@ class GCECloudProvider(BaseCloudProvider):
         # Initialize provider services
         self._compute = GCEComputeService(self)
         self._security = GCESecurityService(self)
-        self._network = GCENetworkService(self)
+        self._networking = GCENetworkingService(self)
         self._storage = GCPStorageService(self)
 
         self._compute_resources = GCPResources(self.gce_compute)
@@ -207,8 +207,8 @@ class GCECloudProvider(BaseCloudProvider):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):

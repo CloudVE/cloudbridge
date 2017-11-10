@@ -11,6 +11,7 @@ from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
+from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
@@ -287,9 +288,9 @@ class GCEVMTypeService(BaseVMTypeService):
                         .execute())
         return response['items']
 
-    def get(self, instance_type_id):
+    def get(self, vm_type_id):
         for inst_type in self.instance_data:
-            if inst_type.get('id') == instance_type_id:
+            if inst_type.get('id') == vm_type_id:
                 return GCEVMType(self.provider, inst_type)
         return None
 
@@ -447,7 +448,7 @@ class GCEInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(GCEInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet, zone=None,
+    def create(self, name, image, vm_type, subnet, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         """
@@ -464,7 +465,7 @@ class GCEInstanceService(BaseInstanceService):
                 network_url = 'global/networks/default'
             config = {
                 'name': name,
-                'machineType': instance_type.resource_url,
+                'machineType': vm_type.resource_url,
                 'disks': [{'boot': True,
                            'autoDelete': True,
                            'initializeParams': {
@@ -575,8 +576,8 @@ class GCEComputeService(BaseComputeService):
         return self._images_svc
 
     @property
-    def instance_types(self):
-        return self._instance_type_svc
+    def vm_types(self):
+        return self._vm_type_svc
 
     @property
     def instances(self):
@@ -587,11 +588,26 @@ class GCEComputeService(BaseComputeService):
         return self._region_svc
 
 
+class GCENetworkingService(BaseNetworkingService):
+
+    def __init__(self, provider):
+        super(GCENetworkingService, self).__init__(provider)
+        self._network_service = GCENetworkService(self.provider)
+        self._subnet_service = GCESubnetService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
+
+
 class GCENetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(GCENetworkService, self).__init__(provider)
-        self._subnet_svc = GCESubnetService(self.provider)
 
     def get(self, network_id):
         if network_id is None:
@@ -667,10 +683,6 @@ class GCENetworkService(BaseNetworkService):
 
     def get_or_create_default(self):
         return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, True)
-
-    @property
-    def subnets(self):
-        return self._subnet_svc
 
     def floating_ips(self, network_id=None, region=None):
         if not region:
