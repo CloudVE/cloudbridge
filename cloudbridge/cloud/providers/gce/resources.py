@@ -152,7 +152,7 @@ class GCEPlacementZone(BasePlacementZone):
         :rtype: ``str``
         :return: ID for this zone as returned by the cloud middleware.
         """
-        return self._gce_zone
+        return self._gce_zone.get('selfLink')
 
     @property
     def name(self):
@@ -161,7 +161,7 @@ class GCEPlacementZone(BasePlacementZone):
         :rtype: ``str``
         :return: Name for this zone as returned by the cloud middleware.
         """
-        return self._gce_zone
+        return self._gce_zone.get('name')
 
     @property
     def region_name(self):
@@ -181,16 +181,11 @@ class GCERegion(BaseRegion):
 
     @property
     def id(self):
-        # In GCE API, region has an 'id' property, whose values are '1220',
-        # '1100', '1000', '1230', etc. Here we use 'name' property (such
-        # as 'asia-east1', 'europe-west1', 'us-central1', 'us-east1') as
-        # 'id' to represent the region for the consistency with AWS
-        # implementation and ease of use.
-        return self._gce_region['name']
+        return self._gce_region.get('selfLink')
 
     @property
     def name(self):
-        return self._gce_region['name']
+        return self._gce_region.get('name')
 
     @property
     def zones(self):
@@ -204,7 +199,7 @@ class GCERegion(BaseRegion):
                               .execute())
         zones = [zone for zone in zones_response['items']
                  if zone['region'] == self._gce_region['selfLink']]
-        return [GCEPlacementZone(self._provider, zone['name'], self.name)
+        return [GCEPlacementZone(self._provider, zone, self.name)
                 for zone in zones]
 
 
@@ -825,11 +820,7 @@ class GCEInstance(BaseInstance):
         """
         Get the instance type name.
         """
-        machine_type_uri = self._gce_instance.get('machineType')
-        if machine_type_uri is None:
-            return None
-        parsed_uri = self._provider.parse_url(machine_type_uri)
-        return parsed_uri.parameters['machineType']
+        return self._gce_instance.get('machineType')
 
     @property
     def instance_type(self):
@@ -905,10 +896,7 @@ class GCEInstance(BaseInstance):
         """
         Get the placement zone id where this instance is running.
         """
-        zone_uri = self._gce_instance.get('zone')
-        if zone_uri is None:
-            return None
-        return self._provider.parse_url(zone_uri).parameters['zone']
+        return self._gce_instance.get('zone')
 
     @property
     def security_groups(self):
@@ -1203,7 +1191,7 @@ class GCENetwork(BaseNetwork):
 
     @property
     def id(self):
-        return self._network['id']
+        return self._network['selfLink']
 
     @property
     def name(self):
@@ -1293,7 +1281,7 @@ class GCEFloatingIP(BaseFloatingIP):
 
     @property
     def id(self):
-        return self._ip['id']
+        return self._ip['selfLink']
 
     @property
     def region(self):
@@ -1345,7 +1333,7 @@ class GCERouter(BaseRouter):
 
     @property
     def id(self):
-        return self._router['id']
+        return self._router['selfLink']
 
     @property
     def name(self):
@@ -1364,7 +1352,7 @@ class GCERouter(BaseRouter):
     def network_id(self):
         parsed_url = self._provider.parse_url(self._router['network'])
         network = parsed_url.get_resource()
-        return network['id']
+        return network['selfLink']
 
     def delete(self):
         response = (self._provider
@@ -1400,7 +1388,7 @@ class GCESubnet(BaseSubnet):
 
     @property
     def id(self):
-        return self._subnet['id']
+        return self._subnet['selfLink']
 
     @property
     def name(self):
@@ -1422,7 +1410,8 @@ class GCESubnet(BaseSubnet):
 
     @property
     def network_id(self):
-        return self._provider.parse_url(self.network_url).get_resource()['id']
+        return self._provider.parse_url(
+            self.network_url).get_resource()['selfLink']
 
     @property
     def region(self):
@@ -1743,7 +1732,7 @@ class GCSObject(BaseBucketObject):
 
     @property
     def id(self):
-        return self._obj['id']
+        return self._obj['selfLink']
 
     @property
     def name(self):
@@ -1807,7 +1796,7 @@ class GCSBucket(BaseBucket):
 
     @property
     def id(self):
-        return self._bucket['id']
+        return self._bucket['selfLink']
 
     @property
     def name(self):
