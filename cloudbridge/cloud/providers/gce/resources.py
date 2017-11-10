@@ -21,10 +21,10 @@ from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSecurityGroup
-from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ServerPagedResultList
@@ -432,10 +432,10 @@ class GCEFirewallsDelegate(object):
         return True
 
 
-class GCESecurityGroup(BaseSecurityGroup):
+class GCEVMFirewall(BaseVMFirewall):
 
     def __init__(self, delegate, tag, network=None, description=None):
-        super(GCESecurityGroup, self).__init__(delegate.provider, tag)
+        super(GCEVMFirewall, self).__init__(delegate.provider, tag)
         self._description = description
         self._delegate = delegate
         if network is None:
@@ -447,32 +447,33 @@ class GCESecurityGroup(BaseSecurityGroup):
     @property
     def id(self):
         """
-        Return the ID of this security group which is determined based on the
-        network and the target tag corresponding to this security group.
+        Return the ID of this VM firewall which is determined based on the
+        network and the target tag corresponding to this VM firewall.
         """
-        return GCEFirewallsDelegate.tag_network_id(self._security_group,
+        return GCEFirewallsDelegate.tag_network_id(self._vm_firewall,
                                                    self._network.name)
 
     @property
     def name(self):
         """
-        Return the name of the security group which is the same as the
+        Return the name of the VM firewall which is the same as the
         corresponding tag name.
         """
-        return self._security_group
+        return self._vm_firewall
 
     @property
     def description(self):
         """
-        The description of the security group is even explicitly given when the
-        group is created or is determined from a firewall in the group.
+        The description of the VM firewall is even explicitly given when the
+        VM firewall is created or is determined from a VM firewall rule, i.e. a
+        GCE firewall, in the VM firewall.
 
-        If the firewalls are created using this API, they all have the same
+        If the GCE firewalls are created using this API, they all have the same
         description.
         """
         if self._description is not None:
             return self._description
-        for firewall in self._delegate.iter_firewalls(self._security_group,
+        for firewall in self._delegate.iter_firewalls(self._vm_firewall,
                                                       self._network.name):
             if 'description' in firewall:
                 return firewall['description']
@@ -485,9 +486,9 @@ class GCESecurityGroup(BaseSecurityGroup):
     @property
     def rules(self):
         out = []
-        for firewall in self._delegate.iter_firewalls(self._security_group,
+        for firewall in self._delegate.iter_firewalls(self._vm_firewall,
                                                       self._network.name):
-            out.append(GCESecurityGroupRule(self._delegate, firewall['id']))
+            out.append(GCEVMFirewallRule(self._delegate, firewall['id']))
         return out
 
     @staticmethod
@@ -501,9 +502,9 @@ class GCESecurityGroup(BaseSecurityGroup):
 
     def add_rule(self, ip_protocol, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        port = GCESecurityGroup.to_port_range(from_port, to_port)
+        port = GCEVMFirewall.to_port_range(from_port, to_port)
         src_tag = src_group.name if src_group is not None else None
-        self._delegate.add_firewall(self._security_group, ip_protocol, port,
+        self._delegate.add_firewall(self._vm_firewall, ip_protocol, port,
                                     cidr_ip, src_tag, self.description,
                                     self._network.name)
         return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
@@ -511,14 +512,14 @@ class GCESecurityGroup(BaseSecurityGroup):
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        port = GCESecurityGroup.to_port_range(from_port, to_port)
+        port = GCEVMFirewall.to_port_range(from_port, to_port)
         src_tag = src_group.name if src_group is not None else None
         firewall_id = self._delegate.find_firewall(
-                self._security_group, ip_protocol, port, cidr_ip, src_tag,
+                self._vm_firewall, ip_protocol, port, cidr_ip, src_tag,
                 self._network.name)
         if firewall_id is None:
             return None
-        return GCESecurityGroupRule(self._delegate, firewall_id)
+        return GCEVMFirewallRule(self._delegate, firewall_id)
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -532,17 +533,17 @@ class GCESecurityGroup(BaseSecurityGroup):
             rule.delete()
 
 
-class GCESecurityGroupRule(BaseSecurityGroupRule):
+class GCEVMFirewallRule(BaseVMFirewallRule):
 
     def __init__(self, delegate, firewall_id):
-        super(GCESecurityGroupRule, self).__init__(
+        super(GCEVMFirewallRule, self).__init__(
                 delegate.provider, firewall_id, None)
         self._delegate = delegate
 
     @property
     def parent(self):
         """
-        Return the security group to which this rule belongs.
+        Return the VM firewall to which this rule belongs.
         """
         info = self._delegate.get_firewall_info(self._rule)
         if info is None:
@@ -552,7 +553,7 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
         network = self._delegate.network.get_by_name(info['network_name'])
         if network is None:
             return None
-        return GCESecurityGroup(self._delegate, info['target_tag'], network)
+        return GCEVMFirewall(self._delegate, info['target_tag'], network)
 
     @property
     def id(self):
@@ -608,7 +609,7 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
     @property
     def group(self):
         """
-        Return the security group from which this rule allows traffic.
+        Return the VM firewall from which this rule allows traffic.
         """
         info = self._delegate.get_firewall_info(self._rule)
         if info is None:
@@ -619,7 +620,7 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
                 info['network_name'])
         if network is None:
             return None
-        return GCESecurityGroup(self._delegate, info['source_tag'], network)
+        return GCEVMFirewall(self._delegate, info['source_tag'], network)
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -914,9 +915,9 @@ class GCEInstance(BaseInstance):
         return self._provider.parse_url(zone_uri).parameters['zone']
 
     @property
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Get the security groups associated with this instance.
+        Get the VM firewalls associated with this instance.
         """
         network_url = self._gce_instance.get('networkInterfaces')[0].get(
             'network')
@@ -925,20 +926,20 @@ class GCEInstance(BaseInstance):
         if 'items' not in self._gce_instance['tags']:
             return []
         tags = self._gce_instance['tags']['items']
-        # Tags are mapped to non-empty security groups under the instance
-        # network. Unmatched tags are ignored.
+        # Tags are mapped to non-empty VM firewalls under the instance network.
+        # Unmatched tags are ignored.
         sgs = (self._provider.security
-               .security_groups.find_by_network_and_tags(
+               .vm_firewalls.find_by_network_and_tags(
                    network_name, tags))
         return sgs
 
     @property
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         """
-        Get the security groups IDs associated with this instance.
+        Get the VM firewall IDs associated with this instance.
         """
         sg_ids = []
-        for sg in self.security_groups:
+        for sg in self.vm_firewalls:
             sg_ids.append(sg.id)
         return sg_ids
 
@@ -1187,10 +1188,10 @@ class GCEInstance(BaseInstance):
         self_link = self._gce_instance.get('selfLink')
         self._gce_instance = self._provider.parse_url(self_link).get_resource()
 
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, sg):
         raise NotImplementedError('To be implemented.')
 
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, sg):
         raise NotImplementedError('To be implemented.')
 
 

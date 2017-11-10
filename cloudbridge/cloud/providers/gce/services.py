@@ -12,15 +12,15 @@ from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseRegionService
-from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
+from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
 
 import googleapiclient
@@ -36,9 +36,9 @@ from .resources import GCENetwork
 from .resources import GCEPlacementZone
 from .resources import GCERegion
 from .resources import GCERouter
-from .resources import GCESecurityGroup
 from .resources import GCESnapshot
 from .resources import GCESubnet
+from .resources import GCEVMFirewall
 from .resources import GCEVMType
 from .resources import GCEVolume
 from .resources import GCSBucket
@@ -51,15 +51,15 @@ class GCESecurityService(BaseSecurityService):
 
         # Initialize provider services
         self._key_pairs = GCEKeyPairService(provider)
-        self._security_groups = GCESecurityGroupService(provider)
+        self._vm_firewalls = GCEVMFirewallService(provider)
 
     @property
     def key_pairs(self):
         return self._key_pairs
 
     @property
-    def security_groups(self):
-        return self._security_groups
+    def vm_firewalls(self):
+        return self._vm_firewalls
 
 
 class GCEKeyPairService(BaseKeyPairService):
@@ -213,10 +213,10 @@ class GCEKeyPairService(BaseKeyPairService):
                           kp_material=private_key)
 
 
-class GCESecurityGroupService(BaseSecurityGroupService):
+class GCEVMFirewallService(BaseVMFirewallService):
 
     def __init__(self, provider):
-        super(GCESecurityGroupService, self).__init__(provider)
+        super(GCEVMFirewallService, self).__init__(provider)
         self._delegate = GCEFirewallsDelegate(provider)
 
     def get(self, group_id):
@@ -224,32 +224,32 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         if tag is None:
             return None
         network = self.provider.network.get_by_name(network_name)
-        return GCESecurityGroup(self._delegate, tag, network)
+        return GCEVMFirewall(self._delegate, tag, network)
 
     def list(self, limit=None, marker=None):
-        security_groups = []
+        vm_firewalls = []
         for tag, network_name in self._delegate.tag_networks:
             network = self.provider.network.get_by_name(network_name)
-            security_group = GCESecurityGroup(self._delegate, tag, network)
-            security_groups.append(security_group)
-        return ClientPagedResultList(self.provider, security_groups,
+            vm_firewall = GCEVMFirewall(self._delegate, tag, network)
+            vm_firewalls.append(vm_firewall)
+        return ClientPagedResultList(self.provider, vm_firewalls,
                                      limit=limit, marker=marker)
 
     def create(self, name, description, network_id=None):
         network = self.provider.network.get(network_id)
-        return GCESecurityGroup(self._delegate, name, network, description)
+        return GCEVMFirewall(self._delegate, name, network, description)
 
     def find(self, name, limit=None, marker=None):
         """
-        Finds a non-empty security group. If a security group with the given
-        name does not exist, or if it does not contain any rules, an empty list
-        is returned.
+        Finds a non-empty VM firewall. If a VM firewall with the given name
+        does not exist, or if it does not contain any rules, an empty list is
+        returned.
         """
         out = []
         for tag, network_name in self._delegate.tag_networks:
             if tag == name:
                 network = self.provider.network.get_by_name(network_name)
-                out.append(GCESecurityGroup(self._delegate, name, network))
+                out.append(GCEVMFirewall(self._delegate, name, network))
         return out
 
     def delete(self, group_id):
@@ -257,20 +257,19 @@ class GCESecurityGroupService(BaseSecurityGroupService):
 
     def find_by_network_and_tags(self, network_name, tags):
         """
-        Finds non-empty security groups by network name and security group
-        names (tags). If no matching security group is found, an empty list
-        is returned.
+        Finds non-empty VM firewalls by network name and VM firewall names
+        (tags). If no matching VM firewall is found, an empty list is returned.
         """
-        security_groups = []
+        vm_firewalls = []
         for tag, net_name in self._delegate.tag_networks:
             if network_name != net_name:
                 continue
             if tag not in tags:
                 continue
             network = self.provider.network.get_by_name(net_name)
-            security_groups.append(
-                GCESecurityGroup(self._delegate, tag, network))
-        return security_groups
+            vm_firewalls.append(
+                GCEVMFirewall(self._delegate, tag, network))
+        return vm_firewalls
 
 
 class GCEVMTypeService(BaseVMTypeService):
@@ -449,7 +448,7 @@ class GCEInstanceService(BaseInstanceService):
         super(GCEInstanceService, self).__init__(provider)
 
     def create(self, name, image, instance_type, subnet, zone=None,
-               key_pair=None, security_groups=None, user_data=None,
+               key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         """
         Creates a new virtual machine instance.
@@ -480,15 +479,15 @@ class GCEInstanceService(BaseInstanceService):
                                            'name': 'External NAT'}]
                     }],
             }
-            if security_groups and isinstance(security_groups, list):
-                sg_names = []
-                if isinstance(security_groups[0], SecurityGroup):
-                    sg_names = [sg.name for sg in security_groups]
-                elif isinstance(security_groups[0], str):
-                    sg_names = security_groups
-                if len(sg_names) > 0:
+            if vm_firewalls and isinstance(vm_firewalls, list):
+                vm_firewall_names = []
+                if isinstance(vm_firewalls[0], VMFirewall):
+                    vm_firewall_names = [f.name for f in vm_firewalls]
+                elif isinstance(vm_firewalls[0], str):
+                    vm_firewall_names = vm_firewalls
+                if len(vm_firewall_names) > 0:
                     config['tags'] = {}
-                    config['tags']['items'] = sg_names
+                    config['tags']['items'] = vm_firewall_names
         else:
             config = launch_config
         operation = (self.provider
