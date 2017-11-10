@@ -9,7 +9,6 @@ from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
-from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseRegionService
@@ -18,6 +17,7 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import SecurityGroup
@@ -30,7 +30,6 @@ from retrying import retry
 from .resources import GCEFirewallsDelegate
 from .resources import GCEFloatingIP
 from .resources import GCEInstance
-from .resources import GCEInstanceType
 from .resources import GCEKeyPair
 from .resources import GCEMachineImage
 from .resources import GCENetwork
@@ -40,6 +39,7 @@ from .resources import GCERouter
 from .resources import GCESecurityGroup
 from .resources import GCESnapshot
 from .resources import GCESubnet
+from .resources import GCEVMType
 from .resources import GCEVolume
 from .resources import GCSBucket
 
@@ -273,10 +273,10 @@ class GCESecurityGroupService(BaseSecurityGroupService):
         return security_groups
 
 
-class GCEInstanceTypesService(BaseInstanceTypesService):
+class GCEVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
-        super(GCEInstanceTypesService, self).__init__(provider)
+        super(GCEVMTypeService, self).__init__(provider)
 
     @property
     def instance_data(self):
@@ -291,7 +291,7 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
     def get(self, instance_type_id):
         for inst_type in self.instance_data:
             if inst_type.get('id') == instance_type_id:
-                return GCEInstanceType(self.provider, inst_type)
+                return GCEVMType(self.provider, inst_type)
         return None
 
     def find(self, **kwargs):
@@ -306,11 +306,11 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
                     break
             if is_match:
                 matched_inst_types.append(
-                    GCEInstanceType(self.provider, inst_type))
+                    GCEVMType(self.provider, inst_type))
         return matched_inst_types
 
     def list(self, limit=None, marker=None):
-        inst_types = [GCEInstanceType(self.provider, inst_type)
+        inst_types = [GCEVMType(self.provider, inst_type)
                       for inst_type in self.instance_data]
         return ClientPagedResultList(self.provider, inst_types,
                                      limit=limit, marker=marker)
@@ -567,7 +567,7 @@ class GCEComputeService(BaseComputeService):
     def __init__(self, provider):
         super(GCEComputeService, self).__init__(provider)
         self._instance_svc = GCEInstanceService(self.provider)
-        self._instance_type_svc = GCEInstanceTypesService(self.provider)
+        self._vm_type_svc = GCEVMTypeService(self.provider)
         self._region_svc = GCERegionService(self.provider)
         self._images_svc = GCEImageService(self.provider)
 

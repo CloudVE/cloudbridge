@@ -15,7 +15,6 @@ from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
-from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
@@ -26,6 +25,7 @@ from cloudbridge.cloud.base.resources import BaseSecurityGroup
 from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -85,9 +85,9 @@ class GCEKeyPair(BaseKeyPair):
         self._kp_material = value
 
 
-class GCEInstanceType(BaseInstanceType):
+class GCEVMType(BaseVMType):
     def __init__(self, provider, instance_dict):
-        super(GCEInstanceType, self).__init__(provider)
+        super(GCEVMType, self).__init__(provider)
         self._inst_dict = instance_dict
 
     @property
@@ -824,7 +824,7 @@ class GCEInstance(BaseInstance):
             return []
 
     @property
-    def instance_type_id(self):
+    def vm_type_id(self):
         """
         Get the instance type name.
         """
@@ -835,7 +835,7 @@ class GCEInstance(BaseInstance):
         return parsed_uri.parameters['machineType']
 
     @property
-    def instance_type(self):
+    def vm_type(self):
         """
         Get the instance type.
         """
@@ -843,7 +843,7 @@ class GCEInstance(BaseInstance):
         if machine_type_uri is None:
             return None
         parsed_uri = self._provider.parse_url(machine_type_uri)
-        return GCEInstanceType(self._provider, parsed_uri.get_resource())
+        return GCEVMType(self._provider, parsed_uri.get_resource())
 
     def reboot(self):
         """
