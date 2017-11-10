@@ -13,6 +13,7 @@ from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
 from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseRegionService
+from cloudbridge.cloud.base.services import BaseRouterService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
@@ -594,6 +595,7 @@ class GCENetworkingService(BaseNetworkingService):
         super(GCENetworkingService, self).__init__(provider)
         self._network_service = GCENetworkService(self.provider)
         self._subnet_service = GCESubnetService(self.provider)
+        self._router_service = GCERouterService(self.provider)
 
     @property
     def networks(self):
@@ -602,6 +604,10 @@ class GCENetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
+
+    @property
+    def routers(self):
+        return self._router_service
 
 
 class GCENetworkService(BaseNetworkService):
@@ -723,26 +729,52 @@ class GCENetworkService(BaseNetworkService):
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
-    def routers(self, region=None):
-        if not region:
-            region = self.provider.region_name
+
+class GCERouterService(BaseRouterService):
+
+    def __init__(self, provider):
+        super(GCERouterService, self).__init__(provider)
+
+    def get(self, router_id):
         try:
-            routers = []
-            for router in helpers.iter_all(self.provider.gce_compute.routers(),
-                                           project=self.provider.project_name,
-                                           region=region):
-                routers.append(GCERouter(self.provider, router))
-            return routers
+            response = (self.provider
+                            .gce_compute
+                            .routers()
+                            .get(project=self.provider.project_name,
+                                 region=self.provider.region_name,
+                                 router=router_id)
+                            .execute())
+            return GCERouter(self.provider, response)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return []
+            return None
 
-    def create_router(self, name=None, network=None, region=None):
+    def list(self, limit=None, marker=None):
+        region = self.provider.region_name
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gce_compute
+                        .routers()
+                        .list(project=self.provider.project_name,
+                              region=region,
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        routers = []
+        for router in response.get('items', []):
+            routers.append(GCERouter(self.provider, router))
+        if len(routers) > max_result:
+            cb.log.warning('Expected at most %d results; go %d',
+                           max_result, len(routers))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=routers)
+
+    def create(self, network, name=None):
         network_url = 'global/networks/default'
         if isinstance(network, GCENetwork):
             network_url = network.resource_url
-        if not region:
-            region = self.provider.region_name
+        region = self.provider.region_name
         try:
             response = (self.provider
                             .gce_compute
@@ -755,13 +787,32 @@ class GCENetworkService(BaseNetworkService):
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response, region=region)
-            routers = self.routers()
-            for router in routers:
-                if router.id == response['targetId']:
-                    return router
+            marker = None
+            while True:
+                routers = self.list(marker=marker)
+                for router in routers:
+                    if router.id == response['targetId']:
+                        return router
+                if routers.is_truncated:
+                    marker = routers.marker
+                else:
+                    cb.log.warning('Failed to create the router')
+                    return None
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
+
+    def delete(self, router):
+        region = self.provider.region_name
+        router_name = router.name if isinstance(router, GCERouter) else router
+        response = (self.provider
+                        .gce_compute
+                        .routers()
+                        .delete(project=self.provider.project_name,
+                                region=region,
+                                router=router_name)
+                        .execute())
+        self._provider.wait_for_operation(response, region=region)
 
 
 class GCESubnetService(BaseSubnetService):
@@ -857,7 +908,7 @@ class GCESubnetService(BaseSubnetService):
                         .subnetworks()
                         .delete(project=self.provider.project_name,
                                 region=subnet.region,
-                                router=subnet.name)
+                                subnetwork=subnet.name)
                         .execute())
         self._provider.wait_for_operation(response, region=subnet.region)
 
