@@ -25,6 +25,7 @@ REQS_BASE = [
     'oslo.i18n>=3.15.3'
 ]
 REQS_AWS = ['boto3']
+REQS_GCP = ['google-api-python-client']
 REQS_OPENSTACK = [
     'openstacksdk',
     'python-novaclient>=7.0.0',
@@ -35,7 +36,7 @@ REQS_OPENSTACK = [
     'python-keystoneclient>=3.13.0',
     'requests>=2.14.2'
 ]
-REQS_FULL = REQS_BASE + REQS_AWS + REQS_OPENSTACK
+REQS_FULL = REQS_BASE + REQS_AWS + REQS_GCP + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',

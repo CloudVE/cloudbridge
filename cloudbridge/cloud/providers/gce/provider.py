@@ -15,11 +15,10 @@ from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
-from .services import GCEBlockStoreService
 from .services import GCEComputeService
 from .services import GCENetworkService
 from .services import GCESecurityService
-from .services import GCSObjectStoreService
+from .services import GCPStorageService
 
 
 class GCPResourceUrl(object):
@@ -192,17 +191,16 @@ class GCECloudProvider(BaseCloudProvider):
 
         # service connections, lazily initialized
         self._gce_compute = None
-        self._gcp_storage = None
+        self._gcs_storage = None
 
         # Initialize provider services
         self._compute = GCEComputeService(self)
         self._security = GCESecurityService(self)
         self._network = GCENetworkService(self)
-        self._block_store = GCEBlockStoreService(self)
-        self._object_store = GCSObjectStoreService(self)
+        self._storage = GCPStorageService(self)
 
         self._compute_resources = GCPResources(self.gce_compute)
-        self._storage_resources = GCPResources(self.gcp_storage)
+        self._storage_resources = GCPResources(self.gcs_storage)
 
     @property
     def compute(self):
@@ -217,12 +215,8 @@ class GCECloudProvider(BaseCloudProvider):
         return self._security
 
     @property
-    def block_store(self):
-        return self._block_store
-
-    @property
-    def object_store(self):
-        return self._object_store
+    def storage(self):
+        return self._storage
 
     @property
     def gce_compute(self):
@@ -231,10 +225,10 @@ class GCECloudProvider(BaseCloudProvider):
         return self._gce_compute
 
     @property
-    def gcp_storage(self):
-        if not self._gcp_storage:
-            self._gcp_storage = self._connect_gcp_storage()
-        return self._gcp_storage
+    def gcs_storage(self):
+        if not self._gcs_storage:
+            self._gcs_storage = self._connect_gcs_storage()
+        return self._gcs_storage
 
     @property
     def _credentials(self):
@@ -244,7 +238,7 @@ class GCECloudProvider(BaseCloudProvider):
         else:
             return GoogleCredentials.get_application_default()
 
-    def _connect_gcp_storage(self):
+    def _connect_gcs_storage(self):
         return discovery.build('storage', 'v1', credentials=self._credentials)
 
     def _connect_gce_compute(self):

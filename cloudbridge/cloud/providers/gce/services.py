@@ -5,18 +5,18 @@ from collections import namedtuple
 import cloudbridge as cb
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
-from cloudbridge.cloud.base.services import BaseBlockStoreService
+from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
-from cloudbridge.cloud.base.services import BaseObjectStoreService
 from cloudbridge.cloud.base.services import BaseRegionService
 from cloudbridge.cloud.base.services import BaseSecurityGroupService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -851,14 +851,15 @@ class GCESubnetService(BaseSubnetService):
         self._provider.wait_for_operation(response, region=subnet.region)
 
 
-class GCEBlockStoreService(BaseBlockStoreService):
+class GCPStorageService(BaseStorageService):
 
     def __init__(self, provider):
-        super(GCEBlockStoreService, self).__init__(provider)
+        super(GCPStorageService, self).__init__(provider)
 
         # Initialize provider services
         self._volume_svc = GCEVolumeService(self.provider)
         self._snapshot_svc = GCESnapshotService(self.provider)
+        self._bucket_svc = GCSBucketService(self.provider)
 
     @property
     def volumes(self):
@@ -867,6 +868,10 @@ class GCEBlockStoreService(BaseBlockStoreService):
     @property
     def snapshots(self):
         return self._snapshot_svc
+
+    @property
+    def buckets(self):
+        return self._bucket_svc
 
 
 class GCEVolumeService(BaseVolumeService):
@@ -1073,10 +1078,10 @@ class GCESnapshotService(BaseSnapshotService):
             return None
 
 
-class GCSObjectStoreService(BaseObjectStoreService):
+class GCSBucketService(BaseBucketService):
 
     def __init__(self, provider):
-        super(GCSObjectStoreService, self).__init__(provider)
+        super(GCSBucketService, self).__init__(provider)
 
     def get(self, bucket_id):
         """

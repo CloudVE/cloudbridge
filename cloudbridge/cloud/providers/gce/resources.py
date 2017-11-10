@@ -1602,7 +1602,7 @@ class GCEVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.block_store.snapshots.create(
+        return self._provider.storage.snapshots.create(
             name, self, description)
 
     def delete(self):
@@ -1734,7 +1734,7 @@ class GCESnapshot(BaseSnapshot):
                                  zone=placement,
                                  body=disk_body)
                          .execute())
-        return self._provider.block_store.volumes.get(
+        return self._provider.storage.volumes.get(
             operation.get('targetLink'))
 
 
