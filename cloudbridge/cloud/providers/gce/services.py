@@ -634,6 +634,13 @@ class GCENetworkService(BaseNetworkService):
                 return network
         return None
 
+    def find(self, name, limit=None, marker=None):
+        """
+        GCE networks are global. There is at most one network with a given
+        name.
+        """
+        return [self.get(name)]
+
     def get_by_name(self, network_name):
         if network_name is None:
             return None
@@ -743,18 +750,14 @@ class GCERouterService(BaseRouterService):
         super(GCERouterService, self).__init__(provider)
 
     def get(self, router_id):
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .routers()
-                            .get(project=self.provider.project_name,
-                                 region=self.provider.region_name,
-                                 router=router_id)
-                            .execute())
-            return GCERouter(self.provider, response)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        return self._get_in_region(router_id)
+
+    def find(self, name, limit=None, marker=None):
+        routers = []
+        for region in self.provider.compute.regions.list():
+            routers.append(self._get_in_region(name, region.name))
+        return ClientPagedResultList(self.provider, routers, limit=limit,
+                                     marker=marker)
 
     def list(self, limit=None, marker=None):
         region = self.provider.region_name
@@ -778,9 +781,10 @@ class GCERouterService(BaseRouterService):
                                      False, data=routers)
 
     def create(self, network, name=None):
-        network_url = 'global/networks/default'
-        if isinstance(network, GCENetwork):
-            network_url = network.resource_url
+        if not isinstance(network, GCENetwork):
+            network = self.provider.networking.networks.get(network)
+        network_url = network.resource_url
+        name = name if name else 'router-{0}'.format(uuid.uuid4())
         region = self.provider.region_name
         try:
             response = (self.provider
@@ -794,32 +798,37 @@ class GCERouterService(BaseRouterService):
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response, region=region)
-            marker = None
-            while True:
-                routers = self.list(marker=marker)
-                for router in routers:
-                    if router.id == response['targetId']:
-                        return router
-                if routers.is_truncated:
-                    marker = routers.marker
-                else:
-                    cb.log.warning('Failed to create the router')
-                    return None
+            return self._get_in_region(name, region)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def delete(self, router):
         region = self.provider.region_name
-        router_name = router.name if isinstance(router, GCERouter) else router
+        name = router.name if isinstance(router, GCERouter) else router
         response = (self.provider
                         .gce_compute
                         .routers()
                         .delete(project=self.provider.project_name,
                                 region=region,
-                                router=router_name)
+                                router=name)
                         .execute())
         self._provider.wait_for_operation(response, region=region)
+
+    def _get_in_region(self, router_id, region=None):
+        region = region if region else self.provider.region_name
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .routers()
+                            .get(project=self.provider.project_name,
+                                 region=region,
+                                 router=router_id)
+                            .execute())
+            return GCERouter(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
 
 
 class GCEGatewayService(BaseGatewayService):
