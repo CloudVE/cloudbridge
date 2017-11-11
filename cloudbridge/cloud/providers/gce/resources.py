@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
+from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
@@ -28,6 +29,7 @@ from cloudbridge.cloud.base.resources import BaseVMFirewallRule
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -1395,6 +1397,42 @@ class GCERouter(BaseRouter):
 
     def remove_route(self, subnet_id):
         cb.log.warning('Not implemented')
+
+
+class GCEInternetGateway(BaseInternetGateway):
+
+    def __init__(self, provider, gateway):
+        super(GCEInternetGateway, self).__init__(provider)
+        self._gateway = gateway
+
+    @property
+    def id(self):
+        return self._gateway['id']
+
+    @property
+    def name(self):
+        return self._gateway['name']
+
+    @name.setter
+    def name(self, value):
+        raise NotImplementedError('Not supported by this provider.')
+
+    def refresh(self):
+        pass
+
+    @property
+    def state(self):
+        return GatewayState.AVAILABLE
+
+    @property
+    def network_id(self):
+        """
+        GCE internet gateways are not attached to a network.
+        """
+        return None
+
+    def delete(self):
+        pass
 
 
 class GCESubnet(BaseSubnet):

@@ -7,6 +7,7 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -32,6 +33,7 @@ from retrying import retry
 from .resources import GCEFirewallsDelegate
 from .resources import GCEFloatingIP
 from .resources import GCEInstance
+from .resources import GCEInternetGateway
 from .resources import GCEKeyPair
 from .resources import GCEMachineImage
 from .resources import GCENetwork
@@ -596,6 +598,7 @@ class GCENetworkingService(BaseNetworkingService):
         self._network_service = GCENetworkService(self.provider)
         self._subnet_service = GCESubnetService(self.provider)
         self._router_service = GCERouterService(self.provider)
+        self._gateway_service = GCEGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -608,6 +611,10 @@ class GCENetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
+
+    @property
+    def gateways(self):
+        return self._gateway_servcie
 
 
 class GCENetworkService(BaseNetworkService):
@@ -813,6 +820,25 @@ class GCERouterService(BaseRouterService):
                                 router=router_name)
                         .execute())
         self._provider.wait_for_operation(response, region=region)
+
+
+class GCEGatewayService(BaseGatewayService):
+    _DEFAULT_GATEWAY_NAME = 'default-internet-gateway'
+    _GATEWAY_URL_PREFIX = 'global/gateways/'
+
+    def __init__(self, provider):
+        super(GCEGatewayService, self).__init__(provider)
+        self._default_internet_gateway = GCEInternetGateway(
+            provider,
+            {'id': (GCEGatewayService._GATEWAY_URL_PREFIX +
+                    GCEGatewayService._DEFAULT_GATEWAY_NAME),
+             'name': GCEGatewayService._DEFAULT_GATEWAY_NAME})
+
+    def get_or_create_inet_gateway(self, name):
+        return self._default_internet_gateway
+
+    def delete(self, gateway):
+        pass
 
 
 class GCESubnetService(BaseSubnetService):
