@@ -57,9 +57,13 @@ class GCPResourceUrl(object):
 
 class GCPResources(object):
 
-    def __init__(self, connection, provider):
+    def __init__(self, connection, project_name, region_name, default_zone):
         self._connection = connection
-        self._provider = provider
+        self._parameter_defaults = {
+            'project': project_name,
+            'region': region_name,
+            'zone': default_zone,
+        }
 
         # Resource descriptions are already pulled into the internal
         # _resourceDesc field of the connection.
@@ -160,37 +164,25 @@ class GCPResources(object):
                 out.parameters[parameter] = m.group(index + 1)
             return out
 
-    def get_resource_url_with_default(self, resource, identifier):
+    def get_resource_url_with_default(self, resource, url_or_name):
         """
-        Build a GCPResourceUrl from a resource's name and its identifier.
-        If the identifier is a valid GCP resource URL, then we build the
-        GCPResourceUrl object by parsing this URL. If the identifier is its
+        Build a GCPResourceUrl from a service's name and resource url or name.
+        If the url_or_name is a valid GCP resource URL, then we build the
+        GCPResourceUrl object by parsing this URL. If the url_or_name is its
         short name, then we build the GCPResourceUrl object by constructing
         the resource URL with default project, region, zone values.
         """
-        # If identifier is a valid GCP resource URL, then parse it.
-        if identifier.startswith(self._root_url):
-            return self.parse_url(identifier)
+        # If url_or_name is a valid GCP resource URL, then parse it.
+        if url_or_name.startswith(self._root_url):
+            return self.parse_url(url_or_name)
         # Otherwise, construct resource URL with default values.
         if resource not in self._resources:
             return None
-        resource_desc = self._connection._resourceDesc['resources'][resource]
-        methods = resource_desc.get('methods', {})
-        if 'get' not in methods:
-            cb.log.warning('Resouce ' + resource + ' does not have get method.')
-            return None
-        method = methods['get']
-        default_values = {
-            'project': self._provider.project_name,
-            'region': self._provider.region_name,
-            'zone': self._provider.default_zone,
-        }
-        for param in method['parameterOrder']:
-            if param not in default_values:
-                default_values[param] = identifier
-        resource_url = (self._connection._resourceDesc['baseUrl'] +
-                        method['path'].format(**default_values))
-        return self.parse_url(resource_url)
+        parsed_url = GCPResourceUrl(resource, self._connection)
+        for key in self._resources[resource]['parameters']:
+            parsed_url.parameters[key] = self._parameter_defaults.get(
+                key, url_or_name)
+        return parsed_url
 
 
 class GCECloudProvider(BaseCloudProvider):
@@ -233,8 +225,12 @@ class GCECloudProvider(BaseCloudProvider):
         self._block_store = GCEBlockStoreService(self)
         self._object_store = GCSObjectStoreService(self)
 
-        self._compute_resources = GCPResources(self.gce_compute, self)
-        self._storage_resources = GCPResources(self.gcp_storage, self)
+        self._compute_resources = GCPResources(
+            self.gce_compute, self.project_name, self.region_name,
+            self.default_zone)
+        self._storage_resources = GCPResources(
+            self.gcp_storage, self.project_name, self.region_name,
+            self.default_zone)
 
     @property
     def compute(self):
@@ -306,12 +302,12 @@ class GCECloudProvider(BaseCloudProvider):
         out = self._compute_resources.parse_url(url)
         return out if out else self._storage_resources.parse_url(url)
 
-    def get_resource(self, resource, identifier):
+    def get_resource(self, resource, url_or_name):
         resource_url = (
             self._compute_resources.get_resource_url_with_default(
-                resource, identifier) or
+                resource, url_or_name) or
             self._storage_resources.get_resource_url_with_default(
-                resource, identifier))
+                resource, url_or_name))
         if resource_url is None:
             return None
         try:
