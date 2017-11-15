@@ -230,11 +230,13 @@ class AWSInstance(BaseInstance):
 
     @property
     def public_ips(self):
-        return [self._ec2_instance.public_ip_address]
+        return ([self._ec2_instance.public_ip_address]
+                if self._ec2_instance.public_ip_address else [])
 
     @property
     def private_ips(self):
-        return [self._ec2_instance.private_ip_address]
+        return ([self._ec2_instance.private_ip_address]
+                if self._ec2_instance.private_ip_address else [])
 
     @property
     def vm_type_id(self):

@@ -4,7 +4,6 @@ import sys
 import traceback
 import unittest
 import uuid
-
 from contextlib import contextmanager
 
 from cloudbridge.cloud.factory import CloudProviderFactory

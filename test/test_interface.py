@@ -1,9 +1,7 @@
 import unittest
-
 from test.helpers import ProviderTestBase
 
 import cloudbridge
-
 from cloudbridge.cloud import interfaces
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
