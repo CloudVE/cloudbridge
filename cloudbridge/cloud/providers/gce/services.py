@@ -290,9 +290,7 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
 
     def get(self, instance_type_id):
         inst_type = self.provider.get_resource('machineTypes', instance_type_id)
-        if inst_type:
-            return GCEInstanceType(self.provider, inst_type)
-        return None
+        return GCEInstanceType(self.provider, inst_type) if inst_type else None
 
     def find(self, **kwargs):
         matched_inst_types = []
@@ -323,9 +321,7 @@ class GCERegionService(BaseRegionService):
 
     def get(self, region_id):
         region = self.provider.get_resource('regions', region_id)
-        if region:
-            return GCERegion(self.provider, region)
-        return None
+        return GCERegion(self.provider, region) if region else None
 
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
@@ -378,9 +374,7 @@ class GCEImageService(BaseImageService):
         Returns an Image given its id
         """
         image = self.provider.get_resource('images', image_id)
-        if image:
-            return GCEMachineImage(self.provider, image)
-        return None
+        return GCEMachineImage(self.provider, image) if image else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -489,9 +483,7 @@ class GCEInstanceService(BaseInstanceService):
         as its id.
         """
         instance = self.provider.get_resource('instances', instance_id)
-        if instance:
-            return GCEInstance(self.provider, instance)
-        return None
+        return GCEInstance(self.provider, instance) if instance else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -565,9 +557,7 @@ class GCENetworkService(BaseNetworkService):
 
     def get(self, network_id):
         network = self.provider.get_resource('networks', network_id)
-        if network:
-            return GCENetwork(self.provider, network)
-        return None
+        return GCENetwork(self.provider, network) if network else None
 
     def get_by_name(self, network_name):
         if network_name is None:
@@ -717,9 +707,7 @@ class GCESubnetService(BaseSubnetService):
 
     def get(self, subnet_id):
         subnet = self.provider.get_resource('subnetworks', subnet_id)
-        if subnet:
-            return GCESubnet(self.provider, subnet)
-        return None
+        return GCESubnet(self.provider, subnet) if subnet else None
 
     def list(self, network=None, zone=None, limit=None, marker=None):
         region = zone.region_name if zone else self.provider.region_name
@@ -835,9 +823,7 @@ class GCEVolumeService(BaseVolumeService):
         Returns a volume given its id.
         """
         vol = self.provider.get_resource('disks', volume_id)
-        if vol:
-            return GCEVolume(self.provider, vol)
-        return None
+        return GCEVolume(self.provider, vol) if vol else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -937,9 +923,7 @@ class GCESnapshotService(BaseSnapshotService):
         Returns a snapshot given its id.
         """
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
-        if snapshot:
-            return GCESnapshot(self.provider, snapshot)
-        return None
+        return GCESnapshot(self.provider, snapshot) if snapshot else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -1030,9 +1014,7 @@ class GCSObjectStoreService(BaseObjectStoreService):
         bucket.
         """
         bucket = self.provider.get_resource('buckets', bucket_id)
-        if bucket:
-            return GCSBucket(self.provider, bucket)
-        return None
+        return GCSBucket(self.provider, bucket) if bucket else None
 
     def find(self, name, limit=None, marker=None):
         """

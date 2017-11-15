@@ -312,8 +312,8 @@ class GCECloudProvider(BaseCloudProvider):
             return None
         try:
             res = resource_url.get_resource()
+            return res
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning(
                 "googleapiclient.errors.HttpError: {0}".format(http_error))
             return None
-        return res
