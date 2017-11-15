@@ -289,10 +289,8 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
         return response['items']
 
     def get(self, instance_type_id):
-        for inst_type in self.instance_data:
-            if inst_type.get('id') == instance_type_id:
-                return GCEInstanceType(self.provider, inst_type)
-        return None
+        inst_type = self.provider.get_resource('machineTypes', instance_type_id)
+        return GCEInstanceType(self.provider, inst_type) if inst_type else None
 
     def find(self, **kwargs):
         matched_inst_types = []
@@ -322,20 +320,8 @@ class GCERegionService(BaseRegionService):
         super(GCERegionService, self).__init__(provider)
 
     def get(self, region_id):
-        try:
-            region = (self.provider
-                          .gce_compute
-                          .regions()
-                          .get(project=self.provider.project_name,
-                               region=region_id)
-                          .execute())
-        # Handle the case when region_id is not valid
-        except googleapiclient.errors.HttpError:
-            return None
-        if region:
-            return GCERegion(self.provider, region)
-        else:
-            return None
+        region = self.provider.get_resource('regions', region_id)
+        return GCERegion(self.provider, region) if region else None
 
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
@@ -387,29 +373,8 @@ class GCEImageService(BaseImageService):
         """
         Returns an Image given its id
         """
-        try:
-            image = (self.provider
-                         .gce_compute
-                         .images()
-                         .get(project=self.provider.project_name,
-                              image=image_id)
-                         .execute())
-            if image:
-                return GCEMachineImage(self.provider, image)
-        except TypeError as type_error:
-            # The API will throw an TypeError, if parameter `image` does not
-            # match the pattern "[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?".
-            cb.log.warning("TypeError: {0}".format(type_error))
-        except googleapiclient.errors.HttpError as http_error:
-            # If the image is not found in project-specific private images,
-            # look for this image in public images.
-            self._retrieve_public_images()
-            for public_image in self._public_images:
-                if public_image.id == image_id:
-                    return public_image
-            cb.log.warning(
-                "googleapiclient.errors.HttpError: {0}".format(http_error))
-        return None
+        image = self.provider.get_resource('images', image_id)
+        return GCEMachineImage(self.provider, image) if image else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -490,13 +455,18 @@ class GCEInstanceService(BaseInstanceService):
                     config['tags']['items'] = sg_names
         else:
             config = launch_config
-        operation = (self.provider
-                         .gce_compute.instances()
-                         .insert(project=self.provider.project_name,
-                                 zone=self.provider.default_zone,
-                                 body=config)
-                         .execute())
-        if 'zone' not in operation:
+        try:
+            operation = (self.provider
+                             .gce_compute.instances()
+                             .insert(project=self.provider.project_name,
+                                     zone=zone,
+                                     body=config)
+                             .execute())
+        except googleapiclient.errors.HttpError as http_error:
+            # If the operation request fails, the API will raise
+            # googleapiclient.errors.HttpError.
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
             return None
         zone_url = self.provider.parse_url(operation['zone'])
         instance_id = operation.get('targetLink')
@@ -512,16 +482,8 @@ class GCEInstanceService(BaseInstanceService):
         A GCE instance is uniquely identified by its selfLink, which is used
         as its id.
         """
-        try:
-            return GCEInstance(
-                    self.provider,
-                    self.provider.parse_url(instance_id).get_resource())
-        except googleapiclient.errors.HttpError as http_error:
-            # If the instance is not found, the API will raise
-            # googleapiclient.errors.HttpError.
-            cb.log.warning(
-                "googleapiclient.errors.HttpError: {0}".format(http_error))
-        return None
+        instance = self.provider.get_resource('instances', instance_id)
+        return GCEInstance(self.provider, instance) if instance else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -594,16 +556,8 @@ class GCENetworkService(BaseNetworkService):
         self._subnet_svc = GCESubnetService(self.provider)
 
     def get(self, network_id):
-        if network_id is None:
-            return None
-        # Note: networks = self.list(filter='id eq %s' % network_id) does not
-        # work due to a GCE API bug that causes an error if the network_id has
-        # has more than 19 digits.
-        networks = self.list()
-        for network in networks:
-            if network.id == network_id:
-                return network
-        return None
+        network = self.provider.get_resource('networks', network_id)
+        return GCENetwork(self.provider, network) if network else None
 
     def get_by_name(self, network_name):
         if network_name is None:
@@ -752,10 +706,8 @@ class GCESubnetService(BaseSubnetService):
         super(GCESubnetService, self).__init__(provider)
 
     def get(self, subnet_id):
-        for subnet in self.list():
-            if subnet.id == subnet_id:
-                return subnet
-        return None
+        subnet = self.provider.get_resource('subnetworks', subnet_id)
+        return GCESubnet(self.provider, subnet) if subnet else None
 
     def list(self, network=None, zone=None, limit=None, marker=None):
         region = zone.region_name if zone else self.provider.region_name
@@ -870,15 +822,8 @@ class GCEVolumeService(BaseVolumeService):
         """
         Returns a volume given its id.
         """
-        try:
-            return GCEVolume(self.provider,
-                             self.provider.parse_url(volume_id).get_resource())
-        except googleapiclient.errors.HttpError as http_error:
-            # If the volume is not found, the API will raise
-            # googleapiclient.errors.HttpError.
-            cb.log.warning(
-                "googleapiclient.errors.HttpError: {0}".format(http_error))
-        return None
+        vol = self.provider.get_resource('disks', volume_id)
+        return GCEVolume(self.provider, vol) if vol else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -977,16 +922,8 @@ class GCESnapshotService(BaseSnapshotService):
         """
         Returns a snapshot given its id.
         """
-        try:
-            return GCESnapshot(
-                    self.provider,
-                    self.provider.parse_url(snapshot_id).get_resource())
-        except googleapiclient.errors.HttpError as http_error:
-            # If the volume is not found, the API will raise
-            # googleapiclient.errors.HttpError.
-            cb.log.warning(
-                "googleapiclient.errors.HttpError: {0}".format(http_error))
-        return None
+        snapshot = self.provider.get_resource('snapshots', snapshot_id)
+        return GCESnapshot(self.provider, snapshot) if snapshot else None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -1076,23 +1013,8 @@ class GCSObjectStoreService(BaseObjectStoreService):
         does not exist or if the user does not have permission to access the
         bucket.
         """
-        try:
-            response = (self.provider
-                            .gcp_storage
-                            .buckets()
-                            .get(bucket=bucket_id)
-                            .execute())
-            if 'error' in response:
-                # response['error']['code'] is 404 if the bucket does not exist
-                # and 403 if the user does not have permission to access it.
-                if response['error']['code'] not in (403, 404):
-                    cb.log.warning('Unexpected error code (%d) when accessing '
-                                   'bucket %s', response['error']['code'],
-                                   bucket_id)
-                return None
-            return GCSBucket(self.provider, response)
-        except:
-            return None
+        bucket = self.provider.get_resource('buckets', bucket_id)
+        return GCSBucket(self.provider, bucket) if bucket else None
 
     def find(self, name, limit=None, marker=None):
         """
