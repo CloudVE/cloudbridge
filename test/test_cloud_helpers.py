@@ -1,5 +1,4 @@
 import itertools
-
 from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList

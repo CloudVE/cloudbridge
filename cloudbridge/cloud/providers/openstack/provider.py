@@ -1,7 +1,6 @@
 """Provider implementation based on OpenStack Python clients for OpenStack."""
 
 import inspect
-
 import os
 
 from cinderclient import client as cinder_client

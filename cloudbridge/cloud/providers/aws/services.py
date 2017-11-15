@@ -37,7 +37,6 @@ import requests
 
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
-
 from .resources import AWSBucket
 from .resources import AWSFloatingIP
 from .resources import AWSInstance
