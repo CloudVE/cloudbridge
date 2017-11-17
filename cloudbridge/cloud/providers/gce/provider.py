@@ -180,9 +180,11 @@ class GCECloudProvider(BaseCloudProvider):
             with open(self.credentials_file) as creds_file:
                 self.credentials_dict = json.load(creds_file)
         self.default_zone = self._get_config_value(
-            'gce_default_zone', os.environ.get('GCE_DEFAULT_ZONE'))
+            'gce_default_zone',
+            os.environ.get('GCE_DEFAULT_ZONE') or 'us-central1-a')
         self.region_name = self._get_config_value(
-            'gce_region_name', 'us-central1')
+            'gce_region_name',
+            os.environ.get('GCE_DEFAULT_REGION') or 'us-central1')
 
         if self.credentials_dict and 'project_id' in self.credentials_dict:
             self.project_name = self.credentials_dict['project_id']
