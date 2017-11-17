@@ -78,17 +78,22 @@ def skipIfNoService(services):
 
 
 TEST_DATA_CONFIG = {
-    "AWSCloudProvider": {
-        "image": os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
-        "vm_type": os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
-        "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
+    'AWSCloudProvider': {
+        'image': os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
+        'vm_type': os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
+        'placement': os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
-    "OpenStackCloudProvider": {
-        "image": os.environ.get('CB_IMAGE_OS',
+    'OpenStackCloudProvider': {
+        'image': os.environ.get('CB_IMAGE_OS',
                                 '842b949c-ea76-48df-998d-8a41f2626243'),
-        "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
-        "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
-    }
+        'vm_type': os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
+        'placement': os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
+    },
+    'GCECloudProvider': {
+        'image': 'ubuntu-1404-trusty-v20171101',
+        'vm_type': 'n1-standard-1',
+        'placement': os.environ.get('GCE_DEFAULT_ZONE', 'us-central1-a'),
+    },
 }
 
 
