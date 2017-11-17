@@ -378,9 +378,7 @@ class GCEFirewallsDelegate(object):
         """
         if self._list_response is None:
             self._update_list_response()
-        if 'items' not in self._list_response:
-            return
-        for firewall in self._list_response['items']:
+        for firewall in self._list_response.get('items', []):
             if ('targetTags' not in firewall or
                     len(firewall['targetTags']) != 1):
                 continue

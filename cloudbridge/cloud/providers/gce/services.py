@@ -114,13 +114,16 @@ class GCEKeyPairService(BaseKeyPairService):
         If an entry does not exist, adds a new empty entry
         """
         sshkey_entry = None
-        entries = [item for item in metadata["items"]
-                   if item["key"] == "sshKeys"]
+        entries = [item for item in metadata.get('items', [])
+                   if item['key'] == 'sshKeys']
         if entries:
             sshkey_entry = entries[0]
         else:  # add a new entry
-            sshkey_entry = {"key": "sshKeys", "value": ""}
-            metadata["items"].append(sshkey_entry)
+            sshkey_entry = {'key': 'sshKeys', 'value': ''}
+            if 'items' not in metadata:
+                metadata['items'] = [sshkey_entry]
+            else:
+                metadata['items'].append(sshkey_entry)
         return sshkey_entry
 
     def _iter_gce_ssh_keys(self, metadata):
@@ -554,10 +557,8 @@ class GCEInstanceService(BaseInstanceService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        instances = []
-        if 'items' in response:
-            instances = [GCEInstance(self.provider, inst)
-                         for inst in response['items']]
+        instances = [GCEInstance(self.provider, inst)
+                     for inst in response.get('items', [])]
         if len(instances) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(instances))
@@ -662,9 +663,8 @@ class GCENetworkService(BaseNetworkService):
                                   filter=filter)
                             .execute())
             networks = []
-            if 'items' in response:
-                for network in response['items']:
-                    networks.append(GCENetwork(self.provider, network))
+            for network in response.get('items', []):
+                networks.append(GCENetwork(self.provider, network))
             return networks
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
@@ -740,10 +740,8 @@ class GCEFloatingIPService(BaseFloatingIPService):
                                   maxResults=max_result,
                                   pageToken=marker)
                             .execute())
-            ips = []
-            if 'items' in response:
-                ips = [GCEFloatingIP(self.provider, ip)
-                       for ip in response['items']]
+            ips = [GCEFloatingIP(self.provider, ip)
+                   for ip in response.get('items', [])]
             if len(ips) > max_result:
                 cb.log.warning('Expected at most %d results; got %d',
                                max_result, len(ips))
@@ -1035,10 +1033,8 @@ class GCEVolumeService(BaseVolumeService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'items' not in response:
-            return []
         gce_vols = [GCEVolume(self.provider, vol)
-                    for vol in response['items']]
+                    for vol in response.get('items', [])]
         if len(gce_vols) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(gce_vols))
@@ -1065,10 +1061,8 @@ class GCEVolumeService(BaseVolumeService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'items' not in response:
-            return []
         gce_vols = [GCEVolume(self.provider, vol)
-                    for vol in response['items']]
+                    for vol in response.get('items', [])]
         if len(gce_vols) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(gce_vols))
@@ -1142,10 +1136,8 @@ class GCESnapshotService(BaseSnapshotService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'items' not in response:
-            return []
         snapshots = [GCESnapshot(self.provider, snapshot)
-                     for snapshot in response['items']]
+                     for snapshot in response.get('items', [])]
         if len(snapshots) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(snapshots))
@@ -1165,10 +1157,8 @@ class GCESnapshotService(BaseSnapshotService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'items' not in response:
-            return []
         snapshots = [GCESnapshot(self.provider, snapshot)
-                     for snapshot in response['items']]
+                     for snapshot in response.get('items', [])]
         if len(snapshots) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(snapshots))
