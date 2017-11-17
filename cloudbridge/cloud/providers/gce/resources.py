@@ -807,7 +807,7 @@ class GCEInstance(BaseInstance):
                 access_config = access_configs[0]
                 if 'natIP' in access_config:
                     ips.append(access_config['natIP'])
-        for ip in self._provider.network.floating_ips():
+        for ip in self._provider.networking.floating_ips:
             if ip.in_use():
                 if ip.private_ip in self.private_ips:
                     ips.append(ip.public_ip)
@@ -1132,7 +1132,7 @@ class GCEInstance(BaseInstance):
         """
         Add an elastic IP address to this instance.
         """
-        for ip in self._provider.network.floating_ips():
+        for ip in self._provider.networking.floating_ips:
             if ip.public_ip == ip_address:
                 if ip.in_use():
                     if ip.private_ip not in self.private_ips:
@@ -1156,7 +1156,7 @@ class GCEInstance(BaseInstance):
         """
         Remove a elastic IP address from this instance.
         """
-        for ip in self._provider.network.floating_ips():
+        for ip in self._provider.networking.floating_ips:
             if ip.public_ip == ip_address:
                 if not ip.in_use() or ip.private_ip not in self.private_ips:
                     cb.log.warning(

@@ -7,6 +7,7 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -597,6 +598,7 @@ class GCENetworkingService(BaseNetworkingService):
         super(GCENetworkingService, self).__init__(provider)
         self._network_service = GCENetworkService(self.provider)
         self._subnet_service = GCESubnetService(self.provider)
+        self._floating_ip_service = GCEFloatingIPService(self.provider)
         self._router_service = GCERouterService(self.provider)
         self._gateway_service = GCEGatewayService(self.provider)
 
@@ -607,6 +609,10 @@ class GCENetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
+
+    @property
+    def floating_ips(self):
+        return self._floating_ip_service
 
     @property
     def routers(self):
@@ -704,25 +710,52 @@ class GCENetworkService(BaseNetworkService):
     def get_or_create_default(self):
         return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, True)
 
-    def floating_ips(self, network_id=None, region=None):
-        if not region:
-            region = self.provider.region_name
+
+class GCEFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(GCEFloatingIPService, self).__init__(provider)
+
+    def get(self, floating_ip_id):
         try:
-            ips = []
-            for ip in helpers.iter_all(self.provider.gce_compute.addresses(),
-                                       project=self.provider.project_name,
-                                       region=region):
-                ips.append(GCEFloatingIP(self.provider, ip))
-            # TODO: if network_id is given, filter out IPs that are assigned to
-            # resources in a different network.
-            return ips
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .get(project=self.provider.project_name,
+                                 region=self.provider.region_name)
+                            .execute())
+            return GCEFloatingIP(self.provider, response)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return []
+            return None
 
-    def create_floating_ip(self, region=None):
-        if not region:
-            region = self.provider.region_name
+    def list(self, limit=None, marker=None):
+        max_result = limit if limit is not None and limit < 500 else 500
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .list(project=self.provider.project_name,
+                                  region=self.provider.region_name,
+                                  maxResults=max_result,
+                                  pageToken=marker)
+                            .execute())
+            ips = []
+            if 'items' in response:
+                ips = [GCEFloatingIP(self.provider, ip)
+                       for ip in response['items']]
+            if len(ips) > max_result:
+                cb.log.warning('Expected at most %d results; got %d',
+                               max_result, len(ips))
+            return ServerPagedResultList('nextPageToken' in response,
+                                         response.get('nextPageToken'),
+                                         False, data=ips)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
+
+    def create(self):
+        region = self.provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
         try:
             response = (self.provider
@@ -735,10 +768,7 @@ class GCENetworkService(BaseNetworkService):
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response, region=region)
-            ips = self.floating_ips()
-            for ip in ips:
-                if ip.id == response['targetId']:
-                    return ip
+            return self.get(ip_name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
