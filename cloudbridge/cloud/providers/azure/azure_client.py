@@ -349,7 +349,7 @@ class AzureClient(object):
                                  'location': self.region_name
                              }).result()
 
-    def list_instance_types(self):
+    def list_vm_types(self):
         return self.compute_client.virtual_machine_sizes. \
             list(self.region_name)
 
