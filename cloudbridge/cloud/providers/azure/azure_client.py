@@ -138,36 +138,36 @@ class AzureClient(object):
         return self.subscription_client.subscriptions. \
             list_locations(self.subscription_id)
 
-    def list_security_group(self):
+    def list_vm_firewall(self):
         return self.network_management_client.network_security_groups. \
             list(self.resource_group)
 
-    def create_security_group(self, name, parameters):
+    def create_vm_firewall(self, name, parameters):
         return self.network_management_client.network_security_groups. \
             create_or_update(self.resource_group, name,
                              parameters).result()
 
-    def update_security_group_tags(self, name, tags):
+    def update_vm_firewall_tags(self, name, tags):
         return self.network_management_client.network_security_groups. \
             create_or_update(self.resource_group, name,
                              {'tags': tags,
                               'location': self.region_name}).result()
 
-    def create_security_group_rule(self, security_group,
-                                   rule_name, parameters):
+    def create_vm_firewall_rule(self, vm_firewall,
+                                rule_name, parameters):
         return self.network_management_client.security_rules. \
-            create_or_update(self.resource_group, security_group,
+            create_or_update(self.resource_group, vm_firewall,
                              rule_name, parameters).result()
 
-    def delete_security_group_rule(self, name, security_group):
+    def delete_vm_firewall_rule(self, name, vm_firewall):
         return self.network_management_client.security_rules. \
-            delete(self.resource_group, security_group, name).result()
+            delete(self.resource_group, vm_firewall, name).result()
 
-    def get_security_group(self, name):
+    def get_vm_firewall(self, name):
         return self.network_management_client.network_security_groups. \
             get(self.resource_group, name)
 
-    def delete_security_group(self, name):
+    def delete_vm_firewall(self, name):
         delete_async = self.network_management_client \
             .network_security_groups. \
             delete(self.resource_group, name)
