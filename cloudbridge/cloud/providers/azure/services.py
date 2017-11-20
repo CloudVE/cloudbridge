@@ -5,19 +5,17 @@ import uuid
 from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.services import BaseBlockStoreService, \
+from cloudbridge.cloud.base.services import BaseBucketService, \
     BaseComputeService, BaseGatewayService, BaseImageService, \
     BaseInstanceService, BaseInstanceTypesService, \
     BaseKeyPairService, BaseNetworkService, BaseNetworkingService, \
-    BaseObjectStoreService, BaseRegionService, BaseRouterService, \
-    BaseSecurityGroupService, BaseSecurityService, \
-    BaseSnapshotService, BaseSubnetService, BaseVolumeService
+    BaseRegionService, BaseRouterService, BaseSecurityGroupService, \
+    BaseSecurityService, BaseSnapshotService, BaseStorageService, \
+    BaseSubnetService, BaseVolumeService
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
-
 from cloudbridge.cloud.interfaces.resources import InstanceType, \
     MachineImage, Network, PlacementZone, SecurityGroup, \
     Snapshot, Subnet, Volume
-
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
@@ -211,9 +209,9 @@ class AzureKeyPairService(BaseKeyPairService):
         return key_pair
 
 
-class AzureObjectStoreService(BaseObjectStoreService):
+class AzureBucketService(BaseBucketService):
     def __init__(self, provider):
-        super(AzureObjectStoreService, self).__init__(provider)
+        super(AzureBucketService, self).__init__(provider)
 
     def get(self, bucket_id):
         """
@@ -256,13 +254,14 @@ class AzureObjectStoreService(BaseObjectStoreService):
         return AzureBucket(self.provider, bucket)
 
 
-class AzureBlockStoreService(BaseBlockStoreService):
+class AzureStorageService(BaseStorageService):
     def __init__(self, provider):
-        super(AzureBlockStoreService, self).__init__(provider)
+        super(AzureStorageService, self).__init__(provider)
 
         # Initialize provider services
         self._volume_svc = AzureVolumeService(self.provider)
         self._snapshot_svc = AzureSnapshotService(self.provider)
+        self._bucket_svc = AzureBucketService(self.provider)
 
     @property
     def volumes(self):
@@ -271,6 +270,10 @@ class AzureBlockStoreService(BaseBlockStoreService):
     @property
     def snapshots(self):
         return self._snapshot_svc
+
+    @property
+    def buckets(self):
+        return self._bucket_svc
 
 
 class AzureVolumeService(BaseVolumeService):
@@ -315,7 +318,7 @@ class AzureVolumeService(BaseVolumeService):
         """
         AzureVolume.assert_valid_resource_name(name)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-        snapshot = (self.provider.block_store.snapshots.get(snapshot)
+        snapshot = (self.provider.storage.snapshots.get(snapshot)
                     if snapshot and isinstance(snapshot, str) else snapshot)
         disk_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
         tags = {'Name': name}
@@ -393,7 +396,7 @@ class AzureSnapshotService(BaseSnapshotService):
         Creates a new snapshot of a given volume.
         """
         AzureSnapshot.assert_valid_resource_name(name)
-        volume = (self.provider.block_store.volumes.get(volume)
+        volume = (self.provider.storage.volumes.get(volume)
                   if isinstance(volume, str) else volume)
 
         tags = {'Name': name}
@@ -678,7 +681,7 @@ class AzureInstanceService(BaseInstanceService):
                         vol_name = \
                             "{0}_{1}_disk".format(vm_name,
                                                   uuid.uuid4().hex[:6])
-                        new_vol = self.provider.block_store.volumes.create(
+                        new_vol = self.provider.storage.volumes.create(
                             vol_name,
                             device.size,
                             zone)
