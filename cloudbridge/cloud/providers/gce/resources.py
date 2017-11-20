@@ -439,7 +439,7 @@ class GCEVMFirewall(BaseVMFirewall):
         self._description = description
         self._delegate = delegate
         if network is None:
-            self._network = delegate.provider.network.get_by_name(
+            self._network = delegate.provider.networking.networks.get_by_name(
                     GCEFirewallsDelegate.DEFAULT_NETWORK)
         else:
             self._network = network
@@ -616,7 +616,7 @@ class GCEVMFirewallRule(BaseVMFirewallRule):
             return None
         if 'source_tag' not in info or info['network_name'] is None:
             return None
-        network = self._delegate.provider.network.get_by_name(
+        network = self._delegate.provider.networking.networks.get_by_name(
                 info['network_name'])
         if network is None:
             return None
@@ -1253,10 +1253,10 @@ class GCENetwork(BaseNetwork):
         return True
 
     def subnets(self):
-        return self._provider.network.subnets.list()
+        return self._provider.networking.subnets.list()
 
     def create_subnet(self, cidr_block, name=None, zone=None):
-        return self._provider.network.subnets.create(
+        return self._provider.networking.subnets.create(
             self, cidr_block, name, zone)
 
     def refresh(self):
@@ -1480,7 +1480,7 @@ class GCESubnet(BaseSubnet):
 
     @property
     def delete(self):
-        return self._provider.network.subnets.delete(self)
+        return self._provider.networking.subnets.delete(self)
 
 
 class GCEVolume(BaseVolume):
