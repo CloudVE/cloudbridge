@@ -1157,7 +1157,7 @@ class AzureInstance(BaseInstance):
         'Creating': InstanceState.PENDING,
         'VM running': InstanceState.RUNNING,
         'Updating': InstanceState.CONFIGURING,
-        'Deleted': InstanceState.TERMINATED,
+        'Deleted': InstanceState.DELETED,
         'Stopping': InstanceState.CONFIGURING,
         'Deleting': InstanceState.CONFIGURING,
         'Stopped': InstanceState.STOPPED,
@@ -1260,19 +1260,19 @@ class AzureInstance(BaseInstance):
         return self._private_ips
 
     @property
-    def instance_type_id(self):
+    def vm_type_id(self):
         """
         Get the instance type name.
         """
         return self._vm.hardware_profile.vm_size
 
     @property
-    def instance_type(self):
+    def vm_type(self):
         """
         Get the instance type.
         """
-        return self._provider.compute.instance_types.find(
-            name=self.instance_type_id)[0]
+        return self._provider.compute.vm_types.find(
+            name=self.vm_type_id)[0]
 
     def reboot(self):
         """
@@ -1280,7 +1280,7 @@ class AzureInstance(BaseInstance):
         """
         self._provider.azure_client.restart_vm(self.id)
 
-    def terminate(self):
+    def delete(self):
         """
         Permanently terminate this instance.
         After deleting the VM. we are deleting the network interface
