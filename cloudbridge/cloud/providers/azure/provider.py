@@ -4,8 +4,8 @@ import os
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.providers.azure.azure_client import AzureClient
 from cloudbridge.cloud.providers.azure.services \
-    import AzureBlockStoreService, AzureComputeService, \
-    AzureNetworkingService, AzureObjectStoreService, AzureSecurityService
+    import AzureComputeService, AzureNetworkingService, \
+    AzureSecurityService, AzureStorageService
 
 from msrestazure.azure_exceptions import CloudError
 
@@ -53,8 +53,7 @@ class AzureCloudProvider(BaseCloudProvider):
         self._azure_client = None
 
         self._security = AzureSecurityService(self)
-        self._object_store = AzureObjectStoreService(self)
-        self._block_store = AzureBlockStoreService(self)
+        self._storage = AzureStorageService(self)
         self._compute = AzureComputeService(self)
         self._networking = AzureNetworkingService(self)
 
@@ -71,16 +70,13 @@ class AzureCloudProvider(BaseCloudProvider):
         return self._security
 
     @property
-    def block_store(self):
-        return self._block_store
-
-    @property
-    def object_store(self):
-        return self._object_store
+    def storage(self):
+        return self._storage
 
     @property
     def azure_client(self):
         if not self._azure_client:
+
             # create a dict with both optional and mandatory configuration
             # values to pass to the azureclient class, rather
             # than passing the provider object and taking a dependency.

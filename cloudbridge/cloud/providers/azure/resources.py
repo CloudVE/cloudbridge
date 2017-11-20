@@ -7,7 +7,6 @@ import logging
 import time
 
 from azure.common import AzureException
-
 from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
@@ -530,7 +529,7 @@ class AzureVolume(BaseVolume):
             url_params = azure_helpers. \
                 parse_url(SNAPSHOT_RESOURCE_ID,
                           self._volume.creation_data.source_uri)
-            return self._provider.block_store.snapshots. \
+            return self._provider.storage.snapshots. \
                 get(url_params.get(SNAPSHOT_NAME))
         return None
 
@@ -606,7 +605,7 @@ class AzureVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.block_store.snapshots.create(name, self)
+        return self._provider.storage.snapshots.create(name, self)
 
     def delete(self):
         """
@@ -751,7 +750,7 @@ class AzureSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        return self._provider.block_store.volumes. \
+        return self._provider.storage.volumes. \
             create(self.id, self.size,
                    zone=placement, snapshot=self)
 

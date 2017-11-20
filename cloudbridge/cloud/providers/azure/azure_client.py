@@ -1,6 +1,5 @@
 import datetime
 import logging
-
 from io import BytesIO
 
 from azure.common.credentials import ServicePrincipalCredentials
