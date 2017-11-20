@@ -934,8 +934,8 @@ class OpenStackRouterService(BaseRouterService):
     def find(self, name, limit=None, marker=None):
         log.debug("Searching for OpenStack Router with the params: "
                   "[name: %s, limit: %s, marker: %s]", name, limit, marker)
-        aws_routers = [r for r in self if r.name == name]
-        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
+        os_routers = [r for r in self if r.name == name]
+        return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
 
     def create(self, name, network):
@@ -955,6 +955,7 @@ class OpenStackRouterService(BaseRouterService):
 
 
 class OpenStackGatewayService(BaseGatewayService):
+    """For OpenStack, an internet gateway is a just an 'external' network."""
 
     def __init__(self, provider):
         super(OpenStackGatewayService, self).__init__(provider)
@@ -970,3 +971,10 @@ class OpenStackGatewayService(BaseGatewayService):
     def delete(self, gateway):
         log.debug("Deleting OpenStack Gateway: %s", gateway)
         gateway.delete()
+
+    def list(self, limit=None, marker=None):
+        log.debug("OpenStack listing of all current internet gateways")
+        igl = [OpenStackInternetGateway(self.provider, n)
+               for n in self.provider.networking.networks if n.external]
+        return ClientPagedResultList(self.provider, igl, limit=limit,
+                                     marker=marker)

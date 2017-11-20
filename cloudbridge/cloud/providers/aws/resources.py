@@ -230,11 +230,13 @@ class AWSInstance(BaseInstance):
 
     @property
     def public_ips(self):
-        return [self._ec2_instance.public_ip_address]
+        return ([self._ec2_instance.public_ip_address]
+                if self._ec2_instance.public_ip_address else [])
 
     @property
     def private_ips(self):
-        return [self._ec2_instance.private_ip_address]
+        return ([self._ec2_instance.private_ip_address]
+                if self._ec2_instance.private_ip_address else [])
 
     @property
     def vm_type_id(self):
@@ -1081,8 +1083,11 @@ class AWSRouter(BaseRouter):
     def attach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
-        return self._provider.ec2_conn.meta.client.attach_internet_gateway(
+        result = self._provider.ec2_conn.meta.client.attach_internet_gateway(
             InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
+        self._route_table.create_route(
+            DestinationCidrBlock='0.0.0.0/0', GatewayId=gw_id)
+        return result
 
     def detach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)

@@ -1,5 +1,4 @@
 import unittest
-
 from test import helpers
 
 from cloudbridge.cloud import factory

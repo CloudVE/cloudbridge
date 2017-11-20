@@ -37,7 +37,6 @@ import requests
 
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
-
 from .resources import AWSBucket
 from .resources import AWSFloatingIP
 from .resources import AWSInstance
@@ -803,3 +802,7 @@ class AWSGatewayService(BaseGatewayService):
         gateway = self.svc.get(gateway_id)
         if gateway:
             gateway.delete()
+
+    def list(self, limit=None, marker=None):
+        log.debug("Listing current AWS internet gateways.")
+        return self.svc.list(limit=None, marker=None)

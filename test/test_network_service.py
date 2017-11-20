@@ -1,6 +1,6 @@
 import test.helpers as helpers
-
 from test.helpers import ProviderTestBase
+from test.helpers import get_provider_test_data
 from test.helpers import standard_interface_tests as sit
 
 from cloudbridge.cloud.interfaces.resources import FloatingIP
@@ -174,5 +174,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_default_network(self):
-        subnet = self.provider.networking.subnets.get_or_create_default()
+        subnet = self.provider.networking.subnets.get_or_create_default(
+            zone=get_provider_test_data(self.provider, 'placement'))
         self.assertIsInstance(subnet, Subnet)

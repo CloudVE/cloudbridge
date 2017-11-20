@@ -1,5 +1,4 @@
 import ipaddress
-
 from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
@@ -96,7 +95,13 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 test_instance.image_id,
                 helpers.get_provider_test_data(self.provider, "image"))
             self.assertIsInstance(test_instance.public_ips, list)
+            if test_instance.public_ips:
+                self.assertTrue(
+                    test_instance.public_ips[0], "public ip should contain a"
+                    " valid value if a list of public_ips exist")
             self.assertIsInstance(test_instance.private_ips, list)
+            self.assertTrue(test_instance.private_ips[0], "private ip should"
+                            " contain a valid value")
             self.assertEqual(
                 test_instance.key_pair_name,
                 kp.name)
