@@ -35,6 +35,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.gce import helpers
 
@@ -1260,7 +1261,8 @@ class GCENetwork(BaseNetwork):
             self, cidr_block, name, zone)
 
     def refresh(self):
-        return self.state
+        self_link = self._network.get('selfLink')
+        self._network = self._provider.parse_url(self_link).get_resource()
 
 
 class GCEFloatingIP(BaseFloatingIP):
@@ -1481,6 +1483,14 @@ class GCESubnet(BaseSubnet):
     @property
     def delete(self):
         return self._provider.networking.subnets.delete(self)
+
+    @property
+    def state(self):
+        return SubnetState.AVAILABEL
+
+    def refresh(self):
+        self_link = self._subnet.get('selfLink')
+        self._subnet = self._provider.parse_url(self_link).get_resource()
 
 
 class GCEVolume(BaseVolume):
