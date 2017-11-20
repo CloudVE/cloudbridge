@@ -12,11 +12,11 @@ from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketObject, BaseFloatingIP, \
-    BaseInstance, BaseInstanceType, BaseInternetGateway, \
+    BaseInstance, BaseInternetGateway, \
     BaseKeyPair, BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
     BasePlacementZone, BaseRegion, BaseRouter, BaseSecurityGroup, \
     BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
-    BaseVolume, ClientPagedResultList
+    BaseVMType, BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import InstanceState, VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, RouterState, \
@@ -1577,19 +1577,19 @@ class AzureLaunchConfig(BaseLaunchConfig):
         super(AzureLaunchConfig, self).__init__(provider)
 
 
-class AzureInstanceType(BaseInstanceType):
+class AzureVMType(BaseVMType):
 
-    def __init__(self, provider, instance_type):
-        super(AzureInstanceType, self).__init__(provider)
-        self._inst_type = instance_type
+    def __init__(self, provider, vm_type):
+        super(AzureVMType, self).__init__(provider)
+        self._vm_type = vm_type
 
     @property
     def id(self):
-        return self._inst_type.name
+        return self._vm_type.name
 
     @property
     def name(self):
-        return self._inst_type.name
+        return self._vm_type.name
 
     @property
     def family(self):
@@ -1601,19 +1601,19 @@ class AzureInstanceType(BaseInstanceType):
 
     @property
     def vcpus(self):
-        return self._inst_type.number_of_cores
+        return self._vm_type.number_of_cores
 
     @property
     def ram(self):
-        return self._inst_type.memory_in_mb
+        return self._vm_type.memory_in_mb
 
     @property
     def size_root_disk(self):
-        return self._inst_type.os_disk_size_in_mb / 1024
+        return self._vm_type.os_disk_size_in_mb / 1024
 
     @property
     def size_ephemeral_disks(self):
-        return self._inst_type.resource_disk_size_in_mb / 1024
+        return self._vm_type.resource_disk_size_in_mb / 1024
 
     @property
     def num_ephemeral_disks(self):
@@ -1628,7 +1628,7 @@ class AzureInstanceType(BaseInstanceType):
     def extra_data(self):
         return {
                     'max_data_disk_count':
-                    self._inst_type.max_data_disk_count
+                    self._vm_type.max_data_disk_count
                }
 
 

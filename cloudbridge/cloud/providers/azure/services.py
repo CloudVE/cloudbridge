@@ -7,25 +7,23 @@ from azure.common import AzureException
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService, \
     BaseComputeService, BaseGatewayService, BaseImageService, \
-    BaseInstanceService, BaseInstanceTypesService, \
-    BaseKeyPairService, BaseNetworkService, BaseNetworkingService, \
-    BaseRegionService, BaseRouterService, BaseSecurityGroupService, \
-    BaseSecurityService, BaseSnapshotService, BaseStorageService, \
-    BaseSubnetService, BaseVolumeService
+    BaseInstanceService, BaseKeyPairService, BaseNetworkService, \
+    BaseNetworkingService, BaseRegionService, BaseRouterService, \
+    BaseSecurityGroupService, BaseSecurityService, BaseSnapshotService, \
+    BaseStorageService, BaseSubnetService, BaseVMTypeService, BaseVolumeService
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
-from cloudbridge.cloud.interfaces.resources import InstanceType, \
-    MachineImage, Network, PlacementZone, SecurityGroup, \
-    Snapshot, Subnet, Volume
+from cloudbridge.cloud.interfaces.resources import MachineImage, \
+    Network, PlacementZone, SecurityGroup, Snapshot, Subnet, \
+    VMType, Volume
 from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
 from .resources import AzureBucket, AzureFloatingIP, \
-    AzureInstance, AzureInstanceType, \
-    AzureInternetGateway, AzureKeyPair, \
-    AzureLaunchConfig, AzureMachineImage, \
-    AzureNetwork, AzureRegion, AzureRouter, AzureSecurityGroup, \
-    AzureSnapshot, AzureSubnet, AzureVolume
+    AzureInstance, AzureInternetGateway, AzureKeyPair, \
+    AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
+    AzureRegion, AzureRouter, AzureSecurityGroup, AzureSnapshot, \
+    AzureSubnet, AzureVMType, AzureVolume
 
 log = logging.getLogger(__name__)
 
@@ -426,7 +424,7 @@ class AzureSnapshotService(BaseSnapshotService):
 class AzureComputeService(BaseComputeService):
     def __init__(self, provider):
         super(AzureComputeService, self).__init__(provider)
-        self._instance_type_svc = AzureInstanceTypesService(self.provider)
+        self._instance_type_svc = AzureVMTypeService(self.provider)
         self._instance_svc = AzureInstanceService(self.provider)
         self._region_svc = AzureRegionService(self.provider)
         self._images_svc = AzureImageService(self.provider)
@@ -473,7 +471,7 @@ class AzureInstanceService(BaseInstanceService):
                  if isinstance(image, str) else image)
 
         instance_size = instance_type.id if \
-            isinstance(instance_type, InstanceType) else instance_type
+            isinstance(instance_type, VMType) else instance_type
 
         if not subnet:
             subnet = self.provider.networking.subnets.get_or_create_default()
@@ -775,10 +773,10 @@ class AzureImageService(BaseImageService):
                                      limit=limit, marker=marker)
 
 
-class AzureInstanceTypesService(BaseInstanceTypesService):
+class AzureVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
-        super(AzureInstanceTypesService, self).__init__(provider)
+        super(AzureVMTypeService, self).__init__(provider)
 
     @property
     def instance_data(self):
@@ -789,9 +787,9 @@ class AzureInstanceTypesService(BaseInstanceTypesService):
         return r
 
     def list(self, limit=None, marker=None):
-        inst_types = [AzureInstanceType(self.provider, inst_type)
-                      for inst_type in self.instance_data]
-        return ClientPagedResultList(self.provider, inst_types,
+        vm_types = [AzureVMType(self.provider, vm_type)
+                    for vm_type in self.instance_data]
+        return ClientPagedResultList(self.provider, vm_types,
                                      limit=limit, marker=marker)
 
 
