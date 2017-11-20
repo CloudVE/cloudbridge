@@ -1196,6 +1196,7 @@ class GCEInstance(BaseInstance):
 
 
 class GCENetwork(BaseNetwork):
+    DEFAULT_IPV4RANGE = '10.128.0.0/9'
 
     def __init__(self, provider, network):
         super(GCENetwork, self).__init__(provider)
@@ -1230,7 +1231,10 @@ class GCENetwork(BaseNetwork):
 
     @property
     def cidr_block(self):
-        return self._network['IPv4Range']
+        if 'IPv4Range' in self._network:
+            # This is a legacy network.
+            return self._network['IPv4Range']
+        return GCENetwork.DEFAULT_IPV4RANGE
 
     def delete(self):
         try:
@@ -1251,8 +1255,9 @@ class GCENetwork(BaseNetwork):
     def subnets(self):
         return self._provider.network.subnets.list()
 
-    def create_subnet(self, cidr_block, name=None):
-        return self._provider.network.subnets.create(self, cidr_block, name)
+    def create_subnet(self, cidr_block, name=None, zone=None):
+        return self._provider.network.subnets.create(
+            self, cidr_block, name, zone)
 
     def refresh(self):
         return self.state

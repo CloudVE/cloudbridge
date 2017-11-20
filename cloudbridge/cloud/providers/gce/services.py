@@ -670,7 +670,7 @@ class GCENetworkService(BaseNetworkService):
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return []
 
-    def _create(self, name, create_subnetworks):
+    def _create(self, name, cidr_block, create_subnetworks):
         """
         Possible values for 'create_subnetworks' are:
 
@@ -680,11 +680,21 @@ class GCENetworkService(BaseNetworkService):
         False: For creating a custom mode VPC network. Subnetworks should be
                created manually.
         """
+        if create_subnetworks is not None and cidr_block is not None:
+            cb.log.warning('cidr_block is ignored in non-legacy networks. '
+                           'Auto mode networks use the default CIDR of '
+                           '%s. For custom networks, you should create subnets'
+                           'in each region with explicit CIDR blocks',
+                           GCENetwork.DEFAULT_IPV4RANGE)
+            cidr_block = None
         networks = self.list(filter='name eq %s' % name)
         if len(networks) > 0:
             return networks[0]
-        body = {'name': name,
-                'autoCreateSubnetworks': create_subnetworks}
+        body = {'name': name}
+        if cidr_block:
+            body['IPv4Range'] = cidr_block
+        else:
+            body['autoCreateSubnetworks'] = create_subnetworks
         try:
             response = (self.provider
                             .gce_compute
@@ -701,14 +711,15 @@ class GCENetworkService(BaseNetworkService):
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
-    def create(self, name):
+    def create(self, name, cidr_block):
         """
-        Creates a custom mode VPC network.
+        Creates an auto mode VPC network with default subnets. It is possible
+        to add additional subnets later.
         """
-        return self._create(name, False)
+        return self._create(name, cidr_block, True)
 
     def get_or_create_default(self):
-        return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, True)
+        return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, None, True)
 
 
 class GCEFloatingIPService(BaseFloatingIPService):
@@ -922,9 +933,7 @@ class GCESubnetService(BaseSubnetService):
         """
         if not name:
             name = 'subnet-{0}'.format(uuid.uuid4())
-        region = self.provider.region_name
-        if isinstance(zone, GCEPlacementZone):
-            region = zone.region_name
+        region = self._zone_to_region(zone)
         body = {'ipCidrRange': cidr_block,
                 'name': name,
                 'network': network.resource_url,
@@ -974,6 +983,16 @@ class GCESubnetService(BaseSubnetService):
                                 subnetwork=subnet.name)
                         .execute())
         self._provider.wait_for_operation(response, region=subnet.region)
+
+    def _zone_to_region(self, zone):
+        if isinstance(zone, GCEPlacementZone):
+            return zone.region_name
+        elif zone:
+            for r in self.provider.compute.regions.list():
+                for z in r.zones:
+                    if zone == z.name:
+                        return z.region_name
+        return self.provider.region_name
 
 
 class GCPStorageService(BaseStorageService):
