@@ -934,6 +934,19 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
                                             self.id, self.name)
 
+    @staticmethod
+    def cidr_blocks_overlap(block1, block2):
+        common_length = min(int(block1.split('/')[1]),
+                            int(block2.split('/')[1]))
+
+        p1 = [format(int(b), '08b') for b in block1.split('/')[0].split('.')]
+        prefix1 = ''.join(p1)[:common_length]
+
+        p2 = [format(int(b), '08b') for b in block2.split('/')[0].split('.')]
+        prefix2 = ''.join(p2)[:common_length]
+
+        return prefix1 == prefix2
+
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [NetworkState.AVAILABLE],

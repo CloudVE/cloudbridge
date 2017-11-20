@@ -3,6 +3,7 @@ import uuid
 from collections import namedtuple
 
 import cloudbridge as cb
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
@@ -902,35 +903,25 @@ class GCESubnetService(BaseSubnetService):
 
     def list(self, network=None, zone=None, limit=None, marker=None):
         region = zone.region_name if zone else self.provider.region_name
-        filter = None
-        if network is not None:
-            filter = 'network eq %s' % network.resource_url
-        max_result = limit if limit is not None and limit < 500 else 500
-        response = (self.provider
-                        .gce_compute
-                        .subnetworks()
-                        .list(project=self.provider.project_name,
-                              region=region,
-                              filter=filter,
-                              maxResults=max_result,
-                              pageToken=marker)
-                        .execute())
-        subnets = []
-        for subnet in response.get('items', []):
-            subnets.append(GCESubnet(self.provider, subnet))
-        if len(subnets) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(subnets))
-        return ServerPagedResultList('nextPageToken' in response,
-                                     response.get('nextPageToken'),
-                                     False, data=subnets)
+        return ClientPagedResultList(self.provider,
+                                     self._list_all(network, region),
+                                     limit=limit, marker=marker)
 
     def create(self, network, cidr_block, name=None, zone=None):
         """
         GCE subnets are regional. The region is inferred from the zone if a
         zone is provided; otherwise, the default region, as set in the
         provider, is used.
+
+        If a subnet with overlapping IP range exists already, we return that
+        instead of creating a new subnet. In this case, other parameters, i.e.
+        the name and the zone, are ignored.
         """
+        subnets = self._list_all(network)
+        for subnet in subnets:
+            if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
+                return subnet
+
         if not name:
             name = 'subnet-{0}'.format(uuid.uuid4())
         region = self._zone_to_region(zone)
@@ -993,6 +984,31 @@ class GCESubnetService(BaseSubnetService):
                     if zone == z.name:
                         return z.region_name
         return self.provider.region_name
+
+    def _list_all(self, network=None, region=None):
+        """
+        Similar to the list method, but if region is not given we list subnets
+        in all regions, not just the project default region.
+        """
+        filter = None
+        if network is not None:
+            filter = 'network eq %s' % network.resource_url
+        if region:
+            regions = [region]
+        else:
+            regions = [r.name for r in self.provider.compute.regions.list()]
+        subnets = []
+        for region in regions:
+            response = (self.provider
+                            .gce_compute
+                            .subnetworks()
+                            .list(project=self.provider.project_name,
+                                  region=region,
+                                  filter=filter)
+                            .execute())
+            for subnet in response.get('items', []):
+                subnets.append(GCESubnet(self.provider, subnet))
+        return subnets
 
 
 class GCPStorageService(BaseStorageService):

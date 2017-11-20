@@ -2,6 +2,7 @@ import test.helpers as helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import RouterState
@@ -40,11 +41,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             sit.check_repr(self, net)
 
             self.assertIn(
-                net.cidr_block, ['', '10.0.0.0/16'],
+                net.cidr_block, ['', '10.0.0.0/16', '10.128.0.0/9'],
                 "Network CIDR %s does not contain the expected value."
                 % net.cidr_block)
 
-            cidr = '10.0.1.0/24'
+            cidr = '{0}/24'.format(net.cidr_block.split('/')[0] or '10.0.0.0')
             sn = net.create_subnet(name=subnet_name, cidr_block=cidr,
                                    zone=helpers.get_provider_test_data(
                                        self.provider, 'placement'))
@@ -64,8 +65,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     " id %s." % (net.id, sn.network_id))
 
                 self.assertEqual(
-                    cidr, sn.cidr_block,
-                    "Subnet's CIDR %s should match the specified one %s." % (
+                    BaseNetwork.cidr_blocks_overlap(cidr, sn.cidr_block),
+                    "Subnet's CIDR %s should overlap the specified one %s." % (
                         sn.cidr_block, cidr))
 
     def test_crud_subnet(self):
@@ -146,7 +147,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 name=name, cidr_block='10.0.0.0/16')
             router = self.provider.networking.routers.create(network=net,
                                                              name=name)
-            cidr = '10.0.1.0/24'
+            cidr = '{0}/24'.format(net.cidr_block.split('/')[0] or '10.0.0.0')
             sn = net.create_subnet(name=name, cidr_block=cidr,
                                    zone=helpers.get_provider_test_data(
                                        self.provider, 'placement'))
