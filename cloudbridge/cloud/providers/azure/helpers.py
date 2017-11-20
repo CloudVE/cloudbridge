@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 
-def filter(list_items, filters):
+def filter_by_tag(list_items, filters):
     """
     This function filter items on the tags
     :param list_items:
@@ -35,12 +35,12 @@ def parse_url(template_url, original_url):
     original_url_parts = original_url.split('/')
     if len(template_url_parts) != len(original_url_parts):
         raise Exception('Invalid url parameter passed')
-    dict = {}
+    resource_param = {}
     for key, value in zip(template_url_parts, original_url_parts):
         if key.startswith('{') and key.endswith('}'):
-            dict.update({key[1:-1]: value})
+            resource_param.update({key[1:-1]: value})
 
-    return dict
+    return resource_param
 
 
 def gen_key_pair():
