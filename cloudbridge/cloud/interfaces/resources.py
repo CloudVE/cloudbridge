@@ -1761,7 +1761,7 @@ class VMFirewallRuleContainer(PageableObjectMixin):
             fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
 
         You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
-        ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
+        ``from_port``, ``to_port``, ``cidr``. In other words, either
         you are authorizing another group or you are authorizing some
         IP-based rule.
 

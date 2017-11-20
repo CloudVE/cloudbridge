@@ -9,21 +9,21 @@ from cloudbridge.cloud.base.services import BaseBucketService, \
     BaseComputeService, BaseGatewayService, BaseImageService, \
     BaseInstanceService, BaseKeyPairService, BaseNetworkService, \
     BaseNetworkingService, BaseRegionService, BaseRouterService, \
-    BaseSecurityGroupService, BaseSecurityService, BaseSnapshotService, \
-    BaseStorageService, BaseSubnetService, BaseVMTypeService, BaseVolumeService
+    BaseSecurityService, BaseSnapshotService, BaseStorageService, \
+    BaseSubnetService, BaseVMFirewallService, BaseVMTypeService, \
+    BaseVolumeService
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
-    Network, PlacementZone, SecurityGroup, Snapshot, Subnet, \
-    VMType, Volume
-from cloudbridge.cloud.providers.azure import helpers as azure_helpers
+    Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
 
 from msrestazure.azure_exceptions import CloudError
 
+from . import helpers as azure_helpers
 from .resources import AzureBucket, AzureFloatingIP, \
     AzureInstance, AzureInternetGateway, AzureKeyPair, \
     AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
-    AzureRegion, AzureRouter, AzureSecurityGroup, AzureSnapshot, \
-    AzureSubnet, AzureVMType, AzureVolume
+    AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \
+    AzureVMFirewall, AzureVMType, AzureVolume
 
 log = logging.getLogger(__name__)
 
@@ -34,40 +34,25 @@ class AzureSecurityService(BaseSecurityService):
 
         # Initialize provider services
         self._key_pairs = AzureKeyPairService(provider)
-        self._security_groups = AzureSecurityGroupService(provider)
+        self._vm_firewalls = AzureVMFirewallService(provider)
 
     @property
     def key_pairs(self):
-        """
-        Provides access to key pairs for this provider.
-
-        :rtype: ``object`` of :class:`.KeyPairService`
-        :return: a KeyPairService object
-        """
         return self._key_pairs
 
     @property
-    def security_groups(self):
-        """
-        Provides access to security groups for this provider.
-
-        :rtype: ``object`` of :class:`.SecurityGroupService`
-        :return: a SecurityGroupService object
-        """
-        return self._security_groups
+    def vm_firewalls(self):
+        return self._vm_firewalls
 
 
-class AzureSecurityGroupService(BaseSecurityGroupService):
+class AzureVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
-        super(AzureSecurityGroupService, self).__init__(provider)
+        super(AzureVMFirewallService, self).__init__(provider)
 
-    def get(self, sg_id):
-        """
-        Returns a SecurityGroup given its id.
-        """
+    def get(self, fw_id):
         try:
-            sgs = self.provider.azure_client.get_security_group(sg_id)
-            return AzureSecurityGroup(self.provider, sgs)
+            fws = self.provider.azure_client.get_vm_firewall(fw_id)
+            return AzureVMFirewall(self.provider, fws)
 
         except CloudError as cloudError:
             # Azure raises the cloud error if the resource not available
@@ -75,74 +60,38 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
             return None
 
     def list(self, limit=None, marker=None):
-        """
-        List all security groups associated with this account.
-
-        :rtype: ``list`` of :class:`.SecurityGroup`
-        :return:  list of SecurityGroup objects
-        """
-        sgs = [AzureSecurityGroup(self.provider, sg)
-               for sg in self.provider.azure_client.list_security_group()]
-        return ClientPagedResultList(self.provider, sgs, limit, marker)
+        fws = [AzureVMFirewall(self.provider, fw)
+               for fw in self.provider.azure_client.list_vm_firewall()]
+        return ClientPagedResultList(self.provider, fws, limit, marker)
 
     def create(self, name, description, network_id=None):
-        """
-        Create a new SecurityGroup.
-
-        :type name: str
-        :param name: The name of the new security group.
-
-        :type description: str
-        :param description: The description of the new security group.
-
-        :type  network_id: ``str``
-        :param network_id: The ID of the virtual network under which to
-                            create the security group. But we are not using
-                            this in azure as security group associated with
-                            subnet or network interface
-
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return:  A SecurityGroup instance or ``None`` if one was not created.
-        """
-        AzureSecurityGroup.assert_valid_resource_name(name)
+        AzureVMFirewall.assert_valid_resource_name(name)
         parameters = {"location": self.provider.region_name,
                       'tags': {'Name': name}}
 
         if description:
             parameters['tags'].update(Description=description)
 
-        sg = self.provider.azure_client.create_security_group(name, parameters)
-        cb_sg = AzureSecurityGroup(self.provider, sg)
+        fw = self.provider.azure_client.create_vm_firewall(name, parameters)
+        cb_fw = AzureVMFirewall(self.provider, fw)
 
-        return cb_sg
+        return cb_fw
 
     def find(self, name, limit=None, marker=None):
         """
         Searches for a security group by a given list of attributes.
         """
         filters = {'Name': name}
-        sgs = [AzureSecurityGroup(self.provider, security_group)
-               for security_group in azure_helpers.filter(
-                self.provider.azure_client.list_security_group(), filters)]
+        fws = [AzureVMFirewall(self.provider, vm_firewall)
+               for vm_firewall in azure_helpers.filter(
+                self.provider.azure_client.list_vm_firewall(), filters)]
 
-        return ClientPagedResultList(self.provider, sgs,
+        return ClientPagedResultList(self.provider, fws,
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
-        """
-       Delete an existing SecurityGroup.
-
-       :type group_id: str
-       :param group_id: The security group ID to be deleted.
-
-       :rtype: ``bool``
-       :return:  ``True`` if the security group deleted, ``False``
-                 otherwise. Note that this implies that the group may not have
-                 been deleted by this method but instead has not existed in
-                 the first place.
-       """
         try:
-            self.provider.azure_client.delete_security_group(group_id)
+            self.provider.azure_client.delete_vm_firewall(group_id)
             return True
         except CloudError as cloudError:
             # Azure raises the cloud error if the resource not available
@@ -451,7 +400,7 @@ class AzureInstanceService(BaseInstanceService):
         super(AzureInstanceService, self).__init__(provider)
 
     def create(self, name, image, instance_type, subnet=None, zone=None,
-               key_pair=None, security_groups=None, user_data=None,
+               key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
 
         instance_name = name.replace("_", "-") if name \
@@ -481,9 +430,9 @@ class AzureInstanceService(BaseInstanceService):
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
 
-        subnet_id, zone_id, security_group_id = \
+        subnet_id, zone_id, vm_firewall_id = \
             self._resolve_launch_options(instance_name,
-                                         subnet, zone_id, security_groups)
+                                         subnet, zone_id, vm_firewalls)
 
         if launch_config:
             disks, root_disk_size = \
@@ -504,9 +453,9 @@ class AzureInstanceService(BaseInstanceService):
                 }]
             }
 
-        if security_group_id:
+        if vm_firewall_id:
             nic_params['network_security_group'] = {
-                'id': security_group_id
+                'id': vm_firewall_id
             }
         nic_info = self.provider.azure_client.create_nic(
             instance_name + '_nic',
@@ -571,54 +520,34 @@ class AzureInstanceService(BaseInstanceService):
         return AzureInstance(self.provider, vm)
 
     def _resolve_launch_options(self, name, subnet=None, zone_id=None,
-                                security_groups=None):
-        """
-        Work out interdependent launch options.
-
-        Some launch options are required and interdependent so make sure
-        they conform to the interface contract.
-
-        :type subnet: ``Subnet``
-        :param subnet: Subnet object within which to launch.
-
-        :type zone_id: ``str``
-        :param zone_id: ID of the zone where the launch should happen.
-
-        :type security_groups: ``list`` of ``id``
-        :param zone_id: List of security group IDs.
-
-        :rtype: triplet of ``str``
-        :return: Subnet ID, zone ID and security group IDs for launch.
-
-        :raise ValueError: In case a conflicting combination is found.
-        """
+                                vm_firewalls=None):
         if subnet:
             # subnet's zone takes precedence
             zone_id = subnet.zone.id
-        security_group_id = None
+        vm_firewall_id = None
 
-        if isinstance(security_groups, list) and len(security_groups) > 0:
+        if isinstance(vm_firewalls, list) and len(vm_firewalls) > 0:
 
-            if isinstance(security_groups[0], SecurityGroup):
-                security_groups_ids = [sg.id for sg in security_groups]
-                security_group_id = security_groups[0].resource_id
+            if isinstance(vm_firewalls[0], VMFirewall):
+                vm_firewalls_ids = [fw.id for fw in vm_firewalls]
+                vm_firewall_id = vm_firewalls[0].resource_id
             else:
-                security_groups_ids = security_groups
-                seuciry_group = self.provider.security.\
-                    security_groups.get(security_groups[0])
-                security_group_id = seuciry_group.resource_id
+                vm_firewalls_ids = vm_firewalls
+                vm_firewall = self.provider.security.\
+                    vm_firewalls.get(vm_firewalls[0])
+                vm_firewall_id = vm_firewall.resource_id
 
-            if len(security_groups) > 1:
-                new_sg = self.provider.security.security_groups.\
-                    create('{0}-sg'.format(name), 'Merge security groups {0}'.
-                           format(','.join(security_groups_ids)))
+            if len(vm_firewalls) > 1:
+                new_fw = self.provider.security.vm_firewalls.\
+                    create('{0}-fw'.format(name), 'Merge vm firewall {0}'.
+                           format(','.join(vm_firewalls_ids)))
 
-                for sg in security_groups:
-                    new_sg.add_rule(src_group=sg)
+                for fw in vm_firewalls:
+                    new_fw.add_rule(src_dest_fw=fw)
 
-                security_group_id = new_sg.resource_id
+                vm_firewall_id = new_fw.resource_id
 
-        return subnet.resource_id, zone_id, security_group_id
+        return subnet.resource_id, zone_id, vm_firewall_id
 
     def _process_block_device_mappings(self, launch_config,
                                        vm_name, zone=None):

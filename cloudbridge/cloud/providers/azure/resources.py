@@ -11,21 +11,21 @@ from azure.common import AzureException
 from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseFloatingIP, \
-    BaseInstance, BaseInternetGateway, \
-    BaseKeyPair, BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
-    BasePlacementZone, BaseRegion, BaseRouter, BaseSecurityGroup, \
-    BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
-    BaseVMType, BaseVolume, ClientPagedResultList
+    BaseBucket, BaseBucketObject, BaseFloatingIP, BaseInstance, \
+    BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, BaseMachineImage, \
+    BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, BaseSnapshot, \
+    BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, BaseVMType, BaseVolume, \
+    ClientPagedResultList
 from cloudbridge.cloud.interfaces import InstanceState, VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, RouterState, \
     SnapshotState, SubnetState
-from cloudbridge.cloud.providers.azure import helpers as azure_helpers
 
 from msrestazure.azure_exceptions import CloudError
 
 import pysftp
+
+from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
 VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                      '{resourceGroupName}/providers/Microsoft.Compute/' \
                      'disks/{diskName}'
-SECURITY_GROUP_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
+VM_FIREWALL_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
                              'resourceGroups/{resourceGroupName}/' \
                              'providers/Microsoft.Network/' \
                              'networkSecurityGroups/' \
@@ -64,16 +64,16 @@ PUBLIC_IP_NAME = 'publicIpAddressName'
 IMAGE_NAME = 'imageName'
 VM_NAME = 'vmName'
 VOLUME_NAME = 'diskName'
-SECURITY_GROUP_NAME = 'networkSecurityGroupName'
+VM_FIREWALL_NAME = 'networkSecurityGroupName'
 SNAPSHOT_NAME = 'snapshotName'
 
 
-class AzureSecurityGroup(BaseSecurityGroup):
-    def __init__(self, provider, security_group):
-        super(AzureSecurityGroup, self).__init__(provider, security_group)
-        self._security_group = security_group
-        if not self._security_group.tags:
-            self._security_group.tags = {}
+class AzureVMFirewall(BaseVMFirewall):
+    def __init__(self, provider, vm_firewall):
+        super(AzureVMFirewall, self).__init__(provider, vm_firewall)
+        self._vm_firewall = vm_firewall
+        if not self._vm_firewall.tags:
+            self._vm_firewall.tags = {}
 
     @property
     def network_id(self):
@@ -81,51 +81,51 @@ class AzureSecurityGroup(BaseSecurityGroup):
 
     @property
     def resource_id(self):
-        return self._security_group.id
+        return self._vm_firewall.id
 
     @property
     def id(self):
-        return self._security_group.name
+        return self._vm_firewall.name
 
     @property
     def name(self):
-        return self._security_group.tags.get('Name', self._security_group.name)
+        return self._vm_firewall.tags.get('Name', self._vm_firewall.name)
 
     @name.setter
     def name(self, value):
         self.assert_valid_resource_name(value)
-        self._security_group.tags.update(Name=value)
+        self._vm_firewall.tags.update(Name=value)
         self._provider.azure_client. \
-            update_security_group_tags(self.id,
-                                       self._security_group.tags)
+            update_vm_firewall_tags(self.id,
+                                    self._vm_firewall.tags)
 
     @property
     def description(self):
-        return self._security_group.tags.get('Description', None)
+        return self._vm_firewall.tags.get('Description', None)
 
     @description.setter
     def description(self, value):
-        self._security_group.tags.update(Description=value)
+        self._vm_firewall.tags.update(Description=value)
         self._provider.azure_client.\
-            update_security_group_tags(self.id,
-                                       self._security_group.tags)
+            update_vm_firewall_tags(self.id,
+                                    self._vm_firewall.tags)
 
     @property
     def rules(self):
         """
         The default rules are not returned, only custom rules.
         """
-        security_group_rules = []
-        for custom_rule in self._security_group.security_rules:
-            sg_custom_rule = AzureSecurityGroupRule(self._provider,
-                                                    custom_rule, self)
-            security_group_rules.append(sg_custom_rule)
-        return security_group_rules
+        vm_firewall_rules = []
+        for custom_rule in self._vm_firewall.security_rules:
+            fw_custom_rule = AzureVMFirewallRule(self._provider,
+                                                 custom_rule, self)
+            vm_firewall_rules.append(fw_custom_rule)
+        return vm_firewall_rules
 
     def delete(self):
         try:
             self._provider.azure_client.\
-                delete_security_group(self.id)
+                delete_vm_firewall(self.id)
             return True
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -136,64 +136,38 @@ class AzureSecurityGroup(BaseSecurityGroup):
         Refreshes the security group with tags if required.
         """
         try:
-            self._security_group = self._provider.azure_client. \
-                get_security_group(self.id)
-            if not self._security_group.tags:
-                self._security_group.tags = {}
+            self._vm_firewall = self._provider.azure_client. \
+                get_vm_firewall(self.id)
+            if not self._vm_firewall.tags:
+                self._vm_firewall.tags = {}
         except (CloudError, ValueError) as cloudError:
             log.exception(cloudError.message)
             # The security group no longer exists and cannot be refreshed.
 
     def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        """
-        Create a security group rule.
-
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
-        you are authorizing another group or you are authorizing some
-        ip-based rule.
-
-        :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
-
-        :type from_port: int
-        :param from_port: The beginning port number you are enabling
-
-        :type to_port: int
-        :param to_port: The ending port number you are enabling
-
-        :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block you are providing access to.
-
-        :type src_group: ``object`` of :class:`.SecurityGroup`
-        :param src_group: The Security Group you are granting access to.
-
-        :rtype: :class:``.SecurityGroupRule``
-        :return: Rule object if successful or ``None``.
-        """
+                 cidr=None, src_dest_fw=None):
         if ip_protocol and from_port and to_port:
-            return self._create_rule(ip_protocol, from_port, to_port, cidr_ip)
-        elif src_group:
+            return self._create_rule(ip_protocol, from_port, to_port, cidr)
+        elif src_dest_fw:
             result = None
-            sg = (self._provider.security.security_groups.get(src_group)
-                  if isinstance(src_group, str) else src_group)
-            for rule in sg.rules:
+            fw = (self._provider.security.vm_firewalls.get(src_dest_fw)
+                  if isinstance(src_dest_fw, str) else src_dest_fw)
+            for rule in fw.rules:
                 result = self._create_rule(rule.ip_protocol, rule.from_port,
-                                           rule.to_port, rule.cidr_ip)
+                                           rule.to_port, rule.cidr)
             return result
         else:
             return None
 
-    def _create_rule(self, ip_protocol, from_port, to_port, cidr_ip):
+    def _create_rule(self, ip_protocol, from_port, to_port, cidr):
 
-        # If cidr_ip is None, default values is set as 0.0.0.0/0
-        if not cidr_ip:
-            cidr_ip = '0.0.0.0/0'
+        # If cidr is None, default values is set as 0.0.0.0/0
+        if not cidr:
+            cidr = '0.0.0.0/0'
 
-        # If the SG with same parameters exist already,
+        # If the fw with same parameters exist already,
         # then, it is returned instead of creating a new one.
-        rule = self.get_rule(ip_protocol, from_port, to_port, cidr_ip)
+        rule = self.get_rule(ip_protocol, from_port, to_port, cidr)
 
         if rule:
             return rule
@@ -210,23 +184,23 @@ class AzureSecurityGroup(BaseSecurityGroup):
                       "source_port_range": source_port_range,
                       "destination_port_range": destination_port_range,
                       "priority": priority,
-                      "source_address_prefix": cidr_ip,
+                      "source_address_prefix": cidr,
                       "destination_address_prefix":
                           destination_address_prefix,
                       "access": access, "direction": direction}
         result = self._provider.azure_client. \
-            create_security_group_rule(self.id,
-                                       rule_name, parameters)
-        self._security_group.security_rules.append(result)
-        return AzureSecurityGroupRule(self._provider, result, self)
+            create_vm_firewall_rule(self.id,
+                                    rule_name, parameters)
+        self._vm_firewall.security_rules.append(result)
+        return AzureVMFirewallRule(self._provider, result, self)
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+                 cidr=None, src_dest_fw=None):
         for rule in self.rules:
             if (rule.ip_protocol == ip_protocol and
                 rule.from_port == str(from_port) and
                 rule.to_port == str(to_port) and
-                    rule.cidr_ip == cidr_ip):
+                    rule.cidr == cidr):
                 return rule
         return None
 
@@ -240,9 +214,9 @@ class AzureSecurityGroup(BaseSecurityGroup):
         return js
 
 
-class AzureSecurityGroupRule(BaseSecurityGroupRule):
+class AzureVMFirewallRule(BaseVMFirewallRule):
     def __init__(self, provider, rule, parent):
-        super(AzureSecurityGroupRule, self).__init__(provider, rule, parent)
+        super(AzureVMFirewallRule, self).__init__(provider, rule, parent)
 
     @property
     def id(self):
@@ -273,7 +247,7 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
         return port_range_split[1]
 
     @property
-    def cidr_ip(self):
+    def cidr(self):
         return self._rule.source_address_prefix
 
     @property
@@ -288,12 +262,12 @@ class AzureSecurityGroupRule(BaseSecurityGroupRule):
         return json.dumps(js, sort_keys=True)
 
     def delete(self):
-        security_group = self.parent.name
+        vm_firewall = self.parent.name
         self._provider.azure_client. \
-            delete_security_group_rule(self.id, security_group)
-        for i, o in enumerate(self.parent._security_group.security_rules):
+            delete_vm_firewall_rule(self.id, vm_firewall)
+        for i, o in enumerate(self.parent._vm_firewall.security_rules):
             if o.name == self.name:
-                del self.parent._security_group.security_rules[i]
+                del self.parent._vm_firewall.security_rules[i]
                 break
 
 
@@ -1212,7 +1186,7 @@ class AzureInstance(BaseInstance):
         """
         self._private_ips = []
         self._public_ips = []
-        self._security_group_ids = []
+        self._vm_firewall_ids = []
         self._public_ip_ids = []
         self._nic_ids = []
         for nic in self._vm.network_profile.network_interfaces:
@@ -1222,11 +1196,11 @@ class AzureInstance(BaseInstance):
             self._nic_ids.append(nic_name)
             nic = self._provider.azure_client.get_nic(nic_name)
             if nic.network_security_group:
-                sg_params = azure_helpers. \
-                    parse_url(SECURITY_GROUP_RESOURCE_ID,
+                fw_params = azure_helpers. \
+                    parse_url(VM_FIREWALL_RESOURCE_ID,
                               nic.network_security_group.id)
-                self._security_group_ids.\
-                    append(sg_params.get(SECURITY_GROUP_NAME))
+                self._vm_firewall_ids.\
+                    append(fw_params.get(VM_FIREWALL_NAME))
             if nic.ip_configurations:
                 for ip_config in nic.ip_configurations:
                     self._private_ips.append(ip_config.private_ip_address)
@@ -1360,19 +1334,13 @@ class AzureInstance(BaseInstance):
         return self._vm.location
 
     @property
-    def security_groups(self):
-        """
-        Get the security groups associated with this instance.
-        """
-        return [self._provider.security.security_groups.get(group_id)
-                for group_id in self._security_group_ids]
+    def vm_firewalls(self):
+        return [self._provider.security.vm_firewalls.get(group_id)
+                for group_id in self._vm_firewall_ids]
 
     @property
-    def security_group_ids(self):
-        """
-        Get the security groups IDs associated with this instance.
-        """
-        return self._security_group_ids
+    def vm_firewall_ids(self):
+        return self._vm_firewall_ids
 
     @property
     def key_pair_name(self):
@@ -1473,9 +1441,9 @@ class AzureInstance(BaseInstance):
             log.exception(cloudError.message)
             return False
 
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, fw):
         '''
-        :param sg:
+        :param fw:
         :return: None
 
         This method adds the security group to VM instance.
@@ -1485,33 +1453,33 @@ class AzureInstance(BaseInstance):
         if not associated any security group to NIC
         else replacing the existing security group.
         '''
-        sg = (self._provicer.security.security_groups.get(sg)
-              if isinstance(sg, str) else sg)
+        fw = (self._provicer.security.vm_firewalls.get(fw)
+              if isinstance(fw, str) else fw)
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
         if not nic.network_security_group:
             nic.network_security_group = NetworkSecurityGroup()
-            nic.network_security_group.id = sg.resource_id
+            nic.network_security_group.id = fw.resource_id
         else:
-            sg_url_params = azure_helpers.\
-                parse_url(SECURITY_GROUP_RESOURCE_ID,
+            fw_url_params = azure_helpers.\
+                parse_url(VM_FIREWALL_RESOURCE_ID,
                           nic.network_security_group.id)
-            existing_sg = self._provider.security.\
-                security_groups.get(sg_url_params.get(SECURITY_GROUP_NAME))
+            existing_fw = self._provider.security.\
+                vm_firewalls.get(fw_url_params.get(VM_FIREWALL_NAME))
 
-            new_sg = self._provider.security.security_groups.\
-                create('{0}-{1}'.format(sg.name, existing_sg.name),
+            new_fw = self._provider.security.vm_firewalls.\
+                create('{0}-{1}'.format(fw.name, existing_fw.name),
                        'Merged security groups {0} and {1}'.
-                       format(sg.name, existing_sg.name))
-            new_sg.add_rule(src_group=sg)
-            new_sg.add_rule(src_group=existing_sg)
-            nic.network_security_group.id = new_sg.resource_id
+                       format(fw.name, existing_fw.name))
+            new_fw.add_rule(src_dest_fw=fw)
+            new_fw.add_rule(src_dest_fw=existing_fw)
+            nic.network_security_group.id = new_fw.resource_id
 
         self._provider.azure_client.create_nic(self._nic_ids[0], nic)
 
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, fw):
 
         '''
-        :param sg:
+        :param fw:
         :return: None
 
         This method removes the security group to VM instance.
@@ -1523,10 +1491,10 @@ class AzureInstance(BaseInstance):
         '''
 
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
-        sg = (self._provicer.security.security_groups.get(sg)
-              if isinstance(sg, str) else sg)
+        fw = (self._provicer.security.vm_firewalls.get(fw)
+              if isinstance(fw, str) else fw)
         if nic.network_security_group and \
-                nic.network_security_group.id == sg.resource_id:
+                nic.network_security_group.id == fw.resource_id:
             nic.network_security_group = None
             self._provider.azure_client.create_nic(self._nic_ids[0], nic)
 
