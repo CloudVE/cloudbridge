@@ -902,9 +902,28 @@ class GCESubnetService(BaseSubnetService):
         return None
 
     def list(self, network=None, zone=None, limit=None, marker=None):
-        region = zone.region_name if zone else self.provider.region_name
-        return ClientPagedResultList(self.provider,
-                                     self._list_all(network, region),
+        """
+        If the zone is not given, we list all subnetworks, in all regions.
+        """
+        filter = None
+        if network is not None:
+            filter = 'network eq %s' % network.resource_url
+        if zone:
+            regions = [zone.region_name]
+        else:
+            regions = [r.name for r in self.provider.compute.regions.list()]
+        subnets = []
+        for region in regions:
+            response = (self.provider
+                            .gce_compute
+                            .subnetworks()
+                            .list(project=self.provider.project_name,
+                                  region=region,
+                                  filter=filter)
+                            .execute())
+            for subnet in response.get('items', []):
+                subnets.append(GCESubnet(self.provider, subnet))
+        return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
     def create(self, network, cidr_block, name=None, zone=None):
@@ -917,7 +936,7 @@ class GCESubnetService(BaseSubnetService):
         instead of creating a new subnet. In this case, other parameters, i.e.
         the name and the zone, are ignored.
         """
-        subnets = self._list_all(network)
+        subnets = self.list(network)
         for subnet in subnets:
             if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
                 return subnet
@@ -966,11 +985,12 @@ class GCESubnetService(BaseSubnetService):
         return None
 
     def delete(self, subnet):
+        region_url = self.provider.parse_url(subnet.region)
         response = (self.provider
                         .gce_compute
                         .subnetworks()
                         .delete(project=self.provider.project_name,
-                                region=subnet.region,
+                                region=region_url.parameters['region'],
                                 subnetwork=subnet.name)
                         .execute())
         self._provider.wait_for_operation(response, region=subnet.region)
@@ -984,31 +1004,6 @@ class GCESubnetService(BaseSubnetService):
                     if zone == z.name:
                         return z.region_name
         return self.provider.region_name
-
-    def _list_all(self, network=None, region=None):
-        """
-        Similar to the list method, but if region is not given we list subnets
-        in all regions, not just the project default region.
-        """
-        filter = None
-        if network is not None:
-            filter = 'network eq %s' % network.resource_url
-        if region:
-            regions = [region]
-        else:
-            regions = [r.name for r in self.provider.compute.regions.list()]
-        subnets = []
-        for region in regions:
-            response = (self.provider
-                            .gce_compute
-                            .subnetworks()
-                            .list(project=self.provider.project_name,
-                                  region=region,
-                                  filter=filter)
-                            .execute())
-            for subnet in response.get('items', []):
-                subnets.append(GCESubnet(self.provider, subnet))
-        return subnets
 
 
 class GCPStorageService(BaseStorageService):

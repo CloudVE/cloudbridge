@@ -1237,6 +1237,10 @@ class GCENetwork(BaseNetwork):
             return self._network['IPv4Range']
         return GCENetwork.DEFAULT_IPV4RANGE
 
+    @property
+    def subnets(self):
+        return self._provider.networking.subnets.list(network=self)
+
     def delete(self):
         try:
             response = (self._provider
@@ -1252,9 +1256,6 @@ class GCENetwork(BaseNetwork):
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return False
         return True
-
-    def subnets(self):
-        return self._provider.networking.subnets.list()
 
     def create_subnet(self, cidr_block, name=None, zone=None):
         return self._provider.networking.subnets.create(
