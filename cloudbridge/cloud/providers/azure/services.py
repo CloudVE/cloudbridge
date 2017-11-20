@@ -373,7 +373,7 @@ class AzureSnapshotService(BaseSnapshotService):
 class AzureComputeService(BaseComputeService):
     def __init__(self, provider):
         super(AzureComputeService, self).__init__(provider)
-        self._instance_type_svc = AzureVMTypeService(self.provider)
+        self._vm_type_svc = AzureVMTypeService(self.provider)
         self._instance_svc = AzureInstanceService(self.provider)
         self._region_svc = AzureRegionService(self.provider)
         self._images_svc = AzureImageService(self.provider)
@@ -383,8 +383,8 @@ class AzureComputeService(BaseComputeService):
         return self._images_svc
 
     @property
-    def instance_types(self):
-        return self._instance_type_svc
+    def vm_types(self):
+        return self._vm_type_svc
 
     @property
     def instances(self):
@@ -399,7 +399,7 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet=None, zone=None,
+    def create(self, name, image, vm_type, subnet=None, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
 
@@ -419,8 +419,8 @@ class AzureInstanceService(BaseInstanceService):
         image = (self.provider.compute.images.get(image)
                  if isinstance(image, str) else image)
 
-        instance_size = instance_type.id if \
-            isinstance(instance_type, VMType) else instance_type
+        instance_size = vm_type.id if \
+            isinstance(vm_type, VMType) else vm_type
 
         if not subnet:
             subnet = self.provider.networking.subnets.get_or_create_default()
@@ -712,7 +712,7 @@ class AzureVMTypeService(BaseVMTypeService):
         """
         Fetch info about the available instances.
         """
-        r = self.provider.azure_client.list_instance_types()
+        r = self.provider.azure_client.list_vm_types()
         return r
 
     def list(self, limit=None, marker=None):
@@ -1032,13 +1032,17 @@ class AzureRouterService(BaseRouterService):
 class AzureGatewayService(BaseGatewayService):
     def __init__(self, provider):
         super(AzureGatewayService, self).__init__(provider)
+        # Singleton returned by the list method
+        self.gateway_singleton = AzureInternetGateway(self.provider, None)
 
     def get_or_create_inet_gateway(self, name):
         AzureInternetGateway.assert_valid_resource_name(name)
-
         gateway = AzureInternetGateway(self.provider, None)
         gateway.name = name
         return gateway
+
+    def list(self, limit=None, marker=None):
+        return [self.gateway_singleton]
 
     def delete(self, gateway):
         pass
