@@ -790,15 +790,28 @@ class AWSGatewayService(BaseGatewayService):
                                   cb_resource=AWSInternetGateway,
                                   boto_collection_name='internet_gateways')
 
-    def get_or_create_inet_gateway(self, name):
+    def get_or_create_inet_gateway(self, network, name=None):
+        log.debug("Get or create inet gateway %s on net %s", name, network)
         AWSInternetGateway.assert_valid_resource_name(name)
 
+        network_id = network.id if isinstance(network, AWSNetwork) else network
+        # Don't filter by name because it may conflict with at least the
+        # default VPC that most accounts have but that network is typically
+        # without a name.
+        gtw = self.svc.find(filter_name='attachment.vpc-id',
+                            filter_value=network_id)
+        if gtw:
+            return gtw[0]  # There can be only one gtw attached to a VPC
+        # Gateway does not exist so create one and attach to the supplied net
         cb_gateway = self.svc.create('create_internet_gateway')
         cb_gateway.name = name
+        cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 
-    def delete(self, gateway_id):
-        log.debug("Deleting AWS Gateway Service with the id %s", gateway_id)
+    def delete(self, gateway):
+        log.debug("Service deleting AWS Gateway %s", gateway)
+        gateway_id = gateway.id if isinstance(
+            gateway, AWSInternetGateway) else gateway
         gateway = self.svc.get(gateway_id)
         if gateway:
             gateway.delete()

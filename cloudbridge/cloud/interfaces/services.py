@@ -934,20 +934,19 @@ class GatewayService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self, name):
+    def get_or_create_inet_gateway(self, network, name=None):
         """
-        Creates and returns a new internet gateway or returns an existing
-        singleton gateway, depending on the cloud provider. The returned
-        gateway object can subsequently be attached to a router to provide
-        internet routing to a network. If the gateway is no longer required,
-        clients should call gateway.delete() to delete the gateway. On some
-        cloud providers this will result in the gateway being deleted. On
-        others, it will result in a no-op if the cloud has only a single/public
-        gateway.
+        Creates new or returns an existing internet gateway for a network.
+
+        The returned gateway object can subsequently be attached to a router to
+        provide internet routing to a network.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID to which the gateway is attached.
 
         :type  name: ``str``
-        :param name: The gateway name. The name will be set if the provider
-                     supports it.
+        :param name: The gateway name. This applies only if creating a gateway
+                     and if the provider supports it.
 
         :rtype: ``object``  of :class:`.InternetGateway` or ``None``
         :return: an InternetGateway object of ``None`` if not found.
