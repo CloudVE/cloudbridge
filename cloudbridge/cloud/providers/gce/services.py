@@ -985,6 +985,13 @@ class GCESubnetService(BaseSubnetService):
         return None
 
     def delete(self, subnet):
+        network_url = self.provider.parse_url(subnet.network_url)
+        if subnet.name == network_url.parameters['network']:
+            # This is an auto subnetwork of an auto mode network. We cannot
+            # delete it. It will be deleted automatically when the network is
+            # deleted.
+            return
+
         region_url = self.provider.parse_url(subnet.region)
         response = (self.provider
                         .gce_compute
