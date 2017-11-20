@@ -1083,11 +1083,10 @@ class AWSRouter(BaseRouter):
     def attach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
-        result = self._provider.ec2_conn.meta.client.attach_internet_gateway(
-            InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
-        self._route_table.create_route(
-            DestinationCidrBlock='0.0.0.0/0', GatewayId=gw_id)
-        return result
+        if self._route_table.create_route(
+                DestinationCidrBlock='0.0.0.0/0', GatewayId=gw_id):
+            return True
+        return False
 
     def detach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
