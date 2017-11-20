@@ -16,7 +16,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
         This covers waiting till the image is ready, checking that the image
         name is the expected one and whether list_images is functional.
         """
-        instance_name = "cb_crudimage-{0}".format(helpers.get_uuid())
+        instance_name = "cb-crudimage-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -45,5 +45,5 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 self.provider, instance_name, subnet=subnet)
 
             sit.check_crud(self, self.provider.compute.images, MachineImage,
-                           "cb_listimg", create_img, cleanup_img,
+                           "cb-listimg", create_img, cleanup_img,
                            extra_test_func=extra_tests)

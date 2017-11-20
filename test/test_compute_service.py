@@ -18,7 +18,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
-        name = "cb_instcrud-{0}".format(helpers.get_uuid())
+        name = "cb-instcrud-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
@@ -49,7 +49,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             net, subnet = helpers.create_test_network(self.provider, name)
 
             sit.check_crud(self, self.provider.compute.instances, Instance,
-                           "cb_instcrud", create_inst, cleanup_inst,
+                           "cb-instcrud", create_inst, cleanup_inst,
                            custom_check_delete=check_deleted)
 
     def _is_valid_ip(self, address):
@@ -63,7 +63,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                               'security.vm_firewalls',
                               'security.key_pairs'])
     def test_instance_properties(self):
-        name = "cb_inst_props-{0}".format(helpers.get_uuid())
+        name = "cb-inst_props-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -207,7 +207,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
                               'compute.vm_types', 'storage.volumes'])
     def test_block_device_mapping_attachments(self):
-        name = "cb_blkattch-{0}".format(helpers.get_uuid())
+        name = "cb-blkattch-{0}".format(helpers.get_uuid())
 
         if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
             raise self.skipTest("Not running BDM tests because OpenStack is"
@@ -293,7 +293,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                               'networking.floating_ips',
                               'security.vm_firewalls'])
     def test_instance_methods(self):
-        name = "cb_instmethods-{0}".format(helpers.get_uuid())
+        name = "cb-instmethods-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values

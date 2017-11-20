@@ -21,12 +21,12 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             self.provider.networking.networks.delete(network_id=net.id)
 
         sit.check_crud(self, self.provider.networking.networks, Network,
-                       "cb_crudnetwork", create_net, cleanup_net)
+                       "cb-crudnetwork", create_net, cleanup_net)
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_network_properties(self):
-        name = 'cb_propnetwork-{0}'.format(helpers.get_uuid())
-        subnet_name = 'cb_propsubnet-{0}'.format(helpers.get_uuid())
+        name = 'cb-propnetwork-{0}'.format(helpers.get_uuid())
+        subnet_name = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
             name=name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
@@ -80,7 +80,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         def cleanup_subnet(subnet):
             self.provider.networking.subnets.delete(subnet=subnet)
 
-        net_name = 'cb_crudsubnet-{0}'.format(helpers.get_uuid())
+        net_name = 'cb-crudsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
             name=net_name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
@@ -88,7 +88,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 self.provider.networking.networks.delete(network_id=net.id)
         ):
             sit.check_crud(self, self.provider.networking.subnets, Subnet,
-                           "cb_crudsubnet", create_subnet, cleanup_subnet)
+                           "cb-crudsubnet", create_subnet, cleanup_subnet)
 
     @helpers.skipIfNoService(['networking.floating_ips'])
     def test_crud_floating_ip(self):
@@ -100,7 +100,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             self.provider.networking.floating_ips.delete(fip.id)
 
         sit.check_crud(self, self.provider.networking.floating_ips, FloatingIP,
-                       "cb_crudfip", create_fip, cleanup_fip,
+                       "cb-crudfip", create_fip, cleanup_fip,
                        skip_name_check=True)
 
     def test_floating_ip_properties(self):
@@ -134,7 +134,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                             router.detach_subnet(subnet)
                             router.detach_gateway(gateway)
 
-        name = 'cb_crudrouter-{0}'.format(helpers.get_uuid())
+        name = 'cb-crudrouter-{0}'.format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None

@@ -34,7 +34,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
         with self.assertRaises(InvalidNameException):
             # underscores are not allowed in bucket names
-            create_bucket("cb_bucket")
+            create_bucket("cb-bucket")
 
         with self.assertRaises(InvalidNameException):
             # names of length less than 3 should raise an exception
@@ -73,7 +73,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             test_bucket = self.provider.storage.buckets.create(name)
 
             sit.check_crud(self, test_bucket.objects, BucketObject,
-                           "cb_bucketobj", create_bucket_obj,
+                           "cb-bucketobj", create_bucket_obj,
                            cleanup_bucket_obj, skip_name_check=True)
 
     @helpers.skipIfNoService(['storage.buckets'])

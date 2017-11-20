@@ -55,8 +55,8 @@ class CloudInterfaceTestCase(ProviderTestBase):
             cloned_config['aws_access_key'] = "dummy_a_key"
             cloned_config['aws_secret_key'] = "dummy_s_key"
         elif self.provider.PROVIDER_ID == 'openstack':
-            cloned_config['os_username'] = "cb_dummy"
-            cloned_config['os_password'] = "cb_dummy"
+            cloned_config['os_username'] = "cb-dummy"
+            cloned_config['os_password'] = "cb-dummy"
 
         with self.assertRaises(ProviderConnectionException):
             cloned_provider = CloudProviderFactory().create_provider(
