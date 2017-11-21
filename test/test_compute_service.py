@@ -344,7 +344,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                                                gateway)):
                 router.attach_subnet(subnet)
                 gateway = (self.provider.networking.gateways
-                           .get_or_create_inet_gateway(name))
+                           .get_or_create_inet_gateway(net, name))
                 router.attach_gateway(gateway)
                 # check whether adding an elastic ip works
                 fip = self.provider.networking.floating_ips.create()
