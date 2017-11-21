@@ -454,29 +454,31 @@ class BaseLaunchConfig(LaunchConfig):
         InvalidConfigurationException if the configuration is incorrect.
         """
         if source is None and not size:
-            log.exception("Raised InvalidConfigurationException, no"
-                          " size argument specified.")
+            log.exception("InvalidConfigurationException raised: "
+                          "no size argument specified.")
             raise InvalidConfigurationException(
-                "A size must be specified for a blank new volume")
+                "A size must be specified for a blank new volume.")
 
         if source and \
                 not isinstance(source, (Snapshot, Volume, MachineImage)):
-            log.exception("InvalidConfigurationException raised, "
+            log.exception("InvalidConfigurationException raised: "
                           "source argument not specified correctly.")
             raise InvalidConfigurationException(
-                "Source must be a Snapshot, Volume, MachineImage or None")
+                "Source must be a Snapshot, Volume, MachineImage, or None.")
         if size:
             if not isinstance(size, six.integer_types) or not size > 0:
-                log.exception("InvalidConfigurationException raised, "
-                              " size argument must be greater than 0.")
+                log.exception("InvalidConfigurationException raised: "
+                              "size argument must be an integer greater than "
+                              "0. Got type %s and value %s.", type(size), size)
                 raise InvalidConfigurationException(
-                    "The size must be None or a number greater than 0")
+                    "The size must be None or an integer greater than 0.")
 
         if is_root:
             for bd in self.block_devices:
                 if bd.is_root:
-                    log.exception("InvalidConfigurationException raised,"
-                                  "%s has already been marked as root", bd)
+                    log.exception("InvalidConfigurationException raised: "
+                                  "%s has already been marked as the root "
+                                  "block device.", bd)
                     raise InvalidConfigurationException(
                         "An existing block device: {0} has already been"
                         " marked as root. There can only be one root device.")
