@@ -586,6 +586,16 @@ class NetworkingService(CloudService):
         pass
 
     @abstractproperty
+    def floating_ips(self):
+        """
+        Provides access to all Floating IP services.
+
+        :rtype: :class:`.FloatingIPService`
+        :return: a FloatingIPService object
+        """
+        pass
+
+    @abstractproperty
     def gateways(self):
         """
         Provides access to all Gateway related services, such as

@@ -6,12 +6,12 @@ from azure.common import AzureException
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService, \
-    BaseComputeService, BaseGatewayService, BaseImageService, \
-    BaseInstanceService, BaseKeyPairService, BaseNetworkService, \
-    BaseNetworkingService, BaseRegionService, BaseRouterService, \
-    BaseSecurityService, BaseSnapshotService, BaseStorageService, \
-    BaseSubnetService, BaseVMFirewallService, BaseVMTypeService, \
-    BaseVolumeService
+    BaseComputeService, BaseFloatingIPService, BaseGatewayService, \
+    BaseImageService, BaseInstanceService, BaseKeyPairService, \
+    BaseNetworkService, BaseNetworkingService, BaseRegionService, \
+    BaseRouterService, BaseSecurityService, BaseSnapshotService, \
+    BaseStorageService, BaseSubnetService, BaseVMFirewallService, \
+    BaseVMTypeService, BaseVolumeService
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
@@ -727,6 +727,7 @@ class AzureNetworkingService(BaseNetworkingService):
         super(AzureNetworkingService, self).__init__(provider)
         self._network_service = AzureNetworkService(self.provider)
         self._subnet_service = AzureSubnetService(self.provider)
+        self._fip_service = AzureFloatingIPService(self.provider)
         self._router_service = AzureRouterService(self.provider)
         self._gateway_service = AzureGatewayService(self.provider)
 
@@ -737,6 +738,10 @@ class AzureNetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
+
+    @property
+    def floating_ips(self):
+        return self._fip_service
 
     @property
     def routers(self):
@@ -763,7 +768,7 @@ class AzureNetworkService(BaseNetworkService):
 
     def list(self, limit=None, marker=None):
         """
-               List all networks.
+        List all networks.
         """
         networks = [AzureNetwork(self.provider, network)
                     for network in self.provider.azure_client.list_networks()]
@@ -799,7 +804,38 @@ class AzureNetworkService(BaseNetworkService):
         cb_network = AzureNetwork(self.provider, network)
         return cb_network
 
-    def create_floating_ip(self):
+    def delete(self, network_id):
+        """
+        Delete an existing network.
+        """
+        try:
+            self.provider.azure_client.delete_network(network_id)
+            return True
+        except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloudError.message)
+            return False
+
+
+class AzureFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(AzureFloatingIPService, self).__init__(provider)
+
+    def get(self, floating_ip):
+        log.debug("Getting AWS Floating IP Service with the id: %s",
+                  floating_ip)
+        fip = [fip for fip in self.list() if fip.id == floating_ip]
+        return fip[0] if fip else None
+
+    def list(self, limit=None, marker=None):
+        floating_ips = [AzureFloatingIP(self.provider, floating_ip)
+                        for floating_ip in self.provider.azure_client.
+                        list_floating_ips()]
+        return ClientPagedResultList(self.provider, floating_ips,
+                                     limit=limit, marker=marker)
+
+    def create(self):
         public_ip_address_name = "{0}-{1}".format(
             'public_ip', uuid.uuid4().hex[:6])
         public_ip_parameters = {
@@ -810,28 +846,6 @@ class AzureNetworkService(BaseNetworkService):
         floating_ip = self.provider.azure_client.\
             create_floating_ip(public_ip_address_name, public_ip_parameters)
         return AzureFloatingIP(self.provider, floating_ip)
-
-    @property
-    def floating_ips(self):
-        """
-               List all floating ips.
-        """
-        floating_ips = [AzureFloatingIP(self.provider, floating_ip)
-                        for floating_ip in self.provider.azure_client.
-                        list_floating_ips()]
-        return ClientPagedResultList(self.provider, floating_ips)
-
-    def delete(self, network_id):
-        """
-                Delete an existing network.
-                """
-        try:
-            self.provider.azure_client.delete_network(network_id)
-            return True
-        except CloudError as cloudError:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
-            return False
 
 
 class AzureRegionService(BaseRegionService):
