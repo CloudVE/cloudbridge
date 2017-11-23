@@ -11,11 +11,11 @@ from azure.common import AzureException
 from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseFloatingIP, BaseInstance, \
-    BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, BaseMachineImage, \
-    BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, BaseSnapshot, \
-    BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, BaseVMType, BaseVolume, \
-    ClientPagedResultList
+    BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
+    BaseInstance, BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, \
+    BaseMachineImage, BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, \
+    BaseSnapshot, BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, BaseVMType, \
+    BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import InstanceState, VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, RouterState, \
@@ -367,6 +367,7 @@ class AzureBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(AzureBucket, self).__init__(provider)
         self._bucket = bucket
+        self._object_container = AzureBucketContainer(provider, self)
 
     @property
     def id(self):
@@ -379,36 +380,6 @@ class AzureBucket(BaseBucket):
         """
         return self._bucket.name
 
-    def get(self, key):
-        """
-        Retrieve a given object from this bucket.
-        """
-        try:
-            obj = self._provider.azure_client.get_blob(self.name, key)
-            return AzureBucketObject(self._provider, self, obj)
-        except AzureException as azureEx:
-            log.exception(azureEx)
-            return None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-
-        :rtype: BucketObject
-        :return: List of all available BucketObjects within this bucket.
-        """
-        objects = [AzureBucketObject(self._provider, self, obj)
-                   for obj in
-                   self._provider.azure_client.list_blobs(
-                       self.name, prefix=prefix)]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
-
-    def find(self, name, limit=None, marker=None):
-        objects = [obj for obj in self if obj.name == name]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
-
     def delete(self, delete_contents=True):
         """
         Delete this bucket.
@@ -420,16 +391,56 @@ class AzureBucket(BaseBucket):
             log.exception(azureEx)
             return False
 
-    def create_object(self, name):
-        self._provider.azure_client.create_blob_from_text(
-            self.name, name, '')
-        return self.get(name)
-
     def exists(self, name):
         """
         Determine if an object with given name exists in this bucket.
         """
         return True if self.get(name) else False
+
+    @property
+    def objects(self):
+        return self._object_container
+
+
+class AzureBucketContainer(BaseBucketContainer):
+
+    def __init__(self, provider, bucket):
+        super(AzureBucketContainer, self).__init__(provider, bucket)
+
+    def get(self, key):
+        """
+        Retrieve a given object from this bucket.
+        """
+        try:
+            obj = self._provider.azure_client.get_blob(self.bucket.name, key)
+            return AzureBucketObject(self._provider, self.bucket, obj)
+        except AzureException as azureEx:
+            log.exception(azureEx)
+            return None
+
+    def list(self, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+
+        :rtype: BucketObject
+        :return: List of all available BucketObjects within this bucket.
+        """
+        objects = [AzureBucketObject(self._provider, self.bucket, obj)
+                   for obj in
+                   self._provider.azure_client.list_blobs(
+                       self.bucket.name, prefix=prefix)]
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        objects = [obj for obj in self if obj.name == name]
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
+
+    def create(self, name):
+        self._provider.azure_client.create_blob_from_text(
+            self.bucket.name, name, '')
+        return self.get(name)
 
 
 class AzureVolume(BaseVolume):
