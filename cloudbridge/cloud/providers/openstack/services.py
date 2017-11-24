@@ -960,7 +960,8 @@ class OpenStackGatewayService(BaseGatewayService):
     def __init__(self, provider):
         super(OpenStackGatewayService, self).__init__(provider)
 
-    def get_or_create_inet_gateway(self, name):
+    def get_or_create_inet_gateway(self, network, name=None):
+        """For OS, inet gtw is any net that has `external` property set."""
         OpenStackInternetGateway.assert_valid_resource_name(name)
 
         for n in self.provider.networking.networks:

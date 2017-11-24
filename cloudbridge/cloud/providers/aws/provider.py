@@ -23,8 +23,7 @@ from .services import AWSStorageService
 class AWSCloudProvider(BaseCloudProvider):
     '''AWS cloud provider interface'''
     PROVIDER_ID = 'aws'
-    AWS_INSTANCE_DATA_DEFAULT_URL = "https://d168wakzal7fp0.cloudfront.net/" \
-                                    "aws_instance_data.json"
+    AWS_INSTANCE_DATA_DEFAULT_URL = "http://cloudve.org/cb-aws-vmtypes.json"
 
     def __init__(self, config):
         super(AWSCloudProvider, self).__init__(config)
