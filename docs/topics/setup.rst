@@ -71,7 +71,7 @@ will override environment values.
 
     ## For Azure
     config = {'azure_subscription_id': '<your_subscription_id>',
-              'azure_client_id': '<your_client_Id>',
+              'azure_client_id': '<your_client_id>',
               'azure_secret': '<your_secret>',
               'azure_tenant': '<your_tenant>',
               'azure_resource_group': '<your resource group>'}
