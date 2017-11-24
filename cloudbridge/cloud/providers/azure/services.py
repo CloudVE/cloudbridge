@@ -83,7 +83,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         """
         filters = {'Name': name}
         fws = [AzureVMFirewall(self.provider, vm_firewall)
-               for vm_firewall in azure_helpers.filter(
+               for vm_firewall in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_vm_firewall(), filters)]
 
         return ClientPagedResultList(self.provider, fws,
@@ -245,7 +245,7 @@ class AzureVolumeService(BaseVolumeService):
         """
         filters = {'Name': name}
         cb_vols = [AzureVolume(self.provider, volume)
-                   for volume in azure_helpers.filter(
+                   for volume in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_disks(), filters)]
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
@@ -324,7 +324,7 @@ class AzureSnapshotService(BaseSnapshotService):
         """
         filters = {'Name': name}
         cb_snapshots = [AzureSnapshot(self.provider, snapshot)
-                        for snapshot in azure_helpers.filter(
+                        for snapshot in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_snapshots(), filters)]
         return ClientPagedResultList(self.provider, cb_snapshots,
                                      limit=limit, marker=marker)
@@ -657,7 +657,7 @@ class AzureInstanceService(BaseInstanceService):
         """
         filtr = {'Name': name}
         instances = [AzureInstance(self.provider, inst)
-                     for inst in azure_helpers.filter(
+                     for inst in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_vm(), filtr)]
         return ClientPagedResultList(self.provider, instances,
                                      limit=limit, marker=marker)
@@ -686,7 +686,7 @@ class AzureImageService(BaseImageService):
         """
         filters = {'Name': name}
         cb_images = [AzureMachineImage(self.provider, image)
-                     for image in azure_helpers.filter(
+                     for image in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_images(), filters)]
         return ClientPagedResultList(self.provider, cb_images,
                                      limit=limit, marker=marker)
@@ -778,7 +778,7 @@ class AzureNetworkService(BaseNetworkService):
     def find(self, name, limit=None, marker=None):
         filters = {'Name': name}
         networks = [AzureNetwork(self.provider, network)
-                    for network in azure_helpers.filter(
+                    for network in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_networks(), filters)]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
@@ -1020,7 +1020,7 @@ class AzureRouterService(BaseRouterService):
     def find(self, name, limit=None, marker=None):
         filters = {'Name': name}
         routes = [AzureRouter(self.provider, route)
-                  for route in azure_helpers.filter(
+                  for route in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_route_tables(), filters)]
 
         return ClientPagedResultList(self.provider, routes,
