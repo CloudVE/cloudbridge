@@ -89,9 +89,9 @@ class CloudProvider(object):
 
         .. code-block:: python
 
-            if provider.has_service(CloudServiceType.OBJECT_STORE):
+            if provider.has_service(CloudServiceType.BUCKET):
                print("Provider supports object store services")
-               provider.object_store.list()
+               provider.storage.buckets.list()
 
 
         :type service_type: :class:`.CloudServiceType`
@@ -123,7 +123,7 @@ class CloudProvider(object):
         .. code-block:: python
 
             regions = provider.compute.regions.list()
-            instance_types = provider.compute.instance_types.list()
+            vm_types = provider.compute.vm_types.list()
             instances = provider.compute.instances.list()
             images = provider.compute.images.list()
 
@@ -163,7 +163,7 @@ class CloudProvider(object):
         .. code-block:: python
 
             keypairs = provider.security.keypairs.list()
-            security_groups = provider.security.security_groups.list()
+            vm_firewalls = provider.security.vm_firewalls.list()
 
 
         :rtype: ``object`` of :class:`.SecurityService`
@@ -172,38 +172,23 @@ class CloudProvider(object):
         pass
 
     @abstractproperty
-    def block_store(self):
+    def storage(self):
         """
-        Provides access to the volume and snapshot services in this
-        provider.
+        Provides access to storage related services in this provider.
+        This includes the volume, snapshot and bucket services,
 
         Example:
 
         .. code-block:: python
 
-            volumes = provider.block_store.volumes.list()
-            snapshots = provider.block_store.snapshots.list()
-
-        :rtype: :class:`.BlockStoreService`
-        :return: a BlockStoreService object
-        """
-        pass
-
-    @abstractproperty
-    def object_store(self):
-        """
-        Provides access to object storage services in this provider.
-
-        Example:
-
-        .. code-block:: python
-
-            if provider.has_service(CloudServiceType.OBJECT_STORE):
+            volumes = provider.storage.volumes.list()
+            snapshots = provider.storage.snapshots.list()
+            if provider.has_service(CloudServiceType.BUCKET):
                print("Provider supports object store services")
-               print(provider.object_store.list())
+               print(provider.storage.buckets.list())
 
-        :rtype: ``object`` of :class:`.ObjectStoreService`
-        :return: an ObjectStoreService object
+        :rtype: :class:`.StorageService`
+        :return: a StorageService object
         """
         pass
 

@@ -7,13 +7,13 @@ Conceptually, CloudBridge consists of the following types of objects.
 the gateway to using its services.
 
 2. Services - Represents a service provided by a cloud provider,
-such as its compute service, block storage service, object storage etc.
+such as its compute service, storage service, networking service etc.
 Services may in turn be divided into smaller services. Smaller services
 tend to have uniform methods, such as create, find and list. For example,
 InstanceService.list(), InstanceService.find() etc. which can be used
 to access cloud resources. Larger services tend to provide organisational
-structure only. For example, the block store service provides access to
-the VolumeService and SnapshotService.
+structure only. For example, the storage service provides access to
+the VolumeService, SnapshotService and BucketService.
 
 3. Resources - resources are objects returned by a service,
 and represent a remote resource. For example, InstanceService.list()

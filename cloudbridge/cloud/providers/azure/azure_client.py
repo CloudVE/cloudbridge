@@ -1,5 +1,5 @@
+import datetime
 import logging
-
 from io import BytesIO
 
 from azure.common.credentials import ServicePrincipalCredentials
@@ -8,6 +8,7 @@ from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
+from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
 from azure.storage.table import TableService
 
@@ -137,35 +138,36 @@ class AzureClient(object):
         return self.subscription_client.subscriptions. \
             list_locations(self.subscription_id)
 
-    def list_security_group(self):
+    def list_vm_firewall(self):
         return self.network_management_client.network_security_groups. \
             list(self.resource_group)
 
-    def create_security_group(self, name, parameters):
+    def create_vm_firewall(self, name, parameters):
         return self.network_management_client.network_security_groups. \
             create_or_update(self.resource_group, name,
                              parameters).result()
 
-    def update_security_group_tags(self, name, tags):
+    def update_vm_firewall_tags(self, name, tags):
         return self.network_management_client.network_security_groups. \
             create_or_update(self.resource_group, name,
-                             {'tags': tags}).result()
+                             {'tags': tags,
+                              'location': self.region_name}).result()
 
-    def create_security_group_rule(self, security_group,
-                                   rule_name, parameters):
+    def create_vm_firewall_rule(self, vm_firewall,
+                                rule_name, parameters):
         return self.network_management_client.security_rules. \
-            create_or_update(self.resource_group, security_group,
+            create_or_update(self.resource_group, vm_firewall,
                              rule_name, parameters).result()
 
-    def delete_security_group_rule(self, name, security_group):
+    def delete_vm_firewall_rule(self, name, vm_firewall):
         return self.network_management_client.security_rules. \
-            delete(self.resource_group, security_group, name).result()
+            delete(self.resource_group, vm_firewall, name).result()
 
-    def get_security_group(self, name):
+    def get_vm_firewall(self, name):
         return self.network_management_client.network_security_groups. \
             get(self.resource_group, name)
 
-    def delete_security_group(self, name):
+    def delete_vm_firewall(self, name):
         delete_async = self.network_management_client \
             .network_security_groups. \
             delete(self.resource_group, name)
@@ -201,8 +203,14 @@ class AzureClient(object):
     def delete_blob(self, container_name, blob_name):
         self.blob_service.delete_blob(container_name, blob_name)
 
-    def get_blob_url(self, container_name, blob_name):
-        return self.blob_service.make_blob_url(container_name, blob_name)
+    def get_blob_url(self, container_name, blob_name, expiry_time):
+        expiry_date = datetime.datetime.now() + datetime.timedelta(
+            seconds=expiry_time)
+        sas = self.blob_service.generate_blob_shared_access_signature(
+            container_name, blob_name, permission=BlobPermissions.READ,
+            expiry=expiry_date)
+        return self.blob_service.make_blob_url(container_name, blob_name,
+                                               sas_token=sas)
 
     def get_blob_content(self, container_name, blob_name):
         out_stream = BytesIO()
@@ -279,10 +287,7 @@ class AzureClient(object):
     def update_network_tags(self, network_name, tags):
         return self.network_management_client.virtual_networks. \
             create_or_update(self.resource_group,
-                             network_name,
-                             {
-                                 'tags': tags
-                             })
+                             network_name, tags).result()
 
     def list_disks(self):
         return self.compute_client.disks. \
@@ -339,10 +344,11 @@ class AzureClient(object):
         return self.compute_client.images. \
             create_or_update(self.resource_group, name,
                              {
-                                 'tags': tags
+                                 'tags': tags,
+                                 'location': self.region_name
                              }).result()
 
-    def list_instance_types(self):
+    def list_vm_types(self):
         return self.compute_client.virtual_machine_sizes. \
             list(self.region_name)
 
@@ -422,7 +428,7 @@ class AzureClient(object):
     def update_vm_tags(self, vm_name, tags):
         self.compute_client.virtual_machines. \
             create_or_update(self.resource_group,
-                             vm_name, {'tags': tags})
+                             vm_name, tags).result()
 
     def delete_nic(self, nic_name):
         self.network_management_client. \
@@ -470,16 +476,78 @@ class AzureClient(object):
         self.table_service.delete_entity(self.public_key_storage_table_name,
                                          entity.PartitionKey, entity.RowKey)
 
-    def list_public_keys(self, partition_key):
-        items = []
-        next_marker = None
-        while True:
-            entities = self.table_service. \
-                query_entities(self.public_key_storage_table_name,
-                               "PartitionKey eq '{0}'".format(partition_key),
-                               marker=next_marker, num_results=1)
-            items.extend(entities.items)
-            next_marker = entities.next_marker
-            if not next_marker:
-                break
-        return items
+    def list_public_keys(self, partition_key, limit=None, marker=None):
+        entities = self.table_service. \
+            query_entities(self.public_key_storage_table_name,
+                           "PartitionKey eq '{0}'".format(partition_key),
+                           marker=marker, num_results=limit)
+        return (entities.items, entities.next_marker)
+
+    def delete_route_table(self, route_table_name):
+        self.network_management_client. \
+            route_tables.delete(self.resource_group, route_table_name
+                                ).wait()
+
+    def attach_subnet_to_route_table(self, network_name,
+                                     subnet_name, route_table_id):
+
+        subnet_info = self.network_management_client.subnets.get(
+            self.resource_group,
+            network_name,
+            subnet_name
+        )
+        if subnet_info:
+            subnet_info.route_table = {
+                'id': route_table_id
+            }
+
+            result_create = self.network_management_client. \
+                subnets.create_or_update(
+                 self.resource_group,
+                 network_name,
+                 subnet_name,
+                 subnet_info)
+            subnet_info = result_create.result()
+
+        return subnet_info
+
+    def detach_subnet_to_route_table(self, network_name,
+                                     subnet_name, route_table_id):
+
+        subnet_info = self.network_management_client.subnets.get(
+            self.resource_group,
+            network_name,
+            subnet_name
+        )
+
+        if subnet_info and subnet_info.route_table.id == route_table_id:
+            subnet_info.route_table = None
+
+            result_create = self.network_management_client. \
+                subnets.create_or_update(
+                 self.resource_group,
+                 network_name,
+                 subnet_name,
+                 subnet_info)
+            subnet_info = result_create.result()
+
+        return subnet_info
+
+    def list_route_tables(self):
+        return self.network_management_client. \
+            route_tables.list(self.resource_group)
+
+    def get_route_table(self, router_id):
+        return self.network_management_client. \
+            route_tables.get(self.resource_group, router_id)
+
+    def create_route_table(self, route_table_name, params):
+        return self.network_management_client. \
+            route_tables.create_or_update(
+             self.resource_group,
+             route_table_name, params).result()
+
+    def update_route_table_tags(self, route_table_name, tags):
+        self.network_management_client.route_tables. \
+            create_or_update(self.resource_group,
+                             route_table_name, tags).result()

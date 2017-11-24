@@ -15,13 +15,13 @@ from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
+from cloudbridge.cloud.interfaces.resources import BucketContainer
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
-from cloudbridge.cloud.interfaces.resources import InstanceType
 from cloudbridge.cloud.interfaces.resources import InternetGateway
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import LaunchConfig
@@ -35,12 +35,14 @@ from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Region
 from cloudbridge.cloud.interfaces.resources import ResultList
 from cloudbridge.cloud.interfaces.resources import Router
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
-from cloudbridge.cloud.interfaces.resources import SecurityGroupRule
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import VMFirewall
+from cloudbridge.cloud.interfaces.resources import VMFirewallRule
+from cloudbridge.cloud.interfaces.resources import VMFirewallRuleContainer
+from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
@@ -196,6 +198,7 @@ class BaseCloudResource(CloudResource):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseCloudResource.is_valid_resource_name(name):
+            log.debug("InvalidNameException raised on %s", name, exc_info=True)
             raise InvalidNameException(
                 u"Invalid name: %s. Name must be at most 63 characters "
                 "long and consist of lowercase letters, numbers, "
@@ -362,13 +365,13 @@ class BasePageableObjectMixin(PageableObjectMixin):
                 yield result
 
 
-class BaseInstanceType(BaseCloudResource, InstanceType):
+class BaseVMType(BaseCloudResource, VMType):
 
     def __init__(self, provider):
-        super(BaseInstanceType, self).__init__(provider)
+        super(BaseVMType, self).__init__(provider)
 
     def __eq__(self, other):
-        return (isinstance(other, InstanceType) and
+        return (isinstance(other, VMType) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
@@ -395,7 +398,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
                 # check from most to least likely mutables
                 self.state == other.state and
                 self.name == other.name and
-                self.security_groups == other.security_groups and
+                self.vm_firewalls == other.vm_firewalls and
                 self.public_ips == other.public_ips and
                 self.private_ips == other.private_ips and
                 self.image_id == other.image_id)
@@ -403,7 +406,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [InstanceState.RUNNING],
-            terminal_states=[InstanceState.TERMINATED, InstanceState.ERROR],
+            terminal_states=[InstanceState.DELETED, InstanceState.ERROR],
             timeout=timeout,
             interval=interval)
 
@@ -440,6 +443,8 @@ class BaseLaunchConfig(LaunchConfig):
         block_device = self._validate_volume_device(
             source=source, is_root=is_root, size=size,
             delete_on_terminate=delete_on_terminate)
+        log.debug("Appending %s to the block_devices list",
+                  block_device)
         self.block_devices.append(block_device)
 
     def _validate_volume_device(self, source=None, is_root=None,
@@ -449,21 +454,31 @@ class BaseLaunchConfig(LaunchConfig):
         InvalidConfigurationException if the configuration is incorrect.
         """
         if source is None and not size:
+            log.exception("InvalidConfigurationException raised: "
+                          "no size argument specified.")
             raise InvalidConfigurationException(
-                "A size must be specified for a blank new volume")
+                "A size must be specified for a blank new volume.")
 
         if source and \
                 not isinstance(source, (Snapshot, Volume, MachineImage)):
+            log.exception("InvalidConfigurationException raised: "
+                          "source argument not specified correctly.")
             raise InvalidConfigurationException(
-                "Source must be a Snapshot, Volume, MachineImage or None")
+                "Source must be a Snapshot, Volume, MachineImage, or None.")
         if size:
             if not isinstance(size, six.integer_types) or not size > 0:
+                log.exception("InvalidConfigurationException raised: "
+                              "size argument must be an integer greater than "
+                              "0. Got type %s and value %s.", type(size), size)
                 raise InvalidConfigurationException(
-                    "The size must be None or a number greater than 0")
+                    "The size must be None or an integer greater than 0.")
 
         if is_root:
             for bd in self.block_devices:
                 if bd.is_root:
+                    log.exception("InvalidConfigurationException raised: "
+                                  "%s has already been marked as the root "
+                                  "block device.", bd)
                     raise InvalidConfigurationException(
                         "An existing block device: {0} has already been"
                         " marked as root. There can only be one root device.")
@@ -614,20 +629,19 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         return "<CBKeyPair: {0}>".format(self.name)
 
 
-class BaseSecurityGroup(BaseCloudResource, SecurityGroup):
+class BaseVMFirewall(BaseCloudResource, VMFirewall):
 
-    def __init__(self, provider, security_group):
-        super(BaseSecurityGroup, self).__init__(provider)
-        self._security_group = security_group
+    def __init__(self, provider, vm_firewall):
+        super(BaseVMFirewall, self).__init__(provider)
+        self._vm_firewall = vm_firewall
 
     def __eq__(self, other):
         """
-        Check if all the defined rules match across both security groups.
+        Check if all the defined rules match across both VM firewalls.
         """
-        return (isinstance(other, SecurityGroup) and
+        return (isinstance(other, VMFirewall) and
                 # pylint:disable=protected-access
                 self._provider == other._provider and
-                len(self.rules) == len(other.rules) and  # Shortcut
                 set(self.rules) == set(other.rules))
 
     def __ne__(self, other):
@@ -636,61 +650,119 @@ class BaseSecurityGroup(BaseCloudResource, SecurityGroup):
     @property
     def id(self):
         """
-        Get the ID of this security group.
+        Get the ID of this VM firewall.
 
         :rtype: str
-        :return: Security group ID
+        :return: VM firewall ID
         """
-        return self._security_group.id
+        return self._vm_firewall.id
 
     @property
     def name(self):
         """
-        Return the name of this security group.
+        Return the name of this VM firewall.
         """
-        return self._security_group.name
+        return self._vm_firewall.name
 
     @property
     def description(self):
         """
-        Return the description of this security group.
+        Return the description of this VM firewall.
         """
-        return self._security_group.description
+        return self._vm_firewall.description
 
     def delete(self):
         """
-        Delete this security group.
+        Delete this VM firewall.
         """
-        return self._security_group.delete()
+        return self._vm_firewall.delete()
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
                                             self.id, self.name)
 
 
-class BaseSecurityGroupRule(BaseCloudResource, SecurityGroupRule):
+class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
+                                  VMFirewallRuleContainer):
 
-    def __init__(self, provider, rule, parent):
-        super(BaseSecurityGroupRule, self).__init__(provider)
+    def __init__(self, provider, firewall):
+        self.__provider = provider
+        self.firewall = firewall
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def get(self, rule_id):
+        matches = [rule for rule in self if rule.id == rule_id]
+        if matches:
+            return matches[0]
+        else:
+            return None
+
+    def find(self, **kwargs):
+        matches = self
+
+        def filter_by(prop_name, rules):
+            prop_val = kwargs.pop(prop_name, None)
+            if prop_val:
+                match = [r for r in rules if getattr(r, prop_name) == prop_val]
+                return match
+            return rules
+
+        matches = filter_by('name', matches)
+        matches = filter_by('direction', matches)
+        matches = filter_by('protocol', matches)
+        matches = filter_by('from_port', matches)
+        matches = filter_by('to_port', matches)
+        matches = filter_by('cidr', matches)
+        matches = filter_by('src_dest_fw', matches)
+        matches = filter_by('src_dest_fw_id', matches)
+        limit = kwargs.pop('limit', None)
+        marker = kwargs.pop('marker', None)
+
+        return ClientPagedResultList(self._provider, matches,
+                                     limit=limit, marker=marker)
+
+    def delete(self, rule_id):
+        rule = self.get(rule_id)
+        if rule:
+            rule.delete()
+
+
+class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
+
+    def __init__(self, parent_fw, rule):
+        # pylint:disable=protected-access
+        super(BaseVMFirewallRule, self).__init__(
+            parent_fw._provider)
+        self.firewall = parent_fw
         self._rule = rule
-        self.parent = parent
 
+        # Cache name
+        self._name = "{0}-{1}-{2}-{3}-{4}-{5}".format(
+            self.direction, self.protocol, self.from_port, self.to_port,
+            self.cidr, self.src_dest_fw_id).lower()
+
+    @property
     def name(self):
-        """
-        Security group rules don't support names, so pass
-        """
-        pass
+        return self._name
 
     def __repr__(self):
-        return ("<CBSecurityGroupRule: IP: {0}; from: {1}; to: {2}; grp: {3}>"
-                .format(self.ip_protocol, self.from_port, self.to_port,
-                        self.group))
+        return ("<{0}: id: {1}; direction: {2}; protocol: {3};  from: {4};"
+                " to: {5}; cidr: {6}, src_dest_fw: {7}>"
+                .format(self.__class__.__name__, self.id, self.direction,
+                        self.protocol, self.from_port, self.to_port, self.cidr,
+                        self.src_dest_fw_id))
 
     def __eq__(self, other):
-        return self.ip_protocol == other.ip_protocol and \
-            self.from_port == other.from_port and \
-            self.to_port == other.to_port and \
-            self.cidr_ip == other.cidr_ip
+        return (isinstance(other, VMFirewallRule) and
+                self.direction == other.direction and
+                self.protocol == other.protocol and
+                self.from_port == other.from_port and
+                self.to_port == other.to_port and
+                self.cidr == other.cidr and
+                self.src_dest_fw_id == other.src_dest_fw_id)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -699,12 +771,19 @@ class BaseSecurityGroupRule(BaseCloudResource, SecurityGroupRule):
         """
         Return a hash-based interpretation of all of the object's field values.
 
-        This is requried for operations on hashed collections including
+        This is requeried for operations on hashed collections including
         ``set``, ``frozenset``, and ``dict``.
         """
-        return hash("{0}{1}{2}{3}{4}".format(self.ip_protocol, self.from_port,
-                                             self.to_port, self.cidr_ip,
-                                             self.group))
+        return hash("{0}{1}{2}{3}{4}{5}".format(
+            self.direction, self.protocol, self.from_port, self.to_port,
+            self.cidr, self.src_dest_fw_id))
+
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        js = {k: v for (k, v) in attr if not k.startswith('_')}
+        js['src_dest_fw'] = self.src_dest_fw_id
+        js['firewall'] = self.firewall.id
+        return js
 
 
 class BasePlacementZone(BaseCloudResource, PlacementZone):
@@ -765,6 +844,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseBucketObject.is_valid_resource_name(name):
+            log.debug("InvalidNameException raised on %s", name, exc_info=True)
             raise InvalidNameException(
                 u"Invalid object name: %s. Name must match criteria defined "
                 "in: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMeta"
@@ -790,7 +870,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                                       self.name)
 
 
-class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
+class BaseBucket(BaseCloudResource, Bucket):
 
     # Regular expression for valid bucket names.
     # They, must match the following criteria: http://docs.aws.amazon.com/aws
@@ -810,6 +890,7 @@ class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseBucket.is_valid_resource_name(name):
+            log.debug("Invalid resource name %s", name, exc_info=True)
             raise InvalidNameException(
                 u"Invalid bucket name: %s. Name must match criteria defined "
                 "in: http://docs.aws.amazon.com/awscloudtrail/latest/userguide"
@@ -826,6 +907,17 @@ class BaseBucket(BaseCloudResource, BasePageableObjectMixin, Bucket):
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
                                       self.name)
+
+
+class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
+
+    def __init__(self, provider, bucket):
+        self.__provider = provider
+        self.bucket = bucket
+
+    @property
+    def _provider(self):
+        return self.__provider
 
 
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
@@ -889,11 +981,12 @@ class BaseFloatingIP(BaseCloudResource, FloatingIP):
     def __init__(self, provider):
         super(BaseFloatingIP, self).__init__(provider)
 
+    @property
     def name(self):
         """
-        Security group rules don't support names, so pass
+        VM firewall rules don't support names, so pass
         """
-        pass
+        return self.public_ip
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,

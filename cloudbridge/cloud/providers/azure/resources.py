@@ -1,31 +1,29 @@
 """
 DataTypes used by this provider
 """
-import inspect
-import json
+import collections
 import logging
 import time
 
-
 from azure.common import AzureException
-
 from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketObject, BaseFloatingIP, \
-    BaseInstance, BaseInstanceType, BaseKeyPair,\
-    BaseLaunchConfig, BaseMachineImage, BaseNetwork, \
-    BasePlacementZone, BaseRegion, BaseRouter, BaseSecurityGroup, \
-    BaseSecurityGroupRule, BaseSnapshot, BaseSubnet, \
-    BaseVolume, ClientPagedResultList
+    BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
+    BaseInstance, BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, \
+    BaseMachineImage, BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, \
+    BaseSnapshot, BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, \
+    BaseVMFirewallRuleContainer, BaseVMType, BaseVolume, ClientPagedResultList
 from cloudbridge.cloud.interfaces import InstanceState, VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
-    MachineImageState, NetworkState, RouterState, SnapshotState
-from cloudbridge.cloud.providers.azure import helpers as azure_helpers
+    MachineImageState, NetworkState, RouterState, \
+    SnapshotState, SubnetState, TrafficDirection
 
 from msrestazure.azure_exceptions import CloudError
 
 import pysftp
+
+from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +41,7 @@ SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
 VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                      '{resourceGroupName}/providers/Microsoft.Compute/' \
                      'disks/{diskName}'
-SECURITY_GROUP_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
+VM_FIREWALL_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
                              'resourceGroups/{resourceGroupName}/' \
                              'providers/Microsoft.Network/' \
                              'networkSecurityGroups/' \
@@ -64,16 +62,17 @@ PUBLIC_IP_NAME = 'publicIpAddressName'
 IMAGE_NAME = 'imageName'
 VM_NAME = 'vmName'
 VOLUME_NAME = 'diskName'
-SECURITY_GROUP_NAME = 'networkSecurityGroupName'
+VM_FIREWALL_NAME = 'networkSecurityGroupName'
 SNAPSHOT_NAME = 'snapshotName'
 
 
-class AzureSecurityGroup(BaseSecurityGroup):
-    def __init__(self, provider, security_group):
-        super(AzureSecurityGroup, self).__init__(provider, security_group)
-        self._security_group = security_group
-        if not self._security_group.tags:
-            self._security_group.tags = {}
+class AzureVMFirewall(BaseVMFirewall):
+    def __init__(self, provider, vm_firewall):
+        super(AzureVMFirewall, self).__init__(provider, vm_firewall)
+        self._vm_firewall = vm_firewall
+        if not self._vm_firewall.tags:
+            self._vm_firewall.tags = {}
+        self._rule_container = AzureVMFirewallRuleContainer(provider, self)
 
     @property
     def network_id(self):
@@ -81,205 +80,193 @@ class AzureSecurityGroup(BaseSecurityGroup):
 
     @property
     def resource_id(self):
-        return self._security_group.id
+        return self._vm_firewall.id
 
     @property
     def id(self):
-        return self._security_group.name
+        return self._vm_firewall.name
 
     @property
     def name(self):
-        return self._security_group.tags.get('Name', self._security_group.name)
+        return self._vm_firewall.tags.get('Name', self._vm_firewall.name)
 
     @name.setter
     def name(self, value):
-        self._security_group.tags.update(Name=value)
+        self.assert_valid_resource_name(value)
+        self._vm_firewall.tags.update(Name=value)
         self._provider.azure_client. \
-            update_security_group_tags(self.id,
-                                       self._security_group.tags)
+            update_vm_firewall_tags(self.id,
+                                    self._vm_firewall.tags)
 
     @property
     def description(self):
-        return self._security_group.tags.get('Description', None)
+        return self._vm_firewall.tags.get('Description', None)
 
     @description.setter
     def description(self, value):
-        self._security_group.tags.update(Description=value)
+        self._vm_firewall.tags.update(Description=value)
         self._provider.azure_client.\
-            update_security_group_tags(self.id,
-                                       self._security_group.tags)
+            update_vm_firewall_tags(self.id,
+                                    self._vm_firewall.tags)
 
     @property
     def rules(self):
-        """
-        The default rules are not returned, only custom rules.
-        """
-        security_group_rules = []
-        for custom_rule in self._security_group.security_rules:
-            sg_custom_rule = AzureSecurityGroupRule(self._provider,
-                                                    custom_rule, self)
-            security_group_rules.append(sg_custom_rule)
-        return security_group_rules
+        return self._rule_container
 
     def delete(self):
         try:
             self._provider.azure_client.\
-                delete_security_group(self.id)
+                delete_vm_firewall(self.id)
             return True
         except CloudError as cloudError:
             log.exception(cloudError.message)
             return False
 
-    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
+    def refresh(self):
         """
-        Create a security group rule.
-
-        You need to pass in either ``src_group`` OR ``ip_protocol``,
-        ``from_port``, ``to_port``, and ``cidr_ip``.  In other words, either
-        you are authorizing another group or you are authorizing some
-        ip-based rule.
-
-        :type ip_protocol: str
-        :param ip_protocol: Either ``tcp`` | ``udp`` | ``icmp``
-
-        :type from_port: int
-        :param from_port: The beginning port number you are enabling
-
-        :type to_port: int
-        :param to_port: The ending port number you are enabling
-
-        :type cidr_ip: str or list of strings
-        :param cidr_ip: The CIDR block you are providing access to.
-
-        :type src_group: ``object`` of :class:`.SecurityGroup`
-        :param src_group: The Security Group you are granting access to.
-
-        :rtype: :class:``.SecurityGroupRule``
-        :return: Rule object if successful or ``None``.
+        Refreshes the security group with tags if required.
         """
-        if ip_protocol and from_port and to_port:
-            return self._create_rule(ip_protocol, from_port, to_port, cidr_ip)
-        elif src_group:
+        try:
+            self._vm_firewall = self._provider.azure_client. \
+                get_vm_firewall(self.id)
+            if not self._vm_firewall.tags:
+                self._vm_firewall.tags = {}
+        except (CloudError, ValueError) as cloudError:
+            log.exception(cloudError.message)
+            # The security group no longer exists and cannot be refreshed.
+
+    def to_json(self):
+        js = super(AzureVMFirewall, self).to_json()
+        json_rules = [r.to_json() for r in self.rules]
+        js['rules'] = json_rules
+        if js.get('network_id'):
+            js.pop('network_id')  # Omit for consistency across cloud providers
+        return js
+
+
+class AzureVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
+
+    def __init__(self, provider, firewall):
+        super(AzureVMFirewallRuleContainer, self).__init__(provider, firewall)
+
+    def list(self, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = (
+            [AzureVMFirewallRule(self.firewall, rule) for rule
+             in self.firewall._vm_firewall.security_rules] +
+            [AzureVMFirewallRule(self.firewall, rule) for rule
+             in self.firewall._vm_firewall.default_security_rules
+             if rule.destination_address_prefix == "Internet"])
+        return ClientPagedResultList(self._provider, rules,
+                                     limit=limit, marker=marker)
+
+    def create(self, direction, protocol=None, from_port=None, to_port=None,
+               cidr=None, src_dest_fw=None):
+        if protocol and from_port and to_port:
+            return self._create_rule(direction, protocol, from_port,
+                                     to_port, cidr)
+        elif src_dest_fw:
             result = None
-            sg = (self._provicer.security.security_groups.get(src_group)
-                  if isinstance(src_group, str) else src_group)
-            for rule in sg.rules:
-                result = self._create_rule(rule.ip_protocol, rule.from_port,
-                                           rule.to_port, rule.cidr_ip)
+            fw = (self._provider.security.vm_firewalls.get(src_dest_fw)
+                  if isinstance(src_dest_fw, str) else src_dest_fw)
+            for rule in fw.rules:
+                result = self._create_rule(
+                    rule.direction, rule.protocol, rule.from_port,
+                    rule.to_port, rule.cidr)
             return result
         else:
             return None
 
-    def _create_rule(self, ip_protocol, from_port, to_port, cidr_ip):
+    def _create_rule(self, direction, protocol, from_port, to_port, cidr):
 
-        # If cidr_ip is None, default values is set as 0.0.0.0/0
-        if not cidr_ip:
-            cidr_ip = '0.0.0.0/0'
+        # If cidr is None, default values is set as 0.0.0.0/0
+        if not cidr:
+            cidr = '0.0.0.0/0'
 
-        # If the SG with same parameters exist already,
-        # then, it is returned instead of creating a new one.
-        rule = self.get_rule(ip_protocol, from_port, to_port, cidr_ip)
-
-        if rule:
-            return rule
-
-        count = len(self.rules) + 1
+        count = len(self.firewall._vm_firewall.security_rules) + 1
         rule_name = "Rule - " + str(count)
         priority = count * 100
         destination_port_range = str(from_port) + "-" + str(to_port)
         source_port_range = '*'
         destination_address_prefix = "*"
         access = "Allow"
-        direction = "Inbound"
-        parameters = {"protocol": ip_protocol,
+        direction = ("Inbound" if direction == TrafficDirection.INBOUND
+                     else "Outbound")
+        parameters = {"protocol": protocol,
                       "source_port_range": source_port_range,
                       "destination_port_range": destination_port_range,
                       "priority": priority,
-                      "source_address_prefix": cidr_ip,
-                      "destination_address_prefix":
-                          destination_address_prefix,
-                      "access": access, "direction": direction}
+                      "source_address_prefix": cidr,
+                      "destination_address_prefix": destination_address_prefix,
+                      "access": access,
+                      "direction": direction}
         result = self._provider.azure_client. \
-            create_security_group_rule(self.id,
-                                       rule_name, parameters)
-        self._security_group.security_rules.append(result)
-        return AzureSecurityGroupRule(self._provider, result, self)
-
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        for rule in self.rules:
-            if (rule.ip_protocol == ip_protocol and
-                rule.from_port == str(from_port) and
-                rule.to_port == str(to_port) and
-                    rule.cidr_ip == cidr_ip):
-                return rule
-        return None
-
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
-        js = {k: v for (k, v) in attr if not k.startswith('_')}
-        json_rules = [r.to_json() for r in self.rules]
-        js['rules'] = [json.loads(r) for r in json_rules]
-        if js.get('network_id'):
-            js.pop('network_id')  # Omit for consistency across cloud providers
-        return json.dumps(js, sort_keys=True)
+            create_vm_firewall_rule(self.firewall.id,
+                                    rule_name, parameters)
+        # pylint:disable=protected-access
+        self.firewall._vm_firewall.security_rules.append(result)
+        return AzureVMFirewallRule(self.firewall, result)
 
 
-class AzureSecurityGroupRule(BaseSecurityGroupRule):
-    def __init__(self, provider, rule, parent):
-        super(AzureSecurityGroupRule, self).__init__(provider, rule, parent)
+# Tuple for port range
+PortRange = collections.namedtuple('PortRange', ['from_port', 'to_port'])
+
+
+class AzureVMFirewallRule(BaseVMFirewallRule):
+    def __init__(self, parent_fw, rule):
+        super(AzureVMFirewallRule, self).__init__(parent_fw, rule)
 
     @property
     def id(self):
         return self._rule.name
 
     @property
+    def direction(self):
+        return (TrafficDirection.INBOUND if self._rule.direction == "Inbound"
+                else TrafficDirection.OUTBOUND)
+
+    @property
     def name(self):
         return self._rule.name
 
     @property
-    def ip_protocol(self):
+    def protocol(self):
         return self._rule.protocol
 
     @property
     def from_port(self):
-        if self._rule.destination_port_range == '*':
-            return self._rule.destination_port_range
-        destination_port_range = self._rule.destination_port_range
-        port_range_split = destination_port_range.split('-', 1)
-        return port_range_split[0]
+        return self._port_range_tuple().from_port
 
     @property
     def to_port(self):
+        return self._port_range_tuple().to_port
+
+    def _port_range_tuple(self):
         if self._rule.destination_port_range == '*':
-            return self._rule.destination_port_range
+            return PortRange(1, 65535)
         destination_port_range = self._rule.destination_port_range
         port_range_split = destination_port_range.split('-', 1)
-        return port_range_split[1]
+        return PortRange(int(port_range_split[0]), int(port_range_split[1]))
 
     @property
-    def cidr_ip(self):
+    def cidr(self):
         return self._rule.source_address_prefix
 
     @property
-    def group(self):
-        return self.parent
+    def src_dest_fw_id(self):
+        return self.firewall.id
 
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
-        js = {k: v for (k, v) in attr if not k.startswith('_')}
-        js['group'] = self.group.id if self.group else ''
-        js['parent'] = self.parent.id if self.parent else ''
-        return json.dumps(js, sort_keys=True)
+    @property
+    def src_dest_fw(self):
+        return self.firewall
 
     def delete(self):
-        security_group = self.parent.name
+        vm_firewall = self.firewall.name
         self._provider.azure_client. \
-            delete_security_group_rule(self.id, security_group)
-        for i, o in enumerate(self.parent._security_group.security_rules):
+            delete_vm_firewall_rule(self.id, vm_firewall)
+        for i, o in enumerate(self.firewall._vm_firewall.security_rules):
             if o.name == self.name:
-                del self.parent._security_group.security_rules[i]
+                del self.firewall._vm_firewall.security_rules[i]
                 break
 
 
@@ -372,13 +359,14 @@ class AzureBucketObject(BaseBucketObject):
         Generate a URL to this object.
         """
         return self._provider.azure_client.get_blob_url(
-            self._container.name, self.name)
+            self._container.name, self.name, expires_in)
 
 
 class AzureBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(AzureBucket, self).__init__(provider)
         self._bucket = bucket
+        self._object_container = AzureBucketContainer(provider, self)
 
     @property
     def id(self):
@@ -391,31 +379,6 @@ class AzureBucket(BaseBucket):
         """
         return self._bucket.name
 
-    def get(self, key):
-        """
-        Retrieve a given object from this bucket.
-        """
-        try:
-            obj = self._provider.azure_client.get_blob(self.name, key)
-            return AzureBucketObject(self._provider, self, obj)
-        except AzureException as azureEx:
-            log.exception(azureEx)
-            return None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-
-        :rtype: BucketObject
-        :return: List of all available BucketObjects within this bucket.
-        """
-        objects = [AzureBucketObject(self._provider, self, obj)
-                   for obj in
-                   self._provider.azure_client.list_blobs(
-                       self.name, prefix=prefix)]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
-
     def delete(self, delete_contents=True):
         """
         Delete this bucket.
@@ -427,16 +390,56 @@ class AzureBucket(BaseBucket):
             log.exception(azureEx)
             return False
 
-    def create_object(self, name):
-        self._provider.azure_client.create_blob_from_text(
-            self.name, name, '')
-        return self.get(name)
-
     def exists(self, name):
         """
         Determine if an object with given name exists in this bucket.
         """
         return True if self.get(name) else False
+
+    @property
+    def objects(self):
+        return self._object_container
+
+
+class AzureBucketContainer(BaseBucketContainer):
+
+    def __init__(self, provider, bucket):
+        super(AzureBucketContainer, self).__init__(provider, bucket)
+
+    def get(self, key):
+        """
+        Retrieve a given object from this bucket.
+        """
+        try:
+            obj = self._provider.azure_client.get_blob(self.bucket.name, key)
+            return AzureBucketObject(self._provider, self.bucket, obj)
+        except AzureException as azureEx:
+            log.exception(azureEx)
+            return None
+
+    def list(self, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+
+        :rtype: BucketObject
+        :return: List of all available BucketObjects within this bucket.
+        """
+        objects = [AzureBucketObject(self._provider, self.bucket, obj)
+                   for obj in
+                   self._provider.azure_client.list_blobs(
+                       self.bucket.name, prefix=prefix)]
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
+
+    def find(self, name, limit=None, marker=None):
+        objects = [obj for obj in self if obj.name == name]
+        return ClientPagedResultList(self._provider, objects,
+                                     limit=limit, marker=marker)
+
+    def create(self, name):
+        self._provider.azure_client.create_blob_from_text(
+            self.bucket.name, name, '')
+        return self.get(name)
 
 
 class AzureVolume(BaseVolume):
@@ -464,7 +467,7 @@ class AzureVolume(BaseVolume):
     def _update_state(self):
         if not self._volume.provisioning_state == 'Succeeded':
             self._state = self._volume.provisioning_state
-        elif self._volume.owner_id:
+        elif self._volume.managed_by:
             self._state = 'Attached'
         else:
             self._state = 'Unattached'
@@ -497,6 +500,7 @@ class AzureVolume(BaseVolume):
         Set the volume name.
         """
         # self._volume.name = value
+        self.assert_valid_resource_name(value)
         self._volume.tags.update(Name=value)
         self._provider.azure_client. \
             update_disk_tags(self.id,
@@ -531,7 +535,7 @@ class AzureVolume(BaseVolume):
             url_params = azure_helpers.\
                 parse_url(SNAPSHOT_RESOURCE_ID,
                           self._volume.creation_data.source_uri)
-            return self._provider.block_store.snapshots. \
+            return self._provider.storage.snapshots. \
                 get(url_params.get(SNAPSHOT_NAME))
         return None
 
@@ -545,9 +549,9 @@ class AzureVolume(BaseVolume):
         to the BaseAttachmentInfo
         :return:
         """
-        if self._volume.owner_id:
+        if self._volume.managed_by:
             url_params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID,
-                                                 self._volume.owner_id)
+                                                 self._volume.managed_by)
             return BaseAttachmentInfo(self,
                                       url_params.get(VM_NAME),
                                       None)
@@ -607,7 +611,7 @@ class AzureVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.block_store.snapshots.create(name, self)
+        return self._provider.storage.snapshots.create(name, self)
 
     def delete(self):
         """
@@ -684,7 +688,7 @@ class AzureSnapshot(BaseSnapshot):
         """
         Set the snapshot name.
         """
-        # self._snapshot.name = value
+        self.assert_valid_resource_name(value)
         self._snapshot.tags.update(Name=value)
         self._provider.azure_client. \
             update_snapshot_tags(self.id,
@@ -709,7 +713,7 @@ class AzureSnapshot(BaseSnapshot):
     def volume_id(self):
         url_params = azure_helpers.\
             parse_url(VOLUME_RESOURCE_ID,
-                      self._snapshot.creation_data.source_uri)
+                      self._snapshot.creation_data.source_resource_id)
         return url_params.get(VOLUME_NAME)
 
     @property
@@ -752,7 +756,7 @@ class AzureSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        return self._provider.block_store.volumes. \
+        return self._provider.storage.volumes. \
             create(self.id, self.size,
                    zone=placement, snapshot=self)
 
@@ -801,6 +805,7 @@ class AzureMachineImage(BaseMachineImage):
         """
         Set the image name.
         """
+        self.assert_valid_resource_name(value)
         self._image.tags.update(Name=value)
         self._provider.azure_client. \
             update_image_tags(self.id, self._image.tags)
@@ -899,9 +904,10 @@ class AzureNetwork(BaseNetwork):
         """
         Set the network name.
         """
+        self.assert_valid_resource_name(value)
         self._network.tags.update(Name=value)
-        self._provider.azure_client.\
-            update_network_tags(self.id, self._network.tags)
+        self._provider.azure_client. \
+            update_network_tags(self.id, self._network)
 
     @property
     def external(self):
@@ -951,12 +957,13 @@ class AzureNetwork(BaseNetwork):
             log.exception(cloudError.message)
             return False
 
+    @property
     def subnets(self):
         """
         List all the subnets in this network
         :return:
         """
-        return self._provider.network.subnets.list(network=self.id)
+        return self._provider.networking.subnets.list(network=self.id)
 
     def create_subnet(self, cidr_block, name=None, zone=None):
         """
@@ -966,7 +973,7 @@ class AzureNetwork(BaseNetwork):
         :param zone:
         :return:
         """
-        return self._provider.network.subnets.\
+        return self._provider.networking.subnets. \
             create(network=self.id, cidr_block=cidr_block, name=name)
 
 
@@ -993,6 +1000,7 @@ class AzureFloatingIP(BaseFloatingIP):
         return self._ip.ip_configuration.private_ip_address \
             if self._ip.ip_configuration else None
 
+    @property
     def in_use(self):
         return True if self._ip.ip_configuration else False
 
@@ -1073,10 +1081,15 @@ class AzurePlacementZone(BasePlacementZone):
 
 
 class AzureSubnet(BaseSubnet):
+    _SUBNET_STATE_MAP = {
+        'InProgress': SubnetState.PENDING,
+        'Succeeded': SubnetState.AVAILABLE,
+    }
 
     def __init__(self, provider, subnet):
         super(AzureSubnet, self).__init__(provider)
         self._subnet = subnet
+        self._state = self._subnet.provisioning_state
         self._url_params = azure_helpers\
             .parse_url(SUBNET_RESOURCE_ID, subnet.id)
         self._network = self._provider.azure_client.\
@@ -1127,6 +1140,26 @@ class AzureSubnet(BaseSubnet):
             log.exception(cloudError.message)
             return False
 
+    @property
+    def state(self):
+        return self._SUBNET_STATE_MAP.get(
+            self._state, NetworkState.UNKNOWN)
+
+    def refresh(self):
+        """
+        Refreshes the state of this network by re-querying the cloud provider
+        for its latest state.
+        """
+        try:
+            self._network = self._provider.azure_client. \
+                get_network(self.id)
+            self._state = self._network.provisioning_state
+        except (CloudError, ValueError) as cloudError:
+            log.exception(cloudError.message)
+            # The network no longer exists and cannot be refreshed.
+            # set the state to unknown
+            self._state = 'unknown'
+
 
 class AzureInstance(BaseInstance):
 
@@ -1135,7 +1168,7 @@ class AzureInstance(BaseInstance):
         'Creating': InstanceState.PENDING,
         'VM running': InstanceState.RUNNING,
         'Updating': InstanceState.CONFIGURING,
-        'Deleted': InstanceState.TERMINATED,
+        'Deleted': InstanceState.DELETED,
         'Stopping': InstanceState.CONFIGURING,
         'Deleting': InstanceState.CONFIGURING,
         'Stopped': InstanceState.STOPPED,
@@ -1164,7 +1197,7 @@ class AzureInstance(BaseInstance):
         """
         self._private_ips = []
         self._public_ips = []
-        self._security_group_ids = []
+        self._vm_firewall_ids = []
         self._public_ip_ids = []
         self._nic_ids = []
         for nic in self._vm.network_profile.network_interfaces:
@@ -1174,11 +1207,11 @@ class AzureInstance(BaseInstance):
             self._nic_ids.append(nic_name)
             nic = self._provider.azure_client.get_nic(nic_name)
             if nic.network_security_group:
-                sg_params = azure_helpers. \
-                    parse_url(SECURITY_GROUP_RESOURCE_ID,
+                fw_params = azure_helpers. \
+                    parse_url(VM_FIREWALL_RESOURCE_ID,
                               nic.network_security_group.id)
-                self._security_group_ids.\
-                    append(sg_params.get(SECURITY_GROUP_NAME))
+                self._vm_firewall_ids.\
+                    append(fw_params.get(VM_FIREWALL_NAME))
             if nic.ip_configurations:
                 for ip_config in nic.ip_configurations:
                     self._private_ips.append(ip_config.private_ip_address)
@@ -1218,9 +1251,10 @@ class AzureInstance(BaseInstance):
         """
         Set the instance name.
         """
+        self.assert_valid_resource_name(value)
         self._vm.tags.update(Name=value)
-        self._provider.azure_client.\
-            update_vm_tags(self.id, self._vm.tags)
+        self._provider.azure_client. \
+            update_vm_tags(self.id, self._vm)
 
     @property
     def public_ips(self):
@@ -1237,19 +1271,19 @@ class AzureInstance(BaseInstance):
         return self._private_ips
 
     @property
-    def instance_type_id(self):
+    def vm_type_id(self):
         """
         Get the instance type name.
         """
         return self._vm.hardware_profile.vm_size
 
     @property
-    def instance_type(self):
+    def vm_type(self):
         """
         Get the instance type.
         """
-        return self._provider.compute.instance_types.find(
-            name=self.instance_type_id)[0]
+        return self._provider.compute.vm_types.find(
+            name=self.vm_type_id)[0]
 
     def reboot(self):
         """
@@ -1257,7 +1291,7 @@ class AzureInstance(BaseInstance):
         """
         self._provider.azure_client.restart_vm(self.id)
 
-    def terminate(self):
+    def delete(self):
         """
         Permanently terminate this instance.
         After deleting the VM. we are deleting the network interface
@@ -1311,19 +1345,13 @@ class AzureInstance(BaseInstance):
         return self._vm.location
 
     @property
-    def security_groups(self):
-        """
-        Get the security groups associated with this instance.
-        """
-        return [self._provider.security.security_groups.get(group_id)
-                for group_id in self._security_group_ids]
+    def vm_firewalls(self):
+        return [self._provider.security.vm_firewalls.get(group_id)
+                for group_id in self._vm_firewall_ids]
 
     @property
-    def security_group_ids(self):
-        """
-        Get the security groups IDs associated with this instance.
-        """
-        return self._security_group_ids
+    def vm_firewall_ids(self):
+        return self._vm_firewall_ids
 
     @property
     def key_pair_name(self):
@@ -1345,6 +1373,8 @@ class AzureInstance(BaseInstance):
         so we have modified the Cloud Bridge interface to pass
         the private key file path
         """
+
+        self.assert_valid_resource_name(name)
 
         if not self._state == 'VM generalized':
             if not self._state == 'VM running':
@@ -1422,9 +1452,9 @@ class AzureInstance(BaseInstance):
             log.exception(cloudError.message)
             return False
 
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, fw):
         '''
-        :param sg:
+        :param fw:
         :return: None
 
         This method adds the security group to VM instance.
@@ -1434,33 +1464,33 @@ class AzureInstance(BaseInstance):
         if not associated any security group to NIC
         else replacing the existing security group.
         '''
-        sg = (self._provicer.security.security_groups.get(sg)
-              if isinstance(sg, str) else sg)
+        fw = (self._provicer.security.vm_firewalls.get(fw)
+              if isinstance(fw, str) else fw)
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
         if not nic.network_security_group:
             nic.network_security_group = NetworkSecurityGroup()
-            nic.network_security_group.id = sg.resource_id
+            nic.network_security_group.id = fw.resource_id
         else:
-            sg_url_params = azure_helpers.\
-                parse_url(SECURITY_GROUP_RESOURCE_ID,
+            fw_url_params = azure_helpers.\
+                parse_url(VM_FIREWALL_RESOURCE_ID,
                           nic.network_security_group.id)
-            existing_sg = self._provider.security.\
-                security_groups.get(sg_url_params.get(SECURITY_GROUP_NAME))
+            existing_fw = self._provider.security.\
+                vm_firewalls.get(fw_url_params.get(VM_FIREWALL_NAME))
 
-            new_sg = self._provider.security.security_groups.\
-                create('{0}-{1}'.format(sg.name, existing_sg.name),
+            new_fw = self._provider.security.vm_firewalls.\
+                create('{0}-{1}'.format(fw.name, existing_fw.name),
                        'Merged security groups {0} and {1}'.
-                       format(sg.name, existing_sg.name))
-            new_sg.add_rule(src_group=sg)
-            new_sg.add_rule(src_group=existing_sg)
-            nic.network_security_group.id = new_sg.resource_id
+                       format(fw.name, existing_fw.name))
+            new_fw.add_rule(src_dest_fw=fw)
+            new_fw.add_rule(src_dest_fw=existing_fw)
+            nic.network_security_group.id = new_fw.resource_id
 
         self._provider.azure_client.create_nic(self._nic_ids[0], nic)
 
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, fw):
 
         '''
-        :param sg:
+        :param fw:
         :return: None
 
         This method removes the security group to VM instance.
@@ -1472,10 +1502,10 @@ class AzureInstance(BaseInstance):
         '''
 
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
-        sg = (self._provicer.security.security_groups.get(sg)
-              if isinstance(sg, str) else sg)
+        fw = (self._provicer.security.vm_firewalls.get(fw)
+              if isinstance(fw, str) else fw)
         if nic.network_security_group and \
-                nic.network_security_group.id == sg.resource_id:
+                nic.network_security_group.id == fw.resource_id:
             nic.network_security_group = None
             self._provider.azure_client.create_nic(self._nic_ids[0], nic)
 
@@ -1526,19 +1556,19 @@ class AzureLaunchConfig(BaseLaunchConfig):
         super(AzureLaunchConfig, self).__init__(provider)
 
 
-class AzureInstanceType(BaseInstanceType):
+class AzureVMType(BaseVMType):
 
-    def __init__(self, provider, instance_type):
-        super(AzureInstanceType, self).__init__(provider)
-        self._inst_type = instance_type
+    def __init__(self, provider, vm_type):
+        super(AzureVMType, self).__init__(provider)
+        self._vm_type = vm_type
 
     @property
     def id(self):
-        return self._inst_type.name
+        return self._vm_type.name
 
     @property
     def name(self):
-        return self._inst_type.name
+        return self._vm_type.name
 
     @property
     def family(self):
@@ -1550,19 +1580,19 @@ class AzureInstanceType(BaseInstanceType):
 
     @property
     def vcpus(self):
-        return self._inst_type.number_of_cores
+        return self._vm_type.number_of_cores
 
     @property
     def ram(self):
-        return self._inst_type.memory_in_mb
+        return self._vm_type.memory_in_mb
 
     @property
     def size_root_disk(self):
-        return self._inst_type.os_disk_size_in_mb / 1024
+        return self._vm_type.os_disk_size_in_mb / 1024
 
     @property
     def size_ephemeral_disks(self):
-        return self._inst_type.resource_disk_size_in_mb / 1024
+        return self._vm_type.resource_disk_size_in_mb / 1024
 
     @property
     def num_ephemeral_disks(self):
@@ -1577,7 +1607,7 @@ class AzureInstanceType(BaseInstanceType):
     def extra_data(self):
         return {
                     'max_data_disk_count':
-                    self._inst_type.max_data_disk_count
+                    self._vm_type.max_data_disk_count
                }
 
 
@@ -1620,25 +1650,19 @@ class AzureKeyPair(BaseKeyPair):
 
 
 class AzureRouter(BaseRouter):
-
-    def __init__(self, provider, router):
+    def __init__(self, provider, route_table):
         super(AzureRouter, self).__init__(provider)
-        self._router = router
-        self._ROUTE_CIDR = '0.0.0.0/0'
-        self._name = None
-        self._network_id = None
-        self._state = RouterState.DETACHED
-
-    def _route_table(self, subnet_id):
-        pass
+        self._route_table = route_table
+        if not self._route_table.tags:
+            self._route_table.tags = {}
 
     @property
     def id(self):
-        return self._name
+        return self._route_table.name
 
     @property
     def resource_id(self):
-        pass
+        return self._route_table.id
 
     @property
     def name(self):
@@ -1646,6 +1670,85 @@ class AzureRouter(BaseRouter):
         Get the router name.
 
         .. note:: the router must have a (case sensitive) tag ``Name``
+        """
+        return self._route_table.tags.get('Name', self._route_table.name)
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        """
+        Set the router name.
+        """
+        self.assert_valid_resource_name(value)
+        self._route_table.tags.update(Name=value)
+        self._provider.azure_client. \
+            update_route_table_tags(self._route_table.name,
+                                    self._route_table)
+
+    def refresh(self):
+        self._route_table = self._provider.azure_client. \
+            get_route_table(self._route_table.name)
+
+    @property
+    def state(self):
+        self.refresh()  # Explicitly refresh the local object
+        if self._route_table.subnets:
+            return RouterState.ATTACHED
+        return RouterState.DETACHED
+
+    @property
+    def network_id(self):
+        return None
+
+    def delete(self):
+        self._provider.azure_client. \
+            delete_route_table(self.name)
+
+    def attach_subnet(self, subnet):
+        subnet_id_parts = subnet.id.split('|$|')
+        if (len(subnet_id_parts) != 2):
+            pass
+        self._provider.azure_client. \
+            attach_subnet_to_route_table(subnet_id_parts[0],
+                                         subnet_id_parts[1],
+                                         self.resource_id)
+        self.refresh()
+
+    def detach_subnet(self, subnet):
+        subnet_id_parts = subnet.id.split('|$|')
+        if (len(subnet_id_parts) != 2):
+            pass
+        self._provider.azure_client. \
+            detach_subnet_to_route_table(subnet_id_parts[0],
+                                         subnet_id_parts[1],
+                                         self.resource_id)
+        self.refresh()
+
+    def attach_gateway(self, gateway):
+        pass
+
+    def detach_gateway(self, gateway):
+        pass
+
+
+class AzureInternetGateway(BaseInternetGateway):
+    def __init__(self, provider, gateway):
+        super(AzureInternetGateway, self).__init__(provider)
+        self._gateway = gateway
+        self._name = None
+        self._network_id = None
+        self._state = ''
+
+    @property
+    def id(self):
+        return self._name
+
+    @property
+    def name(self):
+        """
+        Get the gateway name.
+
+        .. note:: the gateway must have a (case sensitive) tag ``Name``
         """
         return self._name
 
@@ -1655,6 +1758,7 @@ class AzureRouter(BaseRouter):
         """
         Set the router name.
         """
+        self.assert_valid_resource_name(value)
         self._name = value
 
     def refresh(self):
@@ -1666,36 +1770,7 @@ class AzureRouter(BaseRouter):
 
     @property
     def network_id(self):
-        return self._network_id
+        return None
 
     def delete(self):
-        pass
-
-    def attach_network(self, network_id):
-        self._network_id = network_id
-        self._state = RouterState.ATTACHED
-
-    def detach_network(self):
-        pass
-
-    def add_route(self, subnet_id):
-        """
-        Add a default route to this router.
-
-        For Azure, routes are added to a route table. A route table is assoc.
-        with a network vs. a subnet so we retrieve the network via the subnet.
-        Note that the subnet must belong to the same network as the router
-        is attached to.
-
-        Further, only a single route can be added, targeting the Internet
-        (i.e., destination CIDR block ``0.0.0.0/0``).
-        """
-        pass
-
-    def remove_route(self, subnet_id):
-        """
-        Remove the default Internet route from this router.
-
-        .. seealso:: ``add_route`` method
-        """
         pass

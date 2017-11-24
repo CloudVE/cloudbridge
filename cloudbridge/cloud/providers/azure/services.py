@@ -4,28 +4,27 @@ import uuid
 
 from azure.common import AzureException
 
-from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.services import BaseBlockStoreService, \
-    BaseComputeService, BaseImageService, BaseInstanceService, \
-    BaseInstanceTypesService, BaseKeyPairService, \
-    BaseNetworkService, BaseObjectStoreService,\
-    BaseRegionService, BaseSecurityGroupService, BaseSecurityService, \
-    BaseSnapshotService, BaseSubnetService, BaseVolumeService
+from cloudbridge.cloud.base.resources import ClientPagedResultList, \
+    ServerPagedResultList
+from cloudbridge.cloud.base.services import BaseBucketService, \
+    BaseComputeService, BaseFloatingIPService, BaseGatewayService, \
+    BaseImageService, BaseInstanceService, BaseKeyPairService, \
+    BaseNetworkService, BaseNetworkingService, BaseRegionService, \
+    BaseRouterService, BaseSecurityService, BaseSnapshotService, \
+    BaseStorageService, BaseSubnetService, BaseVMFirewallService, \
+    BaseVMTypeService, BaseVolumeService
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
-
-from cloudbridge.cloud.interfaces.resources import InstanceType, \
-     MachineImage, Network, PlacementZone, SecurityGroup, \
-     Snapshot, Subnet, Volume
-
-from cloudbridge.cloud.providers.azure import helpers as azure_helpers
+from cloudbridge.cloud.interfaces.resources import MachineImage, \
+    Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
 
 from msrestazure.azure_exceptions import CloudError
 
+from . import helpers as azure_helpers
 from .resources import AzureBucket, AzureFloatingIP, \
-    AzureInstance, AzureInstanceType, AzureKeyPair,\
-    AzureLaunchConfig, AzureMachineImage, \
-    AzureNetwork, AzureRegion, AzureRouter, AzureSecurityGroup, \
-    AzureSnapshot, AzureSubnet, AzureVolume
+    AzureInstance, AzureInternetGateway, AzureKeyPair, \
+    AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
+    AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \
+    AzureVMFirewall, AzureVMType, AzureVolume
 
 log = logging.getLogger(__name__)
 
@@ -36,40 +35,25 @@ class AzureSecurityService(BaseSecurityService):
 
         # Initialize provider services
         self._key_pairs = AzureKeyPairService(provider)
-        self._security_groups = AzureSecurityGroupService(provider)
+        self._vm_firewalls = AzureVMFirewallService(provider)
 
     @property
     def key_pairs(self):
-        """
-        Provides access to key pairs for this provider.
-
-        :rtype: ``object`` of :class:`.KeyPairService`
-        :return: a KeyPairService object
-        """
         return self._key_pairs
 
     @property
-    def security_groups(self):
-        """
-        Provides access to security groups for this provider.
-
-        :rtype: ``object`` of :class:`.SecurityGroupService`
-        :return: a SecurityGroupService object
-        """
-        return self._security_groups
+    def vm_firewalls(self):
+        return self._vm_firewalls
 
 
-class AzureSecurityGroupService(BaseSecurityGroupService):
+class AzureVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
-        super(AzureSecurityGroupService, self).__init__(provider)
+        super(AzureVMFirewallService, self).__init__(provider)
 
-    def get(self, sg_id):
-        """
-        Returns a SecurityGroup given its id.
-        """
+    def get(self, fw_id):
         try:
-            sgs = self.provider.azure_client.get_security_group(sg_id)
-            return AzureSecurityGroup(self.provider, sgs)
+            fws = self.provider.azure_client.get_vm_firewall(fw_id)
+            return AzureVMFirewall(self.provider, fws)
 
         except CloudError as cloudError:
             # Azure raises the cloud error if the resource not available
@@ -77,73 +61,38 @@ class AzureSecurityGroupService(BaseSecurityGroupService):
             return None
 
     def list(self, limit=None, marker=None):
-        """
-        List all security groups associated with this account.
-
-        :rtype: ``list`` of :class:`.SecurityGroup`
-        :return:  list of SecurityGroup objects
-        """
-        sgs = [AzureSecurityGroup(self.provider, sg)
-               for sg in self.provider.azure_client.list_security_group()]
-        return ClientPagedResultList(self.provider, sgs, limit, marker)
+        fws = [AzureVMFirewall(self.provider, fw)
+               for fw in self.provider.azure_client.list_vm_firewall()]
+        return ClientPagedResultList(self.provider, fws, limit, marker)
 
     def create(self, name, description, network_id=None):
-        """
-        Create a new SecurityGroup.
-
-        :type name: str
-        :param name: The name of the new security group.
-
-        :type description: str
-        :param description: The description of the new security group.
-
-        :type  network_id: ``str``
-        :param network_id: The ID of the virtual network under which to
-                            create the security group. But we are not using
-                            this in azure as security group associated with
-                            subnet or network interface
-
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return:  A SecurityGroup instance or ``None`` if one was not created.
-        """
+        AzureVMFirewall.assert_valid_resource_name(name)
         parameters = {"location": self.provider.region_name,
                       'tags': {'Name': name}}
 
         if description:
             parameters['tags'].update(Description=description)
 
-        sg = self.provider.azure_client.create_security_group(name, parameters)
-        cb_sg = AzureSecurityGroup(self.provider, sg)
+        fw = self.provider.azure_client.create_vm_firewall(name, parameters)
+        cb_fw = AzureVMFirewall(self.provider, fw)
 
-        return cb_sg
+        return cb_fw
 
     def find(self, name, limit=None, marker=None):
         """
         Searches for a security group by a given list of attributes.
         """
         filters = {'Name': name}
-        sgs = [AzureSecurityGroup(self.provider, security_group)
-               for security_group in azure_helpers.filter(
-                self.provider.azure_client.list_security_group(), filters)]
+        fws = [AzureVMFirewall(self.provider, vm_firewall)
+               for vm_firewall in azure_helpers.filter_by_tag(
+                self.provider.azure_client.list_vm_firewall(), filters)]
 
-        return ClientPagedResultList(self.provider, sgs,
+        return ClientPagedResultList(self.provider, fws,
                                      limit=limit, marker=marker)
 
     def delete(self, group_id):
-        """
-       Delete an existing SecurityGroup.
-
-       :type group_id: str
-       :param group_id: The security group ID to be deleted.
-
-       :rtype: ``bool``
-       :return:  ``True`` if the security group deleted, ``False``
-                 otherwise. Note that this implies that the group may not have
-                 been deleted by this method but instead has not existed in
-                 the first place.
-       """
         try:
-            self.provider.azure_client.delete_security_group(group_id)
+            self.provider.azure_client.delete_vm_firewall(group_id)
             return True
         except CloudError as cloudError:
             # Azure raises the cloud error if the resource not available
@@ -170,10 +119,15 @@ class AzureKeyPairService(BaseKeyPairService):
             return None
 
     def list(self, limit=None, marker=None):
-        key_pairs = [AzureKeyPair(self.provider, key_pair) for key_pair in
-                     self.provider.azure_client.
-                     list_public_keys(AzureKeyPairService.PARTITION_KEY)]
-        return ClientPagedResultList(self.provider, key_pairs, limit, marker)
+        key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
+            AzureKeyPairService.PARTITION_KEY,  marker=marker,
+            limit=limit or self.provider.config.default_result_limit)
+        results = [AzureKeyPair(self.provider, key_pair)
+                   for key_pair in key_pairs]
+        return ServerPagedResultList(is_truncated=resume_marker,
+                                     marker=resume_marker,
+                                     supports_total=False,
+                                     data=results)
 
     def find(self, name, limit=None, marker=None):
         key_pair = self.get(name)
@@ -182,6 +136,7 @@ class AzureKeyPairService(BaseKeyPairService):
                                      limit, marker)
 
     def create(self, name):
+        AzureKeyPair.assert_valid_resource_name(name)
 
         key_pair = self.get(name)
 
@@ -207,9 +162,9 @@ class AzureKeyPairService(BaseKeyPairService):
         return key_pair
 
 
-class AzureObjectStoreService(BaseObjectStoreService):
+class AzureBucketService(BaseBucketService):
     def __init__(self, provider):
-        super(AzureObjectStoreService, self).__init__(provider)
+        super(AzureBucketService, self).__init__(provider)
 
     def get(self, bucket_id):
         """
@@ -247,17 +202,19 @@ class AzureObjectStoreService(BaseObjectStoreService):
         """
         Create a new bucket.
         """
+        AzureBucket.assert_valid_resource_name(name)
         bucket = self.provider.azure_client.create_container(name.lower())
         return AzureBucket(self.provider, bucket)
 
 
-class AzureBlockStoreService(BaseBlockStoreService):
+class AzureStorageService(BaseStorageService):
     def __init__(self, provider):
-        super(AzureBlockStoreService, self).__init__(provider)
+        super(AzureStorageService, self).__init__(provider)
 
         # Initialize provider services
         self._volume_svc = AzureVolumeService(self.provider)
         self._snapshot_svc = AzureSnapshotService(self.provider)
+        self._bucket_svc = AzureBucketService(self.provider)
 
     @property
     def volumes(self):
@@ -266,6 +223,10 @@ class AzureBlockStoreService(BaseBlockStoreService):
     @property
     def snapshots(self):
         return self._snapshot_svc
+
+    @property
+    def buckets(self):
+        return self._bucket_svc
 
 
 class AzureVolumeService(BaseVolumeService):
@@ -290,7 +251,7 @@ class AzureVolumeService(BaseVolumeService):
         """
         filters = {'Name': name}
         cb_vols = [AzureVolume(self.provider, volume)
-                   for volume in azure_helpers.filter(
+                   for volume in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_disks(), filters)]
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
@@ -308,8 +269,9 @@ class AzureVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
+        AzureVolume.assert_valid_resource_name(name)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-        snapshot = (self.provider.block_store.snapshots.get(snapshot)
+        snapshot = (self.provider.storage.snapshots.get(snapshot)
                     if snapshot and isinstance(snapshot, str) else snapshot)
         disk_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
         tags = {'Name': name}
@@ -368,7 +330,7 @@ class AzureSnapshotService(BaseSnapshotService):
         """
         filters = {'Name': name}
         cb_snapshots = [AzureSnapshot(self.provider, snapshot)
-                        for snapshot in azure_helpers.filter(
+                        for snapshot in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_snapshots(), filters)]
         return ClientPagedResultList(self.provider, cb_snapshots,
                                      limit=limit, marker=marker)
@@ -386,7 +348,8 @@ class AzureSnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
-        volume = (self.provider.block_store.volumes.get(volume)
+        AzureSnapshot.assert_valid_resource_name(name)
+        volume = (self.provider.storage.volumes.get(volume)
                   if isinstance(volume, str) else volume)
 
         tags = {'Name': name}
@@ -416,7 +379,7 @@ class AzureSnapshotService(BaseSnapshotService):
 class AzureComputeService(BaseComputeService):
     def __init__(self, provider):
         super(AzureComputeService, self).__init__(provider)
-        self._instance_type_svc = AzureInstanceTypesService(self.provider)
+        self._vm_type_svc = AzureVMTypeService(self.provider)
         self._instance_svc = AzureInstanceService(self.provider)
         self._region_svc = AzureRegionService(self.provider)
         self._images_svc = AzureImageService(self.provider)
@@ -426,8 +389,8 @@ class AzureComputeService(BaseComputeService):
         return self._images_svc
 
     @property
-    def instance_types(self):
-        return self._instance_type_svc
+    def vm_types(self):
+        return self._vm_type_svc
 
     @property
     def instances(self):
@@ -442,11 +405,14 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet=None, zone=None,
-               key_pair=None, security_groups=None, user_data=None,
+    def create(self, name, image, vm_type, subnet=None, zone=None,
+               key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
 
-        instance_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
+        instance_name = name.replace("_", "-") if name \
+            else "{0} - {1}".format("cb", uuid.uuid4())
+
+        AzureInstance.assert_valid_resource_name(instance_name)
 
         # Key_pair is mandatory in azure and it should not be None.
         if key_pair:
@@ -458,21 +424,24 @@ class AzureInstanceService(BaseInstanceService):
 
         image = (self.provider.compute.images.get(image)
                  if isinstance(image, str) else image)
+        if not isinstance(image, AzureMachineImage):
+            raise Exception("Provided image %s is not a valid azure image"
+                            % image)
 
-        instance_size = instance_type.id if \
-            isinstance(instance_type, InstanceType) else instance_type
+        instance_size = vm_type.id if \
+            isinstance(vm_type, VMType) else vm_type
 
         if not subnet:
-            subnet = self.provider.network.subnets.get_or_create_default()
+            subnet = self.provider.networking.subnets.get_or_create_default()
         else:
-            subnet = (self.provider.network.subnets.get(subnet)
+            subnet = (self.provider.networking.subnets.get(subnet)
                       if isinstance(subnet, str) else subnet)
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
 
-        subnet_id, zone_id, security_group_id = \
+        subnet_id, zone_id, vm_firewall_id = \
             self._resolve_launch_options(instance_name,
-                                         subnet, zone_id, security_groups)
+                                         subnet, zone_id, vm_firewalls)
 
         if launch_config:
             disks, root_disk_size = \
@@ -493,9 +462,9 @@ class AzureInstanceService(BaseInstanceService):
                 }]
             }
 
-        if security_group_id:
+        if vm_firewall_id:
             nic_params['network_security_group'] = {
-                'id': security_group_id
+                'id': vm_firewall_id
             }
         nic_info = self.provider.azure_client.create_nic(
             instance_name + '_nic',
@@ -560,54 +529,34 @@ class AzureInstanceService(BaseInstanceService):
         return AzureInstance(self.provider, vm)
 
     def _resolve_launch_options(self, name, subnet=None, zone_id=None,
-                                security_groups=None):
-        """
-        Work out interdependent launch options.
-
-        Some launch options are required and interdependent so make sure
-        they conform to the interface contract.
-
-        :type subnet: ``Subnet``
-        :param subnet: Subnet object within which to launch.
-
-        :type zone_id: ``str``
-        :param zone_id: ID of the zone where the launch should happen.
-
-        :type security_groups: ``list`` of ``id``
-        :param zone_id: List of security group IDs.
-
-        :rtype: triplet of ``str``
-        :return: Subnet ID, zone ID and security group IDs for launch.
-
-        :raise ValueError: In case a conflicting combination is found.
-        """
+                                vm_firewalls=None):
         if subnet:
             # subnet's zone takes precedence
             zone_id = subnet.zone.id
-        security_group_id = None
+        vm_firewall_id = None
 
-        if isinstance(security_groups, list) and len(security_groups) > 0:
+        if isinstance(vm_firewalls, list) and len(vm_firewalls) > 0:
 
-            if isinstance(security_groups[0], SecurityGroup):
-                security_groups_ids = [sg.id for sg in security_groups]
-                security_group_id = security_groups[0].resource_id
+            if isinstance(vm_firewalls[0], VMFirewall):
+                vm_firewalls_ids = [fw.id for fw in vm_firewalls]
+                vm_firewall_id = vm_firewalls[0].resource_id
             else:
-                security_groups_ids = security_groups
-                seuciry_group = self.provider.security.\
-                    security_groups.get(security_groups[0])
-                security_group_id = seuciry_group.resource_id
+                vm_firewalls_ids = vm_firewalls
+                vm_firewall = self.provider.security.\
+                    vm_firewalls.get(vm_firewalls[0])
+                vm_firewall_id = vm_firewall.resource_id
 
-            if len(security_groups) > 1:
-                new_sg = self.provider.security.security_groups.\
-                    create('{0}-sg'.format(name), 'Merge security groups {0}'.
-                           format(','.join(security_groups_ids)))
+            if len(vm_firewalls) > 1:
+                new_fw = self.provider.security.vm_firewalls.\
+                    create('{0}-fw'.format(name), 'Merge vm firewall {0}'.
+                           format(','.join(vm_firewalls_ids)))
 
-                for sg in security_groups:
-                    new_sg.add_rule(src_group=sg)
+                for fw in vm_firewalls:
+                    new_fw.add_rule(src_dest_fw=fw)
 
-                security_group_id = new_sg.resource_id
+                vm_firewall_id = new_fw.resource_id
 
-        return subnet.resource_id, zone_id, security_group_id
+        return subnet.resource_id, zone_id, vm_firewall_id
 
     def _process_block_device_mappings(self, launch_config,
                                        vm_name, zone=None):
@@ -668,7 +617,7 @@ class AzureInstanceService(BaseInstanceService):
                         vol_name = \
                             "{0}_{1}_disk".format(vm_name,
                                                   uuid.uuid4().hex[:6])
-                        new_vol = self.provider.block_store.volumes.create(
+                        new_vol = self.provider.storage.volumes.create(
                             vol_name,
                             device.size,
                             zone)
@@ -717,7 +666,7 @@ class AzureInstanceService(BaseInstanceService):
         """
         filtr = {'Name': name}
         instances = [AzureInstance(self.provider, inst)
-                     for inst in azure_helpers.filter(
+                     for inst in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_vm(), filtr)]
         return ClientPagedResultList(self.provider, instances,
                                      limit=limit, marker=marker)
@@ -746,7 +695,7 @@ class AzureImageService(BaseImageService):
         """
         filters = {'Name': name}
         cb_images = [AzureMachineImage(self.provider, image)
-                     for image in azure_helpers.filter(
+                     for image in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_images(), filters)]
         return ClientPagedResultList(self.provider, cb_images,
                                      limit=limit, marker=marker)
@@ -762,30 +711,59 @@ class AzureImageService(BaseImageService):
                                      limit=limit, marker=marker)
 
 
-class AzureInstanceTypesService(BaseInstanceTypesService):
+class AzureVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
-        super(AzureInstanceTypesService, self).__init__(provider)
+        super(AzureVMTypeService, self).__init__(provider)
 
     @property
     def instance_data(self):
         """
         Fetch info about the available instances.
         """
-        r = self.provider.azure_client.list_instance_types()
+        r = self.provider.azure_client.list_vm_types()
         return r
 
     def list(self, limit=None, marker=None):
-        inst_types = [AzureInstanceType(self.provider, inst_type)
-                      for inst_type in self.instance_data]
-        return ClientPagedResultList(self.provider, inst_types,
+        vm_types = [AzureVMType(self.provider, vm_type)
+                    for vm_type in self.instance_data]
+        return ClientPagedResultList(self.provider, vm_types,
                                      limit=limit, marker=marker)
+
+
+class AzureNetworkingService(BaseNetworkingService):
+    def __init__(self, provider):
+        super(AzureNetworkingService, self).__init__(provider)
+        self._network_service = AzureNetworkService(self.provider)
+        self._subnet_service = AzureSubnetService(self.provider)
+        self._fip_service = AzureFloatingIPService(self.provider)
+        self._router_service = AzureRouterService(self.provider)
+        self._gateway_service = AzureGatewayService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
+
+    @property
+    def floating_ips(self):
+        return self._fip_service
+
+    @property
+    def routers(self):
+        return self._router_service
+
+    @property
+    def gateways(self):
+        return self._gateway_service
 
 
 class AzureNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(AzureNetworkService, self).__init__(provider)
-        self._subnet_svc = AzureSubnetService(self.provider)
 
     def get(self, network_id):
         try:
@@ -799,35 +777,74 @@ class AzureNetworkService(BaseNetworkService):
 
     def list(self, limit=None, marker=None):
         """
-               List all networks.
+        List all networks.
         """
         networks = [AzureNetwork(self.provider, network)
                     for network in self.provider.azure_client.list_networks()]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def create(self, name=None):
+    def find(self, name, limit=None, marker=None):
+        filters = {'Name': name}
+        networks = [AzureNetwork(self.provider, network)
+                    for network in azure_helpers.filter_by_tag(
+                self.provider.azure_client.list_networks(), filters)]
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
+
+    def create(self, name, cidr_block):
         # Azure requires CIDR block to be specified when creating a network
         # so set a default one and use the largest allowed netmask.
         network_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
         if name:
             network_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
 
+        AzureNetwork.assert_valid_resource_name(network_name)
+
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
-                'address_prefixes': ['10.0.0.0/16']
+                'address_prefixes': [cidr_block]
             },
             'tags': {'Name': name or AzureNetwork.CB_DEFAULT_NETWORK_NAME}
         }
-
         self.provider.azure_client.create_network(network_name, params)
         network = self.provider.azure_client.get_network(network_name)
         cb_network = AzureNetwork(self.provider, network)
-
         return cb_network
 
-    def create_floating_ip(self):
+    def delete(self, network_id):
+        """
+        Delete an existing network.
+        """
+        try:
+            self.provider.azure_client.delete_network(network_id)
+            return True
+        except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloudError.message)
+            return False
+
+
+class AzureFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(AzureFloatingIPService, self).__init__(provider)
+
+    def get(self, floating_ip):
+        log.debug("Getting AWS Floating IP Service with the id: %s",
+                  floating_ip)
+        fip = [fip for fip in self.list() if fip.id == floating_ip]
+        return fip[0] if fip else None
+
+    def list(self, limit=None, marker=None):
+        floating_ips = [AzureFloatingIP(self.provider, floating_ip)
+                        for floating_ip in self.provider.azure_client.
+                        list_floating_ips()]
+        return ClientPagedResultList(self.provider, floating_ips,
+                                     limit=limit, marker=marker)
+
+    def create(self):
         public_ip_address_name = "{0}-{1}".format(
             'public_ip', uuid.uuid4().hex[:6])
         public_ip_parameters = {
@@ -838,40 +855,6 @@ class AzureNetworkService(BaseNetworkService):
         floating_ip = self.provider.azure_client.\
             create_floating_ip(public_ip_address_name, public_ip_parameters)
         return AzureFloatingIP(self.provider, floating_ip)
-
-    @property
-    def subnets(self):
-        return self._subnet_svc
-
-    def floating_ips(self, network_id=None):
-        """
-               List all floating ips.
-        """
-        floating_ips = [AzureFloatingIP(self.provider, floating_ip)
-                        for floating_ip in self.provider.azure_client.
-                        list_floating_ips()]
-
-        return ClientPagedResultList(self.provider, floating_ips)
-
-    def routers(self):
-        return ClientPagedResultList(self.provider, [])
-
-    def create_router(self, name=None):
-        ar = AzureRouter(self.provider, None)
-        ar.name = name
-        return ar
-
-    def delete(self, network_id):
-        """
-                Delete an existing network.
-                """
-        try:
-            self.provider.azure_client.delete_network(network_id)
-            return True
-        except CloudError as cloudError:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
-            return False
 
 
 class AzureRegionService(BaseRegionService):
@@ -914,6 +897,8 @@ class AzureSubnetService(BaseSubnetService):
         """
         try:
             subnet_id_parts = subnet_id.split('|$|')
+            if (len(subnet_id_parts) != 2):
+                return None
             azure_subnet = self.provider.azure_client.\
                 get_subnet(subnet_id_parts[0], subnet_id_parts[1])
             return AzureSubnet(self.provider,
@@ -951,6 +936,7 @@ class AzureSubnetService(BaseSubnetService):
         """
         Create subnet
         """
+        AzureSubnet.assert_valid_resource_name(name)
         network_id = network.id \
             if isinstance(network, Network) else network
 
@@ -989,18 +975,20 @@ class AzureSubnetService(BaseSubnetService):
             return AzureSubnet(self.provider, subnet)
 
         # No provider-default Subnet exists, try to create it (net + subnets)
+        default_net_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
         try:
-            network = self.provider.azure_client\
-                .get_network(AzureNetwork.CB_DEFAULT_NETWORK_NAME)
+            network = self.provider.azure_client \
+                .get_network(default_net_name)
         except CloudError:
             # Azure raises the cloud error if the resource not available
             pass
 
         if not network:
-            self.provider.network.create()
+            network = self.provider.networking.networks.create(
+                name=default_net_name, cidr_block='10.0.0.0/16')
 
         subnet = self.provider.azure_client.create_subnet(
-            AzureNetwork.CB_DEFAULT_NETWORK_NAME,
+            network.id,
             AzureSubnet.CB_DEFAULT_SUBNET_NAME,
             {'address_prefix': default_cdir}
         )
@@ -1022,3 +1010,62 @@ class AzureSubnetService(BaseSubnetService):
             # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
             return False
+
+
+class AzureRouterService(BaseRouterService):
+    def __init__(self, provider):
+        super(AzureRouterService, self).__init__(provider)
+
+    def get(self, router_id):
+        try:
+            route = self.provider.azure_client.get_route_table(router_id)
+            return AzureRouter(self.provider, route)
+
+        except CloudError as cloudError:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloudError.message)
+            return None
+
+    def find(self, name, limit=None, marker=None):
+        filters = {'Name': name}
+        routes = [AzureRouter(self.provider, route)
+                  for route in azure_helpers.filter_by_tag(
+                self.provider.azure_client.list_route_tables(), filters)]
+
+        return ClientPagedResultList(self.provider, routes,
+                                     limit=limit, marker=marker)
+
+    def list(self, limit=None, marker=None):
+        routes = [AzureRouter(self.provider, route)
+                  for route in
+                  self.provider.azure_client.list_route_tables()]
+        return ClientPagedResultList(self.provider,
+                                     routes,
+                                     limit=limit, marker=marker)
+
+    def create(self, name, network):
+        AzureRouter.assert_valid_resource_name(name)
+        parameters = {"location": self.provider.region_name,
+                      'tags': {'Name': name}}
+        route = self.provider.azure_client. \
+            create_route_table(name, parameters)
+        return AzureRouter(self.provider, route)
+
+
+class AzureGatewayService(BaseGatewayService):
+    def __init__(self, provider):
+        super(AzureGatewayService, self).__init__(provider)
+        # Singleton returned by the list method
+        self.gateway_singleton = AzureInternetGateway(self.provider, None)
+
+    def get_or_create_inet_gateway(self, name):
+        AzureInternetGateway.assert_valid_resource_name(name)
+        gateway = AzureInternetGateway(self.provider, None)
+        gateway.name = name
+        return gateway
+
+    def list(self, limit=None, marker=None):
+        return [self.gateway_singleton]
+
+    def delete(self, gateway):
+        pass

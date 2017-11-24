@@ -64,24 +64,24 @@ class ComputeService(CloudService):
         pass
 
     @abstractproperty
-    def instance_types(self):
+    def vm_types(self):
         """
-        Provides access to all Instance type related services in this provider.
+        Provides access to all VM type related services in this provider.
 
         Example:
 
         .. code-block:: python
 
-            # list all instance sizes
-            for inst_type in provider.compute.instance_types:
-                print(inst_type.id, inst_type.name)
+            # list all VM sizes
+            for vm_type in provider.compute.vm_types:
+                print(vm_type.id, vm_type.name)
 
             # find a specific size by name
-            inst_type = provider.compute.instance_types.find(name='m1.small')
-            print(inst_type.vcpus)
+            vm_type = provider.compute.vm_types.find(name='m1.small')
+            print(vm_type.vcpus)
 
-        :rtype: :class:`.InstanceTypeService`
-        :return: an InstanceTypeService object
+        :rtype: :class:`.VMTypeService`
+        :return: an VMTypeService object
         """
         pass
 
@@ -96,7 +96,7 @@ class ComputeService(CloudService):
 
             # launch a new instance
             image = provider.compute.images.find(name='Ubuntu 14.04')[0]
-            size = provider.compute.instance_types.find(name='m1.small')
+            size = provider.compute.vm_types.find(name='m1.small')
             instance = provider.compute.instances.create('Hello', image, size)
             print(instance.id, instance.name)
 
@@ -160,9 +160,25 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for an instance by a given list of attributes.
+
+        :type  name: ``str``
+        :param name: The name to search for
+
+        :type  limit: ``int``
+        :param limit: The maximum number of objects to return. Note that the
+                      maximum is not guaranteed to be honoured, and a lower
+                      maximum may be enforced depending on the provider. In
+                      such a case, the returned ResultList's is_truncated
+                      property can be used to determine whether more records
+                      are available.
+
+        :type  marker: ``str``
+        :param marker: The marker is an opaque identifier used to assist
+                       in paging through very long lists of objects. It is
+                       returned on each invocation of the list method.
 
         :rtype: List of ``object`` of :class:`.Instance`
         :return: A list of Instance objects matching the supplied attributes.
@@ -205,8 +221,8 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, image, instance_type, subnet, zone=None,
-               key_pair=None, security_groups=None, user_data=None,
+    def create(self, name, image, vm_type, subnet, zone=None,
+               key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None,
                **kwargs):
         """
@@ -219,8 +235,8 @@ class InstanceService(PageableObjectMixin, CloudService):
         :param image: The MachineImage object or id to boot the virtual machine
                       with
 
-        :type  instance_type: ``InstanceType`` or ``str``
-        :param instance_type: The InstanceType or name, specifying the size of
+        :type  vm_type: ``VMType`` or ``str``
+        :param vm_type: The VMType or name, specifying the size of
                               the instance to boot into
 
         :type  subnet:  ``Subnet`` or ``str``
@@ -246,16 +262,16 @@ class InstanceService(PageableObjectMixin, CloudService):
         :param key_pair: The KeyPair object or its name, to set for the
                          instance.
 
-        :type  security_groups: A ``list`` of ``SecurityGroup`` objects or a
-                                list of ``str`` object IDs
-        :param security_groups: A list of ``SecurityGroup`` objects or a list
-                                of ``SecurityGroup`` IDs, which should be
-                                assigned to this instance.
+        :type  vm_firewalls: A ``list`` of ``VMFirewall`` objects or a
+                             list of ``str`` object IDs
+        :param vm_firewalls: A list of ``VMFirewall`` objects or a list
+                             of ``VMFirewall`` IDs, which should be
+                             assigned to this instance.
 
-                                The security groups must be associated with the
-                                same network as the supplied subnet. Use
-                                ``network.security_groups`` to retrieve a list
-                                of security groups belonging to a network.
+                             The VM firewalls must be associated with the
+                             same network as the supplied subnet. Use
+                             ``network.vm_firewalls`` to retrieve a list
+                             of firewalls belonging to a network.
 
         :type  user_data: ``str``
         :param user_data: An extra userdata object which is compatible with
@@ -408,11 +424,12 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
 
-class BlockStoreService(CloudService):
+class StorageService(CloudService):
 
     """
-    The Block Store Service interface provides access to block device services,
-    such as volume and snapshot services in the provider.
+    The Storage Service interface provides access to block device services,
+    such as volume and snapshot services, as well as object store services,
+    such as buckets, in the provider.
     """
     __metaclass__ = ABCMeta
 
@@ -426,11 +443,11 @@ class BlockStoreService(CloudService):
         .. code-block:: python
 
             # print all volumes
-            for vol in provider.block_store.volumes:
+            for vol in provider.storage.volumes:
                 print(vol.id, vol.name)
 
             # find volume by name
-            vol = provider.block_store.volumes.find(name='my_vol')[0]
+            vol = provider.storage.volumes.find(name='my_vol')[0]
             print(vol.id, vol.name)
 
         :rtype: :class:`.VolumeService`
@@ -448,15 +465,37 @@ class BlockStoreService(CloudService):
         .. code-block:: python
 
             # print all snapshots
-            for snap in provider.block_store.snapshots:
+            for snap in provider.storage.snapshots:
                 print(snap.id, snap.name)
 
             # find snapshot by name
-            snap = provider.block_store.snapshots.find(name='my_snap')[0]
+            snap = provider.storage.snapshots.find(name='my_snap')[0]
             print(snap.id, snap.name)
 
         :rtype: :class:`.SnapshotService`
-        :return: an SnapshotService object
+        :return: a SnapshotService object
+        """
+        pass
+
+    @abstractproperty
+    def buckets(self):
+        """
+        Provides access to object storage services in this provider.
+
+        Example:
+
+        .. code-block:: python
+
+            # print all buckets
+            for bucket in provider.storage.buckets:
+                print(bucket.id, bucket.name)
+
+            # find bucket by name
+            bucket = provider.storage.buckets.find(name='my_bucket')[0]
+            print(bucket.id, bucket.name)
+
+        :rtype: :class:`.BucketService`
+        :return: a BucketService object
         """
         pass
 
@@ -490,9 +529,16 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def list(self, limit=None, marker=None):
+    def list(self, filter_by_owner=True, limit=None, marker=None):
         """
         List all images.
+
+        :type  filter_by_owner: ``bool``
+        :param filter_by_owner: If ``True``, return only images owned
+                                by the current user. Else, return all
+                                public images available from the provider.
+                                Note that fetching all images may take a
+                                long time.
 
         :rtype: ``list`` of :class:`.Image`
         :return:  list of image objects
@@ -501,7 +547,6 @@ class ImageService(PageableObjectMixin, CloudService):
 
 
 class NetworkingService(CloudService):
-
     """
     Base service interface for networking.
 
@@ -537,6 +582,16 @@ class NetworkingService(CloudService):
 
         :rtype: :class:`.RouterService`
         :return: a Router service object
+        """
+        pass
+
+    @abstractproperty
+    def floating_ips(self):
+        """
+        Provides access to all Floating IP services.
+
+        :rtype: :class:`.FloatingIPService`
+        :return: a FloatingIPService object
         """
         pass
 
@@ -583,7 +638,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a network by a given list of attributes.
 
@@ -623,11 +678,6 @@ class NetworkService(PageableObjectMixin, CloudService):
 
         :type network_id: ``str``
         :param network_id: The ID of the network to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the network does not exist, ``False`` otherwise.
-                  Note that this implies that the network may not have been
-                  deleted by this method but instead has not existed at all.
         """
         pass
 
@@ -653,33 +703,6 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
-    @abstractproperty
-    def floating_ips(self):
-        """
-        List floating (i.e., static) IP addresses.
-
-        :type network_id: ``str``
-        :param network_id: The ID of the network by which to filter the IPs.
-
-        :rtype: ``list`` of :class:`FloatingIP`
-        :return: list of floating IP objects
-        """
-        pass
-
-    @abstractmethod
-    def create_floating_ip(self):
-        """
-        Allocate a new floating (i.e., static) IP address.
-
-        :type network_id: ``str``
-        :param network_id: The ID of the network with which to associate the
-                           new IP address.
-
-        :rtype: :class:`FloatingIP`
-        :return: floating IP object
-        """
-        pass
-
 
 class SubnetService(PageableObjectMixin, CloudService):
 
@@ -702,6 +725,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
+    # pylint:disable=arguments-differ
     def list(self, network=None, limit=None, marker=None):
         """
         List all subnets or filter them by the supplied network ID.
@@ -711,6 +735,16 @@ class SubnetService(PageableObjectMixin, CloudService):
 
         :rtype: ``list`` of :class:`.Subnet`
         :return: list of Subnet objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, name, limit=None, marker=None):
+        """
+        Searches for a subnet by a given list of attributes.
+
+        :rtype: List of ``object`` of :class:`.Subnet`
+        :return: A list of Subnet objects matching the supplied attributes.
         """
         pass
 
@@ -768,17 +802,72 @@ class SubnetService(PageableObjectMixin, CloudService):
 
         :type subnet: :class:`.Subnet` object or ``str``
         :param subnet: Subnet object or ID of the subnet to delete.
+        """
+        pass
 
-        :rtype: ``bool``
-        :return:  ``True`` if the subnet does not exist, ``False`` otherwise.
-                  Note that this implies that the subnet may not have been
-                  deleted by this method but instead has not existed at all.
+
+class FloatingIPService(PageableObjectMixin, CloudService):
+
+    """
+    Base interface for a FloatingIP Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, fip_id):
+        """
+        Returns a FloatingIP given its ID or ``None`` if not found.
+
+        :type fip_id: ``str``
+        :param fip_id: The ID of the FloatingIP to retrieve.
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return: a FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List floating (i.e., static) IP addresses.
+
+        :rtype: ``list`` of :class:`.FloatingIP`
+        :return: list of FloatingIP objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, name):
+        """
+        Searches for a FloatingIP by a given list of attributes.
+
+        :rtype: List of ``object`` of :class:`.FloatingIP`
+        :return: A list of FloatingIP objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self):
+        """
+        Allocate a new floating (i.e., static) IP address.
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return:  A FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, fip_id):
+        """
+        Delete an existing FloatingIP.
+
+        :type fip_id: ``str``
+        :param fip_id: The ID of the FloatingIP to be deleted.
         """
         pass
 
 
 class RouterService(PageableObjectMixin, CloudService):
-
     """
     Manage networking router actions and resources.
     """
@@ -818,16 +907,16 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network, name=None):
+    def create(self, name, network):
         """
         Create a new router.
-
-        :type network: :class:`.Network` object or ``str``
-        :param network: Network object or ID under which to create the router.
 
         :type name: ``str``
         :param name: A router name. The name will be set if the provider
                      supports it.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID under which to create the router.
 
         :rtype: ``object`` of :class:`.Router`
         :return:  A Router object
@@ -846,27 +935,25 @@ class RouterService(PageableObjectMixin, CloudService):
 
 
 class GatewayService(CloudService):
-
     """
     Manage internet gateway resources.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self, name):
+    def get_or_create_inet_gateway(self, network, name=None):
         """
-        Creates and returns a new internet gateway or returns an existing
-        singleton gateway, depending on the cloud provider. The returned
-        gateway object can subsequently be attached to a router to provide
-        internet routing to a network. If the gateway is no longer required,
-        clients should call gateway.delete() to delete the gateway. On some
-        cloud providers this will result in the gateway being deleted. On
-        others, it will result in a no-op if the cloud has only a single/public
-        gateway.
+        Creates new or returns an existing internet gateway for a network.
+
+        The returned gateway object can subsequently be attached to a router to
+        provide internet routing to a network.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID to which the gateway is attached.
 
         :type  name: ``str``
-        :param name: The gateway name. The name will be set if the provider
-                     supports it.
+        :param name: The gateway name. This applies only if creating a gateway
+                     and if the provider supports it.
 
         :rtype: ``object``  of :class:`.InternetGateway` or ``None``
         :return: an InternetGateway object of ``None`` if not found.
@@ -883,12 +970,22 @@ class GatewayService(CloudService):
         """
         pass
 
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all available internet gateways.
 
-class ObjectStoreService(PageableObjectMixin, CloudService):
+        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
+        :return: Current list of internet gateways.
+        """
+        pass
+
+
+class BucketService(PageableObjectMixin, CloudService):
 
     """
-    The Object Storage Service interface provides access to the underlying
-    object store capabilities of this provider. This service is optional and
+    The Bucket Service interface provides access to the underlying
+    object storage capabilities of this provider. This service is optional and
     the :func:`CloudProvider.has_service()` method should be used to verify its
     availability before using the service.
     """
@@ -905,7 +1002,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
 
         .. code-block:: python
 
-            bucket = provider.object_store.get('my_bucket_id')
+            bucket = provider.storage.buckets.get('my_bucket_id')
             print(bucket.id, bucket.name)
 
         :rtype: :class:`.Bucket`
@@ -914,7 +1011,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, name, limit=None, marker=None):
         """
         Searches for a bucket by a given list of attributes.
 
@@ -922,7 +1019,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
 
         .. code-block:: python
 
-            buckets = provider.object_store.find(name='my_bucket_name')
+            buckets = provider.storage.buckets.find(name='my_bucket_name')
             for bucket in buckets:
                 print(bucket.id, bucket.name)
 
@@ -940,7 +1037,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
 
         .. code-block:: python
 
-            buckets = provider.object_store.find(name='my_bucket_name')
+            buckets = provider.storage.buckets.find(name='my_bucket_name')
             for bucket in buckets:
                 print(bucket.id, bucket.name)
 
@@ -961,7 +1058,7 @@ class ObjectStoreService(PageableObjectMixin, CloudService):
 
         .. code-block:: python
 
-            bucket = provider.object_store.create('my_bucket_name')
+            bucket = provider.storage.buckets.create('my_bucket_name')
             print(bucket.name)
 
 
@@ -1008,24 +1105,24 @@ class SecurityService(CloudService):
         pass
 
     @abstractproperty
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Provides access to security groups for this provider.
+        Provides access to firewalls (security groups) for this provider.
 
         Example:
 
         .. code-block:: python
 
-            # print all security groups
-            for sg in provider.security.security_groups:
-                print(sg.id, sg.name)
+            # print all VM firewalls
+            for fw in provider.security.vm_firewalls:
+                print(fw.id, fw.name)
 
-            # find security group by name
-            sg = provider.security.security_groups.find(name='my_sg')[0]
-            print(sg.id, sg.name)
+            # find firewall by name
+            fw = provider.security.vm_firewalls.find(name='my_vm_fw')[0]
+            print(fw.id, fw.name)
 
-        :rtype: :class:`.SecurityGroupService`
-        :return: a SecurityGroupService object
+        :rtype: :class:`.VMFirewallService`
+        :return: a VMFirewallService object
         """
         pass
 
@@ -1093,7 +1190,7 @@ class KeyPairService(PageableObjectMixin, CloudService):
     @abstractmethod
     def delete(self, key_pair_id):
         """
-        Delete an existing SecurityGroup.
+        Delete an existing VMFirewall.
 
         :type key_pair_id: str
         :param key_pair_id: The id of the key pair to be deleted.
@@ -1106,70 +1203,70 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
 
-class SecurityGroupService(PageableObjectMixin, CloudService):
+class VMFirewallService(PageableObjectMixin, CloudService):
 
     """
-    Base interface for security groups.
+    Base interface for VM firewalls.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, security_group_id):
+    def get(self, vm_firewall_id):
         """
-        Returns a SecurityGroup given its ID. Returns ``None`` if the
-        SecurityGroup does not exist.
+        Returns a VMFirewall given its ID. Returns ``None`` if the
+        VMFirewall does not exist.
 
         Example:
 
         .. code-block:: python
 
-            sg = provider.security.security_groups.get('my_sg_id')
-            print(sg.id, sg.name)
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            print(fw.id, fw.name)
 
-        :rtype: :class:`.SecurityGroup`
-        :return:  a SecurityGroup instance
+        :rtype: :class:`.VMFirewall`
+        :return:  a VMFirewall instance
         """
         pass
 
     @abstractmethod
     def list(self, limit=None, marker=None):
         """
-        List all security groups associated with this account.
+        List all VM firewalls associated with this account.
 
-        :rtype: ``list`` of :class:`.SecurityGroup`
-        :return:  list of SecurityGroup objects
+        :rtype: ``list`` of :class:`.VMFirewall`
+        :return:  list of VMFirewall objects
         """
         pass
 
     @abstractmethod
     def create(self, name, description, network_id):
         """
-        Create a new SecurityGroup.
+        Create a new VMFirewall.
 
         :type name: str
-        :param name: The name of the new security group.
+        :param name: The name of the new VM firewall.
 
         :type description: str
-        :param description: The description of the new security group.
+        :param description: The description of the new VM firewall.
 
         :type  network_id: ``str``
-        :param network_id: Network ID under which to create the security group.
+        :param network_id: Network ID under which to create the VM firewall.
 
-        :rtype: ``object`` of :class:`.SecurityGroup`
-        :return:  A SecurityGroup instance or ``None`` if one was not created.
+        :rtype: ``object`` of :class:`.VMFirewall`
+        :return:  A VMFirewall instance or ``None`` if one was not created.
         """
         pass
 
     @abstractmethod
     def find(self, name, limit=None, marker=None):
         """
-        Get security groups associated with your account filtered by name.
+        Get VM firewalls associated with your account filtered by name.
 
         :type name: str
-        :param name: The name of the security group to retrieve.
+        :param name: The name of the VM firewall to retrieve.
 
-        :rtype: list of :class:`SecurityGroup`
-        :return: A list of SecurityGroup objects or an empty list if none
+        :rtype: list of :class:`VMFirewall`
+        :return: A list of VMFirewall objects or an empty list if none
                  found.
         """
         pass
@@ -1177,48 +1274,42 @@ class SecurityGroupService(PageableObjectMixin, CloudService):
     @abstractmethod
     def delete(self, group_id):
         """
-        Delete an existing SecurityGroup.
+        Delete an existing VMFirewall.
 
         :type group_id: str
-        :param group_id: The security group ID to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the security group does not exist, ``False``
-                  otherwise. Note that this implies that the group may not have
-                  been deleted by this method but instead has not existed in
-                  the first place.
+        :param group_id: The VM firewall ID to be deleted.
         """
         pass
 
 
-class InstanceTypesService(PageableObjectMixin, CloudService):
+class VMTypeService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, instance_type_id):
+    def get(self, vm_type_id):
         """
-        Returns an InstanceType given its ID. Returns ``None`` if the
-        InstanceType does not exist.
+        Returns an VMType given its ID. Returns ``None`` if the
+        VMType does not exist.
 
         Example:
 
         .. code-block:: python
 
-            itype = provider.compute.instance_types.get('my_itype_id')
-            print(itype.id, itype.name)
+            vm_type = provider.compute.vm_types.get('my_vm_type_id')
+            print(vm_type.id, vm_type.name)
 
-        :rtype: :class:`.InstanceType`
-        :return:  an InstanceType instance
+        :rtype: :class:`.VMType`
+        :return:  an VMType instance
         """
         pass
 
     @abstractmethod
     def list(self, limit=None, marker=None):
         """
-        List all instance types.
+        List all VM types.
 
-        :rtype: ``list`` of :class:`.InstanceType`
-        :return: list of InstanceType objects
+        :rtype: ``list`` of :class:`.VMType`
+        :return: list of VMType objects
         """
         pass
 
@@ -1227,7 +1318,7 @@ class InstanceTypesService(PageableObjectMixin, CloudService):
         """
         Searches for an instance by a given list of attributes.
 
-        :rtype: ``object`` of :class:`.InstanceType`
+        :rtype: ``object`` of :class:`.VMType`
         :return: an Instance object
         """
         pass

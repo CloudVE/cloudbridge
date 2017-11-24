@@ -1,9 +1,7 @@
 import unittest
-
 from test.helpers import ProviderTestBase
 
 import cloudbridge
-
 from cloudbridge.cloud import interfaces
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
@@ -60,7 +58,7 @@ class CloudInterfaceTestCase(ProviderTestBase):
             cloned_config['os_username'] = "cb_dummy"
             cloned_config['os_password'] = "cb_dummy"
         elif self.provider.PROVIDER_ID == 'azure':
-            cloned_config['subscription_id'] = "cb_dummy"
+            cloned_config['azure_subscription_id'] = "cb_dummy"
 
         with self.assertRaises(ProviderConnectionException):
             cloned_provider = CloudProviderFactory().create_provider(

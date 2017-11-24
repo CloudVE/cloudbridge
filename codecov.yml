@@ -1,5 +1,5 @@
 codecov:
-  branch: azure_dev_v3
+  branch: azure_dev_v4
   notify:
     require_ci_to_pass: yes
 

@@ -8,10 +8,10 @@ from botocore.exceptions import ClientError
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
-from cloudbridge.cloud.base.resources import BaseInstanceType
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
@@ -20,20 +20,23 @@ from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSecurityGroup
-from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
+from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
 from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
 from .helpers import find_tag_value
@@ -96,7 +99,7 @@ class AWSMachineImage(BaseMachineImage):
 
         self._ec2_image.deregister()
         self.wait_for([MachineImageState.UNKNOWN, MachineImageState.ERROR])
-        snapshot = self._provider.block_store.snapshots.get(snapshot_id[0])
+        snapshot = self._provider.storage.snapshots.get(snapshot_id[0])
         if snapshot:
             snapshot.delete()
 
@@ -105,7 +108,8 @@ class AWSMachineImage(BaseMachineImage):
         try:
             return AWSMachineImage.IMAGE_STATE_MAP.get(
                 self._ec2_image.state, MachineImageState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return MachineImageState.UNKNOWN
 
     def refresh(self):
@@ -137,10 +141,10 @@ class AWSPlacementZone(BasePlacementZone):
         return self._aws_region
 
 
-class AWSInstanceType(BaseInstanceType):
+class AWSVMType(BaseVMType):
 
     def __init__(self, provider, instance_dict):
-        super(AWSInstanceType, self).__init__(provider)
+        super(AWSVMType, self).__init__(provider)
         self._inst_dict = instance_dict
 
     @property
@@ -197,7 +201,7 @@ class AWSInstance(BaseInstance):
         'pending': InstanceState.PENDING,
         'running': InstanceState.RUNNING,
         'shutting-down': InstanceState.CONFIGURING,
-        'terminated': InstanceState.TERMINATED,
+        'terminated': InstanceState.DELETED,
         'stopping': InstanceState.CONFIGURING,
         'stopped': InstanceState.STOPPED
     }
@@ -211,6 +215,7 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         """
         .. note:: an instance must have a (case sensitive) tag ``Name``
@@ -225,25 +230,27 @@ class AWSInstance(BaseInstance):
 
     @property
     def public_ips(self):
-        return [self._ec2_instance.public_ip_address]
+        return ([self._ec2_instance.public_ip_address]
+                if self._ec2_instance.public_ip_address else [])
 
     @property
     def private_ips(self):
-        return [self._ec2_instance.private_ip_address]
+        return ([self._ec2_instance.private_ip_address]
+                if self._ec2_instance.private_ip_address else [])
 
     @property
-    def instance_type_id(self):
+    def vm_type_id(self):
         return self._ec2_instance.instance_type
 
     @property
-    def instance_type(self):
-        return self._provider.compute.instance_types.find(
+    def vm_type(self):
+        return self._provider.compute.vm_types.find(
             name=self._ec2_instance.instance_type)[0]
 
     def reboot(self):
         self._ec2_instance.reboot()
 
-    def terminate(self):
+    def delete(self):
         self._ec2_instance.terminate()
 
     @property
@@ -255,14 +262,14 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.placement.get('AvailabilityZone')
 
     @property
-    def security_groups(self):
+    def vm_firewalls(self):
         return [
-            self._provider.security.security_groups.get(group_id)
-            for group_id in self.security_group_ids
+            self._provider.security.vm_firewalls.get(fw_id)
+            for fw_id in self.vm_firewall_ids
         ]
 
     @property
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         return list(set([
             group.get('GroupId') for group in
             self._ec2_instance.security_groups
@@ -284,47 +291,45 @@ class AWSInstance(BaseInstance):
         image.refresh()
         return image
 
-    def add_floating_ip(self, ip_address):
-        allocation_id = (
-            None if not self._ec2_instance.vpc_id else
-            ip_address.id if isinstance(ip_address, AWSFloatingIP) else
-            [x for x in self._provider.networking.networks.floating_ips
-             if x.public_ip == ip_address][0].id)
+    def add_floating_ip(self, floating_ip):
+        fip = (
+            floating_ip if isinstance(floating_ip, AWSFloatingIP) else
+            self._provider.networking.floating_ips.get(floating_ip))
         params = trim_empty_params({
             'InstanceId': self.id,
-            'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
-            'AllocationId': allocation_id})
+            'PublicIp': None if self._ec2_instance.vpc_id else fip.public_ip,
+            # pylint:disable=protected-access
+            'AllocationId': fip._ip.allocation_id})
         self._provider.ec2_conn.meta.client.associate_address(**params)
         self.refresh()
 
-    def remove_floating_ip(self, ip_address):
-        association_id = (
-            None if not self._ec2_instance.vpc_id else
-            ip_address._ip.association_id
-            if isinstance(ip_address, AWSFloatingIP) else
-            [x for x in self._ec2_instance.vpc_addresses.all()
-             if x.public_ip == ip_address][0].association_id)
+    def remove_floating_ip(self, floating_ip):
+        fip = (
+            floating_ip if isinstance(floating_ip, AWSFloatingIP) else
+            self._provider.networking.floating_ips.get(floating_ip))
         params = trim_empty_params({
-            'PublicIp': None if self._ec2_instance.vpc_id else ip_address,
-            'AssociationId': association_id})
+            'PublicIp': None if self._ec2_instance.vpc_id else fip.public_ip,
+            # pylint:disable=protected-access
+            'AssociationId': fip._ip.association_id})
         self._provider.ec2_conn.meta.client.disassociate_address(**params)
         self.refresh()
 
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, firewall):
         self._ec2_instance.modify_attribute(
-            Groups=self.security_group_ids + [sg.id])
+            Groups=self.vm_firewall_ids + [firewall.id])
 
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, firewall):
         self._ec2_instance.modify_attribute(
-            Groups=([sg_id for sg_id in self.security_group_ids
-                     if sg_id != sg.id]))
+            Groups=([fw_id for fw_id in self.vm_firewall_ids
+                     if fw_id != firewall.id]))
 
     @property
     def state(self):
         try:
             return AWSInstance.INSTANCE_STATE_MAP.get(
                 self._ec2_instance.state['Name'], InstanceState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return InstanceState.UNKNOWN
 
     def refresh(self):
@@ -335,6 +340,7 @@ class AWSInstance(BaseInstance):
             # set the state to unknown
             self._ec2_instance.state = {'Name': InstanceState.UNKNOWN}
 
+    # pylint:disable=unused-argument
     def _wait_till_exists(self, timeout=None, interval=None):
         self._ec2_instance.wait_until_exists()
 
@@ -362,6 +368,7 @@ class AWSVolume(BaseVolume):
         return self._volume.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         return find_tag_value(self._volume.tags, 'Name')
 
@@ -394,7 +401,7 @@ class AWSVolume(BaseVolume):
     @property
     def source(self):
         if self._volume.snapshot_id:
-            return self._provider.block_store.snapshots.get(
+            return self._provider.storage.snapshots.get(
                 self._volume.snapshot_id)
         return None
 
@@ -438,7 +445,8 @@ class AWSVolume(BaseVolume):
         try:
             return AWSVolume.VOLUME_STATE_MAP.get(
                 self._volume.state, VolumeState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return VolumeState.UNKNOWN
 
     def refresh(self):
@@ -470,6 +478,7 @@ class AWSSnapshot(BaseSnapshot):
         return self._snapshot.id
 
     @property
+    # pylint:disable=arguments-differ
     def name(self):
         return find_tag_value(self._snapshot.tags, 'Name')
 
@@ -505,7 +514,8 @@ class AWSSnapshot(BaseSnapshot):
         try:
             return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
                 self._snapshot.state, SnapshotState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return SnapshotState.UNKNOWN
 
     def refresh(self):
@@ -520,7 +530,7 @@ class AWSSnapshot(BaseSnapshot):
         self._snapshot.delete()
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
-        cb_vol = self._provider.block_store.volumes.create(
+        cb_vol = self._provider.storage.volumes.create(
             name=self.name,
             size=size,
             zone=placement,
@@ -537,77 +547,33 @@ class AWSKeyPair(BaseKeyPair):
 
     @property
     def material(self):
-        return self._key_pair.key_material
+        # boto3 object will only have this field if the value is not empty
+        if hasattr(self._key_pair, 'key_material'):
+            return self._key_pair.key_material
+        else:
+            return None
 
 
-class AWSSecurityGroup(BaseSecurityGroup):
+class AWSVMFirewall(BaseVMFirewall):
 
-    def __init__(self, provider, security_group):
-        super(AWSSecurityGroup, self).__init__(provider, security_group)
+    def __init__(self, provider, _vm_firewall):
+        super(AWSVMFirewall, self).__init__(provider, _vm_firewall)
+        self._rule_container = AWSVMFirewallRuleContainer(provider, self)
 
     @property
     def name(self):
-        return self._security_group.group_name
+        return self._vm_firewall.group_name
 
     @property
     def network_id(self):
-        return self._security_group.vpc_id
+        return self._vm_firewall.vpc_id
 
     @property
     def rules(self):
-        return [AWSSecurityGroupRule(self._provider, r, self)
-                for r in self._security_group.ip_permissions]
+        return self._rule_container
 
-    def add_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        try:
-            src_group_id = (
-                src_group.id if isinstance(src_group, SecurityGroup)
-                else src_group)
-
-            ip_perm_entry = {
-                'IpProtocol': ip_protocol,
-                'FromPort': from_port,
-                'ToPort': to_port,
-                'IpRanges': [{'CidrIp': cidr_ip}] if cidr_ip else None,
-                'UserIdGroupPairs': [{
-                    'GroupId': src_group_id}
-                ] if src_group_id else None
-            }
-            # Filter out empty values to please Boto
-            ip_perms = [trim_empty_params(ip_perm_entry)]
-            self._security_group.authorize_ingress(IpPermissions=ip_perms)
-            self._security_group.reload()
-            return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                 src_group_id)
-        except ClientError as ec2e:
-            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
-                return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                                     src_group)
-            else:
-                raise ec2e
-
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        src_group_id = (src_group.id if isinstance(src_group, SecurityGroup)
-                        else src_group)
-        for rule in self._security_group.ip_permissions:
-            if ip_protocol and rule['IpProtocol'] != ip_protocol:
-                continue
-            elif from_port and rule['FromPort'] != from_port:
-                continue
-            elif to_port and rule['ToPort'] != to_port:
-                continue
-            elif cidr_ip:
-                if cidr_ip not in [x['CidrIp'] for x in rule['IpRanges']]:
-                    continue
-            elif src_group_id:
-                if src_group_id not in [
-                    group_pair.get('GroupId') for group_pair in
-                        rule.get('UserIdGroupPairs', [])]:
-                    continue
-            return AWSSecurityGroupRule(self._provider, rule, self)
-        return None
+    def refresh(self):
+        self._vm_firewall.reload()
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not inspect.isroutine(a))
@@ -619,77 +585,138 @@ class AWSSecurityGroup(BaseSecurityGroup):
         return js
 
 
-class AWSSecurityGroupRule(BaseSecurityGroupRule):
+class AWSVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
 
-    def __init__(self, provider, rule, parent):
-        super(AWSSecurityGroupRule, self).__init__(provider, rule, parent)
+    def __init__(self, provider, firewall):
+        super(AWSVMFirewallRuleContainer, self).__init__(provider, firewall)
+
+    def list(self, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [AWSVMFirewallRule(self.firewall,
+                                   TrafficDirection.INBOUND, r)
+                 for r in self.firewall._vm_firewall.ip_permissions]
+        rules = rules + [
+            AWSVMFirewallRule(
+                self.firewall, TrafficDirection.OUTBOUND, r)
+            for r in self.firewall._vm_firewall.ip_permissions_egress]
+        return ClientPagedResultList(self._provider, rules,
+                                     limit=limit, marker=marker)
+
+    def create(self,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (
+            src_dest_fw.id if isinstance(src_dest_fw, AWSVMFirewall)
+            else src_dest_fw)
+
+        # pylint:disable=protected-access
+        ip_perm_entry = AWSVMFirewallRule._construct_ip_perms(
+            protocol, from_port, to_port, cidr, src_dest_fw_id)
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                # pylint:disable=protected-access
+                self.firewall._vm_firewall.authorize_ingress(
+                    IpPermissions=ip_perms)
+            elif direction == TrafficDirection.OUTBOUND:
+                # pylint:disable=protected-access
+                self.firewall._vm_firewall.authorize_egress(
+                    IpPermissions=ip_perms)
+            else:
+                raise InvalidValueException("direction", direction)
+            self.firewall.refresh()
+            return AWSVMFirewallRule(self.firewall, direction, ip_perm_entry)
+        except ClientError as ec2e:
+            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
+                return AWSVMFirewallRule(
+                    self.firewall, direction, ip_perm_entry)
+            else:
+                raise ec2e
+
+
+class AWSVMFirewallRule(BaseVMFirewallRule):
+
+    def __init__(self, parent_fw, direction, rule):
+        self._direction = direction
+        super(AWSVMFirewallRule, self).__init__(parent_fw, rule)
+
+        # cache id
+        md5 = hashlib.md5()
+        md5.update(self._name.encode('ascii'))
+        self._id = md5.hexdigest()
 
     @property
     def id(self):
-        md5 = hashlib.md5()
-        md5.update("{0}-{1}-{2}-{3}".format(
-            self.ip_protocol, self.from_port, self.to_port, self.cidr_ip)
-            .encode('ascii'))
-        return md5.hexdigest()
+        return self._id
 
     @property
-    def ip_protocol(self):
+    def direction(self):
+        return self._direction
+
+    @property
+    def protocol(self):
         return self._rule.get('IpProtocol')
 
     @property
     def from_port(self):
-        return self._rule.get('FromPort', 0)
+        return self._rule.get('FromPort')
 
     @property
     def to_port(self):
-        return self._rule.get('ToPort', 0)
+        return self._rule.get('ToPort')
 
     @property
-    def cidr_ip(self):
-        if len(self._rule.get('IpRanges', [])) > 0:
+    def cidr(self):
+        if len(self._rule.get('IpRanges') or []) > 0:
             return self._rule['IpRanges'][0].get('CidrIp')
         return None
 
     @property
-    def group_id(self):
-        if len(self._rule['UserIdGroupPairs']) > 0:
+    def src_dest_fw_id(self):
+        if len(self._rule.get('UserIdGroupPairs') or []) > 0:
             return self._rule['UserIdGroupPairs'][0]['GroupId']
         else:
             return None
 
     @property
-    def group(self):
-        if self.group_id:
-            return AWSSecurityGroup(
+    def src_dest_fw(self):
+        if self.src_dest_fw_id:
+            return AWSVMFirewall(
                 self._provider,
-                self._provider.ec2_conn.SecurityGroup(self.group_id))
+                self._provider.ec2_conn.SecurityGroup(self.src_dest_fw_id))
         else:
             return None
 
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
-        js = {k: v for (k, v) in attr if not k.startswith('_')}
-        js['group'] = self.group.id if self.group else ''
-        js['parent'] = self.parent.id if self.parent else ''
-        return js
+    @staticmethod
+    def _construct_ip_perms(protocol, from_port, to_port, cidr,
+                            src_dest_fw_id):
+        return {
+            'IpProtocol': protocol,
+            'FromPort': from_port,
+            'ToPort': to_port,
+            'IpRanges': [{'CidrIp': cidr}] if cidr else None,
+            'UserIdGroupPairs': [{
+                'GroupId': src_dest_fw_id}
+            ] if src_dest_fw_id else None
+        }
 
     def delete(self):
-
-        ip_perm_entry = {
-            'IpProtocol': self.ip_protocol,
-            'FromPort': self.from_port,
-            'ToPort': self.to_port,
-            'IpRanges': [{'CidrIp': self.cidr_ip}] if self.cidr_ip else None,
-            'UserIdGroupPairs': [{
-                'GroupId': self.group_id}
-            ] if self.group_id else None
-        }
+        ip_perm_entry = self._construct_ip_perms(
+            self.protocol, self.from_port, self.to_port,
+            self.cidr, self.src_dest_fw_id)
 
         # Filter out empty values to please Boto
         ip_perms = [trim_empty_params(ip_perm_entry)]
 
-        self.parent._security_group.revoke_ingress(IpPermissions=ip_perms)
-        self.parent._security_group.reload()
+        # pylint:disable=protected-access
+        if self.direction == TrafficDirection.INBOUND:
+            self.firewall._vm_firewall.revoke_ingress(
+                IpPermissions=ip_perms)
+        else:
+            self.firewall._vm_firewall.revoke_egress(
+                IpPermissions=ip_perms)
+        self.firewall.refresh()
 
 
 class AWSBucketObject(BaseBucketObject):
@@ -758,6 +785,7 @@ class AWSBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(AWSBucket, self).__init__(provider)
         self._bucket = bucket
+        self._object_container = AWSBucketContainer(provider, self)
 
     @property
     def id(self):
@@ -767,9 +795,23 @@ class AWSBucket(BaseBucket):
     def name(self):
         return self._bucket.name
 
+    @property
+    def objects(self):
+        return self._object_container
+
+    def delete(self, delete_contents=False):
+        self._bucket.delete()
+
+
+class AWSBucketContainer(BaseBucketContainer):
+
+    def __init__(self, provider, bucket):
+        super(AWSBucketContainer, self).__init__(provider, bucket)
+
     def get(self, name):
         try:
-            obj = self._bucket.Object(name)
+            # pylint:disable=protected-access
+            obj = self.bucket._bucket.Object(name)
             # load() throws an error if object does not exist
             obj.load()
             return AWSBucketObject(self._provider, obj)
@@ -778,9 +820,11 @@ class AWSBucket(BaseBucket):
 
     def list(self, limit=None, marker=None, prefix=None):
         if prefix:
-            boto_objs = self._bucket.objects.filter(Prefix=prefix)
+            # pylint:disable=protected-access
+            boto_objs = self.bucket._bucket.objects.filter(Prefix=prefix)
         else:
-            boto_objs = self._bucket.objects.all()
+            # pylint:disable=protected-access
+            boto_objs = self.bucket._bucket.objects.all()
         objects = [AWSBucketObject(self._provider, obj)
                    for obj in boto_objs]
 
@@ -793,11 +837,9 @@ class AWSBucket(BaseBucket):
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
-    def delete(self, delete_contents=False):
-        self._bucket.delete()
-
-    def create_object(self, name):
-        obj = self._bucket.Object(name)
+    def create(self, name):
+        # pylint:disable=protected-access
+        obj = self.bucket._bucket.Object(name)
         return AWSBucketObject(self._provider, obj)
 
 
@@ -820,6 +862,7 @@ class AWSRegion(BaseRegion):
         if self.id == self._provider.region_name:  # optimisation
             conn = self._provider.ec2_conn
         else:
+            # pylint:disable=protected-access
             conn = self._provider._conect_ec2_region(region_name=self.id)
 
         zones = (conn.meta.client.describe_availability_zones()
@@ -869,7 +912,8 @@ class AWSNetwork(BaseNetwork):
         try:
             return AWSNetwork._NETWORK_STATE_MAP.get(
                 self._vpc.state, NetworkState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return NetworkState.UNKNOWN
 
     @property
@@ -877,7 +921,7 @@ class AWSNetwork(BaseNetwork):
         return self._vpc.cidr_block
 
     def delete(self):
-        return self._vpc.delete()
+        self._vpc.delete()
 
     @property
     def subnets(self):
@@ -944,7 +988,8 @@ class AWSSubnet(BaseSubnet):
         try:
             return self._SUBNET_STATE_MAP.get(
                 self._subnet.state, SubnetState.UNKNOWN)
-        except AttributeError:
+        except Exception:
+            # Ignore all exceptions when querying state
             return SubnetState.UNKNOWN
 
     def refresh(self):
@@ -975,11 +1020,12 @@ class AWSFloatingIP(BaseFloatingIP):
     def private_ip(self):
         return self._ip.private_ip_address
 
+    @property
     def in_use(self):
         return True if self._ip.instance_id else False
 
     def delete(self):
-        return self._ip.release()
+        self._ip.release()
 
 
 class AWSRouter(BaseRouter):
@@ -1037,8 +1083,10 @@ class AWSRouter(BaseRouter):
     def attach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
-        return self._provider.ec2_conn.meta.client.attach_internet_gateway(
-            InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
+        if self._route_table.create_route(
+                DestinationCidrBlock='0.0.0.0/0', GatewayId=gw_id):
+            return True
+        return False
 
     def detach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)

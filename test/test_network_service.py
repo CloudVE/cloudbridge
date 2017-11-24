@@ -1,8 +1,9 @@
 import test.helpers as helpers
-
 from test.helpers import ProviderTestBase
+from test.helpers import get_provider_test_data
 from test.helpers import standard_interface_tests as sit
 
+from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import Subnet
@@ -12,7 +13,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_crud_network(self):
-
         def create_net(name):
             return self.provider.networking.networks.create(
                 name=name, cidr_block='10.0.0.0/16')
@@ -30,7 +30,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         net = self.provider.networking.networks.create(
             name=name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
-            lambda: net.delete()
+                lambda: net.delete()
         ):
             net.wait_till_ready()
             self.assertEqual(
@@ -75,7 +75,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_subnet(name):
             return self.provider.networking.subnets.create(
-                network=net, cidr_block="10.0.0.1/24", name=name)
+                network=net, cidr_block="10.0.0.0/24", name=name)
 
         def cleanup_subnet(subnet):
             self.provider.networking.subnets.delete(subnet=subnet)
@@ -84,48 +84,47 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         net = self.provider.networking.networks.create(
             name=net_name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
-            lambda:
+                lambda:
                 self.provider.networking.networks.delete(network_id=net.id)
         ):
             sit.check_crud(self, self.provider.networking.subnets, Subnet,
                            "cb_crudsubnet", create_subnet, cleanup_subnet)
 
+    @helpers.skipIfNoService(['networking.floating_ips'])
+    def test_crud_floating_ip(self):
+
+        def create_fip(name):
+            return self.provider.networking.floating_ips.create()
+
+        def cleanup_fip(fip):
+            self.provider.networking.floating_ips.delete(fip.id)
+
+        sit.check_crud(self, self.provider.networking.floating_ips, FloatingIP,
+                       "cb_crudfip", create_fip, cleanup_fip,
+                       skip_name_check=True)
+
     def test_floating_ip_properties(self):
         # Check floating IP address
-        ip = self.provider.networking.networks.create_floating_ip()
-        ip_id = ip.id
-        with helpers.cleanup_action(lambda: ip.delete()):
-            ipl = self.provider.networking.networks.floating_ips
-            self.assertTrue(
-                ip in ipl,
-                "Floating IP address {0} should exist in the list {1}"
-                .format(ip.id, ipl))
+        fip = self.provider.networking.floating_ips.create()
+        with helpers.cleanup_action(lambda: fip.delete()):
+            fipl = list(self.provider.networking.floating_ips)
+            self.assertIn(fip, fipl)
             # 2016-08: address filtering not implemented in moto
             # empty_ipl = self.provider.network.floating_ips('dummy-net')
             # self.assertFalse(
             #     empty_ipl,
             #     "Bogus network should not have any floating IPs: {0}"
             #     .format(empty_ipl))
-            self.assertIn(
-                ip.public_ip, repr(ip),
-                "repr(obj) should contain the address public IP value.")
             self.assertFalse(
-                ip.private_ip,
+                fip.private_ip,
                 "Floating IP should not have a private IP value ({0})."
-                .format(ip.private_ip))
+                .format(fip.private_ip))
             self.assertFalse(
-                ip.in_use(),
+                fip.in_use,
                 "Newly created floating IP address should not be in use.")
-        ipl = self.provider.networking.networks.floating_ips
-        found_ip = [a for a in ipl if a.id == ip_id]
-        self.assertTrue(
-            len(found_ip) == 0,
-            "Floating IP {0} should have been deleted but still exists."
-            .format(ip_id))
 
     @helpers.skipIfNoService(['networking.routers'])
     def test_crud_router(self):
-
         def _cleanup(net, subnet, router, gateway):
             with helpers.cleanup_action(lambda: net.delete()):
                 with helpers.cleanup_action(lambda: subnet.delete()):
@@ -159,14 +158,15 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Router {0} state {1} should be {2}.".format(
                     router.id, router.state, RouterState.DETACHED))
 
-#             self.assertFalse(
-#                 router.network_id,
-#                 "Router {0} should not be assoc. with a network {1}".format(
-#                     router.id, router.network_id))
+            #             self.assertFalse(
+            #                 router.network_id,
+            #                 "Router {0} should not be assoc.
+            # with a network {1}".format(
+            #                     router.id, router.network_id))
 
             router.attach_subnet(sn)
             gteway = (self.provider.networking.gateways
-                      .get_or_create_inet_gateway(name))
+                      .get_or_create_inet_gateway(net, name))
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 
@@ -174,5 +174,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_default_network(self):
-        subnet = self.provider.networking.subnets.get_or_create_default()
+        subnet = self.provider.networking.subnets.get_or_create_default(
+            zone=get_provider_test_data(self.provider, 'placement'))
         self.assertIsInstance(subnet, Subnet)

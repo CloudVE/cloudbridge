@@ -28,9 +28,9 @@ SnapshotService
 .. autoclass:: cloudbridge.cloud.interfaces.services.SnapshotService
     :members:
 
-BlockStoreService
+StorageService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.BlockStoreService
+.. autoclass:: cloudbridge.cloud.interfaces.services.StorageService
     :members:
 
 ImageService
@@ -41,16 +41,36 @@ ImageService
 NetworkingService
 -----------------
 .. autoclass:: cloudbridge.cloud.interfaces.services.NetworkingService
-    :members:
+:members:
 
 NetworkService
 -----------------
 .. autoclass:: cloudbridge.cloud.interfaces.services.NetworkService
     :members:
 
-ObjectStoreService
-------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.ObjectStoreService
+SubnetService
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.SubnetService
+    :members:
+
+FloatingIPService
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.FloatingIPService
+    :members:
+
+RouterService
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.RouterService
+    :members:
+
+GatewayService
+-----------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.GatewayService
+    :members:
+
+BucketService
+---------------
+.. autoclass:: cloudbridge.cloud.interfaces.services.BucketService
     :members:
 
 SecurityService
@@ -63,14 +83,14 @@ KeyPairService
 .. autoclass:: cloudbridge.cloud.interfaces.services.KeyPairService
     :members:
 
-SecurityGroupService
+VMFirewallService
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.SecurityGroupService
+.. autoclass:: cloudbridge.cloud.interfaces.services.VMFirewallService
     :members:
 
-InstanceTypesService
+VMTypeService
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.InstanceTypesService
+.. autoclass:: cloudbridge.cloud.interfaces.services.VMTypeService
     :members:
 
 RegionService
