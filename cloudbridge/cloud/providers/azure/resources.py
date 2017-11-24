@@ -2,8 +2,6 @@
 DataTypes used by this provider
 """
 import collections
-import inspect
-import json
 import logging
 import time
 
@@ -138,10 +136,9 @@ class AzureVMFirewall(BaseVMFirewall):
             # The security group no longer exists and cannot be refreshed.
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
-        js = {k: v for (k, v) in attr if not k.startswith('_')}
+        js = super(AzureVMFirewall, self).to_json()
         json_rules = [r.to_json() for r in self.rules]
-        js['rules'] = [json.loads(r) for r in json_rules]
+        js['rules'] = json_rules
         if js.get('network_id'):
             js.pop('network_id')  # Omit for consistency across cloud providers
         return js

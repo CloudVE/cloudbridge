@@ -4,7 +4,8 @@ import uuid
 
 from azure.common import AzureException
 
-from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.resources import ClientPagedResultList, \
+    ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService, \
     BaseComputeService, BaseFloatingIPService, BaseGatewayService, \
     BaseImageService, BaseInstanceService, BaseKeyPairService, \
@@ -118,10 +119,15 @@ class AzureKeyPairService(BaseKeyPairService):
             return None
 
     def list(self, limit=None, marker=None):
-        key_pairs = [AzureKeyPair(self.provider, key_pair) for key_pair in
-                     self.provider.azure_client.
-                     list_public_keys(AzureKeyPairService.PARTITION_KEY)]
-        return ClientPagedResultList(self.provider, key_pairs, limit, marker)
+        key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
+            AzureKeyPairService.PARTITION_KEY,  marker=marker,
+            limit=limit or self.provider.config.default_result_limit)
+        results = [AzureKeyPair(self.provider, key_pair)
+                   for key_pair in key_pairs]
+        return ServerPagedResultList(is_truncated=resume_marker,
+                                     marker=resume_marker,
+                                     supports_total=False,
+                                     data=results)
 
     def find(self, name, limit=None, marker=None):
         key_pair = self.get(name)

@@ -477,19 +477,12 @@ class AzureClient(object):
         self.table_service.delete_entity(self.public_key_storage_table_name,
                                          entity.PartitionKey, entity.RowKey)
 
-    def list_public_keys(self, partition_key):
-        items = []
-        next_marker = None
-        while True:
-            entities = self.table_service. \
-                query_entities(self.public_key_storage_table_name,
-                               "PartitionKey eq '{0}'".format(partition_key),
-                               marker=next_marker, num_results=1)
-            items.extend(entities.items)
-            next_marker = entities.next_marker
-            if not next_marker:
-                break
-        return items
+    def list_public_keys(self, partition_key, limit=None, marker=None):
+        entities = self.table_service. \
+            query_entities(self.public_key_storage_table_name,
+                           "PartitionKey eq '{0}'".format(partition_key),
+                           marker=marker, num_results=limit)
+        return (entities.items, entities.next_marker)
 
     def delete_route_table(self, route_table_name):
         self.network_management_client. \
