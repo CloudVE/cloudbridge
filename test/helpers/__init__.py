@@ -146,7 +146,7 @@ def create_test_instance(
         get_provider_test_data(provider, 'vm_type'),
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
-        key_pair=key_pair,
+        key_pair=key_pair or kp,
         vm_firewalls=vm_firewalls,
         launch_config=launch_config,
         user_data=user_data)

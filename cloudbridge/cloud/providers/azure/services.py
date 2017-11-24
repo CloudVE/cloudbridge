@@ -418,6 +418,9 @@ class AzureInstanceService(BaseInstanceService):
 
         image = (self.provider.compute.images.get(image)
                  if isinstance(image, str) else image)
+        if not isinstance(image, AzureMachineImage):
+            raise Exception("Provided image %s is not a valid azure image"
+                            % image)
 
         instance_size = vm_type.id if \
             isinstance(vm_type, VMType) else vm_type

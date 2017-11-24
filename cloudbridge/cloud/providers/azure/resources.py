@@ -1003,6 +1003,7 @@ class AzureFloatingIP(BaseFloatingIP):
         return self._ip.ip_configuration.private_ip_address \
             if self._ip.ip_configuration else None
 
+    @property
     def in_use(self):
         return True if self._ip.ip_configuration else False
 
