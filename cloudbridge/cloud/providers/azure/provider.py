@@ -22,7 +22,7 @@ class AzureCloudProvider(BaseCloudProvider):
         self.subscription_id = self. \
             _get_config_value('azure_subscription_id',
                               os.environ.get('AZURE_SUBSCRIPTION_ID', None))
-        self.client_Id = self._get_config_value(
+        self.client_id = self._get_config_value(
             'azure_client_id', os.environ.get('AZURE_CLIENT_ID', None))
         self.secret = self._get_config_value(
             'azure_secret', os.environ.get('AZURE_SECRET', None))
@@ -36,11 +36,12 @@ class AzureCloudProvider(BaseCloudProvider):
         self.resource_group = self._get_config_value(
             'azure_resource_group', os.environ.get('AZURE_RESOURCE_GROUP',
                                                    'cloudbridge'))
-
+        # Storage account name is limited to a max length of 24 characters
+        # so take part of the client id to keep it unique
         self.storage_account = self._get_config_value(
             'azure_storage_account',
             os.environ.get('AZURE_STORAGE_ACCOUNT',
-                           self.resource_group + 'storage'))
+                           'storageacc' + self.resource_group[-12:]))
 
         self.vm_default_user_name = self._get_config_value(
             'azure_vm_default_user_name', os.environ.get
@@ -83,7 +84,7 @@ class AzureCloudProvider(BaseCloudProvider):
 
             provider_config = {
                 'azure_subscription_id': self.subscription_id,
-                'azure_client_id': self.client_Id,
+                'azure_client_id': self.client_id,
                 'azure_secret': self.secret,
                 'azure_tenant': self.tenant,
                 'azure_region_name': self.region_name,
