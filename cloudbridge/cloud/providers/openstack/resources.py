@@ -841,7 +841,7 @@ class OpenStackSubnet(BaseSubnet):
     @property
     def state(self):
         return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \
-            else SubnetState.AVAILABLE
+             else SubnetState.AVAILABLE
 
     def refresh(self):
         subnet = self._provider.networking.subnets.get(self.id)
