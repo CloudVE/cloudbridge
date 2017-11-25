@@ -13,6 +13,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_crud_network(self):
+
         def create_net(name):
             return self.provider.networking.networks.create(
                 name=name, cidr_block='10.0.0.0/16')
@@ -30,7 +31,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         net = self.provider.networking.networks.create(
             name=name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
-                lambda: net.delete()
+            lambda: net.delete()
         ):
             net.wait_till_ready()
             self.assertEqual(
@@ -75,7 +76,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_subnet(name):
             return self.provider.networking.subnets.create(
-                network=net, cidr_block="10.0.0.0/24", name=name)
+                network=net, cidr_block="10.0.0.1/24", name=name)
 
         def cleanup_subnet(subnet):
             self.provider.networking.subnets.delete(subnet=subnet)
@@ -84,7 +85,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         net = self.provider.networking.networks.create(
             name=net_name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
-                lambda:
+            lambda:
                 self.provider.networking.networks.delete(network_id=net.id)
         ):
             sit.check_crud(self, self.provider.networking.subnets, Subnet,
@@ -125,6 +126,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.routers'])
     def test_crud_router(self):
+
         def _cleanup(net, subnet, router, gateway):
             with helpers.cleanup_action(lambda: net.delete()):
                 with helpers.cleanup_action(lambda: subnet.delete()):
@@ -158,11 +160,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Router {0} state {1} should be {2}.".format(
                     router.id, router.state, RouterState.DETACHED))
 
-            #             self.assertFalse(
-            #                 router.network_id,
-            #                 "Router {0} should not be assoc.
-            # with a network {1}".format(
-            #                     router.id, router.network_id))
+#             self.assertFalse(
+#                 router.network_id,
+#                 "Router {0} should not be assoc. with a network {1}".format(
+#                     router.id, router.network_id))
 
             router.attach_subnet(sn)
             gteway = (self.provider.networking.gateways

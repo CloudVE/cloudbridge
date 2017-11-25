@@ -35,8 +35,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
             # check image size
             img.refresh()
             self.assertGreater(img.min_disk, 0, "Minimum disk"
-                                                " size required by "
-                                                "image is invalid")
+                               " size required by image is invalid")
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):

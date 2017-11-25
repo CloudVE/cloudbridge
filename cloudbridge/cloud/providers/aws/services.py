@@ -313,7 +313,7 @@ class AWSBucketService(BaseBucketService):
             return self.svc.create('create_bucket', Bucket=name,
                                    CreateBucketConfiguration={
                                        'LocationConstraint': loc_constraint
-                                   })
+                                    })
 
 
 class AWSImageService(BaseImageService):
