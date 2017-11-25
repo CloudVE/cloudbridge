@@ -94,8 +94,8 @@ TEST_DATA_CONFIG = {
             os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
             os.environ.get('CB_IMAGE_AZURE', 'CbTest-Img'),
-        "instance_type":
-            os.environ.get('CB_INSTANCE_TYPE_AZURE', 'Standard_DS1_v2'),
+        "vm_type":
+            os.environ.get('CB_VM_TYPE_AZURE', 'Standard_DS1_v2'),
     }
 }
 
@@ -105,6 +105,8 @@ def get_provider_test_data(provider, key):
         return TEST_DATA_CONFIG.get("AWSCloudProvider").get(key)
     elif "OpenStackCloudProvider" in provider.name:
         return TEST_DATA_CONFIG.get("OpenStackCloudProvider").get(key)
+    elif "AzureCloudProvider" in provider.name:
+        return TEST_DATA_CONFIG.get("AzureCloudProvider").get(key)
     return None
 
 
@@ -126,7 +128,8 @@ def delete_test_network(network):
     """
     with cleanup_action(lambda: network.delete()):
         for sn in network.subnets:
-            sn.delete()
+            with cleanup_action(lambda: sn.delete()):
+                pass
 
 
 def create_test_instance(
@@ -196,6 +199,7 @@ def get_uuid():
 
 
 class ProviderTestBase(unittest.TestCase):
+
     _provider = None
 
     def setUp(self):
@@ -214,17 +218,15 @@ class ProviderTestBase(unittest.TestCase):
             return 1
 
     def create_provider_instance(self):
-        provider_name = os.environ.get("CB_TEST_PROVIDER", "azure")
+        provider_name = os.environ.get("CB_TEST_PROVIDER", "aws")
         use_mock_drivers = parse_bool(
             os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
         factory = CloudProviderFactory()
         provider_class = factory.get_provider_class(provider_name,
                                                     get_mock=use_mock_drivers)
-        config = {
-            'default_wait_interval':
-                self.get_provider_wait_interval(provider_class),
-            'default_result_limit': 1}
-
+        config = {'default_wait_interval':
+                  self.get_provider_wait_interval(provider_class),
+                  'default_result_limit': 1}
         return provider_class(config)
 
     @property

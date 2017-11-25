@@ -942,6 +942,7 @@ class AWSNetwork(BaseNetwork):
 
 
 class AWSSubnet(BaseSubnet):
+
     # http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeSubnets.html
     _SUBNET_STATE_MAP = {
         'pending': SubnetState.PENDING,
@@ -1028,6 +1029,7 @@ class AWSFloatingIP(BaseFloatingIP):
 
 
 class AWSRouter(BaseRouter):
+
     def __init__(self, provider, route_table):
         super(AWSRouter, self).__init__(provider)
         self._route_table = route_table
@@ -1094,6 +1096,7 @@ class AWSRouter(BaseRouter):
 
 
 class AWSInternetGateway(BaseInternetGateway):
+
     def __init__(self, provider, gateway):
         super(AWSInternetGateway, self).__init__(provider)
         self._gateway = gateway

@@ -5,10 +5,12 @@ This includes:
    2. Checking for object equality and repr
    3. Checking standard behaviour for list, iter, find, get, delete
 """
+import test.helpers as helpers
 import uuid
 
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
+from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
 
 
@@ -68,6 +70,7 @@ def check_find(test, service, obj):
         len(find_objs) == 1,
         "Find objects for %s does not return the expected object: %s. Got %s"
         % (type(obj).__name__, obj.name, find_objs))
+    test.assertEqual(find_objs[0], obj)
     return find_objs
 
 
@@ -129,7 +132,7 @@ def check_obj_name(test, obj):
             obj.name = "hello world"
         # setting upper case characters should raise an exception
         with test.assertRaises(InvalidNameException):
-            obj.name = "hello World"
+            obj.name = "helloWorld"
         # setting special characters should raise an exception
         with test.assertRaises(InvalidNameException):
             obj.name = "hello.world:how_goes_it"
@@ -157,11 +160,6 @@ def check_standard_behaviour(test, service, obj):
     check_find_non_existent(test, service)
     obj_get = check_get(test, service, obj)
     check_get_non_existent(test, service)
-
-    print("Out List - " + objs_list[0].state)
-    print("Out Iter - " + objs_iter[0].state)
-    print("Out Get - " + obj_get.state)
-    print("Out Find - " + objs_find[0].state)
 
     test.assertTrue(
         obj == objs_list[0] == objs_iter[0] == objs_find[0] == obj_get,

@@ -13,7 +13,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_crud_network(self):
-
         def create_net(name):
             return self.provider.networking.networks.create(
                 name=name, cidr_block='10.0.0.0/16')
@@ -31,7 +30,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         net = self.provider.networking.networks.create(
             name=name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
-            lambda: net.delete()
+                lambda: net.delete()
         ):
             net.wait_till_ready()
             self.assertEqual(
@@ -85,7 +84,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         net = self.provider.networking.networks.create(
             name=net_name, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
-            lambda:
+                lambda:
                 self.provider.networking.networks.delete(network_id=net.id)
         ):
             sit.check_crud(self, self.provider.networking.subnets, Subnet,
@@ -126,7 +125,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.routers'])
     def test_crud_router(self):
-
         def _cleanup(net, subnet, router, gateway):
             with helpers.cleanup_action(lambda: net.delete()):
                 with helpers.cleanup_action(lambda: subnet.delete()):
@@ -152,9 +150,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                                    zone=helpers.get_provider_test_data(
                                        self.provider, 'placement'))
 
-            # Comment out routers assertion because Azure has dummy
-            # implementation for routers
-            # and not returns the expected router from the routers method
             # Check basic router properties
             sit.check_standard_behaviour(
                 self, self.provider.networking.routers, router)
@@ -163,10 +158,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Router {0} state {1} should be {2}.".format(
                     router.id, router.state, RouterState.DETACHED))
 
-#             self.assertFalse(
-#                 router.network_id,
-#                 "Router {0} should not be assoc. with a network {1}".format(
-#                     router.id, router.network_id))
+            #             self.assertFalse(
+            #                 router.network_id,
+            #                 "Router {0} should not be assoc.
+            # with a network {1}".format(
+            #                     router.id, router.network_id))
 
             router.attach_subnet(sn)
             gteway = (self.provider.networking.gateways

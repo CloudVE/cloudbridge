@@ -45,7 +45,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 name)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net)):
+                                               network=net)):
             net, subnet = helpers.create_test_network(self.provider, name)
 
             sit.check_crud(self, self.provider.compute.instances, Instance,
@@ -181,7 +181,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         lc.add_volume_device(
             is_root=True,
             source=img,
-            size=img.min_disk if img and img.min_disk else 50,
+            size=img.min_disk if img and img.min_disk else 30,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
@@ -261,7 +261,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 lc.add_volume_device(
                     is_root=True,
                     source=img,
-                    size=img.min_disk if img and img.min_disk else 50,
+                    size=img.min_disk if img and img.min_disk else 30,
                     delete_on_terminate=True)
 
                 # Add all available ephemeral devices
