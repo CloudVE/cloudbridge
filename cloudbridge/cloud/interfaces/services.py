@@ -338,7 +338,7 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, size, zone, iops=None, snapshot=None, description=None):
+    def create(self, name, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
 

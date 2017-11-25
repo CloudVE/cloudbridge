@@ -1,3 +1,7 @@
+"""
+Package install information
+"""
+
 import ast
 import os
 import re
@@ -6,9 +10,10 @@ from setuptools import find_packages, setup
 
 # Cannot use "from cloudbridge import get_version" because that would try to
 # import the six package which may not be installed yet.
+reg = re.compile(r'__version__\s*=\s*(.+)')
 with open(os.path.join('cloudbridge', '__init__.py')) as f:
     for line in f:
-        m = re.compile(r'__version__\s*=\s*(.+)').match(line)
+        m = reg.match(line)
         if m:
             version = ast.literal_eval(m.group(1))
             break
@@ -22,12 +27,12 @@ REQS_AWS = ['boto3']
 REQS_AZURE = ['msrest>=0.4.7',
               'msrestazure>=0.4.7',
               'azure-common>=1.1.5',
-              'azure-mgmt-resource==1.0.0rc1',
-              'azure-mgmt-compute==1.0.0rc1',
-              'azure-mgmt-network==1.0.0rc1',
-              'azure-mgmt-storage==1.0.0rc1',
-              'azure-storage==0.34.0',
-              'pysftp==0.2.9']
+              'azure-mgmt-resource>=1.0.0rc1',
+              'azure-mgmt-compute>=1.0.0rc1',
+              'azure-mgmt-network>=1.0.0rc1',
+              'azure-mgmt-storage>=1.0.0rc1',
+              'azure-storage>=0.34.0',
+              'pysftp>=0.2.9']
 REQS_OPENSTACK = [
     'openstacksdk',
     'python-novaclient>=7.0.0',
@@ -38,6 +43,7 @@ REQS_OPENSTACK = [
     'python-keystoneclient>=3.13.0'
 ]
 REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
+# httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
                 'tox>=2.1.1',
                 'moto>=1.1.11',

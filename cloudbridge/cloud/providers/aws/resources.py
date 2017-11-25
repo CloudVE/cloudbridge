@@ -1143,4 +1143,3 @@ class AWSLaunchConfig(BaseLaunchConfig):
 
     def __init__(self, provider):
         super(AWSLaunchConfig, self).__init__(provider)
-    
