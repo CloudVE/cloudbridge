@@ -93,9 +93,9 @@ TEST_DATA_CONFIG = {
         "placement":
             os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
-            os.environ.get('CB_IMAGE_AZURE', 'CbTest-Img'),
+            os.environ.get('CB_IMAGE_AZURE', 'cb-test-image'),
         "vm_type":
-            os.environ.get('CB_VM_TYPE_AZURE', 'Standard_DS1_v2'),
+            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A0'),
     }
 }
 
