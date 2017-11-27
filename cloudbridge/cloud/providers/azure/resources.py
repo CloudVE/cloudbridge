@@ -1015,6 +1015,11 @@ class AzureFloatingIP(BaseFloatingIP):
             log.exception(cloudError.message)
             return False
 
+    def refresh(self):
+        fip = self._provider.networking.floating_ips.get(self.id)
+        # pylint:disable=protected-access
+        self._ip = fip._ip
+
 
 class AzureRegion(BaseRegion):
     def __init__(self, provider, azure_region):

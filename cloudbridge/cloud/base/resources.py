@@ -19,6 +19,7 @@ from cloudbridge.cloud.interfaces.resources import BucketContainer
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
+from cloudbridge.cloud.interfaces.resources import FloatingIpState
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -976,7 +977,7 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             interval=interval)
 
 
-class BaseFloatingIP(BaseCloudResource, FloatingIP):
+class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
     def __init__(self, provider):
         super(BaseFloatingIP, self).__init__(provider)
@@ -987,6 +988,18 @@ class BaseFloatingIP(BaseCloudResource, FloatingIP):
         VM firewall rules don't support names, so pass
         """
         return self.public_ip
+
+    @property
+    def state(self):
+        return (FloatingIpState.IN_USE if self.in_use
+                else FloatingIpState.AVAILABLE)
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self.wait_for(
+            [FloatingIpState.AVAILABLE, FloatingIpState.IN_USE],
+            terminal_states=[FloatingIpState.ERROR],
+            timeout=timeout,
+            interval=interval)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,

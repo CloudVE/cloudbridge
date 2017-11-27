@@ -790,8 +790,8 @@ class NetworkState(object):
     :cvar UNKNOWN: Network state unknown.
     :cvar PENDING: Network is being created.
     :cvar AVAILABLE: Network is available.
-    :cvar DOWN = Network is not operational.
-    :cvar ERROR = Network errored.
+    :cvar DOWN: Network is not operational.
+    :cvar ERROR: Network errored.
     """
     UNKNOWN = "unknown"
     PENDING = "pending"
@@ -890,8 +890,8 @@ class SubnetState(object):
     :cvar UNKNOWN: Subnet state unknown.
     :cvar PENDING: Subnet is being created.
     :cvar AVAILABLE: Subnet is available.
-    :cvar DOWN = Subnet is not operational.
-    :cvar ERROR = Subnet errored.
+    :cvar DOWN: Subnet is not operational.
+    :cvar ERROR: Subnet errored.
     """
     UNKNOWN = "unknown"
     PENDING = "pending"
@@ -949,7 +949,23 @@ class Subnet(ObjectLifeCycleMixin, CloudResource):
         pass
 
 
-class FloatingIP(CloudResource):
+class FloatingIpState(object):
+
+    """
+    Standard states for a floating ip.
+
+    :cvar UNKNOWN: Floating IP state unknown.
+    :cvar AVAILABLE: Floating IP is available.
+    :cvar IN_USE: Floating IP is attached to a device.
+    :cvar ERROR: Floating IP is in an error state.
+    """
+    UNKNOWN = "unknown"
+    AVAILABLE = "available"
+    IN_USE = "in_use"
+    ERROR = "error"
+
+
+class FloatingIP(ObjectLifeCycleMixin, CloudResource):
     """
     Represents a floating (i.e., static) IP address.
     """
