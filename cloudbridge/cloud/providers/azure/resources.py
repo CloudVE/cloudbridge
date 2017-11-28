@@ -576,8 +576,7 @@ class AzureVolume(BaseVolume):
                     'id': self.resource_id
                 }
             })
-            self._provider.azure_client \
-                .create_vm(instance_id, vm)
+            self._provider.azure_client.update_vm(instance_id, vm)
             return True
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -587,25 +586,13 @@ class AzureVolume(BaseVolume):
         """
         Detach this volume from an instance.
         """
-        virtual_machine = None
-        for index, vm in enumerate(
-                self._provider.azure_client.list_vm()):
+        for vm in self._provider.azure_client.list_vm():
             for item in vm.storage_profile.data_disks:
                 if item.managed_disk and \
                                 item.managed_disk.id == self.resource_id:
                     vm.storage_profile.data_disks.remove(item)
-                    virtual_machine = vm
-                    break
-            if virtual_machine:
-                break
-
-        if virtual_machine:
-            self._provider.azure_client.create_vm(
-                virtual_machine.name,
-                virtual_machine
-            )
-            return True
-        return False
+                    self._provider.azure_client.update_vm(vm.name, vm)
+        return True
 
     def create_snapshot(self, name, description=None):
         """

@@ -411,6 +411,11 @@ class AzureClient(object):
             create_or_update(self.resource_group,
                              vm_name, params, raw=True)
 
+    def update_vm(self, vm_name, params):
+        return self.compute_client.virtual_machines. \
+            create_or_update(self.resource_group,
+                             vm_name, params, raw=True)
+
     def deallocate_vm(self, vm_name):
         self.compute_client. \
             virtual_machines.deallocate(self.resource_group,
