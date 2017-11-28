@@ -74,8 +74,33 @@ class AzureVMFirewallService(BaseVMFirewallService):
             parameters['tags'].update(Description=description)
 
         fw = self.provider.azure_client.create_vm_firewall(name, parameters)
-        cb_fw = AzureVMFirewall(self.provider, fw)
 
+        # Add default rules to negate azure default rules.
+        # See: https://github.com/gvlproject/cloudbridge/issues/106
+        # pylint:disable=protected-access
+        for rule in fw.default_security_rules:
+            rule_name = "cb-override-" + rule.name
+            # Transpose rules to priority 4001 onwards, because
+            # only 0-4096 are allowed for custom rules
+            rule.priority = rule.priority - 61440
+            rule.access = "Deny"
+            self._provider.azure_client.create_vm_firewall_rule(
+                fw.name, rule_name, rule)
+
+        # Add a new custom rule allowing all outbound traffic to the internet
+        parameters = {"priority": 3000,
+                      "protocol": "*",
+                      "source_port_range": "*",
+                      "source_address_prefix": "*",
+                      "destination_port_range": "*",
+                      "destination_address_prefix": "Internet",
+                      "access": "Allow",
+                      "direction": "Outbound"}
+        result = self._provider.azure_client.create_vm_firewall_rule(
+            fw.name, "cb-default-internet-outbound", parameters)
+        fw.security_rules.append(result)
+
+        cb_fw = AzureVMFirewall(self.provider, fw)
         return cb_fw
 
     def find(self, name, limit=None, marker=None):

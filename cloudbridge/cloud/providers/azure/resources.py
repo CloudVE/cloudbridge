@@ -150,13 +150,13 @@ class AzureVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
         super(AzureVMFirewallRuleContainer, self).__init__(provider, firewall)
 
     def list(self, limit=None, marker=None):
+        # Filter out firewall rules with priority < 3500 because values
+        # between 3500 and 4096 are assumed to be owned by cloudbridge
+        # default rules.
         # pylint:disable=protected-access
-        rules = (
-            [AzureVMFirewallRule(self.firewall, rule) for rule
-             in self.firewall._vm_firewall.security_rules] +
-            [AzureVMFirewallRule(self.firewall, rule) for rule
-             in self.firewall._vm_firewall.default_security_rules
-             if rule.destination_address_prefix == "Internet"])
+        rules = [AzureVMFirewallRule(self.firewall, rule) for rule
+                 in self.firewall._vm_firewall.security_rules
+                 if rule.priority < 3500]
         return ClientPagedResultList(self._provider, rules,
                                      limit=limit, marker=marker)
 
@@ -185,18 +185,18 @@ class AzureVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
 
         count = len(self.firewall._vm_firewall.security_rules) + 1
         rule_name = "Rule - " + str(count)
-        priority = count * 100
+        priority = 1000 + count
         destination_port_range = str(from_port) + "-" + str(to_port)
         source_port_range = '*'
         destination_address_prefix = "*"
         access = "Allow"
         direction = ("Inbound" if direction == TrafficDirection.INBOUND
                      else "Outbound")
-        parameters = {"protocol": protocol,
+        parameters = {"priority": priority,
+                      "protocol": protocol,
                       "source_port_range": source_port_range,
-                      "destination_port_range": destination_port_range,
-                      "priority": priority,
                       "source_address_prefix": cidr,
+                      "destination_port_range": destination_port_range,
                       "destination_address_prefix": destination_address_prefix,
                       "access": access,
                       "direction": direction}
