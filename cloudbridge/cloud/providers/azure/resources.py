@@ -972,7 +972,7 @@ class AzureFloatingIP(BaseFloatingIP):
 
     @property
     def id(self):
-        return self._ip.name
+        return self._ip.id
 
     @property
     def resource_id(self):
@@ -1405,44 +1405,32 @@ class AzureInstance(BaseInstance):
                 sftp.execute('sudo waagent -deprovision -force')
                 sftp.close()
 
-    def add_floating_ip(self, ip_address):
+    def add_floating_ip(self, floating_ip):
         """
         Attaches public ip to the instance
         :param ip_address:
         :return:
         """
-        try:
-            ip_addresses = [ip for ip in
-                            self._provider.azure_client.list_floating_ips()
-                            if ip.ip_address and ip.ip_address == ip_address]
-            if len(ip_addresses) > 0:
-                """
-                Add an elastic IP address to this instance.
-                """
-                nic = self._provider.azure_client.get_nic(self._nic_ids[0])
+        fip = (floating_ip if isinstance(floating_ip, AzureFloatingIP) else
+               self._provider.networking.floating_ips.get(floating_ip))
 
-                nic.ip_configurations[0].public_ip_address = {
-                    'id': ip_addresses[0].id
-                }
-                self._provider.azure_client.create_nic(self._nic_ids[0], nic)
-                return True
-            return False
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+        nic = self._provider.azure_client.get_nic(self._nic_ids[0])
 
-    def remove_floating_ip(self, ip_address=None):
+        nic.ip_configurations[0].public_ip_address = {
+            'id': fip.id
+        }
+        self._provider.azure_client.update_nic(self._nic_ids[0], nic)
+
+    def remove_floating_ip(self, floating_ip):
         """
         Remove a public IP address from this instance.
         """
-        try:
-            nic = self._provider.azure_client.get_nic(self._nic_ids[0])
-            nic.ip_configurations[0].public_ip_address = None
-            self._provider.azure_client.create_nic(self._nic_ids[0], nic)
-            return True
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+        nic = self._provider.azure_client.get_nic(self._nic_ids[0])
+        for ip_config in nic.ip_configurations:
+            if ip_config.public_ip_address.id == floating_ip.id:
+                nic.ip_configurations[0].public_ip_address = None
+                self._provider.azure_client.update_nic(self._nic_ids[0],
+                                                       nic)
 
     def add_vm_firewall(self, fw):
         '''

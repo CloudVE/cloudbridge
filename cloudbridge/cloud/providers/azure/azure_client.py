@@ -444,7 +444,7 @@ class AzureClient(object):
         return self.network_management_client. \
             network_interfaces.get(self.resource_group, name)
 
-    def create_nic(self, nic_name, params):
+    def update_nic(self, nic_name, params):
         async_nic_creation = self.network_management_client. \
             network_interfaces.create_or_update(
                 self.resource_group,
@@ -452,8 +452,10 @@ class AzureClient(object):
                 params
             )
         nic_info = async_nic_creation.result()
-
         return nic_info
+
+    def create_nic(self, nic_name, params):
+        return self.update_nic(nic_name, params)
 
     def get_public_ip(self, name):
         return self.network_management_client. \
