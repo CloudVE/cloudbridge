@@ -547,7 +547,6 @@ class ImageService(PageableObjectMixin, CloudService):
 
 
 class NetworkingService(CloudService):
-
     """
     Base service interface for networking.
 
@@ -583,6 +582,16 @@ class NetworkingService(CloudService):
 
         :rtype: :class:`.RouterService`
         :return: a Router service object
+        """
+        pass
+
+    @abstractproperty
+    def floating_ips(self):
+        """
+        Provides access to all Floating IP services.
+
+        :rtype: :class:`.FloatingIPService`
+        :return: a FloatingIPService object
         """
         pass
 
@@ -859,7 +868,6 @@ class FloatingIPService(PageableObjectMixin, CloudService):
 
 
 class RouterService(PageableObjectMixin, CloudService):
-
     """
     Manage networking router actions and resources.
     """
@@ -927,7 +935,6 @@ class RouterService(PageableObjectMixin, CloudService):
 
 
 class GatewayService(CloudService):
-
     """
     Manage internet gateway resources.
     """

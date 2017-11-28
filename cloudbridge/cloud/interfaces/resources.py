@@ -790,8 +790,8 @@ class NetworkState(object):
     :cvar UNKNOWN: Network state unknown.
     :cvar PENDING: Network is being created.
     :cvar AVAILABLE: Network is available.
-    :cvar DOWN = Network is not operational.
-    :cvar ERROR = Network errored.
+    :cvar DOWN: Network is not operational.
+    :cvar ERROR: Network errored.
     """
     UNKNOWN = "unknown"
     PENDING = "pending"
@@ -884,15 +884,14 @@ class Network(ObjectLifeCycleMixin, CloudResource):
 
 
 class SubnetState(object):
-
     """
     Standard states for a subnet.
 
     :cvar UNKNOWN: Subnet state unknown.
     :cvar PENDING: Subnet is being created.
     :cvar AVAILABLE: Subnet is available.
-    :cvar DOWN = Subnet is not operational.
-    :cvar ERROR = Subnet errored.
+    :cvar DOWN: Subnet is not operational.
+    :cvar ERROR: Subnet errored.
     """
     UNKNOWN = "unknown"
     PENDING = "pending"
@@ -950,7 +949,23 @@ class Subnet(ObjectLifeCycleMixin, CloudResource):
         pass
 
 
-class FloatingIP(CloudResource):
+class FloatingIpState(object):
+
+    """
+    Standard states for a floating ip.
+
+    :cvar UNKNOWN: Floating IP state unknown.
+    :cvar AVAILABLE: Floating IP is available.
+    :cvar IN_USE: Floating IP is attached to a device.
+    :cvar ERROR: Floating IP is in an error state.
+    """
+    UNKNOWN = "unknown"
+    AVAILABLE = "available"
+    IN_USE = "in_use"
+    ERROR = "error"
+
+
+class FloatingIP(ObjectLifeCycleMixin, CloudResource):
     """
     Represents a floating (i.e., static) IP address.
     """
@@ -1099,7 +1114,6 @@ class Router(CloudResource):
 
 
 class GatewayState(object):
-
     """
     Standard states for a gateway.
 
@@ -1763,7 +1777,7 @@ class VMFirewallRuleContainer(PageableObjectMixin):
             fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
 
         You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
-        ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
+        ``from_port``, ``to_port``, ``cidr``. In other words, either
         you are authorizing another group or you are authorizing some
         IP-based rule.
 

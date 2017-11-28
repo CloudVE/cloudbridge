@@ -879,6 +879,11 @@ class OpenStackFloatingIP(BaseFloatingIP):
     def delete(self):
         self._ip.delete(self._provider.os_conn.session)
 
+    def refresh(self):
+        fip = self._provider.networking.floating_ips.get(self.id)
+        # pylint:disable=protected-access
+        self._ip = fip._ip
+
 
 class OpenStackRouter(BaseRouter):
 

@@ -1027,6 +1027,11 @@ class AWSFloatingIP(BaseFloatingIP):
     def delete(self):
         self._ip.release()
 
+    def refresh(self):
+        fip = self._provider.networking.floating_ips.get(self.id)
+        # pylint:disable=protected-access
+        self._ip = fip._ip
+
 
 class AWSRouter(BaseRouter):
 

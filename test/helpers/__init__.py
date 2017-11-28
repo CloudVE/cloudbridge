@@ -88,6 +88,14 @@ TEST_DATA_CONFIG = {
                                 '842b949c-ea76-48df-998d-8a41f2626243'),
         "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
         "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
+    },
+    "AzureCloudProvider": {
+        "placement":
+            os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
+        "image":
+            os.environ.get('CB_IMAGE_AZURE', 'cb-test-image'),
+        "vm_type":
+            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A0'),
     }
 }
 
@@ -97,6 +105,8 @@ def get_provider_test_data(provider, key):
         return TEST_DATA_CONFIG.get("AWSCloudProvider").get(key)
     elif "OpenStackCloudProvider" in provider.name:
         return TEST_DATA_CONFIG.get("OpenStackCloudProvider").get(key)
+    elif "AzureCloudProvider" in provider.name:
+        return TEST_DATA_CONFIG.get("AzureCloudProvider").get(key)
     return None
 
 
@@ -125,16 +135,26 @@ def delete_test_network(network):
 def create_test_instance(
         provider, instance_name, subnet, launch_config=None,
         key_pair=None, vm_firewalls=None, user_data=None):
-    return provider.compute.instances.create(
+
+    kp = None
+    if not key_pair:
+        kp = provider.security.key_pairs.create(name=instance_name)
+
+    instance = provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'vm_type'),
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
-        key_pair=key_pair,
+        key_pair=key_pair or kp,
         vm_firewalls=vm_firewalls,
         launch_config=launch_config,
         user_data=user_data)
+
+    if kp:
+        kp.delete()
+
+    return instance
 
 
 def get_test_instance(provider, name, key_pair=None, vm_firewalls=None,
