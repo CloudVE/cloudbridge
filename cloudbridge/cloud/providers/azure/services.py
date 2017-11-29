@@ -440,12 +440,19 @@ class AzureInstanceService(BaseInstanceService):
         AzureInstance.assert_valid_resource_name(instance_name)
 
         # Key_pair is mandatory in azure and it should not be None.
+        temp_key_pair = None
         if key_pair:
             key_pair = (self.provider.security.key_pairs.get(key_pair)
                         if isinstance(key_pair, str) else key_pair)
         else:
-            raise Exception("Can not create instance in azure "
-                            "without public key. Keypair required")
+            # Create a temporary keypair if none is provided to keep Azure
+            # happy, but the private key will be discarded, so it'll be all
+            # but useless. However, this will allow an instance to be launched
+            # without specifying a keypair, so users may still be able to login
+            # if they have a preinstalled keypair/password baked into the image
+            key_pair = self.provider.security.key_pairs.create(
+                name="cloudbridge_temp_key_pair")
+            temp_key_pair = key_pair
 
         image = (self.provider.compute.images.get(image)
                  if isinstance(image, str) else image)
@@ -551,6 +558,8 @@ class AzureInstanceService(BaseInstanceService):
 
         self.provider.azure_client.create_vm(instance_name, params)
         vm = self._provider.azure_client.get_vm(instance_name)
+        if temp_key_pair:
+            temp_key_pair.delete()
         return AzureInstance(self.provider, vm)
 
     def _resolve_launch_options(self, name, subnet=None, zone_id=None,

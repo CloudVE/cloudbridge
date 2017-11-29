@@ -136,23 +136,16 @@ def create_test_instance(
         provider, instance_name, subnet, launch_config=None,
         key_pair=None, vm_firewalls=None, user_data=None):
 
-    kp = None
-    if not key_pair:
-        kp = provider.security.key_pairs.create(name=instance_name)
-
     instance = provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'vm_type'),
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
-        key_pair=key_pair or kp,
+        key_pair=key_pair,
         vm_firewalls=vm_firewalls,
         launch_config=launch_config,
         user_data=user_data)
-
-    if kp:
-        kp.delete()
 
     return instance
 
