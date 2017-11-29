@@ -4,6 +4,7 @@ import string
 
 from botocore.exceptions import ClientError
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
@@ -95,10 +96,16 @@ class AWSKeyPairService(BaseKeyPairService):
         return self.svc.find(filter_name='key-name', filter_value=name,
                              limit=limit, marker=marker)
 
-    def create(self, name):
+    def create(self, name, public_key_material=None):
         log.debug("Creating Key Pair Service %s", name)
         AWSKeyPair.assert_valid_resource_name(name)
-        return self.svc.create('create_key_pair', KeyName=name)
+        private_key = None
+        if not public_key_material:
+            public_key_material, private_key = cb_helpers.generate_key_pair()
+        kp = self.svc.create('import_key_pair', KeyName=name,
+                             PublicKeyMaterial=public_key_material)
+        kp.material = private_key
+        return kp
 
 
 class AWSVMFirewallService(BaseVMFirewallService):

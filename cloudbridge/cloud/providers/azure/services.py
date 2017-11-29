@@ -4,6 +4,7 @@ import uuid
 
 from azure.common import AzureException
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList, \
     ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService, \
@@ -160,7 +161,7 @@ class AzureKeyPairService(BaseKeyPairService):
                                      [key_pair] if key_pair else [],
                                      limit, marker)
 
-    def create(self, name):
+    def create(self, name, public_key_material=None):
         AzureKeyPair.assert_valid_resource_name(name)
 
         key_pair = self.get(name)
@@ -169,21 +170,20 @@ class AzureKeyPairService(BaseKeyPairService):
             raise Exception(
                 'Keypair already exists with name {0}'.format(name))
 
-        private_key_str, public_key_str = azure_helpers.gen_key_pair()
+        private_key = None
+        if not public_key_material:
+            public_key_material, private_key = cb_helpers.generate_key_pair()
 
         entity = {
                   'PartitionKey': AzureKeyPairService.PARTITION_KEY,
                   'RowKey': str(uuid.uuid4()),
                   'Name': name,
-                  'Key': public_key_str
+                  'Key': public_key_material
                  }
 
         self.provider.azure_client.create_public_key(entity)
-
         key_pair = self.get(name)
-
-        key_pair.material = private_key_str
-
+        key_pair.material = private_key
         return key_pair
 
 

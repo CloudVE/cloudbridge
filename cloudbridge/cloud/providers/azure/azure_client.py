@@ -467,7 +467,6 @@ class AzureClient(object):
                                        public_ip_name).wait()
 
     def create_public_key(self, entity):
-
         return self.table_service. \
             insert_or_replace_entity(self.public_key_storage_table_name,
                                      entity)

@@ -7,6 +7,7 @@ import re
 
 from cinderclient.exceptions import NotFound as CinderNotFound
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
@@ -165,7 +166,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
-    def create(self, name):
+    def create(self, name, public_key_material=None):
         """
         Create a new key pair or raise an exception if one already exists.
 
@@ -178,9 +179,15 @@ class OpenStackKeyPairService(BaseKeyPairService):
         log.debug("Creating a new key pair with the name: %s", name)
         OpenStackKeyPair.assert_valid_resource_name(name)
 
-        kp = self.provider.nova.keypairs.create(name)
+        private_key = None
+        if not public_key_material:
+            public_key_material, private_key = cb_helpers.generate_key_pair()
+        kp = self.provider.nova.keypairs.create(name,
+                                                public_key=public_key_material)
+
         if kp:
             return OpenStackKeyPair(self.provider, kp)
+            kp.material = private_key
         log.debug("Key Pair with the name %s already exists", name)
         return None
 

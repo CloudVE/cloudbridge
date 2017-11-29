@@ -1,8 +1,3 @@
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-
-
 def filter_by_tag(list_items, filters):
     """
     This function filter items on the tags
@@ -41,27 +36,3 @@ def parse_url(template_url, original_url):
             resource_param.update({key[1:-1]: value})
 
     return resource_param
-
-
-def gen_key_pair():
-    """
-    This method generates the public and private key pair.
-    The public key format is OpenSSH and private key format is PEM container
-    :return:
-    """
-
-    private_key = rsa.generate_private_key(backend=default_backend(),
-                                           public_exponent=65537,
-                                           key_size=2048)
-
-    public_key_str = private_key.public_key(). \
-        public_bytes(serialization.Encoding.OpenSSH,
-                     serialization.PublicFormat.OpenSSH).decode('utf-8')
-
-    private_key_str = private_key. \
-        private_bytes(encoding=serialization.Encoding.PEM,
-                      format=serialization.PrivateFormat.TraditionalOpenSSL,
-                      encryption_algorithm=serialization.NoEncryption()
-                      ).decode('utf-8')
-
-    return (private_key_str, public_key_str)

@@ -1175,12 +1175,19 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name):
+    def create(self, name, public_key_material=None):
         """
         Create a new key pair or raise an exception if one already exists.
+        If the public_key_material is provided, the material will be imported
+        to create the new keypair. Otherwise, a new public and private key
+        pair will be generated.
 
         :type name: str
         :param name: The name of the key pair to be created.
+
+        :type public_key_material: str
+        :param public_key_material: The key-pair material to import in OpenSSH
+                                    format.
 
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or ``None``.

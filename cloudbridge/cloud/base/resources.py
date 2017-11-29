@@ -594,6 +594,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
     def __init__(self, provider, key_pair):
         super(BaseKeyPair, self).__init__(provider)
         self._key_pair = key_pair
+        self._private_material = None
 
     def __eq__(self, other):
         return (isinstance(other, KeyPair) and
@@ -614,6 +615,15 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         Return the name of this key pair.
         """
         return self._key_pair.name
+
+    @property
+    def material(self):
+        return self._private_material
+
+    @material.setter
+    # pylint:disable=arguments-differ
+    def material(self, value):
+        self._private_material = value
 
     def delete(self):
         """

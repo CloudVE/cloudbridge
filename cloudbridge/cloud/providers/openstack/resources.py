@@ -1015,17 +1015,6 @@ class OpenStackKeyPair(BaseKeyPair):
     def __init__(self, provider, key_pair):
         super(OpenStackKeyPair, self).__init__(provider, key_pair)
 
-    @property
-    def material(self):
-        """
-        Unencrypted private key.
-
-        :rtype: str
-        :return: Unencrypted private key or ``None`` if not available.
-
-        """
-        return getattr(self._key_pair, 'private_key', None)
-
 
 class OpenStackVMFirewall(BaseVMFirewall):
 

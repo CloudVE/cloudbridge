@@ -1595,7 +1595,6 @@ class AzureKeyPair(BaseKeyPair):
 
     def __init__(self, provider, key_pair):
         super(AzureKeyPair, self).__init__(provider, key_pair)
-        self._material = None
 
     @property
     def id(self):
@@ -1604,21 +1603,6 @@ class AzureKeyPair(BaseKeyPair):
     @property
     def name(self):
         return self._key_pair.Name
-
-    @property
-    def material(self):
-        """
-        Unencrypted private key.
-
-        :rtype: str
-        :return: Unencrypted private key or ``None`` if not available.
-
-        """
-        return self._material
-
-    @material.setter
-    def material(self, value):
-        self._material = value
 
     def delete(self):
         try:
