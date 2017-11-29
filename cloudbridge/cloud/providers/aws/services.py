@@ -731,10 +731,9 @@ class AWSFloatingIPService(BaseFloatingIPService):
                                   cb_resource=AWSFloatingIP,
                                   boto_collection_name='vpc_addresses')
 
-    def get(self, router_id):
-        log.debug("Getting AWS Floating IP Service with the id: %s",
-                  router_id)
-        return self.svc.get(router_id)
+    def get(self, fip_id):
+        log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
+        return self.svc.get(fip_id)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)

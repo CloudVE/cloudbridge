@@ -294,7 +294,8 @@ class AWSInstance(BaseInstance):
     def add_floating_ip(self, floating_ip):
         fip = (
             floating_ip if isinstance(floating_ip, AWSFloatingIP) else
-            self._provider.networking.floating_ips.get(floating_ip))
+            [ip for ip in self._provider.networking.floating_ips.list()
+             if ip.public_ip == floating_ip][0])
         params = trim_empty_params({
             'InstanceId': self.id,
             'PublicIp': None if self._ec2_instance.vpc_id else fip.public_ip,
