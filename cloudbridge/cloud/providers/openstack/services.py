@@ -12,7 +12,6 @@ from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -28,7 +27,6 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.exceptions import ProviderInternalException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -46,7 +44,6 @@ from novaclient.exceptions import NotFound as NovaNotFound
 from openstack.exceptions import ResourceNotFound
 
 from .resources import OpenStackBucket
-from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
 from .resources import OpenStackInternetGateway
 from .resources import OpenStackKeyPair
@@ -756,7 +753,6 @@ class OpenStackNetworkingService(BaseNetworkingService):
         super(OpenStackNetworkingService, self).__init__(provider)
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
-        self._fip_service = OpenStackFloatingIPService(self.provider)
         self._router_service = OpenStackRouterService(self.provider)
         self._gateway_service = OpenStackGatewayService(self.provider)
 
@@ -767,10 +763,6 @@ class OpenStackNetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
-
-    @property
-    def floating_ips(self):
-        return self._fip_service
 
     @property
     def routers(self):
@@ -890,36 +882,6 @@ class OpenStackSubnetService(BaseSubnetService):
         if subnet_id not in self.list():
             return True
         return False
-
-
-class OpenStackFloatingIPService(BaseFloatingIPService):
-
-    def __init__(self, provider):
-        super(OpenStackFloatingIPService, self).__init__(provider)
-
-    def get(self, fip_id):
-        try:
-            return OpenStackFloatingIP(
-                self.provider, self.provider.os_conn.network.get_ip(fip_id))
-        except ResourceNotFound:
-            return None
-
-    def list(self, limit=None, marker=None):
-        fips = [OpenStackFloatingIP(self.provider, fip)
-                for fip in self.provider.os_conn.network.ips()]
-        return ClientPagedResultList(self.provider, fips,
-                                     limit=limit, marker=marker)
-
-    def create(self):
-        # OpenStack requires a floating IP to be associated with an external,
-        # network, so choose the first external network found
-        for n in self.provider.networking.networks:
-            if n.external:
-                return OpenStackFloatingIP(
-                    self.provider, self.provider.os_conn.network.create_ip(
-                        floating_network_id=n.id))
-        raise ProviderInternalException(
-            "This OpenStack cloud has no designated external network")
 
 
 class OpenStackRouterService(BaseRouterService):

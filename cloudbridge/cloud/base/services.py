@@ -7,7 +7,6 @@ from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
-from cloudbridge.cloud.interfaces.services import FloatingIPService
 from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
@@ -196,31 +195,6 @@ class BaseSubnetService(
                           "used for search.")
             raise TypeError(
                 "Invalid parameters for search. Supported attributes: {name}")
-
-
-class BaseFloatingIPService(
-        BasePageableObjectMixin, FloatingIPService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseFloatingIPService, self).__init__(provider)
-
-    def find(self, **kwargs):
-        if 'name' in kwargs:
-            name = kwargs.get('name')
-            log.info("Searching for FloatingIPService with the "
-                     "name: %s...", name)
-            if name:
-                return [fip for fip in self if fip.name == name]
-        else:
-            log.exception("TypeError exception raised. Invalid parameters "
-                          "used for search.")
-            raise TypeError(
-                "Invalid parameters for search. Supported attributes: {name}")
-
-    def delete(self, fip_id):
-        floating_ip = self.get(fip_id)
-        if floating_ip:
-            floating_ip.delete()
 
 
 class BaseRouterService(

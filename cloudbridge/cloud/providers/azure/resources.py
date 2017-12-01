@@ -4,13 +4,15 @@ DataTypes used by this provider
 import collections
 import logging
 import time
+import uuid
 
 from azure.common import AzureException
 from azure.mgmt.network.models import NetworkSecurityGroup
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
-    BaseInstance, BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, \
+    BaseFloatingIPContainer, BaseInstance, BaseInternetGateway, BaseKeyPair, \
+    BaseLaunchConfig, \
     BaseMachineImage, BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, \
     BaseSnapshot, BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, \
     BaseVMFirewallRuleContainer, BaseVMType, BaseVolume, ClientPagedResultList
@@ -964,6 +966,36 @@ class AzureNetwork(BaseNetwork):
             create(network=self.id, cidr_block=cidr_block, name=name)
 
 
+class AzureFloatingIPContainer(BaseFloatingIPContainer):
+
+    def __init__(self, provider, gateway):
+        super(AzureFloatingIPContainer, self).__init__(provider, gateway)
+
+    def get(self, fip_id):
+        log.debug("Getting Azure Floating IP container with the id: %s",
+                  fip_id)
+        fip = [fip for fip in self.list() if fip.id == fip_id]
+        return fip[0] if fip else None
+
+    def list(self, limit=None, marker=None):
+        floating_ips = [AzureFloatingIP(self._provider, floating_ip)
+                        for floating_ip in self._provider.azure_client.
+                        list_floating_ips()]
+        return ClientPagedResultList(self._provider, floating_ips,
+                                     limit=limit, marker=marker)
+
+    def create(self):
+        public_ip_address_name = "{0}-{1}".format(
+            'public_ip', uuid.uuid4().hex[:6])
+        public_ip_parameters = {
+            'location': self._provider.azure_client.region_name,
+            'public_ip_allocation_method': 'Static'
+        }
+        floating_ip = self._provider.azure_client.\
+            create_floating_ip(public_ip_address_name, public_ip_parameters)
+        return AzureFloatingIP(self._provider, floating_ip)
+
+
 class AzureFloatingIP(BaseFloatingIP):
 
     def __init__(self, provider, floating_ip):
@@ -1702,6 +1734,7 @@ class AzureInternetGateway(BaseInternetGateway):
         self._name = None
         self._network_id = None
         self._state = ''
+        self._fips_container = AzureFloatingIPContainer(provider, self)
 
     @property
     def id(self):
@@ -1738,3 +1771,7 @@ class AzureInternetGateway(BaseInternetGateway):
 
     def delete(self):
         pass
+
+    @property
+    def floating_ips(self):
+        return self._fips_container

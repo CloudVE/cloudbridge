@@ -132,6 +132,27 @@ def delete_test_network(network):
                 pass
 
 
+def get_test_gateway(provider, name):
+    """
+    Get an internet gateway for testing.
+
+    This includes creating a network for the gateway, which is also returned.
+    """
+    net_name = 'cb_testgwnet-{0}'.format(get_uuid())
+    net = provider.networking.networks.create(
+        name=net_name, cidr_block='10.0.0.0/16')
+    return net, provider.networking.gateways.get_or_create_inet_gateway(
+        net, name)
+
+
+def delete_test_gateway(network, gateway):
+    """
+    Delete the supplied network and gateway.
+    """
+    gateway.delete()
+    network.delete()
+
+
 def create_test_instance(
         provider, instance_name, subnet, launch_config=None,
         key_pair=None, vm_firewalls=None, user_data=None):

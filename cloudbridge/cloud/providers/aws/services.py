@@ -8,7 +8,6 @@ import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -589,7 +588,6 @@ class AWSNetworkingService(BaseNetworkingService):
         super(AWSNetworkingService, self).__init__(provider)
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
-        self._fip_service = AWSFloatingIPService(self.provider)
         self._router_service = AWSRouterService(self.provider)
         self._gateway_service = AWSGatewayService(self.provider)
 
@@ -600,10 +598,6 @@ class AWSNetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
-
-    @property
-    def floating_ips(self):
-        return self._fip_service
 
     @property
     def routers(self):
@@ -728,29 +722,6 @@ class AWSSubnetService(BaseSubnetService):
         log.debug("Deleting AWS Subnet Service: %s", subnet)
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         self.svc.delete(subnet_id)
-
-
-class AWSFloatingIPService(BaseFloatingIPService):
-
-    def __init__(self, provider):
-        super(AWSFloatingIPService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSFloatingIP,
-                                  boto_collection_name='vpc_addresses')
-
-    def get(self, fip_id):
-        log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
-        return self.svc.get(fip_id)
-
-    def list(self, limit=None, marker=None):
-        return self.svc.list(limit=limit, marker=marker)
-
-    def create(self):
-        ip = self.provider.ec2_conn.meta.client.allocate_address(
-            Domain='vpc')
-        return AWSFloatingIP(
-            self.provider,
-            self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
 
 
 class AWSRouterService(BaseRouterService):

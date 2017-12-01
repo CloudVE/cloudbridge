@@ -19,6 +19,7 @@ from cloudbridge.cloud.interfaces.resources import BucketContainer
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
+from cloudbridge.cloud.interfaces.resources import FloatingIPContainer
 from cloudbridge.cloud.interfaces.resources import FloatingIpState
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
@@ -985,6 +986,37 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             terminal_states=[SubnetState.ERROR],
             timeout=timeout,
             interval=interval)
+
+
+class BaseFloatingIPContainer(BaseCloudResource, FloatingIPContainer,
+                              BasePageableObjectMixin):
+
+    def __init__(self, provider, gateway):
+        # super(BaseFloatingIPContainer, self).__init__(provider)
+        self.__provider = provider
+        self.gateway = gateway
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def find(self, **kwargs):
+        if 'name' in kwargs:
+            name = kwargs.get('name')
+            log.info("Searching for FloatingIPContainer with the "
+                     "name: %s...", name)
+            if name:
+                return [fip for fip in self if fip.name == name]
+        else:
+            log.exception("TypeError exception raised. Invalid parameters "
+                          "used for search.")
+            raise TypeError(
+                "Invalid parameters for search. Supported attributes: {name}")
+
+    def delete(self, fip_id):
+        floating_ip = self.get(fip_id)
+        if floating_ip:
+            floating_ip.delete()
 
 
 class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
