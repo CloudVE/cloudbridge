@@ -21,7 +21,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImage, \
 from msrestazure.azure_exceptions import CloudError
 
 from . import helpers as azure_helpers
-from .resources import AzureBucket, AzureFloatingIP, \
+from .resources import AzureBucket, \
     AzureInstance, AzureInternetGateway, AzureKeyPair, \
     AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
     AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \

@@ -29,7 +29,6 @@ from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
-from cloudbridge.cloud.interfaces.exceptions import ProviderInternalException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
