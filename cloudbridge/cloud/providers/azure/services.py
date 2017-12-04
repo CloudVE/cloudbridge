@@ -1056,10 +1056,12 @@ class AzureGatewayService(BaseGatewayService):
         # Singleton returned by the list method
         self.gateway_singleton = AzureInternetGateway(self.provider, None)
 
-    def get_or_create_inet_gateway(self, name):
-        AzureInternetGateway.assert_valid_resource_name(name)
+    def get_or_create_inet_gateway(self, network, name=None):
+        if name:
+            AzureInternetGateway.assert_valid_resource_name(name)
         gateway = AzureInternetGateway(self.provider, None)
-        gateway.name = name
+        if name:
+            gateway.name = name
         return gateway
 
     def list(self, limit=None, marker=None):
