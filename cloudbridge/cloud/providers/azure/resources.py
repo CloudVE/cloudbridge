@@ -1035,9 +1035,11 @@ class AzureFloatingIP(BaseFloatingIP):
             return False
 
     def refresh(self):
-        fip = self._provider.networking.floating_ips.get(self.id)
+        # TODO: Update to reflect FIP layout changes under a gateway
+        # fip = self._provider.networking.floating_ips.get(self.id)
         # pylint:disable=protected-access
-        self._ip = fip._ip
+        # self._ip = fip._ip
+        pass
 
 
 class AzureRegion(BaseRegion):

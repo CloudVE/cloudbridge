@@ -1051,7 +1051,10 @@ class AWSFloatingIP(BaseFloatingIP):
         self._ip.release()
 
     def refresh(self):
-        fip = self._provider.networking.floating_ips.get(self.id)
+        net = self._provider.networking.networks.list()[0] # Any net will work
+        gw = self._provider.networking.gateways.get_or_create_inet_gateway(
+            net)
+        fip = gw.floating_ips.get(self.id)
         # pylint:disable=protected-access
         self._ip = fip._ip
 
