@@ -988,7 +988,7 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             interval=interval)
 
 
-class BaseFloatingIPContainer(BaseCloudResource, FloatingIPContainer,
+class BaseFloatingIPContainer(FloatingIPContainer,
                               BasePageableObjectMixin):
 
     def __init__(self, provider, gateway):
