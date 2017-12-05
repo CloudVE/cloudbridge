@@ -1053,7 +1053,7 @@ class AWSFloatingIP(BaseFloatingIP):
         self._ip.release()
 
     def refresh(self):
-        net = self._provider.networking.networks.list()[0] # Any net will work
+        net = self._provider.networking.networks.list()[0]  # Any net will work
         gw = self._provider.networking.gateways.get_or_create_inet_gateway(
             net)
         fip = gw.floating_ips.get(self.id)
