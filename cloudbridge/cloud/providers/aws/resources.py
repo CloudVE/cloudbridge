@@ -7,6 +7,7 @@ import logging
 
 from botocore.exceptions import ClientError
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketContainer
@@ -829,11 +830,12 @@ class AWSBucketContainer(BaseBucketContainer):
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        objects = [obj for obj in self if obj.name == name]
-
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=None, marker=None)
 
     def create(self, name):
         # pylint:disable=protected-access

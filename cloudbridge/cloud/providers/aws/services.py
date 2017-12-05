@@ -88,11 +88,16 @@ class AWSKeyPairService(BaseKeyPairService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for Key Pair %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='key-name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for Key Pair %s", name)
+        return self.svc.find(filter_name='key-name', filter_value=name)
 
     def create(self, name, public_key_material=None):
         log.debug("Creating Key Pair Service %s", name)
@@ -129,11 +134,16 @@ class AWSVMFirewallService(BaseVMFirewallService):
         return self.svc.create('create_security_group', GroupName=name,
                                Description=description, VpcId=network_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for Firewall Service %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='group-name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for Firewall Service %s", name)
+        return self.svc.find(filter_name='group-name', filter_value=name)
 
     def delete(self, firewall_id):
         log.info("Deleting Firewall Service with the id %s", firewall_id)
@@ -178,12 +188,16 @@ class AWSVolumeService(BaseVolumeService):
                   volume_id)
         return self.svc.get(volume_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Volume Service %s with "
-                  "the params  [Limit: %s Marker: %s]", name,
-                  limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Volume Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -223,12 +237,16 @@ class AWSSnapshotService(BaseSnapshotService):
                   snapshot_id)
         return self.svc.get(snapshot_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Snapshot Service %s with "
-                  " the params [Limit: %s Marker: %s]", name,
-                  limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Snapshot Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -291,14 +309,12 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Bucket %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        buckets = [bucket
-                   for bucket in self
-                   if name == bucket.name]
-        return ClientPagedResultList(self.provider, buckets,
-                                     limit=limit, marker=marker)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=None, marker=None)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -333,11 +349,16 @@ class AWSImageService(BaseImageService):
         log.debug("Getting AWS Image Service with the id: %s", image_id)
         return self.svc.get(image_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Image Service %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Image Service %s", name)
+        return self.svc.find(filter_name='name', filter_value=name)
 
     def list(self, filter_by_owner=True, limit=None, marker=None):
         return self.svc.list(Owners=['self'] if filter_by_owner else [],
@@ -515,9 +536,15 @@ class AWSInstanceService(BaseInstanceService):
     def get(self, instance_id):
         return self.svc.get(instance_id)
 
-    def find(self, name, limit=None, marker=None):
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -623,11 +650,16 @@ class AWSNetworkService(BaseNetworkService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Network Service %s with the "
-                  " params [Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Network Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def create(self, name, cidr_block):
         log.debug("Creating AWS Network Service with the params "
@@ -663,11 +695,16 @@ class AWSSubnetService(BaseSubnetService):
         else:
             return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Subnet Service %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Subnet Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def create(self, name, network, cidr_block, zone=None):
         log.debug("Creating AWS Subnet Service with the params "
@@ -736,11 +773,16 @@ class AWSRouterService(BaseRouterService):
         log.debug("Getting AWS Router Service with the id: %s", router_id)
         return self.svc.get(router_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Router Service %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Router Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)

@@ -160,25 +160,14 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for an instance by a given list of attributes.
 
+        Supported attributes: name
+
         :type  name: ``str``
         :param name: The name to search for
-
-        :type  limit: ``int``
-        :param limit: The maximum number of objects to return. Note that the
-                      maximum is not guaranteed to be honoured, and a lower
-                      maximum may be enforced depending on the provider. In
-                      such a case, the returned ResultList's is_truncated
-                      property can be used to determine whether more records
-                      are available.
-
-        :type  marker: ``str``
-        :param marker: The marker is an opaque identifier used to assist
-                       in paging through very long lists of objects. It is
-                       returned on each invocation of the list method.
 
         :rtype: List of ``object`` of :class:`.Instance`
         :return: A list of Instance objects matching the supplied attributes.
@@ -318,9 +307,11 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a volume by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: ``object`` of :class:`.Volume`
         :return: a Volume object or ``None`` if not found.
@@ -383,9 +374,11 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a snapshot by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: list of :class:`.Snapshot`
         :return: a Snapshot object or an empty list if none found.
@@ -519,9 +512,11 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for an image by a given list of attributes
+
+        Supported attributes: name
 
         :rtype: ``object`` of :class:`.Image`
         :return:  an Image instance
@@ -628,9 +623,11 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a network by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: List of ``object`` of :class:`.Network`
         :return: A list of Network objects matching the supplied attributes.
@@ -729,9 +726,11 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a subnet by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: List of ``object`` of :class:`.Subnet`
         :return: A list of Subnet objects matching the supplied attributes.
@@ -826,9 +825,11 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a router by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: List of ``object`` of :class:`.Router`
         :return: A list of Router objects matching the supplied attributes.
@@ -940,9 +941,11 @@ class BucketService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a bucket by a given list of attributes.
+
+        Supported attributes: name
 
         Example:
 
@@ -1094,9 +1097,11 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a key pair by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  a KeyPair object
@@ -1194,9 +1199,11 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Get VM firewalls associated with your account filtered by name.
+
+        Supported attributes: name
 
         :type name: str
         :param name: The name of the VM firewall to retrieve.
@@ -1254,6 +1261,8 @@ class VMTypeService(PageableObjectMixin, CloudService):
         """
         Searches for an instance by a given list of attributes.
 
+        Supported attributes: name
+
         :rtype: ``object`` of :class:`.VMType`
         :return: an Instance object
         """
@@ -1301,9 +1310,11 @@ class RegionService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, **kwargs):
         """
         Searches for a region by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: ``object`` of :class:`.Region`
         :return: a Region object

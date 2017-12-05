@@ -104,17 +104,19 @@ class AzureVMFirewallService(BaseVMFirewallService):
         cb_fw = AzureVMFirewall(self.provider, fw)
         return cb_fw
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a security group by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         filters = {'Name': name}
         fws = [AzureVMFirewall(self.provider, vm_firewall)
                for vm_firewall in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_vm_firewall(), filters)]
-
-        return ClientPagedResultList(self.provider, fws,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, fws)
 
     def delete(self, group_id):
         try:
@@ -155,11 +157,17 @@ class AzureKeyPairService(BaseKeyPairService):
                                      supports_total=False,
                                      data=results)
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         key_pair = self.get(name)
         return ClientPagedResultList(self.provider,
-                                     [key_pair] if key_pair else [],
-                                     limit, marker)
+                                     [key_pair] if key_pair else [])
 
     def create(self, name, public_key_material=None):
         AzureKeyPair.assert_valid_resource_name(name)
@@ -204,15 +212,18 @@ class AzureBucketService(BaseBucketService):
             log.exception(error)
             return None
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a bucket by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         buckets = [AzureBucket(self.provider, bucket)
                    for bucket in
                    self.provider.azure_client.list_containers(prefix=name)]
-        return ClientPagedResultList(self.provider, buckets,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, buckets)
 
     def list(self, limit=None, marker=None):
         """
@@ -270,16 +281,19 @@ class AzureVolumeService(BaseVolumeService):
             log.exception(cloudError.message)
             return None
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a volume by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         filters = {'Name': name}
         cb_vols = [AzureVolume(self.provider, volume)
                    for volume in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_disks(), filters)]
-        return ClientPagedResultList(self.provider, cb_vols,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, cb_vols)
 
     def list(self, limit=None, marker=None):
         """
@@ -349,16 +363,19 @@ class AzureSnapshotService(BaseSnapshotService):
             log.exception(cloudError.message)
             return None
 
-    def find(self, name, limit=None, marker=None):
-        """
-             Searches for a snapshot by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         filters = {'Name': name}
         cb_snapshots = [AzureSnapshot(self.provider, snapshot)
                         for snapshot in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_snapshots(), filters)]
-        return ClientPagedResultList(self.provider, cb_snapshots,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, cb_snapshots)
 
     def list(self, limit=None, marker=None):
         """
@@ -691,19 +708,19 @@ class AzureInstanceService(BaseInstanceService):
             log.exception(cloudError.message)
             return None
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for an instance by a given list of attributes.
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
 
-        :rtype: ``object`` of :class:`.Instance`
-        :return: an Instance object
-        """
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         filtr = {'Name': name}
         instances = [AzureInstance(self.provider, inst)
                      for inst in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_vm(), filtr)]
-        return ClientPagedResultList(self.provider, instances,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, instances)
 
 
 class AzureImageService(BaseImageService):
@@ -722,17 +739,19 @@ class AzureImageService(BaseImageService):
             log.exception(cloudError.message)
             return None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
 
-        """
-         Searches for a image by a given list of attributes.
-        """
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         filters = {'Name': name}
         cb_images = [AzureMachineImage(self.provider, image)
                      for image in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_images(), filters)]
-        return ClientPagedResultList(self.provider, cb_images,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, cb_images)
 
     def list(self, limit=None, marker=None):
         """
@@ -813,13 +832,19 @@ class AzureNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         filters = {'Name': name}
         networks = [AzureNetwork(self.provider, network)
                     for network in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_networks(), filters)]
-        return ClientPagedResultList(self.provider, networks,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, networks)
 
     def create(self, name, cidr_block):
         # Azure requires CIDR block to be specified when creating a network
@@ -1024,14 +1049,20 @@ class AzureRouterService(BaseRouterService):
             log.exception(cloudError.message)
             return None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         filters = {'Name': name}
         routes = [AzureRouter(self.provider, route)
                   for route in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_route_tables(), filters)]
 
-        return ClientPagedResultList(self.provider, routes,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, routes)
 
     def list(self, limit=None, marker=None):
         routes = [AzureRouter(self.provider, route)

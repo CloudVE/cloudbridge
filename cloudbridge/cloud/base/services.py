@@ -3,6 +3,7 @@ Base implementation for services available through a provider
 """
 import logging
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
@@ -24,6 +25,7 @@ from cloudbridge.cloud.interfaces.services import VMTypeService
 from cloudbridge.cloud.interfaces.services import VolumeService
 
 from .resources import BasePageableObjectMixin
+from .resources import ClientPagedResultList
 
 log = logging.getLogger(__name__)
 
@@ -127,15 +129,10 @@ class BaseVMTypeService(
         return next(vm_type, None)
 
     def find(self, **kwargs):
-        name = kwargs.get('name')
-        log.info("Searching for VMTypeService with the: name %s ...", name)
-        if name:
-            return [itype for itype in self if itype.name == name]
-        else:
-            log.exception("TypeError exception raised. Invalid parameters "
-                          "used for search.")
-            raise TypeError(
-                "Invalid parameters for search. Supported attributes: {name}")
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
 
 class BaseInstanceService(
@@ -151,8 +148,11 @@ class BaseRegionService(
     def __init__(self, provider):
         super(BaseRegionService, self).__init__(provider)
 
-    def find(self, name):
-        return [region for region in self if region.name == name]
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
 
 class BaseNetworkingService(NetworkingService, BaseCloudService):
@@ -186,15 +186,10 @@ class BaseSubnetService(
         super(BaseSubnetService, self).__init__(provider)
 
     def find(self, **kwargs):
-        name = kwargs.get('name')
-        log.info("Searching for SubnetService with the name: %s ...", name)
-        if name:
-            return [subnet for subnet in self if subnet.name == name]
-        else:
-            log.exception("TypeError exception raised. Invalid parameters "
-                          "used for search.")
-            raise TypeError(
-                "Invalid parameters for search. Supported attributes: {name}")
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
 
 class BaseRouterService(
