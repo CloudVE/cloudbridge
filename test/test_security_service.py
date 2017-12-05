@@ -49,10 +49,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         public_key, _ = cb_helpers.generate_key_pair()
         kp = self.provider.security.key_pairs.create(
-            name=name, public_key=public_key)
+            name=name, public_key_material=public_key)
         with helpers.cleanup_action(lambda: kp.delete()):
             self.assertIsNone(kp.material, "Private KeyPair material should"
-                              " be none when key is imported.")
+                              " be None when key is imported.")
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_crud_vm_firewall(self):

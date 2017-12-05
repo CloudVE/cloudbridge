@@ -810,7 +810,8 @@ class AWSGatewayService(BaseGatewayService):
 
     def get_or_create_inet_gateway(self, network, name=None):
         log.debug("Get or create inet gateway %s on net %s", name, network)
-        AWSInternetGateway.assert_valid_resource_name(name)
+        if name:
+            AWSInternetGateway.assert_valid_resource_name(name)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
         # Don't filter by name because it may conflict with at least the
@@ -822,7 +823,8 @@ class AWSGatewayService(BaseGatewayService):
             return gtw[0]  # There can be only one gtw attached to a VPC
         # Gateway does not exist so create one and attach to the supplied net
         cb_gateway = self.svc.create('create_internet_gateway')
-        cb_gateway.name = name
+        if name:
+            cb_gateway.name = name
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 

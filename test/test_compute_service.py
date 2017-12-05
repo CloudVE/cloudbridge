@@ -296,7 +296,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
-                              'networking.floating_ips',
                               'security.vm_firewalls'])
     def test_instance_methods(self):
         name = "cb_instmethods-{0}".format(helpers.get_uuid())
