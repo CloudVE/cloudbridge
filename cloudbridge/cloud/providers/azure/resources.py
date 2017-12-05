@@ -968,8 +968,9 @@ class AzureNetwork(BaseNetwork):
 
 class AzureFloatingIPContainer(BaseFloatingIPContainer):
 
-    def __init__(self, provider, gateway):
+    def __init__(self, provider, gateway, network_id):
         super(AzureFloatingIPContainer, self).__init__(provider, gateway)
+        self._network_id = network_id
 
     def get(self, fip_id):
         log.debug("Getting Azure Floating IP container with the id: %s",
@@ -978,7 +979,8 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
         return fip[0] if fip else None
 
     def list(self, limit=None, marker=None):
-        floating_ips = [AzureFloatingIP(self._provider, floating_ip)
+        floating_ips = [AzureFloatingIP(self._provider, floating_ip,
+                                        self._network_id)
                         for floating_ip in self._provider.azure_client.
                         list_floating_ips()]
         return ClientPagedResultList(self._provider, floating_ips,
@@ -993,14 +995,15 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
         }
         floating_ip = self._provider.azure_client.\
             create_floating_ip(public_ip_address_name, public_ip_parameters)
-        return AzureFloatingIP(self._provider, floating_ip)
+        return AzureFloatingIP(self._provider, floating_ip, self._network_id)
 
 
 class AzureFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, floating_ip):
+    def __init__(self, provider, floating_ip, network_id):
         super(AzureFloatingIP, self).__init__(provider)
         self._ip = floating_ip
+        self._network_id = network_id
 
     @property
     def id(self):
@@ -1030,16 +1033,15 @@ class AzureFloatingIP(BaseFloatingIP):
         try:
             self._provider.azure_client.delete_floating_ip(self.id)
             return True
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
+        except CloudError as cloud_error:
+            log.exception(cloud_error.message)
             return False
 
     def refresh(self):
-        # TODO: Update to reflect FIP layout changes under a gateway
-        # fip = self._provider.networking.floating_ips.get(self.id)
-        # pylint:disable=protected-access
-        # self._ip = fip._ip
-        pass
+        net = self._provider.networking.networks.get(self._network_id)
+        gw = self._provider.networking.gateways.get_or_create_inet_gateway(net)
+        fip = gw.floating_ips.get(self.id)
+        self._ip = fip._ip
 
 
 class AzureRegion(BaseRegion):
@@ -1478,7 +1480,7 @@ class AzureInstance(BaseInstance):
         if not associated any security group to NIC
         else replacing the existing security group.
         '''
-        fw = (self._provicer.security.vm_firewalls.get(fw)
+        fw = (self._provider.security.vm_firewalls.get(fw)
               if isinstance(fw, str) else fw)
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
         if not nic.network_security_group:
@@ -1516,7 +1518,7 @@ class AzureInstance(BaseInstance):
         '''
 
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
-        fw = (self._provicer.security.vm_firewalls.get(fw)
+        fw = (self._provider.security.vm_firewalls.get(fw)
               if isinstance(fw, str) else fw)
         if nic.network_security_group and \
                 nic.network_security_group.id == fw.resource_id:
@@ -1730,13 +1732,16 @@ class AzureRouter(BaseRouter):
 
 
 class AzureInternetGateway(BaseInternetGateway):
-    def __init__(self, provider, gateway):
+    def __init__(self, provider, gateway, gateway_net):
         super(AzureInternetGateway, self).__init__(provider)
         self._gateway = gateway
         self._name = None
         self._network_id = None
+        self._network_id = gateway_net.id if isinstance(
+            gateway_net, AzureNetwork) else gateway_net
         self._state = ''
-        self._fips_container = AzureFloatingIPContainer(provider, self)
+        self._fips_container = AzureFloatingIPContainer(
+            provider, self, self._network_id)
 
     @property
     def id(self):
@@ -1769,7 +1774,7 @@ class AzureInternetGateway(BaseInternetGateway):
 
     @property
     def network_id(self):
-        return None
+        return self._network_id
 
     def delete(self):
         pass

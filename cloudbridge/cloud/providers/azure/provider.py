@@ -41,7 +41,7 @@ class AzureCloudProvider(BaseCloudProvider):
         self.storage_account = self._get_config_value(
             'azure_storage_account',
             os.environ.get('AZURE_STORAGE_ACCOUNT',
-                           'storageacc' + self.resource_group[-12:]))
+                           'storageacc' + self.client_id[-12:]))
 
         self.vm_default_user_name = self._get_config_value(
             'azure_vm_default_user_name', os.environ.get
