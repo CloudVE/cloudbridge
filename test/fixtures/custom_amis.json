@@ -1,0 +1,19 @@
+[
+  {
+    "ami_id": "ami-aa2ea6d0",
+    "state": "available",
+    "public": true,
+    "owner_id": "099720109477",
+    "image_location": "amazon/getting-started",
+    "sriov": "simple",
+    "root_device_type": "ebs",
+    "root_device_name": "/dev/sda1",
+    "description": "Canonical, Ubuntu, 16.04 LTS, amd64 xenial image build on 2017-11-21",
+    "image_type": "machine",
+    "platform": null,
+    "architecture": "x86_64",
+    "name": "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-20171121.1",
+    "virtualization_type": "hvm",
+    "hypervisor": "xen"
+  }
+]

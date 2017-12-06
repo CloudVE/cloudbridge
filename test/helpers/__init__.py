@@ -79,7 +79,8 @@ def skipIfNoService(services):
 
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
-        "image": os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
+        # Match the ami value with entry in custom_amis.json for use with moto
+        "image": os.environ.get('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
         "vm_type": os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
         "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
