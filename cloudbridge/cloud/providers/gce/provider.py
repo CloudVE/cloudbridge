@@ -175,7 +175,8 @@ class GCECloudProvider(BaseCloudProvider):
 
         # Initialize cloud connection fields
         self.credentials_file = self._get_config_value(
-                'gce_service_creds_file', os.environ.get('GCE_SERVICE_CREDS_FILE'))
+                'gce_service_creds_file',
+                os.environ.get('GCE_SERVICE_CREDS_FILE'))
         self.credentials_dict = self._get_config_value(
                 'gce_service_creds_dict',
                 json.loads(os.getenv('GCE_SERVICE_CREDS_DICT', '{}')))

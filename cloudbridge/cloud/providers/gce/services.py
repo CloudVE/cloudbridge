@@ -201,6 +201,7 @@ class GCEKeyPairService(BaseKeyPairService):
                                      limit=limit, marker=marker)
 
     def create(self, name):
+        GCEKeyPair.assert_valid_resource_name(name)
         kp = self.find(name=name)
         if kp:
             return kp
@@ -246,6 +247,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
                                      limit=limit, marker=marker)
 
     def create(self, name, description, network_id=None):
+        GCEVMFirewall.assert_valid_resource_name(name)
         network = self.provider.networking.networks.get(network_id)
         return GCEVMFirewall(self._delegate, name, network, description)
 
@@ -464,6 +466,7 @@ class GCEInstanceService(BaseInstanceService):
         """
         Creates a new virtual machine instance.
         """
+        GCEInstance.assert_valid_resource_name(name)
         if not zone:
             zone = self.provider.default_zone
         if not launch_config:
@@ -720,6 +723,7 @@ class GCENetworkService(BaseNetworkService):
         Creates an auto mode VPC network with default subnets. It is possible
         to add additional subnets later.
         """
+        GCENetwork.assert_valid_resource_name(name)
         return self._create(name, cidr_block, True)
 
     def get_or_create_default(self):
@@ -824,10 +828,12 @@ class GCERouterService(BaseRouterService):
                                      False, data=routers)
 
     def create(self, network, name=None):
+        name = name if name else 'router-{0}'.format(uuid.uuid4())
+        GCERouter.assert_valid_resource_name(name)
+
         if not isinstance(network, GCENetwork):
             network = self.provider.networking.networks.get(network)
         network_url = network.resource_url
-        name = name if name else 'router-{0}'.format(uuid.uuid4())
         region = self.provider.region_name
         try:
             response = (self.provider
@@ -887,6 +893,7 @@ class GCEGatewayService(BaseGatewayService):
              'name': GCEGatewayService._DEFAULT_GATEWAY_NAME})
 
     def get_or_create_inet_gateway(self, name):
+        GCEInternetGateway.assert_valid_resource_name(name)
         return self._default_internet_gateway
 
     def delete(self, gateway):
@@ -939,6 +946,7 @@ class GCESubnetService(BaseSubnetService):
         instead of creating a new subnet. In this case, other parameters, i.e.
         the name and the zone, are ignored.
         """
+        GCESubnet.assert_valid_resource_name(name)
         subnets = self.list(network)
         for subnet in subnets:
             if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
@@ -1121,6 +1129,7 @@ class GCEVolumeService(BaseVolumeService):
         be a dash, lowercase letter, or digit, except the last character, which
         cannot be a dash.
         """
+        GCEVolume.assert_valid_resource_name(name)
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, GCESnapshot) and snapshot else snapshot
@@ -1210,6 +1219,7 @@ class GCESnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
+        GCESnapshot.assert_valid_resource_name(name)
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
         snapshot_body = {
             "name": name,
@@ -1305,6 +1315,7 @@ class GCSBucketService(BaseBucketService):
         """
         Create a new bucket and returns it. Returns None if creation fails.
         """
+        GCSBucket.assert_valid_resource_name(name)
         body = {'name': name}
         if location:
             body['location'] = location
