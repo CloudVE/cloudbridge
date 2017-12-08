@@ -3,6 +3,7 @@ Provider implementation based on google-api-python-client library
 for GCE.
 """
 import json
+import logging
 import os
 import re
 import time
@@ -167,12 +168,17 @@ class GCECloudProvider(BaseCloudProvider):
     def __init__(self, config):
         super(GCECloudProvider, self).__init__(config)
 
+        # Disable warnings about file_cache not being available when using
+        # oauth2client >= 4.0.0.
+        logging.getLogger('googleapicliet.discovery_cache').setLevel(
+                logging.ERROR)
+
         # Initialize cloud connection fields
         self.credentials_file = self._get_config_value(
-            'gce_service_creds_file', os.environ.get('GCE_SERVICE_CREDS_FILE'))
+                'gce_service_creds_file', os.environ.get('GCE_SERVICE_CREDS_FILE'))
         self.credentials_dict = self._get_config_value(
-            'gce_service_creds_dict',
-            json.loads(os.getenv('GCE_SERVICE_CREDS_DICT', '{}')))
+                'gce_service_creds_dict',
+                json.loads(os.getenv('GCE_SERVICE_CREDS_DICT', '{}')))
         # If 'gce_service_creds_dict' is not passed in from config and
         # self.credentials_file is available, read and parse the json file to
         # self.credentials_dict.

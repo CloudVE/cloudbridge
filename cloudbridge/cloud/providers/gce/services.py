@@ -232,20 +232,21 @@ class GCEVMFirewallService(BaseVMFirewallService):
         tag, network_name = self._delegate.get_tag_network_from_id(group_id)
         if tag is None:
             return None
-        network = self.provider.network.get_by_name(network_name)
+        network = self.provider.networking.networks.get_by_name(network_name)
         return GCEVMFirewall(self._delegate, tag, network)
 
     def list(self, limit=None, marker=None):
         vm_firewalls = []
         for tag, network_name in self._delegate.tag_networks:
-            network = self.provider.network.get_by_name(network_name)
+            network = self.provider.networking.networks.get_by_name(
+                    network_name)
             vm_firewall = GCEVMFirewall(self._delegate, tag, network)
             vm_firewalls.append(vm_firewall)
         return ClientPagedResultList(self.provider, vm_firewalls,
                                      limit=limit, marker=marker)
 
     def create(self, name, description, network_id=None):
-        network = self.provider.network.get(network_id)
+        network = self.provider.networking.networks.get(network_id)
         return GCEVMFirewall(self._delegate, name, network, description)
 
     def find(self, name, limit=None, marker=None):
@@ -257,7 +258,8 @@ class GCEVMFirewallService(BaseVMFirewallService):
         out = []
         for tag, network_name in self._delegate.tag_networks:
             if tag == name:
-                network = self.provider.network.get_by_name(network_name)
+                network = self.provider.networking.networks.get_by_name(
+                        network_name)
                 out.append(GCEVMFirewall(self._delegate, name, network))
         return out
 
@@ -275,7 +277,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
                 continue
             if tag not in tags:
                 continue
-            network = self.provider.network.get_by_name(net_name)
+            network = self.provider.networking.networks.get_by_name(net_name)
             vm_firewalls.append(
                 GCEVMFirewall(self._delegate, tag, network))
         return vm_firewalls
@@ -466,7 +468,8 @@ class GCEInstanceService(BaseInstanceService):
             zone = self.provider.default_zone
         if not launch_config:
             if subnet:
-                network = self.provider.network.get(subnet.network_id)
+                network = self.provider.networking.networks.get(
+                        subnet.network_id)
                 network_url = (network.resource_url
                                if isinstance(network, GCENetwork) else network)
             else:
@@ -974,7 +977,7 @@ class GCESubnetService(BaseSubnetService):
         returns the subnetwork of the default network that spans the given
         zone.
         """
-        network = self.provider.network.get_or_create_default()
+        network = self.provider.networking.networks.get_or_create_default()
         subnets = self.list(network, zone)
         if len(subnets) > 1:
             cb.log.warning('The default network has more than one subnetwork '
