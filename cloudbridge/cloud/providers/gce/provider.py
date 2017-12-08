@@ -9,8 +9,10 @@ import re
 import time
 from string import Template
 
+import cloudbridge as cb
 from cloudbridge.cloud.base import BaseCloudProvider
 
+import googleapiclient
 from googleapiclient import discovery
 
 from oauth2client.client import GoogleCredentials
@@ -58,8 +60,13 @@ class GCPResourceUrl(object):
 
 class GCPResources(object):
 
-    def __init__(self, connection):
+    def __init__(self, connection, project_name, region_name, default_zone):
         self._connection = connection
+        self._parameter_defaults = {
+            'project': project_name,
+            'region': region_name,
+            'zone': default_zone,
+        }
 
         # Resource descriptions are already pulled into the internal
         # _resourceDesc field of the connection.
@@ -160,6 +167,26 @@ class GCPResources(object):
                 out.parameters[parameter] = m.group(index + 1)
             return out
 
+    def get_resource_url_with_default(self, resource, url_or_name):
+        """
+        Build a GCPResourceUrl from a service's name and resource url or name.
+        If the url_or_name is a valid GCP resource URL, then we build the
+        GCPResourceUrl object by parsing this URL. If the url_or_name is its
+        short name, then we build the GCPResourceUrl object by constructing
+        the resource URL with default project, region, zone values.
+        """
+        # If url_or_name is a valid GCP resource URL, then parse it.
+        if url_or_name.startswith(self._root_url):
+            return self.parse_url(url_or_name)
+        # Otherwise, construct resource URL with default values.
+        if resource not in self._resources:
+            return None
+        parsed_url = GCPResourceUrl(resource, self._connection)
+        for key in self._resources[resource]['parameters']:
+            parsed_url.parameters[key] = self._parameter_defaults.get(
+                key, url_or_name)
+        return parsed_url
+
 
 class GCECloudProvider(BaseCloudProvider):
 
@@ -208,8 +235,12 @@ class GCECloudProvider(BaseCloudProvider):
         self._networking = GCENetworkingService(self)
         self._storage = GCPStorageService(self)
 
-        self._compute_resources = GCPResources(self.gce_compute)
-        self._storage_resources = GCPResources(self.gcs_storage)
+        self._compute_resources = GCPResources(
+            self.gce_compute, self.project_name, self.region_name,
+            self.default_zone)
+        self._storage_resources = GCPResources(
+            self.gcs_storage, self.project_name, self.region_name,
+            self.default_zone)
 
     @property
     def compute(self):
@@ -276,3 +307,18 @@ class GCECloudProvider(BaseCloudProvider):
     def parse_url(self, url):
         out = self._compute_resources.parse_url(url)
         return out if out else self._storage_resources.parse_url(url)
+
+    def get_resource(self, resource, url_or_name):
+        resource_url = (
+            self._compute_resources.get_resource_url_with_default(
+                resource, url_or_name) or
+            self._storage_resources.get_resource_url_with_default(
+                resource, url_or_name))
+        if resource_url is None:
+            return None
+        try:
+            return resource_url.get_resource()
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning(
+                "googleapiclient.errors.HttpError: {0}".format(http_error))
+            return None
