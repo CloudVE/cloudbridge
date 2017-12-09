@@ -3,6 +3,7 @@ Provider implementation based on google-api-python-client library
 for GCE.
 """
 import json
+import logging
 import os
 import re
 import time
@@ -17,11 +18,10 @@ from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
-from .services import GCEBlockStoreService
 from .services import GCEComputeService
-from .services import GCENetworkService
+from .services import GCENetworkingService
 from .services import GCESecurityService
-from .services import GCSObjectStoreService
+from .services import GCPStorageService
 
 
 class GCPResourceUrl(object):
@@ -44,11 +44,14 @@ class GCPResourceUrl(object):
              'id': '6662746501848591938',
              'creationTimestamp': '2017-10-13T12:53:17.445-07:00',
              'name': 'testsubnet-2',
-             'network': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/global/networks/testnet',
+             'network':
+                     'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/global/networks/testnet',
              'ipCidrRange': '10.128.0.0/20',
              'gatewayAddress': '10.128.0.1',
-             'region': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1',
-             'selfLink': 'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1/subnetworks/testsubnet-2',
+             'region':
+                     'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1',
+             'selfLink':
+                     'https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1/subnetworks/testsubnet-2',
              'privateIpGoogleAccess': false}
         """
         discovery_object = getattr(self._connection, self._resource)()
@@ -139,9 +142,9 @@ class GCPResources(object):
 
         Example:
             If the input url is the following
-            
+
             https://www.googleapis.com/compute/v1/projects/galaxy-on-gcp/regions/us-central1/subnetworks/testsubnet-2
-            
+
             then parse_url will return a GCPResourceURL and the parameters
             field of the returned object will look like:
 
@@ -192,12 +195,18 @@ class GCECloudProvider(BaseCloudProvider):
     def __init__(self, config):
         super(GCECloudProvider, self).__init__(config)
 
+        # Disable warnings about file_cache not being available when using
+        # oauth2client >= 4.0.0.
+        logging.getLogger('googleapicliet.discovery_cache').setLevel(
+                logging.ERROR)
+
         # Initialize cloud connection fields
         self.credentials_file = self._get_config_value(
-            'gce_service_creds_file', os.environ.get('GCE_SERVICE_CREDS_FILE'))
+                'gce_service_creds_file',
+                os.environ.get('GCE_SERVICE_CREDS_FILE'))
         self.credentials_dict = self._get_config_value(
-            'gce_service_creds_dict',
-            json.loads(os.getenv('GCE_SERVICE_CREDS_DICT', '{}')))
+                'gce_service_creds_dict',
+                json.loads(os.getenv('GCE_SERVICE_CREDS_DICT', '{}')))
         # If 'gce_service_creds_dict' is not passed in from config and
         # self.credentials_file is available, read and parse the json file to
         # self.credentials_dict.
@@ -205,9 +214,11 @@ class GCECloudProvider(BaseCloudProvider):
             with open(self.credentials_file) as creds_file:
                 self.credentials_dict = json.load(creds_file)
         self.default_zone = self._get_config_value(
-            'gce_default_zone', os.environ.get('GCE_DEFAULT_ZONE'))
+            'gce_default_zone',
+            os.environ.get('GCE_DEFAULT_ZONE') or 'us-central1-a')
         self.region_name = self._get_config_value(
-            'gce_region_name', 'us-central1')
+            'gce_region_name',
+            os.environ.get('GCE_DEFAULT_REGION') or 'us-central1')
 
         if self.credentials_dict and 'project_id' in self.credentials_dict:
             self.project_name = self.credentials_dict['project_id']
@@ -216,20 +227,19 @@ class GCECloudProvider(BaseCloudProvider):
 
         # service connections, lazily initialized
         self._gce_compute = None
-        self._gcp_storage = None
+        self._gcs_storage = None
 
         # Initialize provider services
         self._compute = GCEComputeService(self)
         self._security = GCESecurityService(self)
-        self._network = GCENetworkService(self)
-        self._block_store = GCEBlockStoreService(self)
-        self._object_store = GCSObjectStoreService(self)
+        self._networking = GCENetworkingService(self)
+        self._storage = GCPStorageService(self)
 
         self._compute_resources = GCPResources(
             self.gce_compute, self.project_name, self.region_name,
             self.default_zone)
         self._storage_resources = GCPResources(
-            self.gcp_storage, self.project_name, self.region_name,
+            self.gcs_storage, self.project_name, self.region_name,
             self.default_zone)
 
     @property
@@ -237,20 +247,16 @@ class GCECloudProvider(BaseCloudProvider):
         return self._compute
 
     @property
-    def network(self):
-        return self._network
+    def networking(self):
+        return self._networking
 
     @property
     def security(self):
         return self._security
 
     @property
-    def block_store(self):
-        return self._block_store
-
-    @property
-    def object_store(self):
-        return self._object_store
+    def storage(self):
+        return self._storage
 
     @property
     def gce_compute(self):
@@ -259,10 +265,10 @@ class GCECloudProvider(BaseCloudProvider):
         return self._gce_compute
 
     @property
-    def gcp_storage(self):
-        if not self._gcp_storage:
-            self._gcp_storage = self._connect_gcp_storage()
-        return self._gcp_storage
+    def gcs_storage(self):
+        if not self._gcs_storage:
+            self._gcs_storage = self._connect_gcs_storage()
+        return self._gcs_storage
 
     @property
     def _credentials(self):
@@ -272,7 +278,7 @@ class GCECloudProvider(BaseCloudProvider):
         else:
             return GoogleCredentials.get_application_default()
 
-    def _connect_gcp_storage(self):
+    def _connect_gcs_storage(self):
         return discovery.build('storage', 'v1', credentials=self._credentials)
 
     def _connect_gce_compute(self):

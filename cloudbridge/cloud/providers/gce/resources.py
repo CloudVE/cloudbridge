@@ -15,23 +15,27 @@ from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseInstance
-from cloudbridge.cloud.base.resources import BaseInstanceType
+from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
 from cloudbridge.cloud.base.resources import BaseRegion
 from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSecurityGroup
-from cloudbridge.cloud.base.resources import BaseSecurityGroupRule
 from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.gce import helpers
 
@@ -84,9 +88,9 @@ class GCEKeyPair(BaseKeyPair):
         self._kp_material = value
 
 
-class GCEInstanceType(BaseInstanceType):
+class GCEVMType(BaseVMType):
     def __init__(self, provider, instance_dict):
-        super(GCEInstanceType, self).__init__(provider)
+        super(GCEVMType, self).__init__(provider)
         self._inst_dict = instance_dict
 
     @property
@@ -301,7 +305,8 @@ class GCEFirewallsDelegate(object):
                             .execute())
             self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return False
         finally:
             self._update_list_response()
@@ -369,9 +374,7 @@ class GCEFirewallsDelegate(object):
         """
         if self._list_response is None:
             self._update_list_response()
-        if 'items' not in self._list_response:
-            return
-        for firewall in self._list_response['items']:
+        for firewall in self._list_response.get('items', []):
             if ('targetTags' not in firewall or
                     len(firewall['targetTags']) != 1):
                 continue
@@ -399,7 +402,8 @@ class GCEFirewallsDelegate(object):
                                     firewall=firewall['name'])
                             .execute())
             self._provider.wait_for_operation(response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return False
         # TODO: process the response and handle errors.
         return True
@@ -424,14 +428,14 @@ class GCEFirewallsDelegate(object):
         return True
 
 
-class GCESecurityGroup(BaseSecurityGroup):
+class GCEVMFirewall(BaseVMFirewall):
 
     def __init__(self, delegate, tag, network=None, description=None):
-        super(GCESecurityGroup, self).__init__(delegate.provider, tag)
+        super(GCEVMFirewall, self).__init__(delegate.provider, tag)
         self._description = description
         self._delegate = delegate
         if network is None:
-            self._network = delegate.provider.network.get_by_name(
+            self._network = delegate.provider.networking.networks.get_by_name(
                     GCEFirewallsDelegate.DEFAULT_NETWORK)
         else:
             self._network = network
@@ -439,32 +443,33 @@ class GCESecurityGroup(BaseSecurityGroup):
     @property
     def id(self):
         """
-        Return the ID of this security group which is determined based on the
-        network and the target tag corresponding to this security group.
+        Return the ID of this VM firewall which is determined based on the
+        network and the target tag corresponding to this VM firewall.
         """
-        return GCEFirewallsDelegate.tag_network_id(self._security_group,
+        return GCEFirewallsDelegate.tag_network_id(self._vm_firewall,
                                                    self._network.name)
 
     @property
     def name(self):
         """
-        Return the name of the security group which is the same as the
+        Return the name of the VM firewall which is the same as the
         corresponding tag name.
         """
-        return self._security_group
+        return self._vm_firewall
 
     @property
     def description(self):
         """
-        The description of the security group is even explicitly given when the
-        group is created or is determined from a firewall in the group.
+        The description of the VM firewall is even explicitly given when the
+        VM firewall is created or is determined from a VM firewall rule, i.e. a
+        GCE firewall, in the VM firewall.
 
-        If the firewalls are created using this API, they all have the same
+        If the GCE firewalls are created using this API, they all have the same
         description.
         """
         if self._description is not None:
             return self._description
-        for firewall in self._delegate.iter_firewalls(self._security_group,
+        for firewall in self._delegate.iter_firewalls(self._vm_firewall,
                                                       self._network.name):
             if 'description' in firewall:
                 return firewall['description']
@@ -477,9 +482,9 @@ class GCESecurityGroup(BaseSecurityGroup):
     @property
     def rules(self):
         out = []
-        for firewall in self._delegate.iter_firewalls(self._security_group,
+        for firewall in self._delegate.iter_firewalls(self._vm_firewall,
                                                       self._network.name):
-            out.append(GCESecurityGroupRule(self._delegate, firewall['id']))
+            out.append(GCEVMFirewallRule(self._delegate, firewall['id']))
         return out
 
     @staticmethod
@@ -493,9 +498,9 @@ class GCESecurityGroup(BaseSecurityGroup):
 
     def add_rule(self, ip_protocol, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        port = GCESecurityGroup.to_port_range(from_port, to_port)
+        port = GCEVMFirewall.to_port_range(from_port, to_port)
         src_tag = src_group.name if src_group is not None else None
-        self._delegate.add_firewall(self._security_group, ip_protocol, port,
+        self._delegate.add_firewall(self._vm_firewall, ip_protocol, port,
                                     cidr_ip, src_tag, self.description,
                                     self._network.name)
         return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
@@ -503,14 +508,14 @@ class GCESecurityGroup(BaseSecurityGroup):
 
     def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
                  cidr_ip=None, src_group=None):
-        port = GCESecurityGroup.to_port_range(from_port, to_port)
+        port = GCEVMFirewall.to_port_range(from_port, to_port)
         src_tag = src_group.name if src_group is not None else None
         firewall_id = self._delegate.find_firewall(
-                self._security_group, ip_protocol, port, cidr_ip, src_tag,
+                self._vm_firewall, ip_protocol, port, cidr_ip, src_tag,
                 self._network.name)
         if firewall_id is None:
             return None
-        return GCESecurityGroupRule(self._delegate, firewall_id)
+        return GCEVMFirewallRule(self._delegate, firewall_id)
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -524,17 +529,17 @@ class GCESecurityGroup(BaseSecurityGroup):
             rule.delete()
 
 
-class GCESecurityGroupRule(BaseSecurityGroupRule):
+class GCEVMFirewallRule(BaseVMFirewallRule):
 
     def __init__(self, delegate, firewall_id):
-        super(GCESecurityGroupRule, self).__init__(
+        super(GCEVMFirewallRule, self).__init__(
                 delegate.provider, firewall_id, None)
         self._delegate = delegate
 
     @property
     def parent(self):
         """
-        Return the security group to which this rule belongs.
+        Return the VM firewall to which this rule belongs.
         """
         info = self._delegate.get_firewall_info(self._rule)
         if info is None:
@@ -544,7 +549,7 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
         network = self._delegate.network.get_by_name(info['network_name'])
         if network is None:
             return None
-        return GCESecurityGroup(self._delegate, info['target_tag'], network)
+        return GCEVMFirewall(self._delegate, info['target_tag'], network)
 
     @property
     def id(self):
@@ -600,18 +605,18 @@ class GCESecurityGroupRule(BaseSecurityGroupRule):
     @property
     def group(self):
         """
-        Return the security group from which this rule allows traffic.
+        Return the VM firewall from which this rule allows traffic.
         """
         info = self._delegate.get_firewall_info(self._rule)
         if info is None:
             return None
         if 'source_tag' not in info or info['network_name'] is None:
             return None
-        network = self._delegate.provider.network.get_by_name(
+        network = self._delegate.provider.networking.networks.get_by_name(
                 info['network_name'])
         if network is None:
             return None
-        return GCESecurityGroup(self._delegate, info['source_tag'], network)
+        return GCEVMFirewall(self._delegate, info['source_tag'], network)
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -796,7 +801,7 @@ class GCEInstance(BaseInstance):
                 access_config = access_configs[0]
                 if 'natIP' in access_config:
                     ips.append(access_config['natIP'])
-        for ip in self._provider.network.floating_ips():
+        for ip in self._provider.networking.floating_ips:
             if ip.in_use():
                 if ip.private_ip in self.private_ips:
                     ips.append(ip.public_ip)
@@ -816,14 +821,14 @@ class GCEInstance(BaseInstance):
             return []
 
     @property
-    def instance_type_id(self):
+    def vm_type_id(self):
         """
         Get the instance type name.
         """
         return self._gce_instance.get('machineType')
 
     @property
-    def instance_type(self):
+    def vm_type(self):
         """
         Get the instance type.
         """
@@ -831,7 +836,7 @@ class GCEInstance(BaseInstance):
         if machine_type_uri is None:
             return None
         parsed_uri = self._provider.parse_url(machine_type_uri)
-        return GCEInstanceType(self._provider, parsed_uri.get_resource())
+        return GCEVMType(self._provider, parsed_uri.get_resource())
 
     def reboot(self):
         """
@@ -899,9 +904,9 @@ class GCEInstance(BaseInstance):
         return self._gce_instance.get('zone')
 
     @property
-    def security_groups(self):
+    def vm_firewalls(self):
         """
-        Get the security groups associated with this instance.
+        Get the VM firewalls associated with this instance.
         """
         network_url = self._gce_instance.get('networkInterfaces')[0].get(
             'network')
@@ -910,20 +915,20 @@ class GCEInstance(BaseInstance):
         if 'items' not in self._gce_instance['tags']:
             return []
         tags = self._gce_instance['tags']['items']
-        # Tags are mapped to non-empty security groups under the instance
-        # network. Unmatched tags are ignored.
+        # Tags are mapped to non-empty VM firewalls under the instance network.
+        # Unmatched tags are ignored.
         sgs = (self._provider.security
-               .security_groups.find_by_network_and_tags(
+               .vm_firewalls.find_by_network_and_tags(
                    network_name, tags))
         return sgs
 
     @property
-    def security_group_ids(self):
+    def vm_firewall_ids(self):
         """
-        Get the security groups IDs associated with this instance.
+        Get the VM firewall IDs associated with this instance.
         """
         sg_ids = []
-        for sg in self.security_groups:
+        for sg in self.vm_firewalls:
             sg_ids.append(sg.id)
         return sg_ids
 
@@ -938,6 +943,7 @@ class GCEInstance(BaseInstance):
         """
         Create a new image based on this instance.
         """
+        self.assert_valid_resource_name(name)
         if 'disks' not in self._gce_instance:
             cb.log.error('Failed to create image: no disks found.')
             return
@@ -1114,7 +1120,7 @@ class GCEInstance(BaseInstance):
         """
         Add an elastic IP address to this instance.
         """
-        for ip in self._provider.network.floating_ips():
+        for ip in self._provider.networking.floating_ips:
             if ip.public_ip == ip_address:
                 if ip.in_use():
                     if ip.private_ip not in self.private_ips:
@@ -1138,7 +1144,7 @@ class GCEInstance(BaseInstance):
         """
         Remove a elastic IP address from this instance.
         """
-        for ip in self._provider.network.floating_ips():
+        for ip in self._provider.networking.floating_ips:
             if ip.public_ip == ip_address:
                 if not ip.in_use() or ip.private_ip not in self.private_ips:
                     cb.log.warning(
@@ -1172,14 +1178,15 @@ class GCEInstance(BaseInstance):
         self_link = self._gce_instance.get('selfLink')
         self._gce_instance = self._provider.parse_url(self_link).get_resource()
 
-    def add_security_group(self, sg):
+    def add_vm_firewall(self, sg):
         raise NotImplementedError('To be implemented.')
 
-    def remove_security_group(self, sg):
+    def remove_vm_firewall(self, sg):
         raise NotImplementedError('To be implemented.')
 
 
 class GCENetwork(BaseNetwork):
+    DEFAULT_IPV4RANGE = '10.128.0.0/9'
 
     def __init__(self, provider, network):
         super(GCENetwork, self).__init__(provider)
@@ -1214,7 +1221,14 @@ class GCENetwork(BaseNetwork):
 
     @property
     def cidr_block(self):
-        return self._network['IPv4Range']
+        if 'IPv4Range' in self._network:
+            # This is a legacy network.
+            return self._network['IPv4Range']
+        return GCENetwork.DEFAULT_IPV4RANGE
+
+    @property
+    def subnets(self):
+        return self._provider.networking.subnets.list(network=self)
 
     def delete(self):
         try:
@@ -1227,18 +1241,18 @@ class GCENetwork(BaseNetwork):
             if 'error' in response:
                 return False
             self._provider.wait_for_operation(response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return False
         return True
 
-    def subnets(self):
-        return self._provider.network.subnets.list()
-
-    def create_subnet(self, cidr_block, name=None):
-        return self._provider.network.subnets.create(self, cidr_block, name)
+    def create_subnet(self, cidr_block, name=None, zone=None):
+        return self._provider.networking.subnets.create(
+            self, cidr_block, name, zone)
 
     def refresh(self):
-        return self.state
+        self_link = self._network.get('selfLink')
+        self._network = self._provider.parse_url(self_link).get_resource()
 
 
 class GCEFloatingIP(BaseFloatingIP):
@@ -1270,7 +1284,7 @@ class GCEFloatingIP(BaseFloatingIP):
                     url = provider.parse_url(target['instance'])
                     try:
                         self._target_instance = url.get_resource()
-                    except:
+                    except googleapiclient.errors.HttpError:
                         self._target_instance = GCEFloatingIP._DEAD_INSTANCE
                 else:
                     cb.log.warning('Address "%s" is forwarded to a %s',
@@ -1380,6 +1394,42 @@ class GCERouter(BaseRouter):
         cb.log.warning('Not implemented')
 
 
+class GCEInternetGateway(BaseInternetGateway):
+
+    def __init__(self, provider, gateway):
+        super(GCEInternetGateway, self).__init__(provider)
+        self._gateway = gateway
+
+    @property
+    def id(self):
+        return self._gateway['id']
+
+    @property
+    def name(self):
+        return self._gateway['name']
+
+    @name.setter
+    def name(self, value):
+        raise NotImplementedError('Not supported by this provider.')
+
+    def refresh(self):
+        pass
+
+    @property
+    def state(self):
+        return GatewayState.AVAILABLE
+
+    @property
+    def network_id(self):
+        """
+        GCE internet gateways are not attached to a network.
+        """
+        return None
+
+    def delete(self):
+        pass
+
+
 class GCESubnet(BaseSubnet):
 
     def __init__(self, provider, subnet):
@@ -1423,7 +1473,15 @@ class GCESubnet(BaseSubnet):
 
     @property
     def delete(self):
-        return self._provider.network.subnets.delete(self)
+        return self._provider.networking.subnets.delete(self)
+
+    @property
+    def state(self):
+        return SubnetState.AVAILABEL
+
+    def refresh(self):
+        self_link = self._subnet.get('selfLink')
+        self._subnet = self._provider.parse_url(self_link).get_resource()
 
 
 class GCEVolume(BaseVolume):
@@ -1587,7 +1645,7 @@ class GCEVolume(BaseVolume):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.block_store.snapshots.create(
+        return self._provider.storage.snapshots.create(
             name, self, description)
 
     def delete(self):
@@ -1719,7 +1777,7 @@ class GCESnapshot(BaseSnapshot):
                                  zone=placement,
                                  body=disk_body)
                          .execute())
-        return self._provider.block_store.volumes.get(
+        return self._provider.storage.volumes.get(
             operation.get('targetLink'))
 
 
@@ -1818,7 +1876,8 @@ class GCSBucket(BaseBucket):
             if 'error' in response:
                 return None
             return GCSObject(self._provider, self, response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def list(self, limit=None, marker=None, prefix=None):
@@ -1846,7 +1905,8 @@ class GCSBucket(BaseBucket):
             return ServerPagedResultList('nextPageToken' in response,
                                          response.get('nextPageToken'),
                                          False, data=objects)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return ServerPagedResultList(False, None, False, data=[])
 
     def delete(self, delete_contents=False):
@@ -1870,6 +1930,7 @@ class GCSBucket(BaseBucket):
         return GCSObject(self._provider, self, response) if response else None
 
     def create_object_with_media_body(self, name, media_body):
+        self.assert_valid_resource_name(name)
         try:
             response = (self._provider
                             .gcp_storage
@@ -1881,5 +1942,6 @@ class GCSBucket(BaseBucket):
             if 'error' in response:
                 return None
             return response
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None

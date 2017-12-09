@@ -3,24 +3,29 @@ import uuid
 from collections import namedtuple
 
 import cloudbridge as cb
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
-from cloudbridge.cloud.base.services import BaseBlockStoreService
+from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
-from cloudbridge.cloud.base.services import BaseInstanceTypesService
 from cloudbridge.cloud.base.services import BaseKeyPairService
 from cloudbridge.cloud.base.services import BaseNetworkService
-from cloudbridge.cloud.base.services import BaseObjectStoreService
+from cloudbridge.cloud.base.services import BaseNetworkingService
 from cloudbridge.cloud.base.services import BaseRegionService
-from cloudbridge.cloud.base.services import BaseSecurityGroupService
+from cloudbridge.cloud.base.services import BaseRouterService
 from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallService
+from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.resources import PlacementZone
-from cloudbridge.cloud.interfaces.resources import SecurityGroup
+from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
 
 import googleapiclient
@@ -30,16 +35,17 @@ from retrying import retry
 from .resources import GCEFirewallsDelegate
 from .resources import GCEFloatingIP
 from .resources import GCEInstance
-from .resources import GCEInstanceType
+from .resources import GCEInternetGateway
 from .resources import GCEKeyPair
 from .resources import GCEMachineImage
 from .resources import GCENetwork
 from .resources import GCEPlacementZone
 from .resources import GCERegion
 from .resources import GCERouter
-from .resources import GCESecurityGroup
 from .resources import GCESnapshot
 from .resources import GCESubnet
+from .resources import GCEVMFirewall
+from .resources import GCEVMType
 from .resources import GCEVolume
 from .resources import GCSBucket
 
@@ -51,15 +57,15 @@ class GCESecurityService(BaseSecurityService):
 
         # Initialize provider services
         self._key_pairs = GCEKeyPairService(provider)
-        self._security_groups = GCESecurityGroupService(provider)
+        self._vm_firewalls = GCEVMFirewallService(provider)
 
     @property
     def key_pairs(self):
         return self._key_pairs
 
     @property
-    def security_groups(self):
-        return self._security_groups
+    def vm_firewalls(self):
+        return self._vm_firewalls
 
 
 class GCEKeyPairService(BaseKeyPairService):
@@ -109,13 +115,16 @@ class GCEKeyPairService(BaseKeyPairService):
         If an entry does not exist, adds a new empty entry
         """
         sshkey_entry = None
-        entries = [item for item in metadata["items"]
-                   if item["key"] == "sshKeys"]
+        entries = [item for item in metadata.get('items', [])
+                   if item['key'] == 'sshKeys']
         if entries:
             sshkey_entry = entries[0]
         else:  # add a new entry
-            sshkey_entry = {"key": "sshKeys", "value": ""}
-            metadata["items"].append(sshkey_entry)
+            sshkey_entry = {'key': 'sshKeys', 'value': ''}
+            if 'items' not in metadata:
+                metadata['items'] = [sshkey_entry]
+            else:
+                metadata['items'].append(sshkey_entry)
         return sshkey_entry
 
     def _iter_gce_ssh_keys(self, metadata):
@@ -192,6 +201,7 @@ class GCEKeyPairService(BaseKeyPairService):
                                      limit=limit, marker=marker)
 
     def create(self, name):
+        GCEKeyPair.assert_valid_resource_name(name)
         kp = self.find(name=name)
         if kp:
             return kp
@@ -213,43 +223,46 @@ class GCEKeyPairService(BaseKeyPairService):
                           kp_material=private_key)
 
 
-class GCESecurityGroupService(BaseSecurityGroupService):
+class GCEVMFirewallService(BaseVMFirewallService):
 
     def __init__(self, provider):
-        super(GCESecurityGroupService, self).__init__(provider)
+        super(GCEVMFirewallService, self).__init__(provider)
         self._delegate = GCEFirewallsDelegate(provider)
 
     def get(self, group_id):
         tag, network_name = self._delegate.get_tag_network_from_id(group_id)
         if tag is None:
             return None
-        network = self.provider.network.get_by_name(network_name)
-        return GCESecurityGroup(self._delegate, tag, network)
+        network = self.provider.networking.networks.get_by_name(network_name)
+        return GCEVMFirewall(self._delegate, tag, network)
 
     def list(self, limit=None, marker=None):
-        security_groups = []
+        vm_firewalls = []
         for tag, network_name in self._delegate.tag_networks:
-            network = self.provider.network.get_by_name(network_name)
-            security_group = GCESecurityGroup(self._delegate, tag, network)
-            security_groups.append(security_group)
-        return ClientPagedResultList(self.provider, security_groups,
+            network = self.provider.networking.networks.get_by_name(
+                    network_name)
+            vm_firewall = GCEVMFirewall(self._delegate, tag, network)
+            vm_firewalls.append(vm_firewall)
+        return ClientPagedResultList(self.provider, vm_firewalls,
                                      limit=limit, marker=marker)
 
     def create(self, name, description, network_id=None):
-        network = self.provider.network.get(network_id)
-        return GCESecurityGroup(self._delegate, name, network, description)
+        GCEVMFirewall.assert_valid_resource_name(name)
+        network = self.provider.networking.networks.get(network_id)
+        return GCEVMFirewall(self._delegate, name, network, description)
 
     def find(self, name, limit=None, marker=None):
         """
-        Finds a non-empty security group. If a security group with the given
-        name does not exist, or if it does not contain any rules, an empty list
-        is returned.
+        Finds a non-empty VM firewall. If a VM firewall with the given name
+        does not exist, or if it does not contain any rules, an empty list is
+        returned.
         """
         out = []
         for tag, network_name in self._delegate.tag_networks:
             if tag == name:
-                network = self.provider.network.get_by_name(network_name)
-                out.append(GCESecurityGroup(self._delegate, name, network))
+                network = self.provider.networking.networks.get_by_name(
+                        network_name)
+                out.append(GCEVMFirewall(self._delegate, name, network))
         return out
 
     def delete(self, group_id):
@@ -257,26 +270,25 @@ class GCESecurityGroupService(BaseSecurityGroupService):
 
     def find_by_network_and_tags(self, network_name, tags):
         """
-        Finds non-empty security groups by network name and security group
-        names (tags). If no matching security group is found, an empty list
-        is returned.
+        Finds non-empty VM firewalls by network name and VM firewall names
+        (tags). If no matching VM firewall is found, an empty list is returned.
         """
-        security_groups = []
+        vm_firewalls = []
         for tag, net_name in self._delegate.tag_networks:
             if network_name != net_name:
                 continue
             if tag not in tags:
                 continue
-            network = self.provider.network.get_by_name(net_name)
-            security_groups.append(
-                GCESecurityGroup(self._delegate, tag, network))
-        return security_groups
+            network = self.provider.networking.networks.get_by_name(net_name)
+            vm_firewalls.append(
+                GCEVMFirewall(self._delegate, tag, network))
+        return vm_firewalls
 
 
-class GCEInstanceTypesService(BaseInstanceTypesService):
+class GCEVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
-        super(GCEInstanceTypesService, self).__init__(provider)
+        super(GCEVMTypeService, self).__init__(provider)
 
     @property
     def instance_data(self):
@@ -288,9 +300,9 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
                         .execute())
         return response['items']
 
-    def get(self, instance_type_id):
-        inst_type = self.provider.get_resource('machineTypes', instance_type_id)
-        return GCEInstanceType(self.provider, inst_type) if inst_type else None
+    def get(self, vm_type_id):
+        vm_type = self.provider.get_resource('machineTypes', vm_type_id)
+        return GCEVMType(self.provider, vm_type) if vm_type else None
 
     def find(self, **kwargs):
         matched_inst_types = []
@@ -304,11 +316,11 @@ class GCEInstanceTypesService(BaseInstanceTypesService):
                     break
             if is_match:
                 matched_inst_types.append(
-                    GCEInstanceType(self.provider, inst_type))
+                    GCEVMType(self.provider, inst_type))
         return matched_inst_types
 
     def list(self, limit=None, marker=None):
-        inst_types = [GCEInstanceType(self.provider, inst_type)
+        inst_types = [GCEVMType(self.provider, inst_type)
                       for inst_type in self.instance_data]
         return ClientPagedResultList(self.provider, inst_types,
                                      limit=limit, marker=marker)
@@ -412,24 +424,26 @@ class GCEInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(GCEInstanceService, self).__init__(provider)
 
-    def create(self, name, image, instance_type, subnet, zone=None,
-               key_pair=None, security_groups=None, user_data=None,
+    def create(self, name, image, vm_type, subnet, zone=None,
+               key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         """
         Creates a new virtual machine instance.
         """
+        GCEInstance.assert_valid_resource_name(name)
         if not zone:
             zone = self.provider.default_zone
         if not launch_config:
             if subnet:
-                network = self.provider.network.get(subnet.network_id)
+                network = self.provider.networking.networks.get(
+                        subnet.network_id)
                 network_url = (network.resource_url
                                if isinstance(network, GCENetwork) else network)
             else:
                 network_url = 'global/networks/default'
             config = {
                 'name': name,
-                'machineType': instance_type.resource_url,
+                'machineType': vm_type.resource_url,
                 'disks': [{'boot': True,
                            'autoDelete': True,
                            'initializeParams': {
@@ -444,15 +458,15 @@ class GCEInstanceService(BaseInstanceService):
                                            'name': 'External NAT'}]
                     }],
             }
-            if security_groups and isinstance(security_groups, list):
-                sg_names = []
-                if isinstance(security_groups[0], SecurityGroup):
-                    sg_names = [sg.name for sg in security_groups]
-                elif isinstance(security_groups[0], str):
-                    sg_names = security_groups
-                if len(sg_names) > 0:
+            if vm_firewalls and isinstance(vm_firewalls, list):
+                vm_firewall_names = []
+                if isinstance(vm_firewalls[0], VMFirewall):
+                    vm_firewall_names = [f.name for f in vm_firewalls]
+                elif isinstance(vm_firewalls[0], str):
+                    vm_firewall_names = vm_firewalls
+                if len(vm_firewall_names) > 0:
                     config['tags'] = {}
-                    config['tags']['items'] = sg_names
+                    config['tags']['items'] = vm_firewall_names
         else:
             config = launch_config
         try:
@@ -511,10 +525,8 @@ class GCEInstanceService(BaseInstanceService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        instances = []
-        if 'items' in response:
-            instances = [GCEInstance(self.provider, inst)
-                         for inst in response['items']]
+        instances = [GCEInstance(self.provider, inst)
+                     for inst in response.get('items', [])]
         if len(instances) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(instances))
@@ -528,7 +540,7 @@ class GCEComputeService(BaseComputeService):
     def __init__(self, provider):
         super(GCEComputeService, self).__init__(provider)
         self._instance_svc = GCEInstanceService(self.provider)
-        self._instance_type_svc = GCEInstanceTypesService(self.provider)
+        self._vm_type_svc = GCEVMTypeService(self.provider)
         self._region_svc = GCERegionService(self.provider)
         self._images_svc = GCEImageService(self.provider)
 
@@ -537,8 +549,8 @@ class GCEComputeService(BaseComputeService):
         return self._images_svc
 
     @property
-    def instance_types(self):
-        return self._instance_type_svc
+    def vm_types(self):
+        return self._vm_type_svc
 
     @property
     def instances(self):
@@ -549,15 +561,52 @@ class GCEComputeService(BaseComputeService):
         return self._region_svc
 
 
+class GCENetworkingService(BaseNetworkingService):
+
+    def __init__(self, provider):
+        super(GCENetworkingService, self).__init__(provider)
+        self._network_service = GCENetworkService(self.provider)
+        self._subnet_service = GCESubnetService(self.provider)
+        self._floating_ip_service = GCEFloatingIPService(self.provider)
+        self._router_service = GCERouterService(self.provider)
+        self._gateway_service = GCEGatewayService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
+
+    @property
+    def floating_ips(self):
+        return self._floating_ip_service
+
+    @property
+    def routers(self):
+        return self._router_service
+
+    @property
+    def gateways(self):
+        return self._gateway_servcie
+
+
 class GCENetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(GCENetworkService, self).__init__(provider)
-        self._subnet_svc = GCESubnetService(self.provider)
 
     def get(self, network_id):
         network = self.provider.get_resource('networks', network_id)
         return GCENetwork(self.provider, network) if network else None
+
+    def find(self, name, limit=None, marker=None):
+        """
+        GCE networks are global. There is at most one network with a given
+        name.
+        """
+        return [self.get(name)]
 
     def get_by_name(self, network_name):
         if network_name is None:
@@ -574,14 +623,14 @@ class GCENetworkService(BaseNetworkService):
                                   filter=filter)
                             .execute())
             networks = []
-            if 'items' in response:
-                for network in response['items']:
-                    networks.append(GCENetwork(self.provider, network))
+            for network in response.get('items', []):
+                networks.append(GCENetwork(self.provider, network))
             return networks
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return []
 
-    def _create(self, name, create_subnetworks):
+    def _create(self, name, cidr_block, create_subnetworks):
         """
         Possible values for 'create_subnetworks' are:
 
@@ -591,11 +640,21 @@ class GCENetworkService(BaseNetworkService):
         False: For creating a custom mode VPC network. Subnetworks should be
                created manually.
         """
+        if create_subnetworks is not None and cidr_block is not None:
+            cb.log.warning('cidr_block is ignored in non-legacy networks. '
+                           'Auto mode networks use the default CIDR of '
+                           '%s. For custom networks, you should create subnets'
+                           'in each region with explicit CIDR blocks',
+                           GCENetwork.DEFAULT_IPV4RANGE)
+            cidr_block = None
         networks = self.list(filter='name eq %s' % name)
         if len(networks) > 0:
             return networks[0]
-        body = {'name': name,
-                'autoCreateSubnetworks': create_subnetworks}
+        body = {'name': name}
+        if cidr_block:
+            body['IPv4Range'] = cidr_block
+        else:
+            body['autoCreateSubnetworks'] = create_subnetworks
         try:
             response = (self.provider
                             .gce_compute
@@ -608,40 +667,65 @@ class GCENetworkService(BaseNetworkService):
             self.provider.wait_for_operation(response)
             networks = self.list(filter='name eq %s' % name)
             return None if len(networks) == 0 else networks[0]
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
-    def create(self, name):
+    def create(self, name, cidr_block):
         """
-        Creates a custom mode VPC network.
+        Creates an auto mode VPC network with default subnets. It is possible
+        to add additional subnets later.
         """
-        return self._create(name, False)
+        GCENetwork.assert_valid_resource_name(name)
+        return self._create(name, cidr_block, True)
 
     def get_or_create_default(self):
-        return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, True)
+        return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, None, True)
 
-    @property
-    def subnets(self):
-        return self._subnet_svc
 
-    def floating_ips(self, network_id=None, region=None):
-        if not region:
-            region = self.provider.region_name
+class GCEFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(GCEFloatingIPService, self).__init__(provider)
+
+    def get(self, floating_ip_id):
         try:
-            ips = []
-            for ip in helpers.iter_all(self.provider.gce_compute.addresses(),
-                                       project=self.provider.project_name,
-                                       region=region):
-                ips.append(GCEFloatingIP(self.provider, ip))
-            # TODO: if network_id is given, filter out IPs that are assigned to
-            # resources in a different network.
-            return ips
-        except:
-            return []
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .get(project=self.provider.project_name,
+                                 region=self.provider.region_name)
+                            .execute())
+            return GCEFloatingIP(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
 
-    def create_floating_ip(self, region=None):
-        if not region:
-            region = self.provider.region_name
+    def list(self, limit=None, marker=None):
+        max_result = limit if limit is not None and limit < 500 else 500
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .list(project=self.provider.project_name,
+                                  region=self.provider.region_name,
+                                  maxResults=max_result,
+                                  pageToken=marker)
+                            .execute())
+            ips = [GCEFloatingIP(self.provider, ip)
+                   for ip in response.get('items', [])]
+            if len(ips) > max_result:
+                cb.log.warning('Expected at most %d results; got %d',
+                               max_result, len(ips))
+            return ServerPagedResultList('nextPageToken' in response,
+                                         response.get('nextPageToken'),
+                                         False, data=ips)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
+
+    def create(self):
+        region = self.provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
         try:
             response = (self.provider
@@ -654,32 +738,56 @@ class GCENetworkService(BaseNetworkService):
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response, region=region)
-            ips = self.floating_ips()
-            for ip in ips:
-                if ip.id == response['targetId']:
-                    return ip
-        except:
+            return self.get(ip_name)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
-    def routers(self, region=None):
-        if not region:
-            region = self.provider.region_name
-        try:
-            routers = []
-            for router in helpers.iter_all(self.provider.gce_compute.routers(),
-                                           project=self.provider.project_name,
-                                           region=region):
-                routers.append(GCERouter(self.provider, router))
-            return routers
-        except:
-            return []
 
-    def create_router(self, name=None, network=None, region=None):
-        network_url = 'global/networks/default'
-        if isinstance(network, GCENetwork):
-            network_url = network.resource_url
-        if not region:
-            region = self.provider.region_name
+class GCERouterService(BaseRouterService):
+
+    def __init__(self, provider):
+        super(GCERouterService, self).__init__(provider)
+
+    def get(self, router_id):
+        return self._get_in_region(router_id)
+
+    def find(self, name, limit=None, marker=None):
+        routers = []
+        for region in self.provider.compute.regions.list():
+            routers.append(self._get_in_region(name, region.name))
+        return ClientPagedResultList(self.provider, routers, limit=limit,
+                                     marker=marker)
+
+    def list(self, limit=None, marker=None):
+        region = self.provider.region_name
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gce_compute
+                        .routers()
+                        .list(project=self.provider.project_name,
+                              region=region,
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        routers = []
+        for router in response.get('items', []):
+            routers.append(GCERouter(self.provider, router))
+        if len(routers) > max_result:
+            cb.log.warning('Expected at most %d results; go %d',
+                           max_result, len(routers))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=routers)
+
+    def create(self, network, name=None):
+        name = name if name else 'router-{0}'.format(uuid.uuid4())
+        GCERouter.assert_valid_resource_name(name)
+
+        if not isinstance(network, GCENetwork):
+            network = self.provider.networking.networks.get(network)
+        network_url = network.resource_url
+        region = self.provider.region_name
         try:
             response = (self.provider
                             .gce_compute
@@ -692,12 +800,57 @@ class GCENetworkService(BaseNetworkService):
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response, region=region)
-            routers = self.routers()
-            for router in routers:
-                if router.id == response['targetId']:
-                    return router
-        except:
+            return self._get_in_region(name, region)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
+
+    def delete(self, router):
+        region = self.provider.region_name
+        name = router.name if isinstance(router, GCERouter) else router
+        response = (self.provider
+                        .gce_compute
+                        .routers()
+                        .delete(project=self.provider.project_name,
+                                region=region,
+                                router=name)
+                        .execute())
+        self._provider.wait_for_operation(response, region=region)
+
+    def _get_in_region(self, router_id, region=None):
+        region = region if region else self.provider.region_name
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .routers()
+                            .get(project=self.provider.project_name,
+                                 region=region,
+                                 router=router_id)
+                            .execute())
+            return GCERouter(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
+
+
+class GCEGatewayService(BaseGatewayService):
+    _DEFAULT_GATEWAY_NAME = 'default-internet-gateway'
+    _GATEWAY_URL_PREFIX = 'global/gateways/'
+
+    def __init__(self, provider):
+        super(GCEGatewayService, self).__init__(provider)
+        self._default_internet_gateway = GCEInternetGateway(
+            provider,
+            {'id': (GCEGatewayService._GATEWAY_URL_PREFIX +
+                    GCEGatewayService._DEFAULT_GATEWAY_NAME),
+             'name': GCEGatewayService._DEFAULT_GATEWAY_NAME})
+
+    def get_or_create_inet_gateway(self, name):
+        GCEInternetGateway.assert_valid_resource_name(name)
+        return self._default_internet_gateway
+
+    def delete(self, gateway):
+        pass
 
 
 class GCESubnetService(BaseSubnetService):
@@ -710,41 +863,49 @@ class GCESubnetService(BaseSubnetService):
         return GCESubnet(self.provider, subnet) if subnet else None
 
     def list(self, network=None, zone=None, limit=None, marker=None):
-        region = zone.region_name if zone else self.provider.region_name
+        """
+        If the zone is not given, we list all subnetworks, in all regions.
+        """
         filter = None
         if network is not None:
             filter = 'network eq %s' % network.resource_url
-        max_result = limit if limit is not None and limit < 500 else 500
-        response = (self.provider
-                        .gce_compute
-                        .subnetworks()
-                        .list(project=self.provider.project_name,
-                              region=region,
-                              filter=filter,
-                              maxResults=max_result,
-                              pageToken=marker)
-                        .execute())
+        if zone:
+            regions = [zone.region_name]
+        else:
+            regions = [r.name for r in self.provider.compute.regions.list()]
         subnets = []
-        for subnet in response.get('items', []):
-            subnets.append(GCESubnet(self.provider, subnet))
-        if len(subnets) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(subnets))
-        return ServerPagedResultList('nextPageToken' in response,
-                                     response.get('nextPageToken'),
-                                     False, data=subnets)
+        for region in regions:
+            response = (self.provider
+                            .gce_compute
+                            .subnetworks()
+                            .list(project=self.provider.project_name,
+                                  region=region,
+                                  filter=filter)
+                            .execute())
+            for subnet in response.get('items', []):
+                subnets.append(GCESubnet(self.provider, subnet))
+        return ClientPagedResultList(self.provider, subnets,
+                                     limit=limit, marker=marker)
 
     def create(self, network, cidr_block, name=None, zone=None):
         """
         GCE subnets are regional. The region is inferred from the zone if a
         zone is provided; otherwise, the default region, as set in the
         provider, is used.
+
+        If a subnet with overlapping IP range exists already, we return that
+        instead of creating a new subnet. In this case, other parameters, i.e.
+        the name and the zone, are ignored.
         """
+        GCESubnet.assert_valid_resource_name(name)
+        subnets = self.list(network)
+        for subnet in subnets:
+            if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
+                return subnet
+
         if not name:
             name = 'subnet-{0}'.format(uuid.uuid4())
-        region = self.provider.region_name
-        if isinstance(zone, GCEPlacementZone):
-            region = zone.region_name
+        region = self._zone_to_region(zone)
         body = {'ipCidrRange': cidr_block,
                 'name': name,
                 'network': network.resource_url,
@@ -764,7 +925,8 @@ class GCESubnetService(BaseSubnetService):
             for subnet in subnets:
                 if subnet.id == response['targetId']:
                     return subnet
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def get_or_create_default(self, zone=None):
@@ -774,7 +936,7 @@ class GCESubnetService(BaseSubnetService):
         returns the subnetwork of the default network that spans the given
         zone.
         """
-        network = self.provider.network.get_or_create_default()
+        network = self.provider.networking.networks.get_or_create_default()
         subnets = self.list(network, zone)
         if len(subnets) > 1:
             cb.log.warning('The default network has more than one subnetwork '
@@ -785,24 +947,43 @@ class GCESubnetService(BaseSubnetService):
         return None
 
     def delete(self, subnet):
+        network_url = self.provider.parse_url(subnet.network_url)
+        if subnet.name == network_url.parameters['network']:
+            # This is an auto subnetwork of an auto mode network. We cannot
+            # delete it. It will be deleted automatically when the network is
+            # deleted.
+            return
+
+        region_url = self.provider.parse_url(subnet.region)
         response = (self.provider
                         .gce_compute
                         .subnetworks()
                         .delete(project=self.provider.project_name,
-                                region=subnet.region,
-                                router=subnet.name)
+                                region=region_url.parameters['region'],
+                                subnetwork=subnet.name)
                         .execute())
         self._provider.wait_for_operation(response, region=subnet.region)
 
+    def _zone_to_region(self, zone):
+        if isinstance(zone, GCEPlacementZone):
+            return zone.region_name
+        elif zone:
+            for r in self.provider.compute.regions.list():
+                for z in r.zones:
+                    if zone == z.name:
+                        return z.region_name
+        return self.provider.region_name
 
-class GCEBlockStoreService(BaseBlockStoreService):
+
+class GCPStorageService(BaseStorageService):
 
     def __init__(self, provider):
-        super(GCEBlockStoreService, self).__init__(provider)
+        super(GCPStorageService, self).__init__(provider)
 
         # Initialize provider services
         self._volume_svc = GCEVolumeService(self.provider)
         self._snapshot_svc = GCESnapshotService(self.provider)
+        self._bucket_svc = GCSBucketService(self.provider)
 
     @property
     def volumes(self):
@@ -811,6 +992,10 @@ class GCEBlockStoreService(BaseBlockStoreService):
     @property
     def snapshots(self):
         return self._snapshot_svc
+
+    @property
+    def buckets(self):
+        return self._bucket_svc
 
 
 class GCEVolumeService(BaseVolumeService):
@@ -840,10 +1025,8 @@ class GCEVolumeService(BaseVolumeService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'items' not in response:
-            return []
         gce_vols = [GCEVolume(self.provider, vol)
-                    for vol in response['items']]
+                    for vol in response.get('items', [])]
         if len(gce_vols) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(gce_vols))
@@ -870,10 +1053,8 @@ class GCEVolumeService(BaseVolumeService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'items' not in response:
-            return []
         gce_vols = [GCEVolume(self.provider, vol)
-                    for vol in response['items']]
+                    for vol in response.get('items', [])]
         if len(gce_vols) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(gce_vols))
@@ -892,6 +1073,7 @@ class GCEVolumeService(BaseVolumeService):
         be a dash, lowercase letter, or digit, except the last character, which
         cannot be a dash.
         """
+        GCEVolume.assert_valid_resource_name(name)
         zone_name = zone.name if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, GCESnapshot) and snapshot else snapshot
@@ -939,10 +1121,8 @@ class GCESnapshotService(BaseSnapshotService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'items' not in response:
-            return []
         snapshots = [GCESnapshot(self.provider, snapshot)
-                     for snapshot in response['items']]
+                     for snapshot in response.get('items', [])]
         if len(snapshots) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(snapshots))
@@ -962,10 +1142,8 @@ class GCESnapshotService(BaseSnapshotService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'items' not in response:
-            return []
         snapshots = [GCESnapshot(self.provider, snapshot)
-                     for snapshot in response['items']]
+                     for snapshot in response.get('items', [])]
         if len(snapshots) > max_result:
             cb.log.warning('Expected at most %d results; got %d',
                            max_result, len(snapshots))
@@ -977,6 +1155,7 @@ class GCESnapshotService(BaseSnapshotService):
         """
         Creates a new snapshot of a given volume.
         """
+        GCESnapshot.assert_valid_resource_name(name)
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
         snapshot_body = {
             "name": name,
@@ -1002,10 +1181,10 @@ class GCESnapshotService(BaseSnapshotService):
             return None
 
 
-class GCSObjectStoreService(BaseObjectStoreService):
+class GCSBucketService(BaseBucketService):
 
     def __init__(self, provider):
-        super(GCSObjectStoreService, self).__init__(provider)
+        super(GCSBucketService, self).__init__(provider)
 
     def get(self, bucket_id):
         """
@@ -1048,13 +1227,15 @@ class GCSObjectStoreService(BaseObjectStoreService):
             return ServerPagedResultList('nextPageToken' in response,
                                          response.get('nextPageToken'),
                                          False, data=buckets)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return ServerPagedResultList(False, None, False, data=[])
 
     def create(self, name, location=None):
         """
         Create a new bucket and returns it. Returns None if creation fails.
         """
+        GCSBucket.assert_valid_resource_name(name)
         body = {'name': name}
         if location:
             body['location'] = location
@@ -1068,5 +1249,6 @@ class GCSObjectStoreService(BaseObjectStoreService):
             if 'error' in response:
                 return None
             return GCSBucket(self.provider, response)
-        except:
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None

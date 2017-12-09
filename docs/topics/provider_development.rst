@@ -57,7 +57,7 @@ You should see the tests fail with the following message:
 .. code-block:: bash
 
     TypeError: Can't instantiate abstract class GCECloudProvider with abstract
-    methods block_store, compute, object_store, security, network
+    methods storage, compute, security, network
 
 6. Therefore, our next step is to implement these methods. We can start off by
 implementing these methods in ``provider.py`` and raising a
@@ -81,12 +81,7 @@ implementing these methods in ``provider.py`` and raising a
             "GCECloudProvider does not implement this service")
 
     @property
-    def block_store(self):
-        raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
-
-    @property
-    def object_store(self):
+    def storage(self):
         raise NotImplementedError(
             "GCECloudProvider does not implement this service")
 

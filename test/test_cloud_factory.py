@@ -1,5 +1,4 @@
 import unittest
-
 from test import helpers
 
 from cloudbridge.cloud import factory
@@ -21,7 +20,7 @@ class CloudFactoryTestCase(unittest.TestCase):
         self.assertIsInstance(CloudProviderFactory().create_provider(
             factory.ProviderList.AWS, {}),
             interfaces.CloudProvider,
-            "create_provider did not return a valid instance type")
+            "create_provider did not return a valid VM type")
 
     def test_create_provider_invalid(self):
         """

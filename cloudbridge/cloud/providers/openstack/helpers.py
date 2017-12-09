@@ -2,6 +2,7 @@
 Helper functions
 """
 import itertools
+import logging as log
 
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 
@@ -15,6 +16,8 @@ def os_result_limit(provider, requested_limit):
     # i.e. if length(objects) is one more than the limit,
     # we know that the object has another page of results,
     # so we always request one extra record.
+    log.debug("Limit of OpenStack: %s Requested Limit: %s",
+              limit, requested_limit)
     return limit + 1
 
 

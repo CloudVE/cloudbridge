@@ -11,6 +11,9 @@ CloudBridge is available on PyPI so to install the latest available version,
 run::
 
     pip install --upgrade cloudbridge
+    
+For common issues during setup, check the following section:
+`Common Setup Issues <topics/troubleshooting.html>`
 
 Create a provider
 -----------------
@@ -69,10 +72,10 @@ Once you have a reference to a provider, explore the cloud platform:
 
 .. code-block:: python
 
-    provider.compute.images.list()
     provider.security.security_groups.list()
-    provider.block_store.snapshots.list()
-    provider.object_store.list()
+    provider.compute.vm_types.list()
+    provider.storage.snapshots.list()
+    provider.storage.buckets.list()
 
 This will demonstrate the fact that the library was properly installed and your
 provider object is setup correctly but it is not very interesting. Therefore,
@@ -91,19 +94,35 @@ on disk as a read-only file.
     import os
     os.chmod('cloudbridge_intro.pem', 0400)
 
-Create a security group
------------------------
-Next, we need to create a security group and add a rule to allow ssh access.
-A security group needs to be associated with a private network, so we'll also
-need to fetch it.
+Create a network
+----------------
+A cloudbridge instance should be launched into a private subnet. We'll create
+a private network and subnet, and make sure it has internet connectivity, by
+attaching an internet gateway to the subnet via a router.
 
 .. code-block:: python
 
-    provider.network.list()  # Find a desired network ID
-    net = provider.network.get('desired network ID')
-    sg = provider.security.security_groups.create(
-        'cloudbridge_intro', 'A security group used by CloudBridge', net.id)
-    sg.add_rule('tcp', 22, 22, '0.0.0.0/0')
+    net = self.provider.networking.networks.create(
+        name='my-network', cidr_block='10.0.0.0/16')
+    sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
+    router = self.provider.networking.routers.create(network=net, name='my-router')
+    router.attach_subnet(sn)
+    gateway = self.provider.networking.gateways.get_or_create_inet_gateway(name)
+    router.attach_gateway(gateway)
+
+
+Create a VM firewall
+-----------------------
+Next, we need to create a VM firewall (also commonly known as a security group)
+and add a rule to allow ssh access. A VM firewall needs to be associated with
+a private network.
+
+.. code-block:: python
+
+    net = provider.networking.networks.get('desired network ID')
+    fw = provider.security.vm_firewalls.create(
+        'cloudbridge-intro', 'A VM firewall used by CloudBridge', net.id)
+    fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
 Launch an instance
 ------------------
@@ -114,17 +133,26 @@ also add the network interface as a launch argument.
 .. code-block:: python
 
     img = provider.compute.images.get(image_id)
-    inst_type = sorted([t for t in provider.compute.instance_types.list()
-                        if t.vcpus >= 2 and t.ram >= 4],
-                       key=lambda x: x.vcpus*x.ram)[0]
+    vm_type = sorted([t for t in provider.compute.vm_types
+                      if t.vcpus >= 2 and t.ram >= 4],
+                      key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
-        name='CloudBridge-intro', image=img, instance_type=inst_type,
-        network=net, key_pair=kp, security_groups=[sg])
+        name='cloudbridge-intro', image=img, vm_type=vm_type,
+        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
     inst.state
     # 'running'
+
+.. note ::
+
+   Note that we iterated through provider.compute.vm_types directly
+   instead of calling provider.compute.vm_types.list(). This is
+   because we need to iterate through all records in this case. The list()
+   method may not always return all records, depending on the global limit
+   for records, necessitating that additional records be paged in. See
+   :doc:`topics/paging_and_iteration`.
 
 Assign a public IP address
 --------------------------
@@ -134,8 +162,8 @@ and then associate it with the instance.
 
 .. code-block:: python
 
-    fip = provider.network.create_floating_ip()
-    inst.add_floating_ip(fip.public_ip)
+    fip = provider.networking.floating_ips.create()
+    inst.add_floating_ip(fip)
     inst.refresh()
     inst.public_ips
     # [u'54.166.125.219']
@@ -151,14 +179,15 @@ To wrap things up, let's clean up all the resources we have created
 
     inst.terminate()
     from cloudbridge.cloud.interfaces import InstanceState
-    inst.wait_for([InstanceState.TERMINATED, InstanceState.UNKNOWN],
+    inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                    terminal_states=[InstanceState.ERROR])  # Blocking call
     fip.delete()
-    sg.delete()
+    fw.delete()
     kp.delete()
     os.remove('cloudbridge_intro.pem')
-    router.remove_route(sn.id)
-    router.detach_network()
+    router.detach_gateway(gateway)
+    router.detach_subnet(subnet)
+    gateway.delete()
     router.delete()
     sn.delete()
     net.delete()
