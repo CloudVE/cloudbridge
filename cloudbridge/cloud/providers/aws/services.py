@@ -727,6 +727,14 @@ class AWSSubnetService(BaseSubnetService):
             snl = self.svc.find('availabilityZone', zone)
         else:
             snl = self.svc.list()
+
+        # Find first available default subnet by sorted order
+        # of availability zone. (e.g. prefer us-east-1a over 1e,
+        # This is because newer zones tend to have less compatibility
+        # with different instance types. (e.g. c5.large not available
+        # on us-east-1e as of 14 Dec. 2017
+        # pylint:disable=protected-access
+        snl.sort(key=lambda sn: sn._subnet.availability_zone)
         for sn in snl:
             # pylint:disable=protected-access
             if sn._subnet.default_for_az:
