@@ -195,7 +195,7 @@ class AWSVMType(BaseVMType):
 
     @property
     def extra_data(self):
-        return {key: val for key, val in enumerate(self._inst_dict)
+        return {key: val for key, val in self._inst_dict.items()
                 if key not in ["instance_type", "family", "vCPU", "memory"]}
 
 
