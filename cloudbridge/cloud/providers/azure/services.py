@@ -1053,10 +1053,11 @@ class AzureRouterService(BaseRouterService):
 class AzureGatewayService(BaseGatewayService):
     def __init__(self, provider):
         super(AzureGatewayService, self).__init__(provider)
-        # Singleton returned by the list method
-        # TODO: Is there no notion of a an inet gateway on Azure?
-        #       This won't work with gtw association with a network
-        # self.gateway_singleton = AzureInternetGateway(self.provider, None)
+        # Azure doesn't have a notion of a route table or an internet
+        # gateway as OS and AWS so create placeholder objects of the
+        # AzureInternetGateway here.
+        # http://bit.ly/2BqGdVh
+        self.inet_gateways = []
 
     def get_or_create_inet_gateway(self, network, name=None):
         if name:
@@ -1064,11 +1065,12 @@ class AzureGatewayService(BaseGatewayService):
         gateway = AzureInternetGateway(self.provider, None, network)
         if name:
             gateway.name = name
+        if gateway not in self.inet_gateways:
+            self.inet_gateways.append(gateway)
         return gateway
 
     def list(self, limit=None, marker=None):
-        # return [self.gateway_singleton]
-        return []
+        return self.inet_gateways
 
     def delete(self, gateway):
         pass

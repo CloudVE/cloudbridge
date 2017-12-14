@@ -346,7 +346,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                            .get_or_create_inet_gateway(net, name))
                 router.attach_gateway(gateway)
                 # check whether adding an elastic ip works
-                fip = self.provider.networking.floating_ips.create()
+                fip = gateway.floating_ips.create()
                 self.assertFalse(
                     fip.in_use,
                     "Newly created floating IP address should not be in use.")

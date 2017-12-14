@@ -866,6 +866,7 @@ class OpenStackSubnetService(BaseSubnetService):
             router.attach_subnet(sn)
             gteway = (self.provider.networking.gateways
                       .get_or_create_inet_gateway(
+                          net,
                           OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
                           ))
             router.attach_gateway(gteway)
