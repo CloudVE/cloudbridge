@@ -1443,17 +1443,11 @@ class AzureInstance(BaseInstance):
 
     def add_floating_ip(self, floating_ip):
         """
-        Attaches public ip to the instance
-        :param ip_address:
-        :return:
+        Attaches public ip to the instance.
         """
-        fip = (floating_ip if isinstance(floating_ip, AzureFloatingIP) else
-               self._provider.networking.floating_ips.get(floating_ip))
-
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
-
         nic.ip_configurations[0].public_ip_address = {
-            'id': fip.id
+            'id': floating_ip.id
         }
         self._provider.azure_client.update_nic(self._nic_ids[0], nic)
 

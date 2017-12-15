@@ -584,7 +584,10 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         Add a public IP address to this instance.
 
         :type floating_ip: :class:``.FloatingIP``
-        :param floating_ip: The FloatingIP to associate with the instance.
+        :param floating_ip: The FloatingIP object to associate with the
+                            instance. Note that is not the actual public IP
+                            address but the CloudBridge object encapsulating
+                            the IP.
         """
         pass
 
@@ -594,7 +597,10 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         Remove a public IP address from this instance.
 
         :type floating_ip: :class:``.FloatingIP``
-        :param floating_ip: The IP address to remove from the instance.
+        :param floating_ip: The FloatingIP object to remove from the
+                            instance. Note that is not the actual public IP
+                            address but the CloudBridge object encapsulating
+                            the IP.
         """
         pass
 
