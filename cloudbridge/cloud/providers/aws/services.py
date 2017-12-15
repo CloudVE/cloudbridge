@@ -658,7 +658,7 @@ class AWSSubnetService(BaseSubnetService):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         if network_id:
             return self.svc.find(
-                filter_name='VpcId', filter_value=network_id,
+                filter_name='vpc-id', filter_value=network_id,
                 limit=limit, marker=marker)
         else:
             return self.svc.list(limit=limit, marker=marker)

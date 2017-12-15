@@ -55,6 +55,12 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     "Subnet ID %s should be listed in network subnets %s."
                     % (sn.id, net.subnets))
 
+                self.assertTrue(
+                    sn in self.provider.networking.subnets.list(network=net),
+                    "Subnet ID %s should be included in the subnets list %s."
+                    % (sn.id, self.provider.networking.subnets.list(net))
+                )
+
                 self.assertListEqual(
                     net.subnets, [sn],
                     "Network should have exactly one subnet: %s." % sn.id)
