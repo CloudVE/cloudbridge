@@ -9,6 +9,7 @@ import re
 import shutil
 import time
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
@@ -713,28 +714,11 @@ class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
             return None
 
     def find(self, **kwargs):
-        matches = self
-
-        def filter_by(prop_name, rules):
-            prop_val = kwargs.pop(prop_name, None)
-            if prop_val:
-                match = [r for r in rules if getattr(r, prop_name) == prop_val]
-                return match
-            return rules
-
-        matches = filter_by('name', matches)
-        matches = filter_by('direction', matches)
-        matches = filter_by('protocol', matches)
-        matches = filter_by('from_port', matches)
-        matches = filter_by('to_port', matches)
-        matches = filter_by('cidr', matches)
-        matches = filter_by('src_dest_fw', matches)
-        matches = filter_by('src_dest_fw_id', matches)
-        limit = kwargs.pop('limit', None)
-        marker = kwargs.pop('marker', None)
-
-        return ClientPagedResultList(self._provider, matches,
-                                     limit=limit, marker=marker)
+        obj_list = self
+        filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
+                   'cidr', 'src_dest_fw', 'src_dest_fw_id']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def delete(self, rule_id):
         rule = self.get(rule_id)
@@ -863,10 +847,6 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                 "data.html#object-key-guidelines" % name)
 
     def save_content(self, target_stream):
-        """
-        Download this object and write its
-        contents to the target_stream.
-        """
         shutil.copyfileobj(self.iter_content(), target_stream)
 
     def __eq__(self, other):
@@ -988,11 +968,9 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             interval=interval)
 
 
-class BaseFloatingIPContainer(FloatingIPContainer,
-                              BasePageableObjectMixin):
+class BaseFloatingIPContainer(FloatingIPContainer, BasePageableObjectMixin):
 
     def __init__(self, provider, gateway):
-        # super(BaseFloatingIPContainer, self).__init__(provider)
         self.__provider = provider
         self.gateway = gateway
 
@@ -1001,17 +979,10 @@ class BaseFloatingIPContainer(FloatingIPContainer,
         return self.__provider
 
     def find(self, **kwargs):
-        if 'name' in kwargs:
-            name = kwargs.get('name')
-            log.info("Searching for FloatingIPContainer with the "
-                     "name: %s...", name)
-            if name:
-                return [fip for fip in self if fip.name == name]
-        else:
-            log.exception("TypeError exception raised. Invalid parameters "
-                          "used for search.")
-            raise TypeError(
-                "Invalid parameters for search. Supported attributes: {name}")
+        obj_list = self
+        filters = ['name', 'public_ip']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def delete(self, fip_id):
         floating_ip = self.get(fip_id)
@@ -1026,9 +997,7 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
     @property
     def name(self):
-        """
-        VM firewall rules don't support names, so pass
-        """
+        # VM firewall rules don't support names, so pass
         return self.public_ip
 
     @property

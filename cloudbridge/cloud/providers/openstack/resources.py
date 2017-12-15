@@ -6,6 +6,7 @@ import ipaddress
 import logging
 import os
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketContainer
@@ -1367,10 +1368,11 @@ class OpenStackBucketContainer(BaseBucketContainer):
             cb_objects,
             limit)
 
-    def find(self, name, limit=None, marker=None):
-        objects = [obj for obj in self if obj.name == name]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def create(self, object_name):
         self._provider.swift.put_object(self.bucket.name, object_name, None)

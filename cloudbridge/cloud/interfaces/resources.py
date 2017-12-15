@@ -985,9 +985,19 @@ class FloatingIPContainer(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, **kwargs):
         """
         Searches for a FloatingIP by a given list of attributes.
+
+        Supported attributes: name, public_ip
+
+        Example:
+
+        .. code-block:: python
+
+            fip = provider.networking.gateways.get('id').floating_ips.find(
+                        public_ip='public_ip')
+
 
         :rtype: List of ``object`` of :class:`.FloatingIP`
         :return: A list of FloatingIP objects matching the supplied attributes.
@@ -2225,9 +2235,11 @@ class BucketContainer(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
-        Searches for an object by a given name
+        Searches for an object by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: List of ``objects`` of :class:`.BucketObject`
         :return: A list of BucketObjects matching the supplied attributes.

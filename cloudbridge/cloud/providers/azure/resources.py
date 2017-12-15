@@ -9,6 +9,7 @@ import uuid
 from azure.common import AzureException
 from azure.mgmt.network.models import NetworkSecurityGroup
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
     BaseFloatingIPContainer, BaseInstance, BaseInternetGateway, BaseKeyPair, \
@@ -433,10 +434,11 @@ class AzureBucketContainer(BaseBucketContainer):
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        objects = [obj for obj in self if obj.name == name]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def create(self, name):
         self._provider.azure_client.create_blob_from_text(
