@@ -37,10 +37,13 @@ def check_obj_properties(test, obj):
 def check_list(test, service, obj):
     list_objs = service.list()
     test.assertIsInstance(list_objs, ResultList)
-    all_records = list_objs
-    while list_objs.is_truncated:
-        list_objs = service.list(marker=list_objs.marker)
-        all_records += list_objs
+    if list_objs.supports_server_paging:
+        all_records = list_objs
+        while list_objs.is_truncated:
+            list_objs = service.list(marker=list_objs.marker)
+            all_records += list_objs
+    else:
+        all_records = list_objs.data
     match_objs = [o for o in all_records if o.id == obj.id]
     test.assertTrue(
         len(match_objs) == 1,
