@@ -7,11 +7,11 @@ import re
 
 from cinderclient.exceptions import NotFound as CinderNotFound
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -27,7 +27,6 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.exceptions import ProviderInternalException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -45,7 +44,6 @@ from novaclient.exceptions import NotFound as NovaNotFound
 from openstack.exceptions import ResourceNotFound
 
 from .resources import OpenStackBucket
-from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
 from .resources import OpenStackInternetGateway
 from .resources import OpenStackKeyPair
@@ -154,18 +152,21 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a key pair by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         keypairs = self.provider.nova.keypairs.findall(name=name)
         results = [OpenStackKeyPair(self.provider, kp)
                    for kp in keypairs]
         log.debug("Searching for %s in: %s", name, keypairs)
-        return ClientPagedResultList(self.provider, results,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, results)
 
-    def create(self, name):
+    def create(self, name, public_key_material=None):
         """
         Create a new key pair or raise an exception if one already exists.
 
@@ -178,9 +179,15 @@ class OpenStackKeyPairService(BaseKeyPairService):
         log.debug("Creating a new key pair with the name: %s", name)
         OpenStackKeyPair.assert_valid_resource_name(name)
 
-        kp = self.provider.nova.keypairs.create(name)
+        private_key = None
+        if not public_key_material:
+            public_key_material, private_key = cb_helpers.generate_key_pair()
+        kp = self.provider.nova.keypairs.create(name,
+                                                public_key=public_key_material)
+
         if kp:
             return OpenStackKeyPair(self.provider, kp)
+            kp.material = private_key
         log.debug("Key Pair with the name %s already exists", name)
         return None
 
@@ -219,13 +226,19 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
             return OpenStackVMFirewall(self.provider, sg)
         return None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         log.debug("Searching for %s", name)
         sgs = [self.provider.os_conn.network.find_security_group(name)]
         results = [OpenStackVMFirewall(self.provider, sg)
                    for sg in sgs if sg]
-        return ClientPagedResultList(self.provider, results,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, results)
 
     def delete(self, group_id):
         log.debug("Deleting OpenStack Firewall with the id: %s", group_id)
@@ -253,10 +266,14 @@ class OpenStackImageService(BaseImageService):
                       image_id)
             return None
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for an image by a given list of attributes
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         log.debug("Searching for the OpenStack image with the name: %s", name)
         regex = fnmatch.translate(name)
         cb_images = [
@@ -264,7 +281,7 @@ class OpenStackImageService(BaseImageService):
             for img in self
             if img.name and re.search(regex, img.name)]
 
-        return oshelpers.to_server_paged_list(self.provider, cb_images, limit)
+        return oshelpers.to_server_paged_list(self.provider, cb_images)
 
     def list(self, filter_by_owner=True, limit=None, marker=None):
         """
@@ -339,20 +356,24 @@ class OpenStackVolumeService(BaseVolumeService):
             log.debug("Volume %s was not found.", volume_id)
             return None
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a volume by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         log.debug("Searching for an OpenStack Volume with the name %s", name)
         search_opts = {'name': name}
         cb_vols = [
             OpenStackVolume(self.provider, vol)
             for vol in self.provider.cinder.volumes.list(
                 search_opts=search_opts,
-                limit=oshelpers.os_result_limit(self.provider, limit),
-                marker=marker)]
+                limit=oshelpers.os_result_limit(self.provider),
+                marker=None)]
 
-        return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
+        return oshelpers.to_server_paged_list(self.provider, cb_vols)
 
     def list(self, limit=None, marker=None):
         """
@@ -403,14 +424,17 @@ class OpenStackSnapshotService(BaseSnapshotService):
             log.debug("Snapshot %s was not found.", snapshot_id)
             return None
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a volume by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         search_opts = {'name': name,  # TODO: Cinder is ignoring name
-                       'limit': oshelpers.os_result_limit(self.provider,
-                                                          limit),
-                       'marker': marker}
+                       'limit': oshelpers.os_result_limit(self.provider),
+                       'marker': None}
         log.debug("Searching for an OpenStack volume with the following "
                   "params: %s", search_opts)
         cb_snaps = [
@@ -418,7 +442,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
             snap in self.provider.cinder.volume_snapshots.list(search_opts)
             if snap.name == name]
 
-        return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
+        return oshelpers.to_server_paged_list(self.provider, cb_snaps)
 
     def list(self, limit=None, marker=None):
         """
@@ -469,18 +493,22 @@ class OpenStackBucketService(BaseBucketService):
             log.debug("Bucket %s was not found.", bucket_id)
             return None
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for a bucket by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         log.debug("Searching for the OpenStack Bucket with the name: %s", name)
         _, container_list = self.provider.swift.get_account(
-            limit=oshelpers.os_result_limit(self.provider, limit),
-            marker=marker)
+            limit=oshelpers.os_result_limit(self.provider),
+            marker=None)
         cb_buckets = [OpenStackBucket(self.provider, c)
                       for c in container_list
                       if name in c.get("name")]
-        return oshelpers.to_server_paged_list(self.provider, cb_buckets, limit)
+        return oshelpers.to_server_paged_list(self.provider, cb_buckets)
 
     def list(self, limit=None, marker=None):
         """
@@ -707,18 +735,22 @@ class OpenStackInstanceService(BaseInstanceService):
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Searches for an instance by a given list of attributes.
-        """
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         search_opts = {'name': name}
         cb_insts = [
             OpenStackInstance(self.provider, inst)
             for inst in self.provider.nova.servers.list(
                 search_opts=search_opts,
-                limit=oshelpers.os_result_limit(self.provider, limit),
-                marker=marker)]
-        return oshelpers.to_server_paged_list(self.provider, cb_insts, limit)
+                limit=oshelpers.os_result_limit(self.provider),
+                marker=None)]
+        return oshelpers.to_server_paged_list(self.provider, cb_insts)
 
     def list(self, limit=None, marker=None):
         """
@@ -749,7 +781,6 @@ class OpenStackNetworkingService(BaseNetworkingService):
         super(OpenStackNetworkingService, self).__init__(provider)
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
-        self._fip_service = OpenStackFloatingIPService(self.provider)
         self._router_service = OpenStackRouterService(self.provider)
         self._gateway_service = OpenStackGatewayService(self.provider)
 
@@ -760,10 +791,6 @@ class OpenStackNetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
-
-    @property
-    def floating_ips(self):
-        return self._fip_service
 
     @property
     def routers(self):
@@ -791,15 +818,21 @@ class OpenStackNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
         log.debug("Searching for the OpenStack Network with the "
                   "name: %s", name)
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks(
                         name=name)
                     .get('networks') if network]
-        return ClientPagedResultList(self.provider, networks,
-                                     limit=limit, marker=marker)
+        return ClientPagedResultList(self.provider, networks)
 
     def create(self, name, cidr_block):
         log.debug("Creating OpenStack Network with the params: "
@@ -867,6 +900,7 @@ class OpenStackSubnetService(BaseSubnetService):
             router.attach_subnet(sn)
             gteway = (self.provider.networking.gateways
                       .get_or_create_inet_gateway(
+                          net,
                           OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
                           ))
             router.attach_gateway(gteway)
@@ -885,36 +919,6 @@ class OpenStackSubnetService(BaseSubnetService):
         return False
 
 
-class OpenStackFloatingIPService(BaseFloatingIPService):
-
-    def __init__(self, provider):
-        super(OpenStackFloatingIPService, self).__init__(provider)
-
-    def get(self, fip_id):
-        try:
-            return OpenStackFloatingIP(
-                self.provider, self.provider.os_conn.network.get_ip(fip_id))
-        except ResourceNotFound:
-            return None
-
-    def list(self, limit=None, marker=None):
-        fips = [OpenStackFloatingIP(self.provider, fip)
-                for fip in self.provider.os_conn.network.ips()]
-        return ClientPagedResultList(self.provider, fips,
-                                     limit=limit, marker=marker)
-
-    def create(self):
-        # OpenStack requires a floating IP to be associated with an external,
-        # network, so choose the first external network found
-        for n in self.provider.networking.networks:
-            if n.external:
-                return OpenStackFloatingIP(
-                    self.provider, self.provider.os_conn.network.create_ip(
-                        floating_network_id=n.id))
-        raise ProviderInternalException(
-            "This OpenStack cloud has no designated external network")
-
-
 class OpenStackRouterService(BaseRouterService):
 
     def __init__(self, provider):
@@ -931,12 +935,11 @@ class OpenStackRouterService(BaseRouterService):
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for OpenStack Router with the params: "
-                  "[name: %s, limit: %s, marker: %s]", name, limit, marker)
-        aws_routers = [r for r in self if r.name == name]
-        return ClientPagedResultList(self.provider, aws_routers, limit=limit,
-                                     marker=marker)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def create(self, name, network):
         """
@@ -955,12 +958,15 @@ class OpenStackRouterService(BaseRouterService):
 
 
 class OpenStackGatewayService(BaseGatewayService):
+    """For OpenStack, an internet gateway is a just an 'external' network."""
 
     def __init__(self, provider):
         super(OpenStackGatewayService, self).__init__(provider)
 
-    def get_or_create_inet_gateway(self, name):
-        OpenStackInternetGateway.assert_valid_resource_name(name)
+    def get_or_create_inet_gateway(self, network, name=None):
+        """For OS, inet gtw is any net that has `external` property set."""
+        if name:
+            OpenStackInternetGateway.assert_valid_resource_name(name)
 
         for n in self.provider.networking.networks:
             if n.external:
@@ -970,3 +976,10 @@ class OpenStackGatewayService(BaseGatewayService):
     def delete(self, gateway):
         log.debug("Deleting OpenStack Gateway: %s", gateway)
         gateway.delete()
+
+    def list(self, limit=None, marker=None):
+        log.debug("OpenStack listing of all current internet gateways")
+        igl = [OpenStackInternetGateway(self.provider, n)
+               for n in self.provider.networking.networks if n.external]
+        return ClientPagedResultList(self.provider, igl, limit=limit,
+                                     marker=marker)

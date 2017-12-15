@@ -66,6 +66,20 @@ OpenStack (with Keystone authentication v3):
                                                       config)
     image_id = '97755049-ee4f-4515-b92f-ca00991ee99a'  # Ubuntu 14.04 @ Jetstream
 
+Azure:
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    config = {'azure_subscription_id': 'REPLACE WITH ACTUAL VALUE',
+              'azure_client_id': 'REPLACE WITH ACTUAL VALUE',
+              'azure_secret': 'REPLACE WITH ACTUAL VALUE',
+              'azure_tenant': ' REPLACE WITH ACTUAL VALUE'}
+    provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
+    image_id = 'ami-2d39803a'  # Ubuntu 14.04 (HVM)
+
+
 List some resources
 -------------------
 Once you have a reference to a provider, explore the cloud platform:

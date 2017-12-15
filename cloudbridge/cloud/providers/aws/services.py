@@ -4,10 +4,10 @@ import string
 
 from botocore.exceptions import ClientError
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -38,7 +38,6 @@ import requests
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
 from .resources import AWSBucket
-from .resources import AWSFloatingIP
 from .resources import AWSInstance
 from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
@@ -89,16 +88,27 @@ class AWSKeyPairService(BaseKeyPairService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for Key Pair %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='key-name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
 
-    def create(self, name):
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for Key Pair %s", name)
+        return self.svc.find(filter_name='key-name', filter_value=name)
+
+    def create(self, name, public_key_material=None):
         log.debug("Creating Key Pair Service %s", name)
         AWSKeyPair.assert_valid_resource_name(name)
-        return self.svc.create('create_key_pair', KeyName=name)
+        private_key = None
+        if not public_key_material:
+            public_key_material, private_key = cb_helpers.generate_key_pair()
+        kp = self.svc.create('import_key_pair', KeyName=name,
+                             PublicKeyMaterial=public_key_material)
+        kp.material = private_key
+        return kp
 
 
 class AWSVMFirewallService(BaseVMFirewallService):
@@ -124,11 +134,16 @@ class AWSVMFirewallService(BaseVMFirewallService):
         return self.svc.create('create_security_group', GroupName=name,
                                Description=description, VpcId=network_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for Firewall Service %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='group-name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for Firewall Service %s", name)
+        return self.svc.find(filter_name='group-name', filter_value=name)
 
     def delete(self, firewall_id):
         log.info("Deleting Firewall Service with the id %s", firewall_id)
@@ -173,12 +188,16 @@ class AWSVolumeService(BaseVolumeService):
                   volume_id)
         return self.svc.get(volume_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Volume Service %s with "
-                  "the params  [Limit: %s Marker: %s]", name,
-                  limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Volume Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -218,12 +237,16 @@ class AWSSnapshotService(BaseSnapshotService):
                   snapshot_id)
         return self.svc.get(snapshot_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Snapshot Service %s with "
-                  " the params [Limit: %s Marker: %s]", name,
-                  limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Snapshot Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -286,14 +309,12 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Bucket %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        buckets = [bucket
-                   for bucket in self
-                   if name == bucket.name]
-        return ClientPagedResultList(self.provider, buckets,
-                                     limit=limit, marker=marker)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=None, marker=None)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -313,7 +334,7 @@ class AWSBucketService(BaseBucketService):
             return self.svc.create('create_bucket', Bucket=name,
                                    CreateBucketConfiguration={
                                        'LocationConstraint': loc_constraint
-                                    })
+                                   })
 
 
 class AWSImageService(BaseImageService):
@@ -328,11 +349,16 @@ class AWSImageService(BaseImageService):
         log.debug("Getting AWS Image Service with the id: %s", image_id)
         return self.svc.get(image_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Image Service %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Image Service %s", name)
+        return self.svc.find(filter_name='name', filter_value=name)
 
     def list(self, filter_by_owner=True, limit=None, marker=None):
         return self.svc.list(Owners=['self'] if filter_by_owner else [],
@@ -510,9 +536,15 @@ class AWSInstanceService(BaseInstanceService):
     def get(self, instance_id):
         return self.svc.get(instance_id)
 
-    def find(self, name, limit=None, marker=None):
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -582,7 +614,6 @@ class AWSNetworkingService(BaseNetworkingService):
         super(AWSNetworkingService, self).__init__(provider)
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
-        self._fip_service = AWSFloatingIPService(self.provider)
         self._router_service = AWSRouterService(self.provider)
         self._gateway_service = AWSGatewayService(self.provider)
 
@@ -593,10 +624,6 @@ class AWSNetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
-
-    @property
-    def floating_ips(self):
-        return self._fip_service
 
     @property
     def routers(self):
@@ -623,11 +650,16 @@ class AWSNetworkService(BaseNetworkService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Network Service %s with the "
-                  " params [Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Network Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def create(self, name, cidr_block):
         log.debug("Creating AWS Network Service with the params "
@@ -658,16 +690,21 @@ class AWSSubnetService(BaseSubnetService):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         if network_id:
             return self.svc.find(
-                filter_name='VpcId', filter_value=network_id,
+                filter_name='vpc-id', filter_value=network_id,
                 limit=limit, marker=marker)
         else:
             return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Subnet Service %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Subnet Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def create(self, name, network, cidr_block, zone=None):
         log.debug("Creating AWS Subnet Service with the params "
@@ -690,6 +727,14 @@ class AWSSubnetService(BaseSubnetService):
             snl = self.svc.find('availabilityZone', zone)
         else:
             snl = self.svc.list()
+
+        # Find first available default subnet by sorted order
+        # of availability zone. (e.g. prefer us-east-1a over 1e,
+        # This is because newer zones tend to have less compatibility
+        # with different instance types. (e.g. c5.large not available
+        # on us-east-1e as of 14 Dec. 2017
+        # pylint:disable=protected-access
+        snl.sort(key=lambda sn: sn._subnet.availability_zone)
         for sn in snl:
             # pylint:disable=protected-access
             if sn._subnet.default_for_az:
@@ -723,30 +768,6 @@ class AWSSubnetService(BaseSubnetService):
         self.svc.delete(subnet_id)
 
 
-class AWSFloatingIPService(BaseFloatingIPService):
-
-    def __init__(self, provider):
-        super(AWSFloatingIPService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSFloatingIP,
-                                  boto_collection_name='vpc_addresses')
-
-    def get(self, router_id):
-        log.debug("Getting AWS Floating IP Service with the id: %s",
-                  router_id)
-        return self.svc.get(router_id)
-
-    def list(self, limit=None, marker=None):
-        return self.svc.list(limit=limit, marker=marker)
-
-    def create(self):
-        ip = self.provider.ec2_conn.meta.client.allocate_address(
-            Domain='vpc')
-        return AWSFloatingIP(
-            self.provider,
-            self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
-
-
 class AWSRouterService(BaseRouterService):
     """For AWS, a CloudBridge router corresponds to an AWS Route Table."""
 
@@ -760,11 +781,16 @@ class AWSRouterService(BaseRouterService):
         log.debug("Getting AWS Router Service with the id: %s", router_id)
         return self.svc.get(router_id)
 
-    def find(self, name, limit=None, marker=None):
-        log.debug("Searching for AWS Router Service %s with the params "
-                  "[Limit: %s Marker: %s]", name, limit, marker)
-        return self.svc.find(filter_name='tag:Name', filter_value=name,
-                             limit=limit, marker=marker)
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'name'))
+
+        log.debug("Searching for AWS Router Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -790,15 +816,34 @@ class AWSGatewayService(BaseGatewayService):
                                   cb_resource=AWSInternetGateway,
                                   boto_collection_name='internet_gateways')
 
-    def get_or_create_inet_gateway(self, name):
-        AWSInternetGateway.assert_valid_resource_name(name)
+    def get_or_create_inet_gateway(self, network, name=None):
+        log.debug("Get or create inet gateway %s on net %s", name, network)
+        if name:
+            AWSInternetGateway.assert_valid_resource_name(name)
 
+        network_id = network.id if isinstance(network, AWSNetwork) else network
+        # Don't filter by name because it may conflict with at least the
+        # default VPC that most accounts have but that network is typically
+        # without a name.
+        gtw = self.svc.find(filter_name='attachment.vpc-id',
+                            filter_value=network_id)
+        if gtw:
+            return gtw[0]  # There can be only one gtw attached to a VPC
+        # Gateway does not exist so create one and attach to the supplied net
         cb_gateway = self.svc.create('create_internet_gateway')
-        cb_gateway.name = name
+        if name:
+            cb_gateway.name = name
+        cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 
-    def delete(self, gateway_id):
-        log.debug("Deleting AWS Gateway Service with the id %s", gateway_id)
+    def delete(self, gateway):
+        log.debug("Service deleting AWS Gateway %s", gateway)
+        gateway_id = gateway.id if isinstance(
+            gateway, AWSInternetGateway) else gateway
         gateway = self.svc.get(gateway_id)
         if gateway:
             gateway.delete()
+
+    def list(self, limit=None, marker=None):
+        log.debug("Listing current AWS internet gateways.")
+        return self.svc.list(limit=None, marker=None)

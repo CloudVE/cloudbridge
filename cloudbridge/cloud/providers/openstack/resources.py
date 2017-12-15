@@ -6,11 +6,13 @@ import ipaddress
 import logging
 import os
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
+from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -46,6 +48,7 @@ from neutronclient.common.exceptions import PortNotFoundClient
 import novaclient.exceptions as novaex
 
 from openstack.exceptions import HttpException
+from openstack.exceptions import ResourceNotFound
 
 import swiftclient
 from swiftclient.service import SwiftService, SwiftUploadObject
@@ -762,7 +765,8 @@ class OpenStackNetwork(BaseNetwork):
         return ''
 
     def delete(self):
-        if self.id in str(self._provider.neutron.list_networks()):
+        if not self.external and self.id in str(
+                self._provider.neutron.list_networks()):
             # If there are ports associated with the network, it won't delete
             ports = self._provider.neutron.list_ports(
                 network_id=self.id).get('ports', [])
@@ -854,6 +858,32 @@ class OpenStackSubnet(BaseSubnet):
             self._state = SubnetState.UNKNOWN
 
 
+class OpenStackFloatingIPContainer(BaseFloatingIPContainer):
+
+    def __init__(self, provider, gateway):
+        super(OpenStackFloatingIPContainer, self).__init__(provider, gateway)
+
+    def get(self, fip_id):
+        try:
+            return OpenStackFloatingIP(
+                self._provider, self._provider.os_conn.network.get_ip(fip_id))
+        except ResourceNotFound:
+            return None
+
+    def list(self, limit=None, marker=None):
+        fips = [OpenStackFloatingIP(self._provider, fip)
+                for fip in self._provider.os_conn.network.ips(
+                    floating_network_id=self.gateway.id
+                )]
+        return ClientPagedResultList(self._provider, fips,
+                                     limit=limit, marker=marker)
+
+    def create(self):
+        return OpenStackFloatingIP(
+            self._provider, self._provider.os_conn.network.create_ip(
+                floating_network_id=self.gateway.id))
+
+
 class OpenStackFloatingIP(BaseFloatingIP):
 
     def __init__(self, provider, floating_ip):
@@ -878,6 +908,15 @@ class OpenStackFloatingIP(BaseFloatingIP):
 
     def delete(self):
         self._ip.delete(self._provider.os_conn.session)
+
+    def refresh(self):
+        net = self._provider.networking.networks.get(
+            self._ip.floating_network_id)
+        gw = self._provider.networking.gateways.get_or_create_inet_gateway(
+            net)
+        fip = gw.floating_ips.get(self.id)
+        # pylint:disable=protected-access
+        self._ip = fip._ip
 
 
 class OpenStackRouter(BaseRouter):
@@ -964,6 +1003,7 @@ class OpenStackInternetGateway(BaseInternetGateway):
             # pylint:disable=protected-access
             gateway_net = gateway_net._network
         self._gateway_net = gateway_net
+        self._fips_container = OpenStackFloatingIPContainer(provider, self)
 
     @property
     def id(self):
@@ -983,7 +1023,7 @@ class OpenStackInternetGateway(BaseInternetGateway):
 
     @property
     def network_id(self):
-        return self._gateway_net.id
+        return self._gateway_net.get('id')
 
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
@@ -1004,22 +1044,15 @@ class OpenStackInternetGateway(BaseInternetGateway):
         """Do nothing on openstack"""
         pass
 
+    @property
+    def floating_ips(self):
+        return self._fips_container
+
 
 class OpenStackKeyPair(BaseKeyPair):
 
     def __init__(self, provider, key_pair):
         super(OpenStackKeyPair, self).__init__(provider, key_pair)
-
-    @property
-    def material(self):
-        """
-        Unencrypted private key.
-
-        :rtype: str
-        :return: Unencrypted private key or ``None`` if not available.
-
-        """
-        return getattr(self._key_pair, 'private_key', None)
 
 
 class OpenStackVMFirewall(BaseVMFirewall):
@@ -1335,10 +1368,11 @@ class OpenStackBucketContainer(BaseBucketContainer):
             cb_objects,
             limit)
 
-    def find(self, name, limit=None, marker=None):
-        objects = [obj for obj in self if obj.name == name]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def create(self, object_name):
         self._provider.swift.put_object(self.bucket.name, object_name, None)

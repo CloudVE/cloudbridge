@@ -14,8 +14,9 @@ log = logging.getLogger(__name__)
 
 class ProviderList(object):
     AWS = 'aws'
-    OPENSTACK = 'openstack'
+    AZURE = 'azure'
     GCE = 'gce'
+    OPENSTACK = 'openstack'
 
 
 class CloudProviderFactory(object):

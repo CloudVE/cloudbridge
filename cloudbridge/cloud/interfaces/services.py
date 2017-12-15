@@ -160,25 +160,14 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for an instance by a given list of attributes.
 
+        Supported attributes: name
+
         :type  name: ``str``
         :param name: The name to search for
-
-        :type  limit: ``int``
-        :param limit: The maximum number of objects to return. Note that the
-                      maximum is not guaranteed to be honoured, and a lower
-                      maximum may be enforced depending on the provider. In
-                      such a case, the returned ResultList's is_truncated
-                      property can be used to determine whether more records
-                      are available.
-
-        :type  marker: ``str``
-        :param marker: The marker is an opaque identifier used to assist
-                       in paging through very long lists of objects. It is
-                       returned on each invocation of the list method.
 
         :rtype: List of ``object`` of :class:`.Instance`
         :return: A list of Instance objects matching the supplied attributes.
@@ -318,9 +307,11 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a volume by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: ``object`` of :class:`.Volume`
         :return: a Volume object or ``None`` if not found.
@@ -383,9 +374,11 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a snapshot by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: list of :class:`.Snapshot`
         :return: a Snapshot object or an empty list if none found.
@@ -519,9 +512,11 @@ class ImageService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for an image by a given list of attributes
+
+        Supported attributes: name
 
         :rtype: ``object`` of :class:`.Image`
         :return:  an Image instance
@@ -547,7 +542,6 @@ class ImageService(PageableObjectMixin, CloudService):
 
 
 class NetworkingService(CloudService):
-
     """
     Base service interface for networking.
 
@@ -629,9 +623,11 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a network by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: List of ``object`` of :class:`.Network`
         :return: A list of Network objects matching the supplied attributes.
@@ -730,9 +726,11 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a subnet by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: List of ``object`` of :class:`.Subnet`
         :return: A list of Subnet objects matching the supplied attributes.
@@ -797,69 +795,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
 
-class FloatingIPService(PageableObjectMixin, CloudService):
-
-    """
-    Base interface for a FloatingIP Service.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def get(self, fip_id):
-        """
-        Returns a FloatingIP given its ID or ``None`` if not found.
-
-        :type fip_id: ``str``
-        :param fip_id: The ID of the FloatingIP to retrieve.
-
-        :rtype: ``object`` of :class:`.FloatingIP`
-        :return: a FloatingIP object
-        """
-        pass
-
-    @abstractmethod
-    def list(self, limit=None, marker=None):
-        """
-        List floating (i.e., static) IP addresses.
-
-        :rtype: ``list`` of :class:`.FloatingIP`
-        :return: list of FloatingIP objects
-        """
-        pass
-
-    @abstractmethod
-    def find(self, name):
-        """
-        Searches for a FloatingIP by a given list of attributes.
-
-        :rtype: List of ``object`` of :class:`.FloatingIP`
-        :return: A list of FloatingIP objects matching the supplied attributes.
-        """
-        pass
-
-    @abstractmethod
-    def create(self):
-        """
-        Allocate a new floating (i.e., static) IP address.
-
-        :rtype: ``object`` of :class:`.FloatingIP`
-        :return:  A FloatingIP object
-        """
-        pass
-
-    @abstractmethod
-    def delete(self, fip_id):
-        """
-        Delete an existing FloatingIP.
-
-        :type fip_id: ``str``
-        :param fip_id: The ID of the FloatingIP to be deleted.
-        """
-        pass
-
-
 class RouterService(PageableObjectMixin, CloudService):
-
     """
     Manage networking router actions and resources.
     """
@@ -889,9 +825,11 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a router by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: List of ``object`` of :class:`.Router`
         :return: A list of Router objects matching the supplied attributes.
@@ -927,27 +865,25 @@ class RouterService(PageableObjectMixin, CloudService):
 
 
 class GatewayService(CloudService):
-
     """
     Manage internet gateway resources.
     """
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self, name):
+    def get_or_create_inet_gateway(self, network, name=None):
         """
-        Creates and returns a new internet gateway or returns an existing
-        singleton gateway, depending on the cloud provider. The returned
-        gateway object can subsequently be attached to a router to provide
-        internet routing to a network. If the gateway is no longer required,
-        clients should call gateway.delete() to delete the gateway. On some
-        cloud providers this will result in the gateway being deleted. On
-        others, it will result in a no-op if the cloud has only a single/public
-        gateway.
+        Creates new or returns an existing internet gateway for a network.
+
+        The returned gateway object can subsequently be attached to a router to
+        provide internet routing to a network.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID to which the gateway is attached.
 
         :type  name: ``str``
-        :param name: The gateway name. The name will be set if the provider
-                     supports it.
+        :param name: The gateway name. This applies only if creating a gateway
+                     and if the provider supports it.
 
         :rtype: ``object``  of :class:`.InternetGateway` or ``None``
         :return: an InternetGateway object of ``None`` if not found.
@@ -961,6 +897,16 @@ class GatewayService(CloudService):
 
         :type gateway: :class:`.Gateway` object
         :param gateway: Gateway object to delete.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all available internet gateways.
+
+        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
+        :return: Current list of internet gateways.
         """
         pass
 
@@ -995,9 +941,11 @@ class BucketService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a bucket by a given list of attributes.
+
+        Supported attributes: name
 
         Example:
 
@@ -1149,9 +1097,11 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a key pair by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  a KeyPair object
@@ -1159,12 +1109,19 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name):
+    def create(self, name, public_key_material=None):
         """
         Create a new key pair or raise an exception if one already exists.
+        If the public_key_material is provided, the material will be imported
+        to create the new keypair. Otherwise, a new public and private key
+        pair will be generated.
 
         :type name: str
         :param name: The name of the key pair to be created.
+
+        :type public_key_material: str
+        :param public_key_material: The key-pair material to import in OpenSSH
+                                    format.
 
         :rtype: ``object`` of :class:`.KeyPair`
         :return:  A keypair instance or ``None``.
@@ -1242,9 +1199,11 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Get VM firewalls associated with your account filtered by name.
+
+        Supported attributes: name
 
         :type name: str
         :param name: The name of the VM firewall to retrieve.
@@ -1302,6 +1261,8 @@ class VMTypeService(PageableObjectMixin, CloudService):
         """
         Searches for instances by a given list of attributes.
 
+        Supported attributes: name
+
         :rtype: ``object`` of :class:`.VMType`
         :return: an Instance object
         """
@@ -1349,9 +1310,11 @@ class RegionService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def find(self, name):
+    def find(self, **kwargs):
         """
         Searches for a region by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: ``object`` of :class:`.Region`
         :return: a Region object

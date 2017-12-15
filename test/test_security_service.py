@@ -3,6 +3,7 @@ from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
@@ -41,6 +42,17 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             kp = self.provider.security.key_pairs.get(kp.id)
             self.assertIsNone(kp.material,
                               "Keypair material should now be empty")
+
+    @helpers.skipIfNoService(['security.key_pairs'])
+    def test_import_key_pair(self):
+        name = 'cb_kpimport-{0}'.format(helpers.get_uuid())
+
+        public_key, _ = cb_helpers.generate_key_pair()
+        kp = self.provider.security.key_pairs.create(
+            name=name, public_key_material=public_key)
+        with helpers.cleanup_action(lambda: kp.delete()):
+            self.assertIsNone(kp.material, "Private KeyPair material should"
+                              " be None when key is imported.")
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_crud_vm_firewall(self):

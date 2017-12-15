@@ -53,6 +53,7 @@ class InvalidNameException(CloudBridgeBaseException):
     a CloudBridge resource.An example would be setting uppercase
     letters, which are not allowed in a resource name.
     """
+
     def __init__(self, msg):
         super(InvalidNameException, self).__init__(msg)
 
