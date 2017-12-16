@@ -12,7 +12,6 @@ from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -782,7 +781,6 @@ class OpenStackNetworkingService(BaseNetworkingService):
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
         self._router_service = OpenStackRouterService(self.provider)
-        self._gateway_service = OpenStackGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -795,10 +793,6 @@ class OpenStackNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
-
-    @property
-    def gateways(self):
-        return self._gateway_service
 
 
 class OpenStackNetworkService(BaseNetworkService):
@@ -955,31 +949,3 @@ class OpenStackRouterService(BaseRouterService):
         body = {'router': {'name': name}} if name else None
         router = self.provider.neutron.create_router(body)
         return OpenStackRouter(self.provider, router.get('router'))
-
-
-class OpenStackGatewayService(BaseGatewayService):
-    """For OpenStack, an internet gateway is a just an 'external' network."""
-
-    def __init__(self, provider):
-        super(OpenStackGatewayService, self).__init__(provider)
-
-    def get_or_create_inet_gateway(self, network, name=None):
-        """For OS, inet gtw is any net that has `external` property set."""
-        if name:
-            OpenStackInternetGateway.assert_valid_resource_name(name)
-
-        for n in self.provider.networking.networks:
-            if n.external:
-                return OpenStackInternetGateway(self.provider, n)
-        return None
-
-    def delete(self, gateway):
-        log.debug("Deleting OpenStack Gateway: %s", gateway)
-        gateway.delete()
-
-    def list(self, limit=None, marker=None):
-        log.debug("OpenStack listing of all current internet gateways")
-        igl = [OpenStackInternetGateway(self.provider, n)
-               for n in self.provider.networking.networks if n.external]
-        return ClientPagedResultList(self.provider, igl, limit=limit,
-                                     marker=marker)

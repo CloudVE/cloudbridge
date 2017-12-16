@@ -8,7 +8,6 @@ from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
-from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import KeyPairService
@@ -208,10 +207,3 @@ class BaseRouterService(
             if router:
                 log.info("Router %s successful deleted.", router)
                 router.delete()
-
-
-class BaseGatewayService(
-        GatewayService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseGatewayService, self).__init__(provider)

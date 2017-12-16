@@ -8,7 +8,7 @@ import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList, \
     ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService, \
-    BaseComputeService, BaseGatewayService, \
+    BaseComputeService, \
     BaseImageService, BaseInstanceService, BaseKeyPairService, \
     BaseNetworkService, BaseNetworkingService, BaseRegionService, \
     BaseRouterService, BaseSecurityService, BaseSnapshotService, \
@@ -790,7 +790,6 @@ class AzureNetworkingService(BaseNetworkingService):
         self._network_service = AzureNetworkService(self.provider)
         self._subnet_service = AzureSubnetService(self.provider)
         self._router_service = AzureRouterService(self.provider)
-        self._gateway_service = AzureGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -803,10 +802,6 @@ class AzureNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
-
-    @property
-    def gateways(self):
-        return self._gateway_service
 
 
 class AzureNetworkService(BaseNetworkService):
@@ -1079,29 +1074,3 @@ class AzureRouterService(BaseRouterService):
         route = self.provider.azure_client. \
             create_route_table(name, parameters)
         return AzureRouter(self.provider, route)
-
-
-class AzureGatewayService(BaseGatewayService):
-    def __init__(self, provider):
-        super(AzureGatewayService, self).__init__(provider)
-        # Azure doesn't have a notion of a route table or an internet
-        # gateway as OS and AWS so create placeholder objects of the
-        # AzureInternetGateway here.
-        # http://bit.ly/2BqGdVh
-        self.inet_gateways = []
-
-    def get_or_create_inet_gateway(self, network, name=None):
-        if name:
-            AzureInternetGateway.assert_valid_resource_name(name)
-        gateway = AzureInternetGateway(self.provider, None, network)
-        if name:
-            gateway.name = name
-        if gateway not in self.inet_gateways:
-            self.inet_gateways.append(gateway)
-        return gateway
-
-    def list(self, limit=None, marker=None):
-        return self.inet_gateways
-
-    def delete(self, gateway):
-        pass

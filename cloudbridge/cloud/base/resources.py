@@ -22,6 +22,7 @@ from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import FloatingIPContainer
 from cloudbridge.cloud.interfaces.resources import FloatingIpState
+from cloudbridge.cloud.interfaces.resources import GatewayContainer
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -912,6 +913,13 @@ class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
         return self.__provider
 
 
+class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
+
+    def __init__(self, provider, network):
+        self._network = network
+        self._provider = provider
+
+
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
@@ -1050,6 +1058,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
 
     def __init__(self, provider):
         super(BaseInternetGateway, self).__init__(provider)
+        self.__provider = provider
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,

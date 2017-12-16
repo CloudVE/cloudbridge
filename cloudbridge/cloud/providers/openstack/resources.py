@@ -13,6 +13,7 @@ from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
+from cloudbridge.cloud.base.resources import BaseGatewayContainer
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -711,6 +712,34 @@ class OpenStackSnapshot(BaseSnapshot):
         return cb_vol
 
 
+class OpenStackGatewayContainer(BaseGatewayContainer):
+    """For OpenStack, an internet gateway is a just an 'external' network."""
+
+    def __init__(self, provider, network):
+        super(OpenStackGatewayContainer, self).__init__(provider, network)
+
+    def get_or_create_inet_gateway(self, name=None):
+        """For OS, inet gtw is any net that has `external` property set."""
+        if name:
+            OpenStackInternetGateway.assert_valid_resource_name(name)
+
+        for n in self._provider.networking.networks:
+            if n.external:
+                return OpenStackInternetGateway(self._provider, n)
+        return None
+
+    def delete(self, gateway):
+        log.debug("Deleting OpenStack Gateway: %s", gateway)
+        gateway.delete()
+
+    def list(self, limit=None, marker=None):
+        log.debug("OpenStack listing of all current internet gateways")
+        igl = [OpenStackInternetGateway(self._provider, n)
+               for n in self._provider.networking.networks if n.external]
+        return ClientPagedResultList(self._provider, igl, limit=limit,
+                                     marker=marker)
+
+
 class OpenStackNetwork(BaseNetwork):
 
     # Ref: https://github.com/openstack/neutron/blob/master/neutron/plugins/
@@ -729,6 +758,7 @@ class OpenStackNetwork(BaseNetwork):
     def __init__(self, provider, network):
         super(OpenStackNetwork, self).__init__(provider)
         self._network = network
+        self._gateway_service = OpenStackGatewayContainer(provider, self)
 
     @property
     def id(self):
@@ -794,6 +824,10 @@ class OpenStackNetwork(BaseNetwork):
         else:
             # subnet no longer exists
             self._network.state = NetworkState.UNKNOWN
+
+    @property
+    def gateways(self):
+        return self._gateway_service
 
 
 class OpenStackSubnet(BaseSubnet):

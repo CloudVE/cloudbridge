@@ -580,17 +580,6 @@ class NetworkingService(CloudService):
         """
         pass
 
-    @abstractproperty
-    def gateways(self):
-        """
-        Provides access to all Gateway related services, such as
-        Internet Gateways.
-
-        :rtype: :class:`.GatewayService`
-        :return: a Router service object
-        """
-        pass
-
 
 class NetworkService(PageableObjectMixin, CloudService):
 
@@ -687,6 +676,28 @@ class NetworkService(PageableObjectMixin, CloudService):
 
         :rtype: :class:`.SubnetService`
         :return: a SubnetService object
+        """
+        pass
+
+    @abstractproperty
+    def gateways(self):
+        """
+        Provides access to internet gateways associated with this network.
+
+        Example:
+
+        .. code-block:: python
+
+            # Print all gateways
+            for g in provider.networking.gateways:
+                print(g.id, g.name)
+
+            # Get a default gateway
+            g = network.gateways.get_or_create_inet_gateway('name')
+            print(g.id, g.name)
+
+        :rtype: :class:`.GatewayService`
+        :return: a GatewayService object
         """
         pass
 
@@ -860,53 +871,6 @@ class RouterService(PageableObjectMixin, CloudService):
 
         :type router: :class:`.Router` object or ``str``
         :param router: Router object or ID of the router to delete.
-        """
-        pass
-
-
-class GatewayService(CloudService):
-    """
-    Manage internet gateway resources.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def get_or_create_inet_gateway(self, network, name=None):
-        """
-        Creates new or returns an existing internet gateway for a network.
-
-        The returned gateway object can subsequently be attached to a router to
-        provide internet routing to a network.
-
-        :type network: :class:`.Network` object or ``str``
-        :param network: Network object or ID to which the gateway is attached.
-
-        :type  name: ``str``
-        :param name: The gateway name. This applies only if creating a gateway
-                     and if the provider supports it.
-
-        :rtype: ``object``  of :class:`.InternetGateway` or ``None``
-        :return: an InternetGateway object of ``None`` if not found.
-        """
-        pass
-
-    @abstractmethod
-    def delete(self, gateway):
-        """
-        Delete a gateway.
-
-        :type gateway: :class:`.Gateway` object
-        :param gateway: Gateway object to delete.
-        """
-        pass
-
-    @abstractmethod
-    def list(self, limit=None, marker=None):
-        """
-        List all available internet gateways.
-
-        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
-        :return: Current list of internet gateways.
         """
         pass
 

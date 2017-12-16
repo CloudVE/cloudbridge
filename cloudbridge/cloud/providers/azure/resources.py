@@ -12,8 +12,8 @@ from azure.mgmt.network.models import NetworkSecurityGroup
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
-    BaseFloatingIPContainer, BaseInstance, BaseInternetGateway, BaseKeyPair, \
-    BaseLaunchConfig, \
+    BaseFloatingIPContainer, BaseGatewayContainer, BaseInstance, \
+    BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, \
     BaseMachineImage, BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, \
     BaseSnapshot, BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, \
     BaseVMFirewallRuleContainer, BaseVMType, BaseVolume, ClientPagedResultList
@@ -859,6 +859,32 @@ class AzureMachineImage(BaseMachineImage):
             self._state = "unknown"
 
 
+class AzureGatewayContainer(BaseGatewayContainer):
+    def __init__(self, provider, network):
+        super(AzureGatewayContainer, self).__init__(provider, network)
+        # Azure doesn't have a notion of a route table or an internet
+        # gateway as OS and AWS so create placeholder objects of the
+        # AzureInternetGateway here.
+        # http://bit.ly/2BqGdVh
+        # Singleton returned by the list method
+        self.gateway_singleton = AzureInternetGateway(self._provider, None,
+                                                      network)
+
+    def get_or_create_inet_gateway(self, name=None):
+        if name:
+            AzureInternetGateway.assert_valid_resource_name(name)
+        gateway = AzureInternetGateway(self._provider, None, self._network)
+        if name:
+            gateway.name = name
+        return gateway
+
+    def list(self, limit=None, marker=None):
+        return [self.gateway_singleton]
+
+    def delete(self, gateway):
+        pass
+
+
 class AzureNetwork(BaseNetwork):
     NETWORK_STATE_MAP = {
         'InProgress': NetworkState.PENDING,
@@ -871,6 +897,7 @@ class AzureNetwork(BaseNetwork):
         self._state = self._network.provisioning_state
         if not self._network.tags:
             self._network.tags = {}
+        self._gateway_service = AzureGatewayContainer(provider, self)
 
     @property
     def id(self):
@@ -966,6 +993,10 @@ class AzureNetwork(BaseNetwork):
         """
         return self._provider.networking.subnets. \
             create(network=self.id, cidr_block=cidr_block, name=name)
+
+    @property
+    def gateways(self):
+        return self._gateway_service
 
 
 class AzureFloatingIPContainer(BaseFloatingIPContainer):
@@ -1732,7 +1763,6 @@ class AzureInternetGateway(BaseInternetGateway):
         super(AzureInternetGateway, self).__init__(provider)
         self._gateway = gateway
         self._name = None
-        self._network_id = None
         self._network_id = gateway_net.id if isinstance(
             gateway_net, AzureNetwork) else gateway_net
         self._state = ''
