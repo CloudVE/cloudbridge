@@ -679,28 +679,6 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         pass
 
-    @abstractproperty
-    def gateways(self):
-        """
-        Provides access to internet gateways associated with this network.
-
-        Example:
-
-        .. code-block:: python
-
-            # Print all gateways
-            for g in provider.networking.gateways:
-                print(g.id, g.name)
-
-            # Get a default gateway
-            g = network.gateways.get_or_create_inet_gateway('name')
-            print(g.id, g.name)
-
-        :rtype: :class:`.GatewayService`
-        :return: a GatewayService object
-        """
-        pass
-
 
 class SubnetService(PageableObjectMixin, CloudService):
 
