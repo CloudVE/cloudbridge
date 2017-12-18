@@ -22,7 +22,7 @@ from msrestazure.azure_exceptions import CloudError
 
 from . import helpers as azure_helpers
 from .resources import AzureBucket, \
-    AzureInstance, AzureInternetGateway, AzureKeyPair, \
+    AzureInstance, AzureKeyPair, \
     AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
     AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \
     AzureVMFirewall, AzureVMType, AzureVolume

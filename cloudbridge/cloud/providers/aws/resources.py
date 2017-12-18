@@ -1167,7 +1167,6 @@ class AWSGatewayContainer(BaseGatewayContainer):
         return self.svc.list(limit=None, marker=None)
 
 
-
 class AWSInternetGateway(BaseInternetGateway):
 
     def __init__(self, provider, gateway):

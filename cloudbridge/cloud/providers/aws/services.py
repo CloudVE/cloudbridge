@@ -38,7 +38,6 @@ from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
 from .resources import AWSBucket
 from .resources import AWSInstance
-from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
