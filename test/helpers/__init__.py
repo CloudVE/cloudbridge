@@ -142,8 +142,7 @@ def get_test_gateway(provider, name):
     net_name = 'cb_testgwnet-{0}'.format(get_uuid())
     net = provider.networking.networks.create(
         name=net_name, cidr_block='10.0.0.0/16')
-    return net, provider.networking.gateways.get_or_create_inet_gateway(
-        net, name)
+    return net, net.gateways.get_or_create_inet_gateway(name)
 
 
 def delete_test_gateway(network, gateway):
