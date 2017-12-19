@@ -1163,8 +1163,10 @@ class AWSGatewayContainer(BaseGatewayContainer):
             gateway.delete()
 
     def list(self, limit=None, marker=None):
-        log.debug("Listing current AWS internet gateways.")
-        return self.svc.list(limit=None, marker=None)
+        log.debug("Listing current AWS internet gateways for net %s.",
+                  self._network.id)
+        fltr = [{'Name': 'attachment.vpc-id', 'Values': [self._network.id]}]
+        return self.svc.list(limit=None, marker=None, Filters=fltr)
 
 
 class AWSInternetGateway(BaseInternetGateway):
