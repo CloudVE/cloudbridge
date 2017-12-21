@@ -298,22 +298,32 @@ class AWSInstance(BaseInstance):
         image.refresh()
         return image
 
+    def _get_fip(self, floating_ip):
+        """Get a floating IP object based on the supplied allocation ID."""
+        return AWSFloatingIP(
+            self._provider, list(self._provider.ec2_conn.vpc_addresses.filter(
+                AllocationIds=[floating_ip]))[0])
+
     def add_floating_ip(self, floating_ip):
+        fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
+               else self._get_fip(floating_ip))
         params = trim_empty_params({
             'InstanceId': self.id,
             'PublicIp': None if self._ec2_instance.vpc_id else
-            floating_ip.public_ip,
+            fip.public_ip,
             # pylint:disable=protected-access
-            'AllocationId': floating_ip._ip.allocation_id})
+            'AllocationId': fip._ip.allocation_id})
         self._provider.ec2_conn.meta.client.associate_address(**params)
         self.refresh()
 
     def remove_floating_ip(self, floating_ip):
+        fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
+               else self._get_fip(floating_ip))
         params = trim_empty_params({
             'PublicIp': None if self._ec2_instance.vpc_id else
-            floating_ip.public_ip,
+            fip.public_ip,
             # pylint:disable=protected-access
-            'AssociationId': floating_ip._ip.association_id})
+            'AssociationId': fip._ip.association_id})
         self._provider.ec2_conn.meta.client.disassociate_address(**params)
         self.refresh()
 

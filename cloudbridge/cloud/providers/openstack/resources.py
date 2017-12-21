@@ -398,19 +398,29 @@ class OpenStackInstance(BaseInstance):
         return OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
 
+    def _get_fip(self, floating_ip):
+        """Get a floating IP object based on the supplied ID."""
+        return OpenStackFloatingIP(
+            self._provider,
+            self._provider.os_conn.network.get_ip(floating_ip))
+
     def add_floating_ip(self, floating_ip):
         """
         Add a floating IP address to this instance.
         """
         log.debug("Adding floating IP adress: %s", floating_ip)
-        self._os_instance.add_floating_ip(floating_ip.public_ip)
+        fip = (floating_ip if isinstance(floating_ip, OpenStackFloatingIP)
+               else self._get_fip(floating_ip))
+        self._os_instance.add_floating_ip(fip.public_ip)
 
     def remove_floating_ip(self, floating_ip):
         """
         Remove a floating IP address from this instance.
         """
         log.debug("Removing floating IP adress: %s", floating_ip)
-        self._os_instance.remove_floating_ip(floating_ip.public_ip)
+        fip = (floating_ip if isinstance(floating_ip, OpenStackFloatingIP)
+               else self._get_fip(floating_ip))
+        self._os_instance.remove_floating_ip(fip.public_ip)
 
     def add_vm_firewall(self, firewall):
         """

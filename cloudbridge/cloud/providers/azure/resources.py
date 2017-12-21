@@ -1480,7 +1480,7 @@ class AzureInstance(BaseInstance):
         """
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
         nic.ip_configurations[0].public_ip_address = {
-            'id': floating_ip.id
+            'id': floating_ip
         }
         self._provider.azure_client.update_nic(self._nic_ids[0], nic)
 
@@ -1490,7 +1490,7 @@ class AzureInstance(BaseInstance):
         """
         nic = self._provider.azure_client.get_nic(self._nic_ids[0])
         for ip_config in nic.ip_configurations:
-            if ip_config.public_ip_address.id == floating_ip.id:
+            if ip_config.public_ip_address.id == floating_ip:
                 nic.ip_configurations[0].public_ip_address = None
                 self._provider.azure_client.update_nic(self._nic_ids[0],
                                                        nic)
