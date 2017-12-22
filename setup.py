@@ -48,6 +48,7 @@ REQS_DEV = ([
     'tox>=2.1.1',
     # 'moto>=1.1.11',  # until https://github.com/spulec/moto/issues/1396
     'sphinx>=1.3.1',
+    'pydevd',
     'flake8>=3.3.0',
     'flake8-import-order>=0.12'] + REQS_FULL
 )

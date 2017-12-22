@@ -1,2 +1,2 @@
-git+git://github.com/gvlproject/moto#egg=moto
+git+git://github.com/cloudve/moto@all_merged#egg=moto
 -e ".[dev]"
