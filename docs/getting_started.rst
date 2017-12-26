@@ -121,7 +121,7 @@ attaching an internet gateway to the subnet via a router.
     sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
     router = self.provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = self.provider.networking.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway(name)
     router.attach_gateway(gateway)
 
 

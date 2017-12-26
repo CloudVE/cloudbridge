@@ -892,11 +892,9 @@ class OpenStackSubnetService(BaseSubnetService):
             router = self.provider.networking.routers.create(
                 network=net, name=OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
             router.attach_subnet(sn)
-            gteway = (self.provider.networking.gateways
-                      .get_or_create_inet_gateway(
-                          net,
-                          OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
-                          ))
+            gteway = (net.gateways.get_or_create_inet_gateway(
+                        net,
+                        OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME))
             router.attach_gateway(gteway)
             return sn
         except NeutronClientException:

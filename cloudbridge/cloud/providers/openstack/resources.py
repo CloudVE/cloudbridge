@@ -956,8 +956,7 @@ class OpenStackFloatingIP(BaseFloatingIP):
     def refresh(self):
         net = self._provider.networking.networks.get(
             self._ip.floating_network_id)
-        gw = self._provider.networking.gateways.get_or_create_inet_gateway(
-            net)
+        gw = net.gateways.get_or_create_inet_gateway(net)
         fip = gw.floating_ips.get(self.id)
         # pylint:disable=protected-access
         self._ip = fip._ip
