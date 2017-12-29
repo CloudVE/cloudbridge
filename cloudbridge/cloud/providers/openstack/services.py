@@ -166,15 +166,6 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, results)
 
     def create(self, name, public_key_material=None):
-        """
-        Create a new key pair or raise an exception if one already exists.
-
-        :type name: str
-        :param name: The name of the key pair to be created.
-
-        :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A key pair instance or ``None`` if one was not be created.
-        """
         log.debug("Creating a new key pair with the name: %s", name)
         OpenStackKeyPair.assert_valid_resource_name(name)
 
@@ -185,10 +176,13 @@ class OpenStackKeyPairService(BaseKeyPairService):
                                                 public_key=public_key_material)
 
         if kp:
-            return OpenStackKeyPair(self.provider, kp)
-            kp.material = private_key
-        log.debug("Key Pair with the name %s already exists", name)
-        return None
+            cb_kp = OpenStackKeyPair(self.provider, kp)
+            cb_kp.material = private_key
+            return cb_kp
+        else:
+            log.debug("Key Pair with the name %s already exists", name)
+            found_kps = self.find(name=name)
+            return found_kps[0] if found_kps else None
 
 
 class OpenStackVMFirewallService(BaseVMFirewallService):
