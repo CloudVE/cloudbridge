@@ -532,7 +532,7 @@ class OpenStackRegionService(BaseRegionService):
 
     def get(self, region_id):
         log.debug("Getting OpenStack Region with the id: %s", region_id)
-        region = (r for r in self.list() if r.id == region_id)
+        region = (r for r in self if r.id == region_id)
         return next(region, None)
 
     def list(self, limit=None, marker=None):
@@ -846,7 +846,7 @@ class OpenStackSubnetService(BaseSubnetService):
         if network:
             network_id = (network.id if isinstance(network, OpenStackNetwork)
                           else network)
-            subnets = [subnet for subnet in self.list() if network_id ==
+            subnets = [subnet for subnet in self if network_id ==
                        subnet.network_id]
         else:
             subnets = [OpenStackSubnet(self.provider, subnet) for subnet in
@@ -900,7 +900,7 @@ class OpenStackSubnetService(BaseSubnetService):
                      else subnet)
         self.provider.neutron.delete_subnet(subnet_id)
         # Adhere to the interface docs
-        if subnet_id not in self.list():
+        if subnet_id not in self:
             return True
         return False
 
