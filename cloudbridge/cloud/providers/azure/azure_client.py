@@ -12,7 +12,14 @@ from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
 from azure.storage.table import TableService
 
+from . import helpers as azure_helpers
+
 log = logging.getLogger(__name__)
+
+PUBLIC_IP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups' \
+                        '/{resourceGroupName}/providers/Microsoft.Network' \
+                        '/publicIPAddresses/{publicIpAddressName}'
+PUBLIC_IP_NAME = 'publicIpAddressName'
 
 
 class AzureClient(object):
@@ -275,10 +282,17 @@ class AzureClient(object):
                              public_ip_name,
                              public_ip_parameters).result()
 
-    def delete_floating_ip(self, public_ip_address_name):
-        return self.network_management_client.public_ip_addresses. \
-            delete(self.resource_group,
-                   public_ip_address_name).result()
+    def get_floating_ip(self, name):
+        return self.network_management_client. \
+            public_ip_addresses.get(self.resource_group, name)
+
+    def delete_floating_ip(self, public_ip_id):
+        url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
+                                             public_ip_id)
+        public_ip_name = url_params.get(PUBLIC_IP_NAME)
+        self.network_management_client. \
+            public_ip_addresses.delete(self.resource_group,
+                                       public_ip_name).wait()
 
     def list_floating_ips(self):
         return self.network_management_client.public_ip_addresses.list(
@@ -456,15 +470,6 @@ class AzureClient(object):
 
     def create_nic(self, nic_name, params):
         return self.update_nic(nic_name, params)
-
-    def get_public_ip(self, name):
-        return self.network_management_client. \
-            public_ip_addresses.get(self.resource_group, name)
-
-    def delete_public_ip(self, public_ip_name):
-        self.network_management_client. \
-            public_ip_addresses.delete(self.resource_group,
-                                       public_ip_name).wait()
 
     def create_public_key(self, entity):
         return self.table_service. \

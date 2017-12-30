@@ -34,9 +34,6 @@ NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
                                 'resourceGroups/{resourceGroupName}' \
                                 '/providers/Microsoft.Network/' \
                                 'networkInterfaces/{networkInterfaceName}'
-PUBLIC_IP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups' \
-                        '/{resourceGroupName}/providers/Microsoft.Network' \
-                        '/publicIPAddresses/{publicIpAddressName}'
 SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                      '{resourceGroupName}/providers/Microsoft.Network' \
                      '/virtualNetworks/{virtualNetworkName}/subnets' \
@@ -61,7 +58,6 @@ INSTANCE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
 
 NETWORK_NAME = 'virtualNetworkName'
 NETWORK_INTERFACE_NAME = 'networkInterfaceName'
-PUBLIC_IP_NAME = 'publicIpAddressName'
 IMAGE_NAME = 'imageName'
 VM_NAME = 'vmName'
 VOLUME_NAME = 'diskName'
@@ -1008,7 +1004,7 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
     def get(self, fip_id):
         log.debug("Getting Azure Floating IP container with the id: %s",
                   fip_id)
-        fip = [fip for fip in self.list() if fip.id == fip_id]
+        fip = [fip for fip in self if fip.id == fip_id]
         return fip[0] if fip else None
 
     def list(self, limit=None, marker=None):
@@ -1063,12 +1059,7 @@ class AzureFloatingIP(BaseFloatingIP):
         """
         Delete an existing floating ip.
         """
-        try:
-            self._provider.azure_client.delete_floating_ip(self.id)
-            return True
-        except CloudError as cloud_error:
-            log.exception(cloud_error.message)
-            return False
+        self._provider.azure_client.delete_floating_ip(self.id)
 
     def refresh(self):
         net = self._provider.networking.networks.get(self._network_id)
@@ -1277,13 +1268,10 @@ class AzureInstance(BaseInstance):
                 for ip_config in nic.ip_configurations:
                     self._private_ips.append(ip_config.private_ip_address)
                     if ip_config.public_ip_address:
-                        url_params = azure_helpers.\
-                            parse_url(PUBLIC_IP_RESOURCE_ID,
-                                      ip_config.public_ip_address.id)
-                        public_ip_name = url_params.get(PUBLIC_IP_NAME)
                         public_ip = self._provider.azure_client.\
-                            get_public_ip(public_ip_name)
-                        self._public_ip_ids.append(public_ip_name)
+                            get_floating_ip(ip_config.public_ip_address.id)
+                        self._public_ip_ids.append(
+                            ip_config.public_ip_address.id)
                         self._public_ips.append(public_ip.ip_address)
 
     @property
@@ -1365,7 +1353,7 @@ class AzureInstance(BaseInstance):
         for nic_id in self._nic_ids:
             self._provider.azure_client.delete_nic(nic_id)
         for public_ip_id in self._public_ip_ids:
-            self._provider.azure_client.delete_public_ip(public_ip_id)
+            self._provider.azure_client.delete_floating_ip(public_ip_id)
         for data_disk in self._vm.storage_profile.data_disks:
             if data_disk.managed_disk:
                 disk_params = azure_helpers.\

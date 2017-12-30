@@ -98,6 +98,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                            "cb_crudsubnet", create_subnet, cleanup_subnet)
 
     def test_crud_floating_ip(self):
+        net, gw = helpers.get_test_gateway(
+            self.provider, 'cb_crudfipgw-{0}'.format(helpers.get_uuid()))
 
         def create_fip(name):
             fip = gw.floating_ips.create()
@@ -106,8 +108,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         def cleanup_fip(fip):
             gw.floating_ips.delete(fip.id)
 
-        net, gw = helpers.get_test_gateway(
-            self.provider, 'cb_crudfipgw-{0}'.format(helpers.get_uuid()))
         with helpers.cleanup_action(
                 lambda: helpers.delete_test_gateway(net, gw)):
             sit.check_crud(self, gw.floating_ips, FloatingIP,
