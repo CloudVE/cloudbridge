@@ -69,3 +69,12 @@ class InvalidValueException(CloudBridgeBaseException):
         super(InvalidValueException, self).__init__(
             "Param %s has been given an unrecognised value %s" %
             (param, value))
+
+
+class DuplicateResourceException(CloudBridgeBaseException):
+    """
+    Marker interface for any attempt to create a CloudBridge resource that
+    already exists. For example, creating a KeyPair with the same name will
+    result in a DuplicateResourceException.
+    """
+    pass

@@ -14,7 +14,8 @@ from cloudbridge.cloud.base.services import BaseBucketService, \
     BaseRouterService, BaseSecurityService, BaseSnapshotService, \
     BaseStorageService, BaseSubnetService, BaseVMFirewallService, \
     BaseVMTypeService, BaseVolumeService
-from cloudbridge.cloud.interfaces import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import \
+    DuplicateResourceException, InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
 
@@ -175,7 +176,7 @@ class AzureKeyPairService(BaseKeyPairService):
         key_pair = self.get(name)
 
         if key_pair:
-            raise Exception(
+            raise DuplicateResourceException(
                 'Keypair already exists with name {0}'.format(name))
 
         private_key = None
@@ -467,8 +468,14 @@ class AzureInstanceService(BaseInstanceService):
             # but useless. However, this will allow an instance to be launched
             # without specifying a keypair, so users may still be able to login
             # if they have a preinstalled keypair/password baked into the image
-            key_pair = self.provider.security.key_pairs.create(
-                name="cloudbridge_temp_key_pair")
+            default_kp_name = "cb_default_key_pair"
+            default_kp = self.provider.security.key_pairs.find(
+                name=default_kp_name)
+            if default_kp:
+                return default_kp[0]
+            else:
+                key_pair = self.provider.security.key_pairs.create(
+                    name=default_kp_name)
             temp_key_pair = key_pair
 
         image = (self.provider.compute.images.get(image)

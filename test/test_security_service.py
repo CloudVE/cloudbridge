@@ -4,6 +4,7 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
@@ -23,7 +24,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         def extra_tests(kp):
             # Recreating existing keypair should raise an exception
-            with self.assertRaises(Exception):
+            with self.assertRaises(DuplicateResourceException):
                 self.provider.security.key_pairs.create(name=kp.name)
 
         sit.check_crud(self, self.provider.security.key_pairs, KeyPair,

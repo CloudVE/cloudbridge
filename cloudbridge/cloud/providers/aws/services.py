@@ -23,7 +23,7 @@ from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
-    import InvalidConfigurationException
+    import DuplicateResourceException, InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -103,10 +103,17 @@ class AWSKeyPairService(BaseKeyPairService):
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()
-        kp = self.svc.create('import_key_pair', KeyName=name,
-                             PublicKeyMaterial=public_key_material)
-        kp.material = private_key
-        return kp
+        try:
+            kp = self.svc.create('import_key_pair', KeyName=name,
+                                 PublicKeyMaterial=public_key_material)
+            kp.material = private_key
+            return kp
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'InvalidKeyPair.Duplicate':
+                raise DuplicateResourceException(
+                    'Keypair already exists with name {0}'.format(name))
+            else:
+                raise e
 
 
 class AWSVMFirewallService(BaseVMFirewallService):

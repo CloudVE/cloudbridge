@@ -26,6 +26,8 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.exceptions \
+    import DuplicateResourceException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -169,20 +171,20 @@ class OpenStackKeyPairService(BaseKeyPairService):
         log.debug("Creating a new key pair with the name: %s", name)
         OpenStackKeyPair.assert_valid_resource_name(name)
 
+        existing_kp = self.find(name=name)
+        if existing_kp:
+            raise DuplicateResourceException(
+                'Keypair already exists with name {0}'.format(name))
+
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()
+
         kp = self.provider.nova.keypairs.create(name,
                                                 public_key=public_key_material)
-
-        if kp:
-            cb_kp = OpenStackKeyPair(self.provider, kp)
-            cb_kp.material = private_key
-            return cb_kp
-        else:
-            log.debug("Key Pair with the name %s already exists", name)
-            found_kps = self.find(name=name)
-            return found_kps[0] if found_kps else None
+        cb_kp = OpenStackKeyPair(self.provider, kp)
+        cb_kp.material = private_key
+        return cb_kp
 
 
 class OpenStackVMFirewallService(BaseVMFirewallService):
