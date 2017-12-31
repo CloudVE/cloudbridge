@@ -3,7 +3,6 @@ DataTypes used by this provider
 """
 import collections
 import logging
-import time
 import uuid
 
 from azure.common import AzureException
@@ -30,10 +29,6 @@ from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
-NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
-                                'resourceGroups/{resourceGroupName}' \
-                                '/providers/Microsoft.Network/' \
-                                'networkInterfaces/{networkInterfaceName}'
 SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                      '{resourceGroupName}/providers/Microsoft.Network' \
                      '/virtualNetworks/{virtualNetworkName}/subnets' \
@@ -41,11 +36,6 @@ SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
 VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                      '{resourceGroupName}/providers/Microsoft.Compute/' \
                      'disks/{diskName}'
-VM_FIREWALL_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
-                             'resourceGroups/{resourceGroupName}/' \
-                             'providers/Microsoft.Network/' \
-                             'networkSecurityGroups/' \
-                             '{networkSecurityGroupName}'
 SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                        '{resourceGroupName}/providers/Microsoft.Compute/' \
                        'snapshots/{snapshotName}'
@@ -57,11 +47,9 @@ INSTANCE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                        'virtualMachines/{vmName}'
 
 NETWORK_NAME = 'virtualNetworkName'
-NETWORK_INTERFACE_NAME = 'networkInterfaceName'
 IMAGE_NAME = 'imageName'
 VM_NAME = 'vmName'
 VOLUME_NAME = 'diskName'
-VM_FIREWALL_NAME = 'networkSecurityGroupName'
 SNAPSHOT_NAME = 'snapshotName'
 
 
@@ -83,7 +71,7 @@ class AzureVMFirewall(BaseVMFirewall):
 
     @property
     def id(self):
-        return self._vm_firewall.name
+        return self._vm_firewall.id
 
     @property
     def name(self):
@@ -1237,42 +1225,24 @@ class AzureInstance(BaseInstance):
         super(AzureInstance, self).__init__(provider)
         self._vm = vm_instance
         self._update_state()
-        self._get_network_attributes()
         if not self._vm.tags:
             self._vm.tags = {}
 
-    def _get_network_attributes(self):
-        """
-        This method used identify the public , private ip addresses
-        and security groups associated with network interfaces.
-        :return:
-        """
-        self._private_ips = []
-        self._public_ips = []
-        self._vm_firewall_ids = []
-        self._public_ip_ids = []
-        self._nic_ids = []
-        for nic in self._vm.network_profile.network_interfaces:
-            nic_params = azure_helpers.\
-                parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic.id)
-            nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
-            self._nic_ids.append(nic_name)
-            nic = self._provider.azure_client.get_nic(nic_name)
-            if nic.network_security_group:
-                fw_params = azure_helpers. \
-                    parse_url(VM_FIREWALL_RESOURCE_ID,
-                              nic.network_security_group.id)
-                self._vm_firewall_ids.\
-                    append(fw_params.get(VM_FIREWALL_NAME))
-            if nic.ip_configurations:
-                for ip_config in nic.ip_configurations:
-                    self._private_ips.append(ip_config.private_ip_address)
-                    if ip_config.public_ip_address:
-                        public_ip = self._provider.azure_client.\
-                            get_floating_ip(ip_config.public_ip_address.id)
-                        self._public_ip_ids.append(
-                            ip_config.public_ip_address.id)
-                        self._public_ips.append(public_ip.ip_address)
+    @property
+    def _nic_ids(self):
+        return (nic.id for nic in self._vm.network_profile.network_interfaces)
+
+    @property
+    def _nics(self):
+        return (self._provider.azure_client.get_nic(nic_id)
+                for nic_id in self._nic_ids)
+
+    @property
+    def _public_ip_ids(self):
+        return (ip_config.public_ip_address
+                for nic in self._nics
+                for ip_config in nic.ip_configurations
+                if nic.ip_configurations and ip_config.public_ip_address)
 
     @property
     def id(self):
@@ -1310,14 +1280,18 @@ class AzureInstance(BaseInstance):
         """
         Get all the public IP addresses for this instance.
         """
-        return self._public_ips
+        return [self._provider.azure_client.get_floating_ip(pip).ip_address
+                for pip in self._public_ip_ids]
 
     @property
     def private_ips(self):
         """
         Get all the private IP addresses for this instance.
         """
-        return self._private_ips
+        return [ip_config.private_ip_address
+                for nic in self._nics
+                for ip_config in nic.ip_configurations
+                if nic.ip_configurations and ip_config.private_ip_address]
 
     @property
     def vm_type_id(self):
@@ -1350,10 +1324,10 @@ class AzureInstance(BaseInstance):
         """
         self._provider.azure_client.deallocate_vm(self.id)
         self._provider.azure_client.delete_vm(self.id)
-        for nic_id in self._nic_ids:
-            self._provider.azure_client.delete_nic(nic_id)
         for public_ip_id in self._public_ip_ids:
             self._provider.azure_client.delete_floating_ip(public_ip_id)
+        for nic_id in self._nic_ids:
+            self._provider.azure_client.delete_nic(nic_id)
         for data_disk in self._vm.storage_profile.data_disks:
             if data_disk.managed_disk:
                 disk_params = azure_helpers.\
@@ -1396,11 +1370,13 @@ class AzureInstance(BaseInstance):
     @property
     def vm_firewalls(self):
         return [self._provider.security.vm_firewalls.get(group_id)
-                for group_id in self._vm_firewall_ids]
+                for group_id in self.vm_firewall_ids]
 
     @property
     def vm_firewall_ids(self):
-        return self._vm_firewall_ids
+        return [nic.network_security_group.id
+                for nic in self._nics
+                if nic.network_security_group]
 
     @property
     def key_pair_name(self):
@@ -1411,16 +1387,15 @@ class AzureInstance(BaseInstance):
 
     def create_image(self, name, private_key_path=None):
         """
-        Create a new image based on this instance.
-        Documentation for create image available at
-        https://docs.microsoft.com/en-us/azure/virtual-machines/linux/capture-image  # noqa
-        In azure, need to deprovision the VM before capturing.
-        To deprovision, login to VM and execute waagent deprovision command.
-        To do this programmatically, using pysftp to ssh into the VM
-        and executing deprovision command.
-        To SSH into the VM programmatically, need pass private key file path,
-        so we have modified the Cloud Bridge interface to pass
-        the private key file path
+        Create a new image based on this instance. Documentation for create
+        image available at https://docs.microsoft.com/en-us/azure/virtual-ma
+        chines/linux/capture-image. In azure, we need to deprovision the VM
+        before capturing.
+        To deprovision, login to the VM and execute the `waagent deprovision`
+        command. To do this programmatically, use pysftp to ssh into the VM
+        and executing deprovision command. To SSH into the VM programmatically
+        however, we need to pass private key file path, so we have modified the
+        CloudBridge interface to pass the private key file path
         """
 
         self.assert_valid_resource_name(name)
@@ -1428,8 +1403,6 @@ class AzureInstance(BaseInstance):
         if not self._state == 'VM generalized':
             if not self._state == 'VM running':
                 self._provider.azure_client.start_vm(self.id)
-                time.sleep(10)  # Some time is required
-                self._get_network_attributes()
 
             # if private_key_path:
             self._deprovision(private_key_path)
@@ -1466,22 +1439,25 @@ class AzureInstance(BaseInstance):
         """
         Attaches public ip to the instance.
         """
-        nic = self._provider.azure_client.get_nic(self._nic_ids[0])
+        floating_ip_id = floating_ip.id if isinstance(
+            floating_ip, AzureFloatingIP) else floating_ip
+        nic = next(self._nics)
         nic.ip_configurations[0].public_ip_address = {
-            'id': floating_ip
+            'id': floating_ip_id
         }
-        self._provider.azure_client.update_nic(self._nic_ids[0], nic)
+        self._provider.azure_client.update_nic(nic.id, nic)
 
     def remove_floating_ip(self, floating_ip):
         """
         Remove a public IP address from this instance.
         """
-        nic = self._provider.azure_client.get_nic(self._nic_ids[0])
+        floating_ip_id = floating_ip.id if isinstance(
+            floating_ip, AzureFloatingIP) else floating_ip
+        nic = next(self._nics)
         for ip_config in nic.ip_configurations:
-            if ip_config.public_ip_address.id == floating_ip:
+            if ip_config.public_ip_address.id == floating_ip_id:
                 nic.ip_configurations[0].public_ip_address = None
-                self._provider.azure_client.update_nic(self._nic_ids[0],
-                                                       nic)
+                self._provider.azure_client.update_nic(nic.id, nic)
 
     def add_vm_firewall(self, fw):
         '''
@@ -1497,17 +1473,13 @@ class AzureInstance(BaseInstance):
         '''
         fw = (self._provider.security.vm_firewalls.get(fw)
               if isinstance(fw, str) else fw)
-        nic = self._provider.azure_client.get_nic(self._nic_ids[0])
+        nic = next(self._nics)
         if not nic.network_security_group:
             nic.network_security_group = NetworkSecurityGroup()
             nic.network_security_group.id = fw.resource_id
         else:
-            fw_url_params = azure_helpers.\
-                parse_url(VM_FIREWALL_RESOURCE_ID,
-                          nic.network_security_group.id)
             existing_fw = self._provider.security.\
-                vm_firewalls.get(fw_url_params.get(VM_FIREWALL_NAME))
-
+                vm_firewalls.get(nic.network_security_group.id)
             new_fw = self._provider.security.vm_firewalls.\
                 create('{0}-{1}'.format(fw.name, existing_fw.name),
                        'Merged security groups {0} and {1}'.
@@ -1516,7 +1488,7 @@ class AzureInstance(BaseInstance):
             new_fw.add_rule(src_dest_fw=existing_fw)
             nic.network_security_group.id = new_fw.resource_id
 
-        self._provider.azure_client.create_nic(self._nic_ids[0], nic)
+        self._provider.azure_client.update_nic(nic.id, nic)
 
     def remove_vm_firewall(self, fw):
 
@@ -1532,13 +1504,13 @@ class AzureInstance(BaseInstance):
         else we are ignoring.
         '''
 
-        nic = self._provider.azure_client.get_nic(self._nic_ids[0])
+        nic = next(self._nics)
         fw = (self._provider.security.vm_firewalls.get(fw)
               if isinstance(fw, str) else fw)
         if nic.network_security_group and \
                 nic.network_security_group.id == fw.resource_id:
             nic.network_security_group = None
-            self._provider.azure_client.create_nic(self._nic_ids[0], nic)
+            self._provider.azure_client.update_nic(nic.id, nic)
 
     def _update_state(self):
         """
@@ -1573,7 +1545,6 @@ class AzureInstance(BaseInstance):
             if not self._vm.tags:
                 self._vm.tags = {}
             self._update_state()
-            self._get_network_attributes()
         except (CloudError, ValueError) as cloudError:
             log.exception(cloudError.message)
             # The volume no longer exists and cannot be refreshed.

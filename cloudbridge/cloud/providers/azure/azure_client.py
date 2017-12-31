@@ -16,10 +16,22 @@ from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
+NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
+                                'resourceGroups/{resourceGroupName}' \
+                                '/providers/Microsoft.Network/' \
+                                'networkInterfaces/{networkInterfaceName}'
 PUBLIC_IP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups' \
                         '/{resourceGroupName}/providers/Microsoft.Network' \
                         '/publicIPAddresses/{publicIpAddressName}'
+VM_FIREWALL_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
+                             'resourceGroups/{resourceGroupName}/' \
+                             'providers/Microsoft.Network/' \
+                             'networkSecurityGroups/' \
+                             '{networkSecurityGroupName}'
+
+NETWORK_INTERFACE_NAME = 'networkInterfaceName'
 PUBLIC_IP_NAME = 'publicIpAddressName'
+VM_FIREWALL_NAME = 'networkSecurityGroupName'
 
 
 class AzureClient(object):
@@ -170,9 +182,12 @@ class AzureClient(object):
         return self.network_management_client.security_rules. \
             delete(self.resource_group, vm_firewall, name).result()
 
-    def get_vm_firewall(self, name):
+    def get_vm_firewall(self, fw_id):
+        url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
+                                             fw_id)
+        fw_name = url_params.get(VM_FIREWALL_NAME)
         return self.network_management_client.network_security_groups. \
-            get(self.resource_group, name)
+            get(self.resource_group, fw_name)
 
     def delete_vm_firewall(self, name):
         delete_async = self.network_management_client \
@@ -282,9 +297,12 @@ class AzureClient(object):
                              public_ip_name,
                              public_ip_parameters).result()
 
-    def get_floating_ip(self, name):
+    def get_floating_ip(self, public_ip_id):
+        url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
+                                             public_ip_id)
+        public_ip_name = url_params.get(PUBLIC_IP_NAME)
         return self.network_management_client. \
-            public_ip_addresses.get(self.resource_group, name)
+            public_ip_addresses.get(self.resource_group, public_ip_name)
 
     def delete_floating_ip(self, public_ip_id):
         url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
@@ -449,16 +467,25 @@ class AzureClient(object):
             create_or_update(self.resource_group,
                              vm_name, tags).result()
 
-    def delete_nic(self, nic_name):
+    def delete_nic(self, nic_id):
+        nic_params = azure_helpers.\
+            parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+        nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
         self.network_management_client. \
             network_interfaces.delete(self.resource_group,
                                       nic_name).wait()
 
-    def get_nic(self, name):
+    def get_nic(self, nic_id):
+        nic_params = azure_helpers.\
+            parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+        nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
         return self.network_management_client. \
-            network_interfaces.get(self.resource_group, name)
+            network_interfaces.get(self.resource_group, nic_name)
 
-    def update_nic(self, nic_name, params):
+    def update_nic(self, nic_id, params):
+        nic_params = azure_helpers.\
+            parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+        nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
         async_nic_creation = self.network_management_client. \
             network_interfaces.create_or_update(
                 self.resource_group,
@@ -469,7 +496,12 @@ class AzureClient(object):
         return nic_info
 
     def create_nic(self, nic_name, params):
-        return self.update_nic(nic_name, params)
+        return self.network_management_client. \
+            network_interfaces.create_or_update(
+                self.resource_group,
+                nic_name,
+                params
+            ).result()
 
     def create_public_key(self, entity):
         return self.table_service. \

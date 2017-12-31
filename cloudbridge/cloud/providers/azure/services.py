@@ -472,11 +472,11 @@ class AzureInstanceService(BaseInstanceService):
             default_kp = self.provider.security.key_pairs.find(
                 name=default_kp_name)
             if default_kp:
-                return default_kp[0]
+                key_pair = default_kp[0]
             else:
                 key_pair = self.provider.security.key_pairs.create(
                     name=default_kp_name)
-            temp_key_pair = key_pair
+                temp_key_pair = key_pair
 
         image = (self.provider.compute.images.get(image)
                  if isinstance(image, str) else image)
