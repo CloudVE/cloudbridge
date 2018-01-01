@@ -33,24 +33,8 @@ SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                      '{resourceGroupName}/providers/Microsoft.Network' \
                      '/virtualNetworks/{virtualNetworkName}/subnets' \
                      '/{subnetName}'
-VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                     '{resourceGroupName}/providers/Microsoft.Compute/' \
-                     'disks/{diskName}'
-SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                       '{resourceGroupName}/providers/Microsoft.Compute/' \
-                       'snapshots/{snapshotName}'
-IMAGE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                    '{resourceGroupName}/providers/Microsoft.Compute/' \
-                    'images/{imageName}'
-INSTANCE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                       '{resourceGroupName}/providers/Microsoft.Compute/' \
-                       'virtualMachines/{vmName}'
 
 NETWORK_NAME = 'virtualNetworkName'
-IMAGE_NAME = 'imageName'
-VM_NAME = 'vmName'
-VOLUME_NAME = 'diskName'
-SNAPSHOT_NAME = 'snapshotName'
 
 
 class AzureVMFirewall(BaseVMFirewall):
@@ -101,13 +85,7 @@ class AzureVMFirewall(BaseVMFirewall):
         return self._rule_container
 
     def delete(self):
-        try:
-            self._provider.azure_client.\
-                delete_vm_firewall(self.id)
-            return True
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+        self._provider.azure_client.delete_vm_firewall(self.id)
 
     def refresh(self):
         """
@@ -334,13 +312,8 @@ class AzureBucketObject(BaseBucketObject):
         :rtype: bool
         :return: True if successful
         """
-        try:
-            self._provider.azure_client.delete_blob(
-                self._container.name, self.name)
-            return True
-        except AzureException as azureEx:
-            log.exception(azureEx)
-            return False
+        self._provider.azure_client.delete_blob(self._container.name,
+                                                self.name)
 
     def generate_url(self, expires_in=0):
         """
@@ -458,7 +431,7 @@ class AzureVolume(BaseVolume):
 
     @property
     def id(self):
-        return self._volume.name
+        return self._volume.id
 
     @property
     def resource_id(self):
@@ -515,13 +488,7 @@ class AzureVolume(BaseVolume):
 
     @property
     def source(self):
-        if self._volume.creation_data.source_uri:
-            url_params = azure_helpers.\
-                parse_url(SNAPSHOT_RESOURCE_ID,
-                          self._volume.creation_data.source_uri)
-            return self._provider.storage.snapshots. \
-                get(url_params.get(SNAPSHOT_NAME))
-        return None
+        return self._volume.creation_data.source_uri
 
     @property
     def attachments(self):
@@ -534,11 +501,7 @@ class AzureVolume(BaseVolume):
         :return:
         """
         if self._volume.managed_by:
-            url_params = azure_helpers.parse_url(INSTANCE_RESOURCE_ID,
-                                                 self._volume.managed_by)
-            return BaseAttachmentInfo(self,
-                                      url_params.get(VM_NAME),
-                                      None)
+            return BaseAttachmentInfo(self, self._volume.managed_by, None)
         else:
             return None
 
@@ -570,7 +533,7 @@ class AzureVolume(BaseVolume):
                 if item.managed_disk and \
                                 item.managed_disk.id == self.resource_id:
                     vm.storage_profile.data_disks.remove(item)
-                    self._provider.azure_client.update_vm(vm.name, vm)
+                    self._provider.azure_client.update_vm(vm.id, vm)
 
     def create_snapshot(self, name, description=None):
         """
@@ -626,7 +589,7 @@ class AzureSnapshot(BaseSnapshot):
 
     @property
     def id(self):
-        return self._snapshot.name
+        return self._snapshot.id
 
     @property
     def resource_id(self):
@@ -670,10 +633,7 @@ class AzureSnapshot(BaseSnapshot):
 
     @property
     def volume_id(self):
-        url_params = azure_helpers.\
-            parse_url(VOLUME_RESOURCE_ID,
-                      self._snapshot.creation_data.source_resource_id)
-        return url_params.get(VOLUME_NAME)
+        return self._snapshot.creation_data.source_resource_id
 
     @property
     def create_time(self):
@@ -738,7 +698,7 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        return self._image.name
+        return self._image.id
 
     @property
     def resource_id(self):
@@ -813,8 +773,7 @@ class AzureMachineImage(BaseMachineImage):
         for its latest state.
         """
         try:
-            self._image = self._provider.azure_client\
-                .get_image(self.id)
+            self._image = self._provider.azure_client.get_image(self.id)
             self._state = self._image.provisioning_state
         except CloudError as cloudError:
             log.exception(cloudError.message)
@@ -1217,7 +1176,7 @@ class AzureInstance(BaseInstance):
         """
         Get the instance identifier.
         """
-        return self._vm.name
+        return self._vm.id
 
     @property
     def resource_id(self):
@@ -1298,35 +1257,23 @@ class AzureInstance(BaseInstance):
             self._provider.azure_client.delete_nic(nic_id)
         for data_disk in self._vm.storage_profile.data_disks:
             if data_disk.managed_disk:
-                disk_params = azure_helpers.\
-                    parse_url(VOLUME_RESOURCE_ID,
-                              data_disk.managed_disk.id)
                 disk = self._provider.azure_client.\
-                    get_disk(disk_params.get(VOLUME_NAME))
+                    get_disk(data_disk.managed_disk.id)
                 if disk and disk.tags \
                         and disk.tags.get('delete_on_terminate',
                                           'False') == 'True':
                     self._provider.azure_client.\
-                        delete_disk(disk_params.get(VOLUME_NAME))
+                        delete_disk(data_disk.managed_disk.id)
         if self._vm.storage_profile.os_disk.managed_disk:
-            disk_params = azure_helpers. \
-                parse_url(VOLUME_RESOURCE_ID,
-                          self._vm.storage_profile.os_disk.managed_disk.id)
             self._provider.azure_client. \
-                delete_disk(disk_params.get(VOLUME_NAME))
+                delete_disk(self._vm.storage_profile.os_disk.managed_disk.id)
 
     @property
     def image_id(self):
         """
         Get the image ID for this insance.
         """
-        image_ref_id = self._vm.storage_profile.image_reference.id
-        if image_ref_id:
-            url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
-                                                 image_ref_id)
-            return url_params.get(IMAGE_NAME)
-        else:
-            return None
+        return self._vm.storage_profile.image_reference.id
 
     @property
     def zone_id(self):
@@ -1650,8 +1597,7 @@ class AzureRouter(BaseRouter):
         return None
 
     def delete(self):
-        self._provider.azure_client. \
-            delete_route_table(self.name)
+        self._provider.azure_client.delete_route_table(self.name)
 
     def attach_subnet(self, subnet):
         subnet_id_parts = subnet.id.split('|$|')

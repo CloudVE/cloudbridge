@@ -16,6 +16,9 @@ from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
+IMAGE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                    '{resourceGroupName}/providers/Microsoft.Compute/' \
+                    'images/{imageName}'
 NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
                                 'resourceGroups/{resourceGroupName}' \
                                 '/providers/Microsoft.Network/' \
@@ -23,15 +26,28 @@ NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
 PUBLIC_IP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups' \
                         '/{resourceGroupName}/providers/Microsoft.Network' \
                         '/publicIPAddresses/{publicIpAddressName}'
+SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                       '{resourceGroupName}/providers/Microsoft.Compute/' \
+                       'snapshots/{snapshotName}'
+VM_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                       '{resourceGroupName}/providers/Microsoft.Compute/' \
+                       'virtualMachines/{vmName}'
 VM_FIREWALL_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
                              'resourceGroups/{resourceGroupName}/' \
                              'providers/Microsoft.Network/' \
                              'networkSecurityGroups/' \
                              '{networkSecurityGroupName}'
+VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+                     '{resourceGroupName}/providers/Microsoft.Compute/' \
+                     'disks/{diskName}'
 
+IMAGE_NAME = 'imageName'
 NETWORK_INTERFACE_NAME = 'networkInterfaceName'
 PUBLIC_IP_NAME = 'publicIpAddressName'
+SNAPSHOT_NAME = 'snapshotName'
+VM_NAME = 'vmName'
 VM_FIREWALL_NAME = 'networkSecurityGroupName'
+VOLUME_NAME = 'diskName'
 
 
 class AzureClient(object):
@@ -256,11 +272,26 @@ class AzureClient(object):
             raw=True
         )
 
-    def list_snapshots(self):
-        return self.compute_client.snapshots. \
+    def get_disk(self, disk_id):
+        url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
+                                             disk_id)
+        disk_name = url_params.get(VOLUME_NAME)
+        return self.compute_client.disks.get(self.resource_group, disk_name)
+
+    def list_disks(self):
+        return self.compute_client.disks. \
             list_by_resource_group(self.resource_group)
 
-    def update_disk_tags(self, disk_name, tags):
+    def delete_disk(self, disk_id):
+        url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
+                                             disk_id)
+        disk_name = url_params.get(VOLUME_NAME)
+        self.compute_client.disks.delete(self.resource_group, disk_name).wait()
+
+    def update_disk_tags(self, disk_id, tags):
+        url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
+                                             disk_id)
+        disk_name = url_params.get(VOLUME_NAME)
         return self.compute_client.disks.update(
             self.resource_group,
             disk_name,
@@ -268,9 +299,78 @@ class AzureClient(object):
             raw=True
         )
 
-    def get_disk(self, disk_name):
-        return self.compute_client.disks. \
-            get(self.resource_group, disk_name)
+    def list_snapshots(self):
+        return self.compute_client.snapshots. \
+            list_by_resource_group(self.resource_group)
+
+    def get_snapshot(self, snapshot_id):
+        url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
+                                             snapshot_id)
+        snapshot_name = url_params.get(SNAPSHOT_NAME)
+        return self.compute_client.snapshots.get(self.resource_group,
+                                                 snapshot_name)
+
+    def create_snapshot(self, snapshot_name, params):
+        return self.compute_client.snapshots.create_or_update(
+            self.resource_group,
+            snapshot_name,
+            params,
+            raw=True
+        )
+
+    def delete_snapshot(self, snapshot_id):
+        url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
+                                             snapshot_id)
+        snapshot_name = url_params.get(SNAPSHOT_NAME)
+        self.compute_client.snapshots.delete(self.resource_group,
+                                             snapshot_name).wait()
+
+    def update_snapshot_tags(self, snapshot_id, tags):
+        url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
+                                             snapshot_id)
+        snapshot_name = url_params.get(SNAPSHOT_NAME)
+        return self.compute_client.snapshots.update(
+            self.resource_group,
+            snapshot_name,
+            {'tags': tags},
+            raw=True
+        )
+
+    def create_image(self, name, params):
+        return self.compute_client.images. \
+            create_or_update(self.resource_group, name,
+                             params, raw=True)
+
+    def delete_image(self, image_id):
+        url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
+                                             image_id)
+        name = url_params.get(IMAGE_NAME)
+        self.compute_client.images.delete(self.resource_group, name).wait()
+
+    def list_images(self):
+        return self.compute_client.images. \
+            list_by_resource_group(self.resource_group)
+
+    def get_image(self, image_id):
+        url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
+                                             image_id)
+        name = url_params.get(IMAGE_NAME)
+        return self.compute_client.images.get(self.resource_group, name)
+
+    def update_image_tags(self, image_id, tags):
+        url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
+                                             image_id)
+        name = url_params.get(IMAGE_NAME)
+        return self.compute_client.images. \
+            create_or_update(self.resource_group, name,
+                             {
+                                 'tags': tags,
+                                 'location': self.region_name
+                             }).result()
+
+    def list_vm_types(self):
+        return self.compute_client.virtual_machine_sizes. \
+            list(self.region_name)
 
     def list_networks(self):
         return self.network_management_client.virtual_networks.list(
@@ -321,69 +421,6 @@ class AzureClient(object):
             create_or_update(self.resource_group,
                              network_name, tags).result()
 
-    def list_disks(self):
-        return self.compute_client.disks. \
-            list_by_resource_group(self.resource_group)
-
-    def delete_disk(self, disk_name):
-        async_deletion = self.compute_client.disks. \
-            delete(self.resource_group, disk_name)
-        async_deletion.wait()
-
-    def get_snapshot(self, snapshot_name):
-        return self.compute_client.snapshots.get(self.resource_group,
-                                                 snapshot_name)
-
-    def create_snapshot(self, snapshot_name, params):
-        return self.compute_client.snapshots.create_or_update(
-            self.resource_group,
-            snapshot_name,
-            params,
-            raw=True
-        )
-
-    def delete_snapshot(self, snapshot_name):
-        async_delete = self.compute_client.snapshots. \
-            delete(self.resource_group, snapshot_name)
-        async_delete.wait()
-
-    def update_snapshot_tags(self, snapshot_name, tags):
-        return self.compute_client.snapshots.update(
-            self.resource_group,
-            snapshot_name,
-            {'tags': tags},
-            raw=True
-        )
-
-    def create_image(self, name, params):
-        return self.compute_client.images. \
-            create_or_update(self.resource_group, name,
-                             params, raw=True)
-
-    def delete_image(self, name):
-        self.compute_client.images. \
-            delete(self.resource_group, name).wait()
-
-    def list_images(self):
-        return self.compute_client.images. \
-            list_by_resource_group(self.resource_group)
-
-    def get_image(self, image_name):
-        return self.compute_client.images. \
-            get(self.resource_group, image_name)
-
-    def update_image_tags(self, name, tags):
-        return self.compute_client.images. \
-            create_or_update(self.resource_group, name,
-                             {
-                                 'tags': tags,
-                                 'location': self.region_name
-                             }).result()
-
-    def list_vm_types(self):
-        return self.compute_client.virtual_machine_sizes. \
-            list(self.region_name)
-
     def list_subnets(self, network_name):
         return self.network_management_client.subnets. \
             list(self.resource_group, network_name)
@@ -419,19 +456,24 @@ class AzureClient(object):
             self.resource_group
         )
 
-    def restart_vm(self, vm_name):
+    def restart_vm(self, vm_id):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME)
         return self.compute_client.virtual_machines.restart(
-            self.resource_group,
-            vm_name
-        ).wait()
+            self.resource_group, vm_name).wait()
 
-    def delete_vm(self, vm_name):
+    def delete_vm(self, vm_id):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME)
         return self.compute_client.virtual_machines.delete(
-            self.resource_group,
-            vm_name
-        ).wait()
+            self.resource_group, vm_name).wait()
 
-    def get_vm(self, vm_name):
+    def get_vm(self, vm_id):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME)
         return self.compute_client.virtual_machines.get(
             self.resource_group,
             vm_name,
@@ -443,26 +485,41 @@ class AzureClient(object):
             create_or_update(self.resource_group,
                              vm_name, params, raw=True)
 
-    def update_vm(self, vm_name, params):
+    def update_vm(self, vm_id, params):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME)
         return self.compute_client.virtual_machines. \
             create_or_update(self.resource_group,
                              vm_name, params, raw=True)
 
-    def deallocate_vm(self, vm_name):
+    def deallocate_vm(self, vm_id):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME)
         self.compute_client. \
             virtual_machines.deallocate(self.resource_group,
                                         vm_name).wait()
 
-    def generalize_vm(self, vm_name):
+    def generalize_vm(self, vm_id):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME)
         self.compute_client.virtual_machines. \
             generalize(self.resource_group, vm_name)
 
-    def start_vm(self, vm_name):
+    def start_vm(self, vm_id):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME)
         self.compute_client.virtual_machines. \
             start(self.resource_group,
                   vm_name).wait()
 
-    def update_vm_tags(self, vm_name, tags):
+    def update_vm_tags(self, vm_id, tags):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME)
         self.compute_client.virtual_machines. \
             create_or_update(self.resource_group,
                              vm_name, tags).result()
