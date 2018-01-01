@@ -222,12 +222,13 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
 
     @property
     def from_port(self):
-        return self._port_range_tuple().from_port
+        return self._port_range_tuple.from_port
 
     @property
     def to_port(self):
-        return self._port_range_tuple().to_port
+        return self._port_range_tuple.to_port
 
+    @property
     def _port_range_tuple(self):
         if self._rule.destination_port_range == '*':
             return PortRange(1, 65535)
@@ -370,12 +371,7 @@ class AzureBucket(BaseBucket):
         """
         Delete this bucket.
         """
-        try:
-            self._provider.azure_client.delete_container(self.name)
-            return True
-        except AzureException as azureEx:
-            log.exception(azureEx)
-            return False
+        self._provider.azure_client.delete_container(self.name)
 
     def exists(self, name):
         """
@@ -550,25 +546,20 @@ class AzureVolume(BaseVolume):
         """
         Attach this volume to an instance.
         """
-        try:
-            instance_id = instance.id if isinstance(
-                instance,
-                Instance) else instance
-            vm = self._provider.azure_client.get_vm(instance_id)
+        instance_id = instance.id if isinstance(
+            instance,
+            Instance) else instance
+        vm = self._provider.azure_client.get_vm(instance_id)
 
-            vm.storage_profile.data_disks.append({
-                'lun': len(vm.storage_profile.data_disks),
-                'name': self.id,
-                'create_option': 'attach',
-                'managed_disk': {
-                    'id': self.resource_id
-                }
-            })
-            self._provider.azure_client.update_vm(instance_id, vm)
-            return True
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+        vm.storage_profile.data_disks.append({
+            'lun': len(vm.storage_profile.data_disks),
+            'name': self.id,
+            'create_option': 'attach',
+            'managed_disk': {
+                'id': self.resource_id
+            }
+        })
+        self._provider.azure_client.update_vm(instance_id, vm)
 
     def detach(self, force=False):
         """
@@ -580,7 +571,6 @@ class AzureVolume(BaseVolume):
                                 item.managed_disk.id == self.resource_id:
                     vm.storage_profile.data_disks.remove(item)
                     self._provider.azure_client.update_vm(vm.name, vm)
-        return True
 
     def create_snapshot(self, name, description=None):
         """
@@ -592,13 +582,7 @@ class AzureVolume(BaseVolume):
         """
         Delete this volume.
         """
-        try:
-            self._provider.azure_client. \
-                delete_disk(self.id)
-            return True
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+        self._provider.azure_client.delete_disk(self.id)
 
     @property
     def state(self):
@@ -719,12 +703,7 @@ class AzureSnapshot(BaseSnapshot):
         """
         Delete this snapshot.
         """
-        try:
-            self._provider.azure_client.delete_snapshot(self.id)
-            return True
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+        self._provider.azure_client.delete_snapshot(self.id)
 
     def create_volume(self, placement=None,
                       size=None, volume_type=None, iops=None):
@@ -951,13 +930,7 @@ class AzureNetwork(BaseNetwork):
         """
         Delete an existing network.
         """
-        try:
-            self._provider.azure_client.\
-                delete_network(self.id)
-            return True
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+        self._provider.azure_client.delete_network(self.id)
 
     @property
     def subnets(self):
@@ -1171,14 +1144,9 @@ class AzureSubnet(BaseSubnet):
         Delete the subnet
         :return:
         """
-        try:
-            subnet_id_parts = self.id.split('|$|')
-            self._provider.azure_client. \
-                delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
-            return True
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            return False
+        subnet_id_parts = self.id.split('|$|')
+        self._provider.azure_client. \
+            delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
 
     @property
     def state(self):
@@ -1627,12 +1595,7 @@ class AzureKeyPair(BaseKeyPair):
         return self._key_pair.Name
 
     def delete(self):
-        try:
-            self._provider.azure_client.\
-                delete_public_key(self._key_pair)
-            return True
-        except CloudError:
-            return False
+        self._provider.azure_client.delete_public_key(self._key_pair)
 
 
 class AzureRouter(BaseRouter):

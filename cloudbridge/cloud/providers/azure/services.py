@@ -56,7 +56,6 @@ class AzureVMFirewallService(BaseVMFirewallService):
         try:
             fws = self.provider.azure_client.get_vm_firewall(fw_id)
             return AzureVMFirewall(self.provider, fws)
-
         except CloudError as cloudError:
             # Azure raises the cloud error if the resource not available
             log.exception(cloudError.message)
@@ -120,13 +119,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, fws)
 
     def delete(self, group_id):
-        try:
-            self.provider.azure_client.delete_vm_firewall(group_id)
-            return True
-        except CloudError as cloudError:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
-            return False
+        self.provider.azure_client.delete_vm_firewall(group_id)
 
 
 class AzureKeyPairService(BaseKeyPairService):
@@ -208,7 +201,6 @@ class AzureBucketService(BaseBucketService):
         try:
             bucket = self.provider.azure_client.get_container(bucket_id)
             return AzureBucket(self.provider, bucket)
-
         except AzureException as error:
             log.exception(error)
             return None
@@ -873,13 +865,7 @@ class AzureNetworkService(BaseNetworkService):
         """
         Delete an existing network.
         """
-        try:
-            self.provider.azure_client.delete_network(network_id)
-            return True
-        except CloudError as cloudError:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
-            return False
+        self.provider.azure_client.delete_network(network_id)
 
 
 class AzureRegionService(BaseRegionService):
@@ -1021,20 +1007,13 @@ class AzureSubnetService(BaseSubnetService):
         return AzureSubnet(self.provider, subnet)
 
     def delete(self, subnet):
-        try:
-            # Azure does not provide an api to delete the subnet by id
-            # It also requires network id. To get the network id
-            # code is doing an explicit get and retrieving the network id
-
-            subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
-            subnet_id_parts = subnet_id.split('|$|')
-            self.provider.azure_client.\
-                delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
-            return True
-        except CloudError as cloudError:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
-            return False
+        # Azure does not provide an api to delete the subnet by id
+        # It also requires network id. To get the network id
+        # code is doing an explicit get and retrieving the network id
+        subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
+        subnet_id_parts = subnet_id.split('|$|')
+        self.provider.azure_client.\
+            delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
 
 
 class AzureRouterService(BaseRouterService):
