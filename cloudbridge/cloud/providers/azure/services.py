@@ -15,7 +15,8 @@ from cloudbridge.cloud.base.services import BaseBucketService, \
     BaseStorageService, BaseSubnetService, BaseVMFirewallService, \
     BaseVMTypeService, BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions import \
-    DuplicateResourceException, InvalidConfigurationException
+    DuplicateResourceException, InvalidConfigurationException, \
+    InvalidValueException
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
 
@@ -56,9 +57,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
         try:
             fws = self.provider.azure_client.get_vm_firewall(fw_id)
             return AzureVMFirewall(self.provider, fws)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def list(self, limit=None, marker=None):
@@ -86,7 +87,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
             rule.priority = rule.priority - 61440
             rule.access = "Deny"
             self._provider.azure_client.create_vm_firewall_rule(
-                fw.name, rule_name, rule)
+                fw.id, rule_name, rule)
 
         # Add a new custom rule allowing all outbound traffic to the internet
         parameters = {"priority": 3000,
@@ -98,7 +99,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
                       "access": "Allow",
                       "direction": "Outbound"}
         result = self._provider.azure_client.create_vm_firewall_rule(
-            fw.name, "cb-default-internet-outbound", parameters)
+            fw.id, "cb-default-internet-outbound", parameters)
         fw.security_rules.append(result)
 
         cb_fw = AzureVMFirewall(self.provider, fw)
@@ -269,9 +270,9 @@ class AzureVolumeService(BaseVolumeService):
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -320,7 +321,8 @@ class AzureVolumeService(BaseVolumeService):
                 'tags': tags
             }
 
-            self.provider.azure_client.create_snapshot_disk(disk_name, params)
+            disk = self.provider.azure_client.create_snapshot_disk(disk_name,
+                                                                   params)
 
         else:
             params = {
@@ -332,9 +334,10 @@ class AzureVolumeService(BaseVolumeService):
                 },
                 'tags': tags}
 
-            self.provider.azure_client.create_empty_disk(disk_name, params)
+            disk = self.provider.azure_client.create_empty_disk(disk_name,
+                                                                params)
 
-        azure_vol = self.provider.azure_client.get_disk(disk_name)
+        azure_vol = self.provider.azure_client.get_disk(disk.id)
         cb_vol = AzureVolume(self.provider, azure_vol)
 
         return cb_vol
@@ -351,9 +354,9 @@ class AzureSnapshotService(BaseSnapshotService):
         try:
             snapshot = self.provider.azure_client.get_snapshot(ss_id)
             return AzureSnapshot(self.provider, snapshot)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -403,12 +406,9 @@ class AzureSnapshotService(BaseSnapshotService):
             'tags': tags
         }
 
-        self.provider.azure_client. \
-            create_snapshot(snapshot_name, params)
-        azure_snap = self.provider.azure_client.get_snapshot(snapshot_name)
-        cb_snap = AzureSnapshot(self.provider, azure_snap)
-
-        return cb_snap
+        azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,
+                                                                params)
+        return AzureSnapshot(self.provider, azure_snap)
 
 
 class AzureComputeService(BaseComputeService):
@@ -470,8 +470,8 @@ class AzureInstanceService(BaseInstanceService):
                     name=default_kp_name)
                 temp_key_pair = key_pair
 
-        image = (self.provider.compute.images.get(image)
-                 if isinstance(image, str) else image)
+        image = (image if isinstance(image, AzureMachineImage) else
+                 self.provider.compute.images.get(image))
         if not isinstance(image, AzureMachineImage):
             raise Exception("Provided image %s is not a valid azure image"
                             % image)
@@ -572,8 +572,7 @@ class AzureInstanceService(BaseInstanceService):
             custom_data = base64.b64encode(bytes(ud, 'utf-8'))
             params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
 
-        self.provider.azure_client.create_vm(instance_name, params)
-        vm = self._provider.azure_client.get_vm(instance_name)
+        vm = self.provider.azure_client.create_vm(instance_name, params)
         if temp_key_pair:
             temp_key_pair.delete()
         return AzureInstance(self.provider, vm)
@@ -623,7 +622,7 @@ class AzureInstanceService(BaseInstanceService):
         def attach_volume(volume, delete_on_terminate):
             disks.append({
                 'lun': volumes_count,
-                'name': volume.id,
+                'name': volume.name,
                 'create_option': 'attach',
                 'managed_disk': {
                     'id': volume.resource_id
@@ -702,9 +701,9 @@ class AzureInstanceService(BaseInstanceService):
         try:
             vm = self.provider.azure_client.get_vm(instance_id)
             return AzureInstance(self.provider, vm)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -733,9 +732,9 @@ class AzureImageService(BaseImageService):
         try:
             image = self.provider.azure_client.get_image(image_id)
             return AzureMachineImage(self.provider, image)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -811,10 +810,9 @@ class AzureNetworkService(BaseNetworkService):
         try:
             network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
-
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def list(self, limit=None, marker=None):
@@ -856,9 +854,9 @@ class AzureNetworkService(BaseNetworkService):
             },
             'tags': {'Name': name or AzureNetwork.CB_DEFAULT_NETWORK_NAME}
         }
-        self.provider.azure_client.create_network(network_name, params)
-        network = self.provider.azure_client.get_network(network_name)
-        cb_network = AzureNetwork(self.provider, network)
+        az_network = self.provider.azure_client.create_network(network_name,
+                                                               params)
+        cb_network = AzureNetwork(self.provider, az_network)
         return cb_network
 
     def delete(self, network_id):
@@ -907,16 +905,12 @@ class AzureSubnetService(BaseSubnetService):
         :return:
         """
         try:
-            subnet_id_parts = subnet_id.split('|$|')
-            if (len(subnet_id_parts) != 2):
-                return None
-            azure_subnet = self.provider.azure_client.\
-                get_subnet(subnet_id_parts[0], subnet_id_parts[1])
+            azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
             return AzureSubnet(self.provider,
                                azure_subnet) if azure_subnet else None
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def list(self, network=None, limit=None, marker=None):
@@ -936,7 +930,7 @@ class AzureSubnetService(BaseSubnetService):
         else:
             for net in self.provider.azure_client.list_networks():
                 result_list.extend(self.provider.azure_client.list_subnets(
-                    net.name
+                    net.id
                 ))
         subnets = [AzureSubnet(self.provider, subnet)
                    for subnet in result_list]
@@ -968,52 +962,30 @@ class AzureSubnetService(BaseSubnetService):
         return AzureSubnet(self.provider, subnet_info)
 
     def get_or_create_default(self, zone=None):
-        default_cdir = '10.0.1.0/24'
-        network = None
-        subnet = None
+        default_cidr = '10.0.1.0/24'
 
         # No provider-default Subnet exists, look for a library-default one
-        try:
-            subnet = self.provider.azure_client.get_subnet(
-                AzureNetwork.CB_DEFAULT_NETWORK_NAME,
-                AzureSubnet.CB_DEFAULT_SUBNET_NAME
-            )
-        except CloudError:
-            # Azure raises the cloud error if the resource not available
-            pass
-
-        if subnet:
-            return AzureSubnet(self.provider, subnet)
+        matches = self.find(name=AzureSubnet.CB_DEFAULT_SUBNET_NAME)
+        if matches:
+            return matches[0]
 
         # No provider-default Subnet exists, try to create it (net + subnets)
-        default_net_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
-        try:
-            network = self.provider.azure_client \
-                .get_network(default_net_name)
-        except CloudError:
-            # Azure raises the cloud error if the resource not available
-            pass
+        networks = self.provider.networking.networks.find(
+            name=AzureNetwork.CB_DEFAULT_NETWORK_NAME)
 
-        if not network:
+        if networks:
+            network = networks[0]
+        else:
             network = self.provider.networking.networks.create(
-                name=default_net_name, cidr_block='10.0.0.0/16')
+                AzureNetwork.CB_DEFAULT_NETWORK_NAME, '10.0.0.0/16')
 
-        subnet = self.provider.azure_client.create_subnet(
-            network.id,
-            AzureSubnet.CB_DEFAULT_SUBNET_NAME,
-            {'address_prefix': default_cdir}
-        )
-
-        return AzureSubnet(self.provider, subnet)
+        subnet = self.create(network, default_cidr,
+                             name=AzureSubnet.CB_DEFAULT_SUBNET_NAME)
+        return subnet
 
     def delete(self, subnet):
-        # Azure does not provide an api to delete the subnet by id
-        # It also requires network id. To get the network id
-        # code is doing an explicit get and retrieving the network id
         subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
-        subnet_id_parts = subnet_id.split('|$|')
-        self.provider.azure_client.\
-            delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
+        self.provider.azure_client.delete_subnet(subnet_id)
 
 
 class AzureRouterService(BaseRouterService):
@@ -1024,10 +996,9 @@ class AzureRouterService(BaseRouterService):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
             return AzureRouter(self.provider, route)
-
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):

@@ -25,24 +25,14 @@ from msrestazure.azure_exceptions import CloudError
 
 import pysftp
 
-from . import helpers as azure_helpers
-
 log = logging.getLogger(__name__)
-
-SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                     '{resourceGroupName}/providers/Microsoft.Network' \
-                     '/virtualNetworks/{virtualNetworkName}/subnets' \
-                     '/{subnetName}'
-
-NETWORK_NAME = 'virtualNetworkName'
 
 
 class AzureVMFirewall(BaseVMFirewall):
     def __init__(self, provider, vm_firewall):
         super(AzureVMFirewall, self).__init__(provider, vm_firewall)
         self._vm_firewall = vm_firewall
-        if not self._vm_firewall.tags:
-            self._vm_firewall.tags = {}
+        self._vm_firewall.tags = self._vm_firewall.tags or {}
         self._rule_container = AzureVMFirewallRuleContainer(provider, self)
 
     @property
@@ -65,13 +55,12 @@ class AzureVMFirewall(BaseVMFirewall):
     def name(self, value):
         self.assert_valid_resource_name(value)
         self._vm_firewall.tags.update(Name=value)
-        self._provider.azure_client. \
-            update_vm_firewall_tags(self.id,
-                                    self._vm_firewall.tags)
+        self._provider.azure_client.update_vm_firewall_tags(
+            self.id, self._vm_firewall.tags)
 
     @property
     def description(self):
-        return self._vm_firewall.tags.get('Description', None)
+        return self._vm_firewall.tags.get('Description')
 
     @description.setter
     def description(self, value):
@@ -183,7 +172,7 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
 
     @property
     def id(self):
-        return self._rule.name
+        return self._rule.id
 
     @property
     def direction(self):
@@ -231,7 +220,7 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
         self._provider.azure_client. \
             delete_vm_firewall_rule(self.id, vm_firewall)
         for i, o in enumerate(self.firewall._vm_firewall.security_rules):
-            if o.name == self.name:
+            if o.id == self.id:
                 del self.firewall._vm_firewall.security_rules[i]
                 break
 
@@ -516,7 +505,7 @@ class AzureVolume(BaseVolume):
 
         vm.storage_profile.data_disks.append({
             'lun': len(vm.storage_profile.data_disks),
-            'name': self.id,
+            'name': self._volume.name,
             'create_option': 'attach',
             'managed_disk': {
                 'id': self.resource_id
@@ -671,7 +660,7 @@ class AzureSnapshot(BaseSnapshot):
         Create a new Volume from this Snapshot.
         """
         return self._provider.storage.volumes. \
-            create(self.id, self.size,
+            create(self.name, self.size,
                    zone=placement, snapshot=self)
 
 
@@ -823,7 +812,7 @@ class AzureNetwork(BaseNetwork):
 
     @property
     def id(self):
-        return self._network.name
+        return self._network.id
 
     @property
     def resource_id(self):
@@ -983,7 +972,7 @@ class AzureFloatingIP(BaseFloatingIP):
 
     def refresh(self):
         net = self._provider.networking.networks.get(self._network_id)
-        gw = net.gateways.get_or_create_inet_gateway(net)
+        gw = net.gateways.get_or_create_inet_gateway()
         fip = gw.floating_ips.get(self.id)
         self._ip = fip._ip
 
@@ -1062,14 +1051,10 @@ class AzureSubnet(BaseSubnet):
         super(AzureSubnet, self).__init__(provider)
         self._subnet = subnet
         self._state = self._subnet.provisioning_state
-        self._url_params = azure_helpers\
-            .parse_url(SUBNET_RESOURCE_ID, subnet.id)
-        self._network = self._provider.azure_client.\
-            get_network(self._url_params.get(NETWORK_NAME))
 
     @property
     def id(self):
-        return self.network_id + '|$|' + self._subnet.name
+        return self._subnet.id
 
     @property
     def resource_id(self):
@@ -1086,8 +1071,9 @@ class AzureSubnet(BaseSubnet):
 
     @property
     def zone(self):
-        region = self._provider.\
-            compute.regions.get(self._network.location)
+        # pylint:disable=protected-access
+        region = self._provider.compute.regions.get(
+            self._network._network.location)
         return region.zones[0]
 
     @property
@@ -1096,21 +1082,18 @@ class AzureSubnet(BaseSubnet):
 
     @property
     def network_id(self):
-        return self._url_params.get(NETWORK_NAME)
+        return self._provider.azure_client.get_network_id_for_subnet(self.id)
+
+    @property
+    def _network(self):
+        return self._provider.networking.networks.get(self.network_id)
 
     def delete(self):
-        """
-        Delete the subnet
-        :return:
-        """
-        subnet_id_parts = self.id.split('|$|')
-        self._provider.azure_client. \
-            delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
+        self._provider.azure_client.delete_subnet(self.id)
 
     @property
     def state(self):
-        return self._SUBNET_STATE_MAP.get(
-            self._state, NetworkState.UNKNOWN)
+        return self._SUBNET_STATE_MAP.get(self._state, NetworkState.UNKNOWN)
 
     def refresh(self):
         """
@@ -1118,12 +1101,12 @@ class AzureSubnet(BaseSubnet):
         for its latest state.
         """
         try:
-            self._network = self._provider.azure_client. \
-                get_network(self.id)
-            self._state = self._network.provisioning_state
+            self._subnet = self._provider.azure_client. \
+                get_subnet(self.id)
+            self._state = self._subnet.provisioning_state
         except (CloudError, ValueError) as cloudError:
             log.exception(cloudError.message)
-            # The network no longer exists and cannot be refreshed.
+            # The subnet no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
 
@@ -1166,7 +1149,7 @@ class AzureInstance(BaseInstance):
 
     @property
     def _public_ip_ids(self):
-        return (ip_config.public_ip_address
+        return (ip_config.public_ip_address.id
                 for nic in self._nics
                 for ip_config in nic.ip_configurations
                 if nic.ip_configurations and ip_config.public_ip_address)
@@ -1331,11 +1314,8 @@ class AzureInstance(BaseInstance):
             },
             'tags': {'Name': name}
         }
-        self._provider.azure_client.\
-            create_image(name, create_params)
-        image = self._provider.azure_client.\
-            get_image(name)
 
+        image = self._provider.azure_client.create_image(name, create_params)
         return AzureMachineImage(self._provider, image)
 
     def _deprovision(self, private_key_path):
@@ -1600,22 +1580,14 @@ class AzureRouter(BaseRouter):
         self._provider.azure_client.delete_route_table(self.name)
 
     def attach_subnet(self, subnet):
-        subnet_id_parts = subnet.id.split('|$|')
-        if (len(subnet_id_parts) != 2):
-            pass
         self._provider.azure_client. \
-            attach_subnet_to_route_table(subnet_id_parts[0],
-                                         subnet_id_parts[1],
+            attach_subnet_to_route_table(subnet.id,
                                          self.resource_id)
         self.refresh()
 
     def detach_subnet(self, subnet):
-        subnet_id_parts = subnet.id.split('|$|')
-        if (len(subnet_id_parts) != 2):
-            pass
         self._provider.azure_client. \
-            detach_subnet_to_route_table(subnet_id_parts[0],
-                                         subnet_id_parts[1],
+            detach_subnet_to_route_table(subnet.id,
                                          self.resource_id)
         self.refresh()
 
