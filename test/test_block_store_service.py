@@ -17,6 +17,8 @@ import six
 
 class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['storage.volumes'])
     def test_crud_volume(self):
         """

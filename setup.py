@@ -46,6 +46,7 @@ REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
+    'nose',
     # 'moto>=1.1.11',  # until https://github.com/spulec/moto/issues/1396
     'sphinx>=1.3.1',
     'pydevd',

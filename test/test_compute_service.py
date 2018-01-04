@@ -16,6 +16,8 @@ import six
 
 class CloudComputeServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         name = "cb_instcrud-{0}".format(helpers.get_uuid())

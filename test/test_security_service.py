@@ -13,6 +13,8 @@ from cloudbridge.cloud.interfaces.resources import VMFirewallRule
 
 class CloudSecurityServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_crud_key_pair_service(self):
 

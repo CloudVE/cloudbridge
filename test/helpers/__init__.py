@@ -99,7 +99,7 @@ TEST_DATA_CONFIG = {
                            '6/resourceGroups/cloudbridge/providers/Microsoft.C'
                            'ompute/images/cb-test-image'),
         "vm_type":
-            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A0'),
+            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A2'),
     }
 }
 
@@ -152,8 +152,9 @@ def delete_test_gateway(network, gateway):
     """
     Delete the supplied network and gateway.
     """
-    gateway.delete()
-    network.delete()
+    with cleanup_action(lambda: network.delete()):
+        with cleanup_action(lambda: gateway.delete()):
+            pass
 
 
 def create_test_instance(

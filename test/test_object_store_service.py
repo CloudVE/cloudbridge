@@ -20,6 +20,8 @@ import requests
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket(self):
         """

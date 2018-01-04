@@ -11,6 +11,8 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['networking.networks'])
     def test_crud_network(self):
 
@@ -46,9 +48,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 % net.cidr_block)
 
             cidr = '10.0.1.0/24'
-            sn = net.create_subnet(name=subnet_name, cidr_block=cidr,
-                                   zone=helpers.get_provider_test_data(
-                                       self.provider, 'placement'))
+            sn = net.create_subnet(
+                name=subnet_name, cidr_block=cidr,
+                zone=helpers.get_provider_test_data(self.provider,
+                                                    'placement'))
             with helpers.cleanup_action(lambda: sn.delete()):
                 self.assertTrue(
                     sn in net.subnets,
