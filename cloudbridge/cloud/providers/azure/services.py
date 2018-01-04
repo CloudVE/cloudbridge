@@ -622,7 +622,8 @@ class AzureInstanceService(BaseInstanceService):
         def attach_volume(volume, delete_on_terminate):
             disks.append({
                 'lun': volumes_count,
-                'name': volume.name,
+                # pylint:disable=protected-access
+                'name': volume._volume.name,
                 'create_option': 'attach',
                 'managed_disk': {
                     'id': volume.resource_id
