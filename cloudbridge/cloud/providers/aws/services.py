@@ -326,7 +326,7 @@ class AWSBucketService(BaseBucketService):
 
     def create(self, name, location=None):
         log.debug("Creating AWS Bucket with the params "
-                  "[name: %s id: %s description: %s]", name, location)
+                  "[name: %s, location: %s]", name, location)
         AWSBucket.assert_valid_resource_name(name)
         loc_constraint = location or self.provider.region_name
         # Due to an API issue in S3, specifying us-east-1 as a
@@ -411,7 +411,7 @@ class AWSInstanceService(BaseInstanceService):
                   "[name: %s image: %s type: %s subnet: %s zone: %s "
                   "key pair: %s firewalls: %s user data: %s config %s "
                   "others: %s]", name, image, vm_type, subnet, zone,
-                  key_pair, vm_firewalls, user_data, launch_config, **kwargs)
+                  key_pair, vm_firewalls, user_data, launch_config, kwargs)
         AWSInstance.assert_valid_resource_name(name)
 
         image_id = image.id if isinstance(image, MachineImage) else image
