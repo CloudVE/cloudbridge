@@ -61,7 +61,7 @@ install:
     - pip install codecov
 script:
     - tox -e $TOX_ENV
-after_success:
+after_script:
     - |
       case "$TRAVIS_EVENT_TYPE" in
         push|pull_request)
@@ -78,6 +78,7 @@ after_success:
            ;;
         *)
            echo "Build triggered through API or CRON job. Running regardless of changes"
+           coveralls & codecov & wait
            ;;
       esac
 

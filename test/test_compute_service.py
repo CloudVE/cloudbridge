@@ -183,7 +183,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         lc.add_volume_device(
             is_root=True,
             source=img,
-            size=img.min_disk if img and img.min_disk else 30,
+            size=img.min_disk if img and img.min_disk > 30 else 30,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
