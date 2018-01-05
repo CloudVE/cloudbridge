@@ -554,9 +554,20 @@ class AzureInstanceService(BaseInstanceService):
             custom_data = base64.b64encode(bytes(ud, 'utf-8'))
             params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
 
-        vm = self.provider.azure_client.create_vm(instance_name, params)
-        if temp_key_pair:
-            temp_key_pair.delete()
+        try:
+            vm = self.provider.azure_client.create_vm(instance_name, params)
+        except Exception as e:
+            # If VM creation fails, attempt to clean up intermediary resources
+            self.provider.azure_client.delete_nic(nic_info.id)
+            for disk_def in storage_profile.get('data_disks', []):
+                if disk_def.get('tags', {}).get('delete_on_terminate'):
+                    disk_id = disk_def.get('managed_disk', {}).get('id')
+                    if disk_id:
+                        self.provider.storage.volumes.delete(disk_id)
+            raise e
+        finally:
+            if temp_key_pair:
+                temp_key_pair.delete()
         return AzureInstance(self.provider, vm)
 
     def _resolve_launch_options(self, name, subnet=None, zone_id=None,
