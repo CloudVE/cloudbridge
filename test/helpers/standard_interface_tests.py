@@ -162,13 +162,6 @@ def check_standard_behaviour(test, service, obj):
     check_get_non_existent(test, service)
 
     test.assertTrue(
-        obj == objs_list[0] == objs_iter[0] == objs_find[0] == obj_get,
-        "Objects returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
-                                           objs_find[0].id, obj_get.id,
-                                           obj.id))
-
-    test.assertTrue(
         obj.id == objs_list[0].id == objs_iter[0].id ==
         objs_find[0].id == obj_get.id,
         "Object Ids returned by list: {0}, iter: {1}, find: {2} and get: {3} "
