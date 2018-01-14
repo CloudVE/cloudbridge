@@ -734,7 +734,12 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
             OpenStackInternetGateway.assert_valid_resource_name(name)
 
         for n in self._provider.networking.networks:
-            if n.external:
+            # Check whether network has subnets for legacy NeCTAR networking
+            # compatibility. Otherwise, it may attempt to connect to classic
+            # network (network id 0000) and result in: Bad floatingip request:
+            # Network 00000000-0000-0000-0000-000000000000 does not contain any
+            # subnet.
+            if n.external and n.subnets:
                 return OpenStackInternetGateway(self._provider, n)
         return None
 
@@ -745,7 +750,8 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
     def list(self, limit=None, marker=None):
         log.debug("OpenStack listing of all current internet gateways")
         igl = [OpenStackInternetGateway(self._provider, n)
-               for n in self._provider.networking.networks if n.external]
+               for n in self._provider.networking.networks
+               if n.external and n.subnets]
         return ClientPagedResultList(self._provider, igl, limit=limit,
                                      marker=marker)
 
