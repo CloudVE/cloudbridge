@@ -728,19 +728,32 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
     def __init__(self, provider, network):
         super(OpenStackGatewayContainer, self).__init__(provider, network)
 
+    def _check_fip_connectivity(self, external_net):
+        # Due to current limitations in OpenStack:
+        # https://bugs.launchpad.net/neutron/+bug/1743480, it's not
+        # possible to differentiate between floating ip networks and provider
+        # external networks. Therefore, we systematically step through
+        # all available networks and perform an assignment test to infer valid
+        # floating ip nets.
+        dummy_router = self._provider.networking.routers.create(
+            network=self._network, name='cb_conn_test_router')
+        with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
+            try:
+                dummy_router.attach_gateway(external_net)
+                return True
+            except Exception:
+                return False
+
     def get_or_create_inet_gateway(self, name=None):
         """For OS, inet gtw is any net that has `external` property set."""
         if name:
             OpenStackInternetGateway.assert_valid_resource_name(name)
 
-        for n in self._provider.networking.networks:
-            # Check whether network has subnets for legacy NeCTAR networking
-            # compatibility. Otherwise, it may attempt to connect to classic
-            # network (network id 0000) and result in: Bad floatingip request:
-            # Network 00000000-0000-0000-0000-000000000000 does not contain any
-            # subnet.
-            if n.external and n.subnets:
-                return OpenStackInternetGateway(self._provider, n)
+        external_nets = (n for n in self._provider.networking.networks
+                         if n.external)
+        for net in external_nets:
+            if self._check_fip_connectivity(net):
+                return OpenStackInternetGateway(self._provider, net)
         return None
 
     def delete(self, gateway):
@@ -751,7 +764,7 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
         log.debug("OpenStack listing of all current internet gateways")
         igl = [OpenStackInternetGateway(self._provider, n)
                for n in self._provider.networking.networks
-               if n.external and n.subnets]
+               if n.external and self._check_fip_connectivity(n)]
         return ClientPagedResultList(self._provider, igl, limit=limit,
                                      marker=marker)
 

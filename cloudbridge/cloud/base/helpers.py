@@ -1,6 +1,12 @@
+import sys
+import traceback
+from contextlib import contextmanager
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+
+from six import reraise
 
 
 def generate_key_pair():
@@ -52,3 +58,38 @@ def generic_find(filter_names, kwargs, objs):
             % (kwargs, filter_names))
 
     return matches
+
+
+@contextmanager
+def cleanup_action(cleanup_func):
+    """
+    Context manager to carry out a given
+    cleanup action after carrying out a set
+    of tasks, or when an exception occurs.
+    If any errors occur during the cleanup
+    action, those are ignored, and the original
+    traceback is preserved.
+
+    :params func: This function is called if
+    an exception occurs or at the end of the
+    context block. If any exceptions raised
+        by func are ignored.
+    Usage:
+        with cleanup_action(lambda e: print("Oops!")):
+            do_something()
+    """
+    try:
+        yield
+    except Exception:
+        ex_class, ex_val, ex_traceback = sys.exc_info()
+        try:
+            cleanup_func()
+        except Exception as e:
+            print("Error during exception cleanup: {0}".format(e))
+            traceback.print_exc()
+        reraise(ex_class, ex_val, ex_traceback)
+    try:
+        cleanup_func()
+    except Exception as e:
+        print("Error during cleanup: {0}".format(e))
+        traceback.print_exc()
