@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
+from cloudbridge.cloud.base.resources import BaseGatewayContainer
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -29,6 +30,7 @@ from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVMFirewallRule
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
+from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -1192,6 +1194,7 @@ class GCENetwork(BaseNetwork):
     def __init__(self, provider, network):
         super(GCENetwork, self).__init__(provider)
         self._network = network
+        self._gateway_container = GCEGatewayContainer(provider, self)
 
     @property
     def resource_url(self):
@@ -1254,6 +1257,10 @@ class GCENetwork(BaseNetwork):
     def refresh(self):
         self_link = self._network.get('selfLink')
         self._network = self._provider.parse_url(self_link).get_resource()
+
+    @property
+    def gateways(self):
+        return self._gateway_container
 
 
 class GCEFloatingIPContainer(BaseFloatingIPContainer):
@@ -1457,6 +1464,31 @@ class GCERouter(BaseRouter):
 
     def remove_route(self, subnet_id):
         cb.log.warning('Not implemented')
+
+
+class GCEGatewayContainer(BaseGatewayContainer):
+    _DEFAULT_GATEWAY_NAME = 'default-internet-gateway'
+    _GATEWAY_URL_PREFIX = 'global/gateways/'
+
+    def __init__(self, provider, network):
+        super(GCEGatewayContainer, self).__init__(provider, network)
+        self._default_internet_gateway = GCEInternetGateway(
+            provider,
+            {'id': (GCEGatewayContainer._GATEWAY_URL_PREFIX +
+                    GCEGatewayContainer._DEFAULT_GATEWAY_NAME),
+             'name': GCEGatewayContainer._DEFAULT_GATEWAY_NAME})
+
+    def get_or_create_inet_gateway(self, name):
+        GCEInternetGateway.assert_valid_resource_name(name)
+        return self._default_internet_gateway
+
+    def delete(self, gateway):
+        pass
+
+    def list(self, limit=None, marker=None):
+        return ClientPagedResultList(self._provider,
+                                     [self._default_internet_gateway],
+                                     limit=limit, marker=marker)
 
 
 class GCEInternetGateway(BaseInternetGateway):
