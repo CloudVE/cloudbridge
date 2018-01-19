@@ -1,3 +1,6 @@
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
+
+
 def filter_by_tag(list_items, filters):
     """
     This function filter items on the tags
@@ -29,7 +32,7 @@ def parse_url(template_url, original_url):
     template_url_parts = template_url.split('/')
     original_url_parts = original_url.split('/')
     if len(template_url_parts) != len(original_url_parts):
-        raise Exception('Invalid url parameter passed')
+        raise InvalidValueException(template_url, original_url)
     resource_param = {}
     for key, value in zip(template_url_parts, original_url_parts):
         if key.startswith('{') and key.endswith('}'):

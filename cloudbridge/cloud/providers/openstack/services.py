@@ -12,7 +12,6 @@ from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -27,6 +26,8 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.exceptions \
+    import DuplicateResourceException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -167,29 +168,23 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, results)
 
     def create(self, name, public_key_material=None):
-        """
-        Create a new key pair or raise an exception if one already exists.
-
-        :type name: str
-        :param name: The name of the key pair to be created.
-
-        :rtype: ``object`` of :class:`.KeyPair`
-        :return:  A key pair instance or ``None`` if one was not be created.
-        """
         log.debug("Creating a new key pair with the name: %s", name)
         OpenStackKeyPair.assert_valid_resource_name(name)
+
+        existing_kp = self.find(name=name)
+        if existing_kp:
+            raise DuplicateResourceException(
+                'Keypair already exists with name {0}'.format(name))
 
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()
+
         kp = self.provider.nova.keypairs.create(name,
                                                 public_key=public_key_material)
-
-        if kp:
-            return OpenStackKeyPair(self.provider, kp)
-            kp.material = private_key
-        log.debug("Key Pair with the name %s already exists", name)
-        return None
+        cb_kp = OpenStackKeyPair(self.provider, kp)
+        cb_kp.material = private_key
+        return cb_kp
 
 
 class OpenStackVMFirewallService(BaseVMFirewallService):
@@ -539,7 +534,7 @@ class OpenStackRegionService(BaseRegionService):
 
     def get(self, region_id):
         log.debug("Getting OpenStack Region with the id: %s", region_id)
-        region = (r for r in self.list() if r.id == region_id)
+        region = (r for r in self if r.id == region_id)
         return next(region, None)
 
     def list(self, limit=None, marker=None):
@@ -782,7 +777,6 @@ class OpenStackNetworkingService(BaseNetworkingService):
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
         self._router_service = OpenStackRouterService(self.provider)
-        self._gateway_service = OpenStackGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -795,10 +789,6 @@ class OpenStackNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
-
-    @property
-    def gateways(self):
-        return self._gateway_service
 
 
 class OpenStackNetworkService(BaseNetworkService):
@@ -858,7 +848,7 @@ class OpenStackSubnetService(BaseSubnetService):
         if network:
             network_id = (network.id if isinstance(network, OpenStackNetwork)
                           else network)
-            subnets = [subnet for subnet in self.list() if network_id ==
+            subnets = [subnet for subnet in self if network_id ==
                        subnet.network_id]
         else:
             subnets = [OpenStackSubnet(self.provider, subnet) for subnet in
@@ -898,11 +888,8 @@ class OpenStackSubnetService(BaseSubnetService):
             router = self.provider.networking.routers.create(
                 network=net, name=OpenStackRouter.CB_DEFAULT_ROUTER_NAME)
             router.attach_subnet(sn)
-            gteway = (self.provider.networking.gateways
-                      .get_or_create_inet_gateway(
-                          net,
-                          OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
-                          ))
+            gteway = net.gateways.get_or_create_inet_gateway(
+                        OpenStackInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME)
             router.attach_gateway(gteway)
             return sn
         except NeutronClientException:
@@ -914,7 +901,7 @@ class OpenStackSubnetService(BaseSubnetService):
                      else subnet)
         self.provider.neutron.delete_subnet(subnet_id)
         # Adhere to the interface docs
-        if subnet_id not in self.list():
+        if subnet_id not in self:
             return True
         return False
 
@@ -955,31 +942,3 @@ class OpenStackRouterService(BaseRouterService):
         body = {'router': {'name': name}} if name else None
         router = self.provider.neutron.create_router(body)
         return OpenStackRouter(self.provider, router.get('router'))
-
-
-class OpenStackGatewayService(BaseGatewayService):
-    """For OpenStack, an internet gateway is a just an 'external' network."""
-
-    def __init__(self, provider):
-        super(OpenStackGatewayService, self).__init__(provider)
-
-    def get_or_create_inet_gateway(self, network, name=None):
-        """For OS, inet gtw is any net that has `external` property set."""
-        if name:
-            OpenStackInternetGateway.assert_valid_resource_name(name)
-
-        for n in self.provider.networking.networks:
-            if n.external:
-                return OpenStackInternetGateway(self.provider, n)
-        return None
-
-    def delete(self, gateway):
-        log.debug("Deleting OpenStack Gateway: %s", gateway)
-        gateway.delete()
-
-    def list(self, limit=None, marker=None):
-        log.debug("OpenStack listing of all current internet gateways")
-        igl = [OpenStackInternetGateway(self.provider, n)
-               for n in self.provider.networking.networks if n.external]
-        return ClientPagedResultList(self.provider, igl, limit=limit,
-                                     marker=marker)

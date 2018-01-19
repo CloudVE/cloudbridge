@@ -17,6 +17,8 @@ class DummyResult(object):
 
 class CloudHelpersTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     def setUp(self):
         super(CloudHelpersTestCase, self).setUp()
         self.objects = [DummyResult(1, "One"),

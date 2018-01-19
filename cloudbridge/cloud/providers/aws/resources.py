@@ -14,6 +14,7 @@ from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
+from cloudbridge.cloud.base.resources import BaseGatewayContainer
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -297,22 +298,32 @@ class AWSInstance(BaseInstance):
         image.refresh()
         return image
 
+    def _get_fip(self, floating_ip):
+        """Get a floating IP object based on the supplied allocation ID."""
+        return AWSFloatingIP(
+            self._provider, list(self._provider.ec2_conn.vpc_addresses.filter(
+                AllocationIds=[floating_ip]))[0])
+
     def add_floating_ip(self, floating_ip):
+        fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
+               else self._get_fip(floating_ip))
         params = trim_empty_params({
             'InstanceId': self.id,
             'PublicIp': None if self._ec2_instance.vpc_id else
-            floating_ip.public_ip,
+            fip.public_ip,
             # pylint:disable=protected-access
-            'AllocationId': floating_ip._ip.allocation_id})
+            'AllocationId': fip._ip.allocation_id})
         self._provider.ec2_conn.meta.client.associate_address(**params)
         self.refresh()
 
     def remove_floating_ip(self, floating_ip):
+        fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
+               else self._get_fip(floating_ip))
         params = trim_empty_params({
             'PublicIp': None if self._ec2_instance.vpc_id else
-            floating_ip.public_ip,
+            fip.public_ip,
             # pylint:disable=protected-access
-            'AssociationId': floating_ip._ip.association_id})
+            'AssociationId': fip._ip.association_id})
         self._provider.ec2_conn.meta.client.disassociate_address(**params)
         self.refresh()
 
@@ -879,6 +890,7 @@ class AWSNetwork(BaseNetwork):
     def __init__(self, provider, network):
         super(AWSNetwork, self).__init__(provider)
         self._vpc = network
+        self._gtw_container = AWSGatewayContainer(provider, self)
 
     @property
     def id(self):
@@ -934,6 +946,10 @@ class AWSNetwork(BaseNetwork):
         self._provider.ec2_conn.meta.client.get_waiter('vpc_available').wait(
             VpcIds=[self.id])
         self.refresh()
+
+    @property
+    def gateways(self):
+        return self._gtw_container
 
 
 class AWSSubnet(BaseSubnet):
@@ -1116,6 +1132,51 @@ class AWSRouter(BaseRouter):
                  else gateway)
         return self._provider.ec2_conn.meta.client.detach_internet_gateway(
             InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
+
+
+class AWSGatewayContainer(BaseGatewayContainer):
+
+    def __init__(self, provider, network):
+        super(AWSGatewayContainer, self).__init__(provider, network)
+        self.svc = BotoEC2Service(provider=provider,
+                                  cb_resource=AWSInternetGateway,
+                                  boto_collection_name='internet_gateways')
+
+    def get_or_create_inet_gateway(self, name=None):
+        log.debug("Get or create inet gateway %s on net %s", name,
+                  self._network)
+        if name:
+            AWSInternetGateway.assert_valid_resource_name(name)
+
+        network_id = self._network.id if isinstance(
+            self._network, AWSNetwork) else self._network
+        # Don't filter by name because it may conflict with at least the
+        # default VPC that most accounts have but that network is typically
+        # without a name.
+        gtw = self.svc.find(filter_name='attachment.vpc-id',
+                            filter_value=network_id)
+        if gtw:
+            return gtw[0]  # There can be only one gtw attached to a VPC
+        # Gateway does not exist so create one and attach to the supplied net
+        cb_gateway = self.svc.create('create_internet_gateway')
+        if name:
+            cb_gateway.name = name
+        cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
+        return cb_gateway
+
+    def delete(self, gateway):
+        log.debug("Service deleting AWS Gateway %s", gateway)
+        gateway_id = gateway.id if isinstance(
+            gateway, AWSInternetGateway) else gateway
+        gateway = self.svc.get(gateway_id)
+        if gateway:
+            gateway.delete()
+
+    def list(self, limit=None, marker=None):
+        log.debug("Listing current AWS internet gateways for net %s.",
+                  self._network.id)
+        fltr = [{'Name': 'attachment.vpc-id', 'Values': [self._network.id]}]
+        return self.svc.list(limit=None, marker=None, Filters=fltr)
 
 
 class AWSInternetGateway(BaseInternetGateway):

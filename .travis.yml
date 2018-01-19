@@ -1,5 +1,9 @@
 dist: trusty
 language: python
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $TRAVIS_BUILD_DIR/.tox
 os:
   - linux
 #  - osx
@@ -65,8 +69,8 @@ install:
     - pip install coveralls
     - pip install codecov
 script:
-    - travis_wait 110 tox -e $TOX_ENV
-after_success:
+    - tox -e $TOX_ENV
+after_script:
     - |
       case "$TRAVIS_EVENT_TYPE" in
         push|pull_request)
@@ -83,6 +87,7 @@ after_success:
            ;;
         *)
            echo "Build triggered through API or CRON job. Running regardless of changes"
+           coveralls & codecov & wait
            ;;
       esac
 

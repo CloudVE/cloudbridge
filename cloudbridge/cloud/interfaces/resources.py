@@ -583,11 +583,12 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Add a public IP address to this instance.
 
-        :type floating_ip: :class:``.FloatingIP``
+        :type floating_ip: :class:``.FloatingIP`` or floating IP ID
         :param floating_ip: The FloatingIP object to associate with the
                             instance. Note that is not the actual public IP
                             address but the CloudBridge object encapsulating
-                            the IP.
+                            the IP or the respective provider ID that
+                            identifies the address.
         """
         pass
 
@@ -596,11 +597,12 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Remove a public IP address from this instance.
 
-        :type floating_ip: :class:``.FloatingIP``
+        :type floating_ip: :class:``.FloatingIP`` or floating IP ID
         :param floating_ip: The FloatingIP object to remove from the
                             instance. Note that is not the actual public IP
                             address but the CloudBridge object encapsulating
-                            the IP.
+                            the IP or the respective provider ID that
+                            identifies the address.
         """
         pass
 
@@ -885,6 +887,16 @@ class Network(ObjectLifeCycleMixin, CloudResource):
 
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object
+        """
+        pass
+
+    @abstractproperty
+    def gateways(self):
+        """
+        Provides access to the internet gateways attached to this network.
+
+        :rtype: :class:`.GatewayContainer`
+        :return: A GatewayContainer object
         """
         pass
 
@@ -1203,6 +1215,50 @@ class GatewayState(object):
     CONFIGURING = "configuring"
     AVAILABLE = "available"
     ERROR = "error"
+
+
+class GatewayContainer(PageableObjectMixin):
+    """
+    Manage internet gateway resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_or_create_inet_gateway(self, name=None):
+        """
+        Creates new or returns an existing internet gateway for a network.
+
+        The returned gateway object can subsequently be attached to a router to
+        provide internet routing to a network.
+
+        :type  name: ``str``
+        :param name: The gateway name. This applies only if creating a gateway
+                     and if the provider supports it.
+
+        :rtype: ``object``  of :class:`.InternetGateway` or ``None``
+        :return: an InternetGateway object of ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, gateway):
+        """
+        Delete a gateway.
+
+        :type gateway: :class:`.Gateway` object
+        :param gateway: Gateway object to delete.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all available internet gateways.
+
+        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
+        :return: Current list of internet gateways.
+        """
+        pass
 
 
 class Gateway(CloudResource):

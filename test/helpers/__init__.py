@@ -99,9 +99,12 @@ TEST_DATA_CONFIG = {
         "placement":
             os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
-            os.environ.get('CB_IMAGE_AZURE', 'cb-test-image'),
+            os.environ.get('CB_IMAGE_AZURE',
+                           '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a9'
+                           '6/resourceGroups/cloudbridge/providers/Microsoft.C'
+                           'ompute/images/cb-test-image'),
         "vm_type":
-            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A0'),
+            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A2'),
     }
 }
 
@@ -149,16 +152,16 @@ def get_test_gateway(provider, name):
     net_name = 'cb_testgwnet-{0}'.format(get_uuid())
     net = provider.networking.networks.create(
         name=net_name, cidr_block='10.0.0.0/16')
-    return net, provider.networking.gateways.get_or_create_inet_gateway(
-        net, name)
+    return net, net.gateways.get_or_create_inet_gateway(name)
 
 
 def delete_test_gateway(network, gateway):
     """
     Delete the supplied network and gateway.
     """
-    gateway.delete()
-    network.delete()
+    with cleanup_action(lambda: network.delete()):
+        with cleanup_action(lambda: gateway.delete()):
+            pass
 
 
 def create_test_instance(

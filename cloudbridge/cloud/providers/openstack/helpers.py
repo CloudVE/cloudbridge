@@ -31,7 +31,7 @@ def to_server_paged_list(provider, objects, limit=None):
     """
     limit = limit or provider.config.default_result_limit
     is_truncated = len(objects) > limit
-    next_token = objects[limit].id if is_truncated else None
+    next_token = objects[limit-1].id if is_truncated else None
     results = ServerPagedResultList(is_truncated,
                                     next_token,
                                     False)

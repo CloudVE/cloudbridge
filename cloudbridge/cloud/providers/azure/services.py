@@ -3,18 +3,20 @@ import logging
 import uuid
 
 from azure.common import AzureException
+from azure.mgmt.compute.models import DiskCreateOption
 
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList, \
     ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService, \
-    BaseComputeService, BaseGatewayService, \
+    BaseComputeService, \
     BaseImageService, BaseInstanceService, BaseKeyPairService, \
     BaseNetworkService, BaseNetworkingService, BaseRegionService, \
     BaseRouterService, BaseSecurityService, BaseSnapshotService, \
     BaseStorageService, BaseSubnetService, BaseVMFirewallService, \
     BaseVMTypeService, BaseVolumeService
-from cloudbridge.cloud.interfaces import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import \
+    DuplicateResourceException, InvalidValueException
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
 
@@ -22,7 +24,7 @@ from msrestazure.azure_exceptions import CloudError
 
 from . import helpers as azure_helpers
 from .resources import AzureBucket, \
-    AzureInstance, AzureInternetGateway, AzureKeyPair, \
+    AzureInstance, AzureKeyPair, \
     AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
     AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \
     AzureVMFirewall, AzureVMType, AzureVolume
@@ -55,10 +57,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
         try:
             fws = self.provider.azure_client.get_vm_firewall(fw_id)
             return AzureVMFirewall(self.provider, fws)
-
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def list(self, limit=None, marker=None):
@@ -86,7 +87,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
             rule.priority = rule.priority - 61440
             rule.access = "Deny"
             self._provider.azure_client.create_vm_firewall_rule(
-                fw.name, rule_name, rule)
+                fw.id, rule_name, rule)
 
         # Add a new custom rule allowing all outbound traffic to the internet
         parameters = {"priority": 3000,
@@ -98,7 +99,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
                       "access": "Allow",
                       "direction": "Outbound"}
         result = self._provider.azure_client.create_vm_firewall_rule(
-            fw.name, "cb-default-internet-outbound", parameters)
+            fw.id, "cb-default-internet-outbound", parameters)
         fw.security_rules.append(result)
 
         cb_fw = AzureVMFirewall(self.provider, fw)
@@ -119,13 +120,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, fws)
 
     def delete(self, group_id):
-        try:
-            self.provider.azure_client.delete_vm_firewall(group_id)
-            return True
-        except CloudError as cloudError:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
-            return False
+        self.provider.azure_client.delete_vm_firewall(group_id)
 
 
 class AzureKeyPairService(BaseKeyPairService):
@@ -175,7 +170,7 @@ class AzureKeyPairService(BaseKeyPairService):
         key_pair = self.get(name)
 
         if key_pair:
-            raise Exception(
+            raise DuplicateResourceException(
                 'Keypair already exists with name {0}'.format(name))
 
         private_key = None
@@ -207,7 +202,6 @@ class AzureBucketService(BaseBucketService):
         try:
             bucket = self.provider.azure_client.get_container(bucket_id)
             return AzureBucket(self.provider, bucket)
-
         except AzureException as error:
             log.exception(error)
             return None
@@ -276,9 +270,9 @@ class AzureVolumeService(BaseVolumeService):
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -321,13 +315,14 @@ class AzureVolumeService(BaseVolumeService):
                 'location':
                     zone_id or self.provider.azure_client.region_name,
                 'creation_data': {
-                    'create_option': 'copy',
+                    'create_option': DiskCreateOption.copy,
                     'source_uri': snapshot.resource_id
                 },
                 'tags': tags
             }
 
-            self.provider.azure_client.create_snapshot_disk(disk_name, params)
+            disk = self.provider.azure_client.create_snapshot_disk(disk_name,
+                                                                   params)
 
         else:
             params = {
@@ -335,13 +330,14 @@ class AzureVolumeService(BaseVolumeService):
                     zone_id or self.provider.region_name,
                 'disk_size_gb': size,
                 'creation_data': {
-                    'create_option': 'empty'
+                    'create_option': DiskCreateOption.empty
                 },
                 'tags': tags}
 
-            self.provider.azure_client.create_empty_disk(disk_name, params)
+            disk = self.provider.azure_client.create_empty_disk(disk_name,
+                                                                params)
 
-        azure_vol = self.provider.azure_client.get_disk(disk_name)
+        azure_vol = self.provider.azure_client.get_disk(disk.id)
         cb_vol = AzureVolume(self.provider, azure_vol)
 
         return cb_vol
@@ -358,9 +354,9 @@ class AzureSnapshotService(BaseSnapshotService):
         try:
             snapshot = self.provider.azure_client.get_snapshot(ss_id)
             return AzureSnapshot(self.provider, snapshot)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -403,19 +399,16 @@ class AzureSnapshotService(BaseSnapshotService):
         params = {
             'location': self.provider.azure_client.region_name,
             'creation_data': {
-                'create_option': 'Copy',
+                'create_option': DiskCreateOption.copy,
                 'source_uri': volume.resource_id
             },
             'disk_size_gb': volume.size,
             'tags': tags
         }
 
-        self.provider.azure_client. \
-            create_snapshot(snapshot_name, params)
-        azure_snap = self.provider.azure_client.get_snapshot(snapshot_name)
-        cb_snap = AzureSnapshot(self.provider, azure_snap)
-
-        return cb_snap
+        azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,
+                                                                params)
+        return AzureSnapshot(self.provider, azure_snap)
 
 
 class AzureComputeService(BaseComputeService):
@@ -467,12 +460,18 @@ class AzureInstanceService(BaseInstanceService):
             # but useless. However, this will allow an instance to be launched
             # without specifying a keypair, so users may still be able to login
             # if they have a preinstalled keypair/password baked into the image
-            key_pair = self.provider.security.key_pairs.create(
-                name="cloudbridge_temp_key_pair")
-            temp_key_pair = key_pair
+            default_kp_name = "cb_default_key_pair"
+            default_kp = self.provider.security.key_pairs.find(
+                name=default_kp_name)
+            if default_kp:
+                key_pair = default_kp[0]
+            else:
+                key_pair = self.provider.security.key_pairs.create(
+                    name=default_kp_name)
+                temp_key_pair = key_pair
 
-        image = (self.provider.compute.images.get(image)
-                 if isinstance(image, str) else image)
+        image = (image if isinstance(image, AzureMachineImage) else
+                 self.provider.compute.images.get(image))
         if not isinstance(image, AzureMachineImage):
             raise Exception("Provided image %s is not a valid azure image"
                             % image)
@@ -492,13 +491,8 @@ class AzureInstanceService(BaseInstanceService):
             self._resolve_launch_options(instance_name,
                                          subnet, zone_id, vm_firewalls)
 
-        if launch_config:
-            disks, root_disk_size = \
-                self._process_block_device_mappings(launch_config,
-                                                    name, zone_id)
-        else:
-            disks = None
-            root_disk_size = None
+        storage_profile = self._create_storage_profile(image, launch_config,
+                                                       instance_name, zone_id)
 
         nic_params = {
                 'location': self._provider.region_name,
@@ -549,34 +543,31 @@ class AzureInstanceService(BaseInstanceService):
                     'id': nic_info.id
                 }]
             },
-            'storage_profile': {
-                'image_reference': {
-                    'id': image.resource_id
-                },
-                "os_disk": {
-                    "name": instance_name + '_os_disk',
-                    "create_option": "fromImage"
-                },
-                'data_disks': disks
-            },
+            'storage_profile': storage_profile,
             'tags': {'Name': name}
         }
 
         if key_pair:
             params['tags'].update(Key_Pair=key_pair.name)
 
-        if root_disk_size:
-            params['storage_profile']['os_disk']['disk_size_gb'] = \
-                root_disk_size
-
         if user_data:
             custom_data = base64.b64encode(bytes(ud, 'utf-8'))
             params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
 
-        self.provider.azure_client.create_vm(instance_name, params)
-        vm = self._provider.azure_client.get_vm(instance_name)
-        if temp_key_pair:
-            temp_key_pair.delete()
+        try:
+            vm = self.provider.azure_client.create_vm(instance_name, params)
+        except Exception as e:
+            # If VM creation fails, attempt to clean up intermediary resources
+            self.provider.azure_client.delete_nic(nic_info.id)
+            for disk_def in storage_profile.get('data_disks', []):
+                if disk_def.get('tags', {}).get('delete_on_terminate'):
+                    disk_id = disk_def.get('managed_disk', {}).get('id')
+                    if disk_id:
+                        self.provider.storage.volumes.delete(disk_id)
+            raise e
+        finally:
+            if temp_key_pair:
+                temp_key_pair.delete()
         return AzureInstance(self.provider, vm)
 
     def _resolve_launch_options(self, name, subnet=None, zone_id=None,
@@ -609,6 +600,29 @@ class AzureInstanceService(BaseInstanceService):
 
         return subnet.resource_id, zone_id, vm_firewall_id
 
+    def _create_storage_profile(self, image, launch_config, instance_name,
+                                zone_id):
+
+        storage_profile = {
+            'image_reference': {
+                'id': image.resource_id
+            },
+            "os_disk": {
+                "name": instance_name + '_os_disk',
+                "create_option": DiskCreateOption.from_image
+            },
+        }
+
+        if launch_config:
+            data_disks, root_disk_size = self._process_block_device_mappings(
+                launch_config, instance_name, zone_id)
+            if data_disks:
+                storage_profile['data_disks'] = data_disks
+            if root_disk_size:
+                storage_profile['os_disk']['disk_size_gb'] = root_disk_size
+
+        return storage_profile
+
     def _process_block_device_mappings(self, launch_config,
                                        vm_name, zone=None):
         """
@@ -617,71 +631,67 @@ class AzureInstanceService(BaseInstanceService):
         are requested (source is None and destination is VOLUME), they will be
         created and the relevant volume ids included in the mapping.
         """
-        disks = []
-        volumes_count = 0
+        data_disks = []
         root_disk_size = None
 
-        def attach_volume(volume, delete_on_terminate):
-            disks.append({
-                'lun': volumes_count,
-                'name': volume.id,
-                'create_option': 'attach',
-                'managed_disk': {
-                    'id': volume.resource_id
-                }
-            })
-            delete_on_terminate = delete_on_terminate or False
-            volume.tags.update(delete_on_terminate=str(delete_on_terminate))
+        def append_disk(disk_def, device_no, delete_on_terminate):
             # In azure, there is no option to specify terminate disks
             # (similar to AWS delete_on_terminate) on VM delete.
             # This method uses the azure tags functionality to store
             # the  delete_on_terminate option when the virtual machine
             # is deleted, we parse the tags and delete accordingly
-            self.provider.azure_client.\
-                update_disk_tags(volume.id, volume.tags)
+            disk_def['lun'] = device_no
+            disk_def['tags'] = {
+                'delete_on_terminate': delete_on_terminate
+            }
+            data_disks.append(disk_def)
 
-        for device in launch_config.block_devices:
+        for device_no, device in enumerate(launch_config.block_devices):
             if device.is_volume:
-                if not device.is_root:
+                if device.is_root:
+                    root_disk_size = device.size
+                else:
                     # In azure, os disk automatically created,
                     # we are ignoring the root disk, if specified
                     if isinstance(device.source, Snapshot):
                         snapshot_vol = device.source.create_volume()
-                        attach_volume(snapshot_vol,
-                                      device.delete_on_terminate)
+                        disk_def = {
+                            # pylint:disable=protected-access
+                            'name': snapshot_vol._volume.name,
+                            'create_option': DiskCreateOption.attach,
+                            'managed_disk': {
+                                'id': snapshot_vol.id
+                            }
+                        }
                     elif isinstance(device.source, Volume):
-                        attach_volume(device.source,
-                                      device.delete_on_terminate)
+                        disk_def = {
+                            # pylint:disable=protected-access
+                            'name': device.source._volume.name,
+                            'create_option': DiskCreateOption.attach,
+                            'managed_disk': {
+                                'id': device.source.id
+                            }
+                        }
                     elif isinstance(device.source, MachineImage):
-                        # Not supported
-                        pass
+                        disk_def = {
+                            # pylint:disable=protected-access
+                            'name': device.source._volume.name,
+                            'create_option': DiskCreateOption.from_image,
+                            'source_resource_id': device.source.id
+                        }
                     else:
-                        # source is None, but destination is volume, therefore
-                        # create a blank volume. If the Zone is None, this
-                        # could fail since the volume and instance may
-                        # be created in two different zones.
-                        if not zone:
-                            raise InvalidConfigurationException(
-                                "A zone must be specified when "
-                                "launching with a"
-                                " new blank volume block device mapping.")
-                        vol_name = \
-                            "{0}_{1}_disk".format(vm_name,
-                                                  uuid.uuid4().hex[:6])
-                        new_vol = self.provider.storage.volumes.create(
-                            vol_name,
-                            device.size,
-                            zone)
-                        attach_volume(new_vol, device.delete_on_terminate)
-                    volumes_count += 1
-                else:
-                    root_disk_size = device.size
-
+                        disk_def = {
+                            # pylint:disable=protected-access
+                            'create_option': DiskCreateOption.empty,
+                            'disk_size_gb': device.size
+                        }
+                    append_disk(disk_def, device_no,
+                                device.delete_on_terminate)
             else:  # device is ephemeral
                 # in azure we cannot add the ephemeral disks explicitly
                 pass
 
-        return disks, root_disk_size
+        return data_disks, root_disk_size
 
     def create_launch_config(self):
         return AzureLaunchConfig(self.provider)
@@ -703,9 +713,9 @@ class AzureInstanceService(BaseInstanceService):
         try:
             vm = self.provider.azure_client.get_vm(instance_id)
             return AzureInstance(self.provider, vm)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -734,9 +744,9 @@ class AzureImageService(BaseImageService):
         try:
             image = self.provider.azure_client.get_image(image_id)
             return AzureMachineImage(self.provider, image)
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -790,7 +800,6 @@ class AzureNetworkingService(BaseNetworkingService):
         self._network_service = AzureNetworkService(self.provider)
         self._subnet_service = AzureSubnetService(self.provider)
         self._router_service = AzureRouterService(self.provider)
-        self._gateway_service = AzureGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -804,10 +813,6 @@ class AzureNetworkingService(BaseNetworkingService):
     def routers(self):
         return self._router_service
 
-    @property
-    def gateways(self):
-        return self._gateway_service
-
 
 class AzureNetworkService(BaseNetworkService):
     def __init__(self, provider):
@@ -817,10 +822,9 @@ class AzureNetworkService(BaseNetworkService):
         try:
             network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
-
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def list(self, limit=None, marker=None):
@@ -862,22 +866,16 @@ class AzureNetworkService(BaseNetworkService):
             },
             'tags': {'Name': name or AzureNetwork.CB_DEFAULT_NETWORK_NAME}
         }
-        self.provider.azure_client.create_network(network_name, params)
-        network = self.provider.azure_client.get_network(network_name)
-        cb_network = AzureNetwork(self.provider, network)
+        az_network = self.provider.azure_client.create_network(network_name,
+                                                               params)
+        cb_network = AzureNetwork(self.provider, az_network)
         return cb_network
 
     def delete(self, network_id):
         """
         Delete an existing network.
         """
-        try:
-            self.provider.azure_client.delete_network(network_id)
-            return True
-        except CloudError as cloudError:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
-            return False
+        self.provider.azure_client.delete_network(network_id)
 
 
 class AzureRegionService(BaseRegionService):
@@ -919,16 +917,12 @@ class AzureSubnetService(BaseSubnetService):
         :return:
         """
         try:
-            subnet_id_parts = subnet_id.split('|$|')
-            if (len(subnet_id_parts) != 2):
-                return None
-            azure_subnet = self.provider.azure_client.\
-                get_subnet(subnet_id_parts[0], subnet_id_parts[1])
+            azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
             return AzureSubnet(self.provider,
                                azure_subnet) if azure_subnet else None
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def list(self, network=None, limit=None, marker=None):
@@ -948,7 +942,7 @@ class AzureSubnetService(BaseSubnetService):
         else:
             for net in self.provider.azure_client.list_networks():
                 result_list.extend(self.provider.azure_client.list_subnets(
-                    net.name
+                    net.id
                 ))
         subnets = [AzureSubnet(self.provider, subnet)
                    for subnet in result_list]
@@ -980,59 +974,30 @@ class AzureSubnetService(BaseSubnetService):
         return AzureSubnet(self.provider, subnet_info)
 
     def get_or_create_default(self, zone=None):
-        default_cdir = '10.0.1.0/24'
-        network = None
-        subnet = None
+        default_cidr = '10.0.1.0/24'
 
         # No provider-default Subnet exists, look for a library-default one
-        try:
-            subnet = self.provider.azure_client.get_subnet(
-                AzureNetwork.CB_DEFAULT_NETWORK_NAME,
-                AzureSubnet.CB_DEFAULT_SUBNET_NAME
-            )
-        except CloudError:
-            # Azure raises the cloud error if the resource not available
-            pass
-
-        if subnet:
-            return AzureSubnet(self.provider, subnet)
+        matches = self.find(name=AzureSubnet.CB_DEFAULT_SUBNET_NAME)
+        if matches:
+            return matches[0]
 
         # No provider-default Subnet exists, try to create it (net + subnets)
-        default_net_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
-        try:
-            network = self.provider.azure_client \
-                .get_network(default_net_name)
-        except CloudError:
-            # Azure raises the cloud error if the resource not available
-            pass
+        networks = self.provider.networking.networks.find(
+            name=AzureNetwork.CB_DEFAULT_NETWORK_NAME)
 
-        if not network:
+        if networks:
+            network = networks[0]
+        else:
             network = self.provider.networking.networks.create(
-                name=default_net_name, cidr_block='10.0.0.0/16')
+                AzureNetwork.CB_DEFAULT_NETWORK_NAME, '10.0.0.0/16')
 
-        subnet = self.provider.azure_client.create_subnet(
-            network.id,
-            AzureSubnet.CB_DEFAULT_SUBNET_NAME,
-            {'address_prefix': default_cdir}
-        )
-
-        return AzureSubnet(self.provider, subnet)
+        subnet = self.create(network, default_cidr,
+                             name=AzureSubnet.CB_DEFAULT_SUBNET_NAME)
+        return subnet
 
     def delete(self, subnet):
-        try:
-            # Azure does not provide an api to delete the subnet by id
-            # It also requires network id. To get the network id
-            # code is doing an explicit get and retrieving the network id
-
-            subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
-            subnet_id_parts = subnet_id.split('|$|')
-            self.provider.azure_client.\
-                delete_subnet(subnet_id_parts[0], subnet_id_parts[1])
-            return True
-        except CloudError as cloudError:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
-            return False
+        subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
+        self.provider.azure_client.delete_subnet(subnet_id)
 
 
 class AzureRouterService(BaseRouterService):
@@ -1043,10 +1008,9 @@ class AzureRouterService(BaseRouterService):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
             return AzureRouter(self.provider, route)
-
-        except CloudError as cloudError:
+        except (CloudError, InvalidValueException) as cloudError:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError.message)
+            log.exception(cloudError)
             return None
 
     def find(self, **kwargs):
@@ -1079,29 +1043,3 @@ class AzureRouterService(BaseRouterService):
         route = self.provider.azure_client. \
             create_route_table(name, parameters)
         return AzureRouter(self.provider, route)
-
-
-class AzureGatewayService(BaseGatewayService):
-    def __init__(self, provider):
-        super(AzureGatewayService, self).__init__(provider)
-        # Azure doesn't have a notion of a route table or an internet
-        # gateway as OS and AWS so create placeholder objects of the
-        # AzureInternetGateway here.
-        # http://bit.ly/2BqGdVh
-        self.inet_gateways = []
-
-    def get_or_create_inet_gateway(self, network, name=None):
-        if name:
-            AzureInternetGateway.assert_valid_resource_name(name)
-        gateway = AzureInternetGateway(self.provider, None, network)
-        if name:
-            gateway.name = name
-        if gateway not in self.inet_gateways:
-            self.inet_gateways.append(gateway)
-        return gateway
-
-    def list(self, limit=None, marker=None):
-        return self.inet_gateways
-
-    def delete(self, gateway):
-        pass

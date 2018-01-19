@@ -10,6 +10,8 @@ from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 
 class CloudInterfaceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     def test_name_property(self):
         """
         Name should always return a value and should not raise an exception

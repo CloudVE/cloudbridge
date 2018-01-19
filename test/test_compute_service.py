@@ -16,6 +16,8 @@ import six
 
 class CloudComputeServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         name = "cb-instcrud-{0}".format(helpers.get_uuid())
@@ -342,8 +344,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             with helpers.cleanup_action(lambda: cleanup_router(router,
                                                                gateway)):
                 router.attach_subnet(subnet)
-                gateway = (self.provider.networking.gateways
-                           .get_or_create_inet_gateway(net, name))
+                gateway = net.gateways.get_or_create_inet_gateway(name)
                 router.attach_gateway(gateway)
                 # check whether adding an elastic ip works
                 fip = gateway.floating_ips.create()

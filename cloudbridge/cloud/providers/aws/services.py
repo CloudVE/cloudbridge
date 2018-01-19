@@ -8,7 +8,6 @@ import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -24,7 +23,7 @@ from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
-    import InvalidConfigurationException
+    import DuplicateResourceException, InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import PlacementZone
@@ -39,7 +38,6 @@ from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
 from .resources import AWSBucket
 from .resources import AWSInstance
-from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
@@ -105,10 +103,17 @@ class AWSKeyPairService(BaseKeyPairService):
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()
-        kp = self.svc.create('import_key_pair', KeyName=name,
-                             PublicKeyMaterial=public_key_material)
-        kp.material = private_key
-        return kp
+        try:
+            kp = self.svc.create('import_key_pair', KeyName=name,
+                                 PublicKeyMaterial=public_key_material)
+            kp.material = private_key
+            return kp
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'InvalidKeyPair.Duplicate':
+                raise DuplicateResourceException(
+                    'Keypair already exists with name {0}'.format(name))
+            else:
+                raise e
 
 
 class AWSVMFirewallService(BaseVMFirewallService):
@@ -321,7 +326,7 @@ class AWSBucketService(BaseBucketService):
 
     def create(self, name, location=None):
         log.debug("Creating AWS Bucket with the params "
-                  "[name: %s id: %s description: %s]", name, location)
+                  "[name: %s, location: %s]", name, location)
         AWSBucket.assert_valid_resource_name(name)
         loc_constraint = location or self.provider.region_name
         # Due to an API issue in S3, specifying us-east-1 as a
@@ -406,7 +411,7 @@ class AWSInstanceService(BaseInstanceService):
                   "[name: %s image: %s type: %s subnet: %s zone: %s "
                   "key pair: %s firewalls: %s user data: %s config %s "
                   "others: %s]", name, image, vm_type, subnet, zone,
-                  key_pair, vm_firewalls, user_data, launch_config, **kwargs)
+                  key_pair, vm_firewalls, user_data, launch_config, kwargs)
         AWSInstance.assert_valid_resource_name(name)
 
         image_id = image.id if isinstance(image, MachineImage) else image
@@ -615,7 +620,6 @@ class AWSNetworkingService(BaseNetworkingService):
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
         self._router_service = AWSRouterService(self.provider)
-        self._gateway_service = AWSGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -628,10 +632,6 @@ class AWSNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
-
-    @property
-    def gateways(self):
-        return self._gateway_service
 
 
 class AWSNetworkService(BaseNetworkService):
@@ -806,44 +806,3 @@ class AWSRouterService(BaseRouterService):
         if name:
             cb_router.name = name
         return cb_router
-
-
-class AWSGatewayService(BaseGatewayService):
-
-    def __init__(self, provider):
-        super(AWSGatewayService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSInternetGateway,
-                                  boto_collection_name='internet_gateways')
-
-    def get_or_create_inet_gateway(self, network, name=None):
-        log.debug("Get or create inet gateway %s on net %s", name, network)
-        if name:
-            AWSInternetGateway.assert_valid_resource_name(name)
-
-        network_id = network.id if isinstance(network, AWSNetwork) else network
-        # Don't filter by name because it may conflict with at least the
-        # default VPC that most accounts have but that network is typically
-        # without a name.
-        gtw = self.svc.find(filter_name='attachment.vpc-id',
-                            filter_value=network_id)
-        if gtw:
-            return gtw[0]  # There can be only one gtw attached to a VPC
-        # Gateway does not exist so create one and attach to the supplied net
-        cb_gateway = self.svc.create('create_internet_gateway')
-        if name:
-            cb_gateway.name = name
-        cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
-        return cb_gateway
-
-    def delete(self, gateway):
-        log.debug("Service deleting AWS Gateway %s", gateway)
-        gateway_id = gateway.id if isinstance(
-            gateway, AWSInternetGateway) else gateway
-        gateway = self.svc.get(gateway_id)
-        if gateway:
-            gateway.delete()
-
-    def list(self, limit=None, marker=None):
-        log.debug("Listing current AWS internet gateways.")
-        return self.svc.list(limit=None, marker=None)
