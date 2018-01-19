@@ -13,17 +13,23 @@ matrix:
     - python: 2.7
       env: TOX_ENV=py27-azure
     - python: 2.7
+      env: TOX_ENV=py27-gce
+    - python: 2.7
       env: TOX_ENV=py27-openstack
     - python: 3.6
       env: TOX_ENV=py36-aws
     - python: 3.6
       env: TOX_ENV=py36-azure
     - python: 3.6
+      env: TOX_ENV=py36-gce
+    - python: 3.6
       env: TOX_ENV=py36-openstack
     - python: pypy-5.3.1
       env: TOX_ENV=pypy-aws
     - python: pypy-5.3.1
       env: TOX_ENV=pypy-azure
+    - python: pypy-5.3.1
+      env: TOX_ENV=pypy-gce
     - python: pypy-5.3.1
       env: TOX_ENV=pypy-openstack
 before_install:

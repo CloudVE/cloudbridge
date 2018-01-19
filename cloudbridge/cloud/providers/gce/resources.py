@@ -14,6 +14,7 @@ from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
+from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -1255,6 +1256,67 @@ class GCENetwork(BaseNetwork):
         self._network = self._provider.parse_url(self_link).get_resource()
 
 
+class GCEFloatingIPContainer(BaseFloatingIPContainer):
+
+    def __init__(self, provider, gateway):
+        super(GCEFloatingIPContainer, self).__init__(provider, gateway)
+
+    def get(self, floating_ip_id):
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .get(project=self.provider.project_name,
+                                 region=self.provider.region_name)
+                            .execute())
+            return GCEFloatingIP(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
+
+    def list(self, limit=None, marker=None):
+        max_result = limit if limit is not None and limit < 500 else 500
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .list(project=self.provider.project_name,
+                                  region=self.provider.region_name,
+                                  maxResults=max_result,
+                                  pageToken=marker)
+                            .execute())
+            ips = [GCEFloatingIP(self.provider, ip)
+                   for ip in response.get('items', [])]
+            if len(ips) > max_result:
+                cb.log.warning('Expected at most %d results; got %d',
+                               max_result, len(ips))
+            return ServerPagedResultList('nextPageToken' in response,
+                                         response.get('nextPageToken'),
+                                         False, data=ips)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
+
+    def create(self):
+        region = self.provider.region_name
+        ip_name = 'ip-{0}'.format(uuid.uuid4())
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .insert(project=self.provider.project_name,
+                                    region=region,
+                                    body={'name': ip_name})
+                            .execute())
+            if 'error' in response:
+                return None
+            self.provider.wait_for_operation(response, region=region)
+            return self.get(ip_name)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
+
+
 class GCEFloatingIP(BaseFloatingIP):
     _DEAD_INSTANCE = 'dead instance'
 
@@ -1338,6 +1400,9 @@ class GCEFloatingIP(BaseFloatingIP):
                         .execute())
         self._provider.wait_for_operation(response, region=self._region)
 
+    def refresh(self):
+        pass
+
 
 class GCERouter(BaseRouter):
 
@@ -1399,6 +1464,7 @@ class GCEInternetGateway(BaseInternetGateway):
     def __init__(self, provider, gateway):
         super(GCEInternetGateway, self).__init__(provider)
         self._gateway = gateway
+        self._fip_container = GCEFloatingIPContainer(provider, self)
 
     @property
     def id(self):
@@ -1428,6 +1494,10 @@ class GCEInternetGateway(BaseInternetGateway):
 
     def delete(self):
         pass
+
+    @property
+    def floating_ips(self):
+        return self._fips_container
 
 
 class GCESubnet(BaseSubnet):
