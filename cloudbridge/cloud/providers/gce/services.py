@@ -33,6 +33,7 @@ from retrying import retry
 from .resources import GCEFirewallsDelegate
 from .resources import GCEInstance
 from .resources import GCEKeyPair
+from .resources import GCELaunchConfig
 from .resources import GCEMachineImage
 from .resources import GCENetwork
 from .resources import GCEPlacementZone
@@ -529,6 +530,9 @@ class GCEInstanceService(BaseInstanceService):
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=instances)
+
+    def create_launch_config(self):
+        return GCELaunchConfig(self.provider)
 
 
 class GCEComputeService(BaseComputeService):
