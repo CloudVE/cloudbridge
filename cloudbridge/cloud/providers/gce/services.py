@@ -1083,7 +1083,7 @@ class GCESnapshotService(BaseSnapshotService):
         zone_url = self.provider.parse_url(operation['zone'])
         self.provider.wait_for_operation(operation,
                                          zone=zone_url.parameters['zone'])
-        snapshots = self.provider.block_store.snapshots.find(name=name)
+        snapshots = self.provider.storage.snapshots.find(name=name)
         if snapshots:
             return snapshots[0]
         else:

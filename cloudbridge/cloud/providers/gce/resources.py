@@ -1506,10 +1506,6 @@ class GCEInternetGateway(BaseInternetGateway):
     def name(self):
         return self._gateway['name']
 
-    @name.setter
-    def name(self, value):
-        raise NotImplementedError('Not supported by this provider.')
-
     def refresh(self):
         pass
 
@@ -1610,13 +1606,6 @@ class GCEVolume(BaseVolume):
         Get the volume name.
         """
         return self._volume.get('name')
-
-    @name.setter
-    def name(self, value):
-        """
-        Set the volume name.
-        """
-        raise NotImplementedError('Not supported by this provider.')
 
     @property
     def description(self):
@@ -1797,14 +1786,6 @@ class GCESnapshot(BaseSnapshot):
         Get the snapshot name.
          """
         return self._snapshot.get('name')
-
-    @name.setter
-    # pylint:disable=arguments-differ
-    def name(self, value):
-        """
-        Set the snapshot name.
-        """
-        raise NotImplementedError('Not supported by this provider.')
 
     @property
     def description(self):
