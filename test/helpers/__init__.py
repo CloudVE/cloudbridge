@@ -91,7 +91,7 @@ TEST_DATA_CONFIG = {
         "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
     },
     'GCECloudProvider': {
-        'image': 'ubuntu-1404-trusty-v20171101',
+        'image': 'ubuntu-1604-lts',
         'vm_type': 'n1-standard-1',
         'placement': os.environ.get('GCE_DEFAULT_ZONE', 'us-central1-a'),
     },
@@ -149,7 +149,7 @@ def get_test_gateway(provider, name):
 
     This includes creating a network for the gateway, which is also returned.
     """
-    net_name = 'cb_testgwnet-{0}'.format(get_uuid())
+    net_name = 'cb-testgwnet-{0}'.format(get_uuid())
     net = provider.networking.networks.create(
         name=net_name, cidr_block='10.0.0.0/16')
     return net, net.gateways.get_or_create_inet_gateway(name)

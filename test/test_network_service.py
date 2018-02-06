@@ -120,7 +120,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_floating_ip_properties(self):
         # Check floating IP address
         net, gw = helpers.get_test_gateway(
-            self.provider, 'cb_crudfipgw-{0}'.format(helpers.get_uuid()))
+            self.provider, 'cb-crudfipgw-{0}'.format(helpers.get_uuid()))
         fip = gw.floating_ips.create()
         with helpers.cleanup_action(
                 lambda: helpers.delete_test_gateway(net, gw)):

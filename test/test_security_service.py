@@ -48,7 +48,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_import_key_pair(self):
-        name = 'cb_kpimport-{0}'.format(helpers.get_uuid())
+        name = 'cb-kpimport-{0}'.format(helpers.get_uuid())
 
         public_key, _ = cb_helpers.generate_key_pair()
         kp = self.provider.security.key_pairs.create(
