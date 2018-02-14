@@ -383,7 +383,13 @@ class GCEImageService(BaseImageService):
         Returns an Image given its id
         """
         image = self.provider.get_resource('images', image_id)
-        return GCEMachineImage(self.provider, image) if image else None
+        if image:
+            return GCEMachineImage(self.provider, image)
+        self._retrieve_public_images()
+        for public_image in self._public_images:
+            if public_image.id == image_id or public_image.name == image_id:
+                return public_image
+        return None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -430,6 +436,10 @@ class GCEInstanceService(BaseInstanceService):
         GCEInstance.assert_valid_resource_name(name)
         if not zone:
             zone = self.provider.default_zone
+        if not isinstance(image, GCEMachineImage):
+            image = self.provider.compute.images.get(image)
+        if not isinstance(vm_type, GCEVMType):
+            vm_type = self.provider.compute.vm_types.get(vm_type)
         if not launch_config:
             if subnet:
                 network = self.provider.networking.networks.get(

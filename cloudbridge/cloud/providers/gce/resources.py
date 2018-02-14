@@ -863,7 +863,7 @@ class GCEInstance(BaseInstance):
                         instance=self.name)
                  .execute())
 
-    def terminate(self):
+    def delete(self):
         """
         Permanently terminate this instance.
         """
