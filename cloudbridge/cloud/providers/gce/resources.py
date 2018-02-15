@@ -725,14 +725,10 @@ class GCEMachineImage(BaseMachineImage):
                             .images()
                             .get(project=project, image=self.name)
                             .execute())
-            if response:
-                # pylint:disable=protected-access
-                self._gce_image = response
-        except googleapiclient.errors.HttpError as http_error:
-            # image no longer exists
-            cb.log.warning(
-                "googleapiclient.errors.HttpError: {0}".format(http_error))
-            self._gce_image['status'] = "unknown"
+            self._gce_image = response
+        except googleapiclient.errors.HttpError:
+            # If the resource does not exist, its status is UNKNOWN.
+            self._gce_image['status'] = 'UNKNOWN'
 
 
 class GCEInstance(BaseInstance):
@@ -1180,7 +1176,13 @@ class GCEInstance(BaseInstance):
         for its latest state.
         """
         self_link = self._gce_instance.get('selfLink')
-        self._gce_instance = self._provider.parse_url(self_link).get_resource()
+
+        try:
+            new_info = self._provider.parse_url(self_link).get_resource()
+            self._get_instance = new_info
+        except googleapiclient.errors.HttpError:
+            # If the resource does not exist, its status is UNKNOWN.
+            self._gce_instance['status'] = 'UNKNOWN'
 
     def add_vm_firewall(self, sg):
         raise NotImplementedError('To be implemented.')
@@ -1222,6 +1224,8 @@ class GCENetwork(BaseNetwork):
         When a GCP network created by the CloudBridge API, we wait until the
         network is ready.
         """
+        if 'status' in self._network and self._network['status'] == 'UNKNOWN':
+            return NetworkState.UNKNOWN
         return NetworkState.AVAILABLE
 
     @property
@@ -1257,7 +1261,12 @@ class GCENetwork(BaseNetwork):
 
     def refresh(self):
         self_link = self._network.get('selfLink')
-        self._network = self._provider.parse_url(self_link).get_resource()
+        try:
+            new_info = self._provider.parse_url(self_link).get_resource()
+            self._network = new_info
+        except googleapiclient.errors.HttpError:
+            # If the resource does not exist, its status is UNKNOWN.
+            self._network['status'] = 'UNKNOWN'
 
     @property
     def gateways(self):
@@ -1409,7 +1418,13 @@ class GCEFloatingIP(BaseFloatingIP):
         self._provider.wait_for_operation(response, region=self._region)
 
     def refresh(self):
-        pass
+        self_link = self._ip.get('selfLink')
+        try:
+            new_info = self._provider.parse_url(self_link).get_resource()
+            self._ip = new_info
+        except googleapiclient.errors.HttpError:
+            # If the resource does not exist, its status is UNKNOWN.
+            self._network['status'] = 'UNKNOWN'
 
 
 class GCERouter(BaseRouter):
@@ -1427,11 +1442,20 @@ class GCERouter(BaseRouter):
         return self._router['name']
 
     def refresh(self):
-        parsed_url = self._provider.parse_url(self._router['selfLink'])
-        self._router = parsed_url.get_resource()
+        self_link = self._router.get('selfLink')
+        try:
+            new_info = self._provider.parse_url(self_link).get_resource()
+            self._router = new_info
+        except googleapiclient.errors.HttpError:
+            # If the resource does not exist, its status is UNKNOWN.
+            self._router['status'] = 'UNKNOWN'
 
     @property
     def state(self):
+        # If the router info is refreshed after it is deleted, its status will
+        # be UNKNOWN.
+        if 'status' in self._router and self._router['status'] == 'UNKNOWN':
+            return RouterState.UNKNOWN
         # GCE routers are always attached to a network.
         return RouterState.ATTACHED
 
@@ -1570,17 +1594,23 @@ class GCESubnet(BaseSubnet):
     def zone(self):
         return None
 
-    @property
     def delete(self):
         return self._provider.networking.subnets.delete(self)
 
     @property
     def state(self):
+        if 'status' in self._subnet and self._subnet['status'] == 'UNKNOWN':
+            return SubnetState.UNKNOWN
         return SubnetState.AVAILABEL
 
     def refresh(self):
         self_link = self._subnet.get('selfLink')
-        self._subnet = self._provider.parse_url(self_link).get_resource()
+        try:
+            new_info = self._provider.parse_url(self_link).get_resource()
+            self._subnet = new_info
+        except googleapiclient.errors.HttpError:
+            # If the resource does not exist, its status is UNKNOWN.
+            self._subnet['status'] = 'UNKNOWN'
 
 
 class GCEVolume(BaseVolume):
@@ -1763,7 +1793,12 @@ class GCEVolume(BaseVolume):
         for its latest state.
         """
         self_link = self._volume.get('selfLink')
-        self._volume = self._provider.parse_url(self_link).get_resource()
+        try:
+            new_info = self._provider.parse_url(self_link).get_resource()
+            self._volume = new_info
+        except googleapiclient.errors.HttpError:
+            # If the resource does not exist, its status is UNKNOWN.
+            self._volume['status'] = 'UNKNOWN'
 
 
 class GCESnapshot(BaseSnapshot):
@@ -1819,7 +1854,12 @@ class GCESnapshot(BaseSnapshot):
         for its latest state.
         """
         self_link = self._snapshot.get('selfLink')
-        self._snapshot = self._provider.parse_url(self_link).get_resource()
+        try:
+            new_info = self._provider.parse_url(self_link).get_resource()
+            self._snapshot = new_info
+        except googleapiclient.errors.HttpError:
+            # If the resource does not exist, its status is UNKNOWN.
+            self._snapshot['status'] = 'UNKNOWN'
 
     def delete(self):
         """
