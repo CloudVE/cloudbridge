@@ -25,6 +25,15 @@ REQS_BASE = [
     'oslo.i18n>=3.15.3'
 ]
 REQS_AWS = ['boto3']
+REQS_AZURE = ['msrest>=0.4.7',
+              'msrestazure>=0.4.7',
+              'azure-common>=1.1.5',
+              'azure-mgmt-resource>=1.0.0rc1',
+              'azure-mgmt-compute>=1.0.0rc1',
+              'azure-mgmt-network>=1.0.0rc1',
+              'azure-mgmt-storage>=1.0.0rc1',
+              'azure-storage>=0.34.0',
+              'pysftp>=0.2.9']
 REQS_GCP = ['google-api-python-client']
 REQS_OPENSTACK = [
     'openstacksdk',
@@ -33,18 +42,19 @@ REQS_OPENSTACK = [
     'python-cinderclient>=1.9.0',
     'python-swiftclient>=3.2.0',
     'python-neutronclient>=6.0.0',
-    'python-keystoneclient>=3.13.0',
-    'requests>=2.14.2'
+    'python-keystoneclient>=3.13.0'
 ]
-REQS_FULL = REQS_BASE + REQS_AWS + REQS_GCP + REQS_OPENSTACK
+REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_GCP + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
-    'moto>=1.1.11',
+    'nose',
+    # 'moto>=1.1.11',  # until https://github.com/spulec/moto/issues/1396
     'docutils>=0.14',
     'imagesize>=0.7.1',
     'jinja2>=2.9.6',
     'sphinx>=1.3.1',
+    'pydevd',
     'flake8>=3.3.0',
     'flake8-import-order>=0.12'] + REQS_FULL
 )
@@ -55,7 +65,7 @@ setup(
     description='A simple layer of abstraction over multiple cloud providers.',
     author='Galaxy and GVL Projects',
     author_email='help@genome.edu.au',
-    url='http://cloudbridge.readthedocs.org/',
+    url='http://cloudbridge.cloudve.org/',
     install_requires=REQS_FULL,
     extras_require={
         ':python_version=="2.7"': ['py2-ipaddress'],

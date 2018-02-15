@@ -14,9 +14,12 @@ from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
+from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
+from cloudbridge.cloud.base.resources import BaseGatewayContainer
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import BaseMachineImage
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BasePlacementZone
@@ -28,6 +31,7 @@ from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVMFirewallRule
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
+from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -374,7 +378,7 @@ class GCEFirewallsDelegate(object):
         """
         if self._list_response is None:
             self._update_list_response()
-        for firewall in self._list_response.get('items', []):
+        for firewall in self._list_response:
             if ('targetTags' not in firewall or
                     len(firewall['targetTags']) != 1):
                 continue
@@ -859,7 +863,7 @@ class GCEInstance(BaseInstance):
                         instance=self.name)
                  .execute())
 
-    def terminate(self):
+    def delete(self):
         """
         Permanently terminate this instance.
         """
@@ -1191,6 +1195,7 @@ class GCENetwork(BaseNetwork):
     def __init__(self, provider, network):
         super(GCENetwork, self).__init__(provider)
         self._network = network
+        self._gateway_container = GCEGatewayContainer(provider, self)
 
     @property
     def resource_url(self):
@@ -1253,6 +1258,71 @@ class GCENetwork(BaseNetwork):
     def refresh(self):
         self_link = self._network.get('selfLink')
         self._network = self._provider.parse_url(self_link).get_resource()
+
+    @property
+    def gateways(self):
+        return self._gateway_container
+
+
+class GCEFloatingIPContainer(BaseFloatingIPContainer):
+
+    def __init__(self, provider, gateway):
+        super(GCEFloatingIPContainer, self).__init__(provider, gateway)
+
+    def get(self, floating_ip_id):
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .get(project=self.provider.project_name,
+                                 region=self.provider.region_name)
+                            .execute())
+            return GCEFloatingIP(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
+
+    def list(self, limit=None, marker=None):
+        max_result = limit if limit is not None and limit < 500 else 500
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .list(project=self.provider.project_name,
+                                  region=self.provider.region_name,
+                                  maxResults=max_result,
+                                  pageToken=marker)
+                            .execute())
+            ips = [GCEFloatingIP(self.provider, ip)
+                   for ip in response.get('items', [])]
+            if len(ips) > max_result:
+                cb.log.warning('Expected at most %d results; got %d',
+                               max_result, len(ips))
+            return ServerPagedResultList('nextPageToken' in response,
+                                         response.get('nextPageToken'),
+                                         False, data=ips)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
+
+    def create(self):
+        region = self.provider.region_name
+        ip_name = 'ip-{0}'.format(uuid.uuid4())
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .addresses()
+                            .insert(project=self.provider.project_name,
+                                    region=region,
+                                    body={'name': ip_name})
+                            .execute())
+            if 'error' in response:
+                return None
+            self.provider.wait_for_operation(response, region=region)
+            return self.get(ip_name)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return None
 
 
 class GCEFloatingIP(BaseFloatingIP):
@@ -1338,6 +1408,9 @@ class GCEFloatingIP(BaseFloatingIP):
                         .execute())
         self._provider.wait_for_operation(response, region=self._region)
 
+    def refresh(self):
+        pass
+
 
 class GCERouter(BaseRouter):
 
@@ -1394,11 +1467,37 @@ class GCERouter(BaseRouter):
         cb.log.warning('Not implemented')
 
 
+class GCEGatewayContainer(BaseGatewayContainer):
+    _DEFAULT_GATEWAY_NAME = 'default-internet-gateway'
+    _GATEWAY_URL_PREFIX = 'global/gateways/'
+
+    def __init__(self, provider, network):
+        super(GCEGatewayContainer, self).__init__(provider, network)
+        self._default_internet_gateway = GCEInternetGateway(
+            provider,
+            {'id': (GCEGatewayContainer._GATEWAY_URL_PREFIX +
+                    GCEGatewayContainer._DEFAULT_GATEWAY_NAME),
+             'name': GCEGatewayContainer._DEFAULT_GATEWAY_NAME})
+
+    def get_or_create_inet_gateway(self, name):
+        GCEInternetGateway.assert_valid_resource_name(name)
+        return self._default_internet_gateway
+
+    def delete(self, gateway):
+        pass
+
+    def list(self, limit=None, marker=None):
+        return ClientPagedResultList(self._provider,
+                                     [self._default_internet_gateway],
+                                     limit=limit, marker=marker)
+
+
 class GCEInternetGateway(BaseInternetGateway):
 
     def __init__(self, provider, gateway):
         super(GCEInternetGateway, self).__init__(provider)
         self._gateway = gateway
+        self._fip_container = GCEFloatingIPContainer(provider, self)
 
     @property
     def id(self):
@@ -1407,10 +1506,6 @@ class GCEInternetGateway(BaseInternetGateway):
     @property
     def name(self):
         return self._gateway['name']
-
-    @name.setter
-    def name(self, value):
-        raise NotImplementedError('Not supported by this provider.')
 
     def refresh(self):
         pass
@@ -1428,6 +1523,10 @@ class GCEInternetGateway(BaseInternetGateway):
 
     def delete(self):
         pass
+
+    @property
+    def floating_ips(self):
+        return self._fips_container
 
 
 class GCESubnet(BaseSubnet):
@@ -1508,13 +1607,6 @@ class GCEVolume(BaseVolume):
         Get the volume name.
         """
         return self._volume.get('name')
-
-    @name.setter
-    def name(self, value):
-        """
-        Set the volume name.
-        """
-        raise NotImplementedError('Not supported by this provider.')
 
     @property
     def description(self):
@@ -1695,14 +1787,6 @@ class GCESnapshot(BaseSnapshot):
         Get the snapshot name.
          """
         return self._snapshot.get('name')
-
-    @name.setter
-    # pylint:disable=arguments-differ
-    def name(self, value):
-        """
-        Set the snapshot name.
-        """
-        raise NotImplementedError('Not supported by this provider.')
 
     @property
     def description(self):
@@ -1945,3 +2029,9 @@ class GCSBucket(BaseBucket):
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
+
+
+class GCELaunchConfig(BaseLaunchConfig):
+
+    def __init__(self, provider):
+        super(GCELaunchConfig, self).__init__(provider)

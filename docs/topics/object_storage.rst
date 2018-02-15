@@ -34,8 +34,8 @@ To locate and download this uploaded file again, you can do the following:
 
 .. code-block:: python
 
-    bucket = provider.storage.buckets.find('my-bucket')[0]
-    obj = bucket.objects.find('my-data.txt')[0]
+    bucket = provider.storage.buckets.find(name='my-bucket')[0]
+    obj = bucket.objects.find(name='my-data.txt')[0]
     print("Size: {0}, Modified: {1}".format(obj.size, obj.last_modified))
     with open('/tmp/myfile.txt', 'wb') as f:
         obj.save_content(f)
@@ -65,6 +65,6 @@ Once a provider is obtained, you can access the container as usual:
 
 .. code-block:: python
 
-    bucket = provider.object_store.get(container)
+    bucket = provider.storage.buckets.get(container)
     obj = bucket.create_object('my_object.txt')
     obj.upload_from_file(source)

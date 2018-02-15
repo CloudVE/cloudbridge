@@ -20,12 +20,15 @@ import requests
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket(self):
         """
         Create a new bucket, check whether the expected values are set,
         and delete it.
         """
+
         def create_bucket(name):
             return self.provider.storage.buckets.create(name)
 

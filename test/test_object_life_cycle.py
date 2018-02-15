@@ -7,6 +7,8 @@ from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
 class CloudObjectLifeCycleTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['storage.volumes'])
     def test_object_life_cycle(self):
         """

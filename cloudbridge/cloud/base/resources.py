@@ -9,6 +9,7 @@ import re
 import shutil
 import time
 
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
@@ -19,6 +20,9 @@ from cloudbridge.cloud.interfaces.resources import BucketContainer
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
+from cloudbridge.cloud.interfaces.resources import FloatingIPContainer
+from cloudbridge.cloud.interfaces.resources import FloatingIpState
+from cloudbridge.cloud.interfaces.resources import GatewayContainer
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -454,29 +458,31 @@ class BaseLaunchConfig(LaunchConfig):
         InvalidConfigurationException if the configuration is incorrect.
         """
         if source is None and not size:
-            log.exception("Raised InvalidConfigurationException, no"
-                          " size argument specified.")
+            log.exception("InvalidConfigurationException raised: "
+                          "no size argument specified.")
             raise InvalidConfigurationException(
-                "A size must be specified for a blank new volume")
+                "A size must be specified for a blank new volume.")
 
         if source and \
                 not isinstance(source, (Snapshot, Volume, MachineImage)):
-            log.exception("InvalidConfigurationException raised, "
+            log.exception("InvalidConfigurationException raised: "
                           "source argument not specified correctly.")
             raise InvalidConfigurationException(
-                "Source must be a Snapshot, Volume, MachineImage or None")
+                "Source must be a Snapshot, Volume, MachineImage, or None.")
         if size:
             if not isinstance(size, six.integer_types) or not size > 0:
-                log.exception("InvalidConfigurationException raised, "
-                              " size argument must be greater than 0.")
+                log.exception("InvalidConfigurationException raised: "
+                              "size argument must be an integer greater than "
+                              "0. Got type %s and value %s.", type(size), size)
                 raise InvalidConfigurationException(
-                    "The size must be None or a number greater than 0")
+                    "The size must be None or an integer greater than 0.")
 
         if is_root:
             for bd in self.block_devices:
                 if bd.is_root:
-                    log.exception("InvalidConfigurationException raised,"
-                                  "%s has already been marked as root", bd)
+                    log.exception("InvalidConfigurationException raised: "
+                                  "%s has already been marked as the root "
+                                  "block device.", bd)
                     raise InvalidConfigurationException(
                         "An existing block device: {0} has already been"
                         " marked as root. There can only be one root device.")
@@ -591,6 +597,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
     def __init__(self, provider, key_pair):
         super(BaseKeyPair, self).__init__(provider)
         self._key_pair = key_pair
+        self._private_material = None
 
     def __eq__(self, other):
         return (isinstance(other, KeyPair) and
@@ -611,6 +618,15 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         Return the name of this key pair.
         """
         return self._key_pair.name
+
+    @property
+    def material(self):
+        return self._private_material
+
+    @material.setter
+    # pylint:disable=arguments-differ
+    def material(self, value):
+        self._private_material = value
 
     def delete(self):
         """
@@ -699,28 +715,11 @@ class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
             return None
 
     def find(self, **kwargs):
-        matches = self
-
-        def filter_by(prop_name, rules):
-            prop_val = kwargs.pop(prop_name, None)
-            if prop_val:
-                match = [r for r in rules if getattr(r, prop_name) == prop_val]
-                return match
-            return rules
-
-        matches = filter_by('name', matches)
-        matches = filter_by('direction', matches)
-        matches = filter_by('protocol', matches)
-        matches = filter_by('from_port', matches)
-        matches = filter_by('to_port', matches)
-        matches = filter_by('cidr', matches)
-        matches = filter_by('src_dest_fw', matches)
-        matches = filter_by('src_dest_fw_id', matches)
-        limit = kwargs.pop('limit', None)
-        marker = kwargs.pop('marker', None)
-
-        return ClientPagedResultList(self._provider, matches,
-                                     limit=limit, marker=marker)
+        obj_list = self
+        filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
+                   'cidr', 'src_dest_fw', 'src_dest_fw_id']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def delete(self, rule_id):
         rule = self.get(rule_id)
@@ -853,10 +852,6 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                 "data.html#object-key-guidelines" % name)
 
     def save_content(self, target_stream):
-        """
-        Download this object and write its
-        contents to the target_stream.
-        """
         shutil.copyfileobj(self.iter_content(), target_stream)
 
     def __eq__(self, other):
@@ -920,6 +915,13 @@ class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
     @property
     def _provider(self):
         return self.__provider
+
+
+class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
+
+    def __init__(self, provider, network):
+        self._network = network
+        self._provider = provider
 
 
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
@@ -991,17 +993,49 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             interval=interval)
 
 
-class BaseFloatingIP(BaseCloudResource, FloatingIP):
+class BaseFloatingIPContainer(FloatingIPContainer, BasePageableObjectMixin):
+
+    def __init__(self, provider, gateway):
+        self.__provider = provider
+        self.gateway = gateway
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name', 'public_ip']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
+
+    def delete(self, fip_id):
+        floating_ip = self.get(fip_id)
+        if floating_ip:
+            floating_ip.delete()
+
+
+class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
     def __init__(self, provider):
         super(BaseFloatingIP, self).__init__(provider)
 
     @property
     def name(self):
-        """
-        VM firewall rules don't support names, so pass
-        """
+        # VM firewall rules don't support names, so pass
         return self.public_ip
+
+    @property
+    def state(self):
+        return (FloatingIpState.IN_USE if self.in_use
+                else FloatingIpState.AVAILABLE)
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self.wait_for(
+            [FloatingIpState.AVAILABLE, FloatingIpState.IN_USE],
+            terminal_states=[FloatingIpState.ERROR],
+            timeout=timeout,
+            interval=interval)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
@@ -1041,6 +1075,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
 
     def __init__(self, provider):
         super(BaseInternetGateway, self).__init__(provider)
+        self.__provider = provider
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,

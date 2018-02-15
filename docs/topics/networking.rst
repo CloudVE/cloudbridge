@@ -71,18 +71,18 @@ of the block and allow up to 16 IP addresses within a subnet (``/28``).
 
 .. code-block:: python
 
-    net = self.provider.networking.networks.create(
+    net = provider.networking.networks.create(
         name='my-network', cidr_block='10.0.0.0/16')
     sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28', zone=zone)
-    router = self.provider.networking.routers.create(network=net, name='my-router')
+    router = provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = self.provider.networking.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway(name)
     router.attach_gateway(gateway)
 
 
 2. Allowing internet access to a launched VM
-----------------------------------------------
-The additional step that's require here is to assign a floating ip to the VM.
+--------------------------------------------
+The additional step that's required here is to assign a floating IP to the VM:
 
 .. code-block:: python
 
@@ -94,10 +94,10 @@ The additional step that's require here is to assign a floating ip to the VM.
 
     router = provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = provider.networking.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway(net, name)
     router.attach_gateway(gateway)
 
-    fip = provider.networking.networks.create_floating_ip()
+    fip = provider.networking.floating_ips.create()
     vm.add_floating_ip(fip)
 
 

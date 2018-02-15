@@ -8,8 +8,6 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
-from cloudbridge.cloud.base.services import BaseFloatingIPService
-from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -33,10 +31,9 @@ import googleapiclient
 from retrying import retry
 
 from .resources import GCEFirewallsDelegate
-from .resources import GCEFloatingIP
 from .resources import GCEInstance
-from .resources import GCEInternetGateway
 from .resources import GCEKeyPair
+from .resources import GCELaunchConfig
 from .resources import GCEMachineImage
 from .resources import GCENetwork
 from .resources import GCEPlacementZone
@@ -386,7 +383,13 @@ class GCEImageService(BaseImageService):
         Returns an Image given its id
         """
         image = self.provider.get_resource('images', image_id)
-        return GCEMachineImage(self.provider, image) if image else None
+        if image:
+            return GCEMachineImage(self.provider, image)
+        self._retrieve_public_images()
+        for public_image in self._public_images:
+            if public_image.id == image_id or public_image.name == image_id:
+                return public_image
+        return None
 
     def find(self, name, limit=None, marker=None):
         """
@@ -433,6 +436,10 @@ class GCEInstanceService(BaseInstanceService):
         GCEInstance.assert_valid_resource_name(name)
         if not zone:
             zone = self.provider.default_zone
+        if not isinstance(image, GCEMachineImage):
+            image = self.provider.compute.images.get(image)
+        if not isinstance(vm_type, GCEVMType):
+            vm_type = self.provider.compute.vm_types.get(vm_type)
         if not launch_config:
             if subnet:
                 network = self.provider.networking.networks.get(
@@ -534,6 +541,9 @@ class GCEInstanceService(BaseInstanceService):
                                      response.get('nextPageToken'),
                                      False, data=instances)
 
+    def create_launch_config(self):
+        return GCELaunchConfig(self.provider)
+
 
 class GCEComputeService(BaseComputeService):
     # TODO: implement GCEComputeService
@@ -567,9 +577,7 @@ class GCENetworkingService(BaseNetworkingService):
         super(GCENetworkingService, self).__init__(provider)
         self._network_service = GCENetworkService(self.provider)
         self._subnet_service = GCESubnetService(self.provider)
-        self._floating_ip_service = GCEFloatingIPService(self.provider)
         self._router_service = GCERouterService(self.provider)
-        self._gateway_service = GCEGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -578,10 +586,6 @@ class GCENetworkingService(BaseNetworkingService):
     @property
     def subnets(self):
         return self._subnet_service
-
-    @property
-    def floating_ips(self):
-        return self._floating_ip_service
 
     @property
     def routers(self):
@@ -683,67 +687,6 @@ class GCENetworkService(BaseNetworkService):
         return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, None, True)
 
 
-class GCEFloatingIPService(BaseFloatingIPService):
-
-    def __init__(self, provider):
-        super(GCEFloatingIPService, self).__init__(provider)
-
-    def get(self, floating_ip_id):
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .addresses()
-                            .get(project=self.provider.project_name,
-                                 region=self.provider.region_name)
-                            .execute())
-            return GCEFloatingIP(self.provider, response)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
-
-    def list(self, limit=None, marker=None):
-        max_result = limit if limit is not None and limit < 500 else 500
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .addresses()
-                            .list(project=self.provider.project_name,
-                                  region=self.provider.region_name,
-                                  maxResults=max_result,
-                                  pageToken=marker)
-                            .execute())
-            ips = [GCEFloatingIP(self.provider, ip)
-                   for ip in response.get('items', [])]
-            if len(ips) > max_result:
-                cb.log.warning('Expected at most %d results; got %d',
-                               max_result, len(ips))
-            return ServerPagedResultList('nextPageToken' in response,
-                                         response.get('nextPageToken'),
-                                         False, data=ips)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
-
-    def create(self):
-        region = self.provider.region_name
-        ip_name = 'ip-{0}'.format(uuid.uuid4())
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .addresses()
-                            .insert(project=self.provider.project_name,
-                                    region=region,
-                                    body={'name': ip_name})
-                            .execute())
-            if 'error' in response:
-                return None
-            self.provider.wait_for_operation(response, region=region)
-            return self.get(ip_name)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
-
-
 class GCERouterService(BaseRouterService):
 
     def __init__(self, provider):
@@ -831,26 +774,6 @@ class GCERouterService(BaseRouterService):
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
-
-
-class GCEGatewayService(BaseGatewayService):
-    _DEFAULT_GATEWAY_NAME = 'default-internet-gateway'
-    _GATEWAY_URL_PREFIX = 'global/gateways/'
-
-    def __init__(self, provider):
-        super(GCEGatewayService, self).__init__(provider)
-        self._default_internet_gateway = GCEInternetGateway(
-            provider,
-            {'id': (GCEGatewayService._GATEWAY_URL_PREFIX +
-                    GCEGatewayService._DEFAULT_GATEWAY_NAME),
-             'name': GCEGatewayService._DEFAULT_GATEWAY_NAME})
-
-    def get_or_create_inet_gateway(self, name):
-        GCEInternetGateway.assert_valid_resource_name(name)
-        return self._default_internet_gateway
-
-    def delete(self, gateway):
-        pass
 
 
 class GCESubnetService(BaseSubnetService):
@@ -1174,7 +1097,7 @@ class GCESnapshotService(BaseSnapshotService):
         zone_url = self.provider.parse_url(operation['zone'])
         self.provider.wait_for_operation(operation,
                                          zone=zone_url.parameters['zone'])
-        snapshots = self.provider.block_store.snapshots.find(name=name)
+        snapshots = self.provider.storage.snapshots.find(name=name)
         if snapshots:
             return snapshots[0]
         else:

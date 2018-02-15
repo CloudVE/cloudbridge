@@ -66,6 +66,20 @@ OpenStack (with Keystone authentication v3):
                                                       config)
     image_id = '97755049-ee4f-4515-b92f-ca00991ee99a'  # Ubuntu 14.04 @ Jetstream
 
+Azure:
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    config = {'azure_subscription_id': 'REPLACE WITH ACTUAL VALUE',
+              'azure_client_id': 'REPLACE WITH ACTUAL VALUE',
+              'azure_secret': 'REPLACE WITH ACTUAL VALUE',
+              'azure_tenant': ' REPLACE WITH ACTUAL VALUE'}
+    provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
+    image_id = 'ami-2d39803a'  # Ubuntu 14.04 (HVM)
+
+
 List some resources
 -------------------
 Once you have a reference to a provider, explore the cloud platform:
@@ -107,7 +121,7 @@ attaching an internet gateway to the subnet via a router.
     sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
     router = self.provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = self.provider.networking.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway(name)
     router.attach_gateway(gateway)
 
 

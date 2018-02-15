@@ -7,6 +7,8 @@ import six
 
 class CloudVMTypeServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['compute.vm_types'])
     def test_vm_type_properties(self):
 

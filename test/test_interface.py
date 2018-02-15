@@ -10,6 +10,8 @@ from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 
 class CloudInterfaceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     def test_name_property(self):
         """
         Name should always return a value and should not raise an exception
@@ -55,8 +57,10 @@ class CloudInterfaceTestCase(ProviderTestBase):
             cloned_config['aws_access_key'] = "dummy_a_key"
             cloned_config['aws_secret_key'] = "dummy_s_key"
         elif self.provider.PROVIDER_ID == 'openstack':
-            cloned_config['os_username'] = "cb-dummy"
-            cloned_config['os_password'] = "cb-dummy"
+            cloned_config['os_username'] = "cb_dummy"
+            cloned_config['os_password'] = "cb_dummy"
+        elif self.provider.PROVIDER_ID == 'azure':
+            cloned_config['azure_subscription_id'] = "cb_dummy"
 
         with self.assertRaises(ProviderConnectionException):
             cloned_provider = CloudProviderFactory().create_provider(

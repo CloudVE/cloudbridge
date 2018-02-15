@@ -9,6 +9,8 @@ import six
 
 class CloudRegionServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['compute.regions'])
     def test_get_and_list_regions(self):
         """

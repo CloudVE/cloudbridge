@@ -3,6 +3,8 @@ from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
+import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
@@ -10,6 +12,8 @@ from cloudbridge.cloud.interfaces.resources import VMFirewallRule
 
 
 class CloudSecurityServiceTestCase(ProviderTestBase):
+
+    _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_crud_key_pair_service(self):
@@ -22,7 +26,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         def extra_tests(kp):
             # Recreating existing keypair should raise an exception
-            with self.assertRaises(Exception):
+            with self.assertRaises(DuplicateResourceException):
                 self.provider.security.key_pairs.create(name=kp.name)
 
         sit.check_crud(self, self.provider.security.key_pairs, KeyPair,
@@ -41,6 +45,17 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             kp = self.provider.security.key_pairs.get(kp.id)
             self.assertIsNone(kp.material,
                               "Keypair material should now be empty")
+
+    @helpers.skipIfNoService(['security.key_pairs'])
+    def test_import_key_pair(self):
+        name = 'cb-kpimport-{0}'.format(helpers.get_uuid())
+
+        public_key, _ = cb_helpers.generate_key_pair()
+        kp = self.provider.security.key_pairs.create(
+            name=name, public_key_material=public_key)
+        with helpers.cleanup_action(lambda: kp.delete()):
+            self.assertIsNone(kp.material, "Private KeyPair material should"
+                              " be None when key is imported.")
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_crud_vm_firewall(self):

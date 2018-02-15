@@ -78,22 +78,34 @@ def skipIfNoService(services):
 
 
 TEST_DATA_CONFIG = {
-    'AWSCloudProvider': {
-        'image': os.environ.get('CB_IMAGE_AWS', 'ami-5ac2cd4d'),
-        'vm_type': os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
-        'placement': os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
+    "AWSCloudProvider": {
+        # Match the ami value with entry in custom_amis.json for use with moto
+        "image": os.environ.get('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
+        "vm_type": os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
+        "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     'OpenStackCloudProvider': {
         'image': os.environ.get('CB_IMAGE_OS',
                                 '842b949c-ea76-48df-998d-8a41f2626243'),
-        'vm_type': os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
-        'placement': os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
+        "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
+        "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
     },
     'GCECloudProvider': {
-        'image': 'ubuntu-1404-trusty-v20171101',
+        'image': 'ubuntu-1710-artful-v20180126',
         'vm_type': 'n1-standard-1',
         'placement': os.environ.get('GCE_DEFAULT_ZONE', 'us-central1-a'),
     },
+    "AzureCloudProvider": {
+        "placement":
+            os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
+        "image":
+            os.environ.get('CB_IMAGE_AZURE',
+                           '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a9'
+                           '6/resourceGroups/cloudbridge/providers/Microsoft.C'
+                           'ompute/images/cb-test-image'),
+        "vm_type":
+            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A2'),
+    }
 }
 
 
@@ -104,6 +116,8 @@ def get_provider_test_data(provider, key):
         return TEST_DATA_CONFIG.get("OpenStackCloudProvider").get(key)
     elif "GCECloudProvider" in provider.name:
         return TEST_DATA_CONFIG.get("GCECloudProvider").get(key)
+    elif "AzureCloudProvider" in provider.name:
+        return TEST_DATA_CONFIG.get("AzureCloudProvider").get(key)
     return None
 
 
@@ -129,10 +143,32 @@ def delete_test_network(network):
                 pass
 
 
+def get_test_gateway(provider, name):
+    """
+    Get an internet gateway for testing.
+
+    This includes creating a network for the gateway, which is also returned.
+    """
+    net_name = 'cb-testgwnet-{0}'.format(get_uuid())
+    net = provider.networking.networks.create(
+        name=net_name, cidr_block='10.0.0.0/16')
+    return net, net.gateways.get_or_create_inet_gateway(name)
+
+
+def delete_test_gateway(network, gateway):
+    """
+    Delete the supplied network and gateway.
+    """
+    with cleanup_action(lambda: network.delete()):
+        with cleanup_action(lambda: gateway.delete()):
+            pass
+
+
 def create_test_instance(
         provider, instance_name, subnet, launch_config=None,
         key_pair=None, vm_firewalls=None, user_data=None):
-    return provider.compute.instances.create(
+
+    instance = provider.compute.instances.create(
         instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'vm_type'),
@@ -142,6 +178,8 @@ def create_test_instance(
         vm_firewalls=vm_firewalls,
         launch_config=launch_config,
         user_data=user_data)
+
+    return instance
 
 
 def get_test_instance(provider, name, key_pair=None, vm_firewalls=None,

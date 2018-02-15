@@ -1,1 +1,2 @@
+git+git://github.com/cloudve/moto@all_merged#egg=moto
 -e ".[dev]"
