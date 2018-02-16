@@ -957,10 +957,12 @@ class GCEInstance(BaseInstance):
                              .gce_compute
                              .images()
                              .insert(project=self._provider.project_name,
-                                     body=image_body)
+                                     body=image_body,
+                                     forceCreate=True)
                              .execute())
                 self._provider.wait_for_operation(operation)
-                return
+                img = self._provider.get_resource('images', name)
+                return GCEMachineImage(self._provider, img) if img else None
         cb.log.error('Failed to create image: no boot disk found.')
 
     def _get_existing_target_instance(self):
