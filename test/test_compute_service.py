@@ -272,14 +272,18 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     "vm_type")
                 vm_type = self.provider.compute.vm_types.find(
                     name=vm_type_name)[0]
-                for _ in range(vm_type.num_ephemeral_disks):
+                # Some providers, e.g. GCP, has a limit on total number of
+                # attached disks; it does not matter how many of them are
+                # ephemeral or persistent. So, wee keep in mind that we have
+                # attached 4 disks already, and add ephemeral disks accordingly
+                # to not exceed the limit.
+                for _ in range(vm_type.num_ephemeral_disks - 4):
                     lc.add_ephemeral_device()
 
                 net, subnet = helpers.create_test_network(self.provider, name)
 
                 with helpers.cleanup_action(lambda:
                                             helpers.delete_test_network(net)):
-
                     inst = helpers.create_test_instance(
                         self.provider,
                         name,

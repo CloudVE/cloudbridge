@@ -2,6 +2,7 @@
 Provider implementation based on google-api-python-client library
 for GCE.
 """
+import copy
 import json
 import logging
 import os
@@ -167,7 +168,8 @@ class GCPResources(object):
                 out.parameters[parameter] = m.group(index + 1)
             return out
 
-    def get_resource_url_with_default(self, resource, url_or_name):
+    def get_resource_url_with_default(self, resource, url_or_name,
+                                      project=None, region=None, zone=None):
         """
         Build a GCPResourceUrl from a service's name and resource url or name.
         If the url_or_name is a valid GCP resource URL, then we build the
@@ -181,9 +183,15 @@ class GCPResources(object):
         # Otherwise, construct resource URL with default values.
         if resource not in self._resources:
             return None
+
+        parameter_defaults = copy.copy(self._parameter_defaults)
+        if region:
+            parameter_defaults['region'] = region
+        if zone:
+            parameter_defaults['zone'] = zone
         parsed_url = GCPResourceUrl(resource, self._connection)
         for key in self._resources[resource]['parameters']:
-            parsed_url.parameters[key] = self._parameter_defaults.get(
+            parsed_url.parameters[key] = parameter_defaults.get(
                 key, url_or_name)
         return parsed_url
 
@@ -308,12 +316,13 @@ class GCECloudProvider(BaseCloudProvider):
         out = self._compute_resources.parse_url(url)
         return out if out else self._storage_resources.parse_url(url)
 
-    def get_resource(self, resource, url_or_name):
+    def get_resource(self, resource, url_or_name, project=None, region=None,
+                     zone=None):
         resource_url = (
             self._compute_resources.get_resource_url_with_default(
-                resource, url_or_name) or
+                resource, url_or_name, project, region, zone) or
             self._storage_resources.get_resource_url_with_default(
-                resource, url_or_name))
+                resource, url_or_name, project, region, zone))
         if resource_url is None:
             return None
         try:

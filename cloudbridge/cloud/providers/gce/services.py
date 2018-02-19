@@ -329,7 +329,8 @@ class GCERegionService(BaseRegionService):
         super(GCERegionService, self).__init__(provider)
 
     def get(self, region_id):
-        region = self.provider.get_resource('regions', region_id)
+        region = self.provider.get_resource('regions', region_id,
+                                            region=region_id)
         return GCERegion(self.provider, region) if region else None
 
     def list(self, limit=None, marker=None):
@@ -436,47 +437,99 @@ class GCEInstanceService(BaseInstanceService):
         GCEInstance.assert_valid_resource_name(name)
         if not zone:
             zone = self.provider.default_zone
-        if not isinstance(image, GCEMachineImage):
-            image = self.provider.compute.images.get(image)
         if not isinstance(vm_type, GCEVMType):
             vm_type = self.provider.compute.vm_types.get(vm_type)
-        if not launch_config:
-            if subnet:
-                network = self.provider.networking.networks.get(
-                        subnet.network_id)
-                network_url = (network.resource_url
-                               if isinstance(network, GCENetwork) else network)
-            else:
-                network_url = 'global/networks/default'
-            config = {
-                'name': name,
-                'machineType': vm_type.resource_url,
-                'disks': [{'boot': True,
-                           'autoDelete': True,
-                           'initializeParams': {
-                               'sourceImage': image.resource_url,
-                           }
-                           }],
-                'networkInterfaces': [
-                    {
-                        # TODO: Should replace network below with subnetwork
-                        'network': network_url,
-                        'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
-                                           'name': 'External NAT'}]
-                    }],
-            }
-            if vm_firewalls and isinstance(vm_firewalls, list):
-                vm_firewall_names = []
-                if isinstance(vm_firewalls[0], VMFirewall):
-                    vm_firewall_names = [f.name for f in vm_firewalls]
-                elif isinstance(vm_firewalls[0], str):
-                    vm_firewall_names = vm_firewalls
-                if len(vm_firewall_names) > 0:
-                    config['tags'] = {}
-                    config['tags']['items'] = vm_firewall_names
+
+        network_interface = {'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
+                                                'name': 'External NAT'}]}
+        if subnet:
+            network_interface['subnetwork'] = subnet.id
         else:
-            config = launch_config
+            network_interface['network'] = 'global/networks/default'
+
+        num_roots = 0
+        disks = []
+        boot_disk = None
+        if isinstance(launch_config, GCELaunchConfig):
+            for disk in launch_config.block_devices:
+                if not disk.source:
+                    volume_name = 'disk-{0}'.format(uuid.uuid4())
+                    volume_size = disk.size if disk.size else 1
+                    volume = self.provider.storage.volumes.create(
+                        volume_name, volume_size, zone)
+                    volume.wait_till_ready()
+                    source_field = 'source'
+                    source_value = volume.id
+                elif isinstance(disk.source, GCEMachineImage):
+                    source_field = 'initializeParams'
+                    # Explicitly set diskName; otherwise, instance name will be
+                    # used by default which may collide with existing disks.
+                    source_value = {
+                        'sourceImage': disk.source.id,
+                        'diskName': 'image-disk-{0}'.format(uuid.uuid4())}
+                elif isinstance(disk.source, GCEVolume):
+                    source_field = 'source'
+                    source_value = disk.source.id
+                elif isinstance(disk.source, GCESnapshot):
+                    volume = disk.source.create_volume(zone, size=disk.size)
+                    volume.wait_till_ready()
+                    source_field = 'source'
+                    source_value = volume.id
+                else:
+                    cb.log.warning('Unknown disk source')
+                    continue
+                autoDelete = True
+                if disk.delete_on_terminate is not None:
+                    autoDelete = disk.delete_on_terminate
+                num_roots += 1 if disk.is_root else 0
+                if disk.is_root and not boot_disk:
+                    boot_disk = {'boot': True,
+                                 'autoDelete': autoDelete,
+                                 source_field: source_value}
+                else:
+                    disks.append({'boot': False,
+                                  'autoDelete': autoDelete,
+                                  source_field: source_value})
+
+        if num_roots > 1:
+            cb.log.warning('The launch config contains %d boot disks. Will '
+                           'use the first one', num_roots)
+        if image:
+            if boot_disk:
+                cb.log.warning('A boot image is given while the launch config '
+                               'contains a boot disk, too. The launch config '
+                               'will be used')
+            else:
+                if not isinstance(image, GCEMachineImage):
+                    image = self.provider.compute.images.get(image)
+                boot_disk = {'boot': True,
+                             'autoDelete': True,
+                             'initializeParams': {'sourceImage': image.id}}
+
+        if not boot_disk:
+            cb.log.warning('No boot disk is given')
+            return None
+        # The boot disk must be the first disk attached to the instance.
+        disks.insert(0, boot_disk)
+
+        config = {
+            'name': name,
+            'machineType': vm_type.resource_url,
+            'disks': disks,
+            'networkInterfaces': [network_interface]
+        }
+
+        if vm_firewalls and isinstance(vm_firewalls, list):
+            vm_firewall_names = []
+            if isinstance(vm_firewalls[0], VMFirewall):
+                vm_firewall_names = [f.name for f in vm_firewalls]
+            elif isinstance(vm_firewalls[0], str):
+                vm_firewall_names = vm_firewalls
+            if len(vm_firewall_names) > 0:
+                config['tags'] = {}
+                config['tags']['items'] = vm_firewall_names
         try:
+            cb.log.warning('config: %s', config)
             operation = (self.provider
                              .gce_compute.instances()
                              .insert(project=self.provider.project_name,
