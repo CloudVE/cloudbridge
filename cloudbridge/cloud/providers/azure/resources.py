@@ -1481,7 +1481,7 @@ class AzureVMType(BaseVMType):
 
     @property
     def ram(self):
-        return self._vm_type.memory_in_mb
+        return int(self._vm_type.memory_in_mb) / 1024
 
     @property
     def size_root_disk(self):

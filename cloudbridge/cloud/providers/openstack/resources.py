@@ -211,7 +211,7 @@ class OpenStackVMType(BaseVMType):
 
     @property
     def ram(self):
-        return self._os_flavor.ram
+        return int(self._os_flavor.ram) / 1024
 
     @property
     def size_root_disk(self):

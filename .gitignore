@@ -58,3 +58,8 @@ target/
 
 *.DS_Store
 /venv/
+
+bootstrap.py
+ISB-*
+launch.json
+settings.json

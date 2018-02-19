@@ -1768,10 +1768,10 @@ class VMType(CloudResource):
     @abstractproperty
     def ram(self):
         """
-        The amount of RAM (in MB) supported by this VM type.
+        The amount of RAM (in GB) supported by this VM type.
 
-        :rtype: ``int``
-        :return: Total RAM (in MB).
+        :rtype: ``float``
+        :return: Total RAM (in GB).
         """
         pass
 
