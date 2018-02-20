@@ -119,7 +119,7 @@ class GCEVMType(BaseVMType):
 
     @property
     def ram(self):
-        return self._inst_dict.get('memoryMb')
+        return float("{0:.2f}".format(self._inst_dict.get('memoryMb') / 1024))
 
     @property
     def size_root_disk(self):
