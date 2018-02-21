@@ -1717,17 +1717,17 @@ class GCEVolume(BaseVolume):
         """
         attach_disk_body = {
             "source": self.id,
-            "deviceName": device,
+            "deviceName": device.split('/')[-1],
         }
-        instance_name = instance.name if isinstance(
-            instance,
-            GCEInstance) else instance
+        if not isinstance(instance, GCEInstance):
+            instance = self._provider.get_resource('instances', instance)
+        parsed_zone_url = self._provider.parse_url(instance.zone_id)
         (self._provider
              .gce_compute
              .instances()
              .attachDisk(project=self._provider.project_name,
-                         zone=self._provider.default_zone,
-                         instance=instance_name,
+                         zone=parsed_zone_url.parameters['zone'],
+                         instance=instance.name,
                          body=attach_disk_body)
              .execute())
 
