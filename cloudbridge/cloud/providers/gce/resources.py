@@ -143,15 +143,9 @@ class GCEVMType(BaseVMType):
 
 class GCEPlacementZone(BasePlacementZone):
 
-    def __init__(self, provider, zone, region):
+    def __init__(self, provider, zone):
         super(GCEPlacementZone, self).__init__(provider)
-        if isinstance(zone, GCEPlacementZone):
-            # pylint:disable=protected-access
-            self._gce_zone = zone._gce_zone
-            self._gce_region = zone._gce_region
-        else:
-            self._gce_zone = zone
-            self._gce_region = region
+        self._zone = zone
 
     @property
     def id(self):
@@ -160,7 +154,7 @@ class GCEPlacementZone(BasePlacementZone):
         :rtype: ``str``
         :return: ID for this zone as returned by the cloud middleware.
         """
-        return self._gce_zone.get('selfLink')
+        return self._zone['selfLink']
 
     @property
     def name(self):
@@ -169,7 +163,7 @@ class GCEPlacementZone(BasePlacementZone):
         :rtype: ``str``
         :return: Name for this zone as returned by the cloud middleware.
         """
-        return self._gce_zone.get('name')
+        return self._zone['name']
 
     @property
     def region_name(self):
@@ -178,7 +172,8 @@ class GCEPlacementZone(BasePlacementZone):
         :rtype: ``str``
         :return: Name of this zone's region as returned by the cloud middleware
         """
-        return self._gce_region
+        parsed_region_url = self._provider.parse_url(self._zone['region'])
+        return parsed_region_url.parameters['region']
 
 
 class GCERegion(BaseRegion):
@@ -207,8 +202,7 @@ class GCERegion(BaseRegion):
                               .execute())
         zones = [zone for zone in zones_response['items']
                  if zone['region'] == self._gce_region['selfLink']]
-        return [GCEPlacementZone(self._provider, zone, self.name)
-                for zone in zones]
+        return [GCEPlacementZone(self._provider, zone) for zone in zones]
 
 
 class GCEFirewallsDelegate(object):
@@ -1886,8 +1880,11 @@ class GCESnapshot(BaseSnapshot):
                 'pd-ssd'.
             iops: Not supported by GCE.
         """
+        zone_name = placement
+        if isinstance(placement, GCEPlacementZone):
+            zone_name = placement.name
         vol_type = 'zones/{0}/diskTypes/{1}'.format(
-            placement,
+            zone_name,
             'pd-standard' if (volume_type != 'pd-standard' or
                               volume_type != 'pd-ssd') else volume_type)
         disk_body = {
@@ -1900,7 +1897,7 @@ class GCESnapshot(BaseSnapshot):
                          .gce_compute
                          .disks()
                          .insert(project=self._provider.project_name,
-                                 zone=placement,
+                                 zone=zone_name,
                                  body=disk_body)
                          .execute())
         return self._provider.storage.volumes.get(

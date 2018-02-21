@@ -22,7 +22,6 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
 
@@ -435,8 +434,13 @@ class GCEInstanceService(BaseInstanceService):
         Creates a new virtual machine instance.
         """
         GCEInstance.assert_valid_resource_name(name)
-        if not zone:
-            zone = self.provider.default_zone
+        zone_name = self.provider.default_zone
+        if zone:
+            if not isinstance(zone, GCEPlacementZone):
+                zone = GCEPlacementZone(
+                    self.provider,
+                    self.provider.get_resource('zones', zone, zone=zone))
+            zone_name = zone.name
         if not isinstance(vm_type, GCEVMType):
             vm_type = self.provider.compute.vm_types.get(vm_type)
 
@@ -502,9 +506,14 @@ class GCEInstanceService(BaseInstanceService):
             else:
                 if not isinstance(image, GCEMachineImage):
                     image = self.provider.compute.images.get(image)
-                boot_disk = {'boot': True,
-                             'autoDelete': True,
-                             'initializeParams': {'sourceImage': image.id}}
+                # Explicitly set diskName; otherwise, instance name will be
+                # used by default which may conflict with existing disks.
+                boot_disk = {
+                    'boot': True,
+                    'autoDelete': True,
+                    'initializeParams': {
+                        'sourceImage': image.id,
+                        'diskName': 'image-disk-{0}'.format(uuid.uuid4())}}
 
         if not boot_disk:
             cb.log.warning('No boot disk is given')
@@ -533,7 +542,7 @@ class GCEInstanceService(BaseInstanceService):
             operation = (self.provider
                              .gce_compute.instances()
                              .insert(project=self.provider.project_name,
-                                     zone=zone,
+                                     zone=zone_name,
                                      body=config)
                              .execute())
         except googleapiclient.errors.HttpError as http_error:
@@ -542,10 +551,8 @@ class GCEInstanceService(BaseInstanceService):
             cb.log.warning(
                 "googleapiclient.errors.HttpError: {0}".format(http_error))
             return None
-        zone_url = self.provider.parse_url(operation['zone'])
         instance_id = operation.get('targetLink')
-        self.provider.wait_for_operation(operation,
-                                         zone=zone_url.parameters['zone'])
+        self.provider.wait_for_operation(operation, zone=zone_name)
         return self.get(instance_id)
 
     def get(self, instance_id):
@@ -941,13 +948,12 @@ class GCESubnetService(BaseSubnetService):
         self._provider.wait_for_operation(response, region=subnet.region)
 
     def _zone_to_region(self, zone):
-        if isinstance(zone, GCEPlacementZone):
+        if zone:
+            if not isinstance(zone, GCEPlacementZone):
+                zone = GCEPlacementZone(
+                    self.provider,
+                    self.provider.get_resource('zones', zone, zone=zone))
             return zone.region_name
-        elif zone:
-            for r in self.provider.compute.regions.list():
-                for z in r.zones:
-                    if zone == z.name:
-                        return z.region_name
         return self.provider.region_name
 
 
@@ -1050,7 +1056,11 @@ class GCEVolumeService(BaseVolumeService):
         cannot be a dash.
         """
         GCEVolume.assert_valid_resource_name(name)
-        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        if not isinstance(zone, GCEPlacementZone):
+            zone = GCEPlacementZone(
+                self.provider,
+                self.provider.get_resource('zones', zone, zone=zone))
+        zone_name = zone.name
         snapshot_id = snapshot.id if isinstance(
             snapshot, GCESnapshot) and snapshot else snapshot
         disk_body = {
