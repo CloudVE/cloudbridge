@@ -82,13 +82,13 @@ class CloudProviderFactory(object):
         Imports and registers providers from the given module name.
         Raises an ImportError if the import does not succeed.
         """
-        log.info("Importing providers from %s", module_name)
+        log.debug("Importing providers from %s", module_name)
         module = importlib.import_module(
             "{0}.{1}".format(providers.__name__,
                              module_name))
         classes = inspect.getmembers(module, inspect.isclass)
         for _, cls in classes:
-            log.info("Registering the provider: %s", cls)
+            log.debug("Registering the provider: %s", cls)
             self.register_provider_class(cls)
 
     def list_providers(self):
@@ -109,7 +109,7 @@ class CloudProviderFactory(object):
         """
         if not self.provider_list:
             self.discover_providers()
-        log.info("List of available providers: %s", self.provider_list)
+        log.debug("List of available providers: %s", self.provider_list)
         return self.provider_list
 
     def create_provider(self, name, config):
