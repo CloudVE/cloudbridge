@@ -651,10 +651,6 @@ class GCENetworkingService(BaseNetworkingService):
     def routers(self):
         return self._router_service
 
-    @property
-    def gateways(self):
-        return self._gateway_servcie
-
 
 class GCENetworkService(BaseNetworkService):
 

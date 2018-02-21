@@ -795,7 +795,11 @@ class GCEInstance(BaseInstance):
                 access_config = access_configs[0]
                 if 'natIP' in access_config:
                     ips.append(access_config['natIP'])
-        for ip in self._provider.networking.floating_ips:
+        network_url = self._gce_instance.get('networkInterfaces')[0].get(
+            'network')
+        network = self._provider.networking.networks.get(network_url)
+        inet_gateway = network.gateways.get_or_create_inet_gateway()
+        for ip in inet_gateway.floating_ips:
             if ip.in_use():
                 if ip.private_ip in self.private_ips:
                     ips.append(ip.public_ip)
@@ -836,46 +840,50 @@ class GCEInstance(BaseInstance):
         """
         Reboot this instance.
         """
+        response = None
         if self.state == InstanceState.STOPPED:
-            (self._provider
-                 .gce_compute
-                 .instances()
-                 .start(project=self._provider.project_name,
-                        zone=self._provider.default_zone,
-                        instance=self.name)
-                 .execute())
+            response = (self._provider
+                            .gce_compute
+                            .instances()
+                            .start(project=self._provider.project_name,
+                                   zone=self.zone_name,
+                                   instance=self.name)
+                            .execute())
         else:
-            (self._provider
-                 .gce_compute
-                 .instances()
-                 .reset(project=self._provider.project_name,
-                        zone=self._provider.default_zone,
-                        instance=self.name)
-                 .execute())
+            response = (self._provider
+                            .gce_compute
+                            .instances()
+                            .reset(project=self._provider.project_name,
+                                   zone=self.zone_name,
+                                   instance=self.name)
+                            .execute())
+        self._provider.wait_for_operation(response, zone=self.zone_name)
 
     def delete(self):
         """
         Permanently terminate this instance.
         """
-        (self._provider
-             .gce_compute
-             .instances()
-             .delete(project=self._provider.project_name,
-                     zone=self._provider.default_zone,
-                     instance=self.name)
-             .execute())
+        response = (self._provider
+                        .gce_compute
+                        .instances()
+                        .delete(project=self._provider.project_name,
+                                zone=self.zone_name,
+                                instance=self.name)
+                        .execute())
+        self._provider.wait_for_operation(response, zone=self.zone_name)
 
     def stop(self):
         """
         Stop this instance.
         """
-        (self._provider
-             .gce_compute
-             .instances()
-             .stop(project=self._provider.project_name,
-                   zone=self._provider.default_zone,
-                   instance=self.name)
-             .execute())
+        response = (self._provider
+                        .gce_compute
+                        .instances()
+                        .stop(project=self._provider.project_name,
+                              zone=self.zone_name,
+                              instance=self.name)
+                        .execute())
+        self._provider.wait_for_operation(response, zone=self.zone_name)
 
     @property
     def image_id(self):
@@ -896,6 +904,10 @@ class GCEInstance(BaseInstance):
         Get the placement zone id where this instance is running.
         """
         return self._gce_instance.get('zone')
+
+    @property
+    def zone_name(self):
+        return self._provider.parse_url(self.zone_id).parameters['zone']
 
     @property
     def vm_firewalls(self):
@@ -965,12 +977,11 @@ class GCEInstance(BaseInstance):
 
         If there is no target instance for this instance, return None.
         """
-        self_url = self._provider.parse_url(self._gce_instance['selfLink'])
         try:
             for target_instance in helpers.iter_all(
                     self._provider.gce_compute.targetInstances(),
-                    project=self_url.parameters['project'],
-                    zone=self_url.parameters['zone']):
+                    project=self.name,
+                    zone=self.zone_name):
                 url = self._provider.parse_url(target_instance['instance'])
                 if url.parameters['instance'] == self.name:
                     return target_instance
@@ -989,19 +1000,17 @@ class GCEInstance(BaseInstance):
             return existing_target_instance
 
         # No targetInstance exists for this instance. Create one.
-        self_url = self._provider.parse_url(self._gce_instance['selfLink'])
         body = {'name': 'target-instance-{0}'.format(uuid.uuid4()),
                 'instance': self._gce_instance['selfLink']}
         try:
             response = (self._provider
                             .gce_compute
                             .targetInstances()
-                            .insert(project=self_url.parameters['project'],
-                                    zone=self_url.parameters['zone'],
+                            .insert(project=self.name,
+                                    zone=self.zone_name,
                                     body=body)
                             .execute())
-            self._provider.wait_for_operation(
-                response, zone=self_url.parameters['zone'])
+            self._provider.wait_for_operation(response, zone=self.zone_name)
         except Exception as e:
             cb.log.warning('Exception while inserting a target instance: %s',
                            e)
@@ -1181,10 +1190,28 @@ class GCEInstance(BaseInstance):
             self._gce_instance['status'] = 'UNKNOWN'
 
     def add_vm_firewall(self, sg):
-        raise NotImplementedError('To be implemented.')
+        tag = sg.name if isinstance(sg, GCEVMFirewall) else sg
+        tags = self._gce_instance.get('tags', {}).get('items', [])
+        tags.append(tag)
+        self._set_tags(tags)
 
     def remove_vm_firewall(self, sg):
-        raise NotImplementedError('To be implemented.')
+        tag = sg.name if isinstance(sg, GCEVMFirewall) else sg
+        tags = self._gce_instance.get('tags', {}).get('items', [])
+        if tag in tags:
+            tags.remove(tag)
+            self._set_tags(tags)
+
+    def _set_tags(self, tags):
+        response = (self._provider
+                        .gce_compute
+                        .instances()
+                        .setTags(project=self._provider.project_name,
+                                 zone=self.zone_name,
+                                 instance=self.name,
+                                 body={'items': tags})
+                        .execute())
+        self._provider.wait_for_operation(response, zone=self.zone_name)
 
 
 class GCENetwork(BaseNetwork):
@@ -1276,13 +1303,13 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
 
     def get(self, floating_ip_id):
         try:
-            response = (self.provider
+            response = (self._provider
                             .gce_compute
                             .addresses()
-                            .get(project=self.provider.project_name,
-                                 region=self.provider.region_name)
+                            .get(project=self._provider.project_name,
+                                 region=self._provider.region_name)
                             .execute())
-            return GCEFloatingIP(self.provider, response)
+            return GCEFloatingIP(self._provider, response)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
@@ -1290,15 +1317,15 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         try:
-            response = (self.provider
+            response = (self._provider
                             .gce_compute
                             .addresses()
-                            .list(project=self.provider.project_name,
-                                  region=self.provider.region_name,
+                            .list(project=self._provider.project_name,
+                                  region=self._provider.region_name,
                                   maxResults=max_result,
                                   pageToken=marker)
                             .execute())
-            ips = [GCEFloatingIP(self.provider, ip)
+            ips = [GCEFloatingIP(self._provider, ip)
                    for ip in response.get('items', [])]
             if len(ips) > max_result:
                 cb.log.warning('Expected at most %d results; got %d',
@@ -1311,19 +1338,19 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
             return None
 
     def create(self):
-        region = self.provider.region_name
+        region = self._provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
         try:
-            response = (self.provider
+            response = (self._provider
                             .gce_compute
                             .addresses()
-                            .insert(project=self.provider.project_name,
+                            .insert(project=self._provider.project_name,
                                     region=region,
                                     body={'name': ip_name})
                             .execute())
             if 'error' in response:
                 return None
-            self.provider.wait_for_operation(response, region=region)
+            self._provider.wait_for_operation(response, region=region)
             return self.get(ip_name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
@@ -1499,8 +1526,7 @@ class GCEGatewayContainer(BaseGatewayContainer):
                     GCEGatewayContainer._DEFAULT_GATEWAY_NAME),
              'name': GCEGatewayContainer._DEFAULT_GATEWAY_NAME})
 
-    def get_or_create_inet_gateway(self, name):
-        GCEInternetGateway.assert_valid_resource_name(name)
+    def get_or_create_inet_gateway(self, name=None):
         return self._default_internet_gateway
 
     def delete(self, gateway):
@@ -1546,7 +1572,7 @@ class GCEInternetGateway(BaseInternetGateway):
 
     @property
     def floating_ips(self):
-        return self._fips_container
+        return self._fip_container
 
 
 class GCESubnet(BaseSubnet):
@@ -1612,11 +1638,10 @@ class GCESubnet(BaseSubnet):
 class GCEVolume(BaseVolume):
 
     VOLUME_STATE_MAP = {
-        'RESTORING': VolumeState.CONFIGURING,
-        'PENDING': VolumeState.CONFIGURING,
+        'CREATING': VolumeState.CONFIGURING,
+        'FAILED': VolumeState.ERROR,
         'READY': VolumeState.AVAILABLE,
-        'DONE': VolumeState.AVAILABLE,
-        'RUNNING': VolumeState.IN_USE,
+        'RESTORING': VolumeState.CONFIGURING,
     }
 
     def __init__(self, provider, volume):
@@ -1721,12 +1746,11 @@ class GCEVolume(BaseVolume):
         }
         if not isinstance(instance, GCEInstance):
             instance = self._provider.get_resource('instances', instance)
-        parsed_zone_url = self._provider.parse_url(instance.zone_id)
         (self._provider
              .gce_compute
              .instances()
              .attachDisk(project=self._provider.project_name,
-                         zone=parsed_zone_url.parameters['zone'],
+                         zone=instance.zone_name,
                          instance=instance.name,
                          body=attach_disk_body)
              .execute())
@@ -1780,6 +1804,8 @@ class GCEVolume(BaseVolume):
 
     @property
     def state(self):
+        if len(self._volume.get('users', [])) > 0:
+            return VolumeState.IN_USE
         return GCEVolume.VOLUME_STATE_MAP.get(
             self._volume.get('status'), VolumeState.UNKNOWN)
 
