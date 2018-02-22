@@ -845,6 +845,10 @@ class GCESubnetService(BaseSubnetService):
         if network is not None:
             filter = 'network eq %s' % network.resource_url
         if zone:
+            if not isinstance(zone, GCEPlacementZone):
+                zone = GCEPlacementZone(
+                    self.provider,
+                    self.provider.get_resource('zones', zone, zone=zone))
             regions = [zone.region_name]
         else:
             regions = [r.name for r in self.provider.compute.regions.list()]
@@ -1188,7 +1192,7 @@ class GCSBucketService(BaseBucketService):
         max_result = limit if limit is not None and limit < 500 else 500
         try:
             response = (self.provider
-                            .gcp_storage
+                            .gcs_storage
                             .buckets()
                             .list(project=self.provider.project_name,
                                   maxResults=max_result,
@@ -1219,7 +1223,7 @@ class GCSBucketService(BaseBucketService):
             body['location'] = location
         try:
             response = (self.provider
-                            .gcp_storage
+                            .gcs_storage
                             .buckets()
                             .insert(project=self.provider.project_name,
                                     body=body)
