@@ -754,7 +754,9 @@ class GCERouterService(BaseRouterService):
     def find(self, name, limit=None, marker=None):
         routers = []
         for region in self.provider.compute.regions.list():
-            routers.append(self._get_in_region(name, region.name))
+            router = self._get_in_region(name, region.name)
+            if router:
+                routers.append()
         return ClientPagedResultList(self.provider, routers, limit=limit,
                                      marker=marker)
 
@@ -817,19 +819,14 @@ class GCERouterService(BaseRouterService):
         self._provider.wait_for_operation(response, region=region)
 
     def _get_in_region(self, router_id, region=None):
-        region = region if region else self.provider.region_name
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .routers()
-                            .get(project=self.provider.project_name,
-                                 region=region,
-                                 router=router_id)
-                            .execute())
-            return GCERouter(self.provider, response)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        region_name = self.provider.region_name
+        if region:
+            if not isinstance(region, GCERegion):
+                region = self.provider.compute.regions.get(region)
+            region_name = region.name
+        router = self.provider.get_resource(
+            'routers', router_id, region=region_name)
+        return GCERouter(self.provider, router) if router else None
 
 
 class GCESubnetService(BaseSubnetService):

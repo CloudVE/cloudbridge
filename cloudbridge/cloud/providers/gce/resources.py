@@ -6,7 +6,6 @@ import inspect
 import io
 import json
 import math
-import re
 import uuid
 
 import cloudbridge as cb
@@ -705,23 +704,8 @@ class GCEMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        resource_link = self._gce_image['selfLink']
-        project_pattern = 'projects/(.*?)/'
-        match = re.search(project_pattern, resource_link)
-        if match:
-            project = match.group(1)
-        else:
-            cb.log.warning("Project name is not found.")
-            return
-        try:
-            response = (self._provider
-                            .gce_compute
-                            .images()
-                            .get(project=project, image=self.name)
-                            .execute())
-            self._gce_image = response
-        except googleapiclient.errors.HttpError:
-            # If the resource does not exist, its status is UNKNOWN.
+        self._gce_image = self._provider.get_resource('images', self.id)
+        if not self._gce_image:
             self._gce_image['status'] = 'UNKNOWN'
 
 
@@ -1180,13 +1164,8 @@ class GCEInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        self_link = self._gce_instance.get('selfLink')
-
-        try:
-            new_info = self._provider.parse_url(self_link).get_resource()
-            self._get_instance = new_info
-        except googleapiclient.errors.HttpError:
-            # If the resource does not exist, its status is UNKNOWN.
+        self._gce_instance = self._provider.get_resource('instances', self.id)
+        if not self._gce_instance:
             self._gce_instance['status'] = 'UNKNOWN'
 
     def add_vm_firewall(self, sg):
@@ -1283,12 +1262,8 @@ class GCENetwork(BaseNetwork):
             self, cidr_block, name, zone)
 
     def refresh(self):
-        self_link = self._network.get('selfLink')
-        try:
-            new_info = self._provider.parse_url(self_link).get_resource()
-            self._network = new_info
-        except googleapiclient.errors.HttpError:
-            # If the resource does not exist, its status is UNKNOWN.
+        self._network = self._provider.get_resource('networks', self.id)
+        if not self._network:
             self._network['status'] = 'UNKNOWN'
 
     @property
@@ -1302,17 +1277,8 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
         super(GCEFloatingIPContainer, self).__init__(provider, gateway)
 
     def get(self, floating_ip_id):
-        try:
-            response = (self._provider
-                            .gce_compute
-                            .addresses()
-                            .get(project=self._provider.project_name,
-                                 region=self._provider.region_name)
-                            .execute())
-            return GCEFloatingIP(self._provider, response)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        fip = self._provider.get_resource('addresses', floating_ip_id)
+        return return GCEFloatingIP(self._provider, fip) if fip else None
 
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
@@ -1441,13 +1407,9 @@ class GCEFloatingIP(BaseFloatingIP):
         self._provider.wait_for_operation(response, region=self._region)
 
     def refresh(self):
-        self_link = self._ip.get('selfLink')
-        try:
-            new_info = self._provider.parse_url(self_link).get_resource()
-            self._ip = new_info
-        except googleapiclient.errors.HttpError:
-            # If the resource does not exist, its status is UNKNOWN.
-            self._network['status'] = 'UNKNOWN'
+        self._ip = self._provider.get_resource('addresses', self.id)
+        if not self._ip:
+            self._ip['status'] = 'UNKNOWN'
 
 
 class GCERouter(BaseRouter):
@@ -1465,12 +1427,8 @@ class GCERouter(BaseRouter):
         return self._router['name']
 
     def refresh(self):
-        self_link = self._router.get('selfLink')
-        try:
-            new_info = self._provider.parse_url(self_link).get_resource()
-            self._router = new_info
-        except googleapiclient.errors.HttpError:
-            # If the resource does not exist, its status is UNKNOWN.
+        self._router = self._provider.get_resource('routers', self.id)
+        if not self._router:
             self._router['status'] = 'UNKNOWN'
 
     @property
@@ -1626,12 +1584,8 @@ class GCESubnet(BaseSubnet):
         return SubnetState.AVAILABEL
 
     def refresh(self):
-        self_link = self._subnet.get('selfLink')
-        try:
-            new_info = self._provider.parse_url(self_link).get_resource()
-            self._subnet = new_info
-        except googleapiclient.errors.HttpError:
-            # If the resource does not exist, its status is UNKNOWN.
+        self._subnet = self._provider.get_resource('subnetworks', self.id)
+        if not self._subnet:
             self._subnet['status'] = 'UNKNOWN'
 
 
@@ -1814,12 +1768,8 @@ class GCEVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        self_link = self._volume.get('selfLink')
-        try:
-            new_info = self._provider.parse_url(self_link).get_resource()
-            self._volume = new_info
-        except googleapiclient.errors.HttpError:
-            # If the resource does not exist, its status is UNKNOWN.
+        self._volume = self._provider.get_resource('disks', self.id)
+        if not self._volume:
             self._volume['status'] = 'UNKNOWN'
 
 
@@ -1875,12 +1825,8 @@ class GCESnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        self_link = self._snapshot.get('selfLink')
-        try:
-            new_info = self._provider.parse_url(self_link).get_resource()
-            self._snapshot = new_info
-        except googleapiclient.errors.HttpError:
-            # If the resource does not exist, its status is UNKNOWN.
+        self._snapshot = self._provider.get_resource('snapshots', self.id)
+        if not self._snapshot:
             self._snapshot['status'] = 'UNKNOWN'
 
     def delete(self):
@@ -2016,18 +1962,8 @@ class GCSBucket(BaseBucket):
         """
         Retrieve a given object from this bucket.
         """
-        try:
-            response = (self._provider
-                            .gcp_storage
-                            .objects()
-                            .get(bucket=self.name, object=name)
-                            .execute())
-            if 'error' in response:
-                return None
-            return GCSObject(self._provider, self, response)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        obj = self._provider.get_resource('objects', name)
+        return GCSObject(self._provider, self, obj)
 
     def list(self, limit=None, marker=None, prefix=None):
         """
