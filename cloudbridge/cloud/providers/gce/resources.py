@@ -1182,13 +1182,17 @@ class GCEInstance(BaseInstance):
             self._set_tags(tags)
 
     def _set_tags(self, tags):
+        # Refresh to make sure we are using the most recent tags fingerprint.
+        self.refresh()
+        fingerprint = self._gce_instance.get('tags', {}).get('fingerprint', '')
         response = (self._provider
                         .gce_compute
                         .instances()
                         .setTags(project=self._provider.project_name,
                                  zone=self.zone_name,
                                  instance=self.name,
-                                 body={'items': tags})
+                                 body={'items': tags,
+                                       'fingerprint': fingerprint})
                         .execute())
         self._provider.wait_for_operation(response, zone=self.zone_name)
 
@@ -1963,7 +1967,7 @@ class GCSBucket(BaseBucket):
         Retrieve a given object from this bucket.
         """
         obj = self._provider.get_resource('objects', name)
-        return GCSObject(self._provider, self, obj)
+        return GCSObject(self._provider, self, obj) if obj else None
 
     def list(self, limit=None, marker=None, prefix=None):
         """
