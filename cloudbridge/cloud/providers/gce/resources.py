@@ -706,7 +706,7 @@ class GCEMachineImage(BaseMachineImage):
         """
         self._gce_image = self._provider.get_resource('images', self.id)
         if not self._gce_image:
-            self._gce_image['status'] = 'UNKNOWN'
+            self._gce_image = {'status': 'UNKNOWN'}
 
 
 class GCEInstance(BaseInstance):
@@ -1166,7 +1166,7 @@ class GCEInstance(BaseInstance):
         """
         self._gce_instance = self._provider.get_resource('instances', self.id)
         if not self._gce_instance:
-            self._gce_instance['status'] = 'UNKNOWN'
+            self._gce_instance = {'status': 'UNKNOWN'}
 
     def add_vm_firewall(self, sg):
         tag = sg.name if isinstance(sg, GCEVMFirewall) else sg
@@ -1268,7 +1268,7 @@ class GCENetwork(BaseNetwork):
     def refresh(self):
         self._network = self._provider.get_resource('networks', self.id)
         if not self._network:
-            self._network['status'] = 'UNKNOWN'
+            self._network = {'status': 'UNKNOWN'}
 
     @property
     def gateways(self):
@@ -1282,7 +1282,7 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
 
     def get(self, floating_ip_id):
         fip = self._provider.get_resource('addresses', floating_ip_id)
-        return return GCEFloatingIP(self._provider, fip) if fip else None
+        return GCEFloatingIP(self._provider, fip) if fip else None
 
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
@@ -1413,7 +1413,7 @@ class GCEFloatingIP(BaseFloatingIP):
     def refresh(self):
         self._ip = self._provider.get_resource('addresses', self.id)
         if not self._ip:
-            self._ip['status'] = 'UNKNOWN'
+            self._ip = {'status': 'UNKNOWN'}
 
 
 class GCERouter(BaseRouter):
@@ -1433,7 +1433,7 @@ class GCERouter(BaseRouter):
     def refresh(self):
         self._router = self._provider.get_resource('routers', self.id)
         if not self._router:
-            self._router['status'] = 'UNKNOWN'
+            self._router = {'status': 'UNKNOWN'}
 
     @property
     def state(self):
@@ -1461,19 +1461,21 @@ class GCERouter(BaseRouter):
         self._provider.wait_for_operation(response,
                                           region=self._router['region'])
 
-    def attach_network(self, network_id):
-        if network_id == self.network_id:
+    def attach_subnet(self, subnet):
+        if not isinstance(subnet, GCESubnet):
+            subnet = self._provider.networking.subnets.get(subnet)
+        if subnet.network_id == self.network_id:
             return
         cb.log.warning('GCE routers should be attached at creation time')
 
-    def detach_network(self, network_id):
+    def detach_subnet(self, network_id):
         cb.log.warning('GCE routers are always attached')
 
-    def add_route(self, subnet_id):
-        cb.log.warning('Not implemented')
+    def attach_gateway(self, gateway):
+        pass
 
-    def remove_route(self, subnet_id):
-        cb.log.warning('Not implemented')
+    def detach_gateway(self, gateway):
+        pass
 
 
 class GCEGatewayContainer(BaseGatewayContainer):
@@ -1590,7 +1592,7 @@ class GCESubnet(BaseSubnet):
     def refresh(self):
         self._subnet = self._provider.get_resource('subnetworks', self.id)
         if not self._subnet:
-            self._subnet['status'] = 'UNKNOWN'
+            self._subnet = {'status': 'UNKNOWN'}
 
 
 class GCEVolume(BaseVolume):
@@ -1774,7 +1776,7 @@ class GCEVolume(BaseVolume):
         """
         self._volume = self._provider.get_resource('disks', self.id)
         if not self._volume:
-            self._volume['status'] = 'UNKNOWN'
+            self._volume = {'status': 'UNKNOWN'}
 
 
 class GCESnapshot(BaseSnapshot):
@@ -1831,7 +1833,7 @@ class GCESnapshot(BaseSnapshot):
         """
         self._snapshot = self._provider.get_resource('snapshots', self.id)
         if not self._snapshot:
-            self._snapshot['status'] = 'UNKNOWN'
+            self._snapshot = {'status': 'UNKNOWN'}
 
     def delete(self):
         """

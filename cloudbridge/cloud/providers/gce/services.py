@@ -538,7 +538,6 @@ class GCEInstanceService(BaseInstanceService):
                 config['tags'] = {}
                 config['tags']['items'] = vm_firewall_names
         try:
-            cb.log.warning('config: %s', config)
             operation = (self.provider
                              .gce_compute.instances()
                              .insert(project=self.provider.project_name,
@@ -756,7 +755,7 @@ class GCERouterService(BaseRouterService):
         for region in self.provider.compute.regions.list():
             router = self._get_in_region(name, region.name)
             if router:
-                routers.append()
+                routers.append(router)
         return ClientPagedResultList(self.provider, routers, limit=limit,
                                      marker=marker)
 
