@@ -9,8 +9,10 @@ import math
 import uuid
 
 import cloudbridge as cb
+import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
 from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
@@ -1587,7 +1589,7 @@ class GCESubnet(BaseSubnet):
     def state(self):
         if 'status' in self._subnet and self._subnet['status'] == 'UNKNOWN':
             return SubnetState.UNKNOWN
-        return SubnetState.AVAILABEL
+        return SubnetState.AVAILABLE
 
     def refresh(self):
         self._subnet = self._provider.get_resource('subnetworks', self.id)
@@ -1947,11 +1949,65 @@ class GCSObject(BaseBucketObject):
         return self._obj['mediaLink']
 
 
+class GCSBucketContainer(BaseBucketContainer):
+
+    def __init__(self, provider, bucket):
+        super(GCSBucketContainer, self).__init__(provider, bucket)
+
+    def get(self, name):
+        """
+        Retrieve a given object from this bucket.
+        """
+        obj = self._provider.get_resource('objects', name,
+                                          bucket=self.bucket.name)
+        return GCSObject(self._provider, self.bucket, obj) if obj else None
+
+    def list(self, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+        """
+        max_result = limit if limit is not None and limit < 500 else 500
+        try:
+            response = (self._provider
+                            .gcp_storage
+                            .objects()
+                            .list(bucket=self.bucket.name,
+                                  prefix=prefix if prefix else '',
+                                  maxResults=max_result,
+                                  pageToken=marker)
+                            .execute())
+            if 'error' in response:
+                return ServerPagedResultList(False, None, False, data=[])
+            objects = []
+            for obj in response.get('items', []):
+                objects.append(GCSObject(self._provider, self.bucket, obj))
+            if len(objects) > max_result:
+                cb.log.warning('Expected at most %d results; got %d',
+                               max_result, len(objects))
+            return ServerPagedResultList('nextPageToken' in response,
+                                         response.get('nextPageToken'),
+                                         False, data=objects)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return ServerPagedResultList(False, None, False, data=[])
+
+    def find(self, **kwargs):
+        obj_list = self.list()
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=None, marker=None)
+
+    def create(self, name):
+        return self.bucket.create_object(name)
+
+
 class GCSBucket(BaseBucket):
 
     def __init__(self, provider, bucket):
         super(GCSBucket, self).__init__(provider)
         self._bucket = bucket
+        self._object_container = GCSBucketContainer(provider, self)
 
     @property
     def id(self):
@@ -1963,42 +2019,6 @@ class GCSBucket(BaseBucket):
         Get this bucket's name.
         """
         return self._bucket['name']
-
-    def get(self, name):
-        """
-        Retrieve a given object from this bucket.
-        """
-        obj = self._provider.get_resource('objects', name)
-        return GCSObject(self._provider, self, obj) if obj else None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-        """
-        max_result = limit if limit is not None and limit < 500 else 500
-        try:
-            response = (self._provider
-                            .gcp_storage
-                            .objects()
-                            .list(bucket=self.name,
-                                  prefix=prefix if prefix else '',
-                                  maxResults=max_result,
-                                  pageToken=marker)
-                            .execute())
-            if 'error' in response:
-                return ServerPagedResultList(False, None, False, data=[])
-            objects = []
-            for obj in response.get('items', []):
-                objects.append(GCSObject(self._provider, self, obj))
-            if len(objects) > max_result:
-                cb.log.warning('Expected at most %d results; got %d',
-                               max_result, len(objects))
-            return ServerPagedResultList('nextPageToken' in response,
-                                         response.get('nextPageToken'),
-                                         False, data=objects)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return ServerPagedResultList(False, None, False, data=[])
 
     def delete(self, delete_contents=False):
         """

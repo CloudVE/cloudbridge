@@ -893,13 +893,12 @@ class GCESubnetService(BaseSubnetService):
                                     region=region,
                                     body=body)
                             .execute())
-            self.provider.wait_for_operation(response, region=region)
             if 'error' in response:
+                cb.log.warning('Error while creating a subnet: %s',
+                               response['error'])
                 return None
-            subnets = self.list(network, zone)
-            for subnet in subnets:
-                if subnet.id == response['targetId']:
-                    return subnet
+            self.provider.wait_for_operation(response, region=region)
+            return self.get(name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
