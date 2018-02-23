@@ -182,13 +182,17 @@ class GCPResources(object):
             return self.parse_url(url_or_name)
         # Otherwise, construct resource URL with default values.
         if resource not in self._resources:
+            cb.log.warning('Unknown resource: %s', resource)
             return None
 
         parameter_defaults = copy.copy(self._parameter_defaults)
+        if project:
+            parameter_defaults['project'] = project
         if region:
             parameter_defaults['region'] = region
         if zone:
             parameter_defaults['zone'] = zone
+
         parsed_url = GCPResourceUrl(resource, self._connection)
         for key in self._resources[resource]['parameters']:
             parsed_url.parameters[key] = parameter_defaults.get(

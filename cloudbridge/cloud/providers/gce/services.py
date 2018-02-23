@@ -845,11 +845,7 @@ class GCESubnetService(BaseSubnetService):
         if network is not None:
             filter = 'network eq %s' % network.resource_url
         if zone:
-            if not isinstance(zone, GCEPlacementZone):
-                zone = GCEPlacementZone(
-                    self.provider,
-                    self.provider.get_resource('zones', zone, zone=zone))
-            regions = [zone.region_name]
+            regions = [self._zone_to_region(zone)]
         else:
             regions = [r.name for r in self.provider.compute.regions.list()]
         subnets = []
@@ -900,7 +896,7 @@ class GCESubnetService(BaseSubnetService):
             self.provider.wait_for_operation(response, region=region)
             if 'error' in response:
                 return None
-            subnets = self.list(network, region)
+            subnets = self.list(network, zone)
             for subnet in subnets:
                 if subnet.id == response['targetId']:
                     return subnet
