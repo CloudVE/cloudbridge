@@ -2038,6 +2038,10 @@ class GCSBucket(BaseBucket):
         """
         return self._bucket['name']
 
+    @property
+    def objects(self):
+        return self._object_container
+
     def delete(self, delete_contents=False):
         """
         Delete this bucket.
