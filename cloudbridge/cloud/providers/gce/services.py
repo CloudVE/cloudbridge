@@ -787,35 +787,35 @@ class GCERouterService(BaseRouterService):
         if not isinstance(network, GCENetwork):
             network = self.provider.networking.networks.get(network)
         network_url = network.resource_url
-        region = self.provider.region_name
+        region_name = self.provider.region_name
         try:
             response = (self.provider
                             .gce_compute
                             .routers()
                             .insert(project=self.provider.project_name,
-                                    region=region,
+                                    region=region_name,
                                     body={'name': name,
                                           'network': network_url})
                             .execute())
             if 'error' in response:
                 return None
-            self.provider.wait_for_operation(response, region=region)
-            return self._get_in_region(name, region)
+            self.provider.wait_for_operation(response, region=region_name)
+            return self._get_in_region(name, region_name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def delete(self, router):
-        region = self.provider.region_name
+        region_name = self.provider.region_name
         name = router.name if isinstance(router, GCERouter) else router
         response = (self.provider
                         .gce_compute
                         .routers()
                         .delete(project=self.provider.project_name,
-                                region=region,
+                                region=region_name,
                                 router=name)
                         .execute())
-        self._provider.wait_for_operation(response, region=region)
+        self._provider.wait_for_operation(response, region=region_name)
 
     def _get_in_region(self, router_id, region=None):
         region_name = self.provider.region_name
@@ -844,17 +844,19 @@ class GCESubnetService(BaseSubnetService):
         filter = None
         if network is not None:
             filter = 'network eq %s' % network.resource_url
+        region_names = []
         if zone:
-            regions = [self._zone_to_region(zone)]
+            region_names.append(self._zone_to_region_name(zone))
         else:
-            regions = [r.name for r in self.provider.compute.regions.list()]
+            for r in self.provider.compute.regions.list():
+                region_names.append(r.name)
         subnets = []
-        for region in regions:
+        for region_name in region_names:
             response = (self.provider
                             .gce_compute
                             .subnetworks()
                             .list(project=self.provider.project_name,
-                                  region=region,
+                                  region=region_name,
                                   filter=filter)
                             .execute())
             for subnet in response.get('items', []):
@@ -880,24 +882,24 @@ class GCESubnetService(BaseSubnetService):
 
         if not name:
             name = 'subnet-{0}'.format(uuid.uuid4())
-        region = self._zone_to_region(zone)
+        region_name = self._zone_to_region_name(zone)
         body = {'ipCidrRange': cidr_block,
                 'name': name,
                 'network': network.resource_url,
-                'region': region}
+                'region': region_name}
         try:
             response = (self.provider
                             .gce_compute
                             .subnetworks()
                             .insert(project=self.provider.project_name,
-                                    region=region,
+                                    region=region_name,
                                     body=body)
                             .execute())
             if 'error' in response:
                 cb.log.warning('Error while creating a subnet: %s',
                                response['error'])
                 return None
-            self.provider.wait_for_operation(response, region=region)
+            self.provider.wait_for_operation(response, region=region_name)
             return self.get(name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
@@ -928,17 +930,16 @@ class GCESubnetService(BaseSubnetService):
             # deleted.
             return
 
-        region_url = self.provider.parse_url(subnet.region)
         response = (self.provider
                         .gce_compute
                         .subnetworks()
                         .delete(project=self.provider.project_name,
-                                region=region_url.parameters['region'],
+                                region=subnet.region_name,
                                 subnetwork=subnet.name)
                         .execute())
-        self._provider.wait_for_operation(response, region=subnet.region)
+        self._provider.wait_for_operation(response, region=subnet.region_name)
 
-    def _zone_to_region(self, zone):
+    def _zone_to_region_name(self, zone):
         if zone:
             if not isinstance(zone, GCEPlacementZone):
                 zone = GCEPlacementZone(
@@ -1148,9 +1149,8 @@ class GCESnapshotService(BaseSnapshotService):
                          .execute())
         if 'zone' not in operation:
             return None
-        zone_url = self.provider.parse_url(operation['zone'])
         self.provider.wait_for_operation(operation,
-                                         zone=zone_url.parameters['zone'])
+                                         zone=self.provider.default_zone)
         snapshots = self.provider.storage.snapshots.find(name=name)
         if snapshots:
             return snapshots[0]

@@ -1319,19 +1319,19 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
             return None
 
     def create(self):
-        region = self._provider.region_name
+        region_name = self._provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
         try:
             response = (self._provider
                             .gce_compute
                             .addresses()
                             .insert(project=self._provider.project_name,
-                                    region=region,
+                                    region=region_name,
                                     body={'name': ip_name})
                             .execute())
             if 'error' in response:
                 return None
-            self._provider.wait_for_operation(response, region=region)
+            self._provider.wait_for_operation(response, region=region_name)
             return self.get(ip_name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
@@ -1442,6 +1442,11 @@ class GCERouter(BaseRouter):
     def name(self):
         return self._router['name']
 
+    @property
+    def region_name(self):
+        parsed_url = self._provider.parse_url(self.id)
+        return parsed_url.parameters['region']
+
     def refresh(self):
         self._router = self._provider.get_resource('routers', self.id)
         if not self._router:
@@ -1467,11 +1472,10 @@ class GCERouter(BaseRouter):
                         .gce_compute
                         .routers()
                         .delete(project=self._provider.project_name,
-                                region=self._router['region'],
-                                router=self._router['name'])
+                                region=self.region_name,
+                                router=self.name)
                         .execute())
-        self._provider.wait_for_operation(response,
-                                          region=self._router['region'])
+        self._provider.wait_for_operation(response, region=self.region_name)
 
     def attach_subnet(self, subnet):
         if not isinstance(subnet, GCESubnet):
@@ -1581,12 +1585,16 @@ class GCESubnet(BaseSubnet):
 
     @property
     def network_id(self):
-        return self._provider.parse_url(
-            self.network_url).get_resource()['selfLink']
+        return self.network_url
 
     @property
     def region(self):
         return self._subnet['region']
+
+    @property
+    def region_name(self):
+        parsed_url = self.provider.parse_url(self.id)
+        return parsed_url.parameters['region']
 
     @property
     def zone(self):
