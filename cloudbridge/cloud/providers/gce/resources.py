@@ -729,6 +729,7 @@ class GCEInstance(BaseInstance):
     def __init__(self, provider, gce_instance):
         super(GCEInstance, self).__init__(provider)
         self._gce_instance = gce_instance
+        self._inet_gateway = None
 
     @property
     def resource_url(self):
@@ -781,11 +782,7 @@ class GCEInstance(BaseInstance):
                 access_config = access_configs[0]
                 if 'natIP' in access_config:
                     ips.append(access_config['natIP'])
-        network_url = self._gce_instance.get('networkInterfaces')[0].get(
-            'network')
-        network = self._provider.networking.networks.get(network_url)
-        inet_gateway = network.gateways.get_or_create_inet_gateway()
-        for ip in inet_gateway.floating_ips:
+        for ip in self.inet_gateway.floating_ips:
             if ip.in_use():
                 if ip.private_ip in self.private_ips:
                     ips.append(ip.public_ip)
@@ -931,6 +928,16 @@ class GCEInstance(BaseInstance):
         """
         return self._provider.security.key_pairs.name
 
+    @property
+    def inet_gateway(self):
+        if self._inet_gateway:
+            return self._inet_gateway
+        network_url = self._gce_instance.get('networkInterfaces')[0].get(
+            'network')
+        network = self._provider.networking.networks.get(network_url)
+        self._inet_gateway = network.gateways.get_or_create_inet_gateway()
+        return self._inet_gateway
+
     def create_image(self, name):
         """
         Create a new image based on this instance.
@@ -1018,7 +1025,7 @@ class GCEInstance(BaseInstance):
             for rule in helpers.iter_all(
                     self._provider.gce_compute.forwardingRules(),
                     project=self._provider.project_name,
-                    region=ip.region):
+                    region=ip.region_name):
                 if rule['IPAddress'] != ip.public_ip:
                     continue
                 parsed_target_url = self._provider.parse_url(rule['target'])
@@ -1031,11 +1038,12 @@ class GCEInstance(BaseInstance):
                                 .forwardingRules()
                                 .setTarget(
                                     project=self._provider.project_name,
-                                    region=ip.region,
+                                    region=ip.region_name,
                                     forwardingRule=rule['name'],
                                     body={'target': new_url})
                                 .execute())
-                self._provider.wait_for_operation(response, region=ip.region)
+                self._provider.wait_for_operation(response,
+                                                  region=ip.region_name)
                 return True
         except Exception as e:
             cb.log.warning(
@@ -1059,10 +1067,10 @@ class GCEInstance(BaseInstance):
                             .gce_compute
                             .forwardingRules()
                             .insert(project=self._provider.project_name,
-                                    region=ip.region,
+                                    region=ip.region_name,
                                     body=body)
                             .execute())
-            self._provider.wait_for_operation(response, region=ip.region)
+            self._provider.wait_for_operation(response, region=ip.region_name)
         except Exception as e:
             cb.log.warning('Exception while inserting a forwarding rule: %s',
                            e)
@@ -1080,7 +1088,7 @@ class GCEInstance(BaseInstance):
             for rule in helpers.iter_all(
                     self._provider.gce_compute.forwardingRules(),
                     project=self._provider.project_name,
-                    region=ip.region):
+                    region=ip.region_name):
                 if rule['IPAddress'] != ip.public_ip:
                     continue
                 parsed_target_url = self._provider.parse_url(rule['target'])
@@ -1096,10 +1104,11 @@ class GCEInstance(BaseInstance):
                                 .forwardingRules()
                                 .delete(
                                     project=self._provider.project_name,
-                                    region=ip.region,
+                                    region=ip.region_name,
                                     forwardingRule=rule['name'])
                                 .execute())
-                self._provider.wait_for_operation(response, region=ip.region)
+                self._provider.wait_for_operation(response,
+                                                  region=ip.region_name)
                 return True
         except Exception as e:
             cb.log.warning(
@@ -1111,7 +1120,7 @@ class GCEInstance(BaseInstance):
         """
         Add an elastic IP address to this instance.
         """
-        for ip in self._provider.networking.floating_ips:
+        for ip in self.inet_gateway.floating_ips:
             if ip.public_ip == ip_address:
                 if ip.in_use():
                     if ip.private_ip not in self.private_ips:
@@ -1135,7 +1144,7 @@ class GCEInstance(BaseInstance):
         """
         Remove a elastic IP address from this instance.
         """
-        for ip in self._provider.networking.floating_ips:
+        for ip in self.inet_gateway.floating_ips:
             if ip.public_ip == ip_address:
                 if not ip.in_use() or ip.private_ip not in self.private_ips:
                     cb.log.warning(
@@ -1340,7 +1349,7 @@ class GCEFloatingIP(BaseFloatingIP):
         # global IPs can be forwarded only to load balancing resources, not to
         # a specific instance. Find out the region to which the IP belongs.
         url = provider.parse_url(self._ip['region'])
-        self._region = url.parameters['region']
+        self._region_name = url.parameters['region']
 
         # Check if the address is used by a resource.
         self._rule = None
@@ -1372,8 +1381,8 @@ class GCEFloatingIP(BaseFloatingIP):
         return self._ip['selfLink']
 
     @property
-    def region(self):
-        return self._region
+    def region_name(self):
+        return self._region_name
 
     @property
     def public_ip(self):
@@ -1397,20 +1406,21 @@ class GCEFloatingIP(BaseFloatingIP):
                             .gce_compute
                             .forwardingRules()
                             .delete(project=project_name,
-                                    region=self._region,
+                                    region=self._region_name,
                                     forwardingRule=self._rule['name'])
                             .execute())
-            self._provider.wait_for_operation(response, region=self._region)
+            self._provider.wait_for_operation(response,
+                                              region=self._region_name)
 
         # Release the address.
         response = (self._provider
                         .gce_compute
                         .addresses()
                         .delete(project=project_name,
-                                region=self._region,
+                                region=self._region_name,
                                 address=self._ip['name'])
                         .execute())
-        self._provider.wait_for_operation(response, region=self._region)
+        self._provider.wait_for_operation(response, region=self._region_name)
 
     def refresh(self):
         self._ip = self._provider.get_resource('addresses', self.id)
