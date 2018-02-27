@@ -1670,7 +1670,7 @@ class GCEVolume(BaseVolume):
 
     @property
     def size(self):
-        return self._volume.get('sizeGb')
+        return int(self._volume.get('sizeGb'))
 
     @property
     def create_time(self):
@@ -1831,7 +1831,7 @@ class GCESnapshot(BaseSnapshot):
 
     @property
     def size(self):
-        return self._snapshot.get('diskSizeGb')
+        return int(self._snapshot.get('diskSizeGb'))
 
     @property
     def volume_id(self):
@@ -1919,7 +1919,7 @@ class GCSObject(BaseBucketObject):
 
     @property
     def size(self):
-        return self._obj['size']
+        return int(self._obj['size'])
 
     @property
     def last_modified(self):
