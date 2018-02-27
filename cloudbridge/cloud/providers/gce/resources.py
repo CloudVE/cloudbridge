@@ -1927,7 +1927,7 @@ class GCSObject(BaseBucketObject):
 
     def iter_content(self):
         return io.BytesIO(self._provider
-                              .gcp_storage
+                              .gcs_storage
                               .objects()
                               .get_media(bucket=self._obj['bucket'],
                                          object=self.name)
@@ -1958,7 +1958,7 @@ class GCSObject(BaseBucketObject):
 
     def delete(self):
         (self._provider
-             .gcp_storage
+             .gcs_storage
              .objects()
              .delete(bucket=self._obj['bucket'], object=self.name)
              .execute())
@@ -1987,7 +1987,7 @@ class GCSBucketContainer(BaseBucketContainer):
         max_result = limit if limit is not None and limit < 500 else 500
         try:
             response = (self._provider
-                            .gcp_storage
+                            .gcs_storage
                             .objects()
                             .list(bucket=self.bucket.name,
                                   prefix=prefix if prefix else '',
@@ -2047,7 +2047,7 @@ class GCSBucket(BaseBucket):
         Delete this bucket.
         """
         (self._provider
-             .gcp_storage
+             .gcs_storage
              .buckets()
              .delete(bucket=self.name)
              .execute())
@@ -2066,7 +2066,7 @@ class GCSBucket(BaseBucket):
         self.assert_valid_resource_name(name)
         try:
             response = (self._provider
-                            .gcp_storage
+                            .gcs_storage
                             .objects()
                             .insert(bucket=self.name,
                                     body={'name': name},
