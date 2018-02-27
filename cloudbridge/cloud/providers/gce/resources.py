@@ -2063,7 +2063,6 @@ class GCSBucket(BaseBucket):
         return GCSObject(self._provider, self, response) if response else None
 
     def create_object_with_media_body(self, name, media_body):
-        self.assert_valid_resource_name(name)
         try:
             response = (self._provider
                             .gcs_storage
