@@ -22,7 +22,6 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
 
@@ -329,7 +328,8 @@ class GCERegionService(BaseRegionService):
         super(GCERegionService, self).__init__(provider)
 
     def get(self, region_id):
-        region = self.provider.get_resource('regions', region_id)
+        region = self.provider.get_resource('regions', region_id,
+                                            region=region_id)
         return GCERegion(self.provider, region) if region else None
 
     def list(self, limit=None, marker=None):
@@ -434,53 +434,114 @@ class GCEInstanceService(BaseInstanceService):
         Creates a new virtual machine instance.
         """
         GCEInstance.assert_valid_resource_name(name)
-        if not zone:
-            zone = self.provider.default_zone
-        if not isinstance(image, GCEMachineImage):
-            image = self.provider.compute.images.get(image)
+        zone_name = self.provider.default_zone
+        if zone:
+            if not isinstance(zone, GCEPlacementZone):
+                zone = GCEPlacementZone(
+                    self.provider,
+                    self.provider.get_resource('zones', zone, zone=zone))
+            zone_name = zone.name
         if not isinstance(vm_type, GCEVMType):
             vm_type = self.provider.compute.vm_types.get(vm_type)
-        if not launch_config:
-            if subnet:
-                network = self.provider.networking.networks.get(
-                        subnet.network_id)
-                network_url = (network.resource_url
-                               if isinstance(network, GCENetwork) else network)
-            else:
-                network_url = 'global/networks/default'
-            config = {
-                'name': name,
-                'machineType': vm_type.resource_url,
-                'disks': [{'boot': True,
-                           'autoDelete': True,
-                           'initializeParams': {
-                               'sourceImage': image.resource_url,
-                           }
-                           }],
-                'networkInterfaces': [
-                    {
-                        # TODO: Should replace network below with subnetwork
-                        'network': network_url,
-                        'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
-                                           'name': 'External NAT'}]
-                    }],
-            }
-            if vm_firewalls and isinstance(vm_firewalls, list):
-                vm_firewall_names = []
-                if isinstance(vm_firewalls[0], VMFirewall):
-                    vm_firewall_names = [f.name for f in vm_firewalls]
-                elif isinstance(vm_firewalls[0], str):
-                    vm_firewall_names = vm_firewalls
-                if len(vm_firewall_names) > 0:
-                    config['tags'] = {}
-                    config['tags']['items'] = vm_firewall_names
+
+        network_interface = {'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
+                                                'name': 'External NAT'}]}
+        if subnet:
+            network_interface['subnetwork'] = subnet.id
         else:
-            config = launch_config
+            network_interface['network'] = 'global/networks/default'
+
+        num_roots = 0
+        disks = []
+        boot_disk = None
+        if isinstance(launch_config, GCELaunchConfig):
+            for disk in launch_config.block_devices:
+                if not disk.source:
+                    volume_name = 'disk-{0}'.format(uuid.uuid4())
+                    volume_size = disk.size if disk.size else 1
+                    volume = self.provider.storage.volumes.create(
+                        volume_name, volume_size, zone)
+                    volume.wait_till_ready()
+                    source_field = 'source'
+                    source_value = volume.id
+                elif isinstance(disk.source, GCEMachineImage):
+                    source_field = 'initializeParams'
+                    # Explicitly set diskName; otherwise, instance name will be
+                    # used by default which may collide with existing disks.
+                    source_value = {
+                        'sourceImage': disk.source.id,
+                        'diskName': 'image-disk-{0}'.format(uuid.uuid4())}
+                elif isinstance(disk.source, GCEVolume):
+                    source_field = 'source'
+                    source_value = disk.source.id
+                elif isinstance(disk.source, GCESnapshot):
+                    volume = disk.source.create_volume(zone, size=disk.size)
+                    volume.wait_till_ready()
+                    source_field = 'source'
+                    source_value = volume.id
+                else:
+                    cb.log.warning('Unknown disk source')
+                    continue
+                autoDelete = True
+                if disk.delete_on_terminate is not None:
+                    autoDelete = disk.delete_on_terminate
+                num_roots += 1 if disk.is_root else 0
+                if disk.is_root and not boot_disk:
+                    boot_disk = {'boot': True,
+                                 'autoDelete': autoDelete,
+                                 source_field: source_value}
+                else:
+                    disks.append({'boot': False,
+                                  'autoDelete': autoDelete,
+                                  source_field: source_value})
+
+        if num_roots > 1:
+            cb.log.warning('The launch config contains %d boot disks. Will '
+                           'use the first one', num_roots)
+        if image:
+            if boot_disk:
+                cb.log.warning('A boot image is given while the launch config '
+                               'contains a boot disk, too. The launch config '
+                               'will be used')
+            else:
+                if not isinstance(image, GCEMachineImage):
+                    image = self.provider.compute.images.get(image)
+                # Explicitly set diskName; otherwise, instance name will be
+                # used by default which may conflict with existing disks.
+                boot_disk = {
+                    'boot': True,
+                    'autoDelete': True,
+                    'initializeParams': {
+                        'sourceImage': image.id,
+                        'diskName': 'image-disk-{0}'.format(uuid.uuid4())}}
+
+        if not boot_disk:
+            cb.log.warning('No boot disk is given')
+            return None
+        # The boot disk must be the first disk attached to the instance.
+        disks.insert(0, boot_disk)
+
+        config = {
+            'name': name,
+            'machineType': vm_type.resource_url,
+            'disks': disks,
+            'networkInterfaces': [network_interface]
+        }
+
+        if vm_firewalls and isinstance(vm_firewalls, list):
+            vm_firewall_names = []
+            if isinstance(vm_firewalls[0], VMFirewall):
+                vm_firewall_names = [f.name for f in vm_firewalls]
+            elif isinstance(vm_firewalls[0], str):
+                vm_firewall_names = vm_firewalls
+            if len(vm_firewall_names) > 0:
+                config['tags'] = {}
+                config['tags']['items'] = vm_firewall_names
         try:
             operation = (self.provider
                              .gce_compute.instances()
                              .insert(project=self.provider.project_name,
-                                     zone=zone,
+                                     zone=zone_name,
                                      body=config)
                              .execute())
         except googleapiclient.errors.HttpError as http_error:
@@ -489,10 +550,8 @@ class GCEInstanceService(BaseInstanceService):
             cb.log.warning(
                 "googleapiclient.errors.HttpError: {0}".format(http_error))
             return None
-        zone_url = self.provider.parse_url(operation['zone'])
         instance_id = operation.get('targetLink')
-        self.provider.wait_for_operation(operation,
-                                         zone=zone_url.parameters['zone'])
+        self.provider.wait_for_operation(operation, zone=zone_name)
         return self.get(instance_id)
 
     def get(self, instance_id):
@@ -590,10 +649,6 @@ class GCENetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
-
-    @property
-    def gateways(self):
-        return self._gateway_servcie
 
 
 class GCENetworkService(BaseNetworkService):
@@ -698,7 +753,9 @@ class GCERouterService(BaseRouterService):
     def find(self, name, limit=None, marker=None):
         routers = []
         for region in self.provider.compute.regions.list():
-            routers.append(self._get_in_region(name, region.name))
+            router = self._get_in_region(name, region.name)
+            if router:
+                routers.append(router)
         return ClientPagedResultList(self.provider, routers, limit=limit,
                                      marker=marker)
 
@@ -730,50 +787,45 @@ class GCERouterService(BaseRouterService):
         if not isinstance(network, GCENetwork):
             network = self.provider.networking.networks.get(network)
         network_url = network.resource_url
-        region = self.provider.region_name
+        region_name = self.provider.region_name
         try:
             response = (self.provider
                             .gce_compute
                             .routers()
                             .insert(project=self.provider.project_name,
-                                    region=region,
+                                    region=region_name,
                                     body={'name': name,
                                           'network': network_url})
                             .execute())
             if 'error' in response:
                 return None
-            self.provider.wait_for_operation(response, region=region)
-            return self._get_in_region(name, region)
+            self.provider.wait_for_operation(response, region=region_name)
+            return self._get_in_region(name, region_name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
     def delete(self, router):
-        region = self.provider.region_name
+        region_name = self.provider.region_name
         name = router.name if isinstance(router, GCERouter) else router
         response = (self.provider
                         .gce_compute
                         .routers()
                         .delete(project=self.provider.project_name,
-                                region=region,
+                                region=region_name,
                                 router=name)
                         .execute())
-        self._provider.wait_for_operation(response, region=region)
+        self._provider.wait_for_operation(response, region=region_name)
 
     def _get_in_region(self, router_id, region=None):
-        region = region if region else self.provider.region_name
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .routers()
-                            .get(project=self.provider.project_name,
-                                 region=region,
-                                 router=router_id)
-                            .execute())
-            return GCERouter(self.provider, response)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        region_name = self.provider.region_name
+        if region:
+            if not isinstance(region, GCERegion):
+                region = self.provider.compute.regions.get(region)
+            region_name = region.name
+        router = self.provider.get_resource(
+            'routers', router_id, region=region_name)
+        return GCERouter(self.provider, router) if router else None
 
 
 class GCESubnetService(BaseSubnetService):
@@ -792,17 +844,19 @@ class GCESubnetService(BaseSubnetService):
         filter = None
         if network is not None:
             filter = 'network eq %s' % network.resource_url
+        region_names = []
         if zone:
-            regions = [zone.region_name]
+            region_names.append(self._zone_to_region_name(zone))
         else:
-            regions = [r.name for r in self.provider.compute.regions.list()]
+            for r in self.provider.compute.regions.list():
+                region_names.append(r.name)
         subnets = []
-        for region in regions:
+        for region_name in region_names:
             response = (self.provider
                             .gce_compute
                             .subnetworks()
                             .list(project=self.provider.project_name,
-                                  region=region,
+                                  region=region_name,
                                   filter=filter)
                             .execute())
             for subnet in response.get('items', []):
@@ -828,26 +882,25 @@ class GCESubnetService(BaseSubnetService):
 
         if not name:
             name = 'subnet-{0}'.format(uuid.uuid4())
-        region = self._zone_to_region(zone)
+        region_name = self._zone_to_region_name(zone)
         body = {'ipCidrRange': cidr_block,
                 'name': name,
                 'network': network.resource_url,
-                'region': region}
+                'region': region_name}
         try:
             response = (self.provider
                             .gce_compute
                             .subnetworks()
                             .insert(project=self.provider.project_name,
-                                    region=region,
+                                    region=region_name,
                                     body=body)
                             .execute())
-            self.provider.wait_for_operation(response, region=region)
             if 'error' in response:
+                cb.log.warning('Error while creating a subnet: %s',
+                               response['error'])
                 return None
-            subnets = self.list(network, region)
-            for subnet in subnets:
-                if subnet.id == response['targetId']:
-                    return subnet
+            self.provider.wait_for_operation(response, region=region_name)
+            return self.get(name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
@@ -877,24 +930,22 @@ class GCESubnetService(BaseSubnetService):
             # deleted.
             return
 
-        region_url = self.provider.parse_url(subnet.region)
         response = (self.provider
                         .gce_compute
                         .subnetworks()
                         .delete(project=self.provider.project_name,
-                                region=region_url.parameters['region'],
+                                region=subnet.region_name,
                                 subnetwork=subnet.name)
                         .execute())
-        self._provider.wait_for_operation(response, region=subnet.region)
+        self._provider.wait_for_operation(response, region=subnet.region_name)
 
-    def _zone_to_region(self, zone):
-        if isinstance(zone, GCEPlacementZone):
+    def _zone_to_region_name(self, zone):
+        if zone:
+            if not isinstance(zone, GCEPlacementZone):
+                zone = GCEPlacementZone(
+                    self.provider,
+                    self.provider.get_resource('zones', zone, zone=zone))
             return zone.region_name
-        elif zone:
-            for r in self.provider.compute.regions.list():
-                for z in r.zones:
-                    if zone == z.name:
-                        return z.region_name
         return self.provider.region_name
 
 
@@ -997,7 +1048,11 @@ class GCEVolumeService(BaseVolumeService):
         cannot be a dash.
         """
         GCEVolume.assert_valid_resource_name(name)
-        zone_name = zone.name if isinstance(zone, PlacementZone) else zone
+        if not isinstance(zone, GCEPlacementZone):
+            zone = GCEPlacementZone(
+                self.provider,
+                self.provider.get_resource('zones', zone, zone=zone))
+        zone_name = zone.name
         snapshot_id = snapshot.id if isinstance(
             snapshot, GCESnapshot) and snapshot else snapshot
         disk_body = {
@@ -1094,9 +1149,8 @@ class GCESnapshotService(BaseSnapshotService):
                          .execute())
         if 'zone' not in operation:
             return None
-        zone_url = self.provider.parse_url(operation['zone'])
         self.provider.wait_for_operation(operation,
-                                         zone=zone_url.parameters['zone'])
+                                         zone=self.provider.default_zone)
         snapshots = self.provider.storage.snapshots.find(name=name)
         if snapshots:
             return snapshots[0]
@@ -1133,7 +1187,7 @@ class GCSBucketService(BaseBucketService):
         max_result = limit if limit is not None and limit < 500 else 500
         try:
             response = (self.provider
-                            .gcp_storage
+                            .gcs_storage
                             .buckets()
                             .list(project=self.provider.project_name,
                                   maxResults=max_result,
@@ -1164,7 +1218,7 @@ class GCSBucketService(BaseBucketService):
             body['location'] = location
         try:
             response = (self.provider
-                            .gcp_storage
+                            .gcs_storage
                             .buckets()
                             .insert(project=self.provider.project_name,
                                     body=body)

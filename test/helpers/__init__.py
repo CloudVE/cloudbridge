@@ -91,7 +91,9 @@ TEST_DATA_CONFIG = {
         "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
     },
     'GCECloudProvider': {
-        'image': 'ubuntu-1710-artful-v20180126',
+        'image': ('https://www.googleapis.com/compute/v1/'
+                  'projects/ubuntu-os-cloud/global/images/'
+                  'ubuntu-1710-artful-v20180126'),
         'vm_type': 'n1-standard-1',
         'placement': os.environ.get('GCE_DEFAULT_ZONE', 'us-central1-a'),
     },

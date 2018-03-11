@@ -60,13 +60,9 @@ class GCPResourceUrl(object):
 
 class GCPResources(object):
 
-    def __init__(self, connection, project_name, region_name, default_zone):
+    def __init__(self, connection, **kwargs):
         self._connection = connection
-        self._parameter_defaults = {
-            'project': project_name,
-            'region': region_name,
-            'zone': default_zone,
-        }
+        self._parameter_defaults = kwargs
 
         # Resource descriptions are already pulled into the internal
         # _resourceDesc field of the connection.
@@ -167,7 +163,7 @@ class GCPResources(object):
                 out.parameters[parameter] = m.group(index + 1)
             return out
 
-    def get_resource_url_with_default(self, resource, url_or_name):
+    def get_resource_url_with_default(self, resource, url_or_name, **kwargs):
         """
         Build a GCPResourceUrl from a service's name and resource url or name.
         If the url_or_name is a valid GCP resource URL, then we build the
@@ -180,10 +176,15 @@ class GCPResources(object):
             return self.parse_url(url_or_name)
         # Otherwise, construct resource URL with default values.
         if resource not in self._resources:
+            cb.log.warning('Unknown resource: %s', resource)
             return None
+
+        parameter_defaults = self._parameter_defaults.copy()
+        parameter_defaults.update(kwargs)
+
         parsed_url = GCPResourceUrl(resource, self._connection)
         for key in self._resources[resource]['parameters']:
-            parsed_url.parameters[key] = self._parameter_defaults.get(
+            parsed_url.parameters[key] = parameter_defaults.get(
                 key, url_or_name)
         return parsed_url
 
@@ -235,12 +236,11 @@ class GCECloudProvider(BaseCloudProvider):
         self._networking = GCENetworkingService(self)
         self._storage = GCPStorageService(self)
 
-        self._compute_resources = GCPResources(
-            self.gce_compute, self.project_name, self.region_name,
-            self.default_zone)
-        self._storage_resources = GCPResources(
-            self.gcs_storage, self.project_name, self.region_name,
-            self.default_zone)
+        self._compute_resources = GCPResources(self.gce_compute,
+                                               project=self.project_name,
+                                               region=self.region_name,
+                                               zone=self.default_zone)
+        self._storage_resources = GCPResources(self.gcs_storage)
 
     @property
     def compute(self):
@@ -308,12 +308,12 @@ class GCECloudProvider(BaseCloudProvider):
         out = self._compute_resources.parse_url(url)
         return out if out else self._storage_resources.parse_url(url)
 
-    def get_resource(self, resource, url_or_name):
+    def get_resource(self, resource, url_or_name, **kwargs):
         resource_url = (
             self._compute_resources.get_resource_url_with_default(
-                resource, url_or_name) or
+                resource, url_or_name, **kwargs) or
             self._storage_resources.get_resource_url_with_default(
-                resource, url_or_name))
+                resource, url_or_name, **kwargs))
         if resource_url is None:
             return None
         try:

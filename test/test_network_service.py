@@ -33,9 +33,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         subnet_name = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
             name=name, cidr_block='10.0.0.0/16')
-        with helpers.cleanup_action(
-            lambda: net.delete()
-        ):
+        with helpers.cleanup_action(lambda: net.delete()):
             net.wait_till_ready()
             self.assertEqual(
                 net.state, 'available',
