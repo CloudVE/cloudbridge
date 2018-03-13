@@ -34,7 +34,7 @@ To install additional libraries required by CloudBridge contributors, such as
 `tox <https://tox.readthedocs.org/en/latest/>`_, clone the source code
 repository and run the following command from the repository root directory::
 
-    pip install -e .[dev]
+    pip install -U -e .[dev]
 
 ----------
 
