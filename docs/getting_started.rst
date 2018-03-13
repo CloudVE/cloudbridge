@@ -126,7 +126,7 @@ attaching an internet gateway to the subnet via a router.
 
 
 Create a VM firewall
------------------------
+--------------------
 Next, we need to create a VM firewall (also commonly known as a security group)
 and add a rule to allow ssh access. A VM firewall needs to be associated with
 a private network.
@@ -172,11 +172,13 @@ Assign a public IP address
 --------------------------
 To access the instance, let's assign a public IP address to the instance. For
 this step, we'll first need to allocate a floating IP address for our account
-and then associate it with the instance.
+and then associate it with the instance. Note that floating IPs are associated
+with an Internet Gateway so we allocate the IP under the gateway we dealt with
+earlier.
 
 .. code-block:: python
 
-    fip = provider.networking.floating_ips.create()
+    fip = gateway.floating_ips.create()
     inst.add_floating_ip(fip)
     inst.refresh()
     inst.public_ips
@@ -201,6 +203,7 @@ To wrap things up, let's clean up all the resources we have created
     os.remove('cloudbridge_intro.pem')
     router.detach_gateway(gateway)
     router.detach_subnet(subnet)
+    fip.delete()
     gateway.delete()
     router.delete()
     sn.delete()
