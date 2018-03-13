@@ -411,7 +411,8 @@ class OpenStackInstance(BaseInstance):
         log.debug("Adding floating IP adress: %s", floating_ip)
         fip = (floating_ip if isinstance(floating_ip, OpenStackFloatingIP)
                else self._get_fip(floating_ip))
-        self._os_instance.add_floating_ip(fip.public_ip)
+        self._provider.os_conn.compute.add_floating_ip_to_server(
+            self.id, fip.public_ip)
 
     def remove_floating_ip(self, floating_ip):
         """
@@ -420,7 +421,8 @@ class OpenStackInstance(BaseInstance):
         log.debug("Removing floating IP adress: %s", floating_ip)
         fip = (floating_ip if isinstance(floating_ip, OpenStackFloatingIP)
                else self._get_fip(floating_ip))
-        self._os_instance.remove_floating_ip(fip.public_ip)
+        self._provider.os_conn.compute.remove_floating_ip_from_server(
+            self.id, fip.public_ip)
 
     def add_vm_firewall(self, firewall):
         """
