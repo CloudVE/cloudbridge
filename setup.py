@@ -34,7 +34,7 @@ REQS_AZURE = ['msrest>=0.4.7',
               'azure-storage>=0.34.0',
               'pysftp>=0.2.9']
 REQS_OPENSTACK = [
-    'openstacksdk',
+    'openstacksdk>=0.12.0',
     'python-novaclient>=7.0.0',
     'python-glanceclient>=2.5.0',
     'python-cinderclient>=1.9.0',
