@@ -279,10 +279,12 @@ class GCECloudProvider(BaseCloudProvider):
             return GoogleCredentials.get_application_default()
 
     def _connect_gcs_storage(self):
-        return discovery.build('storage', 'v1', credentials=self._credentials)
+        return discovery.build('storage', 'v1', credentials=self._credentials,
+                               cache_discovery=False)
 
     def _connect_gce_compute(self):
-        return discovery.build('compute', 'v1', credentials=self._credentials)
+        return discovery.build('compute', 'v1', credentials=self._credentials,
+                               cache_discovery=False)
 
     def wait_for_operation(self, operation, region=None, zone=None):
         args = {'project': self.project_name, 'operation': operation['name']}

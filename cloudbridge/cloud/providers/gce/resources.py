@@ -758,6 +758,7 @@ class GCEInstance(BaseInstance):
         """
         Set the instance name.
         """
+        GCEInstance.assert_valid_resource_name(name)
         # In GCE, the name of the instance is provided by the client when
         # initially creating the resource. The name cannot be changed after
         # the instance is created.
@@ -1639,12 +1640,22 @@ class GCEVolume(BaseVolume):
         """
         return self._volume.get('name')
 
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        GCEVolume.assert_valid_resource_name(value)
+        # In GCE, the name of the volume is provided by the client when
+        # initially creating the resource. The name cannot be changed after
+        # the volume is created.
+        cb.log.warning("Setting volume name after it is created is not "
+                       "supported by this provider.")
+
     @property
     def description(self):
         labels = self._volume.get('labels')
-        if not labels or 'description' not in labels:
-            return ''
-        return labels.get('description', '')
+        if labels and 'description' in labels:
+            return labels.get('description', '')
+        return self._volume.get('description', '')
 
     @description.setter
     def description(self, value):
@@ -1774,13 +1785,15 @@ class GCEVolume(BaseVolume):
         """
         Delete this volume.
         """
-        (self._provider
-             .gce_compute
-             .disks()
-             .delete(project=self._provider.project_name,
-                     zone=self._provider.default_zone,
-                     disk=self.name)
-             .execute())
+        response = (self._provider
+                    .gce_compute
+                    .disks()
+                    .delete(project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            disk=self.name)
+                    .execute())
+        self._provider.wait_for_operation(
+            response, zone=self._provider.default_zone)
 
     @property
     def state(self):
@@ -1818,16 +1831,46 @@ class GCESnapshot(BaseSnapshot):
     def name(self):
         """
         Get the snapshot name.
-         """
+        """
         return self._snapshot.get('name')
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        GCESnapshot.assert_valid_resource_name(value)
+        # In GCE, the name of the snapshot is provided by the client when
+        # initially creating the resource. The name cannot be changed after
+        # the snapshot is created.
+        cb.log.warning("Setting snapshot name after it is created is not "
+                       "supported by this provider.")
 
     @property
     def description(self):
-        return self._snapshot.get('description')
+        labels = self._snapshot.get('labels')
+        if labels and 'description' in labels:
+            return labels.get('description', '')
+        return self._snapshot.get('description', '')
 
     @description.setter
     def description(self, value):
-        raise NotImplementedError('Not supported by this provider.')
+        request_body = {
+            'labels': {'description': value.replace(' ', '_').lower()},
+            'labelFingerprint': self._snapshot.get('labelFingerprint'),
+        }
+        try:
+            (self._provider
+                 .gce_compute
+                 .snapshots()
+                 .setLabels(project=self._provider.project_name,
+                            resource=self.name,
+                            body=request_body)
+                 .execute())
+        except Exception as e:
+            cb.log.warning('Exception while setting volume description: %s. '
+                           'Check for invalid characters in description. '
+                           'Should confirm to RFC1035.', e)
+            raise e
+        self.refresh()
 
     @property
     def size(self):
@@ -1859,12 +1902,13 @@ class GCESnapshot(BaseSnapshot):
         """
         Delete this snapshot.
         """
-        (self._provider
-             .gce_compute
-             .snapshots()
-             .delete(project=self._provider.project_name,
-                     snapshot=self.name)
-             .execute())
+        response = (self._provider
+                    .gce_compute
+                    .snapshots()
+                    .delete(project=self._provider.project_name,
+                            snapshot=self.name)
+                    .execute())
+        self._provider.wait_for_operation(response)
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
@@ -1886,7 +1930,7 @@ class GCESnapshot(BaseSnapshot):
             'pd-standard' if (volume_type != 'pd-standard' or
                               volume_type != 'pd-ssd') else volume_type)
         disk_body = {
-            'name': 'created-from-{0}'.format(self.name),
+            'name': ('created-from-{0}'.format(self.name))[:63],
             'sizeGb': size if size is not None else self.size,
             'type': vol_type,
             'sourceSnapshot': self.id
