@@ -63,8 +63,7 @@ setup(
     url='http://cloudbridge.cloudve.org/',
     install_requires=REQS_FULL,
     extras_require={
-        ':python_version=="2.7"': ['py2-ipaddress'],
-        ':python_version=="3"': ['py2-ipaddress'],
+        ':python_version<"3.3"': ['ipaddress'],
         'full': REQS_FULL,
         'dev': REQS_DEV
     },
