@@ -130,8 +130,7 @@ class CloudProviderFactory(object):
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
         """
-        log.info("Searching provider with the name %s on %s",
-                 name, config)
+        log.info("Creating '%s' provider", name)
         provider_class = self.get_provider_class(name)
         if provider_class is None:
             log.exception("A provider with the name %s could not "
@@ -139,8 +138,7 @@ class CloudProviderFactory(object):
             raise NotImplementedError(
                 'A provider with name {0} could not be'
                 ' found'.format(name))
-        log.debug("Found provider name: %s with these config "
-                  " details: %s", name, config)
+        log.debug("Created '%s' provider", name)
         return provider_class(config)
 
     def get_provider_class(self, name, get_mock=False):
