@@ -523,7 +523,8 @@ class AWSInstanceService(BaseInstanceService):
                         raise InvalidConfigurationException(
                             "The source is none and the destination is a"
                             " volume. Therefore, you must specify a size.")
-                ebs_def['DeleteOnTermination'] = device.delete_on_terminate
+                ebs_def['DeleteOnTermination'] = device.delete_on_terminate \
+                    or True
                 if device.size:
                     ebs_def['VolumeSize'] = device.size
                 if ebs_def:
