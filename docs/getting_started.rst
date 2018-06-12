@@ -106,7 +106,7 @@ on disk as a read-only file.
     with open('cloudbridge_intro.pem', 'w') as f:
         f.write(kp.material)
     import os
-    os.chmod('cloudbridge_intro.pem', 0400)
+    os.chmod('cloudbridge_intro.pem', 0o400)
 
 Create a network
 ----------------
@@ -152,7 +152,7 @@ also add the network interface as a launch argument.
                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
         name='cloudbridge-intro', image=img, vm_type=vm_type,
-        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
+        subnet=sn, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
@@ -193,7 +193,7 @@ To wrap things up, let's clean up all the resources we have created
 
 .. code-block:: python
 
-    inst.terminate()
+    inst.delete()
     from cloudbridge.cloud.interfaces import InstanceState
     inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                    terminal_states=[InstanceState.ERROR])  # Blocking call
@@ -202,8 +202,7 @@ To wrap things up, let's clean up all the resources we have created
     kp.delete()
     os.remove('cloudbridge_intro.pem')
     router.detach_gateway(gateway)
-    router.detach_subnet(subnet)
-    fip.delete()
+    router.detach_subnet(sn)
     gateway.delete()
     router.delete()
     sn.delete()
