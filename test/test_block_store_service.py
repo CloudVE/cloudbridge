@@ -115,7 +115,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(test_vol.attachments.volume, test_vol)
                 self.assertEqual(test_vol.attachments.instance_id,
                                  test_instance.id)
-                if not self.provider.PROVIDER_ID == 'azure':
+                if (self.provider.PROVIDER_ID != 'azure' and
+                    self.provider.PROVIDER_ID != 'gce'):
                     self.assertEqual(test_vol.attachments.device,
                                      "/dev/sda2")
                 test_vol.detach()
@@ -123,7 +124,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 test_vol.wait_for(
                     [VolumeState.AVAILABLE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
-                self.assertEqual(test_vol.name, 'newvolname1')
+                if self.provider.PROVIDER_ID != 'gce':
+                    self.assertEqual(test_vol.name, 'newvolname1')
                 self.assertEqual(test_vol.description, vol_desc)
                 self.assertIsNone(test_vol.attachments)
                 test_vol.wait_for(
@@ -208,11 +210,12 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 test_snap.name = 'snapnewname1'
                 test_snap.description = 'snapnewdescription1'
                 test_snap.refresh()
-                self.assertEqual(test_snap.name, 'snapnewname1')
+                if self.provider.PROVIDER_ID != 'gce':
+                    self.assertEqual(test_snap.name, 'snapnewname1')
                 self.assertEqual(test_snap.description, 'snapnewdescription1')
 
                 # Test volume creation from a snapshot (via VolumeService)
-                sv_name = "cb-snapvol-{0}".format(test_snap.name)
+                sv_name = "cb-snapvol-{0}".format('snapnewname1')
                 snap_vol = self.provider.storage.volumes.create(
                     sv_name,
                     1,
