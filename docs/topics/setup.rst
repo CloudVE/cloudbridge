@@ -8,6 +8,12 @@ be provided in one of following ways:
 2. A dictionary
 3. Configuration file
 
+Procuring access credentials
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For Azure, Create service principle credentials from the following link : 
+https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal#check-azure-subscription-permissions
+
+
 Providing access credentials through environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The following environment variables must be set, depending on the provider in use.
@@ -76,9 +82,6 @@ will override environment values.
               'azure_tenant': '<your_tenant>',
               'azure_resource_group': '<your resource group>'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
-
-For Azure, Create service principle credentials from the following link : 
-https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal#check-azure-subscription-permissions
 
 Some optional configuration values can only be provided through the config
 dictionary. These are listed below for each provider.

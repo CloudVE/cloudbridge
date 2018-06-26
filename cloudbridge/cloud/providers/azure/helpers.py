@@ -20,7 +20,7 @@ def filter_by_tag(list_items, filters):
         return list_items
 
 
-def parse_url(template_url, original_url):
+def parse_url(template_url, original_url, alternative_template=None):
     """
     In Azure all the resource IDs are returned as URIs.
     ex: '/subscriptions/{subscriptionId}/resourceGroups/' \
@@ -29,8 +29,13 @@ def parse_url(template_url, original_url):
     This function splits the resource ID based on the template url passed
     and returning the dictionary.
     """
+    if not original_url:
+        raise InvalidValueException(template_url, original_url)
     template_url_parts = template_url.split('/')
     original_url_parts = original_url.split('/')
+    if len(template_url_parts) != len(original_url_parts):
+        if alternative_template:
+            template_url_parts = alternative_template.split('/')
     if len(template_url_parts) != len(original_url_parts):
         raise InvalidValueException(template_url, original_url)
     resource_param = {}

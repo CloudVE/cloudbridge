@@ -16,6 +16,7 @@ from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
+PUBLIC_VM_ID = '{publisher}/{offer}/{sku}/{version}'
 IMAGE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
                     '{resourceGroupName}/providers/Microsoft.Compute/' \
                     'images/{imageName}'
@@ -390,6 +391,9 @@ class AzureClient(object):
                                  'tags': tags,
                                  'location': self.region_name
                              }).result()
+
+    def get_vm_params(self, vm_id):
+        return azure_helpers.parse_url(PUBLIC_VM_ID, vm_id)
 
     def list_vm_types(self):
         return self.compute_client.virtual_machine_sizes. \

@@ -469,13 +469,17 @@ class AzureInstanceService(BaseInstanceService):
                 key_pair = self.provider.security.key_pairs.create(
                     name=default_kp_name)
                 temp_key_pair = key_pair
-
-        image = (image if isinstance(image, AzureMachineImage) else
-                 self.provider.compute.images.get(image))
-        if not isinstance(image, AzureMachineImage):
-            raise Exception("Provided image %s is not a valid azure image"
-                            % image)
-
+        image_params = None
+        try:
+            image_params = self.provider.azure_client.get_vm_params(image)
+            image = None
+        except InvalidValueException:
+            image = (image if isinstance(image, AzureMachineImage) else
+                     self.provider.compute.images.get(image))
+            image_params = None
+            if not isinstance(image, AzureMachineImage):
+                raise Exception("Provided image %s is not a valid azure image"
+                                % image)
         instance_size = vm_type.id if \
             isinstance(vm_type, VMType) else vm_type
 
@@ -491,8 +495,9 @@ class AzureInstanceService(BaseInstanceService):
             self._resolve_launch_options(instance_name,
                                          subnet, zone_id, vm_firewalls)
 
-        storage_profile = self._create_storage_profile(image, launch_config,
-                                                       instance_name, zone_id)
+        storage_profile = self._create_storage_profile(launch_config,
+                                                       instance_name, zone_id,
+                                                       image_params, image)
 
         nic_params = {
                 'location': self._provider.region_name,
@@ -600,18 +605,32 @@ class AzureInstanceService(BaseInstanceService):
 
         return subnet.resource_id, zone_id, vm_firewall_id
 
-    def _create_storage_profile(self, image, launch_config, instance_name,
-                                zone_id):
+    def _create_storage_profile(self, launch_config, instance_name,
+                                zone_id, image_params=None, image=None):
+        if image:
+            storage_profile = {
+                'image_reference': {
+                    'id': image.resource_id
+                },
+                "os_disk": {
+                    "name": instance_name + '_os_disk',
+                    "create_option": DiskCreateOption.from_image
+                },
+            }
 
-        storage_profile = {
-            'image_reference': {
-                'id': image.resource_id
-            },
-            "os_disk": {
-                "name": instance_name + '_os_disk',
-                "create_option": DiskCreateOption.from_image
-            },
-        }
+        else:
+            storage_profile = {
+                'image_reference': {
+                    'publisher': image_params['publisher'],
+                    'offer': image_params['offer'],
+                    'sku': image_params['sku'],
+                    'version': image_params['version']
+                },
+                "os_disk": {
+                    "name": instance_name + '_os_disk',
+                    "create_option": DiskCreateOption.from_image
+                },
+            }
 
         if launch_config:
             data_disks, root_disk_size = self._process_block_device_mappings(

@@ -1,0 +1,3 @@
+alex-test2-0,/subscriptions/9a279bc4-b3cd-4dd4-bfcc-cf410de575aa/resourceGroups/cloudbridge/providers/Microsoft.Compute/virtualMachines/alex-test2-0,40.117.156.176
+alex-test2-0,/subscriptions/9a279bc4-b3cd-4dd4-bfcc-cf410de575aa/resourceGroups/cloudbridge/providers/Microsoft.Compute/virtualMachines/alex-test2-0,40.121.70.201
+alex-test2-0,/subscriptions/9a279bc4-b3cd-4dd4-bfcc-cf410de575aa/resourceGroups/cloudbridge/providers/Microsoft.Compute/virtualMachines/alex-test2-0,40.121.70.201
