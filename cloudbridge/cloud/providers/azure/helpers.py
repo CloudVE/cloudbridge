@@ -26,7 +26,7 @@ def parse_url(template_urls, original_url):
     ex: '/subscriptions/{subscriptionId}/resourceGroups/' \
        '{resourceGroupName}/providers/Microsoft.Compute/' \
        'virtualMachines/{vmName}'
-    This function splits the resource ID based on the template url passed
+    This function splits the resource ID based on the template urls passed
     and returning the dictionary.
     """
     if not original_url:
