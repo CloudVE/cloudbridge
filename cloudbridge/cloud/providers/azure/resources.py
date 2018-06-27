@@ -673,10 +673,15 @@ class AzureMachineImage(BaseMachineImage):
 
     def __init__(self, provider, image):
         super(AzureMachineImage, self).__init__(provider)
+        # Image can be either a dict for public image reference
+        # or the Azure iamge object
         self._image = image
-        self._state = self._image.provisioning_state
+        if not isinstance(self._image, dict):
+            self._state = self._image.provisioning_state
+        else:
+            self._state = 'AVAILABLE'
 
-        if not self._image.tags:
+        if not isinstance(image, dict) and not self._image.tags:
             self._image.tags = {}
 
     @property
@@ -687,11 +692,17 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        return self._image.id
+        if not isinstance(self._image, dict):
+            return self._image.id
+        else:
+            return self._image['offer']
 
     @property
     def resource_id(self):
-        return self._image.id
+        if not isinstance(self._image, dict):
+            return self._image.id
+        else:
+            return self._image['offer']
 
     @property
     def name(self):
@@ -701,17 +712,21 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Name for this image as returned by the cloud middleware.
         """
-        return self._image.tags.get('Name', self._image.name)
+        if not isinstance(self._image, dict):
+            return self._image.tags.get('Name', self._image.name)
+        else:
+            return self._image['offer']
 
     @name.setter
     def name(self, value):
         """
         Set the image name.
         """
-        self.assert_valid_resource_name(value)
-        self._image.tags.update(Name=value)
-        self._provider.azure_client. \
-            update_image_tags(self.id, self._image.tags)
+        if not isinstance(self._image, dict):
+            self.assert_valid_resource_name(value)
+            self._image.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_image_tags(self.id, self._image.tags)
 
     @property
     def description(self):
@@ -721,16 +736,20 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        return self._image.tags.get('Description', None)
+        if not isinstance(self._image, dict):
+            return self._image.tags.get('Description', None)
+        else:
+            return 'Public Image'
 
     @description.setter
     def description(self, value):
         """
         Set the image name.
         """
-        self._image.tags.update(Description=value)
-        self._provider.azure_client. \
-            update_image_tags(self.id, self._image.tags)
+        if not isinstance(self._image, dict):
+            self._image.tags.update(Description=value)
+            self._provider.azure_client. \
+                update_image_tags(self.id, self._image.tags)
 
     @property
     def min_disk(self):
@@ -743,31 +762,37 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        return self._image.storage_profile.os_disk.disk_size_gb or 0
+        if not isinstance(self._image, dict):
+            return self._image.storage_profile.os_disk.disk_size_gb or 0
 
     def delete(self):
         """
         Delete this image
         """
-        self._provider.azure_client.delete_image(self.id)
+        if not isinstance(self._image, dict):
+            self._provider.azure_client.delete_image(self.id)
 
     @property
     def state(self):
-        return AzureMachineImage.IMAGE_STATE_MAP.get(
-            self._state, MachineImageState.UNKNOWN)
+        if not isinstance(self._image, dict):
+            return AzureMachineImage.IMAGE_STATE_MAP.get(
+                self._state, MachineImageState.UNKNOWN)
+        else:
+            return MachineImageState.RUNNING
 
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        try:
-            self._image = self._provider.azure_client.get_image(self.id)
-            self._state = self._image.provisioning_state
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            # image no longer exists
-            self._state = "unknown"
+        if not isinstance(self._image, dict):
+            try:
+                self._image = self._provider.azure_client.get_image(self.id)
+                self._state = self._image.provisioning_state
+            except CloudError as cloudError:
+                log.exception(cloudError.message)
+                # image no longer exists
+                self._state = "unknown"
 
 
 class AzureGatewayContainer(BaseGatewayContainer):
