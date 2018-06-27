@@ -16,12 +16,12 @@ from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
-PUBLIC_VM_ID = ['{publisher}/{offer}/{sku}/{version}',
-                '{publisher}:{offer}:{sku}:{version}']
 IMAGE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
                      '{resourceGroupName}/providers/Microsoft.Compute/' \
                      'images/{imageName}',
-                     '{imageName}']
+                     '{imageName}',
+                     '{publisher}/{offer}/{sku}/{version}',
+                     '{publisher}:{offer}:{sku}:{version}']
 NETWORK_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
                        '{resourceGroupName}/providers/Microsoft.Network' \
                        '/virtualNetworks/{virtualNetworkName}',
@@ -385,6 +385,8 @@ class AzureClient(object):
     def get_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
+        if len(url_params) > 2:
+            return url_params
         name = url_params.get(IMAGE_NAME)
         return self.compute_client.images.get(self.resource_group, name)
 
@@ -398,9 +400,6 @@ class AzureClient(object):
                                  'tags': tags,
                                  'location': self.region_name
                              }).result()
-
-    def get_vm_params(self, vm_id):
-        return azure_helpers.parse_url(PUBLIC_VM_ID, vm_id)
 
     def list_vm_types(self):
         return self.compute_client.virtual_machine_sizes. \
