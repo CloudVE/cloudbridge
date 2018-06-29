@@ -16,52 +16,52 @@ from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
-IMAGE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
-                     '{resourceGroupName}/providers/Microsoft.Compute/' \
+IMAGE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
+                     '{resourceGroupName}/providers/Microsoft.Compute/'
                      'images/{imageName}',
                      '{imageName}',
                      '{publisher}/{offer}/{sku}/{version}']
-NETWORK_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
-                       '{resourceGroupName}/providers/Microsoft.Network' \
+NETWORK_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
+                       '{resourceGroupName}/providers/Microsoft.Network'
                        '/virtualNetworks/{virtualNetworkName}',
                        '{virtualNetworkName}']
-NETWORK_INTERFACE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/' \
-                                 'resourceGroups/{resourceGroupName}' \
-                                 '/providers/Microsoft.Network/' \
+NETWORK_INTERFACE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/'
+                                 'resourceGroups/{resourceGroupName}'
+                                 '/providers/Microsoft.Network/'
                                  'networkInterfaces/{networkInterfaceName}',
                                  '{networkInterfaceName}']
-PUBLIC_IP_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups' \
-                         '/{resourceGroupName}/providers/Microsoft.Network' \
+PUBLIC_IP_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups'
+                         '/{resourceGroupName}/providers/Microsoft.Network'
                          '/publicIPAddresses/{publicIpAddressName}',
                          '{publicIpAddressName}']
-SNAPSHOT_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
-                        '{resourceGroupName}/providers/Microsoft.Compute/' \
+SNAPSHOT_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
+                        '{resourceGroupName}/providers/Microsoft.Compute/'
                         'snapshots/{snapshotName}',
                         '{snapshotName}']
-SUBNET_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
-                      '{resourceGroupName}/providers/Microsoft.Network' \
-                      '/virtualNetworks/{virtualNetworkName}/subnets' \
+SUBNET_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
+                      '{resourceGroupName}/providers/Microsoft.Network'
+                      '/virtualNetworks/{virtualNetworkName}/subnets'
                       '/{subnetName}',
                       '{virtualNetworkName}/{subnetName}']
-VM_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
-                  '{resourceGroupName}/providers/Microsoft.Compute/' \
+VM_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
+                  '{resourceGroupName}/providers/Microsoft.Compute/'
                   'virtualMachines/{vmName}',
                   '{vmName}']
-VM_FIREWALL_RESOURCE_ID = ['/subscriptions/{subscriptionId}/' \
-                           'resourceGroups/{resourceGroupName}/' \
-                           'providers/Microsoft.Network/' \
-                           'networkSecurityGroups/' \
+VM_FIREWALL_RESOURCE_ID = ['/subscriptions/{subscriptionId}/'
+                           'resourceGroups/{resourceGroupName}/'
+                           'providers/Microsoft.Network/'
+                           'networkSecurityGroups/'
                            '{networkSecurityGroupName}',
                            '{networkSecurityGroupName}']
-VM_FIREWALL_RULE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/' \
-                                'resourceGroups/{resourceGroupName}/' \
-                                'providers/Microsoft.Network/' \
-                                'networkSecurityGroups/' \
-                                '{networkSecurityGroupName}/' \
+VM_FIREWALL_RULE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/'
+                                'resourceGroups/{resourceGroupName}/'
+                                'providers/Microsoft.Network/'
+                                'networkSecurityGroups/'
+                                '{networkSecurityGroupName}/'
                                 'securityRules/{securityRuleName}',
                                 '{securityRuleName}']
-VOLUME_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
-                      '{resourceGroupName}/providers/Microsoft.Compute/' \
+VOLUME_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
+                      '{resourceGroupName}/providers/Microsoft.Compute/'
                       'disks/{diskName}',
                       '{diskName}']
 
@@ -79,8 +79,8 @@ VOLUME_NAME = 'diskName'
 # Listing possible somewhat through:
 # azure.mgmt.devtestlabs.operations.GalleryImageOperations
 gallery_image_references = \
-['Canonical/UbuntuServer/16.04.0-LTS/latest',
-'Canonical/UbuntuServer/14.04.5-LTS/latest']
+    ['Canonical/UbuntuServer/16.04.0-LTS/latest',
+     'Canonical/UbuntuServer/14.04.5-LTS/latest']
 
 
 class AzureClient(object):
