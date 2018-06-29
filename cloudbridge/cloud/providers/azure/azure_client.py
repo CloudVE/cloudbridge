@@ -16,43 +16,54 @@ from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
-IMAGE_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                    '{resourceGroupName}/providers/Microsoft.Compute/' \
-                    'images/{imageName}'
-NETWORK_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                     '{resourceGroupName}/providers/Microsoft.Network' \
-                     '/virtualNetworks/{virtualNetworkName}'
-NETWORK_INTERFACE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
-                                'resourceGroups/{resourceGroupName}' \
-                                '/providers/Microsoft.Network/' \
-                                'networkInterfaces/{networkInterfaceName}'
-PUBLIC_IP_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups' \
-                        '/{resourceGroupName}/providers/Microsoft.Network' \
-                        '/publicIPAddresses/{publicIpAddressName}'
-SNAPSHOT_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                       '{resourceGroupName}/providers/Microsoft.Compute/' \
-                       'snapshots/{snapshotName}'
-SUBNET_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                     '{resourceGroupName}/providers/Microsoft.Network' \
-                     '/virtualNetworks/{virtualNetworkName}/subnets' \
-                     '/{subnetName}'
-VM_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
-                       '{resourceGroupName}/providers/Microsoft.Compute/' \
-                       'virtualMachines/{vmName}'
-VM_FIREWALL_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
-                             'resourceGroups/{resourceGroupName}/' \
-                             'providers/Microsoft.Network/' \
-                             'networkSecurityGroups/' \
-                             '{networkSecurityGroupName}'
-VM_FIREWALL_RULE_RESOURCE_ID = '/subscriptions/{subscriptionId}/' \
-                             'resourceGroups/{resourceGroupName}/' \
-                             'providers/Microsoft.Network/' \
-                             'networkSecurityGroups/' \
-                             '{networkSecurityGroupName}/' \
-                             'securityRules/{securityRuleName}'
-VOLUME_RESOURCE_ID = '/subscriptions/{subscriptionId}/resourceGroups/' \
+IMAGE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
                      '{resourceGroupName}/providers/Microsoft.Compute/' \
-                     'disks/{diskName}'
+                     'images/{imageName}',
+                     '{imageName}',
+                     '{publisher}/{offer}/{sku}/{version}']
+NETWORK_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
+                       '{resourceGroupName}/providers/Microsoft.Network' \
+                       '/virtualNetworks/{virtualNetworkName}',
+                       '{virtualNetworkName}']
+NETWORK_INTERFACE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/' \
+                                 'resourceGroups/{resourceGroupName}' \
+                                 '/providers/Microsoft.Network/' \
+                                 'networkInterfaces/{networkInterfaceName}',
+                                 '{networkInterfaceName}']
+PUBLIC_IP_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups' \
+                         '/{resourceGroupName}/providers/Microsoft.Network' \
+                         '/publicIPAddresses/{publicIpAddressName}',
+                         '{publicIpAddressName}']
+SNAPSHOT_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
+                        '{resourceGroupName}/providers/Microsoft.Compute/' \
+                        'snapshots/{snapshotName}',
+                        '{snapshotName}']
+SUBNET_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
+                      '{resourceGroupName}/providers/Microsoft.Network' \
+                      '/virtualNetworks/{virtualNetworkName}/subnets' \
+                      '/{subnetName}',
+                      '{virtualNetworkName}/{subnetName}']
+VM_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
+                  '{resourceGroupName}/providers/Microsoft.Compute/' \
+                  'virtualMachines/{vmName}',
+                  '{vmName}']
+VM_FIREWALL_RESOURCE_ID = ['/subscriptions/{subscriptionId}/' \
+                           'resourceGroups/{resourceGroupName}/' \
+                           'providers/Microsoft.Network/' \
+                           'networkSecurityGroups/' \
+                           '{networkSecurityGroupName}',
+                           '{networkSecurityGroupName}']
+VM_FIREWALL_RULE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/' \
+                                'resourceGroups/{resourceGroupName}/' \
+                                'providers/Microsoft.Network/' \
+                                'networkSecurityGroups/' \
+                                '{networkSecurityGroupName}/' \
+                                'securityRules/{securityRuleName}',
+                                '{securityRuleName}']
+VOLUME_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
+                      '{resourceGroupName}/providers/Microsoft.Compute/' \
+                      'disks/{diskName}',
+                      '{diskName}']
 
 IMAGE_NAME = 'imageName'
 NETWORK_NAME = 'virtualNetworkName'
@@ -64,6 +75,12 @@ VM_NAME = 'vmName'
 VM_FIREWALL_NAME = 'networkSecurityGroupName'
 VM_FIREWALL_RULE_NAME = 'securityRuleName'
 VOLUME_NAME = 'diskName'
+
+# Listing possible somewhat through:
+# azure.mgmt.devtestlabs.operations.GalleryImageOperations
+gallery_image_references = \
+['Canonical/UbuntuServer/16.04.0-LTS/latest',
+'Canonical/UbuntuServer/14.04.5-LTS/latest']
 
 
 class AzureClient(object):
@@ -367,29 +384,37 @@ class AzureClient(object):
     def delete_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
-        name = url_params.get(IMAGE_NAME)
-        self.compute_client.images.delete(self.resource_group, name).wait()
+        if len(url_params) <= 3:
+            name = url_params.get(IMAGE_NAME)
+            self.compute_client.images.delete(self.resource_group, name).wait()
 
     def list_images(self):
         return self.compute_client.images. \
-            list_by_resource_group(self.resource_group)
+            list_by_resource_group(self.resource_group) \
+            + gallery_image_references
 
     def get_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
-        name = url_params.get(IMAGE_NAME)
-        return self.compute_client.images.get(self.resource_group, name)
+        if len(url_params) > 3:
+            return url_params
+        else:
+            name = url_params.get(IMAGE_NAME)
+            return self.compute_client.images.get(self.resource_group, name)
 
     def update_image_tags(self, image_id, tags):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
-        name = url_params.get(IMAGE_NAME)
-        return self.compute_client.images. \
-            create_or_update(self.resource_group, name,
-                             {
-                                 'tags': tags,
-                                 'location': self.region_name
-                             }).result()
+        if len(url_params) > 3:
+            return 1
+        else:
+            name = url_params.get(IMAGE_NAME)
+            return self.compute_client.images. \
+                create_or_update(self.resource_group, name,
+                                 {
+                                     'tags': tags,
+                                     'location': self.region_name
+                                 }).result()
 
     def list_vm_types(self):
         return self.compute_client.virtual_machine_sizes. \
@@ -427,7 +452,7 @@ class AzureClient(object):
 
     def get_network_id_for_subnet(self, subnet_id):
         url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID, subnet_id)
-        network_id = NETWORK_RESOURCE_ID
+        network_id = NETWORK_RESOURCE_ID[0]
         for key, val in url_params.items():
             network_id = network_id.replace("{" + key + "}", val)
         return network_id
