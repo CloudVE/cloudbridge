@@ -36,14 +36,17 @@ PUBLIC_IP_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups' \
                          '{publicIpAddressName}']
 SNAPSHOT_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
                         '{resourceGroupName}/providers/Microsoft.Compute/' \
-                        'snapshots/{snapshotName}', '{snapshotName}']
+                        'snapshots/{snapshotName}',
+                        '{snapshotName}']
 SUBNET_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
                       '{resourceGroupName}/providers/Microsoft.Network' \
                       '/virtualNetworks/{virtualNetworkName}/subnets' \
-                      '/{subnetName}', '{subnetName}']
+                      '/{subnetName}',
+                      '{virtualNetworkName}/{subnetName}']
 VM_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
                   '{resourceGroupName}/providers/Microsoft.Compute/' \
-                  'virtualMachines/{vmName}', '{vmName}']
+                  'virtualMachines/{vmName}',
+                  '{vmName}']
 VM_FIREWALL_RESOURCE_ID = ['/subscriptions/{subscriptionId}/' \
                            'resourceGroups/{resourceGroupName}/' \
                            'providers/Microsoft.Network/' \
@@ -59,7 +62,8 @@ VM_FIREWALL_RULE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/' \
                                 '{securityRuleName}']
 VOLUME_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/' \
                       '{resourceGroupName}/providers/Microsoft.Compute/' \
-                      'disks/{diskName}', '{diskName}']
+                      'disks/{diskName}',
+                      '{diskName}']
 
 IMAGE_NAME = 'imageName'
 NETWORK_NAME = 'virtualNetworkName'
@@ -71,6 +75,12 @@ VM_NAME = 'vmName'
 VM_FIREWALL_NAME = 'networkSecurityGroupName'
 VM_FIREWALL_RULE_NAME = 'securityRuleName'
 VOLUME_NAME = 'diskName'
+
+# Listing possible somewhat through:
+# azure.mgmt.devtestlabs.operations.GalleryImageOperations
+gallery_image_references = \
+['Canonical/UbuntuServer/16.04.0-LTS/latest',
+'Canonical/UbuntuServer/14.04.5-LTS/latest']
 
 
 class AzureClient(object):
@@ -374,13 +384,14 @@ class AzureClient(object):
     def delete_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
-        if len(url_params) < 3:
+        if len(url_params) <= 3:
             name = url_params.get(IMAGE_NAME)
             self.compute_client.images.delete(self.resource_group, name).wait()
 
     def list_images(self):
         return self.compute_client.images. \
-            list_by_resource_group(self.resource_group)
+            list_by_resource_group(self.resource_group) \
+            + gallery_image_references
 
     def get_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
@@ -441,7 +452,7 @@ class AzureClient(object):
 
     def get_network_id_for_subnet(self, subnet_id):
         url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID, subnet_id)
-        network_id = NETWORK_RESOURCE_ID
+        network_id = NETWORK_RESOURCE_ID[0]
         for key, val in url_params.items():
             network_id = network_id.replace("{" + key + "}", val)
         return network_id

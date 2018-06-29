@@ -794,6 +794,13 @@ class AzureMachineImage(BaseMachineImage):
                 # image no longer exists
                 self._state = "unknown"
 
+    def public(self):
+        """
+        Returns true if the image is a public reference and false if it
+        is a private image in the resource group.
+        """
+        return isinstance(self._image, dict)
+
 
 class AzureGatewayContainer(BaseGatewayContainer):
     def __init__(self, provider, network):
