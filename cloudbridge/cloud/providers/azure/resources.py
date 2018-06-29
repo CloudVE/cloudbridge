@@ -681,7 +681,7 @@ class AzureMachineImage(BaseMachineImage):
         else:
             self._state = 'AVAILABLE'
 
-        if not isinstance(image, dict) and not self._image.tags:
+        if not isinstance(self._image, dict) and not self._image.tags:
             self._image.tags = {}
 
     @property
@@ -794,7 +794,7 @@ class AzureMachineImage(BaseMachineImage):
                 # image no longer exists
                 self._state = "unknown"
 
-    def public(self):
+    def isgalleryimage(self):
         """
         Returns true if the image is a public reference and false if it
         is a private image in the resource group.

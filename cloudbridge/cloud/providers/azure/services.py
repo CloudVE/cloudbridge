@@ -603,7 +603,7 @@ class AzureInstanceService(BaseInstanceService):
     def _create_storage_profile(self, image, launch_config, instance_name,
                                 zone_id):
 
-        if image.public:
+        if image.isgalleryimage:
             reference = image._image
             storage_profile = {
                 'image_reference': {
