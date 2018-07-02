@@ -6,6 +6,7 @@ import logging
 import uuid
 
 from azure.common import AzureException
+from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
 
 import cloudbridge.cloud.base.helpers as cb_helpers
@@ -676,12 +677,13 @@ class AzureMachineImage(BaseMachineImage):
         # Image can be either a dict for public image reference
         # or the Azure iamge object
         self._image = image
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             self._state = self._image.provisioning_state
         else:
-            self._state = 'AVAILABLE'
+            self._state = 'SUCCEEDED'
 
-        if not isinstance(self._image, dict) and not self._image.tags:
+        if not isinstance(self._image, GalleryImageReference) \
+           and not self._image.tags:
             self._image.tags = {}
 
     @property
@@ -692,17 +694,21 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             return self._image.id
         else:
             return self._image['offer']
 
     @property
     def resource_id(self):
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             return self._image.id
         else:
-            return self._image['offer']
+            reference_dict = self._image.as_dict()
+            return '/'.join([reference_dict['publisher'],
+                             reference_dict['offer'],
+                             reference_dict['sku'],
+                             reference_dict['version']])
 
     @property
     def name(self):
@@ -712,17 +718,21 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Name for this image as returned by the cloud middleware.
         """
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             return self._image.tags.get('Name', self._image.name)
         else:
-            return self._image['offer']
+            reference_dict = self._image.as_dict()
+            return ':'.join([reference_dict['publisher'],
+                             reference_dict['offer'],
+                             reference_dict['sku'],
+                             reference_dict['version']])
 
     @name.setter
     def name(self, value):
         """
         Set the image name.
         """
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             self.assert_valid_resource_name(value)
             self._image.tags.update(Name=value)
             self._provider.azure_client. \
@@ -736,17 +746,18 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             return self._image.tags.get('Description', None)
         else:
-            return 'Public Image'
+            return 'Public gallery image from the Azure Marketplace: '\
+                    + self.name
 
     @description.setter
     def description(self, value):
         """
-        Set the image name.
+        Set the image description.
         """
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             self._image.tags.update(Description=value)
             self._provider.azure_client. \
                 update_image_tags(self.id, self._image.tags)
@@ -762,23 +773,33 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             return self._image.storage_profile.os_disk.disk_size_gb or 0
+        else:
+            return 0
 
     def delete(self):
         """
         Delete this image
         """
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             self._provider.azure_client.delete_image(self.id)
 
     @property
     def state(self):
-        if not isinstance(self._image, dict):
+        if not isinstance(self._image, GalleryImageReference):
             return AzureMachineImage.IMAGE_STATE_MAP.get(
                 self._state, MachineImageState.UNKNOWN)
         else:
-            return MachineImageState.RUNNING
+            return MachineImageState.AVAILABLE
+
+    @property
+    def is_gallery_image(self):
+        """
+        Returns true if the image is a public reference and false if it
+        is a private image in the resource group.
+        """
+        return isinstance(self._image, GalleryImageReference)
 
     def refresh(self):
         """
@@ -793,13 +814,6 @@ class AzureMachineImage(BaseMachineImage):
                 log.exception(cloudError.message)
                 # image no longer exists
                 self._state = "unknown"
-
-    def isgalleryimage(self):
-        """
-        Returns true if the image is a public reference and false if it
-        is a private image in the resource group.
-        """
-        return isinstance(self._image, dict)
 
 
 class AzureGatewayContainer(BaseGatewayContainer):

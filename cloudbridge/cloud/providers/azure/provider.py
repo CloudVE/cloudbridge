@@ -32,7 +32,7 @@ class AzureCloudProvider(BaseCloudProvider):
         # optional config values
         self.region_name = self._get_config_value(
             'azure_region_name', os.environ.get('AZURE_REGION_NAME',
-                                                'eastus'))
+                                                'westus2'))
         self.resource_group = self._get_config_value(
             'azure_resource_group', os.environ.get('AZURE_RESOURCE_GROUP',
                                                    'cloudbridge'))
@@ -111,16 +111,22 @@ class AzureCloudProvider(BaseCloudProvider):
             self._azure_client.create_resource_group(self.resource_group,
                                                      resource_group_params)
 
-        try:
-            self._azure_client.get_storage_account(self.storage_account)
-        except CloudError:
-            storage_account_params = {
-                'sku': {
-                    'name': 'Standard_LRS'
-                },
-                'kind': 'storage',
-                'location': self.region_name,
-            }
-            self._azure_client. \
-                create_storage_account(self.storage_account,
-                                       storage_account_params)
+        for i in range(5):
+            try:
+                self._azure_client.get_storage_account(self.storage_account)
+                break
+            except CloudError:
+                storage_account_params = {
+                    'sku': {
+                        'name': 'Standard_LRS'
+                    },
+                    'kind': 'storage',
+                    'location': self.region_name,
+                }
+                try:
+                    self._azure_client. \
+                        create_storage_account(self.storage_account,
+                                               storage_account_params)
+                    break
+                except CloudError:
+                    pass
