@@ -4,6 +4,7 @@ from io import BytesIO
 
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.mgmt.compute import ComputeManagementClient
+from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
@@ -79,8 +80,14 @@ VOLUME_NAME = 'diskName'
 # Listing possible somewhat through:
 # azure.mgmt.devtestlabs.operations.GalleryImageOperations
 gallery_image_references = \
-    ['Canonical/UbuntuServer/16.04.0-LTS/latest',
-     'Canonical/UbuntuServer/14.04.5-LTS/latest']
+    [GalleryImageReference(publisher='Canonical',
+                           offer='UbuntuServer',
+                           sku='16.04.0-LTS',
+                           version='latest'),
+     GalleryImageReference(publisher='Canonical',
+                           offer='UbuntuServer',
+                           sku='14.04.5-LTS',
+                           version='latest')]
 
 
 class AzureClient(object):
@@ -376,6 +383,12 @@ class AzureClient(object):
             raw=True
         )
 
+    def is_gallery_image(self, image_id):
+        url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
+                                             image_id)
+        # If it is a gallery image, it will always have an offer
+        return 'offer' in url_params
+
     def create_image(self, name, params):
         return self.compute_client.images. \
             create_or_update(self.resource_group, name,
@@ -384,20 +397,23 @@ class AzureClient(object):
     def delete_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
-        if len(url_params) <= 3:
+        if not self.is_gallery_image(image_id):
             name = url_params.get(IMAGE_NAME)
             self.compute_client.images.delete(self.resource_group, name).wait()
 
     def list_images(self):
-        return self.compute_client.images. \
-            list_by_resource_group(self.resource_group) \
-            + gallery_image_references
+        return list(self.compute_client.images.
+                    list_by_resource_group(self.resource_group)).\
+                     append(gallery_image_references)
 
     def get_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
-        if len(url_params) > 3:
-            return url_params
+        if self.is_gallery_image(image_id):
+            return GalleryImageReference(publisher=url_params['publisher'],
+                                         offer=url_params['offer'],
+                                         sku=url_params['sku'],
+                                         version=url_params['version'])
         else:
             name = url_params.get(IMAGE_NAME)
             return self.compute_client.images.get(self.resource_group, name)
@@ -405,8 +421,8 @@ class AzureClient(object):
     def update_image_tags(self, image_id, tags):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
-        if len(url_params) > 3:
-            return 1
+        if self.is_gallery_image(image_id):
+            return True
         else:
             name = url_params.get(IMAGE_NAME)
             return self.compute_client.images. \

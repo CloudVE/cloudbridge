@@ -603,8 +603,8 @@ class AzureInstanceService(BaseInstanceService):
     def _create_storage_profile(self, image, launch_config, instance_name,
                                 zone_id):
 
-        if image.isgalleryimage:
-            reference = image._image
+        if image.is_gallery_image:
+            reference = image._image.as_dict()
             storage_profile = {
                 'image_reference': {
                     'publisher': reference['publisher'],
