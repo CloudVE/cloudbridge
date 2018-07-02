@@ -1313,7 +1313,7 @@ class OpenStackBucketObject(BaseBucketObject):
               ``swiftclient.service.get_conn`` factory method to
               ``self._provider._connect_swift``
 
-        .. seealso:: https://github.com/gvlproject/cloudbridge/issues/35#issuecomment-297629661 # noqa
+        .. seealso:: https://github.com/CloudVE/cloudbridge/issues/35#issuecomment-297629661 # noqa
         """
         upload_options = {}
         if 'segment_size' not in upload_options:

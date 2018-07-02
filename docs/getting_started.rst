@@ -17,12 +17,12 @@ For common issues during setup, check the following section:
 
 Create a provider
 -----------------
-To start, you will need to create a reference to a provider object. The provider
-object identifies the cloud you want to work with and supplies your credentials.
-The following code snippets show the needed configuration fields to setup a
-necessary provider object, for AWS, OpenStack, and Azure. For details on how to
-setup providers, take a look at the `Setup page <topics/setup.html>`_. The
-remainder of the code is the same for either provider.
+To start, you will need to create a reference to a provider object. The
+provider object identifies the cloud you want to work with and supplies your
+credentials. The following two code snippets setup a necessary provider object,
+for AWS and OpenStack. For the details on other providers, take a look at the
+`Setup page <topics/setup.html>`_. The remainder of the code is the same for
+either provider.
 
 AWS:
 
@@ -33,7 +33,7 @@ AWS:
     config = {'aws_access_key': 'AKIAJW2XCYO4AF55XFEQ',
               'aws_secret_key': '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'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
-    image_id = 'ami-2d39803a'  # Ubuntu 14.04 (HVM)
+    image_id = 'ami-aa2ea6d0'  # Ubuntu 16.04 (HVM)
 
 OpenStack (with Keystone authentication v2):
 
@@ -64,7 +64,7 @@ OpenStack (with Keystone authentication v3):
               'os_user_domain_name': 'domain name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
-    image_id = '97755049-ee4f-4515-b92f-ca00991ee99a'  # Ubuntu 14.04 @ Jetstream
+    image_id = 'acb53109-941f-4593-9bf8-4a53cb9e0739'  # Ubuntu 16.04 @ Jetstream
 
 Azure:
 
@@ -75,10 +75,9 @@ Azure:
     config = {'azure_subscription_id': 'REPLACE WITH ACTUAL VALUE',
               'azure_client_id': 'REPLACE WITH ACTUAL VALUE',
               'azure_secret': 'REPLACE WITH ACTUAL VALUE',
-              'azure_tenant': ' REPLACE WITH ACTUAL VALUE',
-              'azure_resource_group' : 'REPLACE WITH ACTUAL VALUE'}
+              'azure_tenant': ' REPLACE WITH ACTUAL VALUE'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
-    image_id = '/subscriptions/{subscription-id}/resourceGroups/{resource-group}/providers/Microsoft.Compute/images/{image-name}'  # 
+    image_id = 'Canonical/UbuntuServer/16.04.0-LTS/latest'  # Ubuntu 16.04
 
 
 List some resources

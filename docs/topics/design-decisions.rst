@@ -17,4 +17,4 @@ It is intended as a reference.
   lead to a miss match. (Related to 63_.)
 
 
-  .. _63: https://github.com/gvlproject/cloudbridge/issues/63
+  .. _63: https://github.com/CloudVE/cloudbridge/issues/63
