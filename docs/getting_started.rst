@@ -33,7 +33,7 @@ AWS:
     config = {'aws_access_key': 'AKIAJW2XCYO4AF55XFEQ',
               'aws_secret_key': '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'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
-    image_id = 'ami-2d39803a'  # Ubuntu 14.04 (HVM)
+    image_id = 'ami-aa2ea6d0'  # Ubuntu 16.04 (HVM)
 
 OpenStack (with Keystone authentication v2):
 
@@ -64,7 +64,7 @@ OpenStack (with Keystone authentication v3):
               'os_user_domain_name': 'domain name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
-    image_id = '97755049-ee4f-4515-b92f-ca00991ee99a'  # Ubuntu 14.04 @ Jetstream
+    image_id = 'acb53109-941f-4593-9bf8-4a53cb9e0739'  # Ubuntu 16.04 @ Jetstream
 
 Azure:
 
@@ -77,7 +77,7 @@ Azure:
               'azure_secret': 'REPLACE WITH ACTUAL VALUE',
               'azure_tenant': ' REPLACE WITH ACTUAL VALUE'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
-    image_id = 'ami-2d39803a'  # Ubuntu 14.04 (HVM)
+    image_id = 'Canonical/UbuntuServer/16.04.0-LTS/latest'  # Ubuntu 16.04
 
 
 List some resources
