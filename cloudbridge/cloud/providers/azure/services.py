@@ -78,7 +78,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         fw = self.provider.azure_client.create_vm_firewall(name, parameters)
 
         # Add default rules to negate azure default rules.
-        # See: https://github.com/gvlproject/cloudbridge/issues/106
+        # See: https://github.com/CloudVE/cloudbridge/issues/106
         # pylint:disable=protected-access
         for rule in fw.default_security_rules:
             rule_name = "cb-override-" + rule.name

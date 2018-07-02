@@ -233,8 +233,8 @@ specific manner.
 
 
 
-.. _commit 1: https://github.com/gvlproject/cloudbridge/commit/54c67e93a3cd9d51e7d2b1195ebf4e257d165297
-.. _commit 2: https://github.com/gvlproject/cloudbridge/commit/82c0244aa4229ae0aecfe40d769eb93b06470dc7
-.. _commit 3: https://github.com/gvlproject/cloudbridge/commit/e90a7f6885814a3477cd0b38398d62af64f91093
-.. _commit 4: https://github.com/gvlproject/cloudbridge/commit/2d5c14166a538d320e54eed5bc3fa04997828715
-.. _commit 5: https://github.com/gvlproject/cloudbridge/commit/98c9cf578b672867ee503027295f9d901411e496
+.. _commit 1: https://github.com/CloudVE/cloudbridge/commit/54c67e93a3cd9d51e7d2b1195ebf4e257d165297
+.. _commit 2: https://github.com/CloudVE/cloudbridge/commit/82c0244aa4229ae0aecfe40d769eb93b06470dc7
+.. _commit 3: https://github.com/CloudVE/cloudbridge/commit/e90a7f6885814a3477cd0b38398d62af64f91093
+.. _commit 4: https://github.com/CloudVE/cloudbridge/commit/2d5c14166a538d320e54eed5bc3fa04997828715
+.. _commit 5: https://github.com/CloudVE/cloudbridge/commit/98c9cf578b672867ee503027295f9d901411e496
