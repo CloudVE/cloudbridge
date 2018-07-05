@@ -758,7 +758,7 @@ class GCEInstance(BaseInstance):
         """
         Set the instance name.
         """
-        GCEInstance.assert_valid_resource_name(name)
+        GCEInstance.assert_valid_resource_name(value)
         # In GCE, the name of the instance is provided by the client when
         # initially creating the resource. The name cannot be changed after
         # the instance is created.
