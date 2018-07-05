@@ -760,7 +760,7 @@ class AWSBucketObject(BaseBucketObject):
 
     @property
     def size(self):
-        return self._obj.size
+        return self._obj.content_length
 
     @property
     def last_modified(self):
