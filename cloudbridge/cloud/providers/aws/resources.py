@@ -830,9 +830,7 @@ class AWSBucketContainer(BaseBucketContainer):
         else:
             # pylint:disable=protected-access
             boto_objs = self.bucket._bucket.objects.all()
-        objects = [AWSBucketObject(self._provider, obj)
-                   for obj in boto_objs]
-
+        objects = [self.get(obj.key) for obj in boto_objs]
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
