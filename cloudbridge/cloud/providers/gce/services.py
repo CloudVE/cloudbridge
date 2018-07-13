@@ -880,9 +880,16 @@ class GCESubnetService(BaseSubnetService):
         region_name = self._zone_to_region_name(zone)
         for subnet in self.list_all(network=network):
             if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
+                if subnet.region_name != region_name:
+                    cb.log.error('Failed to create subnetwork in region %s: '
+                                 'the given IP range %s overlaps with a '
+                                 'subnetwork in a different region %s',
+                                 region_name, cidr_block, subnet.region_name)
+                    return None
                 return subnet
             if subnet.name == name and subnet.region_name == region_name:
                 return subnet
+
 
         body = {'ipCidrRange': cidr_block,
                 'name': name,

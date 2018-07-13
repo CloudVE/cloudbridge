@@ -359,7 +359,7 @@ class BasePageableObjectMixin(PageableObjectMixin):
         for result in self.list_all():
             yield result
 
-    def list_all(**kwargs):
+    def list_all(self, **kwargs):
         result_list = self.list(**kwargs)
         if result_list.supports_server_paging:
             for result in result_list:
