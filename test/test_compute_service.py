@@ -9,6 +9,7 @@ from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMType
 
 import six
@@ -318,6 +319,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
+            fw.rules.create(direction=TrafficDirection.INBOUND, protocol='tcp',
+                            from_port=1111, to_port=1111, cidr='0.0.0.0/0')
 
             # Check adding a VM firewall to a running instance
             test_inst.add_vm_firewall(fw)

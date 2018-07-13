@@ -311,6 +311,8 @@ class GCECloudProvider(BaseCloudProvider):
         return out if out else self._storage_resources.parse_url(url)
 
     def get_resource(self, resource, url_or_name, **kwargs):
+        if not url_or_name:
+            return None
         resource_url = (
             self._compute_resources.get_resource_url_with_default(
                 resource, url_or_name, **kwargs) or

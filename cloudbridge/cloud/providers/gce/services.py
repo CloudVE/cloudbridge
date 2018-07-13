@@ -874,15 +874,17 @@ class GCESubnetService(BaseSubnetService):
         instead of creating a new subnet. In this case, other parameters, i.e.
         the name and the zone, are ignored.
         """
+        if not name:
+            name = 'subnet-{0}'.format(uuid.uuid4())
         GCESubnet.assert_valid_resource_name(name)
+        region_name = self._zone_to_region_name(zone)
         subnets = self.list(network)
         for subnet in subnets:
             if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
                 return subnet
+            if subnet.name == name and subnet.region_name == region_name:
+                return subnet
 
-        if not name:
-            name = 'subnet-{0}'.format(uuid.uuid4())
-        region_name = self._zone_to_region_name(zone)
         body = {'ipCidrRange': cidr_block,
                 'name': name,
                 'network': network.resource_url,
