@@ -878,8 +878,7 @@ class GCESubnetService(BaseSubnetService):
             name = 'subnet-{0}'.format(uuid.uuid4())
         GCESubnet.assert_valid_resource_name(name)
         region_name = self._zone_to_region_name(zone)
-        subnets = self.list(network)
-        for subnet in subnets:
+        for subnet in self.list_all(network=network):
             if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
                 return subnet
             if subnet.name == name and subnet.region_name == region_name:
@@ -915,7 +914,7 @@ class GCESubnetService(BaseSubnetService):
         zone.
         """
         network = self.provider.networking.networks.get_or_create_default()
-        subnets = self.list(network, zone)
+        subnets = list(self.list_all(network=network, zone=zone))
         if len(subnets) > 1:
             cb.log.warning('The default network has more than one subnetwork '
                            'in a region')

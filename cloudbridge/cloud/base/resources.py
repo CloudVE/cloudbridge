@@ -356,12 +356,16 @@ class BasePageableObjectMixin(PageableObjectMixin):
     """
 
     def __iter__(self):
-        result_list = self.list()
+        for result in self.list_all():
+            yield result
+
+    def list_all(**kwargs):
+        result_list = self.list(**kwargs)
         if result_list.supports_server_paging:
             for result in result_list:
                 yield result
             while result_list.is_truncated:
-                result_list = self.list(marker=result_list.marker)
+                result_list = self.list(marker=result_list.marker, **kwargs)
                 for result in result_list:
                     yield result
         else:
