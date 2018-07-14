@@ -1,8 +1,6 @@
 import logging
 import os
 
-import tenacity
-
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.providers.azure.azure_client import AzureClient
 from cloudbridge.cloud.providers.azure.services \
@@ -10,6 +8,8 @@ from cloudbridge.cloud.providers.azure.services \
     AzureSecurityService, AzureStorageService
 
 from msrestazure.azure_exceptions import CloudError
+
+import tenacity
 
 log = logging.getLogger(__name__)
 
