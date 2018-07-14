@@ -605,29 +605,24 @@ class AzureInstanceService(BaseInstanceService):
 
         if image.is_gallery_image:
             reference = image._image.as_dict()
-            storage_profile = {
-                'image_reference': {
-                    'publisher': reference['publisher'],
-                    'offer': reference['offer'],
-                    'sku': reference['sku'],
-                    'version': reference['version']
-                },
-                "os_disk": {
-                    "name": instance_name + '_os_disk',
-                    "create_option": DiskCreateOption.from_image
-                },
+            image_ref = {
+                'publisher': reference['publisher'],
+                'offer': reference['offer'],
+                'sku': reference['sku'],
+                'version': reference['version']
+            }
+        else:
+            image_ref = {
+                'id': image.resource_id
             }
 
-        else:
-            storage_profile = {
-                'image_reference': {
-                    'id': image.resource_id
-                },
-                "os_disk": {
-                    "name": instance_name + '_os_disk',
-                    "create_option": DiskCreateOption.from_image
-                },
-            }
+        storage_profile = {
+            'image_reference': image_ref,
+            "os_disk": {
+                "name": instance_name + '_os_disk',
+                "create_option": DiskCreateOption.from_image
+            },
+        }
 
         if launch_config:
             data_disks, root_disk_size = self._process_block_device_mappings(

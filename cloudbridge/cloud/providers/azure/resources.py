@@ -677,14 +677,12 @@ class AzureMachineImage(BaseMachineImage):
         # Image can be either a dict for public image reference
         # or the Azure iamge object
         self._image = image
-        if not isinstance(self._image, GalleryImageReference):
-            self._state = self._image.provisioning_state
+        if isinstance(self._image, GalleryImageReference):
+            self._state = 'Succeeded'
         else:
-            self._state = 'SUCCEEDED'
-
-        if not isinstance(self._image, GalleryImageReference) \
-           and not self._image.tags:
-            self._image.tags = {}
+            self._state = self._image.provisioning_state
+            if not self._image.tags:
+                self._image.tags = {}
 
     @property
     def id(self):
@@ -694,21 +692,21 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        if not isinstance(self._image, GalleryImageReference):
-            return self._image.id
-        else:
+        if isinstance(self._image, GalleryImageReference):
             return self._image['offer']
+        else:
+            return self._image.id
 
     @property
     def resource_id(self):
-        if not isinstance(self._image, GalleryImageReference):
-            return self._image.id
-        else:
+        if isinstance(self._image, GalleryImageReference):
             reference_dict = self._image.as_dict()
             return '/'.join([reference_dict['publisher'],
                              reference_dict['offer'],
                              reference_dict['sku'],
                              reference_dict['version']])
+        else:
+            return self._image.id
 
     @property
     def name(self):
@@ -718,14 +716,14 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Name for this image as returned by the cloud middleware.
         """
-        if not isinstance(self._image, GalleryImageReference):
-            return self._image.tags.get('Name', self._image.name)
-        else:
+        if isinstance(self._image, GalleryImageReference):
             reference_dict = self._image.as_dict()
             return ':'.join([reference_dict['publisher'],
                              reference_dict['offer'],
                              reference_dict['sku'],
                              reference_dict['version']])
+        else:
+            return self._image.tags.get('Name', self._image.name)
 
     @name.setter
     def name(self, value):
@@ -746,11 +744,11 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        if not isinstance(self._image, GalleryImageReference):
-            return self._image.tags.get('Description', None)
-        else:
+        if isinstance(self._image, GalleryImageReference):
             return 'Public gallery image from the Azure Marketplace: '\
                     + self.name
+        else:
+            return self._image.tags.get('Description', None)
 
     @description.setter
     def description(self, value):
@@ -773,10 +771,10 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        if not isinstance(self._image, GalleryImageReference):
-            return self._image.storage_profile.os_disk.disk_size_gb or 0
-        else:
+        if isinstance(self._image, GalleryImageReference):
             return 0
+        else:
+            return self._image.storage_profile.os_disk.disk_size_gb or 0
 
     def delete(self):
         """
@@ -787,11 +785,11 @@ class AzureMachineImage(BaseMachineImage):
 
     @property
     def state(self):
-        if not isinstance(self._image, GalleryImageReference):
+        if isinstance(self._image, GalleryImageReference):
+            return MachineImageState.AVAILABLE
+        else:
             return AzureMachineImage.IMAGE_STATE_MAP.get(
                 self._state, MachineImageState.UNKNOWN)
-        else:
-            return MachineImageState.AVAILABLE
 
     @property
     def is_gallery_image(self):
