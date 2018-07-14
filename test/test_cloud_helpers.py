@@ -1,5 +1,4 @@
 import itertools
-
 from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -17,6 +16,8 @@ class DummyResult(object):
 
 
 class CloudHelpersTestCase(ProviderTestBase):
+
+    _multiprocess_can_split_ = True
 
     def setUp(self):
         super(CloudHelpersTestCase, self).setUp()

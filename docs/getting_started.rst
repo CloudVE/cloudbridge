@@ -66,6 +66,20 @@ OpenStack (with Keystone authentication v3):
                                                       config)
     image_id = '97755049-ee4f-4515-b92f-ca00991ee99a'  # Ubuntu 14.04 @ Jetstream
 
+Azure:
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    config = {'azure_subscription_id': 'REPLACE WITH ACTUAL VALUE',
+              'azure_client_id': 'REPLACE WITH ACTUAL VALUE',
+              'azure_secret': 'REPLACE WITH ACTUAL VALUE',
+              'azure_tenant': ' REPLACE WITH ACTUAL VALUE'}
+    provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
+    image_id = 'ami-2d39803a'  # Ubuntu 14.04 (HVM)
+
+
 List some resources
 -------------------
 Once you have a reference to a provider, explore the cloud platform:
@@ -92,7 +106,7 @@ on disk as a read-only file.
     with open('cloudbridge_intro.pem', 'w') as f:
         f.write(kp.material)
     import os
-    os.chmod('cloudbridge_intro.pem', 0400)
+    os.chmod('cloudbridge_intro.pem', 0o400)
 
 Create a network
 ----------------
@@ -107,12 +121,12 @@ attaching an internet gateway to the subnet via a router.
     sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
     router = self.provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = self.provider.networking.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway(name)
     router.attach_gateway(gateway)
 
 
 Create a VM firewall
------------------------
+--------------------
 Next, we need to create a VM firewall (also commonly known as a security group)
 and add a rule to allow ssh access. A VM firewall needs to be associated with
 a private network.
@@ -138,7 +152,7 @@ also add the network interface as a launch argument.
                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
         name='cloudbridge-intro', image=img, vm_type=vm_type,
-        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
+        subnet=sn, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
@@ -158,11 +172,13 @@ Assign a public IP address
 --------------------------
 To access the instance, let's assign a public IP address to the instance. For
 this step, we'll first need to allocate a floating IP address for our account
-and then associate it with the instance.
+and then associate it with the instance. Note that floating IPs are associated
+with an Internet Gateway so we allocate the IP under the gateway we dealt with
+earlier.
 
 .. code-block:: python
 
-    fip = provider.networking.floating_ips.create()
+    fip = gateway.floating_ips.create()
     inst.add_floating_ip(fip)
     inst.refresh()
     inst.public_ips
@@ -177,7 +193,7 @@ To wrap things up, let's clean up all the resources we have created
 
 .. code-block:: python
 
-    inst.terminate()
+    inst.delete()
     from cloudbridge.cloud.interfaces import InstanceState
     inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                    terminal_states=[InstanceState.ERROR])  # Blocking call
@@ -186,7 +202,7 @@ To wrap things up, let's clean up all the resources we have created
     kp.delete()
     os.remove('cloudbridge_intro.pem')
     router.detach_gateway(gateway)
-    router.detach_subnet(subnet)
+    router.detach_subnet(sn)
     gateway.delete()
     router.delete()
     sn.delete()

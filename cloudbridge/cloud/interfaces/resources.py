@@ -528,6 +528,16 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         pass
 
+    @abstractproperty
+    def subnet_id(self):
+        """
+        Get the subnet ID where this instance is placed.
+
+        :rtype: ``str``
+        :return: Subnet ID to which this instance is connected.
+        """
+        pass
+
 #     @abstractproperty
 #     def mac_address(self):
 #         """
@@ -583,8 +593,12 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Add a public IP address to this instance.
 
-        :type floating_ip: :class:``.FloatingIP``
-        :param floating_ip: The FloatingIP to associate with the instance.
+        :type floating_ip: :class:``.FloatingIP`` or floating IP ID
+        :param floating_ip: The FloatingIP object to associate with the
+                            instance. Note that is not the actual public IP
+                            address but the CloudBridge object encapsulating
+                            the IP or the respective provider ID that
+                            identifies the address.
         """
         pass
 
@@ -593,8 +607,12 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         Remove a public IP address from this instance.
 
-        :type floating_ip: :class:``.FloatingIP``
-        :param floating_ip: The IP address to remove from the instance.
+        :type floating_ip: :class:``.FloatingIP`` or floating IP ID
+        :param floating_ip: The FloatingIP object to remove from the
+                            instance. Note that is not the actual public IP
+                            address but the CloudBridge object encapsulating
+                            the IP or the respective provider ID that
+                            identifies the address.
         """
         pass
 
@@ -790,8 +808,8 @@ class NetworkState(object):
     :cvar UNKNOWN: Network state unknown.
     :cvar PENDING: Network is being created.
     :cvar AVAILABLE: Network is available.
-    :cvar DOWN = Network is not operational.
-    :cvar ERROR = Network errored.
+    :cvar DOWN: Network is not operational.
+    :cvar ERROR: Network errored.
     """
     UNKNOWN = "unknown"
     PENDING = "pending"
@@ -882,17 +900,26 @@ class Network(ObjectLifeCycleMixin, CloudResource):
         """
         pass
 
+    @abstractproperty
+    def gateways(self):
+        """
+        Provides access to the internet gateways attached to this network.
+
+        :rtype: :class:`.GatewayContainer`
+        :return: A GatewayContainer object
+        """
+        pass
+
 
 class SubnetState(object):
-
     """
     Standard states for a subnet.
 
     :cvar UNKNOWN: Subnet state unknown.
     :cvar PENDING: Subnet is being created.
     :cvar AVAILABLE: Subnet is available.
-    :cvar DOWN = Subnet is not operational.
-    :cvar ERROR = Subnet errored.
+    :cvar DOWN: Subnet is not operational.
+    :cvar ERROR: Subnet errored.
     """
     UNKNOWN = "unknown"
     PENDING = "pending"
@@ -950,7 +977,93 @@ class Subnet(ObjectLifeCycleMixin, CloudResource):
         pass
 
 
-class FloatingIP(CloudResource):
+class FloatingIPContainer(PageableObjectMixin):
+    """
+    Base interface for a FloatingIP Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, fip_id):
+        """
+        Returns a FloatingIP given its ID or ``None`` if not found.
+
+        :type fip_id: ``str``
+        :param fip_id: The ID of the FloatingIP to retrieve.
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return: a FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List floating (i.e., static) IP addresses.
+
+        :rtype: ``list`` of :class:`.FloatingIP`
+        :return: list of FloatingIP objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, **kwargs):
+        """
+        Searches for a FloatingIP by a given list of attributes.
+
+        Supported attributes: name, public_ip
+
+        Example:
+
+        .. code-block:: python
+
+            fip = provider.networking.gateways.get('id').floating_ips.find(
+                        public_ip='public_ip')
+
+
+        :rtype: List of ``object`` of :class:`.FloatingIP`
+        :return: A list of FloatingIP objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self):
+        """
+        Allocate a new floating (i.e., static) IP address.
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return:  A FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, fip_id):
+        """
+        Delete an existing FloatingIP.
+
+        :type fip_id: ``str``
+        :param fip_id: The ID of the FloatingIP to be deleted.
+        """
+        pass
+
+
+class FloatingIpState(object):
+
+    """
+    Standard states for a floating ip.
+
+    :cvar UNKNOWN: Floating IP state unknown.
+    :cvar AVAILABLE: Floating IP is available.
+    :cvar IN_USE: Floating IP is attached to a device.
+    :cvar ERROR: Floating IP is in an error state.
+    """
+    UNKNOWN = "unknown"
+    AVAILABLE = "available"
+    IN_USE = "in_use"
+    ERROR = "error"
+
+
+class FloatingIP(ObjectLifeCycleMixin, CloudResource):
     """
     Represents a floating (i.e., static) IP address.
     """
@@ -1099,7 +1212,6 @@ class Router(CloudResource):
 
 
 class GatewayState(object):
-
     """
     Standard states for a gateway.
 
@@ -1113,6 +1225,50 @@ class GatewayState(object):
     CONFIGURING = "configuring"
     AVAILABLE = "available"
     ERROR = "error"
+
+
+class GatewayContainer(PageableObjectMixin):
+    """
+    Manage internet gateway resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_or_create_inet_gateway(self, name=None):
+        """
+        Creates new or returns an existing internet gateway for a network.
+
+        The returned gateway object can subsequently be attached to a router to
+        provide internet routing to a network.
+
+        :type  name: ``str``
+        :param name: The gateway name. This applies only if creating a gateway
+                     and if the provider supports it.
+
+        :rtype: ``object``  of :class:`.InternetGateway` or ``None``
+        :return: an InternetGateway object of ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, gateway):
+        """
+        Delete a gateway.
+
+        :type gateway: :class:`.Gateway` object
+        :param gateway: Gateway object to delete.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all available internet gateways.
+
+        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
+        :return: Current list of internet gateways.
+        """
+        pass
 
 
 class Gateway(CloudResource):
@@ -1136,6 +1292,16 @@ class Gateway(CloudResource):
         """
         Delete this gateway. On some providers, if the gateway
         is public/a singleton, this operation will do nothing.
+        """
+        pass
+
+    @abstractproperty
+    def floating_ips(self):
+        """
+        Provides access to floating IPs connected to this internet gateway.
+
+        :rtype: :class:`.FloatingIPContainer`
+        :return: A FloatingIPContainer object
         """
         pass
 
@@ -1612,10 +1778,10 @@ class VMType(CloudResource):
     @abstractproperty
     def ram(self):
         """
-        The amount of RAM (in MB) supported by this VM type.
+        The amount of RAM (in GB) supported by this VM type.
 
-        :rtype: ``int``
-        :return: Total RAM (in MB).
+        :rtype: ``float``
+        :return: Total RAM (in GB).
         """
         pass
 
@@ -1763,7 +1929,7 @@ class VMFirewallRuleContainer(PageableObjectMixin):
             fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
 
         You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
-        ``from_port``, ``to_port``, ``cidr_ip``. In other words, either
+        ``from_port``, ``to_port``, ``cidr``. In other words, either
         you are authorizing another group or you are authorizing some
         IP-based rule.
 
@@ -2135,9 +2301,11 @@ class BucketContainer(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
-        Searches for an object by a given name
+        Searches for an object by a given list of attributes.
+
+        Supported attributes: name
 
         :rtype: List of ``objects`` of :class:`.BucketObject`
         :return: A list of BucketObjects matching the supplied attributes.

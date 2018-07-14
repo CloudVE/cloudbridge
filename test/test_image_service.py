@@ -8,6 +8,8 @@ from cloudbridge.cloud.interfaces.resources import MachineImage
 
 class CloudImageServiceTestCase(ProviderTestBase):
 
+    _multiprocess_can_split_ = True
+
     @helpers.skipIfNoService(['compute.images', 'networking.networks',
                               'compute.instances'])
     def test_create_and_list_image(self):

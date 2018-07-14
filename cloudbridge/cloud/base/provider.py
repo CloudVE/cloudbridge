@@ -148,7 +148,8 @@ class BaseCloudProvider(CloudProvider):
 
         :return: a configuration value for the supplied ``key``
         """
-        log.info("Getting config key: %s with default: %s", key, default_value)
+        log.debug("Getting config key %s, with supplied default value: %s",
+                  key, default_value)
         if isinstance(self.config, dict) and self.config.get(key):
             return self.config.get(key, default_value)
         elif hasattr(self.config, key) and getattr(self.config, key):

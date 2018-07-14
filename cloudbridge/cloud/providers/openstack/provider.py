@@ -1,7 +1,6 @@
 """Provider implementation based on OpenStack Python clients for OpenStack."""
 
 import inspect
-
 import os
 
 from cinderclient import client as cinder_client
@@ -18,7 +17,6 @@ from novaclient import client as nova_client
 from novaclient import shell as nova_shell
 
 from openstack import connection
-from openstack import profile
 
 from swiftclient import client as swift_client
 
@@ -126,11 +124,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._cached_keystone_session
 
     def _connect_openstack(self):
-        prof = profile.Profile()
-        prof.set_region(profile.Profile.ALL, self.region_name)
-
         return connection.Connection(
-            profile=prof,
+            region_name=self.region_name,
             user_agent='cloudbridge',
             auth_url=self.auth_url,
             project_name=self.project_name,

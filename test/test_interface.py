@@ -1,9 +1,7 @@
 import unittest
-
 from test.helpers import ProviderTestBase
 
 import cloudbridge
-
 from cloudbridge.cloud import interfaces
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
@@ -11,6 +9,8 @@ from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 
 
 class CloudInterfaceTestCase(ProviderTestBase):
+
+    _multiprocess_can_split_ = True
 
     def test_name_property(self):
         """
@@ -59,6 +59,8 @@ class CloudInterfaceTestCase(ProviderTestBase):
         elif self.provider.PROVIDER_ID == 'openstack':
             cloned_config['os_username'] = "cb_dummy"
             cloned_config['os_password'] = "cb_dummy"
+        elif self.provider.PROVIDER_ID == 'azure':
+            cloned_config['azure_subscription_id'] = "cb_dummy"
 
         with self.assertRaises(ProviderConnectionException):
             cloned_provider = CloudProviderFactory().create_provider(

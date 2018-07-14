@@ -1,5 +1,4 @@
 import ipaddress
-
 from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
@@ -16,6 +15,8 @@ import six
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
+
+    _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
@@ -96,7 +97,13 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 test_instance.image_id,
                 helpers.get_provider_test_data(self.provider, "image"))
             self.assertIsInstance(test_instance.public_ips, list)
+            if test_instance.public_ips:
+                self.assertTrue(
+                    test_instance.public_ips[0], "public ip should contain a"
+                    " valid value if a list of public_ips exist")
             self.assertIsInstance(test_instance.private_ips, list)
+            self.assertTrue(test_instance.private_ips[0], "private ip should"
+                            " contain a valid value")
             self.assertEqual(
                 test_instance.key_pair_name,
                 kp.name)
@@ -176,7 +183,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         lc.add_volume_device(
             is_root=True,
             source=img,
-            size=img.min_disk if img and img.min_disk else 2,
+            size=img.min_disk if img and img.min_disk else 30,
             delete_on_terminate=True)
 
         # Attempting to add more than one root volume should raise an
@@ -256,7 +263,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 lc.add_volume_device(
                     is_root=True,
                     source=img,
-                    size=img.min_disk if img and img.min_disk else 2,
+                    size=img.min_disk if img and img.min_disk else 30,
                     delete_on_terminate=True)
 
                 # Add all available ephemeral devices
@@ -291,7 +298,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
-                              'networking.floating_ips',
                               'security.vm_firewalls'])
     def test_instance_methods(self):
         name = "cb_instmethods-{0}".format(helpers.get_uuid())
@@ -338,11 +344,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             with helpers.cleanup_action(lambda: cleanup_router(router,
                                                                gateway)):
                 router.attach_subnet(subnet)
-                gateway = (self.provider.networking.gateways
-                           .get_or_create_inet_gateway(name))
+                gateway = net.gateways.get_or_create_inet_gateway(name)
                 router.attach_gateway(gateway)
                 # check whether adding an elastic ip works
-                fip = self.provider.networking.floating_ips.create()
+                fip = gateway.floating_ips.create()
+                self.assertFalse(
+                    fip.in_use,
+                    "Newly created floating IP address should not be in use.")
+
                 with helpers.cleanup_action(lambda: fip.delete()):
                     with helpers.cleanup_action(
                             lambda: test_inst.remove_floating_ip(fip)):
@@ -351,6 +360,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         # On Devstack, FloatingIP is listed under private_ips.
                         self.assertIn(fip.public_ip, test_inst.public_ips +
                                       test_inst.private_ips)
+                        fip.refresh()
+                        self.assertTrue(
+                            fip.in_use,
+                            "Attached floating IP address should be in use.")
                     test_inst.refresh()
                     self.assertNotIn(
                         fip.public_ip,

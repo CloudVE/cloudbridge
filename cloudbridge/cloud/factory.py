@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 class ProviderList(object):
     AWS = 'aws'
     OPENSTACK = 'openstack'
+    AZURE = 'azure'
 
 
 class CloudProviderFactory(object):
@@ -81,13 +82,13 @@ class CloudProviderFactory(object):
         Imports and registers providers from the given module name.
         Raises an ImportError if the import does not succeed.
         """
-        log.info("Importing providers from %s", module_name)
+        log.debug("Importing providers from %s", module_name)
         module = importlib.import_module(
             "{0}.{1}".format(providers.__name__,
                              module_name))
         classes = inspect.getmembers(module, inspect.isclass)
         for _, cls in classes:
-            log.info("Registering the provider: %s", cls)
+            log.debug("Registering the provider: %s", cls)
             self.register_provider_class(cls)
 
     def list_providers(self):
@@ -108,7 +109,7 @@ class CloudProviderFactory(object):
         """
         if not self.provider_list:
             self.discover_providers()
-        log.info("List of available providers: %s", self.provider_list)
+        log.debug("List of available providers: %s", self.provider_list)
         return self.provider_list
 
     def create_provider(self, name, config):
@@ -129,8 +130,7 @@ class CloudProviderFactory(object):
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
         """
-        log.info("Searching provider with the name %s on %s",
-                 name, config)
+        log.info("Creating '%s' provider", name)
         provider_class = self.get_provider_class(name)
         if provider_class is None:
             log.exception("A provider with the name %s could not "
@@ -138,8 +138,7 @@ class CloudProviderFactory(object):
             raise NotImplementedError(
                 'A provider with name {0} could not be'
                 ' found'.format(name))
-        log.debug("Found provider name: %s with these config "
-                  " details: %s", name, config)
+        log.debug("Created '%s' provider", name)
         return provider_class(config)
 
     def get_provider_class(self, name, get_mock=False):

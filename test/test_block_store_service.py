@@ -1,6 +1,5 @@
 import time
 import uuid
-
 from test import helpers
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
@@ -17,6 +16,8 @@ import six
 
 
 class CloudBlockStoreServiceTestCase(ProviderTestBase):
+
+    _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['storage.volumes'])
     def test_crud_volume(self):
@@ -114,8 +115,9 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(test_vol.attachments.volume, test_vol)
                 self.assertEqual(test_vol.attachments.instance_id,
                                  test_instance.id)
-                self.assertEqual(test_vol.attachments.device,
-                                 "/dev/sda2")
+                if not self.provider.PROVIDER_ID == 'azure':
+                    self.assertEqual(test_vol.attachments.device,
+                                     "/dev/sda2")
                 test_vol.detach()
                 test_vol.name = 'newvolname1'
                 test_vol.wait_for(

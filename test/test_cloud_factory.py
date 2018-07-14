@@ -1,5 +1,4 @@
 import unittest
-
 from test import helpers
 
 from cloudbridge.cloud import factory
@@ -12,6 +11,8 @@ from cloudbridge.cloud.providers.aws.provider import MockAWSCloudProvider
 
 
 class CloudFactoryTestCase(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
 
     def test_create_provider_valid(self):
         """

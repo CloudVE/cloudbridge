@@ -70,7 +70,7 @@ def check_find(test, service, obj):
         len(find_objs) == 1,
         "Find objects for %s does not return the expected object: %s. Got %s"
         % (type(obj).__name__, obj.name, find_objs))
-    test.assertEqual(find_objs[0], obj)
+    test.assertEqual(find_objs[0].id, obj.id)
     return find_objs
 
 
@@ -85,7 +85,7 @@ def check_find_non_existent(test, service):
 
 def check_get(test, service, obj):
     get_obj = service.get(obj.id)
-    test.assertEqual(get_obj, obj)
+    test.assertEqual(get_obj.id, obj.id)
     test.assertIsInstance(get_obj, type(obj))
     return get_obj
 
@@ -162,32 +162,24 @@ def check_standard_behaviour(test, service, obj):
     check_get_non_existent(test, service)
 
     test.assertTrue(
-        obj == objs_list[0] == objs_iter[0] == objs_find[0] == obj_get,
-        "Objects returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}" .format(objs_list[0].id, objs_iter[0].id,
-                                            objs_find[0].id, obj_get.id,
-                                            obj.id))
-
-    test.assertTrue(
         obj.id == objs_list[0].id == objs_iter[0].id ==
         objs_find[0].id == obj_get.id,
         "Object Ids returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}" .format(objs_list[0].id, objs_iter[0].id,
-                                            objs_find[0].id, obj_get.id,
-                                            obj.id))
+        " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
+                                           objs_find[0].id, obj_get.id,
+                                           obj.id))
 
     test.assertTrue(
         obj.name == objs_list[0].name == objs_iter[0].name ==
         objs_find[0].name == obj_get.name,
         "Names returned by list: {0}, iter: {1}, find: {2} and get: {3} "
-        " are not as expected: {4}" .format(objs_list[0].id, objs_iter[0].id,
-                                            objs_find[0].id, obj_get.id,
-                                            obj.id))
+        " are not as expected: {4}".format(objs_list[0].id, objs_iter[0].id,
+                                           objs_find[0].id, obj_get.id,
+                                           obj.id))
 
 
 def check_create(test, service, iface, name_prefix,
                  create_func, cleanup_func):
-
     # check create with invalid name
     with test.assertRaises(InvalidNameException):
         # spaces should raise an exception

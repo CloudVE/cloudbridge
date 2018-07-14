@@ -1,5 +1,4 @@
 from test import helpers
-
 from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 
@@ -7,6 +6,8 @@ import six
 
 
 class CloudVMTypeServiceTestCase(ProviderTestBase):
+
+    _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['compute.vm_types'])
     def test_vm_type_properties(self):
