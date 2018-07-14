@@ -78,7 +78,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         fw = self.provider.azure_client.create_vm_firewall(name, parameters)
 
         # Add default rules to negate azure default rules.
-        # See: https://github.com/gvlproject/cloudbridge/issues/106
+        # See: https://github.com/CloudVE/cloudbridge/issues/106
         # pylint:disable=protected-access
         for rule in fw.default_security_rules:
             rule_name = "cb-override-" + rule.name
@@ -603,15 +603,31 @@ class AzureInstanceService(BaseInstanceService):
     def _create_storage_profile(self, image, launch_config, instance_name,
                                 zone_id):
 
-        storage_profile = {
-            'image_reference': {
-                'id': image.resource_id
-            },
-            "os_disk": {
-                "name": instance_name + '_os_disk',
-                "create_option": DiskCreateOption.from_image
-            },
-        }
+        if image.is_gallery_image:
+            reference = image._image.as_dict()
+            storage_profile = {
+                'image_reference': {
+                    'publisher': reference['publisher'],
+                    'offer': reference['offer'],
+                    'sku': reference['sku'],
+                    'version': reference['version']
+                },
+                "os_disk": {
+                    "name": instance_name + '_os_disk',
+                    "create_option": DiskCreateOption.from_image
+                },
+            }
+
+        else:
+            storage_profile = {
+                'image_reference': {
+                    'id': image.resource_id
+                },
+                "os_disk": {
+                    "name": instance_name + '_os_disk',
+                    "create_option": DiskCreateOption.from_image
+                },
+            }
 
         if launch_config:
             data_disks, root_disk_size = self._process_block_device_mappings(

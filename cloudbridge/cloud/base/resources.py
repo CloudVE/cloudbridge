@@ -62,7 +62,7 @@ class BaseCloudResource(CloudResource):
 
     # Regular expression for valid cloudbridge resource names.
     # They, must match the same criteria as GCE labels.
-    # as discussed here: https://github.com/gvlproject/cloudbridge/issues/55
+    # as discussed here: https://github.com/CloudVE/cloudbridge/issues/55
     #
     # NOTE: The following regex is based on GCEs internal validation logic,
     # and is significantly complex to allow for international characters.

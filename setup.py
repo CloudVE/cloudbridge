@@ -27,6 +27,7 @@ REQS_AWS = ['boto3']
 REQS_AZURE = ['msrest>=0.4.7',
               'msrestazure>=0.4.7',
               'azure-common>=1.1.5',
+              'azure-mgmt-devtestlabs>=1.0.0',
               'azure-mgmt-resource>=1.0.0rc1',
               'azure-mgmt-compute>=1.0.0rc1',
               'azure-mgmt-network>=1.0.0rc1',
@@ -47,7 +48,7 @@ REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
 REQS_DEV = ([
     'tox>=2.1.1',
     'nose',
-    # 'moto>=1.1.11',  # until https://github.com/spulec/moto/issues/1396
+    'moto>=1.1.11',  # until https://github.com/spulec/moto/issues/1396
     'sphinx>=1.3.1',
     'pydevd',
     'flake8>=3.3.0',
