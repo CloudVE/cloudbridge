@@ -21,7 +21,7 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
 REQS_BASE = [
     'bunch>=1.0.1',
     'six>=1.10.0',
-    'retrying>=1.3.3'
+    'tenacity>=4.12.0'
 ]
 REQS_AWS = ['boto3']
 REQS_AZURE = ['msrest>=0.4.7',

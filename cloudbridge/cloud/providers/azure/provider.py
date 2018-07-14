@@ -1,6 +1,8 @@
 import logging
 import os
 
+import tenacity
+
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.providers.azure.azure_client import AzureClient
 from cloudbridge.cloud.providers.azure.services \
@@ -110,23 +112,21 @@ class AzureCloudProvider(BaseCloudProvider):
             resource_group_params = {'location': self.region_name}
             self._azure_client.create_resource_group(self.resource_group,
                                                      resource_group_params)
+        # Create a storage account. To prevent a race condition, try
+        # to get or create at least twice
+        self._get_or_create_storage_account()
 
-        for i in range(5):
-            try:
-                self._azure_client.get_storage_account(self.storage_account)
-                break
-            except CloudError:
-                storage_account_params = {
-                    'sku': {
-                        'name': 'Standard_LRS'
-                    },
-                    'kind': 'storage',
-                    'location': self.region_name,
-                }
-                try:
-                    self._azure_client. \
-                        create_storage_account(self.storage_account,
-                                               storage_account_params)
-                    break
-                except CloudError:
-                    pass
+    @tenacity.retry(stop=tenacity.stop_after_attempt(2))
+    def _get_or_create_storage_account(self):
+        try:
+            return self._azure_client.get_storage_account(self.storage_account)
+        except CloudError:
+            storage_account_params = {
+                'sku': {
+                    'name': 'Standard_LRS'
+                },
+                'kind': 'storage',
+                'location': self.region_name,
+            }
+            self._azure_client.create_storage_account(self.storage_account,
+                                                      storage_account_params)
