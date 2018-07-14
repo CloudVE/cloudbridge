@@ -269,6 +269,10 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.placement.get('AvailabilityZone')
 
     @property
+    def subnet_id(self):
+        return self._ec2_instance.subnet_id
+
+    @property
     def vm_firewalls(self):
         return [
             self._provider.security.vm_firewalls.get(fw_id)

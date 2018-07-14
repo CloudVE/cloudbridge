@@ -1254,7 +1254,7 @@ class AzureInstance(BaseInstance):
     @property
     def image_id(self):
         """
-        Get the image ID for this insance.
+        Get the image ID for this instance.
         """
         return self._vm.storage_profile.image_reference.id
 
@@ -1264,6 +1264,20 @@ class AzureInstance(BaseInstance):
         Get the placement zone id where this instance is running.
         """
         return self._vm.location
+
+    @property
+    def subnet_id(self):
+        """
+        Return the first subnet id associated with the first network iface.
+
+        An Azure instance can have multiple network interfaces attached with
+        each interface having at most one subnet. This method will return only
+        the subnet of the first attached network interface.
+        """
+        for nic_id in self._nic_ids:
+            nic = self._provider.azure_client.get_nic(nic_id)
+            for ipc in nic.ip_configurations:
+                return ipc.subnet.id
 
     @property
     def vm_firewalls(self):
