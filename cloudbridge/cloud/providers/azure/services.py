@@ -563,7 +563,8 @@ class AzureInstanceService(BaseInstanceService):
                 if disk_def.get('tags', {}).get('delete_on_terminate'):
                     disk_id = disk_def.get('managed_disk', {}).get('id')
                     if disk_id:
-                        self.provider.storage.volumes.delete(disk_id)
+                        vol = self.provider.storage.volumes.get(disk_id)
+                        vol.delete()
             raise e
         finally:
             if temp_key_pair:
