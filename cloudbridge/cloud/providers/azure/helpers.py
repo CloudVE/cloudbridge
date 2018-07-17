@@ -28,12 +28,20 @@ def parse_url(template_urls, original_url):
        'virtualMachines/{vmName}'
     This function splits the resource ID based on the template urls passed
     and returning the dictionary.
+
+    The only exception to that format are image URN's which are used for
+    public gallery references:
+    https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage
     """
     if not original_url:
         raise InvalidValueException(template_urls, original_url)
     original_url_parts = original_url.split('/')
+    if len(original_url_parts) == 1:
+        original_url_parts = original_url.split(':')
     for each_template in template_urls:
         template_url_parts = each_template.split('/')
+        if len(template_url_parts) == 1:
+            template_url_parts = each_template.split(':')
         if len(template_url_parts) == len(original_url_parts):
             break
     if len(template_url_parts) != len(original_url_parts):
