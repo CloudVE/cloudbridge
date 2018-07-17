@@ -154,7 +154,7 @@ Community contributions for any part of the project are welcome. If you have
 a completely new idea or would like to bounce your idea before moving forward
 with the implementation, feel free to create an issue to start a discussion.
 
-Contributions should come in the form or a pull request. We strive for 100% test
+Contributions should come in the form of a pull request. We strive for 100% test
 coverage so code will only be accepted if it comes with appropriate tests and it
 does not break existing functionality. Further, the code needs to be well
 documented and all methods have docstrings. We are largely adhering to the
