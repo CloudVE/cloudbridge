@@ -367,6 +367,35 @@ class OpenStackInstance(BaseInstance):
         return getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None)
 
     @property
+    def subnet_id(self):
+        """
+        Extract (one) subnet id associated with this instance.
+
+        In OpenStack, instances are associated with ports instead of
+        instances so we need to dig through several connections to retrieve
+        the subnet_id. Further, there can potentially be several ports
+        connected to to different subnets. This implementation retrieves one
+        subnet, the one corresponding to port associated with the first
+        private IP associated with the instance.
+        """
+        # MAC address can be used to identify a port so extract the MAC
+        # address corresponding to the (first) private IP associated with the
+        # instance.
+        for net in self._os_instance.to_dict().get('addresses').keys():
+            for iface in self._os_instance.to_dict().get('addresses')[net]:
+                if iface.get('OS-EXT-IPS:type') == 'fixed':
+                    port = iface.get('OS-EXT-IPS-MAC:mac_addr')
+                    addr = iface.get('addr')
+                    break
+        # Now get a handle to a port with the given MAC address and get the
+        # subnet to which the private IP is connected as the desired id.
+        for prt in self._provider.neutron.list_ports().get('ports'):
+            if prt.get('mac_address') == port:
+                for ip in prt.get('fixed_ips'):
+                    if ip.get('ip_address') == addr:
+                        return ip.get('subnet_id')
+
+    @property
     def vm_firewalls(self):
         return [
             self._provider.security.vm_firewalls.get(group.id)

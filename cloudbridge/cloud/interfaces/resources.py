@@ -528,6 +528,16 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         """
         pass
 
+    @abstractproperty
+    def subnet_id(self):
+        """
+        Get the subnet ID where this instance is placed.
+
+        :rtype: ``str``
+        :return: Subnet ID to which this instance is connected.
+        """
+        pass
+
 #     @abstractproperty
 #     def mac_address(self):
 #         """
