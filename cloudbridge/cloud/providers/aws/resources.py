@@ -764,7 +764,10 @@ class AWSBucketObject(BaseBucketObject):
 
     @property
     def size(self):
-        return self._obj.content_length
+        try:
+            return self._obj.content_length
+        except AttributeError:  # we're dealing with s3.ObjectSummary
+            return self._obj.size
 
     @property
     def last_modified(self):
@@ -834,7 +837,7 @@ class AWSBucketContainer(BaseBucketContainer):
         else:
             # pylint:disable=protected-access
             boto_objs = self.bucket._bucket.objects.all()
-        objects = [self.get(obj.key) for obj in boto_objs]
+        objects = [AWSBucketObject(self._provider, obj) for obj in boto_objs]
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 

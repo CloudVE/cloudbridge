@@ -110,6 +110,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     isinstance(objs[0].size, int),
                     "Object size property needs to be a int, not {0}".format(
                         type(objs[0].size)))
+                # GET an object as the size property implementation differs
+                # for objects returned by LIST and GET.
+                obj = test_bucket.objects.get(objs[0].id)
+                self.assertTrue(
+                    isinstance(objs[0].size, int),
+                    "Object size property needs to be an int, not {0}".format(
+                        type(obj.size)))
                 self.assertTrue(
                     datetime.strptime(objs[0].last_modified[:23],
                                       "%Y-%m-%dT%H:%M:%S.%f"),
