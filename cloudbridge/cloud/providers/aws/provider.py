@@ -5,7 +5,7 @@ import os
 import boto3
 try:
     # These are installed only for the case of a dev instance
-    from moto.packages.responses import responses
+    import responses
     from moto import mock_ec2
     from moto import mock_s3
 except ImportError:

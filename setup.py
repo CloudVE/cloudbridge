@@ -47,7 +47,7 @@ REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
 REQS_DEV = ([
     'tox>=2.1.1',
     'nose',
-    # 'moto>=1.1.11',  # until https://github.com/spulec/moto/issues/1396
+    'moto>=1.3.2',
     'sphinx>=1.3.1',
     'pydevd',
     'flake8>=3.3.0',
