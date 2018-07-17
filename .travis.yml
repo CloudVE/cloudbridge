@@ -58,6 +58,7 @@ before_install:
            ;;
       esac
 install:
+    - pip install --upgrade pip
     - pip install -U setuptools
     - pip install tox
     - pip install coveralls
