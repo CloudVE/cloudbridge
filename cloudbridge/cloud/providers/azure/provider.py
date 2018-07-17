@@ -34,7 +34,7 @@ class AzureCloudProvider(BaseCloudProvider):
         # optional config values
         self.region_name = self._get_config_value(
             'azure_region_name', os.environ.get('AZURE_REGION_NAME',
-                                                'westus2'))
+                                                'westuk'))
         self.resource_group = self._get_config_value(
             'azure_resource_group', os.environ.get('AZURE_RESOURCE_GROUP',
                                                    'cloudbridge'))
