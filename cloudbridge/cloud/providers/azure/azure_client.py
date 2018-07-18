@@ -3,6 +3,7 @@ import logging
 from io import BytesIO
 
 from azure.common.credentials import ServicePrincipalCredentials
+from azure.cosmosdb.table.tableservice import TableService
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network import NetworkManagementClient
@@ -11,7 +12,6 @@ from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
-from azure.storage.table import TableService
 
 from . import helpers as azure_helpers
 

@@ -24,15 +24,7 @@ REQS_BASE = [
     'tenacity>=4.12.0'
 ]
 REQS_AWS = ['boto3']
-REQS_AZURE = ['msrest>=0.4.7',
-              'msrestazure>=0.4.7',
-              'azure-common>=1.1.5',
-              'azure-mgmt-devtestlabs>=1.0.0',
-              'azure-mgmt-resource>=1.0.0rc1',
-              'azure-mgmt-compute>=1.0.0rc1',
-              'azure-mgmt-network>=1.0.0rc1',
-              'azure-mgmt-storage>=1.0.0rc1',
-              'azure-storage>=0.34.0',
+REQS_AZURE = ['azure>=3.0.0',
               'pysftp>=0.2.9']
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0',
