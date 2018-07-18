@@ -21,7 +21,8 @@ IMAGE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                      '{resourceGroupName}/providers/Microsoft.Compute/'
                      'images/{imageName}',
                      '{imageName}',
-                     '{publisher}/{offer}/{sku}/{version}']
+                     '{publisher}/{offer}/{sku}/{version}',
+                     '{publisher}:{offer}:{sku}:{version}']
 NETWORK_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                        '{resourceGroupName}/providers/Microsoft.Network'
                        '/virtualNetworks/{virtualNetworkName}',
@@ -450,9 +451,10 @@ class AzureClient(object):
             self.compute_client.images.delete(self.resource_group, name).wait()
 
     def list_images(self):
-        return list(self.compute_client.images.
-                    list_by_resource_group(self.resource_group)).\
-                     append(gallery_image_references)
+        azure_images = list(self.compute_client.images.
+                            list_by_resource_group(self.resource_group))
+        azure_images.extend(gallery_image_references)
+        return azure_images
 
     def get_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,

@@ -693,7 +693,7 @@ class AzureMachineImage(BaseMachineImage):
         :return: ID for this instance as returned by the cloud middleware.
         """
         if isinstance(self._image, GalleryImageReference):
-            return self._image['offer']
+            return self._image.as_dict()['offer']
         else:
             return self._image.id
 
