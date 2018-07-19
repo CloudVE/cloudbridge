@@ -77,7 +77,7 @@ Azure:
               'azure_secret': 'REPLACE WITH ACTUAL VALUE',
               'azure_tenant': ' REPLACE WITH ACTUAL VALUE'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
-    image_id = 'Canonical/UbuntuServer/16.04.0-LTS/latest'  # Ubuntu 16.04
+    image_id = 'Canonical:UbuntuServer:16.04.0-LTS:latest'  # Ubuntu 16.04
 
 
 List some resources

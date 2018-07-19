@@ -21,7 +21,6 @@ IMAGE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                      '{resourceGroupName}/providers/Microsoft.Compute/'
                      'images/{imageName}',
                      '{imageName}',
-                     '{publisher}/{offer}/{sku}/{version}',
                      '{publisher}:{offer}:{sku}:{version}']
 NETWORK_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                        '{resourceGroupName}/providers/Microsoft.Network'
@@ -341,7 +340,7 @@ class AzureClient(object):
         self.blob_service.delete_blob(container_name, blob_name)
 
     def get_blob_url(self, container_name, blob_name, expiry_time):
-        expiry_date = datetime.datetime.now() + datetime.timedelta(
+        expiry_date = datetime.datetime.utcnow() + datetime.timedelta(
             seconds=expiry_time)
         sas = self.blob_service.generate_blob_shared_access_signature(
             container_name, blob_name, permission=BlobPermissions.READ,

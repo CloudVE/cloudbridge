@@ -92,10 +92,10 @@ TEST_DATA_CONFIG = {
     },
     "AzureCloudProvider": {
         "placement":
-            os.environ.get('CB_PLACEMENT_AZURE', 'francecentral'),
+            os.environ.get('CB_PLACEMENT_AZURE', 'northcentralus'),
         "image":
             os.environ.get('CB_IMAGE_AZURE',
-                           'Canonical/UbuntuServer/16.04.0-LTS/latest'),
+                           'Canonical:UbuntuServer:16.04.0-LTS:latest'),
         "vm_type":
             os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A2'),
     }

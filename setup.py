@@ -54,6 +54,7 @@ setup(
     author='Galaxy and GVL Projects',
     author_email='help@genome.edu.au',
     url='http://cloudbridge.cloudve.org/',
+    setup_requires=['nose>=1.0'],
     install_requires=REQS_FULL,
     extras_require={
         ':python_version<"3.3"': ['ipaddress'],

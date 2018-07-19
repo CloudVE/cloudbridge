@@ -701,7 +701,7 @@ class AzureMachineImage(BaseMachineImage):
     def resource_id(self):
         if isinstance(self._image, GalleryImageReference):
             reference_dict = self._image.as_dict()
-            return '/'.join([reference_dict['publisher'],
+            return ':'.join([reference_dict['publisher'],
                              reference_dict['offer'],
                              reference_dict['sku'],
                              reference_dict['version']])
@@ -1300,7 +1300,12 @@ class AzureInstance(BaseInstance):
         """
         Get the image ID for this instance.
         """
-        return self._vm.storage_profile.image_reference.id
+        # Not tested for resource group images
+        reference_dict = self._vm.storage_profile.image_reference.as_dict()
+        return ':'.join([reference_dict['publisher'],
+                         reference_dict['offer'],
+                         reference_dict['sku'],
+                         reference_dict['version']])
 
     @property
     def zone_id(self):
