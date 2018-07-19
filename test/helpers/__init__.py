@@ -92,7 +92,7 @@ TEST_DATA_CONFIG = {
     },
     "AzureCloudProvider": {
         "placement":
-            os.environ.get('CB_PLACEMENT_AZURE', 'northcentralus'),
+            os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
             os.environ.get('CB_IMAGE_AZURE',
                            'Canonical:UbuntuServer:16.04.0-LTS:latest'),
