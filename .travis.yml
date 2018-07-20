@@ -68,7 +68,6 @@ script:
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_cloud_factory
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_cloud_helpers
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_compute_service
-    - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_image_service
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_interface
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_network_service
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_object_life_cycle
@@ -76,6 +75,7 @@ script:
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_region_service
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_security_service
     - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_vm_types_service
+    - travis_wait 50 tox -e $TOX_ENV -- --tests test.test_image_service
 after_script:
     - |
       case "$TRAVIS_EVENT_TYPE" in
