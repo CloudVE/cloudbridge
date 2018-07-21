@@ -452,8 +452,10 @@ class AzureClient(object):
     def list_images(self):
         azure_images = list(self.compute_client.images.
                             list_by_resource_group(self.resource_group))
-        azure_images.extend(gallery_image_references)
         return azure_images
+
+    def list_gallery_refs(self):
+        return gallery_image_references
 
     def get_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,

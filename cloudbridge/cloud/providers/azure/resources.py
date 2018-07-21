@@ -26,6 +26,8 @@ from msrestazure.azure_exceptions import CloudError
 
 import pysftp
 
+from . import helpers as azure_helpers
+
 log = logging.getLogger(__name__)
 
 
@@ -693,18 +695,14 @@ class AzureMachineImage(BaseMachineImage):
         :return: ID for this instance as returned by the cloud middleware.
         """
         if isinstance(self._image, GalleryImageReference):
-            return self._image.as_dict()['offer']
+            return azure_helpers.generate_urn(self._image)
         else:
             return self._image.id
 
     @property
     def resource_id(self):
         if isinstance(self._image, GalleryImageReference):
-            reference_dict = self._image.as_dict()
-            return ':'.join([reference_dict['publisher'],
-                             reference_dict['offer'],
-                             reference_dict['sku'],
-                             reference_dict['version']])
+            return azure_helpers.generate_urn(self._image)
         else:
             return self._image.id
 
@@ -717,11 +715,7 @@ class AzureMachineImage(BaseMachineImage):
         :return: Name for this image as returned by the cloud middleware.
         """
         if isinstance(self._image, GalleryImageReference):
-            reference_dict = self._image.as_dict()
-            return ':'.join([reference_dict['publisher'],
-                             reference_dict['offer'],
-                             reference_dict['sku'],
-                             reference_dict['version']])
+            return azure_helpers.generate_urn(self._image)
         else:
             return self._image.tags.get('Name', self._image.name)
 

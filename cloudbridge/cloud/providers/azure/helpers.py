@@ -51,3 +51,16 @@ def parse_url(template_urls, original_url):
         if key.startswith('{') and key.endswith('}'):
             resource_param.update({key[1:-1]: value})
     return resource_param
+
+
+def generate_urn(gallery_image):
+    """
+    This function takes an azure gallery image and outputs a corresponding URN
+    :param gallery_image: a GalleryImageReference object
+    :return: URN as string
+    """
+    reference_dict = gallery_image.as_dict()
+    return ':'.join([reference_dict['publisher'],
+                     reference_dict['offer'],
+                     reference_dict['sku'],
+                     reference_dict['version']])

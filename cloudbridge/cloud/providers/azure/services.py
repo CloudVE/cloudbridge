@@ -116,7 +116,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         filters = {'Name': name}
         fws = [AzureVMFirewall(self.provider, vm_firewall)
                for vm_firewall in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_vm_firewall(), filters)]
+               self.provider.azure_client.list_vm_firewall(), filters)]
         return ClientPagedResultList(self.provider, fws)
 
     def delete(self, group_id):
@@ -143,7 +143,7 @@ class AzureKeyPairService(BaseKeyPairService):
 
     def list(self, limit=None, marker=None):
         key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
-            AzureKeyPairService.PARTITION_KEY,  marker=marker,
+            AzureKeyPairService.PARTITION_KEY, marker=marker,
             limit=limit or self.provider.config.default_result_limit)
         results = [AzureKeyPair(self.provider, key_pair)
                    for key_pair in key_pairs]
@@ -178,11 +178,11 @@ class AzureKeyPairService(BaseKeyPairService):
             public_key_material, private_key = cb_helpers.generate_key_pair()
 
         entity = {
-                  'PartitionKey': AzureKeyPairService.PARTITION_KEY,
-                  'RowKey': str(uuid.uuid4()),
-                  'Name': name,
-                  'Key': public_key_material
-                 }
+            'PartitionKey': AzureKeyPairService.PARTITION_KEY,
+            'RowKey': str(uuid.uuid4()),
+            'Name': name,
+            'Key': public_key_material
+        }
 
         self.provider.azure_client.create_public_key(entity)
         key_pair = self.get(name)
@@ -286,7 +286,7 @@ class AzureVolumeService(BaseVolumeService):
         filters = {'Name': name}
         cb_vols = [AzureVolume(self.provider, volume)
                    for volume in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_disks(), filters)]
+                   self.provider.azure_client.list_disks(), filters)]
         return ClientPagedResultList(self.provider, cb_vols)
 
     def list(self, limit=None, marker=None):
@@ -370,7 +370,7 @@ class AzureSnapshotService(BaseSnapshotService):
         filters = {'Name': name}
         cb_snapshots = [AzureSnapshot(self.provider, snapshot)
                         for snapshot in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_snapshots(), filters)]
+                        self.provider.azure_client.list_snapshots(), filters)]
         return ClientPagedResultList(self.provider, cb_snapshots)
 
     def list(self, limit=None, marker=None):
@@ -495,15 +495,15 @@ class AzureInstanceService(BaseInstanceService):
                                                        instance_name, zone_id)
 
         nic_params = {
-                'location': self._provider.region_name,
-                'ip_configurations': [{
-                    'name': instance_name + '_ip_config',
-                    'private_ip_allocation_method': 'Dynamic',
-                    'subnet': {
-                        'id': subnet_id
-                    }
-                }]
-            }
+            'location': self._provider.region_name,
+            'ip_configurations': [{
+                'name': instance_name + '_ip_config',
+                'private_ip_allocation_method': 'Dynamic',
+                'subnet': {
+                    'id': subnet_id
+                }
+            }]
+        }
 
         if vm_firewall_id:
             nic_params['network_security_group'] = {
@@ -524,16 +524,16 @@ class AzureInstanceService(BaseInstanceService):
                 'admin_username': self.provider.vm_default_user_name,
                 'computer_name': instance_name,
                 'linux_configuration': {
-                             "disable_password_authentication": True,
-                             "ssh": {
-                                 "public_keys": [{
-                                      "path":
-                                      "/home/{}/.ssh/authorized_keys".format(
-                                          self.provider.vm_default_user_name),
-                                      "key_data": key_pair._key_pair.Key
-                                     }]
-                                   }
-                           }
+                    "disable_password_authentication": True,
+                    "ssh": {
+                        "public_keys": [{
+                            "path":
+                                "/home/{}/.ssh/authorized_keys".format(
+                                        self.provider.vm_default_user_name),
+                                "key_data": key_pair._key_pair.Key
+                        }]
+                    }
+                }
             },
             'hardware_profile': {
                 'vm_size': instance_size
@@ -741,7 +741,7 @@ class AzureInstanceService(BaseInstanceService):
         filtr = {'Name': name}
         instances = [AzureInstance(self.provider, inst)
                      for inst in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_vm(), filtr)]
+                     self.provider.azure_client.list_vm(), filtr)]
         return ClientPagedResultList(self.provider, instances)
 
 
@@ -772,7 +772,12 @@ class AzureImageService(BaseImageService):
         filters = {'Name': name}
         cb_images = [AzureMachineImage(self.provider, image)
                      for image in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_images(), filters)]
+                     self.provider.azure_client.list_images(), filters)]
+        # All gallery image properties (id, resource_id, name) are the URN
+        # Improvement: wrap the filters by publisher, offer, etc...
+        cb_images.extend([AzureMachineImage(self.provider, image) for image
+                          in self.provider.azure_client.list_gallery_refs()
+                          if azure_helpers.generate_urn(image) == name])
         return ClientPagedResultList(self.provider, cb_images)
 
     def list(self, limit=None, marker=None):
@@ -780,8 +785,9 @@ class AzureImageService(BaseImageService):
         List all images.
         """
         azure_images = self.provider.azure_client.list_images()
+        azure_gallery_refs = self.provider.azure_client.list_gallery_refs()
         cb_images = [AzureMachineImage(self.provider, img)
-                     for img in azure_images]
+                     for img in azure_images + azure_gallery_refs]
         return ClientPagedResultList(self.provider, cb_images,
                                      limit=limit, marker=marker)
 
@@ -857,8 +863,9 @@ class AzureNetworkService(BaseNetworkService):
                             " Supported attributes: %s" % (kwargs, 'name'))
 
         filters = {'Name': name}
-        networks = [AzureNetwork(self.provider, network)
-                    for network in azure_helpers.filter_by_tag(
+        networks = [
+            AzureNetwork(self.provider, network) for network
+            in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_networks(), filters)]
         return ClientPagedResultList(self.provider, networks)
 
@@ -976,12 +983,12 @@ class AzureSubnetService(BaseSubnetService):
 
         subnet_info = self.provider.azure_client\
             .create_subnet(
-                            network_id,
-                            subnet_name,
-                            {
-                                'address_prefix': cidr_block
-                            }
-                          )
+                network_id,
+                subnet_name,
+                {
+                    'address_prefix': cidr_block
+                }
+            )
 
         return AzureSubnet(self.provider, subnet_info)
 
@@ -1036,7 +1043,7 @@ class AzureRouterService(BaseRouterService):
         filters = {'Name': name}
         routes = [AzureRouter(self.provider, route)
                   for route in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_route_tables(), filters)]
+                  self.provider.azure_client.list_route_tables(), filters)]
 
         return ClientPagedResultList(self.provider, routes)
 
