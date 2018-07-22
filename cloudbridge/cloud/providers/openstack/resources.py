@@ -55,6 +55,7 @@ from neutronclient.common.exceptions import PortNotFoundClient
 import novaclient.exceptions as novaex
 
 from openstack.exceptions import HttpException
+from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
 
 import swiftclient
@@ -967,7 +968,8 @@ class OpenStackFloatingIPContainer(BaseFloatingIPContainer):
         try:
             return OpenStackFloatingIP(
                 self._provider, self._provider.os_conn.network.get_ip(fip_id))
-        except ResourceNotFound:
+        except (ResourceNotFound, NotFoundException):
+            log.debug("Floating IP %s not found.", fip_id)
             return None
 
     def list(self, limit=None, marker=None):

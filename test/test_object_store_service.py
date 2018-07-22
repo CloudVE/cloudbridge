@@ -9,6 +9,7 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 from unittest import skip
 
+from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -166,6 +167,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_generate_url(self):
+        if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
+            raise self.skipTest("Skip until OpenStack dev impl works")
+
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.storage.buckets.create(name)
 
