@@ -5,6 +5,12 @@ import inspect
 import ipaddress
 import logging
 import os
+try:
+    from urllib.parse import urlparse
+    from urllib.parse import urljoin
+except ImportError:  # python 2
+    from urlparse import urlparse
+    from urlparse import urljoin
 
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
@@ -53,7 +59,7 @@ from openstack.exceptions import ResourceNotFound
 
 import swiftclient
 from swiftclient.service import SwiftService, SwiftUploadObject
-
+from swiftclient.utils import generate_temp_url
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
@@ -1385,17 +1391,15 @@ class OpenStackBucketObject(BaseBucketObject):
         return result
 
     def generate_url(self, expires_in=0):
-        """
-        Generates a URL to this object.
-
-        If the object is public, `expires_in` argument is not necessary, but if
-        the object is private, the life time of URL is set using `expires_in`
-        argument.
-
-        See here for implementation details:
-        http://stackoverflow.com/a/37057172
-        """
-        raise NotImplementedError("This functionality is not implemented yet.")
+        # Set a temp url key on the object (http://bit.ly/2NBiXGD)
+        temp_url_key = "cloudbridge-tmp-url-key"
+        self._provider.swift.post_account(
+            headers={"x-object-meta-Temp-URL-Key": temp_url_key})
+        base_url = urlparse(self._provider.swift.get_service_auth()[0])
+        access_point = "{0}://{1}".format(base_url.scheme, base_url.netloc)
+        url_path = "/".join([base_url.path, self.cbcontainer.name, self.name])
+        return urljoin(access_point, generate_temp_url(url_path, expires_in,
+                                                       temp_url_key, 'GET'))
 
 
 class OpenStackBucket(BaseBucket):
