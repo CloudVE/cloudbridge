@@ -1230,7 +1230,7 @@ class OpenStackVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
         except HttpException as e:
             self.firewall.refresh()
             # 409=Conflict, raised for duplicate rule
-            if e.http_status == 409:
+            if e.status_code == 409:
                 existing = self.find(direction=direction, protocol=protocol,
                                      from_port=from_port, to_port=to_port,
                                      cidr=cidr, src_dest_fw_id=src_dest_fw_id)
