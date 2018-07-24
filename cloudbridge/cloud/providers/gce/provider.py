@@ -16,7 +16,6 @@ from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 import googleapiclient
 from googleapiclient import discovery
 
-from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
 from .services import GCEComputeService
@@ -287,13 +286,9 @@ class GCECloudProvider(BaseCloudProvider):
     @property
     def _credentials(self):
         if not self._credentials_cache:
-            if self.credentials_dict:
-                self._credentials_cache = (
-                        ServiceAccountCredentials.from_json_keyfile_dict(
-                                self.credentials_dict))
-            else:
-                self._credentials_cache = (
-                        GoogleCredentials.get_application_default())
+            self._credentials_cache = (
+                    ServiceAccountCredentials.from_json_keyfile_dict(
+                            self.credentials_dict))
         return self._credentials_cache
 
     def sign_blob(self, string_to_sign):
