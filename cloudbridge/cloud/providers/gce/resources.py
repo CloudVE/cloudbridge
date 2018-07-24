@@ -2056,7 +2056,7 @@ class GCSObject(BaseBucketObject):
         """
         expiration = calendar.timegm(time.gmtime()) + 2 * 24 * 60 * 60
         signature = self._provider.sign_blob(
-                'GET\n\n\n%d\n%s/%s' %
+                'GET\n\n\n%d\n/%s/%s' %
                 (expiration, self._obj['bucket'], self.name))
         encoded_signature = base64.b64encode(signature)
         url_encoded_signature = (encoded_signature.replace('+', '%2B')

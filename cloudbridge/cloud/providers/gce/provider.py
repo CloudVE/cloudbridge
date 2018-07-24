@@ -297,7 +297,7 @@ class GCECloudProvider(BaseCloudProvider):
         return self._credentials_cache
 
     def sign_blob(self, string_to_sign):
-        return self._credentials.sign_blob([string_to_sign])[1]
+        return self._credentials.sign_blob(string_to_sign)[1]
 
     @property
     def client_id(self):
