@@ -952,21 +952,34 @@ class AzureSubnetService(BaseSubnetService):
                                      self._list_subnets(network),
                                      limit=limit, marker=marker)
 
-    def _list_subnets(self, network=None):
+    def _list_subnets(self, network="bla"):
         result_list = []
         if network:
             network_id = network.id \
                 if isinstance(network, Network) else network
             result_list = self.provider.azure_client.list_subnets(network_id)
         else:
-            for net in self.provider.azure_client.list_networks():
-                result_list.extend(self.provider.azure_client.list_subnets(
-                    net.id
-                ))
+            for net in self.provider.networking.networks:
+                try:
+                    result_list.extend(self.provider.azure_client.list_subnets(
+                        net.id
+                    ))
+                except CloudError as cloudError:
+                    message = cloudError.message
+                    if "not found" in message and "virtualNetworks" in message:
+                        log.exception(cloudError)
+                    else:
+                        raise cloudError
         subnets = [AzureSubnet(self.provider, subnet)
                    for subnet in result_list]
 
         return subnets
+
+    def find(self, network=None, **kwargs):
+        obj_list = self._list_subnets(network)
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def create(self, network, cidr_block, name=None, **kwargs):
         """

@@ -523,7 +523,7 @@ class AzureVolume(BaseVolume):
         for vm in self._provider.azure_client.list_vm():
             for item in vm.storage_profile.data_disks:
                 if item.managed_disk and \
-                                item.managed_disk.id == self.resource_id:
+                        item.managed_disk.id == self.resource_id:
                     vm.storage_profile.data_disks.remove(item)
                     self._provider.azure_client.update_vm(vm.id, vm)
 

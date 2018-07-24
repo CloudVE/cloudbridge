@@ -228,7 +228,6 @@ matrix:
       env: TOX_ENV=pypy-azure TOX_TEST=test.test_image_service
     - python: pypy-5.3.1
       env: TOX_ENV=pypy-openstack TOX_TEST=test.test_image_service
-
 before_install:
     - |
       case "$TRAVIS_EVENT_TYPE" in
