@@ -2187,7 +2187,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def generate_url(self, expires_in=0):
+    def generate_url(self, expires_in=3600):
         """
         Generate a URL to this object.
 
