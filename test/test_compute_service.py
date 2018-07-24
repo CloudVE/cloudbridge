@@ -9,7 +9,6 @@ from cloudbridge.cloud.interfaces import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import SnapshotState
-from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMType
 
 import six
@@ -319,8 +318,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
-            fw.rules.create(direction=TrafficDirection.INBOUND, protocol='tcp',
-                            from_port=1111, to_port=1111, cidr='0.0.0.0/0')
 
             # Check adding a VM firewall to a running instance
             test_inst.add_vm_firewall(fw)
@@ -353,13 +350,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 router.attach_subnet(subnet)
                 gateway = net.gateways.get_or_create_inet_gateway(name)
                 router.attach_gateway(gateway)
-                # check whether adding an elastic ip works
-                fip = gateway.floating_ips.create()
-                self.assertFalse(
-                    fip.in_use,
-                    "Newly created floating IP address should not be in use.")
+                fip = None
 
                 with helpers.cleanup_action(lambda: fip.delete()):
+                    # check whether adding an elastic ip works
+                    fip = gateway.floating_ips.create()
+                    self.assertFalse(
+                        fip.in_use,
+                        "Newly created floating IP should not be in use.")
+
                     with helpers.cleanup_action(
                             lambda: test_inst.remove_floating_ip(fip)):
                         test_inst.add_floating_ip(fip)

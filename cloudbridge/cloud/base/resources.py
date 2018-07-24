@@ -356,10 +356,10 @@ class BasePageableObjectMixin(PageableObjectMixin):
     """
 
     def __iter__(self):
-        for result in self.list_all():
+        for result in self.iter():
             yield result
 
-    def list_all(self, **kwargs):
+    def iter(self, **kwargs):
         result_list = self.list(**kwargs)
         if result_list.supports_server_paging:
             for result in result_list:
@@ -867,8 +867,8 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                 self.name == other.name)
 
     def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.name)
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.name, self.id)
 
 
 class BaseBucket(BaseCloudResource, Bucket):
@@ -906,8 +906,8 @@ class BaseBucket(BaseCloudResource, Bucket):
                 self.name == other.name)
 
     def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.name)
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.name, self.id)
 
 
 class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):

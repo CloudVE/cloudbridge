@@ -1,4 +1,5 @@
 import hashlib
+import time
 import uuid
 from collections import namedtuple
 
@@ -22,6 +23,8 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
 
@@ -82,7 +85,7 @@ class GCEKeyPairService(BaseKeyPairService):
         """
         Returns a KeyPair given its ID.
         """
-        for kp in self.list():
+        for kp in self:
             if kp.id == key_pair_id:
                 return kp
         else:
@@ -107,16 +110,16 @@ class GCEKeyPairService(BaseKeyPairService):
 
     def _get_or_add_sshkey_entry(self, metadata):
         """
-        Get the sshKeys entry from commonInstanceMetadata/items.
+        Get the ssh-keys entry from commonInstanceMetadata/items.
         If an entry does not exist, adds a new empty entry
         """
         sshkey_entry = None
         entries = [item for item in metadata.get('items', [])
-                   if item['key'] == 'sshKeys']
+                   if item['key'] == 'ssh-keys']
         if entries:
             sshkey_entry = entries[0]
         else:  # add a new entry
-            sshkey_entry = {'key': 'sshKeys', 'value': ''}
+            sshkey_entry = {'key': 'ssh-keys', 'value': ''}
             if 'items' not in metadata:
                 metadata['items'] = [sshkey_entry]
             else:
@@ -180,31 +183,44 @@ class GCEKeyPairService(BaseKeyPairService):
         key_pairs = []
         for gce_kp in self._iter_gce_key_pairs():
             kp_id = self.gce_kp_to_id(gce_kp)
-            kp_name = gce_kp.email
-            key_pairs.append(GCEKeyPair(self.provider, kp_id, kp_name))
+            key_pairs.append(GCEKeyPair(self.provider, kp_id, gce_kp.email))
         return ClientPagedResultList(self.provider, key_pairs,
                                      limit=limit, marker=marker)
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, **kwargs):
         """
         Searches for a key pair by a given list of attributes.
         """
-        found_kps = []
-        for kp in self.list():
-            if kp.name == name:
-                found_kps.append(kp)
-        return ClientPagedResultList(self.provider, found_kps,
-                                     limit=limit, marker=marker)
+        kp_name = kwargs.get('name', None)
+        kp_id = kwargs.get('id', None)
+        for parameter in kwargs:
+            if parameter not in ('id', 'name'):
+                cb.log.error('Unrecognised parameters for search: %s. '
+                             'Supported attributes: id, name', parameter)
 
-    def create(self, name):
+        out = []
+        for kp in self:
+            if kp_name is not None and kp.name != kp_name:
+                continue
+            if kp_id is not None and kp.id != kp_id:
+                continue
+            out.append(kp)
+        return out
+
+    def create(self, name, public_key_material=None):
         GCEKeyPair.assert_valid_resource_name(name)
-        kp = self.find(name=name)
-        if kp:
-            return kp
 
-        private_key, public_key = helpers.generate_key_pair()
-        kp_info = GCEKeyPairService.GCEKeyInfo(name + u":ssh-rsa",
-                                               public_key, name)
+        if self.find(name=name):
+            raise DuplicateResourceException(
+                'A KeyPair with the same name %s exists', name)
+        private_key = None
+        if not public_key_material:
+            private_key, public_key_material = helpers.generate_key_pair()
+        parts = public_key_material.split(' ')
+        if len(parts) == 2:
+            public_key_material = parts[1]
+        kp_info = GCEKeyPairService.GCEKeyInfo(
+            '%s:ssh-rsa' % name, public_key_material, name)
 
         def _add_kp(gce_kp_generator):
             kp_list = []
@@ -216,7 +232,7 @@ class GCEKeyPairService(BaseKeyPairService):
 
         self.gce_metadata_save_op(_add_kp)
         return GCEKeyPair(self.provider, self.gce_kp_to_id(kp_info), name,
-                          kp_material=private_key)
+                          private_key)
 
 
 class GCEVMFirewallService(BaseVMFirewallService):
@@ -245,7 +261,13 @@ class GCEVMFirewallService(BaseVMFirewallService):
     def create(self, name, description, network_id=None):
         GCEVMFirewall.assert_valid_resource_name(name)
         network = self.provider.networking.networks.get(network_id)
-        return GCEVMFirewall(self._delegate, name, network, description)
+        fw = GCEVMFirewall(self._delegate, name, network, description)
+        # This rule exists implicitly. Add it explicitly so that the firewall
+        # is not empty and the rule is shown by list/get/find methods.
+        fw.rules.create_with_priority(
+                direction=TrafficDirection.OUTBOUND, protocol='tcp',
+                priority=65534, cidr='0.0.0.0/0')
+        return fw
 
     def find(self, name, limit=None, marker=None):
         """
@@ -665,7 +687,8 @@ class GCENetworkService(BaseNetworkService):
         GCE networks are global. There is at most one network with a given
         name.
         """
-        return [self.get(name)]
+        network = self.get(name)
+        return [network] if network else []
 
     def get_by_name(self, network_name):
         if network_name is None:
@@ -674,6 +697,7 @@ class GCENetworkService(BaseNetworkService):
         return None if len(networks) == 0 else networks[0]
 
     def list(self, limit=None, marker=None, filter=None):
+        networks = []
         try:
             response = (self.provider
                             .gce_compute
@@ -681,13 +705,12 @@ class GCENetworkService(BaseNetworkService):
                             .list(project=self.provider.project_name,
                                   filter=filter)
                             .execute())
-            networks = []
             for network in response.get('items', []):
                 networks.append(GCENetwork(self.provider, network))
-            return networks
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return []
+        return ClientPagedResultList(self.provider, networks,
+                                     limit=limit, marker=marker)
 
     def _create(self, name, cidr_block, create_subnetworks):
         """
@@ -736,7 +759,7 @@ class GCENetworkService(BaseNetworkService):
         to add additional subnets later.
         """
         GCENetwork.assert_valid_resource_name(name)
-        return self._create(name, cidr_block, True)
+        return self._create(name, cidr_block, False)
 
     def get_or_create_default(self):
         return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, None, True)
@@ -780,7 +803,7 @@ class GCERouterService(BaseRouterService):
                                      response.get('nextPageToken'),
                                      False, data=routers)
 
-    def create(self, network, name=None):
+    def create(self, name, network):
         name = name if name else 'router-{0}'.format(uuid.uuid4())
         GCERouter.assert_valid_resource_name(name)
 
@@ -878,7 +901,7 @@ class GCESubnetService(BaseSubnetService):
             name = 'subnet-{0}'.format(uuid.uuid4())
         GCESubnet.assert_valid_resource_name(name)
         region_name = self._zone_to_region_name(zone)
-        for subnet in self.list_all(network=network):
+        for subnet in self.iter(network=network):
             if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
                 if subnet.region_name != region_name:
                     cb.log.error('Failed to create subnetwork in region %s: '
@@ -889,7 +912,6 @@ class GCESubnetService(BaseSubnetService):
                 return subnet
             if subnet.name == name and subnet.region_name == region_name:
                 return subnet
-
 
         body = {'ipCidrRange': cidr_block,
                 'name': name,
@@ -921,7 +943,7 @@ class GCESubnetService(BaseSubnetService):
         zone.
         """
         network = self.provider.networking.networks.get_or_create_default()
-        subnets = list(self.list_all(network=network, zone=zone))
+        subnets = list(self.iter(network=network, zone=zone))
         if len(subnets) > 1:
             cb.log.warning('The default network has more than one subnetwork '
                            'in a region')
@@ -931,21 +953,18 @@ class GCESubnetService(BaseSubnetService):
         return None
 
     def delete(self, subnet):
-        network_url = self.provider.parse_url(subnet.network_url)
-        if subnet.name == network_url.parameters['network']:
-            # This is an auto subnetwork of an auto mode network. We cannot
-            # delete it. It will be deleted automatically when the network is
-            # deleted.
-            return
-
-        response = (self.provider
-                        .gce_compute
-                        .subnetworks()
-                        .delete(project=self.provider.project_name,
-                                region=subnet.region_name,
-                                subnetwork=subnet.name)
-                        .execute())
-        self._provider.wait_for_operation(response, region=subnet.region_name)
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .subnetworks()
+                            .delete(project=self.provider.project_name,
+                                    region=subnet.region_name,
+                                    subnetwork=subnet.name)
+                            .execute())
+            self._provider.wait_for_operation(
+                response, region=subnet.region_name)
+        except googleapiclient.errors.HttpError as http_error:
+            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
 
     def _zone_to_region_name(self, zone):
         if zone:
@@ -1233,6 +1252,7 @@ class GCSBucketService(BaseBucketService):
                             .execute())
             if 'error' in response:
                 return None
+            time.sleep(2)
             return GCSBucket(self.provider, response)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)

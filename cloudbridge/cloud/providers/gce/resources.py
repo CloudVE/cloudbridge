@@ -1,10 +1,13 @@
 """
 DataTypes used by this provider
 """
+import base64
+import calendar
 import hashlib
 import inspect
 import io
 import math
+import time
 import uuid
 
 import cloudbridge as cb
@@ -56,11 +59,11 @@ except NameError:
 
 class GCEKeyPair(BaseKeyPair):
 
-    def __init__(self, provider, kp_id, kp_name, kp_material=None):
+    def __init__(self, provider, kp_id, kp_name, private_key=None):
         super(GCEKeyPair, self).__init__(provider, None)
         self._kp_id = kp_id
         self._kp_name = kp_name
-        self._kp_material = kp_material
+        self._private_key = private_key
 
     @property
     def id(self):
@@ -68,8 +71,7 @@ class GCEKeyPair(BaseKeyPair):
 
     @property
     def name(self):
-        # use e-mail as keyname if possible, or ID if not
-        return self._kp_name or self.id
+        return self._kp_name
 
     def delete(self):
         svc = self._provider.security.key_pairs
@@ -87,11 +89,7 @@ class GCEKeyPair(BaseKeyPair):
 
     @property
     def material(self):
-        return self._kp_material
-
-    @material.setter
-    def material(self, value):
-        self._kp_material = value
+        return self._private_key
 
 
 class GCEVMType(BaseVMType):
@@ -270,8 +268,8 @@ class GCEFirewallsDelegate(object):
             self._delete_firewall(firewall)
         self._update_list_response()
 
-    def add_firewall(self, tag, direction, protocol, port, src_dest_range,
-                     src_dest_tag, description, network_name):
+    def add_firewall(self, tag, direction, protocol, priority, port,
+                     src_dest_range, src_dest_tag, description, network_name):
         """
         Create a new firewall.
         """
@@ -306,6 +304,8 @@ class GCEFirewallsDelegate(object):
                                'tags. Only IP ranges are acceptable.')
             else:
                 firewall['sourceTags'] = [src_dest_tag]
+        if priority is not None:
+            firewall['priority'] = priority
         project_name = self._provider.project_name
         try:
             response = (self._provider
@@ -548,8 +548,9 @@ class GCEVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
         else:
             return to_port
 
-    def create(self, direction, protocol, from_port=None, to_port=None,
-               cidr=None, src_dest_fw=None):
+    def create_with_priority(self, direction, protocol, priority,
+                             from_port=None, to_port=None, cidr=None,
+                             src_dest_fw=None):
         port = GCEVMFirewallRuleContainer.to_port_range(from_port, to_port)
         src_dest_tag = None
         src_dest_fw_id = None
@@ -557,7 +558,7 @@ class GCEVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
             src_dest_tag = src_dest_fw.name
             src_dest_fw_id = src_dest_fw.id
         if not self.firewall.delegate.add_firewall(
-                self.firewall.name, direction, protocol, port, cidr,
+                self.firewall.name, direction, protocol, priority, port, cidr,
                 src_dest_tag, self.firewall.description,
                 self.firewall.network.name):
             return None
@@ -567,6 +568,11 @@ class GCEVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
         if len(rules) < 1:
             return None
         return rules[0]
+
+    def create(self, direction, protocol, from_port=None, to_port=None,
+               cidr=None, src_dest_fw=None):
+        return self.create_with_priority(direction, protocol, 1000, from_port,
+                                         to_port, cidr, src_dest_fw)
 
 
 class GCEVMFirewallRule(BaseVMFirewallRule):
@@ -736,9 +742,10 @@ class GCEMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
+        name = self.name
         self._gce_image = self._provider.get_resource('images', self.id)
         if not self._gce_image:
-            self._gce_image = {'status': 'UNKNOWN'}
+            self._gce_image = {'name': name, 'status': 'UNKNOWN'}
 
 
 class GCEInstance(BaseInstance):
@@ -814,7 +821,7 @@ class GCEInstance(BaseInstance):
                 if 'natIP' in access_config:
                     ips.append(access_config['natIP'])
         for ip in self.inet_gateway.floating_ips:
-            if ip.in_use():
+            if ip.in_use:
                 if ip.private_ip in self.private_ips:
                     ips.append(ip.public_ip)
         return ips
@@ -877,15 +884,16 @@ class GCEInstance(BaseInstance):
         """
         Permanently terminate this instance.
         """
+        name = self.name
         response = (self._provider
                         .gce_compute
                         .instances()
                         .delete(project=self._provider.project_name,
                                 zone=self.zone_name,
-                                instance=self.name)
+                                instance=name)
                         .execute())
         self._provider.wait_for_operation(response, zone=self.zone_name)
-        self._gce_instance = {'status': 'UNKNOWN'}
+        self._gce_instance = {'name': name, 'status': 'UNKNOWN'}
 
     def stop(self):
         """
@@ -958,7 +966,9 @@ class GCEInstance(BaseInstance):
         """
         Get the name of the key pair associated with this instance.
         """
-        return self._provider.security.key_pairs.name
+        for kp in self._provider.security.key_pairs:
+            return kp.name
+        return None
 
     @property
     def inet_gateway(self):
@@ -1005,7 +1015,7 @@ class GCEInstance(BaseInstance):
         try:
             for target_instance in helpers.iter_all(
                     self._provider.gce_compute.targetInstances(),
-                    project=self.name,
+                    project=self._provider.project_name,
                     zone=self.zone_name):
                 url = self._provider.parse_url(target_instance['instance'])
                 if url.parameters['instance'] == self.name:
@@ -1031,7 +1041,7 @@ class GCEInstance(BaseInstance):
             response = (self._provider
                             .gce_compute
                             .targetInstances()
-                            .insert(project=self.name,
+                            .insert(project=self._provider.project_name,
                                     zone=self.zone_name,
                                     body=body)
                             .execute())
@@ -1148,54 +1158,46 @@ class GCEInstance(BaseInstance):
             return False
         return True
 
-    def add_floating_ip(self, ip_address):
+    def add_floating_ip(self, floating_ip):
         """
         Add an elastic IP address to this instance.
         """
-        for ip in self.inet_gateway.floating_ips:
-            if ip.public_ip == ip_address:
-                if ip.in_use():
-                    if ip.private_ip not in self.private_ips:
-                        cb.log.warning(
-                            'Floating IP "%s" is already associated to "%s".',
-                            ip_address, self.name)
-                    return
-                target_instance = self._get_target_instance()
-                if not target_instance:
-                    cb.log.warning(
-                            'Could not create a targetInstance for "%s"',
-                            self.name)
-                    return
-                if not self._forward(ip, target_instance):
-                    cb.log.warning('Could not forward "%s" to "%s"',
-                                   ip.public_ip, target_instance['selfLink'])
-                return
-        cb.log.warning('Floating IP "%s" does not exist.', ip_address)
+        fip = (floating_ip if isinstance(floating_ip, GCEFloatingIP)
+               else self.inet_gateway.floating_ips.get(floating_ip))
+        if fip.in_use:
+            if fip.private_ip not in self.private_ips:
+                cb.log.warning('Floating IP "%s" is not associated to "%s"',
+                               fip.public_ip, self.name)
+            return
+        target_instance = self._get_target_instance()
+        if not target_instance:
+            cb.log.warning('Could not create a targetInstance for "%s"',
+                           self.name)
+            return
+        if not self._forward(fip, target_instance):
+            cb.log.warning('Could not forward "%s" to "%s"',
+                           fip.public_ip, target_instance['selfLink'])
 
-    def remove_floating_ip(self, ip_address):
+    def remove_floating_ip(self, floating_ip):
         """
         Remove a elastic IP address from this instance.
         """
-        for ip in self.inet_gateway.floating_ips:
-            if ip.public_ip == ip_address:
-                if not ip.in_use() or ip.private_ip not in self.private_ips:
-                    cb.log.warning(
-                        'Floating IP "%s" is not associated to "%s".',
-                        ip_address, self.name)
-                    return
-                target_instance = self._get_target_instance()
-                if not target_instance:
-                    # We should not be here.
-                    cb.log.warning('Something went wrong! "%s" is associated '
-                                   'to "%s" with no target instance',
-                                   ip_address, self.name)
-                    return
-                if not self._delete_existing_rule(ip, target_instance):
-                    cb.log.warning(
-                        'Could not remove floating IP "%s" from instance "%s"',
-                        ip.public_ip, self.name)
-                return
-        cb.log.warning('Floating IP "%s" does not exist.', ip_address)
+        fip = (floating_ip if isinstance(floating_ip, GCEFloatingIP)
+               else self.inet_gateway.floating_ips.get(floating_ip))
+        if not fip.in_use or fip.private_ip not in self.private_ips:
+            cb.log.warning('Floating IP "%s" is not associated to "%s"',
+                           fip.public_ip, self.name)
+            return
+        target_instance = self._get_target_instance()
+        if not target_instance:
+            # We should not be here.
+            cb.log.warning('Something went wrong! "%s" is associated to "%s" '
+                           'with no target instance', fip.public_ip, self.name)
+            return
+        if not self._delete_existing_rule(fip, target_instance):
+            cb.log.warning(
+                'Could not remove floating IP "%s" from instance "%s"',
+                fip.public_ip, self.name)
 
     @property
     def state(self):
@@ -1287,7 +1289,7 @@ class GCENetwork(BaseNetwork):
 
     @property
     def subnets(self):
-        return self._provider.networking.subnets.list(network=self)
+        return list(self._provider.networking.subnets.iter(network=self))
 
     def delete(self):
         try:
@@ -1377,37 +1379,7 @@ class GCEFloatingIP(BaseFloatingIP):
     def __init__(self, provider, floating_ip):
         super(GCEFloatingIP, self).__init__(provider)
         self._ip = floating_ip
-
-        # We use regional IPs to simulate floating IPs not global IPs because
-        # global IPs can be forwarded only to load balancing resources, not to
-        # a specific instance. Find out the region to which the IP belongs.
-        url = provider.parse_url(self._ip['region'])
-        self._region_name = url.parameters['region']
-
-        # Check if the address is used by a resource.
-        self._rule = None
-        self._target_instance = None
-        if 'users' in floating_ip and len(floating_ip['users']) > 0:
-            if len(floating_ip['users']) > 1:
-                cb.log.warning('Address "%s" in use by more than one resource',
-                               floating_ip['address'])
-            resource_parsed_url = provider.parse_url(floating_ip['users'][0])
-            resource = resource_parsed_url.get_resource()
-            if resource['kind'] == 'compute#forwardingRule':
-                self._rule = resource
-                target = provider.parse_url(resource['target']).get_resource()
-                if target['kind'] == 'compute#targetInstance':
-                    url = provider.parse_url(target['instance'])
-                    try:
-                        self._target_instance = url.get_resource()
-                    except googleapiclient.errors.HttpError:
-                        self._target_instance = GCEFloatingIP._DEAD_INSTANCE
-                else:
-                    cb.log.warning('Address "%s" is forwarded to a %s',
-                                   floating_ip['address'], target['kind'])
-            else:
-                cb.log.warning('Address "%s" in use by a %s',
-                               floating_ip['address'], resource['kind'])
+        self._process_ip_users()
 
     @property
     def id(self):
@@ -1415,7 +1387,11 @@ class GCEFloatingIP(BaseFloatingIP):
 
     @property
     def region_name(self):
-        return self._region_name
+        # We use regional IPs to simulate floating IPs not global IPs because
+        # global IPs can be forwarded only to load balancing resources, not to
+        # a specific instance. Find out the region to which the IP belongs.
+        url = self._provider.parse_url(self._ip['region'])
+        return url.parameters['region']
 
     @property
     def public_ip(self):
@@ -1428,6 +1404,7 @@ class GCEFloatingIP(BaseFloatingIP):
             return None
         return self._target_instance['networkInterfaces'][0]['networkIP']
 
+    @property
     def in_use(self):
         return True if self._target_instance else False
 
@@ -1439,26 +1416,55 @@ class GCEFloatingIP(BaseFloatingIP):
                             .gce_compute
                             .forwardingRules()
                             .delete(project=project_name,
-                                    region=self._region_name,
+                                    region=self.region_name,
                                     forwardingRule=self._rule['name'])
                             .execute())
             self._provider.wait_for_operation(response,
-                                              region=self._region_name)
+                                              region=self.region_name)
 
         # Release the address.
         response = (self._provider
                         .gce_compute
                         .addresses()
                         .delete(project=project_name,
-                                region=self._region_name,
+                                region=self.region_name,
                                 address=self._ip['name'])
                         .execute())
-        self._provider.wait_for_operation(response, region=self._region_name)
+        self._provider.wait_for_operation(response, region=self.region_name)
 
     def refresh(self):
         self._ip = self._provider.get_resource('addresses', self.id)
         if not self._ip:
             self._ip = {'status': 'UNKNOWN'}
+        else:
+            self._process_ip_users()
+
+    def _process_ip_users(self):
+        self._rule = None
+        self._target_instance = None
+
+        if 'users' in self._ip and len(self._ip['users']) > 0:
+            provider = self._provider
+            if len(self._ip['users']) > 1:
+                cb.log.warning('Address "%s" in use by more than one resource',
+                               self._ip['address'])
+            resource_parsed_url = provider.parse_url(self._ip['users'][0])
+            resource = resource_parsed_url.get_resource()
+            if resource['kind'] == 'compute#forwardingRule':
+                self._rule = resource
+                target = provider.parse_url(resource['target']).get_resource()
+                if target['kind'] == 'compute#targetInstance':
+                    url = provider.parse_url(target['instance'])
+                    try:
+                        self._target_instance = url.get_resource()
+                    except googleapiclient.errors.HttpError:
+                        self._target_instance = GCEFloatingIP._DEAD_INSTANCE
+                else:
+                    cb.log.warning('Address "%s" is forwarded to a %s',
+                                   self._ip['address'], target['kind'])
+            else:
+                cb.log.warning('Address "%s" in use by a %s',
+                               self._ip['address'], resource['kind'])
 
 
 class GCERouter(BaseRouter):
@@ -1515,10 +1521,14 @@ class GCERouter(BaseRouter):
             subnet = self._provider.networking.subnets.get(subnet)
         if subnet.network_id == self.network_id:
             return
-        cb.log.warning('GCE routers should be attached at creation time')
+        cb.log.warning('Google Cloud Routers automatically learn new subnets '
+                       'in your VPC network and announces them to your '
+                       'on-premises network')
 
     def detach_subnet(self, network_id):
-        cb.log.warning('GCE routers are always attached')
+        cb.log.warning('Cannot detach from subnet. Google Cloud Routers '
+                       'automatically learn new subnets in your VPC network '
+                       'and announces them to your on-premises network')
 
     def attach_gateway(self, gateway):
         pass
@@ -1604,6 +1614,7 @@ class GCESubnet(BaseSubnet):
 
     @name.setter
     def name(self, value):
+        GCESubnet.assert_valid_resource_name(value)
         if value == self.name:
             return
         cb.log.warning('Cannot change the name of a GCE subnetwork')
@@ -2040,7 +2051,21 @@ class GCSObject(BaseBucketObject):
              .execute())
 
     def generate_url(self, expires_in=0):
-        return self._obj['mediaLink']
+        """
+        Generates a signed URL accessible to everyone.
+        """
+        expiration = calendar.timegm(time.gmtime()) + 2 * 24 * 60 * 60
+        signature = self._provider.sign_blob(
+                'GET\n\n\n%d\n%s/%s' %
+                (expiration, self._obj['bucket'], self.name))
+        encoded_signature = base64.b64encode(signature)
+        url_encoded_signature = (encoded_signature.replace('+', '%2B')
+                                                  .replace('/', '%2F'))
+        return ('https://storage.googleapis.com/%s/%s?GoogleAccessId=%s'
+                '&Expires=%d&Signature=%s' % (self._obj['bucket'], self.name,
+                                              self._provider.client_id,
+                                              expiration,
+                                              url_encoded_signature))
 
 
 class GCSBucketContainer(BaseBucketContainer):
@@ -2127,6 +2152,7 @@ class GCSBucket(BaseBucket):
              .buckets()
              .delete(bucket=self.name)
              .execute())
+        time.sleep(2)
 
     def create_object(self, name):
         """

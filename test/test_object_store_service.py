@@ -37,7 +37,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
         with self.assertRaises(InvalidNameException):
             # underscores are not allowed in bucket names
-            create_bucket("cb-bucket")
+            create_bucket("cb_bucket")
 
         with self.assertRaises(InvalidNameException):
             # names of length less than 3 should raise an exception
