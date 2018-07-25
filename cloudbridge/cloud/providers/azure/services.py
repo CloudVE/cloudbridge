@@ -57,9 +57,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
         try:
             fws = self.provider.azure_client.get_vm_firewall(fw_id)
             return AzureVMFirewall(self.provider, fws)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def list(self, limit=None, marker=None):
@@ -270,9 +270,9 @@ class AzureVolumeService(BaseVolumeService):
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -354,9 +354,9 @@ class AzureSnapshotService(BaseSnapshotService):
         try:
             snapshot = self.provider.azure_client.get_snapshot(ss_id)
             return AzureSnapshot(self.provider, snapshot)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -725,9 +725,9 @@ class AzureInstanceService(BaseInstanceService):
         try:
             vm = self.provider.azure_client.get_vm(instance_id)
             return AzureInstance(self.provider, vm)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -756,9 +756,9 @@ class AzureImageService(BaseImageService):
         try:
             image = self.provider.azure_client.get_image(image_id)
             return AzureMachineImage(self.provider, image)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -840,9 +840,9 @@ class AzureNetworkService(BaseNetworkService):
         try:
             network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def list(self, limit=None, marker=None):
@@ -939,9 +939,9 @@ class AzureSubnetService(BaseSubnetService):
             azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
             return AzureSubnet(self.provider,
                                azure_subnet) if azure_subnet else None
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def list(self, network=None, limit=None, marker=None):
@@ -964,12 +964,12 @@ class AzureSubnetService(BaseSubnetService):
                     result_list.extend(self.provider.azure_client.list_subnets(
                         net.id
                     ))
-                except CloudError as cloudError:
-                    message = cloudError.message
+                except CloudError as cloud_error:
+                    message = cloud_error.message
                     if "not found" in message and "virtualNetworks" in message:
-                        log.exception(cloudError)
+                        log.exception(cloud_error)
                     else:
-                        raise cloudError
+                        raise cloud_error
         subnets = [AzureSubnet(self.provider, subnet)
                    for subnet in result_list]
 
@@ -1040,9 +1040,9 @@ class AzureRouterService(BaseRouterService):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
             return AzureRouter(self.provider, route)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):

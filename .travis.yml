@@ -13,221 +13,221 @@ matrix:
     - os: osx
   include:
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=py27-aws TOX_TEST=test_block_store_service
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=py27-azure TOX_TEST=test_block_store_service
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=py27-openstack TOX_TEST=test_block_store_service
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=py27-aws TOX_TEST=test_cloud_factory
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=py27-azure TOX_TEST=test_cloud_factory
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=py27-openstack TOX_TEST=test_cloud_factory
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=py27-aws TOX_TEST=test_cloud_helpers
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=py27-azure TOX_TEST=test_cloud_helpers
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=py27-openstack TOX_TEST=test_cloud_helpers
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_compute_service
+      env: TOX_ENV=py27-aws TOX_TEST=test_compute_service
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_compute_service
+      env: TOX_ENV=py27-azure TOX_TEST=test_compute_service
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_compute_service
+      env: TOX_ENV=py27-openstack TOX_TEST=test_compute_service
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_interface
+      env: TOX_ENV=py27-aws TOX_TEST=test_interface
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_interface
+      env: TOX_ENV=py27-azure TOX_TEST=test_interface
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_interface
+      env: TOX_ENV=py27-openstack TOX_TEST=test_interface
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_network_service
+      env: TOX_ENV=py27-aws TOX_TEST=test_network_service
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_network_service
+      env: TOX_ENV=py27-azure TOX_TEST=test_network_service
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_network_service
+      env: TOX_ENV=py27-openstack TOX_TEST=test_network_service
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=py27-aws TOX_TEST=test_object_life_cycle
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=py27-azure TOX_TEST=test_object_life_cycle
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=py27-openstack TOX_TEST=test_object_life_cycle
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=py27-aws TOX_TEST=test_object_store_service
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=py27-azure TOX_TEST=test_object_store_service
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=py27-openstack TOX_TEST=test_object_store_service
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_region_service
+      env: TOX_ENV=py27-aws TOX_TEST=test_region_service
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_region_service
+      env: TOX_ENV=py27-azure TOX_TEST=test_region_service
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_region_service
+      env: TOX_ENV=py27-openstack TOX_TEST=test_region_service
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_security_service
+      env: TOX_ENV=py27-aws TOX_TEST=test_security_service
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_security_service
+      env: TOX_ENV=py27-azure TOX_TEST=test_security_service
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_security_service
+      env: TOX_ENV=py27-openstack TOX_TEST=test_security_service
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=py27-aws TOX_TEST=test_vm_types_service
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=py27-azure TOX_TEST=test_vm_types_service
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=py27-openstack TOX_TEST=test_vm_types_service
     - python: 2.7
-      env: TOX_ENV=py27-aws TOX_TEST=test.test_image_service
+      env: TOX_ENV=py27-aws TOX_TEST=test_image_service
     - python: 2.7
-      env: TOX_ENV=py27-azure TOX_TEST=test.test_image_service
+      env: TOX_ENV=py27-azure TOX_TEST=test_image_service
     - python: 2.7
-      env: TOX_ENV=py27-openstack TOX_TEST=test.test_image_service
+      env: TOX_ENV=py27-openstack TOX_TEST=test_image_service
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=py36-aws TOX_TEST=test_block_store_service
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=py36-azure TOX_TEST=test_block_store_service
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=py36-openstack TOX_TEST=test_block_store_service
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=py36-aws TOX_TEST=test_cloud_factory
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=py36-azure TOX_TEST=test_cloud_factory
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=py36-openstack TOX_TEST=test_cloud_factory
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=py36-aws TOX_TEST=test_cloud_helpers
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=py36-azure TOX_TEST=test_cloud_helpers
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=py36-openstack TOX_TEST=test_cloud_helpers
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_compute_service
+      env: TOX_ENV=py36-aws TOX_TEST=test_compute_service
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_compute_service
+      env: TOX_ENV=py36-azure TOX_TEST=test_compute_service
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_compute_service
+      env: TOX_ENV=py36-openstack TOX_TEST=test_compute_service
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_interface
+      env: TOX_ENV=py36-aws TOX_TEST=test_interface
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_interface
+      env: TOX_ENV=py36-azure TOX_TEST=test_interface
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_interface
+      env: TOX_ENV=py36-openstack TOX_TEST=test_interface
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_network_service
+      env: TOX_ENV=py36-aws TOX_TEST=test_network_service
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_network_service
+      env: TOX_ENV=py36-azure TOX_TEST=test_network_service
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_network_service
+      env: TOX_ENV=py36-openstack TOX_TEST=test_network_service
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=py36-aws TOX_TEST=test_object_life_cycle
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=py36-azure TOX_TEST=test_object_life_cycle
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=py36-openstack TOX_TEST=test_object_life_cycle
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=py36-aws TOX_TEST=test_object_store_service
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=py36-azure TOX_TEST=test_object_store_service
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=py36-openstack TOX_TEST=test_object_store_service
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_region_service
+      env: TOX_ENV=py36-aws TOX_TEST=test_region_service
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_region_service
+      env: TOX_ENV=py36-azure TOX_TEST=test_region_service
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_region_service
+      env: TOX_ENV=py36-openstack TOX_TEST=test_region_service
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_security_service
+      env: TOX_ENV=py36-aws TOX_TEST=test_security_service
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_security_service
+      env: TOX_ENV=py36-azure TOX_TEST=test_security_service
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_security_service
+      env: TOX_ENV=py36-openstack TOX_TEST=test_security_service
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=py36-aws TOX_TEST=test_vm_types_service
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=py36-azure TOX_TEST=test_vm_types_service
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=py36-openstack TOX_TEST=test_vm_types_service
     - python: 3.6
-      env: TOX_ENV=py36-aws TOX_TEST=test.test_image_service
+      env: TOX_ENV=py36-aws TOX_TEST=test_image_service
     - python: 3.6
-      env: TOX_ENV=py36-azure TOX_TEST=test.test_image_service
+      env: TOX_ENV=py36-azure TOX_TEST=test_image_service
     - python: 3.6
-      env: TOX_ENV=py36-openstack TOX_TEST=test.test_image_service
+      env: TOX_ENV=py36-openstack TOX_TEST=test_image_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=pypy-aws TOX_TEST=test_block_store_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=pypy-azure TOX_TEST=test_block_store_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_block_store_service
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_block_store_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=pypy-aws TOX_TEST=test_cloud_factory
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=pypy-azure TOX_TEST=test_cloud_factory
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_cloud_factory
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_cloud_factory
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=pypy-aws TOX_TEST=test_cloud_helpers
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=pypy-azure TOX_TEST=test_cloud_helpers
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_cloud_helpers
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_cloud_helpers
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_compute_service
+      env: TOX_ENV=pypy-aws TOX_TEST=test_compute_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_compute_service
+      env: TOX_ENV=pypy-azure TOX_TEST=test_compute_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_compute_service
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_compute_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_interface
+      env: TOX_ENV=pypy-aws TOX_TEST=test_interface
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_interface
+      env: TOX_ENV=pypy-azure TOX_TEST=test_interface
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_interface
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_interface
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_network_service
+      env: TOX_ENV=pypy-aws TOX_TEST=test_network_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_network_service
+      env: TOX_ENV=pypy-azure TOX_TEST=test_network_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_network_service
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_network_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=pypy-aws TOX_TEST=test_object_life_cycle
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=pypy-azure TOX_TEST=test_object_life_cycle
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_object_life_cycle
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_object_life_cycle
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=pypy-aws TOX_TEST=test_object_store_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=pypy-azure TOX_TEST=test_object_store_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_object_store_service
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_object_store_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_region_service
+      env: TOX_ENV=pypy-aws TOX_TEST=test_region_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_region_service
+      env: TOX_ENV=pypy-azure TOX_TEST=test_region_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_region_service
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_region_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_security_service
+      env: TOX_ENV=pypy-aws TOX_TEST=test_security_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_security_service
+      env: TOX_ENV=pypy-azure TOX_TEST=test_security_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_security_service
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_security_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=pypy-aws TOX_TEST=test_vm_types_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=pypy-azure TOX_TEST=test_vm_types_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_vm_types_service
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_vm_types_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-aws TOX_TEST=test.test_image_service
+      env: TOX_ENV=pypy-aws TOX_TEST=test_image_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-azure TOX_TEST=test.test_image_service
+      env: TOX_ENV=pypy-azure TOX_TEST=test_image_service
     - python: pypy-5.3.1
-      env: TOX_ENV=pypy-openstack TOX_TEST=test.test_image_service
+      env: TOX_ENV=pypy-openstack TOX_TEST=test_image_service
 before_install:
     - |
       case "$TRAVIS_EVENT_TYPE" in
@@ -262,7 +262,7 @@ install:
     - pip install coveralls
     - pip install codecov
 script:
-    - tox -e $TOX_ENV -- -s -v --tests $TOX_TEST
+    - travis_wait 30 tox -e $TOX_ENV -- -s --tests test.$TOX_TEST
 after_script:
     - |
       case "$TRAVIS_EVENT_TYPE" in
@@ -283,4 +283,3 @@ after_script:
            coveralls & codecov & wait
            ;;
       esac
-
