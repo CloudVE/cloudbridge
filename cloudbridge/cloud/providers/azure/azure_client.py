@@ -1,5 +1,6 @@
 import datetime
 import logging
+import time
 from io import BytesIO
 
 from azure.common.credentials import ServicePrincipalCredentials
@@ -12,6 +13,8 @@ from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
+
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
 from . import helpers as azure_helpers
 
@@ -165,6 +168,29 @@ class AzureClient(object):
     @property
     def access_key_result(self):
         if not self._access_key_result:
+            timeout = self._config.get("default_wait_timeout")
+            interval = self._config.get("default_wait_interval")
+
+            assert timeout >= 0
+            assert interval >= 0
+            assert timeout >= interval
+
+            end_time = time.time() + timeout
+
+            while self.storage_account.provisioning_state != "Succeeded":
+                log.debug(
+                    "Object %s is in state: %s. Waiting another %s"
+                    " seconds to reach target state: Succeeded...",
+                    self.storage_account,
+                    self.storage_account.provisioning_state,
+                    int(end_time - time.time()))
+                time.sleep(interval)
+                if time.time() > end_time:
+                    raise WaitStateException(
+                        "Waited too long for object: {0} to become ready. It's"
+                        " still in state: {1}".format(self.storage_account,
+                                                      self.storage_account.
+                                                      provisioning_state))
             self._access_key_result = self.storage_client.storage_accounts. \
                 list_keys(self.resource_group, self.storage_account)
         return self._access_key_result
