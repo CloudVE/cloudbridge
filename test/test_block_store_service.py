@@ -38,7 +38,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 vol.wait_for([VolumeState.DELETED, VolumeState.UNKNOWN],
                              terminal_states=[VolumeState.ERROR])
 
-        raise Exception
         sit.check_crud(self, self.provider.storage.volumes, Volume,
                        "cb_createvol", create_vol, cleanup_vol)
 
