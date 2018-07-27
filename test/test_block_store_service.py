@@ -32,7 +32,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 helpers.get_provider_test_data(self.provider, "placement"))
 
         def cleanup_vol(vol):
-            print("--- vol: %s" % vol)
             if vol:
                 vol.delete()
                 vol.wait_for([VolumeState.DELETED, VolumeState.UNKNOWN],

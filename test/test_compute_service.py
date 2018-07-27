@@ -238,8 +238,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     snap.wait_for([SnapshotState.UNKNOWN],
                                   terminal_states=[SnapshotState.ERROR])
 
-            with helpers.cleanup_action(lambda:
-                                        cleanup_snap(test_snap)):
+            with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready()
 
                 lc = self.provider.compute.instances.create_launch_config()

@@ -78,8 +78,8 @@ class AWSMachineImage(BaseMachineImage):
     def name(self):
         try:
             return self._ec2_image.name
-        except AttributeError:
-            return None
+        except (AttributeError, ClientError) as e:
+            log.warn("Cannot get name for image {0}: {1}".format(self.id, e))
 
     @property
     def description(self):
@@ -387,7 +387,10 @@ class AWSVolume(BaseVolume):
     @property
     # pylint:disable=arguments-differ
     def name(self):
-        return find_tag_value(self._volume.tags, 'Name')
+        try:
+            return find_tag_value(self._volume.tags, 'Name')
+        except ClientError as e:
+            log.warn("Cannot get name for volume {0}: {1}".format(self.id, e))
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -497,7 +500,10 @@ class AWSSnapshot(BaseSnapshot):
     @property
     # pylint:disable=arguments-differ
     def name(self):
-        return find_tag_value(self._snapshot.tags, 'Name')
+        try:
+            return find_tag_value(self._snapshot.tags, 'Name')
+        except ClientError as e:
+            log.warn("Cannot get name for snap {0}: {1}".format(self.id, e))
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -1227,9 +1233,12 @@ class AWSInternetGateway(BaseInternetGateway):
         return None
 
     def delete(self):
-        if self.network_id:
-            self._gateway.detach_from_vpc(VpcId=self.network_id)
-        self._gateway.delete()
+        try:
+            if self.network_id:
+                self._gateway.detach_from_vpc(VpcId=self.network_id)
+            self._gateway.delete()
+        except ClientError as e:
+            log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
 
     @property
     def floating_ips(self):
