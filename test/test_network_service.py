@@ -21,7 +21,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 name=name, cidr_block='10.0.0.0/16')
 
         def cleanup_net(net):
-            self.provider.networking.networks.delete(network_id=net.id)
+            if net:
+                self.provider.networking.networks.delete(network_id=net.id)
 
         sit.check_crud(self, self.provider.networking.networks, Network,
                        "cb_crudnetwork", create_net, cleanup_net)
@@ -88,7 +89,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 network=net, cidr_block="10.0.0.0/24", name=name)
 
         def cleanup_subnet(subnet):
-            self.provider.networking.subnets.delete(subnet=subnet)
+            if subnet:
+                self.provider.networking.subnets.delete(subnet=subnet)
 
         net_name = 'cb_crudsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
@@ -109,7 +111,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             return fip
 
         def cleanup_fip(fip):
-            gw.floating_ips.delete(fip.id)
+            if fip:
+                gw.floating_ips.delete(fip.id)
 
         with helpers.cleanup_action(
                 lambda: helpers.delete_test_gateway(net, gw)):

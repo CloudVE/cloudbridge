@@ -32,10 +32,13 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 helpers.get_provider_test_data(self.provider, "placement"))
 
         def cleanup_vol(vol):
-            vol.delete()
-            vol.wait_for([VolumeState.DELETED, VolumeState.UNKNOWN],
-                         terminal_states=[VolumeState.ERROR])
+            print("--- vol: %s" % vol)
+            if vol:
+                vol.delete()
+                vol.wait_for([VolumeState.DELETED, VolumeState.UNKNOWN],
+                             terminal_states=[VolumeState.ERROR])
 
+        raise Exception
         sit.check_crud(self, self.provider.storage.volumes, Volume,
                        "cb_createvol", create_vol, cleanup_vol)
 
@@ -150,10 +153,10 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                                 description=name)
 
             def cleanup_snap(snap):
-                snap.delete()
-                snap.wait_for(
-                    [SnapshotState.UNKNOWN],
-                    terminal_states=[SnapshotState.ERROR])
+                if snap:
+                    snap.delete()
+                    snap.wait_for([SnapshotState.UNKNOWN],
+                                  terminal_states=[SnapshotState.ERROR])
 
             sit.check_crud(self, self.provider.storage.snapshots, Snapshot,
                            "cb_snap", create_snap, cleanup_snap)
@@ -186,10 +189,10 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                                  description=snap_name)
 
             def cleanup_snap(snap):
-                snap.delete()
-                snap.wait_for(
-                    [SnapshotState.UNKNOWN],
-                    terminal_states=[SnapshotState.ERROR])
+                if snap:
+                    snap.delete()
+                    snap.wait_for([SnapshotState.UNKNOWN],
+                                  terminal_states=[SnapshotState.ERROR])
 
             with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready()

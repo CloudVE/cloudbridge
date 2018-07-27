@@ -30,9 +30,10 @@ class CloudImageServiceTestCase(ProviderTestBase):
             return test_instance.create_image(name)
 
         def cleanup_img(img):
-            img.delete()
-            img.wait_for(
-                [MachineImageState.UNKNOWN, MachineImageState.ERROR])
+            if img:
+                img.delete()
+                img.wait_for(
+                    [MachineImageState.UNKNOWN, MachineImageState.ERROR])
 
         def extra_tests(img):
             # check image size
