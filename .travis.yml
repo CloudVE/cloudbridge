@@ -64,7 +64,7 @@ install:
     - pip install coveralls
     - pip install codecov
 script:
-    - tox -r -e $TOX_ENV -- -s
+    - tox -r -e $TOX_ENV
 after_script:
     - |
       case "$TRAVIS_EVENT_TYPE" in

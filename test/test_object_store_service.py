@@ -33,7 +33,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             return self.provider.storage.buckets.create(name)
 
         def cleanup_bucket(bucket):
-            bucket.delete()
+            if bucket:
+                bucket.delete()
 
         with self.assertRaises(InvalidNameException):
             # underscores are not allowed in bucket names
@@ -69,7 +70,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             return obj
 
         def cleanup_bucket_obj(bucket_obj):
-            bucket_obj.delete()
+            if bucket_obj:
+                bucket_obj.delete()
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             name = "cb-crudbucketobj-{0}".format(uuid.uuid4())
