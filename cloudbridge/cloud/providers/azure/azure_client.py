@@ -147,7 +147,7 @@ class AzureClient(object):
     """
     def __init__(self, config):
         self._config = config
-        self.subscription_id = config.get('azure_subscription_id')
+        self.subscription_id = str(config.get('azure_subscription_id'))
         self._credentials = ServicePrincipalCredentials(
             client_id=config.get('azure_client_id'),
             secret=config.get('azure_secret'),
@@ -168,6 +168,7 @@ class AzureClient(object):
     @property
     def access_key_result(self):
         if not self._access_key_result:
+            storage_account = self.storage_account
             timeout = self._config.get("default_wait_timeout")
             interval = self._config.get("default_wait_interval")
 
@@ -177,22 +178,23 @@ class AzureClient(object):
 
             end_time = time.time() + timeout
 
-            while self.storage_account.provisioning_state != "Succeeded":
+            while self.get_storage_account(storage_account).\
+                    provisioning_state.value != 'Succeeded':
                 log.debug(
-                    "Object %s is in state: %s. Waiting another %s"
-                    " seconds to reach target state: Succeeded...",
-                    self.storage_account,
-                    self.storage_account.provisioning_state,
+                    "Storage account %s is not in Succeeded state. "
+                    "Waiting another %s seconds to reach that state.",
+                    storage_account,
                     int(end_time - time.time()))
                 time.sleep(interval)
                 if time.time() > end_time:
                     raise WaitStateException(
-                        "Waited too long for object: {0} to become ready. It's"
-                        " still in state: {1}".format(self.storage_account,
-                                                      self.storage_account.
-                                                      provisioning_state))
+                        "Waited too long for storage account: {0} to "
+                        "become ready. It's still in state: {1}".format(
+                            storage_account,
+                            self.get_storage_account(storage_account).
+                            provisioning_state))
             self._access_key_result = self.storage_client.storage_accounts. \
-                list_keys(self.resource_group, self.storage_account)
+                list_keys(self.resource_group, storage_account)
         return self._access_key_result
 
     @property

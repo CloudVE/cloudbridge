@@ -93,7 +93,9 @@ class AzureCloudProvider(BaseCloudProvider):
                 'azure_resource_group': self.resource_group,
                 'azure_storage_account': self.storage_account,
                 'azure_public_key_storage_table_name':
-                    self.public_key_storage_table_name
+                    self.public_key_storage_table_name,
+                'default_wait_timeout': self.config.default_wait_timeout,
+                'default_wait_interval': self.config.default_wait_interval
             }
 
             self._azure_client = AzureClient(provider_config)
