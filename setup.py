@@ -43,7 +43,6 @@ REQS_DEV = ([
     'moto>=1.3.2',
     'sphinx>=1.3.1',
     'pydevd',
-    'nose-progressive',
     'flake8>=3.3.0',
     'flake8-import-order>=0.12'] + REQS_FULL
 )
