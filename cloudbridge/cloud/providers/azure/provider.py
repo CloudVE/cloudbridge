@@ -38,12 +38,17 @@ class AzureCloudProvider(BaseCloudProvider):
         self.resource_group = self._get_config_value(
             'azure_resource_group', os.environ.get('AZURE_RESOURCE_GROUP',
                                                    'cloudbridge'))
-        # Storage account name is limited to a max length of 24 characters
-        # so take part of the client id to keep it unique
+        # Storage account name is limited to a max length of 24 alphanum chars
+        # and unique across an account. Yet, all our operations are tied to a
+        # resource group, making it impossible to use a storage account
+        # defined in a different resource group from the one used by the
+        # current session. With that, base the name of the storage account on
+        # the current resource group, up to 24 chars in length.
         self.storage_account = self._get_config_value(
             'azure_storage_account',
-            os.environ.get('AZURE_STORAGE_ACCOUNT',
-                           'storageacc' + self.client_id[-12:]))
+            os.environ.get(
+                'AZURE_STORAGE_ACCOUNT', 'storageacc' + ''.join(
+                    ch for ch in self.resource_group if ch.isalnum())[-12:]))
 
         self.vm_default_user_name = self._get_config_value(
             'azure_vm_default_user_name', os.environ.get
