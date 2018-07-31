@@ -1403,6 +1403,9 @@ class OpenStackBucketObject(BaseBucketObject):
         return urljoin(access_point, generate_temp_url(url_path, expires_in,
                                                        temp_url_key, 'GET'))
 
+    def refresh(self):
+        self._obj = self.cbcontainer.objects.get(self.id)._obj
+
 
 class OpenStackBucket(BaseBucket):
 

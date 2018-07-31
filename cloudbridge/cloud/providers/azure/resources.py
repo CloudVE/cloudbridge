@@ -314,6 +314,10 @@ class AzureBucketObject(BaseBucketObject):
         return self._provider.azure_client.get_blob_url(
             self._container.name, self.name, expires_in)
 
+    def refresh(self):
+        self._key = self._provider.azure_client.get_blob(
+            self._container.name, self._key.name)
+
 
 class AzureBucket(BaseBucket):
     def __init__(self, provider, bucket):
