@@ -1396,7 +1396,7 @@ class OpenStackBucketObject(BaseBucketObject):
         # Set a temp url key on the object (http://bit.ly/2NBiXGD)
         temp_url_key = "cloudbridge-tmp-url-key"
         self._provider.swift.post_account(
-            headers={"x-object-meta-Temp-URL-Key": temp_url_key})
+            headers={"x-account-meta-temp-url-key": temp_url_key})
         base_url = urlparse(self._provider.swift.get_service_auth()[0])
         access_point = "{0}://{1}".format(base_url.scheme, base_url.netloc)
         url_path = "/".join([base_url.path, self.cbcontainer.name, self.name])
