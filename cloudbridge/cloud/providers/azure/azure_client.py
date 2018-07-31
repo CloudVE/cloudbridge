@@ -16,6 +16,8 @@ from azure.storage.blob import BlockBlobService
 
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
+from msrestazure.azure_exceptions import CloudError
+
 from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
@@ -585,13 +587,52 @@ class AzureClient(object):
                                              subnet_id)
         network_name = url_params.get(NETWORK_NAME)
         subnet_name = url_params.get(SUBNET_NAME)
-        result_delete = self.network_management_client \
-            .subnets.delete(
-                self.resource_group,
-                network_name,
-                subnet_name
-            )
-        result_delete.wait()
+
+        try:
+            result_delete = self.network_management_client \
+                .subnets.delete(
+                    self.resource_group,
+                    network_name,
+                    subnet_name
+                )
+            result_delete.wait()
+        except CloudError as cloud_error:
+            log.exception(cloud_error.message)
+            print(cloud_error.code)
+            if cloud_error.code != "InUseSubnetCannotBeDeleted":
+                raise cloud_error
+
+            else:
+                timeout = self._config.get("default_wait_timeout")
+                interval = self._config.get("default_wait_interval")
+
+                assert timeout >= 0
+                assert interval >= 0
+                assert timeout >= interval
+
+                end_time = time.time() + timeout
+
+                while time.time() < end_time:
+                    log.debug("Subnet %s is in use and cannot be deleted. "
+                              "Retrying every %s sec for another %s seconds.",
+                              subnet_id, interval, timeout)
+                    time.sleep(interval)
+                    try:
+                        result_delete = self.network_management_client \
+                            .subnets.delete(
+                                self.resource_group,
+                                network_name,
+                                subnet_name
+                            )
+                        result_delete.wait()
+                        break
+                    except CloudError as cloud_error:
+                        if cloud_error.code != "InUseSubnetCannotBeDeleted":
+                            raise cloud_error
+
+                raise WaitStateException(
+                    "Waited too long to delete subnet: {0}."
+                    "Subnet is still in use.".format(subnet_id))
 
     def create_floating_ip(self, public_ip_name, public_ip_parameters):
         return self.network_management_client.public_ip_addresses. \
