@@ -1278,11 +1278,8 @@ class AzureInstance(BaseInstance):
             self._provider.azure_client.delete_nic(nic_id)
         for data_disk in self._vm.storage_profile.data_disks:
             if data_disk.managed_disk:
-                disk = self._provider.azure_client.\
-                    get_disk(data_disk.managed_disk.id)
-                if disk and disk.tags \
-                        and disk.tags.get('delete_on_terminate',
-                                          'False') == 'True':
+                if self._vm.tags.get('delete_on_terminate',
+                                     'False') == 'True':
                     self._provider.azure_client.\
                         delete_disk(data_disk.managed_disk.id)
         if self._vm.storage_profile.os_disk.managed_disk:

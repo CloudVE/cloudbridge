@@ -550,6 +550,9 @@ class AzureInstanceService(BaseInstanceService):
         if key_pair:
             params['tags'].update(Key_Pair=key_pair.name)
 
+        for disk_def in storage_profile.get('data_disks', []):
+            params['tags'] = dict(disk_def.get('tags', {}), **params['tags'])
+
         if user_data:
             custom_data = base64.b64encode(bytes(ud, 'utf-8'))
             params['os_profile']['custom_data'] = str(custom_data, 'utf-8')

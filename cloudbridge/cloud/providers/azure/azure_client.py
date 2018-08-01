@@ -598,8 +598,8 @@ class AzureClient(object):
             result_delete.wait()
         except CloudError as cloud_error:
             log.exception(cloud_error.message)
-            print(cloud_error.code)
-            if cloud_error.code != "InUseSubnetCannotBeDeleted":
+            if "Subnet" not in cloud_error.message \
+                    or 'in use' not in cloud_error.message:
                 raise cloud_error
 
             else:
