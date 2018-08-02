@@ -480,7 +480,11 @@ class AzureInstanceService(BaseInstanceService):
             isinstance(vm_type, VMType) else vm_type
 
         if not subnet:
-            subnet = self.provider.networking.subnets.get_or_create_default()
+            # Azure has only a single zone per region; use the current one
+            zone = self.provider.compute.regions.get(
+                self.provider.region_name).zones[0]
+            subnet = self.provider.networking.subnets.get_or_create_default(
+                zone)
         else:
             subnet = (self.provider.networking.subnets.get(subnet)
                       if isinstance(subnet, str) else subnet)
@@ -1008,7 +1012,7 @@ class AzureSubnetService(BaseSubnetService):
 
         return AzureSubnet(self.provider, subnet_info)
 
-    def get_or_create_default(self, zone=None):
+    def get_or_create_default(self, zone):
         default_cidr = '10.0.1.0/24'
 
         # No provider-default Subnet exists, look for a library-default one

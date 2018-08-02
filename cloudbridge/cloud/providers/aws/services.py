@@ -42,6 +42,7 @@ from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
 from .resources import AWSNetwork
+from .resources import AWSPlacementZone
 from .resources import AWSRegion
 from .resources import AWSRouter
 from .resources import AWSSnapshot
@@ -724,11 +725,9 @@ class AWSSubnetService(BaseSubnetService):
         return subnet
 
     def get_or_create_default(self, zone):
-        if zone:
-            snl = self.svc.find('availabilityZone', zone)
-        else:
-            snl = self.svc.list()
-
+        zone_name = zone.name if isinstance(
+            zone, AWSPlacementZone) else zone
+        snl = self.svc.find('availabilityZone', zone_name)
         # Find first available default subnet by sorted order
         # of availability zone. (e.g. prefer us-east-1a over 1e,
         # This is because newer zones tend to have less compatibility

@@ -14,23 +14,24 @@ and 4 GB RAM.
 
 .. code-block:: python
 
-    img = provider.compute.images.get('ami-f4cc1de2')  # Ubuntu 16.04 on AWS
+    img = provider.compute.images.get('ami-759bc50a')  # Ubuntu 16.04 on AWS
     vm_type = sorted([t for t in provider.compute.vm_types
                       if t.vcpus >= 2 and t.ram >= 4],
                       key=lambda x: x.vcpus*x.ram)[0]
 
 In addition, CloudBridge instances must be launched into a private subnet.
 While it is possible to create complex network configurations as shown in the
-`Private networking`_ section, if you don't particularly care where the
-instance is launched, CloudBridge provides a convenience function to quickly
-obtain a default subnet for use.
+`Private networking`_ section, if you don't particularly care in which subnet
+the instance is launched, CloudBridge provides a convenience function to
+quickly obtain a default subnet for use. We just need to supply a zone to use.
 
 .. code-block:: python
 
-    subnet = provider.networking.subnets.get_or_create_default()
+    zone = provider.compute.regions.get(provider.region_name).zones[0]
+    subnet = provider.networking.subnets.get_or_create_default(zone)
 
 When launching an instance, you can also specify several optional arguments
-such as the firewall (a.k.a security group), a key pair, or instance user data.
+such as the firewall (aka security group), a key pair, or instance user data.
 To allow you to connect to the launched instances, we will also supply those
 parameters (note that we're making an assumption here these resources exist;
 if you don't have those resources under your account, take a look at the
