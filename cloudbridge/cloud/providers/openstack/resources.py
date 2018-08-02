@@ -5,6 +5,12 @@ import inspect
 import ipaddress
 import logging
 import os
+try:
+    from urllib.parse import urlparse
+    from urllib.parse import urljoin
+except ImportError:  # python 2
+    from urlparse import urlparse
+    from urlparse import urljoin
 
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
@@ -49,11 +55,12 @@ from neutronclient.common.exceptions import PortNotFoundClient
 import novaclient.exceptions as novaex
 
 from openstack.exceptions import HttpException
+from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
 
 import swiftclient
 from swiftclient.service import SwiftService, SwiftUploadObject
-
+from swiftclient.utils import generate_temp_url
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
@@ -961,7 +968,8 @@ class OpenStackFloatingIPContainer(BaseFloatingIPContainer):
         try:
             return OpenStackFloatingIP(
                 self._provider, self._provider.os_conn.network.get_ip(fip_id))
-        except ResourceNotFound:
+        except (ResourceNotFound, NotFoundException):
+            log.debug("Floating IP %s not found.", fip_id)
             return None
 
     def list(self, limit=None, marker=None):
@@ -1222,7 +1230,7 @@ class OpenStackVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
         except HttpException as e:
             self.firewall.refresh()
             # 409=Conflict, raised for duplicate rule
-            if e.http_status == 409:
+            if e.status_code == 409:
                 existing = self.find(direction=direction, protocol=protocol,
                                      from_port=from_port, to_port=to_port,
                                      cidr=cidr, src_dest_fw_id=src_dest_fw_id)
@@ -1342,7 +1350,7 @@ class OpenStackBucketObject(BaseBucketObject):
               ``swiftclient.service.get_conn`` factory method to
               ``self._provider._connect_swift``
 
-        .. seealso:: https://github.com/gvlproject/cloudbridge/issues/35#issuecomment-297629661 # noqa
+        .. seealso:: https://github.com/CloudVE/cloudbridge/issues/35#issuecomment-297629661 # noqa
         """
         upload_options = {}
         if 'segment_size' not in upload_options:
@@ -1384,18 +1392,19 @@ class OpenStackBucketObject(BaseBucketObject):
                 result = result and del_res['success']
         return result
 
-    def generate_url(self, expires_in=0):
-        """
-        Generates a URL to this object.
+    def generate_url(self, expires_in):
+        # Set a temp url key on the object (http://bit.ly/2NBiXGD)
+        temp_url_key = "cloudbridge-tmp-url-key"
+        self._provider.swift.post_account(
+            headers={"x-account-meta-temp-url-key": temp_url_key})
+        base_url = urlparse(self._provider.swift.get_service_auth()[0])
+        access_point = "{0}://{1}".format(base_url.scheme, base_url.netloc)
+        url_path = "/".join([base_url.path, self.cbcontainer.name, self.name])
+        return urljoin(access_point, generate_temp_url(url_path, expires_in,
+                                                       temp_url_key, 'GET'))
 
-        If the object is public, `expires_in` argument is not necessary, but if
-        the object is private, the life time of URL is set using `expires_in`
-        argument.
-
-        See here for implementation details:
-        http://stackoverflow.com/a/37057172
-        """
-        raise NotImplementedError("This functionality is not implemented yet.")
+    def refresh(self):
+        self._obj = self.cbcontainer.objects.get(self.id)._obj
 
 
 class OpenStackBucket(BaseBucket):

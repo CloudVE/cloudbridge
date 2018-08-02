@@ -86,7 +86,7 @@ TEST_DATA_CONFIG = {
     },
     "OpenStackCloudProvider": {
         "image": os.environ.get('CB_IMAGE_OS',
-                                '842b949c-ea76-48df-998d-8a41f2626243'),
+                                'acb53109-941f-4593-9bf8-4a53cb9e0739'),
         "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
         "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
     },
@@ -95,9 +95,7 @@ TEST_DATA_CONFIG = {
             os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
             os.environ.get('CB_IMAGE_AZURE',
-                           '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a9'
-                           '6/resourceGroups/cloudbridge/providers/Microsoft.C'
-                           'ompute/images/cb-test-image'),
+                           'Canonical:UbuntuServer:16.04.0-LTS:latest'),
         "vm_type":
             os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A2'),
     }

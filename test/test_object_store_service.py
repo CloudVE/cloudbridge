@@ -9,7 +9,6 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 from unittest import skip
 
-from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -33,7 +32,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             return self.provider.storage.buckets.create(name)
 
         def cleanup_bucket(bucket):
-            bucket.delete()
+            if bucket:
+                bucket.delete()
 
         with self.assertRaises(InvalidNameException):
             # underscores are not allowed in bucket names
@@ -69,7 +69,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             return obj
 
         def cleanup_bucket_obj(bucket_obj):
-            bucket_obj.delete()
+            if bucket_obj:
+                bucket_obj.delete()
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             name = "cb-crudbucketobj-{0}".format(uuid.uuid4())
@@ -167,9 +168,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_generate_url(self):
-        if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
-            raise self.skipTest("Skip until OpenStack impl is provided")
-
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.storage.buckets.create(name)
 

@@ -62,7 +62,7 @@ class BaseCloudResource(CloudResource):
 
     # Regular expression for valid cloudbridge resource names.
     # They, must match the same criteria as GCE labels.
-    # as discussed here: https://github.com/gvlproject/cloudbridge/issues/55
+    # as discussed here: https://github.com/CloudVE/cloudbridge/issues/55
     #
     # NOTE: The following regex is based on GCEs internal validation logic,
     # and is significantly complex to allow for international characters.
@@ -202,7 +202,7 @@ class BaseCloudResource(CloudResource):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseCloudResource.is_valid_resource_name(name):
-            log.debug("InvalidNameException raised on %s", name, exc_info=True)
+            log.debug("InvalidNameException raised on %s", name)
             raise InvalidNameException(
                 u"Invalid name: %s. Name must be at most 63 characters "
                 "long and consist of lowercase letters, numbers, "

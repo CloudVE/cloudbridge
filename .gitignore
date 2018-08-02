@@ -63,3 +63,5 @@ bootstrap.py
 ISB-*
 launch.json
 settings.json
+run_nose.py
+*ipynb*

@@ -74,9 +74,9 @@ You can toggle the use of mock providers by setting an environment variable:
 ``CB_USE_MOCK_PROVIDERS`` to ``Yes`` or ``No``.
 
 
-.. _design goals: https://github.com/gvlproject/cloudbridge/
+.. _design goals: https://github.com/CloudVE/cloudbridge/
    blob/master/README.rst
 .. _tox: https://tox.readthedocs.org/en/latest/
-.. _ProviderList: https://github.com/gvlproject/cloudbridge/blob/master/
+.. _ProviderList: https://github.com/CloudVE/cloudbridge/blob/master/
    cloudbridge/cloud/factory.py#L15
 .. _moto: https://github.com/spulec/moto

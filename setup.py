@@ -21,17 +21,10 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
 REQS_BASE = [
     'bunch>=1.0.1',
     'six>=1.10.0',
-    'retrying>=1.3.3'
+    'tenacity>=4.12.0'
 ]
 REQS_AWS = ['boto3']
-REQS_AZURE = ['msrest>=0.4.7',
-              'msrestazure>=0.4.7',
-              'azure-common>=1.1.5',
-              'azure-mgmt-resource>=1.0.0rc1',
-              'azure-mgmt-compute>=1.0.0rc1',
-              'azure-mgmt-network>=1.0.0rc1',
-              'azure-mgmt-storage>=1.0.0rc1',
-              'azure-storage>=0.34.0',
+REQS_AZURE = ['azure>=3.0.0',
               'pysftp>=0.2.9']
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0',
@@ -61,6 +54,7 @@ setup(
     author='Galaxy and GVL Projects',
     author_email='help@genome.edu.au',
     url='http://cloudbridge.cloudve.org/',
+    setup_requires=['nose>=1.0'],
     install_requires=REQS_FULL,
     extras_require={
         ':python_version<"3.3"': ['ipaddress'],

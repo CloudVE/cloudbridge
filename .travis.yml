@@ -58,12 +58,13 @@ before_install:
            ;;
       esac
 install:
+    - pip install -U pip
     - pip install -U setuptools
     - pip install tox
     - pip install coveralls
     - pip install codecov
 script:
-    - tox -e $TOX_ENV
+    - travis_wait 30 tox -r -e $TOX_ENV
 after_script:
     - |
       case "$TRAVIS_EVENT_TYPE" in
@@ -84,4 +85,3 @@ after_script:
            coveralls & codecov & wait
            ;;
       esac
-

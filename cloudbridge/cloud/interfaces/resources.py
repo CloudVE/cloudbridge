@@ -188,7 +188,7 @@ class ObjectLifeCycleMixin(object):
     @abstractmethod
     def refresh(self):
         """
-        Refreshs this object's state and synchronize it with the underlying
+        Refresh this object's state and synchronize it with the underlying
         service provider.
         """
         pass
@@ -2187,7 +2187,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def generate_url(self, expires_in=0):
+    def generate_url(self, expires_in):
         """
         Generate a URL to this object.
 
@@ -2200,6 +2200,14 @@ class BucketObject(CloudResource):
 
         :rtype: ``str``
         :return: A URL to access the object.
+        """
+        pass
+
+    @abstractmethod
+    def refresh(self):
+        """
+        Refresh this object's state and synchronize it with the underlying
+        service provider.
         """
         pass
 

@@ -6,6 +6,7 @@ import logging
 import uuid
 
 from azure.common import AzureException
+from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
 
 import cloudbridge.cloud.base.helpers as cb_helpers
@@ -24,6 +25,8 @@ from cloudbridge.cloud.interfaces.resources import Instance, \
 from msrestazure.azure_exceptions import CloudError
 
 import pysftp
+
+from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)
 
@@ -85,8 +88,8 @@ class AzureVMFirewall(BaseVMFirewall):
                 get_vm_firewall(self.id)
             if not self._vm_firewall.tags:
                 self._vm_firewall.tags = {}
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The security group no longer exists and cannot be refreshed.
 
     def to_json(self):
@@ -304,12 +307,16 @@ class AzureBucketObject(BaseBucketObject):
         self._provider.azure_client.delete_blob(self._container.name,
                                                 self.name)
 
-    def generate_url(self, expires_in=0):
+    def generate_url(self, expires_in):
         """
         Generate a URL to this object.
         """
         return self._provider.azure_client.get_blob_url(
             self._container.name, self.name, expires_in)
+
+    def refresh(self):
+        self._key = self._provider.azure_client.get_blob(
+            self._container.name, self._key.name)
 
 
 class AzureBucket(BaseBucket):
@@ -520,7 +527,7 @@ class AzureVolume(BaseVolume):
         for vm in self._provider.azure_client.list_vm():
             for item in vm.storage_profile.data_disks:
                 if item.managed_disk and \
-                                item.managed_disk.id == self.resource_id:
+                        item.managed_disk.id == self.resource_id:
                     vm.storage_profile.data_disks.remove(item)
                     self._provider.azure_client.update_vm(vm.id, vm)
 
@@ -550,8 +557,8 @@ class AzureVolume(BaseVolume):
             self._volume = self._provider.azure_client. \
                 get_disk(self.id)
             self._update_state()
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The volume no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
@@ -642,8 +649,8 @@ class AzureSnapshot(BaseSnapshot):
             self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.id)
             self._state = self._snapshot.provisioning_state
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The snapshot no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
@@ -673,11 +680,15 @@ class AzureMachineImage(BaseMachineImage):
 
     def __init__(self, provider, image):
         super(AzureMachineImage, self).__init__(provider)
+        # Image can be either a dict for public image reference
+        # or the Azure iamge object
         self._image = image
-        self._state = self._image.provisioning_state
-
-        if not self._image.tags:
-            self._image.tags = {}
+        if isinstance(self._image, GalleryImageReference):
+            self._state = 'Succeeded'
+        else:
+            self._state = self._image.provisioning_state
+            if not self._image.tags:
+                self._image.tags = {}
 
     @property
     def id(self):
@@ -687,11 +698,17 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        return self._image.id
+        if isinstance(self._image, GalleryImageReference):
+            return azure_helpers.generate_urn(self._image)
+        else:
+            return self._image.id
 
     @property
     def resource_id(self):
-        return self._image.id
+        if isinstance(self._image, GalleryImageReference):
+            return azure_helpers.generate_urn(self._image)
+        else:
+            return self._image.id
 
     @property
     def name(self):
@@ -701,17 +718,21 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Name for this image as returned by the cloud middleware.
         """
-        return self._image.tags.get('Name', self._image.name)
+        if isinstance(self._image, GalleryImageReference):
+            return azure_helpers.generate_urn(self._image)
+        else:
+            return self._image.tags.get('Name', self._image.name)
 
     @name.setter
     def name(self, value):
         """
         Set the image name.
         """
-        self.assert_valid_resource_name(value)
-        self._image.tags.update(Name=value)
-        self._provider.azure_client. \
-            update_image_tags(self.id, self._image.tags)
+        if not isinstance(self._image, GalleryImageReference):
+            self.assert_valid_resource_name(value)
+            self._image.tags.update(Name=value)
+            self._provider.azure_client. \
+                update_image_tags(self.id, self._image.tags)
 
     @property
     def description(self):
@@ -721,16 +742,21 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        return self._image.tags.get('Description', None)
+        if isinstance(self._image, GalleryImageReference):
+            return 'Public gallery image from the Azure Marketplace: '\
+                    + self.name
+        else:
+            return self._image.tags.get('Description', None)
 
     @description.setter
     def description(self, value):
         """
-        Set the image name.
+        Set the image description.
         """
-        self._image.tags.update(Description=value)
-        self._provider.azure_client. \
-            update_image_tags(self.id, self._image.tags)
+        if not isinstance(self._image, GalleryImageReference):
+            self._image.tags.update(Description=value)
+            self._provider.azure_client. \
+                update_image_tags(self.id, self._image.tags)
 
     @property
     def min_disk(self):
@@ -743,31 +769,47 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        return self._image.storage_profile.os_disk.disk_size_gb or 0
+        if isinstance(self._image, GalleryImageReference):
+            return 0
+        else:
+            return self._image.storage_profile.os_disk.disk_size_gb or 0
 
     def delete(self):
         """
         Delete this image
         """
-        self._provider.azure_client.delete_image(self.id)
+        if not isinstance(self._image, GalleryImageReference):
+            self._provider.azure_client.delete_image(self.id)
 
     @property
     def state(self):
-        return AzureMachineImage.IMAGE_STATE_MAP.get(
-            self._state, MachineImageState.UNKNOWN)
+        if isinstance(self._image, GalleryImageReference):
+            return MachineImageState.AVAILABLE
+        else:
+            return AzureMachineImage.IMAGE_STATE_MAP.get(
+                self._state, MachineImageState.UNKNOWN)
+
+    @property
+    def is_gallery_image(self):
+        """
+        Returns true if the image is a public reference and false if it
+        is a private image in the resource group.
+        """
+        return isinstance(self._image, GalleryImageReference)
 
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        try:
-            self._image = self._provider.azure_client.get_image(self.id)
-            self._state = self._image.provisioning_state
-        except CloudError as cloudError:
-            log.exception(cloudError.message)
-            # image no longer exists
-            self._state = "unknown"
+        if not isinstance(self._image, dict):
+            try:
+                self._image = self._provider.azure_client.get_image(self.id)
+                self._state = self._image.provisioning_state
+            except CloudError as cloud_error:
+                log.exception(cloud_error.message)
+                # image no longer exists
+                self._state = "unknown"
 
 
 class AzureGatewayContainer(BaseGatewayContainer):
@@ -860,8 +902,8 @@ class AzureNetwork(BaseNetwork):
             self._network = self._provider.azure_client.\
                 get_network(self.id)
             self._state = self._network.provisioning_state
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The network no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
@@ -1104,8 +1146,8 @@ class AzureSubnet(BaseSubnet):
             self._subnet = self._provider.azure_client. \
                 get_subnet(self.id)
             self._state = self._subnet.provisioning_state
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The subnet no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
@@ -1240,11 +1282,8 @@ class AzureInstance(BaseInstance):
             self._provider.azure_client.delete_nic(nic_id)
         for data_disk in self._vm.storage_profile.data_disks:
             if data_disk.managed_disk:
-                disk = self._provider.azure_client.\
-                    get_disk(data_disk.managed_disk.id)
-                if disk and disk.tags \
-                        and disk.tags.get('delete_on_terminate',
-                                          'False') == 'True':
+                if self._vm.tags.get('delete_on_terminate',
+                                     'False') == 'True':
                     self._provider.azure_client.\
                         delete_disk(data_disk.managed_disk.id)
         if self._vm.storage_profile.os_disk.managed_disk:
@@ -1256,7 +1295,12 @@ class AzureInstance(BaseInstance):
         """
         Get the image ID for this instance.
         """
-        return self._vm.storage_profile.image_reference.id
+        # Not tested for resource group images
+        reference_dict = self._vm.storage_profile.image_reference.as_dict()
+        return ':'.join([reference_dict['publisher'],
+                         reference_dict['offer'],
+                         reference_dict['sku'],
+                         reference_dict['version']])
 
     @property
     def zone_id(self):
@@ -1454,8 +1498,8 @@ class AzureInstance(BaseInstance):
             if not self._vm.tags:
                 self._vm.tags = {}
             self._update_state()
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The volume no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
