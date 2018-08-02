@@ -1172,6 +1172,18 @@ class OpenStackVMFirewall(BaseVMFirewall):
         return None
 
     @property
+    def name(self):
+        return self._vm_firewall.name
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        self.assert_valid_resource_name(value)
+        self._provider.os_conn.network.update_security_group(self.id,
+                                                             name=value)
+        self.refresh()
+
+    @property
     def rules(self):
         return self._rule_svc
 
