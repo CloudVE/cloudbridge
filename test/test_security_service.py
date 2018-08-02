@@ -22,7 +22,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             return self.provider.security.key_pairs.create(name=name)
 
         def cleanup_kp(kp):
-            self.provider.security.key_pairs.delete(key_pair_id=kp.id)
+            if kp:
+                self.provider.security.key_pairs.delete(key_pair_id=kp.id)
 
         def extra_tests(kp):
             # Recreating existing keypair should raise an exception
@@ -70,7 +71,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 name=name, description=name, network_id=net.id)
 
         def cleanup_fw(fw):
-            fw.delete()
+            if fw:
+                fw.delete()
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 network=net)):
@@ -117,7 +119,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                         from_port=1111, to_port=1111, cidr='0.0.0.0/0')
 
                 def cleanup_fw_rule(rule):
-                    rule.delete()
+                    if rule:
+                        rule.delete()
 
                 sit.check_crud(self, fw.rules, VMFirewallRule, "cb_crudfwrule",
                                create_fw_rule, cleanup_fw_rule,

@@ -33,8 +33,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                              subnet=subnet, user_data={})
 
         def cleanup_inst(inst):
-            inst.delete()
-            inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN])
+            if inst:
+                inst.delete()
+                inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN])
 
         def check_deleted(inst):
             deleted_inst = self.provider.compute.instances.get(
@@ -232,12 +233,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                                  description=name)
 
             def cleanup_snap(snap):
-                snap.delete()
-                snap.wait_for([SnapshotState.UNKNOWN],
-                              terminal_states=[SnapshotState.ERROR])
+                if snap:
+                    snap.delete()
+                    snap.wait_for([SnapshotState.UNKNOWN],
+                                  terminal_states=[SnapshotState.ERROR])
 
-            with helpers.cleanup_action(lambda:
-                                        cleanup_snap(test_snap)):
+            with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready()
 
                 lc = self.provider.compute.instances.create_launch_config()

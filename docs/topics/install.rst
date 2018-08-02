@@ -22,9 +22,9 @@ The latest release of cloudbridge can be installed from PyPI::
 Latest unreleased dev version
 -----------------------------
 The development version of the library can be installed from the
-`Github repo <https://github.com/gvlproject/cloudbridge>`_::
+`Github repo <https://github.com/CloudVE/cloudbridge>`_::
 
-    $ git clone https://github.com/gvlproject/cloudbridge.git
+    $ git clone https://github.com/CloudVE/cloudbridge.git
     $ cd cloudbridge
     $ python setup.py install
 

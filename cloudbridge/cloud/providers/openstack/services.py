@@ -42,6 +42,7 @@ from neutronclient.common.exceptions import NeutronClientException
 
 from novaclient.exceptions import NotFound as NovaNotFound
 
+from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
 
 from .resources import OpenStackBucket
@@ -198,7 +199,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
             return OpenStackVMFirewall(
                 self.provider,
                 self.provider.os_conn.network.get_security_group(firewall_id))
-        except ResourceNotFound:
+        except (ResourceNotFound, NotFoundException):
             log.debug("Firewall %s not found.", firewall_id)
             return None
 
@@ -256,9 +257,8 @@ class OpenStackImageService(BaseImageService):
         try:
             return OpenStackMachineImage(
                 self.provider, self.provider.os_conn.image.get_image(image_id))
-        except ResourceNotFound:
-            log.debug("ResourceNotFound exception raised, %s not found",
-                      image_id)
+        except (NotFoundException, ResourceNotFound):
+            log.debug("Image %s not found", image_id)
             return None
 
     def find(self, **kwargs):

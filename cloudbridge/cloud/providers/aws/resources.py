@@ -78,8 +78,8 @@ class AWSMachineImage(BaseMachineImage):
     def name(self):
         try:
             return self._ec2_image.name
-        except AttributeError:
-            return None
+        except (AttributeError, ClientError) as e:
+            log.warn("Cannot get name for image {0}: {1}".format(self.id, e))
 
     @property
     def description(self):
@@ -387,7 +387,10 @@ class AWSVolume(BaseVolume):
     @property
     # pylint:disable=arguments-differ
     def name(self):
-        return find_tag_value(self._volume.tags, 'Name')
+        try:
+            return find_tag_value(self._volume.tags, 'Name')
+        except ClientError as e:
+            log.warn("Cannot get name for volume {0}: {1}".format(self.id, e))
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -497,7 +500,10 @@ class AWSSnapshot(BaseSnapshot):
     @property
     # pylint:disable=arguments-differ
     def name(self):
-        return find_tag_value(self._snapshot.tags, 'Name')
+        try:
+            return find_tag_value(self._snapshot.tags, 'Name')
+        except ClientError as e:
+            log.warn("Cannot get name for snap {0}: {1}".format(self.id, e))
 
     @name.setter
     # pylint:disable=arguments-differ
@@ -764,7 +770,10 @@ class AWSBucketObject(BaseBucketObject):
 
     @property
     def size(self):
-        return self._obj.content_length
+        try:
+            return self._obj.content_length
+        except AttributeError:  # we're dealing with s3.ObjectSummary
+            return self._obj.size
 
     @property
     def last_modified(self):
@@ -782,11 +791,14 @@ class AWSBucketObject(BaseBucketObject):
     def delete(self):
         self._obj.delete()
 
-    def generate_url(self, expires_in=0):
+    def generate_url(self, expires_in):
         return self._provider.s3_conn.meta.client.generate_presigned_url(
             'get_object',
             Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
             ExpiresIn=expires_in)
+
+    def refresh(self):
+        self._obj.load()
 
 
 class AWSBucket(BaseBucket):
@@ -834,7 +846,7 @@ class AWSBucketContainer(BaseBucketContainer):
         else:
             # pylint:disable=protected-access
             boto_objs = self.bucket._bucket.objects.all()
-        objects = [self.get(obj.key) for obj in boto_objs]
+        objects = [AWSBucketObject(self._provider, obj) for obj in boto_objs]
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
@@ -1223,9 +1235,12 @@ class AWSInternetGateway(BaseInternetGateway):
         return None
 
     def delete(self):
-        if self.network_id:
-            self._gateway.detach_from_vpc(VpcId=self.network_id)
-        self._gateway.delete()
+        try:
+            if self.network_id:
+                self._gateway.detach_from_vpc(VpcId=self.network_id)
+            self._gateway.delete()
+        except ClientError as e:
+            log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
 
     @property
     def floating_ips(self):

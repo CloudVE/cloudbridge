@@ -57,9 +57,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
         try:
             fws = self.provider.azure_client.get_vm_firewall(fw_id)
             return AzureVMFirewall(self.provider, fws)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def list(self, limit=None, marker=None):
@@ -78,7 +78,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         fw = self.provider.azure_client.create_vm_firewall(name, parameters)
 
         # Add default rules to negate azure default rules.
-        # See: https://github.com/gvlproject/cloudbridge/issues/106
+        # See: https://github.com/CloudVE/cloudbridge/issues/106
         # pylint:disable=protected-access
         for rule in fw.default_security_rules:
             rule_name = "cb-override-" + rule.name
@@ -116,7 +116,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         filters = {'Name': name}
         fws = [AzureVMFirewall(self.provider, vm_firewall)
                for vm_firewall in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_vm_firewall(), filters)]
+               self.provider.azure_client.list_vm_firewall(), filters)]
         return ClientPagedResultList(self.provider, fws)
 
     def delete(self, group_id):
@@ -143,7 +143,7 @@ class AzureKeyPairService(BaseKeyPairService):
 
     def list(self, limit=None, marker=None):
         key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
-            AzureKeyPairService.PARTITION_KEY,  marker=marker,
+            AzureKeyPairService.PARTITION_KEY, marker=marker,
             limit=limit or self.provider.config.default_result_limit)
         results = [AzureKeyPair(self.provider, key_pair)
                    for key_pair in key_pairs]
@@ -178,11 +178,11 @@ class AzureKeyPairService(BaseKeyPairService):
             public_key_material, private_key = cb_helpers.generate_key_pair()
 
         entity = {
-                  'PartitionKey': AzureKeyPairService.PARTITION_KEY,
-                  'RowKey': str(uuid.uuid4()),
-                  'Name': name,
-                  'Key': public_key_material
-                 }
+            'PartitionKey': AzureKeyPairService.PARTITION_KEY,
+            'RowKey': str(uuid.uuid4()),
+            'Name': name,
+            'Key': public_key_material
+        }
 
         self.provider.azure_client.create_public_key(entity)
         key_pair = self.get(name)
@@ -270,9 +270,9 @@ class AzureVolumeService(BaseVolumeService):
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -286,7 +286,7 @@ class AzureVolumeService(BaseVolumeService):
         filters = {'Name': name}
         cb_vols = [AzureVolume(self.provider, volume)
                    for volume in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_disks(), filters)]
+                   self.provider.azure_client.list_disks(), filters)]
         return ClientPagedResultList(self.provider, cb_vols)
 
     def list(self, limit=None, marker=None):
@@ -354,9 +354,9 @@ class AzureSnapshotService(BaseSnapshotService):
         try:
             snapshot = self.provider.azure_client.get_snapshot(ss_id)
             return AzureSnapshot(self.provider, snapshot)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -370,7 +370,7 @@ class AzureSnapshotService(BaseSnapshotService):
         filters = {'Name': name}
         cb_snapshots = [AzureSnapshot(self.provider, snapshot)
                         for snapshot in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_snapshots(), filters)]
+                        self.provider.azure_client.list_snapshots(), filters)]
         return ClientPagedResultList(self.provider, cb_snapshots)
 
     def list(self, limit=None, marker=None):
@@ -495,15 +495,15 @@ class AzureInstanceService(BaseInstanceService):
                                                        instance_name, zone_id)
 
         nic_params = {
-                'location': self._provider.region_name,
-                'ip_configurations': [{
-                    'name': instance_name + '_ip_config',
-                    'private_ip_allocation_method': 'Dynamic',
-                    'subnet': {
-                        'id': subnet_id
-                    }
-                }]
-            }
+            'location': self._provider.region_name,
+            'ip_configurations': [{
+                'name': instance_name + '_ip_config',
+                'private_ip_allocation_method': 'Dynamic',
+                'subnet': {
+                    'id': subnet_id
+                }
+            }]
+        }
 
         if vm_firewall_id:
             nic_params['network_security_group'] = {
@@ -524,16 +524,16 @@ class AzureInstanceService(BaseInstanceService):
                 'admin_username': self.provider.vm_default_user_name,
                 'computer_name': instance_name,
                 'linux_configuration': {
-                             "disable_password_authentication": True,
-                             "ssh": {
-                                 "public_keys": [{
-                                      "path":
-                                      "/home/{}/.ssh/authorized_keys".format(
-                                          self.provider.vm_default_user_name),
-                                      "key_data": key_pair._key_pair.Key
-                                     }]
-                                   }
-                           }
+                    "disable_password_authentication": True,
+                    "ssh": {
+                        "public_keys": [{
+                            "path":
+                                "/home/{}/.ssh/authorized_keys".format(
+                                        self.provider.vm_default_user_name),
+                                "key_data": key_pair._key_pair.Key
+                        }]
+                    }
+                }
             },
             'hardware_profile': {
                 'vm_size': instance_size
@@ -550,6 +550,9 @@ class AzureInstanceService(BaseInstanceService):
         if key_pair:
             params['tags'].update(Key_Pair=key_pair.name)
 
+        for disk_def in storage_profile.get('data_disks', []):
+            params['tags'] = dict(disk_def.get('tags', {}), **params['tags'])
+
         if user_data:
             custom_data = base64.b64encode(bytes(ud, 'utf-8'))
             params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
@@ -563,7 +566,8 @@ class AzureInstanceService(BaseInstanceService):
                 if disk_def.get('tags', {}).get('delete_on_terminate'):
                     disk_id = disk_def.get('managed_disk', {}).get('id')
                     if disk_id:
-                        self.provider.storage.volumes.delete(disk_id)
+                        vol = self.provider.storage.volumes.get(disk_id)
+                        vol.delete()
             raise e
         finally:
             if temp_key_pair:
@@ -603,10 +607,21 @@ class AzureInstanceService(BaseInstanceService):
     def _create_storage_profile(self, image, launch_config, instance_name,
                                 zone_id):
 
-        storage_profile = {
-            'image_reference': {
+        if image.is_gallery_image:
+            reference = image._image.as_dict()
+            image_ref = {
+                'publisher': reference['publisher'],
+                'offer': reference['offer'],
+                'sku': reference['sku'],
+                'version': reference['version']
+            }
+        else:
+            image_ref = {
                 'id': image.resource_id
-            },
+            }
+
+        storage_profile = {
+            'image_reference': image_ref,
             "os_disk": {
                 "name": instance_name + '_os_disk',
                 "create_option": DiskCreateOption.from_image
@@ -713,9 +728,9 @@ class AzureInstanceService(BaseInstanceService):
         try:
             vm = self.provider.azure_client.get_vm(instance_id)
             return AzureInstance(self.provider, vm)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -729,7 +744,7 @@ class AzureInstanceService(BaseInstanceService):
         filtr = {'Name': name}
         instances = [AzureInstance(self.provider, inst)
                      for inst in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_vm(), filtr)]
+                     self.provider.azure_client.list_vm(), filtr)]
         return ClientPagedResultList(self.provider, instances)
 
 
@@ -744,9 +759,9 @@ class AzureImageService(BaseImageService):
         try:
             image = self.provider.azure_client.get_image(image_id)
             return AzureMachineImage(self.provider, image)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -760,7 +775,12 @@ class AzureImageService(BaseImageService):
         filters = {'Name': name}
         cb_images = [AzureMachineImage(self.provider, image)
                      for image in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_images(), filters)]
+                     self.provider.azure_client.list_images(), filters)]
+        # All gallery image properties (id, resource_id, name) are the URN
+        # Improvement: wrap the filters by publisher, offer, etc...
+        cb_images.extend([AzureMachineImage(self.provider, image) for image
+                          in self.provider.azure_client.list_gallery_refs()
+                          if azure_helpers.generate_urn(image) == name])
         return ClientPagedResultList(self.provider, cb_images)
 
     def list(self, limit=None, marker=None):
@@ -768,8 +788,9 @@ class AzureImageService(BaseImageService):
         List all images.
         """
         azure_images = self.provider.azure_client.list_images()
+        azure_gallery_refs = self.provider.azure_client.list_gallery_refs()
         cb_images = [AzureMachineImage(self.provider, img)
-                     for img in azure_images]
+                     for img in azure_images + azure_gallery_refs]
         return ClientPagedResultList(self.provider, cb_images,
                                      limit=limit, marker=marker)
 
@@ -822,9 +843,9 @@ class AzureNetworkService(BaseNetworkService):
         try:
             network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def list(self, limit=None, marker=None):
@@ -845,8 +866,9 @@ class AzureNetworkService(BaseNetworkService):
                             " Supported attributes: %s" % (kwargs, 'name'))
 
         filters = {'Name': name}
-        networks = [AzureNetwork(self.provider, network)
-                    for network in azure_helpers.filter_by_tag(
+        networks = [
+            AzureNetwork(self.provider, network) for network
+            in azure_helpers.filter_by_tag(
                 self.provider.azure_client.list_networks(), filters)]
         return ClientPagedResultList(self.provider, networks)
 
@@ -920,9 +942,9 @@ class AzureSubnetService(BaseSubnetService):
             azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
             return AzureSubnet(self.provider,
                                azure_subnet) if azure_subnet else None
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def list(self, network=None, limit=None, marker=None):
@@ -940,14 +962,27 @@ class AzureSubnetService(BaseSubnetService):
                 if isinstance(network, Network) else network
             result_list = self.provider.azure_client.list_subnets(network_id)
         else:
-            for net in self.provider.azure_client.list_networks():
-                result_list.extend(self.provider.azure_client.list_subnets(
-                    net.id
-                ))
+            for net in self.provider.networking.networks:
+                try:
+                    result_list.extend(self.provider.azure_client.list_subnets(
+                        net.id
+                    ))
+                except CloudError as cloud_error:
+                    message = cloud_error.message
+                    if "not found" in message and "virtualNetworks" in message:
+                        log.exception(cloud_error)
+                    else:
+                        raise cloud_error
         subnets = [AzureSubnet(self.provider, subnet)
                    for subnet in result_list]
 
         return subnets
+
+    def find(self, network=None, **kwargs):
+        obj_list = self._list_subnets(network)
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def create(self, network, cidr_block, name=None, **kwargs):
         """
@@ -964,12 +999,12 @@ class AzureSubnetService(BaseSubnetService):
 
         subnet_info = self.provider.azure_client\
             .create_subnet(
-                            network_id,
-                            subnet_name,
-                            {
-                                'address_prefix': cidr_block
-                            }
-                          )
+                network_id,
+                subnet_name,
+                {
+                    'address_prefix': cidr_block
+                }
+            )
 
         return AzureSubnet(self.provider, subnet_info)
 
@@ -1008,9 +1043,9 @@ class AzureRouterService(BaseRouterService):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
             return AzureRouter(self.provider, route)
-        except (CloudError, InvalidValueException) as cloudError:
+        except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
-            log.exception(cloudError)
+            log.exception(cloud_error)
             return None
 
     def find(self, **kwargs):
@@ -1024,7 +1059,7 @@ class AzureRouterService(BaseRouterService):
         filters = {'Name': name}
         routes = [AzureRouter(self.provider, route)
                   for route in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_route_tables(), filters)]
+                  self.provider.azure_client.list_route_tables(), filters)]
 
         return ClientPagedResultList(self.provider, routes)
 

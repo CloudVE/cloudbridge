@@ -55,7 +55,7 @@ class ComputeService(CloudService):
                 print(image.id, image.name)
 
             # find image by name
-            image = provider.compute.images.find(name='Ubuntu 14.04')
+            image = provider.compute.images.find(name='Ubuntu 16.04')
             print(image.id, image.name)
 
         :rtype: :class:`.ImageService`
@@ -95,7 +95,7 @@ class ComputeService(CloudService):
         .. code-block:: python
 
             # launch a new instance
-            image = provider.compute.images.find(name='Ubuntu 14.04')[0]
+            image = provider.compute.images.find(name='Ubuntu 16.04')[0]
             size = provider.compute.vm_types.find(name='m1.small')
             instance = provider.compute.instances.create('Hello', image, size)
             print(instance.id, instance.name)

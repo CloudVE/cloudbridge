@@ -9,7 +9,6 @@ from test.helpers import ProviderTestBase
 from test.helpers import standard_interface_tests as sit
 from unittest import skip
 
-from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -33,7 +32,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             return self.provider.storage.buckets.create(name)
 
         def cleanup_bucket(bucket):
-            bucket.delete()
+            if bucket:
+                bucket.delete()
 
         with self.assertRaises(InvalidNameException):
             # underscores are not allowed in bucket names
@@ -69,7 +69,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             return obj
 
         def cleanup_bucket_obj(bucket_obj):
-            bucket_obj.delete()
+            if bucket_obj:
+                bucket_obj.delete()
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             name = "cb-crudbucketobj-{0}".format(uuid.uuid4())
@@ -110,6 +111,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     isinstance(objs[0].size, int),
                     "Object size property needs to be a int, not {0}".format(
                         type(objs[0].size)))
+                # GET an object as the size property implementation differs
+                # for objects returned by LIST and GET.
+                obj = test_bucket.objects.get(objs[0].id)
+                self.assertTrue(
+                    isinstance(objs[0].size, int),
+                    "Object size property needs to be an int, not {0}".format(
+                        type(obj.size)))
                 self.assertTrue(
                     datetime.strptime(objs[0].last_modified[:23],
                                       "%Y-%m-%dT%H:%M:%S.%f"),
@@ -160,9 +168,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_generate_url(self):
-        if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
-            raise self.skipTest("Skip until OpenStack impl is provided")
-
         name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
         test_bucket = self.provider.storage.buckets.create(name)
 
