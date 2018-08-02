@@ -24,7 +24,8 @@ REQS_BASE = [
     'tenacity>=4.12.0'
 ]
 REQS_AWS = ['boto3']
-REQS_AZURE = ['azure>=3.0.0']
+REQS_AZURE = ['azure>=3.0.0',
+              'pysftp>=0.2.9']
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0',
     'python-novaclient>=7.0.0',
