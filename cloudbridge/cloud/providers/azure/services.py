@@ -955,7 +955,7 @@ class AzureSubnetService(BaseSubnetService):
                                      self._list_subnets(network),
                                      limit=limit, marker=marker)
 
-    def _list_subnets(self, network="bla"):
+    def _list_subnets(self, network=None):
         result_list = []
         if network:
             network_id = network.id \
