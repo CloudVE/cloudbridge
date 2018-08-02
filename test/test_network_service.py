@@ -3,6 +3,7 @@ from test.helpers import ProviderTestBase
 from test.helpers import get_provider_test_data
 from test.helpers import standard_interface_tests as sit
 
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import RouterState
@@ -194,6 +195,14 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_default_network(self):
-        subnet = self.provider.networking.subnets.get_or_create_default(
-            zone=get_provider_test_data(self.provider, 'placement'))
-        self.assertIsInstance(subnet, Subnet)
+        subnet = None
+        with helpers.cleanup_action(lambda: subnet.delete()):
+            subnet = self.provider.networking.subnets.get_or_create_default(
+                zone=get_provider_test_data(self.provider, 'placement'))
+            self.assertIsInstance(subnet, Subnet)
+        networks = self.provider.networking.networks.find(
+            name=BaseNetwork.CB_DEFAULT_NETWORK_NAME)
+
+        if networks:
+            network = networks[0]
+            network.delete()

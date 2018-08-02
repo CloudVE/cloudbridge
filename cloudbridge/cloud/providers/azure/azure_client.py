@@ -1,6 +1,5 @@
 import datetime
 import logging
-import time
 from io import BytesIO
 
 from azure.common.credentials import ServicePrincipalCredentials
@@ -17,6 +16,8 @@ from azure.storage.blob import BlockBlobService
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
 from msrestazure.azure_exceptions import CloudError
+
+import tenacity
 
 from . import helpers as azure_helpers
 
@@ -168,33 +169,23 @@ class AzureClient(object):
         log.debug("azure subscription : %s", self.subscription_id)
 
     @property
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5), reraise=True)
     def access_key_result(self):
         if not self._access_key_result:
             storage_account = self.storage_account
-            timeout = self._config.get("default_wait_timeout")
-            interval = self._config.get("default_wait_interval")
 
-            assert timeout >= 0
-            assert interval >= 0
-            assert timeout >= interval
-
-            end_time = time.time() + timeout
-
-            while self.get_storage_account(storage_account).\
+            if self.get_storage_account(storage_account).\
                     provisioning_state.value != 'Succeeded':
                 log.debug(
-                    "Storage account %s is not in Succeeded state. "
-                    "Waiting another %s seconds to reach that state.",
-                    storage_account,
-                    int(end_time - time.time()))
-                time.sleep(interval)
-                if time.time() > end_time:
-                    raise WaitStateException(
-                        "Waited too long for storage account: {0} to "
-                        "become ready. It's still in state: {1}".format(
-                            storage_account,
-                            self.get_storage_account(storage_account).
-                            provisioning_state))
+                    "Storage account %s is not in Succeeded state yet. ",
+                    storage_account)
+                raise WaitStateException(
+                    "Waited too long for storage account: {0} to "
+                    "become ready.".format(
+                        storage_account,
+                        self.get_storage_account(storage_account).
+                        provisioning_state))
+
             self._access_key_result = self.storage_client.storage_accounts. \
                 list_keys(self.resource_group, storage_account)
         return self._access_key_result
@@ -582,6 +573,18 @@ class AzureClient(object):
 
         return subnet_info
 
+    def __if_subnet_in_use(e):
+        # return True if the CloudError exception is due to subnet being in use
+        if isinstance(e, CloudError):
+            error_message = e.message
+            if "Subnet" in error_message \
+                    and 'in use' in error_message:
+                return True
+        return False
+
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception(__if_subnet_in_use),
+                    reraise=True)
     def delete_subnet(self, subnet_id):
         url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID,
                                              subnet_id)
@@ -598,41 +601,7 @@ class AzureClient(object):
             result_delete.wait()
         except CloudError as cloud_error:
             log.exception(cloud_error.message)
-            if "Subnet" not in cloud_error.message \
-                    or 'in use' not in cloud_error.message:
-                raise cloud_error
-
-            else:
-                timeout = self._config.get("default_wait_timeout")
-                interval = self._config.get("default_wait_interval")
-
-                assert timeout >= 0
-                assert interval >= 0
-                assert timeout >= interval
-
-                end_time = time.time() + timeout
-
-                while time.time() < end_time:
-                    log.debug("Subnet %s is in use and cannot be deleted. "
-                              "Retrying every %s sec for another %s seconds.",
-                              subnet_id, interval, timeout)
-                    time.sleep(interval)
-                    try:
-                        result_delete = self.network_management_client \
-                            .subnets.delete(
-                                self.resource_group,
-                                network_name,
-                                subnet_name
-                            )
-                        result_delete.wait()
-                        break
-                    except CloudError as cloud_error:
-                        if cloud_error.code != "InUseSubnetCannotBeDeleted":
-                            raise cloud_error
-
-                raise WaitStateException(
-                    "Waited too long to delete subnet: {0}."
-                    "Subnet is still in use.".format(subnet_id))
+            raise cloud_error
 
     def create_floating_ip(self, public_ip_name, public_ip_parameters):
         return self.network_management_client.public_ip_addresses. \

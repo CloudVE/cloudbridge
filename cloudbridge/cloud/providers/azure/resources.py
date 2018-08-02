@@ -88,8 +88,8 @@ class AzureVMFirewall(BaseVMFirewall):
                 get_vm_firewall(self.id)
             if not self._vm_firewall.tags:
                 self._vm_firewall.tags = {}
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The security group no longer exists and cannot be refreshed.
 
     def to_json(self):
@@ -557,8 +557,8 @@ class AzureVolume(BaseVolume):
             self._volume = self._provider.azure_client. \
                 get_disk(self.id)
             self._update_state()
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The volume no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
@@ -649,8 +649,8 @@ class AzureSnapshot(BaseSnapshot):
             self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.id)
             self._state = self._snapshot.provisioning_state
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The snapshot no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
@@ -806,8 +806,8 @@ class AzureMachineImage(BaseMachineImage):
             try:
                 self._image = self._provider.azure_client.get_image(self.id)
                 self._state = self._image.provisioning_state
-            except CloudError as cloudError:
-                log.exception(cloudError.message)
+            except CloudError as cloud_error:
+                log.exception(cloud_error.message)
                 # image no longer exists
                 self._state = "unknown"
 
@@ -902,8 +902,8 @@ class AzureNetwork(BaseNetwork):
             self._network = self._provider.azure_client.\
                 get_network(self.id)
             self._state = self._network.provisioning_state
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The network no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
@@ -1146,8 +1146,8 @@ class AzureSubnet(BaseSubnet):
             self._subnet = self._provider.azure_client. \
                 get_subnet(self.id)
             self._state = self._subnet.provisioning_state
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The subnet no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
@@ -1498,8 +1498,8 @@ class AzureInstance(BaseInstance):
             if not self._vm.tags:
                 self._vm.tags = {}
             self._update_state()
-        except (CloudError, ValueError) as cloudError:
-            log.exception(cloudError.message)
+        except (CloudError, ValueError) as cloud_error:
+            log.exception(cloud_error.message)
             # The volume no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
