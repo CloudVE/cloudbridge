@@ -577,7 +577,19 @@ class AWSVMFirewall(BaseVMFirewall):
 
     @property
     def name(self):
-        return self._vm_firewall.group_name
+        try:
+            name = find_tag_value(self._vm_firewall.tags, 'Name')
+            if not name:  # Return group_name (which cannot be changed)
+                name = self._vm_firewall.group_name
+            return name
+        except ClientError:
+            return self._vm_firewall.group_name
+
+    @name.setter
+    # pylint:disable=arguments-differ
+    def name(self, value):
+        self.assert_valid_resource_name(value)
+        self._vm_firewall.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
     def network_id(self):
