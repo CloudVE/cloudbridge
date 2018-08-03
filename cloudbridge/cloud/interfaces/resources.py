@@ -1,5 +1,5 @@
 """
-Specifications for data objects exposed through a provider or service
+Specifications for data objects exposed through a ``provider`` or ``service``.
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
 from enum import Enum
@@ -27,20 +27,22 @@ class CloudServiceType(object):
 class CloudResource(object):
 
     """
-    Base interface for any Resource supported by a provider. This interface
-    has a  _provider property that can be used to access the provider
-    associated with the resource, which is only intended for use by subclasses.
-    Every cloudbridge resource also has an id and name property. The id
-    property is a unique identifier for the resource. The name property is a
-    display value.
+    Base interface for any Resource supported by a provider.
+
+    This interface has a  _provider property that can be used to access the
+    provider associated with the resource, which is only intended for use by
+    subclasses. Every cloudbridge resource also has an id and name property.
+    The id property is a unique identifier for the resource. The name property
+    is a display value.
     """
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def _provider(self):
         """
-        Returns the provider instance associated with this resource. Intended
-        for use by subclasses only.
+        Returns the provider instance associated with this resource.
+
+        Intended for use by subclasses only.
 
         :rtype: :class:`.CloudProvider`
         :return: a CloudProvider object
@@ -50,22 +52,24 @@ class CloudResource(object):
     @abstractproperty
     def id(self):
         """
-        Get the resource identifier. The id property is used to uniquely
-        identify the resource, and is an opaque value which should not be
-        interpreted by cloudbridge clients, and is a value meaningful to
-        the underlying cloud provider.
+        Get the resource identifier.
 
-        :rtype: ``str``
-        :return: ID for this resource as returned by the cloud middleware.
+        The id property is used to uniquely identify the resource, and is an
+        opaque value which should not be interpreted by cloudbridge clients,
+        and is a value meaningful to the underlying cloud provider.
+
+        :rtype: ``str`` :return: ID for this resource as returned by the cloud
+        middleware.
         """
         pass
 
     @abstractproperty
     def name(self):
         """
-        Get the resource name. The name property is typically a user-friendly
-        display value for the resource. Some resources may allow the resource
-        name to be set.
+        Get the resource name.
+
+        The name property is typically a user-friendly display value for the
+        resource. Some resources may allow the resource name to be set.
 
         The name property adheres to the following restrictions for most
         cloudbridge resources:
@@ -77,8 +81,14 @@ class CloudResource(object):
         depending on their requirements. Consult the resource specific
         documentation for exact restrictions.
 
+        Some resources may allow an existing resource name to be changed.
+        However, this may lead to cloud-dependent code because not all all
+        providers support this capability. See
+        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
+        for more details and potential implications.
+
         :rtype: ``str``
-        :return: Name for this instance as returned by the cloud middleware.
+        :return: Name for this resource as returned by the cloud middleware.
         """
         pass
 
@@ -98,9 +108,10 @@ class Configuration(dict):
     @abstractproperty
     def default_result_limit(self):
         """
-        Get the default maximum number of results to return for a
-        list method. The default limit will be applied to most list()
-        and find() methods whenever an explicit limit is not specified.
+        Get the default maximum number of results to return for a list method.
+
+        The default limit will be applied to most ``list()`` and ``find()``
+        methods whenever an explicit limit is not specified.
 
         :rtype: ``int``
         :return: The maximum number of results to return
@@ -110,37 +121,39 @@ class Configuration(dict):
     @property
     def default_wait_timeout(self):
         """
-        Gets the default wait timeout for LifeCycleObjects. The default
-        wait timeout is applied in wait_for() and wait_till_ready() methods
-        if no explicit timeout is specified.
+        Get the default wait timeout for ``LifeCycleObjects``.
+
+        The default wait timeout is applied in ``wait_for()`` and
+        ``wait_till_ready()`` methods if no explicit timeout is specified.
 
         :rtype: ``int``
-        :return: The maximum length of time (in seconds) to wait for the
-                 object to change to desired state.
+        :return: The maximum length of time (in seconds) to wait for the object
+                 to change to desired state.
         """
         pass
 
     @property
     def default_wait_interval(self):
         """
-        Gets the default wait interval for LifeCycleObjects. The default
-        wait interval is applied in wait_for() and wait_till_ready() methods
-        if no explicit interval is specified.
+        Get the default wait interval for ``LifeCycleObjects``.
+
+        The default wait interval is applied in ``wait_for()`` and
+        ``wait_till_ready()`` methods if no explicit interval is specified.
 
         :rtype: ``int``
-        :return: How frequently to poll the object's state
+        :return: How frequently to poll the object's state.
         """
         pass
 
     @abstractproperty
     def debug_mode(self):
         """
-        A flag indicating whether CloudBridge is in debug mode. Setting
-        this to True will cause the underlying provider's debug
-        output to be turned on.
+        A flag indicating whether CloudBridge is in debug mode.
 
-        The flag can be toggled by sending in the cb_debug value via
-        the config dictionary, or setting the CB_DEBUG environment variable.
+        Setting this to ``True`` will cause the underlying provider's debug
+        output to be turned on. The flag can be toggled by sending in the
+        ``cb_debug`` value via the config dictionary, or setting the
+        ``CB_DEBUG`` environment variable.
 
         :rtype: ``bool``
         :return: Whether debug mode is on.
@@ -148,18 +161,18 @@ class Configuration(dict):
 
 
 class ObjectLifeCycleMixin(object):
-
     """
-    A mixin for an object with a defined life-cycle, such as an Instance,
-    Volume, Image or Snapshot. An object that supports ObjectLifeCycleMixin
-    will always have a state, defining which point in its life cycle it is
-    currently at.
+    A mixin for an object with a defined life-cycle.
 
-    It also defines a wait_till_ready operation, which indicates that the
+    Object examples include an Instance, Volume, Image, or Snapshot. An object
+    that supports ObjectLifeCycleMixin will always have a state, defining which
+    point in its life cycle it is currently at.
+
+    It also defines a ``wait_till_ready`` operation, which indicates that the
     object is in a state in its life cycle where it is ready to be used by an
     end-user.
 
-    A refresh operation allows the object to synchronise its state with the
+    A ``refresh`` operation allows the object to synchronize its state with the
     service provider.
     """
     __metaclass__ = ABCMeta
@@ -167,11 +180,13 @@ class ObjectLifeCycleMixin(object):
     @abstractproperty
     def _provider(self):
         """
-        Obtain the provider associated with this object. Used internally
-        to access the provider config and get default timeouts/intervals.
+        Obtain the provider associated with this object.
 
-        :rtype: :class:`.CloudProvider`
-        :return: The provider associated with this Resource
+        This property is used internally to access the provider config and get
+        default timeouts/intervals.
+
+        :rtype: :class:`.CloudProvider` :return: The provider associated with
+        this Resource
         """
         pass
 
@@ -188,8 +203,7 @@ class ObjectLifeCycleMixin(object):
     @abstractmethod
     def refresh(self):
         """
-        Refresh this object's state and synchronize it with the underlying
-        service provider.
+        Refresh this object's state and synchronize it with the provider.
         """
         pass
 
@@ -197,13 +211,14 @@ class ObjectLifeCycleMixin(object):
     def wait_for(self, target_states, terminal_states=None, timeout=None,
                  interval=None):
         """
-        Wait for a specified timeout for an object to reach a set of desired
-        target states. If the object does not reach the desired state within
-        the specified timeout, a ``WaitStateException`` will be raised.
-        The optional terminal_states property can be used to specify an
-        additional set of states which, should the object reach one,
-        the object thereafter will not transition into the desired target
-        state. Should this happen, a ``WaitStateException`` will be raised.
+        Wait for for an object to reach a one of desired target states.
+
+        If the object does not reach the desired state within the specified
+        timeout, a ``WaitStateException`` will be raised. The optional
+        ``terminal_states`` property can be used to specify an additional set
+        of states which, should the object reach one, the object thereafter
+        will not transition into the desired target state. Should this happen,
+        a ``WaitStateException`` will be raised.
 
         Example:
 
@@ -245,11 +260,12 @@ class ObjectLifeCycleMixin(object):
     @abstractmethod
     def wait_till_ready(self, timeout, interval):
         """
-        A convenience method to wait till the current object reaches a state
-        which is ready for use, which is any state where the end-user can
-        successfully interact with the object.
-        Will throw a ``WaitStateException`` if the object is not ready within
-        the specified timeout.
+        Wait till the current object reaches its ready state.
+
+        An object's ready state is any state where the end-user can
+        successfully interact with the object. Will throw a
+        ``WaitStateException`` if the object is not ready within the specified
+        timeout.
 
         :type timeout: ``int``
         :param timeout: The maximum length of time (in seconds) to wait for the
@@ -270,16 +286,20 @@ class ObjectLifeCycleMixin(object):
 
 class PageableObjectMixin(object):
     """
-    A marker interface for objects which support paged iteration through
-    a list of objects with a list(limit, marker) method.
+    A marker interface for objects which support paged iteration.
+
+    The list of objects can be iterated over using the ``list(limit, marker)``
+    method.
     """
 
     @abstractmethod
     def __iter__(self):
         """
-        Enables iteration through this object. Typically, an implementation
-        will call the list(limit, marker) method to transparently page
-        additional objects in as iteration progresses.
+        Enables iteration through this object.
+
+        Typically, an implementation will call the ``list(limit, marker)``
+        method to transparently page additional objects in as iteration
+        progresses.
         """
         pass
 
@@ -336,9 +356,9 @@ class PageableObjectMixin(object):
 
 class ResultList(list):
     """
-    This is a wrapper class around a standard Python :py:class:`list` class
-    and provides some extra properties to aid with paging through a large
-    number of results.
+    Provide extra properties to aid with paging through a many results.
+
+    This is a wrapper class around a standard Python :py:class:`list` class.
 
     Example:
 
@@ -364,45 +384,49 @@ class ResultList(list):
     @abstractproperty
     def marker(self):
         """
-        This is an opaque identifier used to assist in paging through very long
-        lists of objects. This marker can be provided to the list method to get
-        the next set of results.
+        An opaque identifier used in paging through very long lists of objects.
+
+        This marker can be provided to the list method to get the next set of
+        results.
         """
         pass
 
     @abstractproperty
     def is_truncated(self):
         """
-        Indicates whether this result list has more results
-        that can be paged in.
+        Indicate whether this result list has more results that can be paged.
         """
         pass
 
     @abstractproperty
     def supports_total(self):
         """
-        Indicates whether the provider supports returning the total number of
-        available results. The supports_total property should be checked
-        before accessing the total_results property.
+        Indicate whether can obtain the total number of available results.
+
+        The ``supports_total`` property should be checked before accessing the
+        ``total_results`` property. This is a provider-specific property.
         """
         pass
 
     @abstractproperty
     def total_results(self):
         """
-        Indicates the total number of results for a particular query. The
-        supports_total property should be used to check whether the provider
-        supports returning the total number of results, before accessing this
-        property, or the behaviour is indeterminate.
+        Indicate the total number of results for a particular query.
+
+        The ``supports_total`` property should be used to check whether the
+        provider supports returning the total number of results, before
+        accessing this property, or the behavior is indeterminate.
         """
         pass
 
     @abstractproperty
     def supports_server_paging(self):
         """
-        Indicates whether this ResultList supports client side paging or server
-        side paging. If server side paging is not supported, the data property
-        provides direct access to all available data.
+        Indicate whether this ``ResultList`` supports server side paging.
+
+        If server side paging is not supported, the result will useclient side
+        paging and the data property provides direct access to all available
+        data.
         """
         pass
 
@@ -414,7 +438,7 @@ class ResultList(list):
 class InstanceState(object):
 
     """
-    Standard states for a node
+    Standard states for an instance.
 
     :cvar UNKNOWN: Instance state unknown.
     :cvar PENDING: Instance is pending
@@ -445,6 +469,10 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
     def name(self, value):
         """
         Set the instance name.
+
+        Note that the changing the name of an existing resource may result in
+        cloud-dependent code. See the following page for more details:
+        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
         """
         pass
 
@@ -471,10 +499,11 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
     @abstractproperty
     def vm_type_id(self):
         """
-        Get the vm type id for this instance. This will typically be a
-        string value like 'm1.large'. On OpenStack, this may be a number or
-        UUID. To get the full :class:``.VMType``
-        object, you can use the instance.vm_type property instead.
+        Get the VM type id for this instance.
+
+        This will typically be a string value like 'm1.large'. On OpenStack,
+        this may be a number or UUID. To get the full :class:``.VMType``
+        object, you can use the ``instance.vm_type`` property instead.
 
         :rtype: ``str``
         :return: VM type name for this instance (e.g., ``m1.large``)
@@ -658,8 +687,8 @@ class LaunchConfig(object):
     """
     Represents an advanced launch configuration object.
 
-    Theis object can contain information such as BlockDeviceMappings
-    configurations, and other advanced options which may be useful when
+    This object can contain information such as ``BlockDeviceMappings``
+    configurations and other advanced options, which may be useful when
     launching an instance.
 
     Example:
@@ -676,15 +705,16 @@ class LaunchConfig(object):
     @abstractmethod
     def add_ephemeral_device(self):
         """
-        Adds a new ephemeral block device mapping to the boot configuration.
-        This can be used to add existing ephemeral devices to the instance.
-        (The total number of ephemeral devices available for a particular
-        VMType can be determined by querying the VMType service).
-        Note that on some services, such as AWS, ephemeral devices must be
-        added in as a device mapping at instance creation time, and cannot be
+        Add a new ephemeral block device mapping to the boot configuration.
+
+        This can be used to add existing ephemeral devices to the instance
+        (the total number of ephemeral devices available for a particular
+        ``VMType`` can be determined by querying the ``VMType`` service).
+        Note that on some providers, such as AWS, ephemeral devices must be
+        added in as a device mapping at instance creation time and cannot be
         added afterwards.
 
-        Note that the device name, such as /dev/sda1, cannot be selected at
+        Note that the device name, such as */dev/sda1*, cannot be selected at
         present, since this tends to be provider and VM type specific.
         However, the order of device addition coupled with device type will
         generally determine naming order, with devices added first getting
@@ -707,19 +737,20 @@ class LaunchConfig(object):
     def add_volume_device(self, source=None, is_root=None, size=None,
                           delete_on_terminate=None):
         """
-        Adds a new volume based block device mapping to the boot configuration.
+        Add a new volume based block device mapping to the boot configuration.
+
         The volume can be based on a snapshot, image, existing volume or
         be a blank new volume, and is specified by the source parameter.
 
-        The property is_root can be set to True to override any existing root
-        device mappings. Otherwise, the default behaviour is to add new block
-        devices to the instance.
+        The property ``is_root`` can be set to ``True`` to override any
+        existing root device mappings. Otherwise, the default behavior is to
+        add new block devices to the instance.
 
-        Note that the device name, such as /dev/sda1, cannot be selected at
-        present, since this tends to be provider and VM type specific.
-        However, the order of device addition coupled with device type will
-        generally determine naming order, with devices added first getting
-        lower letters than instances added later (except when is_root is set).
+        Note that the device name, such as */dev/sda1*, cannot be selected at
+        present since this tends to be provider and VM type specific. However,
+        the order of device addition coupled with device type will generally
+        determine naming order, with devices added first getting lower letters
+        than instances added later (except when ``is_root`` is set).
 
         Example:
 
@@ -781,18 +812,19 @@ class MachineImage(ObjectLifeCycleMixin, CloudResource):
     @abstractproperty
     def min_disk(self):
         """
-        Returns the minimum size of the disk that's required to
-        boot this image (in GB)
+        Return the minimum size of the disk that's required to boot this image.
+
+        Value returned is in gigabytes.
 
         :rtype: ``int``
-        :return: The minimum disk size needed by this image
+        :return: The minimum disk size needed by this image.
         """
         pass
 
     @abstractmethod
     def delete(self):
         """
-        Delete this image
+        Delete this image.
 
         :rtype: ``bool``
         :return: ``True`` if the operation succeeded.
@@ -809,7 +841,7 @@ class NetworkState(object):
     :cvar PENDING: Network is being created.
     :cvar AVAILABLE: Network is available.
     :cvar DOWN: Network is not operational.
-    :cvar ERROR: Network errored.
+    :cvar ERROR: Network is in error state.
     """
     UNKNOWN = "unknown"
     PENDING = "pending"
@@ -919,7 +951,7 @@ class SubnetState(object):
     :cvar PENDING: Subnet is being created.
     :cvar AVAILABLE: Subnet is available.
     :cvar DOWN: Subnet is not operational.
-    :cvar ERROR: Subnet errored.
+    :cvar ERROR: Subnet is in error state.
     """
     UNKNOWN = "unknown"
     PENDING = "pending"
@@ -1111,7 +1143,6 @@ class FloatingIP(ObjectLifeCycleMixin, CloudResource):
 
 
 class RouterState(object):
-
     """
     Standard states for a router.
 
@@ -1350,7 +1381,6 @@ class AttachmentInfo(object):
 
 
 class VolumeState(object):
-
     """
     Standard states for a volume
 
@@ -1373,6 +1403,9 @@ class VolumeState(object):
 
 
 class Volume(ObjectLifeCycleMixin, CloudResource):
+    """
+    Represents a block storage device (aka volume).
+    """
 
     __metaclass__ = ABCMeta
 
@@ -1381,14 +1414,20 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
     def name(self, value):
         """
         Set the volume name.
+
+        Note that the changing the name of an existing resource may result in
+        cloud-dependent code. See the following page for more details:
+        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
         """
         pass
 
     @abstractproperty
     def description(self):
         """
-        Get the volume description. Some cloud providers may not support this
-        property, and will return the volume name instead.
+        Get the volume description.
+
+        Some cloud providers may not support this property, and will return the
+        volume name instead.
 
         :rtype: ``str``
         :return: Description for this volume as returned by the cloud
@@ -1400,10 +1439,11 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
     @abstractmethod
     def description(self, value):
         """
-        Set the volume description. Some cloud providers may not support this
-        property, and setting the description may have no effect. (Providers
-        that do not support this property will always return the volume name
-        as the description)
+        Set the volume description.
+
+        Some cloud providers may not support this property, and setting the
+        description may have no effect (providers that do not support this
+        property will always return the volume name as the description).
         """
         pass
 
@@ -1442,10 +1482,11 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
     @abstractproperty
     def source(self):
         """
-        If available, get the source that this volume is based on (can be
-        a Snapshot or an Image). Returns None if no source.
+        If available, get the source that this volume is based on.
 
-        :rtype: ``Snapshot` or ``Image``
+        This can be a ``Snapshot``, an ``Image``, or ``None`` if no source.
+
+        :rtype: ``Snapshot``, ``Image``, or ``None``
         :return: Snapshot or Image source for this volume as returned by the
                  cloud middleware.
         """
@@ -1529,7 +1570,6 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
 
 
 class SnapshotState(object):
-
     """
     Standard states for a snapshot
 
@@ -1548,6 +1588,9 @@ class SnapshotState(object):
 
 
 class Snapshot(ObjectLifeCycleMixin, CloudResource):
+    """
+    Represents a snapshot of a block storage device.
+    """
 
     __metaclass__ = ABCMeta
 
@@ -1556,14 +1599,20 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
     def name(self, value):
         """
         Set the snapshot name.
+
+        Note that the changing the name of an existing resource may result in
+        cloud-dependent code. See the following page for more details:
+        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
         """
         pass
 
     @abstractproperty
     def description(self):
         """
-        Get the snapshot description. Some cloud providers may not support this
-        property, and will return the snapshot name instead.
+        Get the snapshot description.
+
+        Some cloud providers may not support this property, and will return the
+        snapshot name instead.
 
         :rtype: ``str``
         :return: Description for this snapshot as returned by the cloud
@@ -1600,7 +1649,8 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
     def volume_id(self):
         """
         Get the id of the volume that this snapshot is based on.
-        May return None if the source volume no longer exists.
+
+        This method may return ``None`` if the source volume no longer exists.
 
         :rtype: ``int``
         :return: Id of the volume that this snapshot is based on
@@ -1684,6 +1734,9 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
 
 
 class KeyPair(CloudResource):
+    """
+    Represents an ssh key pair.
+    """
 
     __metaclass__ = ABCMeta
 
@@ -1709,10 +1762,11 @@ class KeyPair(CloudResource):
 
 
 class Region(CloudResource):
-
     """
-    Represents a cloud region, typically a separate geographic area and will
-    contain at least one placement zone.
+    Represents a cloud region.
+
+    A cloud region is typically a separate geographic area and will contain at
+    least one placement zone.
     """
     __metaclass__ = ABCMeta
 
@@ -1728,9 +1782,10 @@ class Region(CloudResource):
 
 
 class PlacementZone(CloudResource):
-
     """
-    Represents a placement zone. A placement zone is contained within a Region.
+    Represents a placement zone.
+
+    A placement zone is contained within a Region.
     """
     __metaclass__ = ABCMeta
 
@@ -1746,7 +1801,6 @@ class PlacementZone(CloudResource):
 
 
 class VMType(CloudResource):
-
     """
     A VM type object.
     """
@@ -1839,6 +1893,11 @@ class VMType(CloudResource):
 
 
 class VMFirewall(CloudResource):
+    """
+    Represents a firewall resource applied to virtual machines.
+
+    This is in contrast to a firewall for a network, for example.
+    """
 
     __metaclass__ = ABCMeta
 
@@ -1865,9 +1924,10 @@ class VMFirewall(CloudResource):
     @abstractproperty
     def rules(self):
         """
-        Get a container for the rules belonging to this VM firewall. This
-        object can be used for further operations on rules, such as get,
-        list, create etc.
+        Get a container for the rules belonging to this VM firewall.
+
+        This object can be used for further operations on rules, such as get,
+        list, create, etc.
 
         :rtype: An object of :class:`.VMFirewallRuleContainer`
         :return: A VMFirewallRuleContainer for further operations
@@ -1884,8 +1944,9 @@ class VMFirewallRuleContainer(PageableObjectMixin):
     @abstractmethod
     def get(self, rule_id):
         """
-        Returns a firewall rule given its ID. Returns ``None`` if the
-        rule does not exist.
+        Return a firewall rule given its ID.
+
+        Returns ``None`` if the rule does not exist.
 
         Example:
 
@@ -1914,8 +1975,9 @@ class VMFirewallRuleContainer(PageableObjectMixin):
     def create(self,  direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
         """
-        Create a VM firewall rule. If the rule already exists, simply
-        returns it.
+        Create a VM firewall rule.
+
+        If a matching rule already exists, return it.
 
         Example:
 
@@ -1962,8 +2024,7 @@ class VMFirewallRuleContainer(PageableObjectMixin):
     @abstractmethod
     def find(self, **kwargs):
         """
-        Find a firewall rule associated with your account filtered by the given
-        parameters.
+        Find a firewall rule filtered by the given parameters.
 
         :type name: str
         :param name: The name of the VM firewall to retrieve.
@@ -2008,12 +2069,14 @@ class VMFirewallRuleContainer(PageableObjectMixin):
 
 
 class TrafficDirection(Enum):
+    """
+    Direction of data flow in a firewall.
+    """
     INBOUND = 'inbound'
     OUTBOUND = 'outbound'
 
 
 class VMFirewallRule(CloudResource):
-
     """
     Represents a VM firewall rule.
     """
@@ -2023,10 +2086,11 @@ class VMFirewallRule(CloudResource):
     def direction(self):
         """
         Direction of traffic to which this rule applies.
-        Either TrafficDirection.INBOUND | TrafficDirection.OUTBOUND
+
+        Either ``TrafficDirection.INBOUND`` or ``TrafficDirection.OUTBOUND``.
 
         :rtype: ``str``
-        :return: Direction of traffic to which this rule applies
+        :return: Direction of traffic to which this rule applies.
         """
         pass
 
@@ -2099,7 +2163,6 @@ class VMFirewallRule(CloudResource):
 
 
 class BucketObject(CloudResource):
-
     """
     Represents an object stored within a bucket.
     """
@@ -2108,12 +2171,15 @@ class BucketObject(CloudResource):
     @abstractproperty
     def name(self):
         """
-        The bucket object name adheres to a more relaxed naming requirement as
-        detailed here: http://docs.aws.amazon.com/AmazonS3/latest/dev/Using
-        Metadata.html#object-key-guidelines
+        Retrieve the name of the current object.
+
+        The bucket object name adheres to a naming requirement that is more
+        relaxed than the naming requirement enforced across CloudBridge. More
+        details are available here: http://docs.aws.amazon.com/AmazonS3/latest/
+        dev/UsingMetadata.html#object-key-guidelines
 
         :rtype: ``str``
-        :return: Name for this instance as returned by the cloud middleware.
+        :return: Name for this object as returned by the cloud middleware.
         """
         pass
 
@@ -2158,8 +2224,7 @@ class BucketObject(CloudResource):
     @abstractmethod
     def upload(self, source_stream):
         """
-        Set the contents of this object to the data read from the source
-        stream.
+        Set the contents of the object to the data read from the source stream.
 
         :rtype: ``bool``
         :return: ``True`` if successful.
@@ -2213,15 +2278,21 @@ class BucketObject(CloudResource):
 
 
 class Bucket(CloudResource):
+    """
+    Represents a namespace for objects (eg, object store bucket or container).
+    """
 
     __metaclass__ = ABCMeta
 
     @abstractproperty
     def name(self):
         """
-        The bucket name adheres to a more relaxed naming requirement as
-        detailed here: http://docs.aws.amazon.com/awscloudtrail/latest/userguid
-        e/cloudtrail-s3-bucket-naming-requirements.html
+        Retrieve the name of the current bucket.
+
+        The bucket name adheres to a naming requirement that is more
+        relaxed than the naming requirement enforced across CloudBridge. More
+        details are available here: http://docs.aws.amazon.com/awscloudtrail/
+        latest/userguide/cloudtrail-s3-bucket-naming-requirements.html
 
         :rtype: ``str``
         :return: Name for this instance as returned by the cloud middleware.
@@ -2231,9 +2302,11 @@ class Bucket(CloudResource):
     @abstractproperty
     def objects(self):
         """
-        Get a container for the objects belonging to this Buckets. This
-        object can be used to iterate through bucket objects, as well as
-        perform further operations on buckets, such as get, list, create etc.
+        Get a container for the objects belonging to this Bucket.
+
+        This object can be used to iterate through bucket objects, as well as
+        perform further operations on buckets, such as ``get``, ``list``,
+        ``create``, etc.
 
         .. code-block:: python
 
@@ -2271,7 +2344,7 @@ class Bucket(CloudResource):
 
 class BucketContainer(PageableObjectMixin):
     """
-    A container service for objects within a bucket
+    A container service for objects within a bucket.
     """
     __metaclass__ = ABCMeta
 
@@ -2311,9 +2384,9 @@ class BucketContainer(PageableObjectMixin):
     @abstractmethod
     def find(self, **kwargs):
         """
-        Searches for an object by a given list of attributes.
+        Searche for an object by a given list of attributes.
 
-        Supported attributes: name
+        Supported attributes: ``name``
 
         :rtype: List of ``objects`` of :class:`.BucketObject`
         :return: A list of BucketObjects matching the supplied attributes.
