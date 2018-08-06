@@ -116,12 +116,12 @@ attaching an internet gateway to the subnet via a router.
 
 .. code-block:: python
 
-    net = self.provider.networking.networks.create(
+    net = provider.networking.networks.create(
         name='my-network', cidr_block='10.0.0.0/16')
     sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
-    router = self.provider.networking.routers.create(network=net, name='my-router')
+    router = provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway(name='my-gateway')
     router.attach_gateway(gateway)
 
 
@@ -186,6 +186,62 @@ earlier.
 
 From the command prompt, you can now ssh into the instance
 ``ssh -i cloudbridge_intro.pem ubuntu@54.166.125.219``.
+
+Get a resource
+--------------
+When a resource already exists, a reference to it can be retrieved using either
+its ID or name. It is important to note that while IDs are unique, multiple
+resources of the same type could use the same name on some providers, thus the
+`find` method always returns a list, while the `get` method returns a single
+object. While the methods are similar across resources, they are explicitely
+listed in order to help map each resource with the service that handles it.
+
+.. code-block:: python
+
+    # Key Pair
+    kp = provider.security.key_pairs.get('keypair ID')
+    kp_list = provider.security.key_pairs.find(name='cloudbridge_intro')
+    kp = kp_list[0]
+
+    # Network
+    net = provider.networking.networks.get('network ID')
+    net_list = provider.networking.networks.find(name='my-network')
+    net = net_list[0]
+
+    # Subnet
+    sn = provider.networking.subnets.get('subnet ID')
+    # Unknown network
+    sn_list = provider.networking.subnets.find(name='my-subnet')
+    # Known network
+    sn_list = provider.networking.subnets.find(network=net.id, name='my-subnet')
+    sn = sn_list(0)
+
+    # Router
+    router = provider.networking.routers.get('router ID')
+    router_list = provider.networking.routers.find(name='my-router')
+    router = router_list[0]
+
+    # Gateway
+    gateway = net.gateways.get_or_create_inet_gateway(name='my-gateway')
+
+    # Floating IPs
+    fip = gateway.floating_ips.get('FloatingIP ID')
+    # Find using public IP address
+    fip_list = gateway.floating_ips.find(public_ip='IP address')
+    # Find using tagged name
+    fip_list = net.gateways.floating_ips.find(name='my-fip')
+    fip = fip_list[0]
+
+    # Firewall
+    fw = provider.security.vm_firewalls.get('firewall ID')
+    fw_list = provider.security.vm_firewalls.find(name='cloudbridge-intro')
+    fw = fw_list[0]
+
+    # Instance
+    inst = provider.compute.instances.get('instance ID')
+    inst_list = provider.compute.instances.list(name='cloudbridge-intro')
+    inst = inst_list[0]
+
 
 Cleanup
 -------
