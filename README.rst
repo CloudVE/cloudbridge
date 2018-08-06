@@ -1,18 +1,10 @@
-CloudBridge aims to provide a simple layer of abstraction over
-different cloud providers, reducing or eliminating the need to write
-conditional code for each cloud.
-
-.. image:: https://landscape.io/github/CloudVE/cloudbridge/master/landscape.svg?style=flat
-   :target: https://landscape.io/github/CloudVE/cloudbridge/master
-   :alt: Landscape Code Health
+CloudBridge provides a simple layer of abstraction over different
+Infrastructure-as-a-Service cloud providers, reducing or eliminating the need
+to write conditional code for each cloud.
 
 .. image:: https://coveralls.io/repos/CloudVE/cloudbridge/badge.svg?branch=master&service=github
    :target: https://coveralls.io/github/CloudVE/cloudbridge?branch=master
    :alt: Code Coverage
-
-.. image:: https://codeclimate.com/github/CloudVE/cloudbridge/badges/gpa.svg
-   :target: https://codeclimate.com/github/CloudVE/cloudbridge
-   :alt: Code Climate
 
 .. image:: https://img.shields.io/pypi/v/cloudbridge.svg
    :target: https://pypi.python.org/pypi/cloudbridge/
@@ -55,19 +47,19 @@ conditional code for each cloud.
               :target: https://travis-ci.org/CloudVE/cloudbridge/branches
 
 
-Build Status
-~~~~~~~~~~~~
+Build Status Tests
+~~~~~~~~~~~~~~~~~~
 
 +--------------------------+--------------+--------------+--------------+
 | **Provider/Environment** | py27         | py36         | pypy         |
 +--------------------------+--------------+--------------+--------------+
-| **aws**                  | |aws-py27|   | |aws-py36|   | |aws-pypy|   |
+| **AWS**                  | |aws-py27|   | |aws-py36|   | |aws-pypy|   |
 +--------------------------+--------------+--------------+--------------+
-| **openstack**            | |os-py27|    | |os-py36|    | |os-pypy|    |
+| **OpenStack**            | |os-py27|    | |os-py36|    | |os-pypy|    |
 +--------------------------+--------------+--------------+--------------+
-| **azure (beta)**         | |azure-py27| | |azure-py36| | |azure-py36| |
+| **Azure**                | |azure-py27| | |azure-py36| | |azure-py36| |
 +--------------------------+--------------+--------------+--------------+
-| **gce (alpha)**          | |gce-py27|   | |gce-py36|   | |gce-pypy|   |
+| **GCE (alpha)**          | |gce-py27|   | |gce-py36|   | |gce-pypy|   |
 +--------------------------+--------------+--------------+--------------+
 
 Installation
@@ -95,6 +87,9 @@ exploring the API:
 
   provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
   print(provider.security.key_pairs.list())
+
+The exact same command (as well as any other CloudBridge method) will run with
+any of the supported providers: ``ProviderList.[AWS | AZURE | OPENSTACK]``!
 
 
 Citation
