@@ -255,8 +255,8 @@ class AzureClient(object):
                     token_credential=token_credential)
             else:
                 self._block_blob_service = BlockBlobService(
-                    self.storage_account,
-                    self.access_key_result.keys[0].value)
+                    account_name=self.storage_account,
+                    account_key=self.access_key_result.keys[0].value)
         return self._block_blob_service
 
     @property
