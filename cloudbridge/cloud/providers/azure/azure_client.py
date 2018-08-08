@@ -158,7 +158,7 @@ class AzureClient(object):
             tenant=config.get('azure_tenant')
         )
 
-        self._access_token = config.get('access_token')
+        self._access_token = config.get('azure_access_token')
         self._resource_client = None
         self._storage_client = None
         self._network_management_client = None
