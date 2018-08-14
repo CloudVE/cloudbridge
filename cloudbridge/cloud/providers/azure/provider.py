@@ -1,15 +1,17 @@
 import logging
 import os
-
-from cloudbridge.cloud.base import BaseCloudProvider
-from cloudbridge.cloud.providers.azure.azure_client import AzureClient
-from cloudbridge.cloud.providers.azure.services \
-    import AzureComputeService, AzureNetworkingService, \
-    AzureSecurityService, AzureStorageService
+from uuid import uuid4
 
 from msrestazure.azure_exceptions import CloudError
 
 import tenacity
+
+from cloudbridge.cloud.base import BaseCloudProvider
+from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
+from cloudbridge.cloud.providers.azure.azure_client import AzureClient
+from cloudbridge.cloud.providers.azure.services \
+    import AzureComputeService, AzureNetworkingService, \
+    AzureSecurityService, AzureStorageService
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +34,8 @@ class AzureCloudProvider(BaseCloudProvider):
             'azure_tenant', os.environ.get('AZURE_TENANT', None))
 
         # optional config values
+        self.access_token = self._get_config_value(
+            'azure_access_token', os.environ.get('AZURE_ACCESS_TOKEN', None))
         self.region_name = self._get_config_value(
             'azure_region_name', os.environ.get('AZURE_REGION_NAME',
                                                 'eastus'))
@@ -39,16 +43,12 @@ class AzureCloudProvider(BaseCloudProvider):
             'azure_resource_group', os.environ.get('AZURE_RESOURCE_GROUP',
                                                    'cloudbridge'))
         # Storage account name is limited to a max length of 24 alphanum chars
-        # and unique across an account. Yet, all our operations are tied to a
-        # resource group, making it impossible to use a storage account
-        # defined in a different resource group from the one used by the
-        # current session. With that, base the name of the storage account on
-        # the current resource group, up to 24 chars in length.
+        # and unique across all of Azure. Thus, a uuid is used to generate a
+        # unique name for the Storage Account
         self.storage_account = self._get_config_value(
             'azure_storage_account',
             os.environ.get(
-                'AZURE_STORAGE_ACCOUNT', 'storageacc' + ''.join(
-                    ch for ch in self.resource_group if ch.isalnum())[-12:]))
+                'AZURE_STORAGE_ACCOUNT', 'storageacc' + str(uuid4())[-12:]))
 
         self.vm_default_user_name = self._get_config_value(
             'azure_vm_default_user_name', os.environ.get
@@ -98,13 +98,17 @@ class AzureCloudProvider(BaseCloudProvider):
                 'azure_resource_group': self.resource_group,
                 'azure_storage_account': self.storage_account,
                 'azure_public_key_storage_table_name':
-                    self.public_key_storage_table_name
+                    self.public_key_storage_table_name,
+                'azure_access_token': self.access_token
             }
 
             self._azure_client = AzureClient(provider_config)
             self._initialize()
         return self._azure_client
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(2),
+                    retry=tenacity.retry_if_exception_type(CloudError),
+                    reraise=True)
     def _initialize(self):
         """
         Verifying that resource group and storage account exists
@@ -113,25 +117,31 @@ class AzureCloudProvider(BaseCloudProvider):
         """
         try:
             self._azure_client.get_resource_group(self.resource_group)
-        except CloudError:
-            resource_group_params = {'location': self.region_name}
-            self._azure_client.create_resource_group(self.resource_group,
-                                                     resource_group_params)
-        # Create a storage account. To prevent a race condition, try
-        # to get or create at least twice
-        self._get_or_create_storage_account()
 
-    @tenacity.retry(stop=tenacity.stop_after_attempt(2), reraise=True)
-    def _get_or_create_storage_account(self):
-        try:
-            return self._azure_client.get_storage_account(self.storage_account)
-        except CloudError:
-            storage_account_params = {
-                'sku': {
-                    'name': 'Standard_LRS'
-                },
-                'kind': 'storage',
-                'location': self.region_name,
-            }
-            self._azure_client.create_storage_account(self.storage_account,
-                                                      storage_account_params)
+        except CloudError as cloud_error:
+            if cloud_error.error.error == "ResourceGroupNotFound":
+                resource_group_params = {'location': self.region_name}
+                try:
+                    self._azure_client.\
+                        create_resource_group(self.resource_group,
+                                              resource_group_params)
+                except CloudError as cloud_error2:
+                    if cloud_error2.error.error == "AuthorizationFailed":
+                        mess = 'The following error was returned by Azure:\n' \
+                               '%s\n\nThis is likely because the Role' \
+                               'associated with the given credentials does ' \
+                               'not allow for Resource Group creation.\nA ' \
+                               'Resource Group is necessary to manage ' \
+                               'resources in Azure. You must either ' \
+                               'provide an existing Resource Group as part ' \
+                               'of the configuration, or elevate the ' \
+                               'associated role.\nFor more information on ' \
+                               'roles, see: https://docs.microsoft.com/' \
+                               'en-us/azure/role-based-access-control/' \
+                               'overview\n' % cloud_error2
+                        raise ProviderConnectionException(mess)
+                    else:
+                        raise cloud_error2
+
+            else:
+                raise cloud_error
