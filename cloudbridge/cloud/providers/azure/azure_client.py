@@ -12,6 +12,7 @@ from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
+from azure.storage.common import TokenCredential
 
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
@@ -157,6 +158,7 @@ class AzureClient(object):
             tenant=config.get('azure_tenant')
         )
 
+        self._access_token = config.get('azure_access_token')
         self._resource_client = None
         self._storage_client = None
         self._network_management_client = None
@@ -246,9 +248,15 @@ class AzureClient(object):
     @property
     def blob_service(self):
         if not self._block_blob_service:
-            self._block_blob_service = BlockBlobService(
-                self.storage_account,
-                self.access_key_result.keys[0].value)
+            if self._access_token:
+                token_credential = TokenCredential(self._access_token)
+                self._block_blob_service = BlockBlobService(
+                    account_name=self.storage_account,
+                    token_credential=token_credential)
+            else:
+                self._block_blob_service = BlockBlobService(
+                    account_name=self.storage_account,
+                    account_key=self.access_key_result.keys[0].value)
         return self._block_blob_service
 
     @property

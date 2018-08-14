@@ -32,6 +32,8 @@ class AzureCloudProvider(BaseCloudProvider):
             'azure_tenant', os.environ.get('AZURE_TENANT', None))
 
         # optional config values
+        self.access_token = self._get_config_value(
+            'azure_access_token', os.environ.get('AZURE_ACCESS_TOKEN', None))
         self.region_name = self._get_config_value(
             'azure_region_name', os.environ.get('AZURE_REGION_NAME',
                                                 'eastus'))
@@ -98,7 +100,8 @@ class AzureCloudProvider(BaseCloudProvider):
                 'azure_resource_group': self.resource_group,
                 'azure_storage_account': self.storage_account,
                 'azure_public_key_storage_table_name':
-                    self.public_key_storage_table_name
+                    self.public_key_storage_table_name,
+                'azure_access_token': self.access_token
             }
 
             self._azure_client = AzureClient(provider_config)
