@@ -20,6 +20,7 @@ import tenacity
 
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidNameException, ProviderConnectionException, WaitStateException
+
 from . import helpers as azure_helpers
 
 log = logging.getLogger(__name__)

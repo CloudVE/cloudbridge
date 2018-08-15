@@ -1,8 +1,8 @@
-from test import helpers
-from test.helpers import ProviderTestBase
-
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
+
+from test import helpers
+from test.helpers import ProviderTestBase
 
 
 class CloudObjectLifeCycleTestCase(ProviderTestBase):

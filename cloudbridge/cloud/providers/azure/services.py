@@ -21,6 +21,7 @@ from cloudbridge.cloud.interfaces.exceptions import \
     DuplicateResourceException, InvalidValueException
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
+
 from . import helpers as azure_helpers
 from .resources import AzureBucket, \
     AzureInstance, AzureKeyPair, \

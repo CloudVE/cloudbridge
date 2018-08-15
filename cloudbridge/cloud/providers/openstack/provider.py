@@ -5,8 +5,6 @@ import os
 
 from cinderclient import client as cinder_client
 
-from cloudbridge.cloud.base import BaseCloudProvider
-
 from keystoneauth1 import session
 
 from keystoneclient import client as keystone_client
@@ -19,6 +17,8 @@ from novaclient import shell as nova_shell
 from openstack import connection
 
 from swiftclient import client as swift_client
+
+from cloudbridge.cloud.base import BaseCloudProvider
 
 from .services import OpenStackComputeService
 from .services import OpenStackNetworkingService

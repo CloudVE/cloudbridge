@@ -9,6 +9,8 @@ import re
 import shutil
 import time
 
+import six
+
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
@@ -49,8 +51,6 @@ from cloudbridge.cloud.interfaces.resources import VMFirewallRuleContainer
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
-
-import six
 
 log = logging.getLogger(__name__)
 

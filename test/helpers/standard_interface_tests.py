@@ -5,13 +5,14 @@ This includes:
    2. Checking for object equality and repr
    3. Checking standard behaviour for list, iter, find, get, delete
 """
-import test.helpers as helpers
 import uuid
 
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
+
+import test.helpers as helpers
 
 
 def check_repr(test, obj):

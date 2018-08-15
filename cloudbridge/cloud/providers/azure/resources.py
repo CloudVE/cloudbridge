@@ -9,6 +9,10 @@ from azure.common import AzureException
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
 
+from msrestazure.azure_exceptions import CloudError
+
+import pysftp
+
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
@@ -21,10 +25,6 @@ from cloudbridge.cloud.interfaces import InstanceState, VolumeState
 from cloudbridge.cloud.interfaces.resources import Instance, \
     MachineImageState, NetworkState, RouterState, \
     SnapshotState, SubnetState, TrafficDirection
-
-from msrestazure.azure_exceptions import CloudError
-
-import pysftp
 
 from . import helpers as azure_helpers
 
