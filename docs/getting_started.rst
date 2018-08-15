@@ -102,10 +102,10 @@ on disk as a read-only file.
 
 .. code-block:: python
 
+    import os
     kp = provider.security.key_pairs.create('cloudbridge_intro')
     with open('cloudbridge_intro.pem', 'w') as f:
         f.write(kp.material)
-    import os
     os.chmod('cloudbridge_intro.pem', 0o400)
 
 Create a network
@@ -133,9 +133,9 @@ a private network.
 
 .. code-block:: python
 
+    from cloudbridge.cloud.interfaces.resources import TrafficDirection
     fw = provider.security.vm_firewalls.create(
         'cloudbridge-intro', 'A VM firewall used by CloudBridge', net.id)
-    from cloudbridge.cloud.interfaces.resources import TrafficDirection
     fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
 Launch an instance
@@ -249,8 +249,8 @@ To wrap things up, let's clean up all the resources we have created
 
 .. code-block:: python
 
-    inst.delete()
     from cloudbridge.cloud.interfaces import InstanceState
+    inst.delete()
     inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                    terminal_states=[InstanceState.ERROR])  # Blocking call
     fip.delete()
