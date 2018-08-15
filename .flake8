@@ -1,2 +1,0 @@
-[flake8]
-application_import_names = cloudbridge, test
