@@ -1,6 +1,6 @@
 import logging
 import os
-from uuid import uuid4
+import uuid
 
 from msrestazure.azure_exceptions import CloudError
 
@@ -44,11 +44,16 @@ class AzureCloudProvider(BaseCloudProvider):
                                                    'cloudbridge'))
         # Storage account name is limited to a max length of 24 alphanum chars
         # and unique across all of Azure. Thus, a uuid is used to generate a
-        # unique name for the Storage Account
+        # unique name for the Storage Account based on the resource group,
+        # while also using the subscription ID to ensure that different users
+        # having the same resource group name do not have the same SA name.
         self.storage_account = self._get_config_value(
             'azure_storage_account',
             os.environ.get(
-                'AZURE_STORAGE_ACCOUNT', 'storageacc' + str(uuid4())[-12:]))
+                'AZURE_STORAGE_ACCOUNT',
+                'storacc' + self.subscription_id[-6:] +
+                str(uuid.uuid5(uuid.NAMESPACE_OID,
+                               str(self.resource_group)))[-6:]))
 
         self.vm_default_user_name = self._get_config_value(
             'azure_vm_default_user_name', os.environ.get
