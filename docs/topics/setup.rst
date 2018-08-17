@@ -41,12 +41,24 @@ OS_REGION_NAME       OS_AUTH_TOKEN
 
 **Azure**
 
+Note that managing resources in Azure requires a Resource Group. If a
+Resource Group is not provided as part of the configuration, cloudbridge will
+attempt to create a Resource Group using the given credentials. This
+operation will happen with the client initialization, and requires a
+"contributor" or "owner" role.
+Similarly, a Storage Account is required when managing some resources, such
+as KeyPairs and Buckets. If a Storage Account name is not provided as part
+of the configuration, cloudbridge will attempt to create the Storage Account
+when initializing the relevant services. This operation similarly requires a
+"contributor" or "owner" role.
+For more information on roles, see: https://docs.microsoft.com/en-us/azure/role-based-access-control/overview
+
 ======================  ==================
 Mandatory variables     Optional Variables
 ======================  ==================
 AZURE_SUBSCRIPTION_ID   AZURE_REGION_NAME
 AZURE_CLIENT_ID         AZURE_RESOURCE_GROUP
-AZURE_SECRET            AZURE_STORAGE_ACCOUNT_NAME
+AZURE_SECRET            AZURE_STORAGE_ACCOUNT
 AZURE_TENANT            AZURE_VM_DEFAULT_USER_NAME
                         AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME
 ======================  ==================
