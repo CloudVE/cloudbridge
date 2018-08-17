@@ -1,8 +1,9 @@
 import itertools
-from test.helpers import ProviderTestBase
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
+
+from test.helpers import ProviderTestBase
 
 
 class DummyResult(object):

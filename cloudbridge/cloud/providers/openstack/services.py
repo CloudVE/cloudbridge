@@ -7,6 +7,13 @@ import re
 
 from cinderclient.exceptions import NotFound as CinderNotFound
 
+from neutronclient.common.exceptions import NeutronClientException
+
+from novaclient.exceptions import NotFound as NovaNotFound
+
+from openstack.exceptions import NotFoundException
+from openstack.exceptions import ResourceNotFound
+
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -37,13 +44,6 @@ from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
-
-from neutronclient.common.exceptions import NeutronClientException
-
-from novaclient.exceptions import NotFound as NovaNotFound
-
-from openstack.exceptions import NotFoundException
-from openstack.exceptions import ResourceNotFound
 
 from .resources import OpenStackBucket
 from .resources import OpenStackInstance

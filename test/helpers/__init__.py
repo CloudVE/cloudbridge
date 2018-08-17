@@ -6,11 +6,11 @@ import unittest
 import uuid
 from contextlib import contextmanager
 
+from six import reraise
+
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
-
-from six import reraise
 
 
 def parse_bool(val):

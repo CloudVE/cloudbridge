@@ -1,12 +1,12 @@
-import test.helpers as helpers
-from test.helpers import ProviderTestBase
-from test.helpers import get_provider_test_data
-from test.helpers import standard_interface_tests as sit
-
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import Subnet
+
+import test.helpers as helpers
+from test.helpers import ProviderTestBase
+from test.helpers import get_provider_test_data
+from test.helpers import standard_interface_tests as sit
 
 
 class CloudNetworkServiceTestCase(ProviderTestBase):

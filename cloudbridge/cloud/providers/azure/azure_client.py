@@ -14,11 +14,12 @@ from azure.storage.blob import BlobPermissions
 from azure.storage.blob import BlockBlobService
 from azure.storage.common import TokenCredential
 
-from cloudbridge.cloud.interfaces.exceptions import WaitStateException
-
 from msrestazure.azure_exceptions import CloudError
 
 import tenacity
+
+from cloudbridge.cloud.interfaces.exceptions import \
+    InvalidNameException, ProviderConnectionException, WaitStateException
 
 from . import helpers as azure_helpers
 
@@ -167,6 +168,7 @@ class AzureClient(object):
         self._access_key_result = None
         self._block_blob_service = None
         self._table_service = None
+        self._storage_account = None
 
         log.debug("azure subscription : %s", self.subscription_id)
 
@@ -247,6 +249,7 @@ class AzureClient(object):
 
     @property
     def blob_service(self):
+        self._get_or_create_storage_account()
         if not self._block_blob_service:
             if self._access_token:
                 token_credential = TokenCredential(self._access_token)
@@ -261,6 +264,7 @@ class AzureClient(object):
 
     @property
     def table_service(self):
+        self._get_or_create_storage_account()
         if not self._table_service:
             self._table_service = TableService(
                 self.storage_account,
@@ -285,6 +289,65 @@ class AzureClient(object):
     def create_storage_account(self, name, params):
         return self.storage_client.storage_accounts. \
             create(self.resource_group, name.lower(), params).result()
+
+    # Create a storage account. To prevent a race condition, try
+    # to get or create at least twice
+    @tenacity.retry(stop=tenacity.stop_after_attempt(2),
+                    retry=tenacity.retry_if_exception_type(CloudError),
+                    reraise=True)
+    def _get_or_create_storage_account(self):
+        if self._storage_account:
+            return self._storage_account
+        else:
+            try:
+                self._storage_account = \
+                    self.get_storage_account(self.storage_account)
+            except CloudError as cloud_error:
+                if cloud_error.error.error == "ResourceNotFound":
+                    storage_account_params = {
+                        'sku': {
+                            'name': 'Standard_LRS'
+                        },
+                        'kind': 'storage',
+                        'location': self.region_name,
+                    }
+                    try:
+                        self._storage_account = \
+                            self.create_storage_account(self.storage_account,
+                                                        storage_account_params)
+                    except CloudError as cloud_error2:
+                        if cloud_error2.error.error == "AuthorizationFailed":
+                            mess = 'The following error was returned by ' \
+                                   'Azure:\n%s\n\nThis is likely because the' \
+                                   ' Role associated with the provided ' \
+                                   'credentials does not allow for Storage ' \
+                                   'Account creation.\nA Storage Account is ' \
+                                   'necessary in order to perform the ' \
+                                   'desired operation. You must either ' \
+                                   'provide an existing Storage Account name' \
+                                   ' as part of the configuration, or ' \
+                                   'elevate the associated Role.\nFor more ' \
+                                   'information on roles, see: https://docs.' \
+                                   'microsoft.com/en-us/azure/role-based-' \
+                                   'access-control/overview\n' % cloud_error2
+                            raise ProviderConnectionException(mess)
+
+                        elif cloud_error2.error.error == \
+                                "StorageAccountAlreadyTaken":
+                            mess = 'The following error was ' \
+                                   'returned by Azure:\n%s\n\n' \
+                                   'Note that Storage Account names must be ' \
+                                   'unique across Azure (not just in your ' \
+                                   'subscription).\nFor more information ' \
+                                   'see https://docs.microsoft.com/en-us/' \
+                                   'azure/azure-resource-manager/resource-' \
+                                   'manager-storage-account-name-errors\n' \
+                                   % cloud_error2
+                            raise InvalidNameException(mess)
+                        else:
+                            raise cloud_error2
+                else:
+                    raise cloud_error
 
     def list_locations(self):
         return self.subscription_client.subscriptions. \
@@ -584,9 +647,7 @@ class AzureClient(object):
     def __if_subnet_in_use(e):
         # return True if the CloudError exception is due to subnet being in use
         if isinstance(e, CloudError):
-            error_message = e.message
-            if "Subnet" in error_message \
-                    and 'in use' in error_message:
+            if e.error.error == "InUseSubnetCannotBeDeleted":
                 return True
         return False
 

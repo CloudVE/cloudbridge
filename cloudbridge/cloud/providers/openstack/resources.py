@@ -12,6 +12,20 @@ except ImportError:  # python 2
     from urlparse import urlparse
     from urlparse import urljoin
 
+from keystoneclient.v3.regions import Region
+
+from neutronclient.common.exceptions import PortNotFoundClient
+
+import novaclient.exceptions as novaex
+
+from openstack.exceptions import HttpException
+from openstack.exceptions import NotFoundException
+from openstack.exceptions import ResourceNotFound
+
+import swiftclient
+from swiftclient.service import SwiftService, SwiftUploadObject
+from swiftclient.utils import generate_temp_url
+
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
@@ -47,20 +61,6 @@ from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
-
-from keystoneclient.v3.regions import Region
-
-from neutronclient.common.exceptions import PortNotFoundClient
-
-import novaclient.exceptions as novaex
-
-from openstack.exceptions import HttpException
-from openstack.exceptions import NotFoundException
-from openstack.exceptions import ResourceNotFound
-
-import swiftclient
-from swiftclient.service import SwiftService, SwiftUploadObject
-from swiftclient.utils import generate_temp_url
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes

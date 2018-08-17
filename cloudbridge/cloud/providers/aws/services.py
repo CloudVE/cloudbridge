@@ -4,6 +4,8 @@ import string
 
 from botocore.exceptions import ClientError
 
+import requests
+
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
@@ -31,8 +33,6 @@ from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
-
-import requests
 
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service

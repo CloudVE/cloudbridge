@@ -65,3 +65,6 @@ launch.json
 settings.json
 run_nose.py
 *ipynb*
+
+# PyCharm
+.idea/

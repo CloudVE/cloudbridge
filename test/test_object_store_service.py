@@ -4,17 +4,18 @@ import tempfile
 import uuid
 from datetime import datetime
 from io import BytesIO
-from test import helpers
-from test.helpers import ProviderTestBase
-from test.helpers import standard_interface_tests as sit
 from unittest import skip
+
+import requests
 
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
 
-import requests
+from test import helpers
+from test.helpers import ProviderTestBase
+from test.helpers import standard_interface_tests as sit
 
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):

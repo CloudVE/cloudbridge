@@ -5,6 +5,8 @@ import uuid
 from azure.common import AzureException
 from azure.mgmt.compute.models import DiskCreateOption
 
+from msrestazure.azure_exceptions import CloudError
+
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList, \
     ServerPagedResultList
@@ -19,8 +21,6 @@ from cloudbridge.cloud.interfaces.exceptions import \
     DuplicateResourceException, InvalidValueException
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
-
-from msrestazure.azure_exceptions import CloudError
 
 from . import helpers as azure_helpers
 from .resources import AzureBucket, \
@@ -972,8 +972,7 @@ class AzureSubnetService(BaseSubnetService):
                         net.id
                     ))
                 except CloudError as cloud_error:
-                    message = cloud_error.message
-                    if "not found" in message and "virtualNetworks" in message:
+                    if cloud_error.error.error == "ResourceNotFound":
                         log.exception(cloud_error)
                     else:
                         raise cloud_error
