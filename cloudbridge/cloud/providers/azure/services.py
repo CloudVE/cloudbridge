@@ -449,27 +449,6 @@ class AzureInstanceService(BaseInstanceService):
 
         AzureInstance.assert_valid_resource_name(instance_name)
 
-        # Key_pair is mandatory in azure and it should not be None.
-        temp_key_pair = None
-        if key_pair:
-            key_pair = (self.provider.security.key_pairs.get(key_pair)
-                        if isinstance(key_pair, str) else key_pair)
-        else:
-            # Create a temporary keypair if none is provided to keep Azure
-            # happy, but the private key will be discarded, so it'll be all
-            # but useless. However, this will allow an instance to be launched
-            # without specifying a keypair, so users may still be able to login
-            # if they have a preinstalled keypair/password baked into the image
-            default_kp_name = "cb_default_key_pair"
-            default_kp = self.provider.security.key_pairs.find(
-                name=default_kp_name)
-            if default_kp:
-                key_pair = default_kp[0]
-            else:
-                key_pair = self.provider.security.key_pairs.create(
-                    name=default_kp_name)
-                temp_key_pair = key_pair
-
         image = (image if isinstance(image, AzureMachineImage) else
                  self.provider.compute.images.get(image))
         if not isinstance(image, AzureMachineImage):
@@ -522,6 +501,24 @@ class AzureInstanceService(BaseInstanceService):
             if user_data and not user_data.startswith('#!')\
             and not user_data.startswith('#cloud-config') else user_data
 
+        # Key_pair is mandatory in azure and it should not be None.
+        temp_key_pair = None
+        if key_pair:
+            key_pair = (self.provider.security.key_pairs.get(key_pair)
+                        if isinstance(key_pair, str) else key_pair)
+        else:
+            # Create a temporary keypair if none is provided to keep Azure
+            # happy, but the private key will be discarded, so it'll be all
+            # but useless. However, this will allow an instance to be launched
+            # without specifying a keypair, so users may still be able to login
+            # if they have a preinstalled keypair/password baked into the image
+            temp_kp_name = "".join(["cb_default_kp_",
+                                   str(uuid.uuid5(uuid.NAMESPACE_OID,
+                                                  instance_name))[-6:]])
+            key_pair = self.provider.security.key_pairs.create(
+                name=temp_kp_name)
+            temp_key_pair = key_pair
+
         params = {
             'location': zone_id or self._provider.region_name,
             'os_profile': {
@@ -551,15 +548,15 @@ class AzureInstanceService(BaseInstanceService):
             'tags': {'Name': name}
         }
 
-        if key_pair:
-            params['tags'].update(Key_Pair=key_pair.name)
-
         for disk_def in storage_profile.get('data_disks', []):
             params['tags'] = dict(disk_def.get('tags', {}), **params['tags'])
 
         if user_data:
             custom_data = base64.b64encode(bytes(ud, 'utf-8'))
             params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
+
+        if not temp_key_pair:
+            params['tags'].update(Key_Pair=key_pair.name)
 
         try:
             vm = self.provider.azure_client.create_vm(instance_name, params)

@@ -653,6 +653,7 @@ class AzureClient(object):
 
     @tenacity.retry(stop=tenacity.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception(__if_subnet_in_use),
+                    wait=tenacity.wait_fixed(5),
                     reraise=True)
     def delete_subnet(self, subnet_id):
         url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID,
