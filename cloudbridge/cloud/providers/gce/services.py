@@ -1252,6 +1252,9 @@ class GCSBucketService(BaseBucketService):
                             .execute())
             if 'error' in response:
                 return None
+            # GCS has a rate limit of 1 operation per 2 seconds for bucket
+            # creation/deletion: https://cloud.google.com/storage/quotas.
+            # Throttle here to avoid future failures.
             time.sleep(2)
             return GCSBucket(self.provider, response)
         except googleapiclient.errors.HttpError as http_error:

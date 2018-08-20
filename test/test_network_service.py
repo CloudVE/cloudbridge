@@ -6,6 +6,7 @@ from test.helpers import standard_interface_tests as sit
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
+from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import Subnet
 
 
@@ -69,6 +70,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     net.id, sn.network_id,
                     "Network ID %s should be specified in the subnet's network"
                     " id %s." % (net.id, sn.network_id))
+
+                self.assertEqual(
+                    cidr, sn.cidr_block,
+                    "Should be exact cidr block that was requested")
 
                 self.assertTrue(
                     BaseNetwork.cidr_blocks_overlap(cidr, sn.cidr_block),
@@ -169,15 +174,16 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             # Check basic router properties
             sit.check_standard_behaviour(
                 self, self.provider.networking.routers, router)
-#            self.assertEqual(
-#                router.state, RouterState.DETACHED,
-#                "Router {0} state {1} should be {2}.".format(
-#                    router.id, router.state, RouterState.DETACHED))
-#
-#             self.assertFalse(
-#                 router.network_id,
-#                 "Router {0} should not be assoc. with a network {1}".format(
-#                     router.id, router.network_id))
+            if (self.provider.PROVIDER_ID != 'gce'):
+                self.assertEqual(
+                    router.state, RouterState.DETACHED,
+                    "Router {0} state {1} should be {2}.".format(
+                        router.id, router.state, RouterState.DETACHED))
+
+                self.assertFalse(
+                    router.network_id,
+                    "Router {0} should not be assoc. with network {1}".format(
+                            router.id, router.network_id))
 
             router.attach_subnet(sn)
             gteway = net.gateways.get_or_create_inet_gateway(name)

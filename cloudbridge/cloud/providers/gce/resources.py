@@ -966,9 +966,10 @@ class GCEInstance(BaseInstance):
         """
         Get the name of the key pair associated with this instance.
         """
-        for kp in self._provider.security.key_pairs:
-            return kp.name
-        return None
+        try:
+            return next(self._provider.security.key_pairs)
+        except StopIteration:
+            return None
 
     @property
     def inet_gateway(self):
@@ -2152,6 +2153,9 @@ class GCSBucket(BaseBucket):
              .buckets()
              .delete(bucket=self.name)
              .execute())
+        # GCS has a rate limit of 1 operation per 2 seconds for bucket
+        # creation/deletion: https://cloud.google.com/storage/quotas.  Throttle
+        # here to avoid future failures.
         time.sleep(2)
 
     def create_object(self, name):
