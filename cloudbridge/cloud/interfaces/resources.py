@@ -64,31 +64,55 @@ class CloudResource(object):
         pass
 
     @abstractproperty
-    def name(self):
+    def display_id(self):
         """
-        Get the resource name.
+        Get the displayable id for the resource.
 
-        The name property is typically a user-friendly display value for the
-        resource. Some resources may allow the resource name to be set.
+        The display_id property is typically a user-friendly id value for the
+        resource. The display_id is different from the id property in the
+        following ways:
+        1. The display_id property is often a more user-friendly value to
+           display to the user than the id property.
+        2. The display_id may sometimes be the same as the id, but should never
+           be used in place of the id.
+        3. The id is what will uniquely identify a resource, and will be used
+           internally by cloudbridge for all get operations etc.
+        4. All resources have a display_id.
+        5. The display_id is read-only.
+        6. However, the display_id may not necessarily be unique, which is the
+           reason why it should not be used for uniquely identifying a
+           resource.
+        Example:
+        The AWS machine image name is a display_id. It is not editable and is
+        a user friendly name such as 'Ubuntu 14.04' and corresponds to the
+        ami-name. It is distinct from the ami-id, which corresponds to
+        cloudbridge's id property. The ami-name cannot be edited, and is set
+        at creation time. It is not necessarily unique.
+        In Azure, the machine image's display_id corresponds to the name
+        property. In Azure, it also happens to be the same as the id property.
+        """
+        pass
 
-        The name property adheres to the following restrictions for most
-        cloudbridge resources:
-        * Names cannot be longer than 63 characters
+    @abstractproperty
+    def label(self):
+        """
+        Get the resource label.
+
+        The label property is a user-defined, editable identifier for a
+        resource. It will often correspond to a user editable resource name
+        in the underlying cloud provider, or be simulated through tags/labels.
+
+        The label property adheres to the following restrictions:
+        * Labels cannot be longer than 63 characters
         * May only contain lowercase letters, numeric characters, underscores,
           and dashes. International characters are allowed.
 
-        Some resources may relax/increase these restrictions (e.g. Buckets)
-        depending on their requirements. Consult the resource specific
-        documentation for exact restrictions.
-
-        Some resources may allow an existing resource name to be changed.
-        However, this may lead to cloud-dependent code because not all all
-        providers support this capability. See
-        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
-        for more details and potential implications.
+        Some resources may not support labels, in which case, a
+        NotImplementedError will be thrown.
 
         :rtype: ``str``
-        :return: Name for this resource as returned by the cloud middleware.
+        :return: Label for this resource as returned by the cloud middleware.
+        :throws NotImplementedError if this resource does not support labels
         """
         pass
 
@@ -1159,6 +1183,11 @@ class RouterState(object):
 class Router(CloudResource):
     """
     Represents a private network router.
+
+    This logical router is meant to roughly mimic the properties of a physical
+    router. Therefore, attaching a subnet can be thought of as plugging in a
+    network cable to enable routing to/from that subnet. Attaching a gateway
+    can be thought of as plugging in an upstream link.
     """
     __metaclass__ = ABCMeta
 
