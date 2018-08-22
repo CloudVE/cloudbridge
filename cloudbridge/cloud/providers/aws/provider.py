@@ -1,6 +1,5 @@
 """Provider implementation based on boto library for AWS-compatible clouds."""
 import logging as log
-import os
 
 import boto3
 try:
@@ -12,6 +11,7 @@ except ImportError:
     log.debug('[aws provider] moto library not available!')
 
 from cloudbridge.cloud.base import BaseCloudProvider
+from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 from .services import AWSComputeService
@@ -34,9 +34,9 @@ class AWSCloudProvider(BaseCloudProvider):
                                                   'us-east-1')
         self.session_cfg = {
             'aws_access_key_id': self._get_config_value(
-                'aws_access_key', os.environ.get('AWS_ACCESS_KEY', None)),
+                'aws_access_key', get_env('AWS_ACCESS_KEY', None)),
             'aws_secret_access_key': self._get_config_value(
-                'aws_secret_key', os.environ.get('AWS_SECRET_KEY', None)),
+                'aws_secret_key', get_env('AWS_SECRET_KEY', None)),
             'aws_session_token': self._get_config_value(
                 'aws_session_token', None)
         }

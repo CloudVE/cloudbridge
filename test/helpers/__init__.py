@@ -6,8 +6,9 @@ import unittest
 import uuid
 from contextlib import contextmanager
 
-from six import reraise
+import six
 
+from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
@@ -47,7 +48,7 @@ def cleanup_action(cleanup_func):
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
             traceback.print_exc()
-        reraise(ex_class, ex_val, ex_traceback)
+        six.reraise(ex_class, ex_val, ex_traceback)
     try:
         cleanup_func()
     except Exception as e:
@@ -80,24 +81,24 @@ def skipIfNoService(services):
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
         # Match the ami value with entry in custom_amis.json for use with moto
-        "image": os.environ.get('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
-        "vm_type": os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
-        "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
+        "image": get_env('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
+        "vm_type": get_env('CB_VM_TYPE_AWS', 't2.nano'),
+        "placement": get_env('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     "OpenStackCloudProvider": {
-        "image": os.environ.get('CB_IMAGE_OS',
-                                'acb53109-941f-4593-9bf8-4a53cb9e0739'),
-        "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
-        "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
+        "image": get_env('CB_IMAGE_OS',
+                         'acb53109-941f-4593-9bf8-4a53cb9e0739'),
+        "vm_type": get_env('CB_VM_TYPE_OS', 'm1.tiny'),
+        "placement": get_env('CB_PLACEMENT_OS', 'zone-r1'),
     },
     "AzureCloudProvider": {
         "placement":
-            os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
+            get_env('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
-            os.environ.get('CB_IMAGE_AZURE',
-                           'Canonical:UbuntuServer:16.04.0-LTS:latest'),
+            get_env('CB_IMAGE_AZURE',
+                    'Canonical:UbuntuServer:16.04.0-LTS:latest'),
         "vm_type":
-            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A2'),
+            get_env('CB_VM_TYPE_AZURE', 'Basic_A2'),
     }
 }
 
@@ -234,7 +235,7 @@ class ProviderTestBase(unittest.TestCase):
             return 1
 
     def create_provider_instance(self):
-        provider_name = os.environ.get("CB_TEST_PROVIDER", "aws")
+        provider_name = get_env("CB_TEST_PROVIDER", "aws")
         use_mock_drivers = parse_bool(
             os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
         factory = CloudProviderFactory()

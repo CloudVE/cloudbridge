@@ -4,7 +4,6 @@ Base implementation for data objects exposed through a provider or service
 import inspect
 import itertools
 import logging
-import os
 import re
 import shutil
 import time
@@ -922,8 +921,8 @@ class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
 
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
-    CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
-                                             'cloudbridge-net')
+    CB_DEFAULT_NETWORK_NAME = cb_helpers.get_env('CB_DEFAULT_NETWORK_NAME',
+                                                 'cloudbridge-net')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
@@ -952,8 +951,8 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
 class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
-    CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
-                                            'cloudbridge-subnet')
+    CB_DEFAULT_SUBNET_NAME = cb_helpers.get_env('CB_DEFAULT_SUBNET_NAME',
+                                                'cloudbridge-subnet')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
@@ -1033,8 +1032,8 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
 class BaseRouter(BaseCloudResource, Router):
 
-    CB_DEFAULT_ROUTER_NAME = os.environ.get('CB_DEFAULT_ROUTER_NAME',
-                                            'cloudbridge-router')
+    CB_DEFAULT_ROUTER_NAME = cb_helpers.get_env('CB_DEFAULT_ROUTER_NAME',
+                                                'cloudbridge-router')
 
     def __init__(self, provider):
         super(BaseRouter, self).__init__(provider)
@@ -1053,7 +1052,7 @@ class BaseRouter(BaseCloudResource, Router):
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):
 
-    CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
+    CB_DEFAULT_INET_GATEWAY_NAME = cb_helpers.get_env(
         'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge-inetgateway')
 
     def __init__(self, provider):

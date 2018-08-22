@@ -1,5 +1,4 @@
 import logging
-import os
 import uuid
 
 from msrestazure.azure_exceptions import CloudError
@@ -7,6 +6,7 @@ from msrestazure.azure_exceptions import CloudError
 import tenacity
 
 from cloudbridge.cloud.base import BaseCloudProvider
+from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 from cloudbridge.cloud.providers.azure.azure_client import AzureClient
 from cloudbridge.cloud.providers.azure.services \
@@ -23,25 +23,23 @@ class AzureCloudProvider(BaseCloudProvider):
         super(AzureCloudProvider, self).__init__(config)
 
         # mandatory config values
-        self.subscription_id = self. \
-            _get_config_value('azure_subscription_id',
-                              os.environ.get('AZURE_SUBSCRIPTION_ID', None))
+        self.subscription_id = self._get_config_value(
+            'azure_subscription_id', get_env('AZURE_SUBSCRIPTION_ID'))
         self.client_id = self._get_config_value(
-            'azure_client_id', os.environ.get('AZURE_CLIENT_ID', None))
+            'azure_client_id', get_env('AZURE_CLIENT_ID', None))
         self.secret = self._get_config_value(
-            'azure_secret', os.environ.get('AZURE_SECRET', None))
+            'azure_secret', get_env('AZURE_SECRET', None))
         self.tenant = self._get_config_value(
-            'azure_tenant', os.environ.get('AZURE_TENANT', None))
+            'azure_tenant', get_env('AZURE_TENANT', None))
 
         # optional config values
         self.access_token = self._get_config_value(
-            'azure_access_token', os.environ.get('AZURE_ACCESS_TOKEN', None))
+            'azure_access_token', get_env('AZURE_ACCESS_TOKEN', None))
         self.region_name = self._get_config_value(
-            'azure_region_name', os.environ.get('AZURE_REGION_NAME',
-                                                'eastus'))
+            'azure_region_name', get_env('AZURE_REGION_NAME', 'eastus'))
         self.resource_group = self._get_config_value(
-            'azure_resource_group', os.environ.get('AZURE_RESOURCE_GROUP',
-                                                   'cloudbridge'))
+            'azure_resource_group', get_env('AZURE_RESOURCE_GROUP',
+                                            'cloudbridge'))
         # Storage account name is limited to a max length of 24 alphanum chars
         # and unique across all of Azure. Thus, a uuid is used to generate a
         # unique name for the Storage Account based on the resource group,
@@ -49,19 +47,19 @@ class AzureCloudProvider(BaseCloudProvider):
         # having the same resource group name do not have the same SA name.
         self.storage_account = self._get_config_value(
             'azure_storage_account',
-            os.environ.get(
+            get_env(
                 'AZURE_STORAGE_ACCOUNT',
                 'storacc' + self.subscription_id[-6:] +
                 str(uuid.uuid5(uuid.NAMESPACE_OID,
                                str(self.resource_group)))[-6:]))
 
         self.vm_default_user_name = self._get_config_value(
-            'azure_vm_default_user_name', os.environ.get
-            ('AZURE_VM_DEFAULT_USER_NAME', 'cbuser'))
+            'azure_vm_default_user_name', get_env(
+                'AZURE_VM_DEFAULT_USER_NAME', 'cbuser'))
 
         self.public_key_storage_table_name = self._get_config_value(
-            'azure_public_key_storage_table_name', os.environ.get
-            ('AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME', 'cbcerts'))
+            'azure_public_key_storage_table_name', get_env(
+                'AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME', 'cbcerts'))
 
         self._azure_client = None
 
