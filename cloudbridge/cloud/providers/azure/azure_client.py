@@ -19,7 +19,8 @@ from msrestazure.azure_exceptions import CloudError
 import tenacity
 
 from cloudbridge.cloud.interfaces.exceptions import \
-    InvalidLabelException, ProviderConnectionException, WaitStateException
+    DuplicateResourceException, InvalidLabelException, \
+    ProviderConnectionException, WaitStateException
 
 from . import helpers as azure_helpers
 
@@ -43,6 +44,10 @@ PUBLIC_IP_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups'
                          '/{resourceGroupName}/providers/Microsoft.Network'
                          '/publicIPAddresses/{publicIpAddressName}',
                          '{publicIpAddressName}']
+ROUTER_RESOURCE_ID = ['/subscriptions/{subscriptionId}'
+                      '/resourceGroups/{resourceGroupName}'
+                      '/providers/Microsoft.Network/routeTables/{routerName}',
+                      '{routerName}']
 SNAPSHOT_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                         '{resourceGroupName}/providers/Microsoft.Compute/'
                         'snapshots/{snapshotName}',
@@ -78,6 +83,7 @@ IMAGE_NAME = 'imageName'
 NETWORK_NAME = 'virtualNetworkName'
 NETWORK_INTERFACE_NAME = 'networkInterfaceName'
 PUBLIC_IP_NAME = 'publicIpAddressName'
+ROUTER_NAME = 'routerName'
 SNAPSHOT_NAME = 'snapshotName'
 SUBNET_NAME = 'subnetName'
 VM_NAME = 'vmName'
@@ -405,7 +411,18 @@ class AzureClient(object):
         return self.blob_service.list_containers(prefix=prefix)
 
     def create_container(self, container_name):
-        self.blob_service.create_container(container_name)
+        try:
+            self.blob_service.create_container(container_name,
+                                               fail_on_exist=True)
+        except AzureConflictHttpError as cloud_error:
+            if cloud_error.error_code == "ContainerAlreadyExists":
+                msg = "The given Bucket name '%s' already exists. Please " \
+                      "use the `get` or `find` method to get a reference to " \
+                      "an existing Bucket, or specify a new Bucket name to " \
+                      "create.\nNote that in Azure, Buckets are contained " \
+                      "in Storage Accounts." % container_name
+                raise DuplicateResourceException(msg)
+
         return self.blob_service.get_container_properties(container_name)
 
     def get_container(self, container_name):
@@ -694,6 +711,14 @@ class AzureClient(object):
             public_ip_addresses.delete(self.resource_group,
                                        public_ip_name).wait()
 
+    def update_fip_tags(self, fip_id, tags):
+        url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
+                                             fip_id)
+        fip_name = url_params.get(PUBLIC_IP_NAME)
+        self.network_management_client.public_ip_addresses. \
+            create_or_update(self.resource_group,
+                             fip_name, tags).result()
+
     def list_floating_ips(self):
         return self.network_management_client.public_ip_addresses.list(
             self.resource_group)
@@ -891,8 +916,11 @@ class AzureClient(object):
             route_tables.list(self.resource_group)
 
     def get_route_table(self, router_id):
+        url_params = azure_helpers.parse_url(ROUTER_RESOURCE_ID,
+                                             router_id)
+        router_name = url_params.get(ROUTER_NAME)
         return self.network_management_client. \
-            route_tables.get(self.resource_group, router_id)
+            route_tables.get(self.resource_group, router_name)
 
     def create_route_table(self, route_table_name, params):
         return self.network_management_client. \
