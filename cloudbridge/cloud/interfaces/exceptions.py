@@ -47,15 +47,15 @@ class ProviderConnectionException(CloudBridgeBaseException):
     pass
 
 
-class InvalidNameException(CloudBridgeBaseException):
+class InvalidLabelException(CloudBridgeBaseException):
     """
-    Marker interface for any attempt to set an invalid name on
+    Marker interface for any attempt to set an invalid label on
     a CloudBridge resource.An example would be setting uppercase
-    letters, which are not allowed in a resource name.
+    letters, which are not allowed in a resource label.
     """
 
     def __init__(self, msg):
-        super(InvalidNameException, self).__init__(msg)
+        super(InvalidLabelException, self).__init__(msg)
 
 
 class InvalidValueException(CloudBridgeBaseException):

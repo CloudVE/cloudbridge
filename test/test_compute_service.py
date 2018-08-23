@@ -21,16 +21,16 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
-        name = "cb_instcrud-{0}".format(helpers.get_uuid())
+        label = "cb_instcrud-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
         subnet = None
 
-        def create_inst(name):
+        def create_inst(label):
             # Also test whether sending in an empty_dict for user_data
             # results in an automatic conversion to string.
-            return helpers.get_test_instance(self.provider, name,
+            return helpers.get_test_instance(self.provider, label,
                                              subnet=subnet, user_data={})
 
         def cleanup_inst(inst):
@@ -46,11 +46,11 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     InstanceState.DELETED,
                     InstanceState.UNKNOWN),
                 "Instance %s should have been deleted but still exists." %
-                name)
+                label)
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                                                network=net)):
-            net, subnet = helpers.create_test_network(self.provider, name)
+            net, subnet = helpers.create_test_network(self.provider, label)
 
             sit.check_crud(self, self.provider.compute.instances, Instance,
                            "cb_instcrud", create_inst, cleanup_inst,
@@ -67,7 +67,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                               'security.vm_firewalls',
                               'security.key_pairs'])
     def test_instance_properties(self):
-        name = "cb_inst_props-{0}".format(helpers.get_uuid())
+        label = "cb_inst_props-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -77,18 +77,18 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         kp = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net, fw, kp)):
-            net, subnet = helpers.create_test_network(self.provider, name)
-            kp = self.provider.security.key_pairs.create(name=name)
+            net, subnet = helpers.create_test_network(self.provider, label)
+            kp = self.provider.security.key_pairs.create(name=label)
             fw = self.provider.security.vm_firewalls.create(
-                name=name, description=name, network_id=net.id)
+                label=label, description=label, network_id=net.id)
             test_instance = helpers.get_test_instance(self.provider,
-                                                      name, key_pair=kp,
+                                                      label, key_pair=kp,
                                                       vm_firewalls=[fw],
                                                       subnet=subnet)
             self.assertEqual(
-                test_instance.name, name,
-                "Instance name {0} is not equal to the expected name"
-                " {1}".format(test_instance.name, name))
+                test_instance.label, label,
+                "Instance label {0} is not equal to the expected label"
+                " {1}".format(test_instance.label, label))
             image_id = helpers.get_provider_test_data(self.provider, "image")
             self.assertEqual(test_instance.image_id, image_id,
                              "Image id {0} is not equal to the expected id"
@@ -217,21 +217,21 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
                               'compute.vm_types', 'storage.volumes'])
     def test_block_device_mapping_attachments(self):
-        name = "cb_blkattch-{0}".format(helpers.get_uuid())
+        label = "cb_blkattch-{0}".format(helpers.get_uuid())
 
         if self.provider.PROVIDER_ID == ProviderList.OPENSTACK:
             raise self.skipTest("Not running BDM tests because OpenStack is"
                                 " not stable enough yet")
 
         test_vol = self.provider.storage.volumes.create(
-           name,
            1,
            helpers.get_provider_test_data(self.provider,
-                                          "placement"))
+                                          "placement"),
+           label=label)
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
-            test_snap = test_vol.create_snapshot(name=name,
-                                                 description=name)
+            test_snap = test_vol.create_snapshot(label=label,
+                                                 description=label)
 
             def cleanup_snap(snap):
                 if snap:
@@ -277,14 +277,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 for _ in range(vm_type.num_ephemeral_disks):
                     lc.add_ephemeral_device()
 
-                net, subnet = helpers.create_test_network(self.provider, name)
+                net, subnet = helpers.create_test_network(self.provider, label)
 
                 with helpers.cleanup_action(lambda:
                                             helpers.delete_test_network(net)):
 
                     inst = helpers.create_test_instance(
                         self.provider,
-                        name,
+                        label,
                         subnet=subnet,
                         launch_config=lc)
 
@@ -302,7 +302,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.vm_firewalls'])
     def test_instance_methods(self):
-        name = "cb_instmethods-{0}".format(helpers.get_uuid())
+        label = "cb_instmethods-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -311,11 +311,11 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_inst, net, fw)):
-            net, subnet = helpers.create_test_network(self.provider, name)
-            test_inst = helpers.get_test_instance(self.provider, name,
+            net, subnet = helpers.create_test_network(self.provider, label)
+            test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(
-                name=name, description=name, network_id=net.id)
+                label=label, description=label, network_id=net.id)
 
             # Check adding a VM firewall to a running instance
             test_inst.add_vm_firewall(fw)
@@ -334,7 +334,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 (fw, test_inst.vm_firewalls))
 
             # check floating ips
-            router = self.provider.networking.routers.create(name, net)
+            router = self.provider.networking.routers.create(net, label=label)
             gateway = None
 
             def cleanup_router(router, gateway):
@@ -346,7 +346,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             with helpers.cleanup_action(lambda: cleanup_router(router,
                                                                gateway)):
                 router.attach_subnet(subnet)
-                gateway = net.gateways.get_or_create_inet_gateway(name)
+                gateway = net.gateways.get_or_create_inet_gateway(label=label)
                 router.attach_gateway(gateway)
                 # check whether adding an elastic ip works
                 fip = gateway.floating_ips.create()

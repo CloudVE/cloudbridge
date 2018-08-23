@@ -14,11 +14,11 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
         """
         Test object life cycle methods by using a volume.
         """
-        name = "cb_objlifecycle-{0}".format(helpers.get_uuid())
+        label = "cb_objlifecycle-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
-            name,
             1,
-            helpers.get_provider_test_data(self.provider, "placement"))
+            helpers.get_provider_test_data(self.provider, "placement"),
+            label=label)
 
         # Waiting for an invalid timeout should raise an exception
         with self.assertRaises(AssertionError):

@@ -112,14 +112,14 @@ def get_provider_test_data(provider, key):
     return None
 
 
-def create_test_network(provider, name):
+def create_test_network(provider, label):
     """
     Create a network with one subnet, returning the network and subnet objects.
     """
-    net = provider.networking.networks.create(name=name,
+    net = provider.networking.networks.create(label=label,
                                               cidr_block='10.0.0.0/16')
     cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
-    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block), name=name,
+    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block), label=label,
                            zone=get_provider_test_data(provider, 'placement'))
     return net, sn
 
@@ -134,16 +134,16 @@ def delete_test_network(network):
                 pass
 
 
-def get_test_gateway(provider, name):
+def get_test_gateway(provider, label):
     """
     Get an internet gateway for testing.
 
     This includes creating a network for the gateway, which is also returned.
     """
-    net_name = 'cb_testgwnet-{0}'.format(get_uuid())
+    net_label = 'cb_testgwnet-{0}'.format(get_uuid())
     net = provider.networking.networks.create(
-        name=net_name, cidr_block='10.0.0.0/16')
-    return net, net.gateways.get_or_create_inet_gateway(name)
+        label=net_label, cidr_block='10.0.0.0/16')
+    return net, net.gateways.get_or_create_inet_gateway(label=label)
 
 
 def delete_test_gateway(network, gateway):
@@ -156,13 +156,13 @@ def delete_test_gateway(network, gateway):
 
 
 def create_test_instance(
-        provider, instance_name, subnet, launch_config=None,
+        provider, instance_label, subnet, launch_config=None,
         key_pair=None, vm_firewalls=None, user_data=None):
 
     instance = provider.compute.instances.create(
-        instance_name,
         get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'vm_type'),
+        label=instance_label,
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
         key_pair=key_pair,
@@ -173,12 +173,12 @@ def create_test_instance(
     return instance
 
 
-def get_test_instance(provider, name, key_pair=None, vm_firewalls=None,
+def get_test_instance(provider, label, key_pair=None, vm_firewalls=None,
                       subnet=None, user_data=None):
     launch_config = None
     instance = create_test_instance(
         provider,
-        name,
+        label,
         subnet=subnet,
         key_pair=key_pair,
         vm_firewalls=vm_firewalls,

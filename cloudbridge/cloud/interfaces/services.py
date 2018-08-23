@@ -48,15 +48,15 @@ class ComputeService(CloudService):
 
             # print all images
             for image in provider.compute.images:
-                print(image.id, image.name)
+                print(image.id, image.name, image.label)
 
             # print only first 50 images
             for image in provider.compute.images.list(limit=50):
-                print(image.id, image.name)
+                print(image.id, image.name, image.label)
 
             # find image by name
-            image = provider.compute.images.find(name='Ubuntu 16.04')
-            print(image.id, image.name)
+            image = provider.compute.images.find(name='Ubuntu 16.04')[0]
+            print(image.id, image.name, image.label)
 
         :rtype: :class:`.ImageService`
         :return: an ImageService object
@@ -77,7 +77,7 @@ class ComputeService(CloudService):
                 print(vm_type.id, vm_type.name)
 
             # find a specific size by name
-            vm_type = provider.compute.vm_types.find(name='m1.small')
+            vm_type = provider.compute.vm_types.find(name='m1.small')[0]
             print(vm_type.vcpus)
 
         :rtype: :class:`.VMTypeService`
@@ -164,10 +164,13 @@ class InstanceService(PageableObjectMixin, CloudService):
         """
         Searches for an instance by a given list of attributes.
 
-        Supported attributes: name
+        Supported attributes: name, label
 
         :type  name: ``str``
         :param name: The name to search for
+
+        :type  label: ``str``
+        :param label: The label to search for
 
         :rtype: List of ``object`` of :class:`.Instance`
         :return: A list of Instance objects matching the supplied attributes.
@@ -210,15 +213,12 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, image, vm_type, subnet, zone=None,
+    def create(self, image, vm_type, subnet, label=None, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None,
                **kwargs):
         """
         Creates a new virtual machine instance.
-
-        :type  name: ``str``
-        :param name: The name of the virtual machine instance
 
         :type  image: ``MachineImage`` or ``str``
         :param image: The MachineImage object or id to boot the virtual machine
@@ -239,8 +239,12 @@ class InstanceService(PageableObjectMixin, CloudService):
                        work. Some providers (e.g. OpenStack) support a null
                        value but the behaviour is implementation specific.
 
+        :type  label: ``str``
+        :param label: The label of the virtual machine instance. The instance
+                      name will be derived from this label.
+
         :type  zone: ``Zone`` or ``str``
-        :param zone: The Zone or its name, where the instance should be placed.
+        :param zone: The Zone or its id, where the instance should be placed.
                      This parameter is provided for legacy compatibility (with
                      classic networks).
 
@@ -248,7 +252,7 @@ class InstanceService(PageableObjectMixin, CloudService):
                      parameter, but in its absence, this value will be used.
 
         :type  key_pair: ``KeyPair`` or ``str``
-        :param key_pair: The KeyPair object or its name, to set for the
+        :param key_pair: The KeyPair object or its id, to set for the
                          instance.
 
         :type  vm_firewalls: A ``list`` of ``VMFirewall`` objects or a
@@ -311,7 +315,7 @@ class VolumeService(PageableObjectMixin, CloudService):
         """
         Searches for a volume by a given list of attributes.
 
-        Supported attributes: name
+        Supported attributes: label
 
         :rtype: ``object`` of :class:`.Volume`
         :return: a Volume object or ``None`` if not found.
@@ -329,18 +333,18 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, size, zone, snapshot=None, description=None):
+    def create(self, size, zone, label=None, snapshot=None, description=None):
         """
         Creates a new volume.
-
-        :type  name: ``str``
-        :param name: The name of the volume.
 
         :type  size: ``int``
         :param size: The size of the volume (in GB).
 
         :type  zone: ``str`` or :class:`.PlacementZone` object
         :param zone: The availability zone in which the Volume will be created.
+
+        :type  label: ``str``
+        :param label: The label for the volume.
 
         :type  snapshot: ``str`` or :class:`.Snapshot` object
         :param snapshot: An optional reference to a snapshot from which this
@@ -378,7 +382,7 @@ class SnapshotService(PageableObjectMixin, CloudService):
         """
         Searches for a snapshot by a given list of attributes.
 
-        Supported attributes: name
+        Supported attributes: label
 
         :rtype: list of :class:`.Snapshot`
         :return: a Snapshot object or an empty list if none found.
@@ -396,15 +400,15 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, volume, description=None):
+    def create(self, volume, label=None, description=None):
         """
         Creates a new snapshot off a volume.
 
-        :type  name: ``str``
-        :param name: The name of the snapshot
-
         :type  volume: ``str`` or ``Volume``
         :param volume: The volume to create a snapshot of.
+
+        :type  label: ``str``
+        :param label: The label for the snapshot.
 
         :type  description: ``str``
         :param description: An optional description that may be supported by
@@ -437,11 +441,11 @@ class StorageService(CloudService):
 
             # print all volumes
             for vol in provider.storage.volumes:
-                print(vol.id, vol.name)
+                print(vol.id, vol.name, vol.label)
 
-            # find volume by name
-            vol = provider.storage.volumes.find(name='my_vol')[0]
-            print(vol.id, vol.name)
+            # find volume by label
+            vol = provider.storage.volumes.find(label='my_vol')[0]
+            print(vol.id, vol.name, vol.label)
 
         :rtype: :class:`.VolumeService`
         :return: a VolumeService object
@@ -459,11 +463,11 @@ class StorageService(CloudService):
 
             # print all snapshots
             for snap in provider.storage.snapshots:
-                print(snap.id, snap.name)
+                print(snap.id, snap.name, snap.label)
 
-            # find snapshot by name
-            snap = provider.storage.snapshots.find(name='my_snap')[0]
-            print(snap.id, snap.name)
+            # find snapshot by label
+            snap = provider.storage.snapshots.find(label='my_snap')[0]
+            print(snap.id, snap.name, snap.label)
 
         :rtype: :class:`.SnapshotService`
         :return: a SnapshotService object
@@ -516,7 +520,7 @@ class ImageService(PageableObjectMixin, CloudService):
         """
         Searches for an image by a given list of attributes
 
-        Supported attributes: name
+        Supported attributes: name, label
 
         :rtype: ``object`` of :class:`.Image`
         :return:  an Image instance
@@ -616,7 +620,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         """
         Searches for a network by a given list of attributes.
 
-        Supported attributes: name
+        Supported attributes: name, label
 
         :rtype: List of ``object`` of :class:`.Network`
         :return: A list of Network objects matching the supplied attributes.
@@ -624,13 +628,9 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, cidr_block):
+    def create(self, cidr_block, label=None):
         """
         Create a new network.
-
-        :type name: ``str``
-        :param name: A network name. The name will be set if the
-                     provider supports it.
 
         :type cidr_block: ``str``
         :param cidr_block: The cidr block for this network. Some providers
@@ -641,6 +641,9 @@ class NetworkService(PageableObjectMixin, CloudService):
                            specified range. Note that the block size should be
                            between a /16 netmask (65,536 IP addresses) and /28
                            netmask (16 IP addresses). e.g. 10.0.0.0/16
+
+        :type label: ``str``
+        :param label: A label for the network.
 
         :rtype: ``object`` of :class:`.Network`
         :return:  A Network object
@@ -668,11 +671,11 @@ class NetworkService(PageableObjectMixin, CloudService):
 
             # Print all subnets
             for s in provider.networking.subnets:
-                print(s.id, s.name)
+                print(s.id, s.name, s.label)
 
             # Get subnet by ID
             s = provider.networking.subnets.get('subnet-id')
-            print(s.id, s.name)
+            print(s.id, s.name, s.label)
 
         :rtype: :class:`.SubnetService`
         :return: a SubnetService object
@@ -719,7 +722,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         """
         Searches for a subnet by a given list of attributes.
 
-        Supported attributes: name
+        Supported attributes: name, label
 
         :rtype: List of ``object`` of :class:`.Subnet`
         :return: A list of Subnet objects matching the supplied attributes.
@@ -727,13 +730,9 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, network_id, cidr_block, zone):
+    def create(self, network_id, cidr_block, zone, label=None):
         """
         Create a new subnet within the supplied network.
-
-        :type name: ``str``
-        :param name: The subnet name. The name will be set if the
-                     provider supports it.
 
         :type network: :class:`.Network` object or ``str``
         :param network: Network object or ID under which to create the subnet.
@@ -745,6 +744,9 @@ class SubnetService(PageableObjectMixin, CloudService):
         :type zone: ``str``
         :param zone: A placement zone for the subnet. Some providers
                      may not support this, in which case the value is ignored.
+
+        :type label: ``str``
+        :param label: The subnet label.
 
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object
@@ -759,7 +761,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         are not particularly concerned with how the network is structured.
 
         A default network is one marked as such by the provider or matches the
-        default name used by this library (e.g., cloudbridge-net).
+        default label used by this library (e.g., cloudbridge-net).
 
         :type zone: :class:`.PlacementZone` object ``str``
         :param zone: Placement zone where to look for the subnet.
@@ -814,7 +816,7 @@ class RouterService(PageableObjectMixin, CloudService):
         """
         Searches for a router by a given list of attributes.
 
-        Supported attributes: name
+        Supported attributes: name, label
 
         :rtype: List of ``object`` of :class:`.Router`
         :return: A list of Router objects matching the supplied attributes.
@@ -822,16 +824,15 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, network):
+    def create(self, network, label=None):
         """
         Create a new router.
 
-        :type name: ``str``
-        :param name: A router name. The name will be set if the provider
-                     supports it.
-
         :type network: :class:`.Network` object or ``str``
         :param network: Network object or ID under which to create the router.
+
+        :type label: ``str``
+        :param label: A router label.
 
         :rtype: ``object`` of :class:`.Router`
         :return:  A Router object

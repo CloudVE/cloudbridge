@@ -8,13 +8,14 @@ import os
 import re
 import shutil
 import time
+import uuid
 
 import six
 
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
-from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
+from cloudbridge.cloud.interfaces.exceptions import InvalidLabelException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -60,13 +61,13 @@ class BaseCloudResource(CloudResource):
     Base implementation of a CloudBridge Resource.
     """
 
-    # Regular expression for valid cloudbridge resource names.
+    # Regular expression for valid cloudbridge resource labels.
     # They, must match the same criteria as GCE labels.
     # as discussed here: https://github.com/CloudVE/cloudbridge/issues/55
     #
     # NOTE: The following regex is based on GCEs internal validation logic,
     # and is significantly complex to allow for international characters.
-    CB_NAME_PATTERN = re.compile(six.u(
+    CB_LABEL_PATTERN = re.compile(six.u(
         r"^[\u0061-\u007A\u00B5\u00DF-\u00F6\u00F8-\u00FF\u0101\u0103\u0105"
         "\u0107\u0109\u010B\u010D\u010F\u0111\u0113\u0115\u0117\u0119\u011B"
         "\u011D\u011F\u0121\u0123\u0125\u0127\u0129\u012B\u012D\u012F\u0131"
@@ -196,17 +197,22 @@ class BaseCloudResource(CloudResource):
         self.__provider = provider
 
     @staticmethod
-    def is_valid_resource_name(name):
-        return True if BaseCloudResource.CB_NAME_PATTERN.match(name) else False
+    def is_valid_resource_label(label):
+        return (True if BaseCloudResource.CB_LABEL_PATTERN.match(label)
+                else False)
 
     @staticmethod
-    def assert_valid_resource_name(name):
-        if not BaseCloudResource.is_valid_resource_name(name):
-            log.debug("InvalidNameException raised on %s", name)
-            raise InvalidNameException(
-                u"Invalid name: %s. Name must be at most 63 characters "
+    def assert_valid_resource_label(label):
+        if not BaseCloudResource.is_valid_resource_label(label):
+            log.debug("InvalidLabelException raised on %s", label)
+            raise InvalidLabelException(
+                u"Invalid label: %s. Label must be at most 63 characters "
                 "long and consist of lowercase letters, numbers, "
-                "underscores, dashes or international characters" % name)
+                "underscores, dashes or international characters" % label)
+
+    @staticmethod
+    def _generate_name_from_label(label):
+        return (label[:57] if label else 'cb') + '_' + uuid.uuid4().hex[:6]
 
     @property
     def _provider(self):
@@ -401,7 +407,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
                 self.id == other.id and
                 # check from most to least likely mutables
                 self.state == other.state and
-                self.name == other.name and
+                self.label == other.label and
                 self.vm_firewalls == other.vm_firewalls and
                 self.public_ips == other.public_ips and
                 self.private_ips == other.private_ips and
@@ -416,7 +422,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
+                                            self.label, self.name)
 
 
 class BaseLaunchConfig(LaunchConfig):
@@ -505,7 +511,7 @@ class BaseMachineImage(
                 self.id == other.id and
                 # check from most to least likely mutables
                 self.state == other.state and
-                self.name == other.name and
+                self.label == other.label and
                 self.description == other.description)
 
     def wait_till_ready(self, timeout=None, interval=None):
@@ -552,7 +558,7 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
                 self.id == other.id and
                 # check from most to least likely mutables
                 self.state == other.state and
-                self.name == other.name)
+                self.label == other.label)
 
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
@@ -563,7 +569,7 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
+                                            self.label, self.name)
 
 
 class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
@@ -578,7 +584,7 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
                 self.id == other.id and
                 # check from most to least likely mutables
                 self.state == other.state and
-                self.name == other.name)
+                self.label == other.label)
 
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
@@ -589,7 +595,7 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
+                                            self.label, self.name)
 
 
 class BaseKeyPair(BaseCloudResource, KeyPair):
@@ -617,7 +623,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         """
         Return the name of this key pair.
         """
-        return self._key_pair.name
+        return self.id
 
     @property
     def material(self):
@@ -640,7 +646,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         self._key_pair.delete()
 
     def __repr__(self):
-        return "<CBKeyPair: {0}>".format(self.name)
+        return "<CBKeyPair: {0}>".format(self.id)
 
 
 class BaseVMFirewall(BaseCloudResource, VMFirewall):
@@ -676,7 +682,7 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         """
         Return the name of this VM firewall.
         """
-        return self._vm_firewall.name
+        return self.id
 
     @property
     def description(self):
@@ -693,7 +699,7 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.id, self.name)
+                                            self.label or self.name, self.id)
 
 
 class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
@@ -817,7 +823,7 @@ class BaseRegion(BaseCloudResource, Region):
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
         js = {k: v for(k, v) in attr if not k.startswith('_')}
-        js['zones'] = [z.name for z in self.zones]
+        js['zones'] = [z.id for z in self.zones]
         return js
 
 
@@ -829,23 +835,25 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     #
     # Note: The following regex is based on: https://stackoverflow.com/question
     # s/537772/what-is-the-most-correct-regular-expression-for-a-unix-file-path
-    CB_NAME_PATTERN = re.compile(r"[^\0]+")
+    CB_LABEL_PATTERN = re.compile(r"[^\0]+")
 
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
 
     @staticmethod
-    def is_valid_resource_name(name):
-        return True if BaseBucketObject.CB_NAME_PATTERN.match(name) else False
+    def is_valid_resource_label(label):
+        return (True if BaseBucketObject.CB_LABEL_PATTERN.match(label)
+                else False)
 
     @staticmethod
-    def assert_valid_resource_name(name):
-        if not BaseBucketObject.is_valid_resource_name(name):
-            log.debug("InvalidNameException raised on %s", name, exc_info=True)
-            raise InvalidNameException(
-                u"Invalid object name: %s. Name must match criteria defined "
+    def assert_valid_resource_label(label):
+        if not BaseBucketObject.is_valid_resource_label(label):
+            log.debug("InvalidLabelException raised on %s", label,
+                      exc_info=True)
+            raise InvalidLabelException(
+                u"Invalid object label: %s. Label must match criteria defined "
                 "in: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMeta"
-                "data.html#object-key-guidelines" % name)
+                "data.html#object-key-guidelines" % label)
 
     def save_content(self, target_stream):
         shutil.copyfileobj(self.iter_content(), target_stream)
@@ -860,7 +868,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.name)
+                                      self.id)
 
 
 class BaseBucket(BaseCloudResource, Bucket):
@@ -871,23 +879,23 @@ class BaseBucket(BaseCloudResource, Bucket):
     #
     # NOTE: The following regex is based on: https://stackoverflow.com/questio
     # ns/2063213/regular-expression-for-validating-dns-label-host-name
-    CB_NAME_PATTERN = re.compile(r"^(?![0-9]+$)(?!-)[a-z0-9-]{3,63}(?<!-)$")
+    CB_LABEL_PATTERN = re.compile(r"^(?![0-9]+$)(?!-)[a-z0-9-]{3,63}(?<!-)$")
 
     def __init__(self, provider):
         super(BaseBucket, self).__init__(provider)
 
     @staticmethod
-    def is_valid_resource_name(name):
-        return True if BaseBucket.CB_NAME_PATTERN.match(name) else False
+    def is_valid_resource_label(label):
+        return True if BaseBucket.CB_LABEL_PATTERN.match(label) else False
 
     @staticmethod
-    def assert_valid_resource_name(name):
-        if not BaseBucket.is_valid_resource_name(name):
-            log.debug("Invalid resource name %s", name, exc_info=True)
-            raise InvalidNameException(
+    def assert_valid_resource_label(label):
+        if not BaseBucket.is_valid_resource_label(label):
+            log.debug("Invalid bucket name %s", label, exc_info=True)
+            raise InvalidLabelException(
                 u"Invalid bucket name: %s. Name must match criteria defined "
                 "in: http://docs.aws.amazon.com/awscloudtrail/latest/userguide"
-                "/cloudtrail-s3-bucket-naming-requirements.html" % name)
+                "/cloudtrail-s3-bucket-naming-requirements.html" % label)
 
     def __eq__(self, other):
         return (isinstance(other, Bucket) and
@@ -899,7 +907,7 @@ class BaseBucket(BaseCloudResource, Bucket):
 
     def __repr__(self):
         return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.name)
+                                      self.id)
 
 
 class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
@@ -922,15 +930,15 @@ class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
 
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
-    CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
-                                             'cloudbridge-net')
+    CB_DEFAULT_NETWORK_LABEL = os.environ.get('CB_DEFAULT_NETWORK_LABEL',
+                                              'cloudbridge-net')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.id, self.name)
+                                            self.id, self.label)
 
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
@@ -939,9 +947,9 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
-    def create_subnet(self, name, cidr_block, zone=None):
+    def create_subnet(self, cidr_block, label=None, zone=None):
         return self._provider.networking.subnets.create(
-            name=name, network=self, cidr_block=cidr_block, zone=zone)
+            label=label, network=self, cidr_block=cidr_block, zone=zone)
 
     def __eq__(self, other):
         return (isinstance(other, Network) and
@@ -952,15 +960,15 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
 class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
-    CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
-                                            'cloudbridge-subnet')
+    CB_DEFAULT_SUBNET_LABEL = os.environ.get('CB_DEFAULT_SUBNET_LABEL',
+                                             'cloudbridge-subnet')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.id, self.name)
+                                            self.id, self.label)
 
     def __eq__(self, other):
         return (isinstance(other, Subnet) and
@@ -1005,7 +1013,7 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
     @property
     def name(self):
-        # VM firewall rules don't support names, so pass
+        # VM firewall rules don't support labels
         return self.public_ip
 
     @property
@@ -1022,7 +1030,7 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.id, self.public_ip)
+                                            self.id, self.name)
 
     def __eq__(self, other):
         return (isinstance(other, FloatingIP) and
@@ -1033,15 +1041,15 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
 class BaseRouter(BaseCloudResource, Router):
 
-    CB_DEFAULT_ROUTER_NAME = os.environ.get('CB_DEFAULT_ROUTER_NAME',
-                                            'cloudbridge-router')
+    CB_DEFAULT_ROUTER_LABEL = os.environ.get('CB_DEFAULT_ROUTER_LABEL',
+                                             'cloudbridge-router')
 
     def __init__(self, provider):
         super(BaseRouter, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,
-                                            self.name)
+                                            self.label)
 
     def __eq__(self, other):
         return (isinstance(other, Router) and
@@ -1053,8 +1061,8 @@ class BaseRouter(BaseCloudResource, Router):
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):
 
-    CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
-        'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge-inetgateway')
+    CB_DEFAULT_INET_GATEWAY_LABEL = os.environ.get(
+        'CB_DEFAULT_INET_GATEWAY_LABEL', 'cloudbridge-inetgateway')
 
     def __init__(self, provider):
         super(BaseInternetGateway, self).__init__(provider)
@@ -1062,7 +1070,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,
-                                            self.name)
+                                            self.label)
 
     def __eq__(self, other):
         return (isinstance(other, InternetGateway) and

@@ -19,7 +19,7 @@ from msrestazure.azure_exceptions import CloudError
 import tenacity
 
 from cloudbridge.cloud.interfaces.exceptions import \
-    InvalidNameException, ProviderConnectionException, WaitStateException
+    InvalidLabelException, ProviderConnectionException, WaitStateException
 
 from . import helpers as azure_helpers
 
@@ -343,7 +343,7 @@ class AzureClient(object):
                                    'azure/azure-resource-manager/resource-' \
                                    'manager-storage-account-name-errors\n' \
                                    % cloud_error2
-                            raise InvalidNameException(mess)
+                            raise InvalidLabelException(mess)
                         else:
                             raise cloud_error2
                 else:

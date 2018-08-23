@@ -16,9 +16,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['networking.networks'])
     def test_crud_network(self):
 
-        def create_net(name):
+        def create_net(label):
             return self.provider.networking.networks.create(
-                name=name, cidr_block='10.0.0.0/16')
+                label=label, cidr_block='10.0.0.0/16')
 
         def cleanup_net(net):
             if net:
@@ -29,10 +29,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_network_properties(self):
-        name = 'cb_propnetwork-{0}'.format(helpers.get_uuid())
-        subnet_name = 'cb_propsubnet-{0}'.format(helpers.get_uuid())
+        label = 'cb_propnetwork-{0}'.format(helpers.get_uuid())
+        subnet_label = 'cb_propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
-            name=name, cidr_block='10.0.0.0/16')
+            label=label, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
             lambda: net.delete()
         ):
@@ -50,7 +50,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             cidr = '10.0.1.0/24'
             sn = net.create_subnet(
-                name=subnet_name, cidr_block=cidr,
+                label=subnet_label, cidr_block=cidr,
                 zone=helpers.get_provider_test_data(self.provider,
                                                     'placement'))
             with helpers.cleanup_action(lambda: sn.delete()):
@@ -84,9 +84,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         # correct value
         net = None
 
-        def create_subnet(name):
+        def create_subnet(label):
             return self.provider.networking.subnets.create(
-                network=net, cidr_block="10.0.0.0/24", name=name,
+                network=net, cidr_block="10.0.0.0/24", label=label,
                 zone=helpers.get_provider_test_data(
                     self.provider, 'placement'))
 
@@ -94,9 +94,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             if subnet:
                 self.provider.networking.subnets.delete(subnet=subnet)
 
-        net_name = 'cb_crudsubnet-{0}'.format(helpers.get_uuid())
+        net_label = 'cb_crudsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
-            name=net_name, cidr_block='10.0.0.0/16')
+            label=net_label, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
             lambda:
                 self.provider.networking.networks.delete(network_id=net.id)
@@ -108,7 +108,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         net, gw = helpers.get_test_gateway(
             self.provider, 'cb_crudfipgw-{0}'.format(helpers.get_uuid()))
 
-        def create_fip(name):
+        def create_fip(label):
             fip = gw.floating_ips.create()
             return fip
 
@@ -120,7 +120,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 lambda: helpers.delete_test_gateway(net, gw)):
             sit.check_crud(self, gw.floating_ips, FloatingIP,
                            "cb_crudfip", create_fip, cleanup_fip,
-                           skip_name_check=True)
+                           skip_label_check=True)
 
     def test_floating_ip_properties(self):
         # Check floating IP address
@@ -157,7 +157,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                             router.detach_subnet(subnet)
                             router.detach_gateway(gateway)
 
-        name = 'cb_crudrouter-{0}'.format(helpers.get_uuid())
+        label = 'cb_crudrouter-{0}'.format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
@@ -166,11 +166,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         gteway = None
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
             net = self.provider.networking.networks.create(
-                name=name, cidr_block='10.0.0.0/16')
+                label=label, cidr_block='10.0.0.0/16')
             router = self.provider.networking.routers.create(network=net,
-                                                             name=name)
+                                                             label=label)
             cidr = '10.0.1.0/24'
-            sn = net.create_subnet(name=name, cidr_block=cidr,
+            sn = net.create_subnet(label=label, cidr_block=cidr,
                                    zone=helpers.get_provider_test_data(
                                        self.provider, 'placement'))
 
@@ -188,7 +188,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 #                     router.id, router.network_id))
 
             router.attach_subnet(sn)
-            gteway = net.gateways.get_or_create_inet_gateway(name)
+            gteway = net.gateways.get_or_create_inet_gateway(label=label)
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 

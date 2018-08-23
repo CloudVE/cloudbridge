@@ -16,9 +16,9 @@ class CloudImageServiceTestCase(ProviderTestBase):
         """
         Create a new image and check whether that image can be listed.
         This covers waiting till the image is ready, checking that the image
-        name is the expected one and whether list_images is functional.
+        label is the expected one and whether list_images is functional.
         """
-        instance_name = "cb_crudimage-{0}".format(helpers.get_uuid())
+        instance_label = "cb_crudimage-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -26,8 +26,8 @@ class CloudImageServiceTestCase(ProviderTestBase):
         net = None
         subnet = None
 
-        def create_img(name):
-            return test_instance.create_image(name)
+        def create_img(label):
+            return test_instance.create_image(label=label)
 
         def cleanup_img(img):
             if img:
@@ -44,9 +44,9 @@ class CloudImageServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):
             net, subnet = helpers.create_test_network(
-                self.provider, instance_name)
+                self.provider, instance_label)
             test_instance = helpers.get_test_instance(
-                self.provider, instance_name, subnet=subnet)
+                self.provider, instance_label, subnet=subnet)
             sit.check_crud(self, self.provider.compute.images, MachineImage,
                            "cb_listimg", create_img, cleanup_img,
                            extra_test_func=extra_tests)

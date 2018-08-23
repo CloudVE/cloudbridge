@@ -99,9 +99,26 @@ class OpenStackMachineImage(BaseMachineImage):
     @property
     def name(self):
         """
-        Get the image name.
+        Get the image identifier.
+        """
+        return self._os_image.id
+
+    @property
+    def label(self):
+        """
+        Get the image label.
         """
         return self._os_image.name
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        """
+        Set the image label.
+        """
+        self.assert_valid_resource_label(value)
+        self._os_image.name = value
+        self._os_image.update(name=value)
 
     @property
     def description(self):
@@ -280,20 +297,27 @@ class OpenStackInstance(BaseInstance):
         return self._os_instance.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
         """
-        Get the instance name.
+        Get the instance identifier.
+        """
+        return self.id
+
+    @property
+    # pylint:disable=arguments-differ
+    def label(self):
+        """
+        Get the instance label.
         """
         return self._os_instance.name
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the instance name.
+        Set the instance label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
 
         self._os_instance.name = value
         self._os_instance.update(name=value)
@@ -417,22 +441,25 @@ class OpenStackInstance(BaseInstance):
         return [fw.id for fw in self.vm_firewalls]
 
     @property
-    def key_pair_name(self):
+    def key_pair_id(self):
         """
-        Get the name of the key pair associated with this instance.
+        Get the id of the key pair associated with this instance.
         """
         return self._os_instance.key_name
 
-    def create_image(self, name):
+    def create_image(self, label=None):
         """
         Create a new image based on this instance.
         """
-        log.debug("Creating OpenStack Image with the name %s", name)
-        self.assert_valid_resource_name(name)
+        log.debug("Creating OpenStack Image with the label %s", label)
+        self.assert_valid_resource_label(label)
+        name = self._generate_name_from_label(label)
 
         image_id = self._os_instance.create_image(name)
-        return OpenStackMachineImage(
+        img = OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
+        img.label = label
+        return img
 
     def _get_fip(self, floating_ip):
         """Get a floating IP object based on the supplied ID."""
@@ -508,8 +535,7 @@ class OpenStackRegion(BaseRegion):
 
     @property
     def name(self):
-        return (self._os_region.id if type(self._os_region) == Region else
-                self._os_region)
+        return self.id
 
     @property
     def zones(self):
@@ -557,20 +583,24 @@ class OpenStackVolume(BaseVolume):
         return self._volume.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
+        return self.id
+
+    @property
+    # pylint:disable=arguments-differ
+    def label(self):
         """
-        Get the volume name.
+        Get the volume label.
         """
         return self._volume.name
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the volume name.
+        Set the volume label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._volume.name = value
         self._volume.update(name=value)
 
@@ -628,12 +658,13 @@ class OpenStackVolume(BaseVolume):
         """
         self._volume.detach()
 
-    def create_snapshot(self, name, description=None):
+    def create_snapshot(self, label=None, description=None):
         """
         Create a snapshot of this Volume.
         """
         log.debug("Creating snapchat of volume: %s with the "
-                  "description: %s", name, description)
+                  "description: %s", label, description)
+        name = self._generate_name_from_label(label)
         return self._provider.storage.snapshots.create(
             name, self, description=description)
 
@@ -683,20 +714,24 @@ class OpenStackSnapshot(BaseSnapshot):
         return self._snapshot.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
+        return self.id
+
+    @property
+    # pylint:disable=arguments-differ
+    def label(self):
         """
-        Get the snapshot name.
+        Get the snapshot label.
         """
         return self._snapshot.name
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the snapshot name.
+        Set the snapshot label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._snapshot.name = value
         self._snapshot.update(name=value)
 
@@ -750,13 +785,14 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        vol_name = "from_snap_{0}".format(self.id or self.name)
+        vol_label = "from_snap_{0}".format(self.id or self.label)
+        name = self._generate_name_from_label(vol_label)
         size = size if size else self._snapshot.size
         os_vol = self._provider.cinder.volumes.create(
-            size, name=vol_name, availability_zone=placement,
+            size, name=name, availability_zone=placement,
             snapshot_id=self._snapshot.id)
         cb_vol = OpenStackVolume(self._provider, os_vol)
-        cb_vol.name = vol_name
+        cb_vol.label = vol_label
         return cb_vol
 
 
@@ -774,7 +810,7 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
         # all available networks and perform an assignment test to infer valid
         # floating ip nets.
         dummy_router = self._provider.networking.routers.create(
-            network=self._network, name='cb_conn_test_router')
+            network=self._network, label='cb_conn_test_router')
         with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
             try:
                 dummy_router.attach_gateway(external_net)
@@ -782,10 +818,10 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
             except Exception:
                 return False
 
-    def get_or_create_inet_gateway(self, name=None):
+    def get_or_create_inet_gateway(self, label=None):
         """For OS, inet gtw is any net that has `external` property set."""
-        if name:
-            OpenStackInternetGateway.assert_valid_resource_name(name)
+        if label:
+            OpenStackInternetGateway.assert_valid_resource_label(label)
 
         external_nets = (n for n in self._provider.networking.networks
                          if n.external)
@@ -833,14 +869,18 @@ class OpenStackNetwork(BaseNetwork):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return self._network.get('name', None)
 
-    @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    @label.setter
+    def label(self, value):  # pylint:disable=arguments-differ
         """
-        Set the network name.
+        Set the network label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_network(self.id,
                                               {'network': {'name': value}})
         self.refresh()
@@ -910,14 +950,18 @@ class OpenStackSubnet(BaseSubnet):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return self._subnet.get('name', None)
 
-    @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    @label.setter
+    def label(self, value):  # pylint:disable=arguments-differ
         """
-        Set the subnet name.
+        Set the subnet label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_subnet(
             self.id, {'subnet': {'name': value}})
         self._subnet['name'] = value
@@ -1032,14 +1076,18 @@ class OpenStackRouter(BaseRouter):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return self._router.get('name', None)
 
-    @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    @label.setter
+    def label(self, value):  # pylint:disable=arguments-differ
         """
-        Set the router name.
+        Set the router label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_router(
             self.id, {'router': {'name': value}})
         self.refresh()
@@ -1112,12 +1160,16 @@ class OpenStackInternetGateway(BaseInternetGateway):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return self._gateway_net.get('name', None)
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
+    def label(self, value):
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_network(self.id,
                                               {'network': {'name': value}})
         self.refresh()
@@ -1173,12 +1225,19 @@ class OpenStackVMFirewall(BaseVMFirewall):
 
     @property
     def name(self):
+        """
+        Return the name of this VM firewall.
+        """
+        return self.id
+
+    @property
+    def label(self):
         return self._vm_firewall.name
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
+    def label(self, value):
+        self.assert_valid_resource_label(value)
         self._provider.os_conn.network.update_security_group(self.id,
                                                              name=value)
         self.refresh()
@@ -1319,7 +1378,7 @@ class OpenStackBucketObject(BaseBucketObject):
     @property
     def name(self):
         """Get this object's name."""
-        return self._obj.get("name")
+        return self.id
 
     @property
     def size(self):
@@ -1432,7 +1491,7 @@ class OpenStackBucket(BaseBucket):
 
     @property
     def name(self):
-        return self._bucket.get("name")
+        return self.id
 
     @property
     def objects(self):

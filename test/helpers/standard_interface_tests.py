@@ -8,7 +8,8 @@ This includes:
 import uuid
 
 from cloudbridge.cloud.interfaces.exceptions \
-    import InvalidNameException
+    import InvalidLabelException
+from cloudbridge.cloud.interfaces.resources import LabeledCloudResource
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
 
@@ -27,12 +28,15 @@ def check_json(test, obj):
     val = obj.to_json()
     test.assertEqual(val.get('id'), obj.id)
     test.assertEqual(val.get('name'), obj.name)
+    if isinstance(obj, LabeledCloudResource):
+        test.assertEqual(val.get('label'), obj.label)
 
 
 def check_obj_properties(test, obj):
     test.assertEqual(obj, obj, "Object should be equal to itself")
     test.assertFalse(obj != obj, "Object inequality should be false")
     check_obj_name(test, obj)
+    check_obj_label(test, obj)
 
 
 def check_list(test, service, obj):
@@ -66,18 +70,24 @@ def check_iter(test, service, obj):
 
 def check_find(test, service, obj):
     # check find
-    find_objs = service.find(name=obj.name)
+    if isinstance(obj, LabeledCloudResource):
+        find_objs = service.find(label=obj.label)
+    else:
+        find_objs = service.find(name=obj.name)
     test.assertTrue(
         len(find_objs) == 1,
         "Find objects for %s does not return the expected object: %s. Got %s"
-        % (type(obj).__name__, obj.name, find_objs))
+        % (type(obj).__name__, getattr(obj, 'label', obj.name), find_objs))
     test.assertEqual(find_objs[0].id, obj.id)
     return find_objs
 
 
-def check_find_non_existent(test, service):
+def check_find_non_existent(test, service, obj):
     # check find
-    find_objs = service.find(name="random_imagined_obj_name")
+    if isinstance(obj, LabeledCloudResource):
+        find_objs = service.find(label="random_imagined_obj_name")
+    else:
+        find_objs = service.find(name="random_imagined_obj_name")
     test.assertTrue(
         len(find_objs) == 0,
         "Find non-existent object for %s returned unexpected objects: %s"
@@ -113,6 +123,12 @@ def check_delete(test, service, obj, perform_delete=False):
 
 
 def check_obj_name(test, obj):
+    name_property = getattr(type(obj), 'name', None)
+    test.assertIsInstance(name_property, property)
+    test.assertIsNone(name_property.fset, "Name should not have a setter")
+
+
+def check_obj_label(test, obj):
     """
     Cloudbridge identifiers must be 1-63 characters long, and comply with
     RFC1035. In addition, identifiers should contain only lowercase letters,
@@ -120,31 +136,32 @@ def check_obj_name(test, obj):
     characters are allowed.
     """
 
-    # if name has a setter, make sure invalid values cannot be set
-    name_property = getattr(type(obj), 'name', None)
-    if isinstance(name_property, property) and name_property.fset:
+    # if label property exists, make sure invalid values cannot be set
+    label_property = getattr(type(obj), 'label', None)
+    if isinstance(label_property, property):
+        test.assertIsInstance(obj, LabeledCloudResource)
         # setting letters, numbers and international characters should succeed
         # TODO: Unicode characters trip up Moto. Add following: \u0D85\u0200
-        VALID_NAME = u"hello_world-123"
-        original_name = obj.name
-        obj.name = VALID_NAME
+        VALID_LABEL = u"hello_world-123"
+        original_label = obj.label
+        obj.label = VALID_LABEL
         # setting spaces should raise an exception
-        with test.assertRaises(InvalidNameException):
-            obj.name = "hello world"
+        with test.assertRaises(InvalidLabelException):
+            obj.label = "hello world"
         # setting upper case characters should raise an exception
-        with test.assertRaises(InvalidNameException):
-            obj.name = "helloWorld"
+        with test.assertRaises(InvalidLabelException):
+            obj.label = "helloWorld"
         # setting special characters should raise an exception
-        with test.assertRaises(InvalidNameException):
-            obj.name = "hello.world:how_goes_it"
+        with test.assertRaises(InvalidLabelException):
+            obj.label = "hello.world:how_goes_it"
         # setting a length > 63 should result in an exception
-        with test.assertRaises(InvalidNameException,
-                               msg="Name of length > 64 should be disallowed"):
-            obj.name = "a" * 64
-        # refreshing should yield the last successfully set name
+        with test.assertRaises(InvalidLabelException,
+                               msg="Label of length > 64 is not allowed"):
+            obj.label = "a" * 64
+        # refreshing should yield the last successfully set label
         obj.refresh()
-        test.assertEqual(obj.name, VALID_NAME)
-        obj.name = original_name
+        test.assertEqual(obj.label, VALID_LABEL)
+        obj.label = original_label
 
 
 def check_standard_behaviour(test, service, obj):
@@ -158,7 +175,7 @@ def check_standard_behaviour(test, service, obj):
     objs_list = check_list(test, service, obj)
     objs_iter = check_iter(test, service, obj)
     objs_find = check_find(test, service, obj)
-    check_find_non_existent(test, service)
+    check_find_non_existent(test, service, obj)
     obj_get = check_get(test, service, obj)
     check_get_non_existent(test, service)
 
@@ -178,29 +195,39 @@ def check_standard_behaviour(test, service, obj):
                                            objs_find[0].id, obj_get.id,
                                            obj.id))
 
+    if isinstance(obj, LabeledCloudResource):
+        test.assertTrue(
+            obj.label == objs_list[0].label == objs_iter[0].label ==
+            objs_find[0].label == obj_get.label,
+            "Labels returned by list: {0}, iter: {1}, find: {2} and get: {3} "
+            " are not as expected: {4}".format(objs_list[0].id,
+                                               objs_iter[0].id,
+                                               objs_find[0].id, obj_get.id,
+                                               obj.id))
+
 
 def check_create(test, service, iface, name_prefix,
                  create_func, cleanup_func):
-    # check create with invalid name
-    with test.assertRaises(InvalidNameException):
+    # check create with invalid label
+    with test.assertRaises(InvalidLabelException):
         # spaces should raise an exception
         create_func("hello world")
-    # check create with invalid name
-    with test.assertRaises(InvalidNameException):
+    # check create with invalid label
+    with test.assertRaises(InvalidLabelException):
         # uppercase characters should raise an exception
         create_func("helloWorld")
     # setting special characters should raise an exception
-    with test.assertRaises(InvalidNameException):
+    with test.assertRaises(InvalidLabelException):
         create_func("hello.world:how_goes_it")
     # setting a length > 63 should result in an exception
-    with test.assertRaises(InvalidNameException,
-                           msg="Name of length > 64 should be disallowed"):
+    with test.assertRaises(InvalidLabelException,
+                           msg="Label of length > 63 should be disallowed"):
         create_func("a" * 64)
 
 
-def check_crud(test, service, iface, name_prefix,
+def check_crud(test, service, iface, label_prefix,
                create_func, cleanup_func, extra_test_func=None,
-               custom_check_delete=None, skip_name_check=False):
+               custom_check_delete=None, skip_label_check=False):
     """
     Checks crud behaviour of a given cloudbridge service. The create_func will
     be used as a factory function to create a service object and the
@@ -219,14 +246,14 @@ def check_crud(test, service, iface, name_prefix,
     :param iface: The type to test behaviour against. This type must be a
                   subclass of ``CloudResource``.
 
-    :type  name_prefix: ``str``
-    :param name_prefix: The name to prefix all created objects with. This
-                        function will generated a new name with the
-                        specified name_prefix for each test object created
-                        and pass that name into the create_func
+    :type  label_prefix: ``str``
+    :param label_prefix: The label to prefix all created objects with. This
+                        function will generated a new label with the
+                        specified label_prefix for each test object created
+                        and pass that label into the create_func
 
     :type  create_func: ``func``
-    :param create_func: The create_func must accept the name of the object to
+    :param create_func: The create_func must accept the label of the object to
                         create as a parameter and return the constructed
                         object.
 
@@ -246,18 +273,18 @@ def check_crud(test, service, iface, name_prefix,
                                 instead of the standard check_delete function
                                 to make sure that the object has been deleted.
 
-    :type  skip_name_check: ``boolean``
-    :param skip_name_check:  If True, the invalid name checking will be
+    :type  skip_label_check: ``boolean``
+    :param skip_label_check:  If True, the invalid label checking will be
                              skipped.
     """
 
     obj = None
     with helpers.cleanup_action(lambda: cleanup_func(obj)):
-        if not skip_name_check:
-            check_create(test, service, iface, name_prefix,
+        if not skip_label_check:
+            check_create(test, service, iface, label_prefix,
                          create_func, cleanup_func)
-        name = "{0}-{1}".format(name_prefix, helpers.get_uuid())
-        obj = create_func(name)
+        label = "{0}-{1}".format(label_prefix, helpers.get_uuid())
+        obj = create_func(label)
         if issubclass(iface, ObjectLifeCycleMixin):
             obj.wait_till_ready()
         check_standard_behaviour(test, service, obj)
