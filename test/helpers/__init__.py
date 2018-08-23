@@ -94,7 +94,7 @@ TEST_DATA_CONFIG = {
         'image': ('https://www.googleapis.com/compute/v1/'
                   'projects/ubuntu-os-cloud/global/images/'
                   'ubuntu-1710-artful-v20180126'),
-        'vm_type': 'n1-standard-1',
+        'vm_type': 'f1-micro',
         'placement': os.environ.get('GCE_DEFAULT_ZONE', 'us-central1-a'),
     },
     "AzureCloudProvider": {
