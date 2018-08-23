@@ -5,7 +5,7 @@
 * Restructured the interface to make it more comprehensible and uniform across
   all supported providers. See `issue #69 <https://github.com/CloudVE/cloudbridge/issues/69>`_
   for more details as well as the library layout image for an easy visual
-  reference: http://cloudbridge.cloudve.org/en/v1.0.0/#quick-reference.
+  reference: https://github.com/CloudVE/cloudbridge#quick-reference.
 * Migrated AWS implementation to use boto3 library from boto (thanks @01000101)
 * Cleaned up use of ``name`` property for resources. Resources now have ``id``,
   ``name``, and ``label`` properties to represent respectively: a unique
@@ -16,6 +16,7 @@
 * Refactored tests and extracted standard interface tests where all resources
   are being tested using the same code structure. Also, tests will run only
   for providers that implement a given service.
+* Moved the repository from github.com/gvlproject to github.com/cloudve org
 * When deleting an OpenStack network, clear any ports
 * Added support for launching OpenStack instances into a specific subnet
 * Update image list interface to allow filtering by owner
