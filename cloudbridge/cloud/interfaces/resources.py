@@ -64,31 +64,31 @@ class CloudResource(object):
         pass
 
     @abstractproperty
-    def display_id(self):
+    def name(self):
         """
         Get the displayable id for the resource.
 
-        The display_id property is typically a user-friendly id value for the
-        resource. The display_id is different from the id property in the
+        The name property is typically a user-friendly id value for the
+        resource. The name is different from the id property in the
         following ways:
-        1. The display_id property is often a more user-friendly value to
+        1. The name property is often a more user-friendly value to
            display to the user than the id property.
-        2. The display_id may sometimes be the same as the id, but should never
+        2. The name may sometimes be the same as the id, but should never
            be used in place of the id.
         3. The id is what will uniquely identify a resource, and will be used
            internally by cloudbridge for all get operations etc.
-        4. All resources have a display_id.
-        5. The display_id is read-only.
-        6. However, the display_id may not necessarily be unique, which is the
+        4. All resources have a name.
+        5. The name is read-only.
+        6. However, the name may not necessarily be unique, which is the
            reason why it should not be used for uniquely identifying a
            resource.
         Example:
-        The AWS machine image name is a display_id. It is not editable and is
+        The AWS machine image name is a name. It is not editable and is
         a user friendly name such as 'Ubuntu 14.04' and corresponds to the
         ami-name. It is distinct from the ami-id, which corresponds to
         cloudbridge's id property. The ami-name cannot be edited, and is set
         at creation time. It is not necessarily unique.
-        In Azure, the machine image's display_id corresponds to the name
+        In Azure, the machine image's name corresponds to the name
         property. In Azure, it also happens to be the same as the id property.
         """
         pass
@@ -488,9 +488,9 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
-    @CloudResource.name.setter
+    @CloudResource.label.setter
     @abstractmethod
-    def name(self, value):
+    def label(self, value):
         """
         Set the instance name.
 
@@ -934,7 +934,7 @@ class Network(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, name, cidr_block, zone=None):
+    def create_subnet(self, cidr_block, label=None, zone=None):
         """
         Create a new network subnet and associate it with this Network.
 
@@ -1294,7 +1294,7 @@ class GatewayContainer(PageableObjectMixin):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self, name=None):
+    def get_or_create_inet_gateway(self, label=None):
         """
         Creates new or returns an existing internet gateway for a network.
 
@@ -1438,9 +1438,9 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
-    @CloudResource.name.setter
+    @CloudResource.label.setter
     @abstractmethod
-    def name(self, value):
+    def label(self, value):
         """
         Set the volume name.
 
@@ -1623,9 +1623,9 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
 
     __metaclass__ = ABCMeta
 
-    @CloudResource.name.setter
+    @CloudResource.label.setter
     @abstractmethod
-    def name(self, value):
+    def label(self, value):
         """
         Set the snapshot name.
 

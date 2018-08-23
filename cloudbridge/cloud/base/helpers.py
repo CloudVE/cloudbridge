@@ -1,3 +1,5 @@
+import fnmatch
+import re
 import sys
 import traceback
 from contextlib import contextmanager
@@ -38,9 +40,13 @@ def filter_by(prop_name, kwargs, objs):
     """
     prop_val = kwargs.pop(prop_name, None)
     if prop_val:
-        match = (o for o in objs if getattr(o, prop_name) == prop_val)
-        return match
-    return objs
+        regex = fnmatch.translate(prop_val)
+        results = [o for o in objs
+                   if getattr(o, prop_name)
+                   and re.search(regex, getattr(o, prop_name))]
+    else:
+        return objs
+    return results
 
 
 def generic_find(filter_names, kwargs, objs):
