@@ -2,6 +2,7 @@ import datetime
 import logging
 from io import BytesIO
 
+from azure.common import AzureConflictHttpError
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.cosmosdb.table.tableservice import TableService
 from azure.mgmt.compute import ComputeManagementClient

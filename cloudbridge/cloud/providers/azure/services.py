@@ -22,7 +22,6 @@ from cloudbridge.cloud.interfaces.exceptions import \
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
 
-from . import helpers as azure_helpers
 from .resources import AzureBucket, \
     AzureInstance, AzureKeyPair, \
     AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
@@ -914,14 +913,8 @@ class AzureNetworkService(BaseNetworkService):
     def create(self, cidr_block, label=None):
         # Azure requires CIDR block to be specified when creating a network
         # so set a default one and use the largest allowed netmask.
-        if label:
-            tags = {'Label': label }
-        else:
-            label = 'cb-net'
-
-        network_name = "{0}-{1}".format(label, uuid.uuid4().hex[:6])
-
-        AzureNetwork.assert_valid_resource_name(network_name)
+        AzureNetwork.assert_valid_resource_label(label)
+        network_name = AzureNetwork._generate_name_from_label(label)
 
         params = {
             'location': self.provider.azure_client.region_name,
@@ -930,8 +923,8 @@ class AzureNetworkService(BaseNetworkService):
             }
         }
 
-        if tags:
-            params.update(tags=tags)
+        if label:
+            params.update(tags={'Label': label})
 
         az_network = self.provider.azure_client.create_network(network_name,
                                                                params)
@@ -1066,22 +1059,22 @@ class AzureSubnetService(BaseSubnetService):
         default_cidr = '10.0.1.0/24'
 
         # No provider-default Subnet exists, look for a library-default one
-        matches = self.find(label=AzureSubnet.CB_DEFAULT_SUBNET_NAME)
+        matches = self.find(label=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)
         if matches:
             return matches[0]
 
         # No provider-default Subnet exists, try to create it (net + subnets)
         networks = self.provider.networking.networks.find(
-            label=AzureNetwork.CB_DEFAULT_NETWORK_NAME)
+            label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
 
         if networks:
             network = networks[0]
         else:
-            network = self.provider.networking.networks.create('10.0.0.0/16',
-                label=AzureNetwork.CB_DEFAULT_NETWORK_NAME)
+            network = self.provider.networking.networks.create(
+                '10.0.0.0/16', label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
 
         subnet = self.create(network, default_cidr,
-                             prefix=AzureSubnet.CB_DEFAULT_SUBNET_NAME)
+                             prefix=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)
         return subnet
 
     def delete(self, subnet):

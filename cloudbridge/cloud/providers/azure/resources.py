@@ -3,7 +3,6 @@ DataTypes used by this provider
 """
 import collections
 import logging
-import uuid
 
 from azure.common import AzureException
 from azure.mgmt.devtestlabs.models import GalleryImageReference
@@ -348,7 +347,6 @@ class AzureBucket(BaseBucket):
     @property
     def label(self):
         raise NotImplementedError("Azure Buckets do not support labels")
-
 
     def delete(self, delete_contents=True):
         """
@@ -994,16 +992,14 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
             'location': self._provider.azure_client.region_name,
             'public_ip_allocation_method': 'Static'
         }
-
         if label:
-            public_ip_parameters.update(tags={'Label':label})
-        else:
-            label = 'cb-ip-'
+            public_ip_parameters.update(tags={'Label': label})
 
-        public_ip_address_name = "{0}-{1}".format(
-            label, uuid.uuid4().hex[:6])
+        AzureFloatingIP.assert_valid_resource_label(label)
+        public_ip_name = AzureFloatingIP._generate_name_from_label(label)
+
         floating_ip = self._provider.azure_client.\
-            create_floating_ip(public_ip_address_name, public_ip_parameters)
+            create_floating_ip(public_ip_name, public_ip_parameters)
         return AzureFloatingIP(self._provider, floating_ip, self._network_id)
 
 
