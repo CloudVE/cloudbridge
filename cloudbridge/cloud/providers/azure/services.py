@@ -69,7 +69,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
     def create(self, label=None, description=None, network_id=None):
         parameters = {"location": self.provider.region_name}
         if label:
-            AzureVMFirewall.assert_valid_resource_label(label)
+            AzureVMFirewall.assert_valid_resource_name(label)
             parameters.update({'tags': {'Label': label}})
         else:
             label = "cb-fw"
@@ -175,7 +175,7 @@ class AzureKeyPairService(BaseKeyPairService):
                                      matches if matches else [])
 
     def create(self, name, public_key_material=None):
-        AzureKeyPair.assert_valid_resource_label(name)
+        AzureKeyPair.assert_valid_resource_name(name)
 
         key_pair = self.get(name)
 
@@ -243,7 +243,7 @@ class AzureBucketService(BaseBucketService):
         """
         Create a new bucket.
         """
-        AzureBucket.assert_valid_resource_label(name)
+        AzureBucket.assert_valid_resource_name(name)
         bucket = self.provider.azure_client.create_container(name.lower())
         return AzureBucket(self.provider, bucket)
 
@@ -314,9 +314,9 @@ class AzureVolumeService(BaseVolumeService):
         """
         Creates a new volume.
         """
-        AzureVolume.assert_valid_resource_label(label)
+        AzureVolume.assert_valid_resource_name(label)
         if label:
-            AzureVolume.assert_valid_resource_label(label)
+            AzureVolume.assert_valid_resource_name(label)
             tags = {'Label': label}
         else:
             label = "cb-vol"
@@ -417,7 +417,7 @@ class AzureSnapshotService(BaseSnapshotService):
                   if isinstance(volume, str) else volume)
 
         if label:
-            AzureSnapshot.assert_valid_resource_label(label)
+            AzureSnapshot.assert_valid_resource_name(label)
             tags = {'Label': label}
         else:
             label = "cb-snap"
@@ -486,7 +486,7 @@ class AzureInstanceService(BaseInstanceService):
 
         instance_name = "{0}-{1}".format(prefix, uuid.uuid4().hex[:6])
 
-        AzureInstance.assert_valid_resource_label(instance_name)
+        AzureInstance.assert_valid_resource_name(instance_name)
 
         image = (image if isinstance(image, AzureMachineImage) else
                  self.provider.compute.images.get(image))
@@ -551,7 +551,7 @@ class AzureInstanceService(BaseInstanceService):
             # but useless. However, this will allow an instance to be launched
             # without specifying a keypair, so users may still be able to login
             # if they have a preinstalled keypair/password baked into the image
-            temp_kp_name = "".join(["cb_default_kp_",
+            temp_kp_name = "".join(["cb-default-kp_",
                                    str(uuid.uuid5(uuid.NAMESPACE_OID,
                                                   instance_name))[-6:]])
             key_pair = self.provider.security.key_pairs.create(
@@ -913,7 +913,7 @@ class AzureNetworkService(BaseNetworkService):
     def create(self, cidr_block, label=None):
         # Azure requires CIDR block to be specified when creating a network
         # so set a default one and use the largest allowed netmask.
-        AzureNetwork.assert_valid_resource_label(label)
+        AzureNetwork.assert_valid_resource_name(label)
         network_name = AzureNetwork._generate_name_from_label(label)
 
         params = {
@@ -1037,7 +1037,7 @@ class AzureSubnetService(BaseSubnetService):
             if isinstance(network, Network) else network
 
         if prefix:
-            AzureSubnet.assert_valid_resource_label(prefix)
+            AzureSubnet.assert_valid_resource_name(prefix)
 
         else:
             prefix = "cb-sn"
@@ -1118,7 +1118,7 @@ class AzureRouterService(BaseRouterService):
                                      limit=limit, marker=marker)
 
     def create(self, network, label=None):
-        AzureRouter.assert_valid_resource_label(label)
+        AzureRouter.assert_valid_resource_name(label)
         parameters = {"location": self.provider.region_name}
         if label:
             parameters.update(tags={'Label': label})

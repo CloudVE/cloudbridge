@@ -100,7 +100,7 @@ class AWSKeyPairService(BaseKeyPairService):
 
     def create(self, name, public_key_material=None):
         log.debug("Creating Key Pair Service %s", name)
-        AWSKeyPair.assert_valid_resource_label(name)
+        AWSKeyPair.assert_valid_resource_name(name)
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()
@@ -136,7 +136,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
         log.debug("Creating Firewall Service with the parameters "
                   "[label: %s id: %s description: %s]", label, network_id,
                   description)
-        AWSVMFirewall.assert_valid_resource_label(label)
+        AWSVMFirewall.assert_valid_resource_name(label)
         name = AWSVMFirewall._generate_name_from_label(label)
         obj = self.svc.create('create_security_group', GroupName=name,
                               Description=description, VpcId=network_id)
@@ -216,7 +216,7 @@ class AWSVolumeService(BaseVolumeService):
                   "[label: %s size: %s zone: %s snapshot: %s "
                   "description: %s]", label, size, zone, snapshot,
                   description)
-        AWSVolume.assert_valid_resource_label(label)
+        AWSVolume.assert_valid_resource_name(label)
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
@@ -267,7 +267,7 @@ class AWSSnapshotService(BaseSnapshotService):
         log.debug("Creating a new AWS snapshot Service with the "
                   "parameters [label: %s volume: %s description: %s]",
                   label, volume, description)
-        AWSSnapshot.assert_valid_resource_label(label)
+        AWSSnapshot.assert_valid_resource_name(label)
 
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
@@ -331,7 +331,7 @@ class AWSBucketService(BaseBucketService):
     def create(self, name, location=None):
         log.debug("Creating AWS Bucket with the params "
                   "[name: %s, location: %s]", name, location)
-        AWSBucket.assert_valid_resource_label(name)
+        AWSBucket.assert_valid_resource_name(name)
         loc_constraint = location or self.provider.region_name
         # Due to an API issue in S3, specifying us-east-1 as a
         # LocationConstraint results in an InvalidLocationConstraint.
@@ -416,7 +416,7 @@ class AWSInstanceService(BaseInstanceService):
                   "key pair: %s firewalls: %s user data: %s config %s "
                   "others: %s]", label, image, vm_type, subnet, zone,
                   key_pair, vm_firewalls, user_data, launch_config, kwargs)
-        AWSInstance.assert_valid_resource_label(label)
+        AWSInstance.assert_valid_resource_name(label)
 
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
@@ -669,7 +669,7 @@ class AWSNetworkService(BaseNetworkService):
     def create(self, cidr_block, label=None):
         log.debug("Creating AWS Network Service with the params "
                   "[label: %s block: %s]", label, cidr_block)
-        AWSNetwork.assert_valid_resource_label(label)
+        AWSNetwork.assert_valid_resource_name(label)
 
         cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block)
         # Wait until ready to tag instance
@@ -715,7 +715,7 @@ class AWSSubnetService(BaseSubnetService):
         log.debug("Creating AWS Subnet Service with the params "
                   "[label: %s network: %s block: %s zone: %s]",
                   label, network, cidr_block, zone)
-        AWSSubnet.assert_valid_resource_label(label)
+        AWSSubnet.assert_valid_resource_name(label)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
@@ -802,7 +802,7 @@ class AWSRouterService(BaseRouterService):
     def create(self, network, label=None):
         log.debug("Creating AWS Router Service with the params "
                   "[label: %s network: %s]", label, network)
-        AWSRouter.assert_valid_resource_label(label)
+        AWSRouter.assert_valid_resource_name(label)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 

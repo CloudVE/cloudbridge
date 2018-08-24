@@ -78,7 +78,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             test_bucket = self.provider.storage.buckets.create(name)
 
             sit.check_crud(self, test_bucket.objects, BucketObject,
-                           "cb_bucketobj", create_bucket_obj,
+                           "cb-bucketobj", create_bucket_obj,
                            cleanup_bucket_obj, skip_label_check=True)
 
     @helpers.skipIfNoService(['storage.buckets'])

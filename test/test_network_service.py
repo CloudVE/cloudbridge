@@ -25,7 +25,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 self.provider.networking.networks.delete(network_id=net.id)
 
         sit.check_crud(self, self.provider.networking.networks, Network,
-                       "cb_crudnetwork", create_net, cleanup_net)
+                       "cb-crudnetwork", create_net, cleanup_net)
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_network_properties(self):
@@ -102,7 +102,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 self.provider.networking.networks.delete(network_id=net.id)
         ):
             sit.check_crud(self, self.provider.networking.subnets, Subnet,
-                           "cb_crudsubnet", create_subnet, cleanup_subnet)
+                           "cb-crudsubnet", create_subnet, cleanup_subnet)
 
     def test_crud_floating_ip(self):
         net, gw = helpers.get_test_gateway(
@@ -119,7 +119,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(
                 lambda: helpers.delete_test_gateway(net, gw)):
             sit.check_crud(self, gw.floating_ips, FloatingIP,
-                           "cb_crudfip", create_fip, cleanup_fip,
+                           "cb-crudfip", create_fip, cleanup_fip,
                            skip_label_check=True)
 
     def test_floating_ip_properties(self):

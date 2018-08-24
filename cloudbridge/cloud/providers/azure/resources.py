@@ -59,7 +59,7 @@ class AzureVMFirewall(BaseVMFirewall):
 
     @label.setter
     def label(self, value):
-        self.assert_valid_resource_label(value)
+        self.assert_valid_resource_name(value)
         self._vm_firewall.tags.update(Label=value)
         self._provider.azure_client.update_vm_firewall_tags(
             self.id, self._vm_firewall.tags)
@@ -469,7 +469,7 @@ class AzureVolume(BaseVolume):
         """
         Set the volume label.
         """
-        self.assert_valid_resource_label(value)
+        self.assert_valid_resource_name(value)
         self._volume.tags.update(Label=value)
         self._provider.azure_client. \
             update_disk_tags(self.id,
@@ -547,11 +547,12 @@ class AzureVolume(BaseVolume):
                     vm.storage_profile.data_disks.remove(item)
                     self._provider.azure_client.update_vm(vm.id, vm)
 
-    def create_snapshot(self, name, description=None):
+    def create_snapshot(self, label=None, description=None):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.storage.snapshots.create(name, self)
+        return self._provider.storage.snapshots.create(self,
+                                                       label, description)
 
     def delete(self):
         """
@@ -626,7 +627,7 @@ class AzureSnapshot(BaseSnapshot):
         """
         Set the snapshot label.
         """
-        self.assert_valid_resource_label(value)
+        self.assert_valid_resource_name(value)
         self._snapshot.tags.update(Label=value)
         self._provider.azure_client. \
             update_snapshot_tags(self.id,
@@ -750,7 +751,7 @@ class AzureMachineImage(BaseMachineImage):
         Set the image label when it is a private image.
         """
         if not self.is_gallery_image:
-            self.assert_valid_resource_label(value)
+            self.assert_valid_resource_name(value)
             self._image.tags.update(Label=value)
             self._provider.azure_client. \
                 update_image_tags(self.id, self._image.tags)
@@ -896,7 +897,7 @@ class AzureNetwork(BaseNetwork):
         """
         Set the network label.
         """
-        self.assert_valid_resource_label(value)
+        self.assert_valid_resource_name(value)
         self._network.tags.update(Label=value)
         self._provider.azure_client. \
             update_network_tags(self.id, self._network)
@@ -995,7 +996,7 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
         if label:
             public_ip_parameters.update(tags={'Label': label})
 
-        AzureFloatingIP.assert_valid_resource_label(label)
+        AzureFloatingIP.assert_valid_resource_name(label)
         public_ip_name = AzureFloatingIP._generate_name_from_label(label)
 
         floating_ip = self._provider.azure_client.\
@@ -1037,7 +1038,7 @@ class AzureFloatingIP(BaseFloatingIP):
         """
         Set the floating IP label.
         """
-        self.assert_valid_resource_label(value)
+        self.assert_valid_resource_name(value)
         self._ip.tags.update(Label=value)
         self._provider.azure_client. \
             update_fip_tags(self.id, self._ip)
@@ -1284,7 +1285,7 @@ class AzureInstance(BaseInstance):
         """
         Set the instance label.
         """
-        self.assert_valid_resource_label(value)
+        self.assert_valid_resource_name(value)
         self._vm.tags.update(Label=value)
         self._provider.azure_client. \
             update_vm_tags(self.id, self._vm)
@@ -1416,7 +1417,7 @@ class AzureInstance(BaseInstance):
         CloudBridge interface to pass the private key file path
         """
 
-        self.assert_valid_resource_label(name)
+        self.assert_valid_resource_name(name)
 
         if not self._state == 'VM generalized':
             if not self._state == 'VM running':
@@ -1688,7 +1689,7 @@ class AzureRouter(BaseRouter):
         """
         Set the router label.
         """
-        self.assert_valid_resource_label(value)
+        self.assert_valid_resource_name(value)
         self._route_table.tags.update(Label=value)
         self._provider.azure_client. \
             update_route_table_tags(self._route_table.name,

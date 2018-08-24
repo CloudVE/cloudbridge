@@ -39,14 +39,14 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                              terminal_states=[VolumeState.ERROR])
 
         sit.check_crud(self, self.provider.storage.volumes, Volume,
-                       "cb_createvol", create_vol, cleanup_vol)
+                       "cb-createvol", create_vol, cleanup_vol)
 
     @helpers.skipIfNoService(['storage.volumes'])
     def test_attach_detach_volume(self):
         """
         Create a new volume, and attempt to attach it to an instance
         """
-        label = "cb_attachvol-{0}".format(helpers.get_uuid())
+        label = "cb-attachvol-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
@@ -76,7 +76,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         """
         Test volume properties
         """
-        label = "cb_volprops-{0}".format(helpers.get_uuid())
+        label = "cb-volprops-{0}".format(helpers.get_uuid())
         vol_desc = 'newvoldesc1'
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -139,7 +139,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         whether list_snapshots properly detects the new snapshot.
         Delete everything afterwards.
         """
-        label = "cb_crudsnap-{0}".format(helpers.get_uuid())
+        label = "cb-crudsnap-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
             1,
             helpers.get_provider_test_data(self.provider, "placement"),
@@ -158,7 +158,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                   terminal_states=[SnapshotState.ERROR])
 
             sit.check_crud(self, self.provider.storage.snapshots, Snapshot,
-                           "cb_snap", create_snap, cleanup_snap)
+                           "cb-snap", create_snap, cleanup_snap)
 
             # Test creation of a snap via SnapshotService
             def create_snap2(label):
@@ -169,21 +169,21 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     not isinstance(self.provider, TestMockHelperMixin)):
                 time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
             sit.check_crud(self, self.provider.storage.snapshots, Snapshot,
-                           "cb_snaptwo", create_snap2, cleanup_snap)
+                           "cb-snaptwo", create_snap2, cleanup_snap)
 
     @helpers.skipIfNoService(['storage.snapshots'])
     def test_snapshot_properties(self):
         """
         Test snapshot properties
         """
-        label = "cb_snapprop-{0}".format(uuid.uuid4())
+        label = "cb-snapprop-{0}".format(uuid.uuid4())
         test_vol = self.provider.storage.volumes.create(
             1,
             helpers.get_provider_test_data(self.provider, "placement"),
             label=label)
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
-            snap_label = "cb_snap-{0}".format(label)
+            snap_label = "cb-snap-{0}".format(label)
             test_snap = test_vol.create_snapshot(label=snap_label,
                                                  description=snap_label)
 
@@ -214,7 +214,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(test_snap.description, 'snapnewdescription1')
 
                 # Test volume creation from a snapshot (via VolumeService)
-                sv_label = "cb_snapvol_{0}".format(test_snap.name)
+                sv_label = "cb-snapvol-{0}".format(test_snap.name)
                 snap_vol = self.provider.storage.volumes.create(
                     1,
                     helpers.get_provider_test_data(self.provider, "placement"),

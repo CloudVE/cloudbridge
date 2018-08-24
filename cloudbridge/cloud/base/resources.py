@@ -202,7 +202,7 @@ class BaseCloudResource(CloudResource):
                 else False)
 
     @staticmethod
-    def assert_valid_resource_label(label):
+    def assert_valid_resource_name(label):
         if not BaseCloudResource.is_valid_resource_label(label):
             log.debug("InvalidLabelException raised on %s", label)
             raise InvalidLabelException(
@@ -846,7 +846,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                 else False)
 
     @staticmethod
-    def assert_valid_resource_label(label):
+    def assert_valid_resource_name(label):
         if not BaseBucketObject.is_valid_resource_label(label):
             log.debug("InvalidLabelException raised on %s", label,
                       exc_info=True)
@@ -889,7 +889,7 @@ class BaseBucket(BaseCloudResource, Bucket):
         return True if BaseBucket.CB_LABEL_PATTERN.match(label) else False
 
     @staticmethod
-    def assert_valid_resource_label(label):
+    def assert_valid_resource_name(label):
         if not BaseBucket.is_valid_resource_label(label):
             log.debug("Invalid bucket name %s", label, exc_info=True)
             raise InvalidLabelException(
