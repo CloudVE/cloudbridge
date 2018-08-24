@@ -69,7 +69,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
     def create(self, label=None, description=None, network_id=None):
         parameters = {"location": self.provider.region_name}
         if label:
-            AzureVMFirewall.assert_valid_resource_name(label)
+            AzureVMFirewall.assert_valid_resource_label(label)
             parameters.update({'tags': {'Label': label}})
         else:
             label = "cb-fw"
@@ -175,7 +175,7 @@ class AzureKeyPairService(BaseKeyPairService):
                                      matches if matches else [])
 
     def create(self, name, public_key_material=None):
-        AzureKeyPair.assert_valid_resource_name(name)
+        AzureKeyPair.assert_valid_resource_label(name)
 
         key_pair = self.get(name)
 
@@ -243,7 +243,7 @@ class AzureBucketService(BaseBucketService):
         """
         Create a new bucket.
         """
-        AzureBucket.assert_valid_resource_name(name)
+        AzureBucket.assert_valid_resource_label(name)
         bucket = self.provider.azure_client.create_container(name.lower())
         return AzureBucket(self.provider, bucket)
 
@@ -309,14 +309,14 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, size, label=None, description=None,
-               zone=None, snapshot=None):
+    def create(self, size, zone=None, label=None, description=None,
+               snapshot=None):
         """
         Creates a new volume.
         """
-        AzureVolume.assert_valid_resource_name(label)
+        AzureVolume.assert_valid_resource_label(label)
         if label:
-            AzureVolume.assert_valid_resource_name(label)
+            AzureVolume.assert_valid_resource_label(label)
             tags = {'Label': label}
         else:
             label = "cb-vol"
@@ -417,7 +417,7 @@ class AzureSnapshotService(BaseSnapshotService):
                   if isinstance(volume, str) else volume)
 
         if label:
-            AzureSnapshot.assert_valid_resource_name(label)
+            AzureSnapshot.assert_valid_resource_label(label)
             tags = {'Label': label}
         else:
             label = "cb-snap"
@@ -486,7 +486,7 @@ class AzureInstanceService(BaseInstanceService):
 
         instance_name = "{0}-{1}".format(prefix, uuid.uuid4().hex[:6])
 
-        AzureInstance.assert_valid_resource_name(instance_name)
+        AzureInstance.assert_valid_resource_label(instance_name)
 
         image = (image if isinstance(image, AzureMachineImage) else
                  self.provider.compute.images.get(image))
@@ -1037,7 +1037,7 @@ class AzureSubnetService(BaseSubnetService):
             if isinstance(network, Network) else network
 
         if prefix:
-            AzureSubnet.assert_valid_resource_name(prefix)
+            AzureSubnet.assert_valid_resource_label(prefix)
 
         else:
             prefix = "cb-sn"
@@ -1118,7 +1118,7 @@ class AzureRouterService(BaseRouterService):
                                      limit=limit, marker=marker)
 
     def create(self, network, label=None):
-        AzureRouter.assert_valid_resource_name(label)
+        AzureRouter.assert_valid_resource_label(label)
         parameters = {"location": self.provider.region_name}
         if label:
             parameters.update(tags={'Label': label})

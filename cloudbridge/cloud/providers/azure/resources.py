@@ -59,7 +59,7 @@ class AzureVMFirewall(BaseVMFirewall):
 
     @label.setter
     def label(self, value):
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._vm_firewall.tags.update(Label=value)
         self._provider.azure_client.update_vm_firewall_tags(
             self.id, self._vm_firewall.tags)
@@ -469,7 +469,7 @@ class AzureVolume(BaseVolume):
         """
         Set the volume label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._volume.tags.update(Label=value)
         self._provider.azure_client. \
             update_disk_tags(self.id,
@@ -626,7 +626,7 @@ class AzureSnapshot(BaseSnapshot):
         """
         Set the snapshot label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._snapshot.tags.update(Label=value)
         self._provider.azure_client. \
             update_snapshot_tags(self.id,
@@ -750,7 +750,7 @@ class AzureMachineImage(BaseMachineImage):
         Set the image label when it is a private image.
         """
         if not self.is_gallery_image:
-            self.assert_valid_resource_name(value)
+            self.assert_valid_resource_label(value)
             self._image.tags.update(Label=value)
             self._provider.azure_client. \
                 update_image_tags(self.id, self._image.tags)
@@ -896,7 +896,7 @@ class AzureNetwork(BaseNetwork):
         """
         Set the network label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._network.tags.update(Label=value)
         self._provider.azure_client. \
             update_network_tags(self.id, self._network)
@@ -1037,7 +1037,7 @@ class AzureFloatingIP(BaseFloatingIP):
         """
         Set the floating IP label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._ip.tags.update(Label=value)
         self._provider.azure_client. \
             update_fip_tags(self.id, self._ip)
@@ -1284,7 +1284,7 @@ class AzureInstance(BaseInstance):
         """
         Set the instance label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._vm.tags.update(Label=value)
         self._provider.azure_client. \
             update_vm_tags(self.id, self._vm)
@@ -1416,7 +1416,7 @@ class AzureInstance(BaseInstance):
         CloudBridge interface to pass the private key file path
         """
 
-        self.assert_valid_resource_name(name)
+        self.assert_valid_resource_label(name)
 
         if not self._state == 'VM generalized':
             if not self._state == 'VM running':
@@ -1688,7 +1688,7 @@ class AzureRouter(BaseRouter):
         """
         Set the router label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._route_table.tags.update(Label=value)
         self._provider.azure_client. \
             update_route_table_tags(self._route_table.name,
