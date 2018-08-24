@@ -897,7 +897,7 @@ class AzureNetworkService(BaseNetworkService):
     def create(self, cidr_block, label=None):
         # Azure requires CIDR block to be specified when creating a network
         # so set a default one and use the largest allowed netmask.
-        network_name = AzureNetwork._generate_name_from_label(label)
+        network_name = AzureNetwork._generate_name_from_label(label, 'cb-net')
 
         params = {
             'location': self.provider.azure_client.region_name,

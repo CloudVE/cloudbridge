@@ -29,8 +29,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_network_properties(self):
-        label = 'cb_propnetwork-{0}'.format(helpers.get_uuid())
-        subnet_label = 'cb_propsubnet-{0}'.format(helpers.get_uuid())
+        label = 'cb-propnetwork-{0}'.format(helpers.get_uuid())
+        subnet_label = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
             label=label, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
@@ -94,7 +94,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             if subnet:
                 self.provider.networking.subnets.delete(subnet=subnet)
 
-        net_label = 'cb_crudsubnet-{0}'.format(helpers.get_uuid())
+        net_label = 'cb-crudsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
             label=net_label, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
@@ -106,7 +106,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     def test_crud_floating_ip(self):
         net, gw = helpers.get_test_gateway(
-            self.provider, 'cb_crudfipgw-{0}'.format(helpers.get_uuid()))
+            self.provider, 'cb-crudfipgw-{0}'.format(helpers.get_uuid()))
 
         def create_fip(label):
             fip = gw.floating_ips.create()
@@ -125,7 +125,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_floating_ip_properties(self):
         # Check floating IP address
         net, gw = helpers.get_test_gateway(
-            self.provider, 'cb_crudfipgw-{0}'.format(helpers.get_uuid()))
+            self.provider, 'cb-crudfipgw-{0}'.format(helpers.get_uuid()))
         fip = gw.floating_ips.create()
         with helpers.cleanup_action(
                 lambda: helpers.delete_test_gateway(net, gw)):
@@ -157,7 +157,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                             router.detach_subnet(subnet)
                             router.detach_gateway(gateway)
 
-        label = 'cb_crudrouter-{0}'.format(helpers.get_uuid())
+        label = 'cb-crudrouter-{0}'.format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None

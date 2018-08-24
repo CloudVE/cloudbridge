@@ -810,7 +810,7 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
         # all available networks and perform an assignment test to infer valid
         # floating ip nets.
         dummy_router = self._provider.networking.routers.create(
-            network=self._network, label='cb_conn_test_router')
+            network=self._network, label='cb-conn-test-router')
         with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
             try:
                 dummy_router.attach_gateway(external_net)
