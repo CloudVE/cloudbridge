@@ -102,9 +102,10 @@ forum=WAVirtualMachinesVirtualNetwork
    :scale: 50 %
    :alt: network label in Azure portal
 
-   The cloudbridge `label` property most often maps to the Resource ID in
-   Azure, which can be found under the tags tab within a resource. The above
-   screenshot shows where to find a resource's label in Azure's web portal.
+   The cloudbridge `label` property most often maps to the tag with key
+   'Label' in Azure, which can be found under the tags tab within a resource.
+   The above screenshot shows where to find a resource's label in Azure's
+   web portal.
 
 .. figure:: captures/az-storacc.png
    :scale: 50 %
