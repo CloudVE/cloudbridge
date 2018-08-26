@@ -1161,7 +1161,19 @@ class AzureSubnet(BaseSubnet):
 
     @property
     def label(self):
-        raise NotImplementedError("Azure Subnets do not support labels")
+        # Although Subnet doesn't support labels, we use the parent Network's
+        # tags to track the subnet's labels
+        az_network = self._network._network
+        return az_network.tags.get('SubnetLabel_' + self.name, None)
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_name(value)
+        az_network = self._network._network
+        kwargs = {'SubnetLabel_' + self.name: value}
+        az_network.tags.update(**kwargs)
+        self._provider.azure_client.update_network_tags(self.id, az_network)
 
     @property
     def resource_id(self):

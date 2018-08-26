@@ -1012,16 +1012,16 @@ class AzureSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, network, cidr_block, name=None, **kwargs):
+    def create(self, network, cidr_block, label=None, **kwargs):
         """
         Create subnet
         """
         network_id = network.id \
             if isinstance(network, Network) else network
 
-        # Although Subnet doesn't support labels, use the same logic
-        # to append a uuid to the name.
-        subnet_name = AzureSubnet._generate_name_from_label(name, "cb-sn")
+        # Although Subnet doesn't support labels, we use the parent Network's
+        # tags to track the subnet's labels
+        subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
 
         subnet_info = self.provider.azure_client\
             .create_subnet(
@@ -1032,7 +1032,9 @@ class AzureSubnetService(BaseSubnetService):
                 }
             )
 
-        return AzureSubnet(self.provider, subnet_info)
+        subnet = AzureSubnet(self.provider, subnet_info)
+        subnet.label = label
+        return subnet
 
     def get_or_create_default(self, zone):
         default_cidr = '10.0.1.0/24'
