@@ -8,7 +8,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from six import reraise
+import six
 
 
 def generate_key_pair():
@@ -40,13 +40,17 @@ def filter_by(prop_name, kwargs, objs):
     """
     prop_val = kwargs.pop(prop_name, None)
     if prop_val:
-        regex = fnmatch.translate(prop_val)
-        results = [o for o in objs
-                   if getattr(o, prop_name)
-                   and re.search(regex, getattr(o, prop_name))]
+        if isinstance(prop_val, six.string_types):
+            regex = fnmatch.translate(prop_val)
+            results = [o for o in objs
+                       if getattr(o, prop_name)
+                       and re.search(regex, getattr(o, prop_name))]
+        else:
+            results = [o for o in objs
+                       if getattr(o, prop_name) == prop_val]
+        return results
     else:
         return objs
-    return results
 
 
 def generic_find(filter_names, kwargs, objs):
@@ -93,7 +97,7 @@ def cleanup_action(cleanup_func):
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
             traceback.print_exc()
-        reraise(ex_class, ex_val, ex_traceback)
+        six.reraise(ex_class, ex_val, ex_traceback)
     try:
         cleanup_func()
     except Exception as e:
