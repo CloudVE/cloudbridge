@@ -67,7 +67,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                               'security.vm_firewalls',
                               'security.key_pairs'])
     def test_instance_properties(self):
-        label = "cb-inst_props-{0}".format(helpers.get_uuid())
+        label = "cb-inst-props-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values

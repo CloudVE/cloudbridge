@@ -997,7 +997,8 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
             public_ip_parameters.update(tags={'Label': label})
 
         AzureFloatingIP.assert_valid_resource_name(label)
-        public_ip_name = AzureFloatingIP._generate_name_from_label(label)
+        public_ip_name = AzureFloatingIP._generate_name_from_label(
+            label, 'cb-fip')
 
         floating_ip = self._provider.azure_client.\
             create_floating_ip(public_ip_name, public_ip_parameters)
@@ -1416,7 +1417,7 @@ class AzureInstance(BaseInstance):
         """
         return self._vm.tags.get('Key_Pair')
 
-    def create_image(self, name, private_key_path=None):
+    def create_image(self, label=None, private_key_path=None):
         """
         Create a new image based on this instance. Documentation for create
         image available at https://docs.microsoft.com/en-us/azure/virtual-ma
@@ -1429,7 +1430,8 @@ class AzureInstance(BaseInstance):
         CloudBridge interface to pass the private key file path
         """
 
-        self.assert_valid_resource_name(name)
+        self.assert_valid_resource_name(label)
+        name = self._generate_name_from_label(label, 'cb-img')
 
         if not self._state == 'VM generalized':
             if not self._state == 'VM running':
@@ -1445,7 +1447,7 @@ class AzureInstance(BaseInstance):
             'source_virtual_machine': {
                 'id': self.resource_id
             },
-            'tags': {'Label': name}
+            'tags': {'Label': label}
         }
 
         image = self._provider.azure_client.create_image(name,

@@ -142,7 +142,7 @@ def check_obj_label(test, obj):
         test.assertIsInstance(obj, LabeledCloudResource)
         # setting letters, numbers and international characters should succeed
         # TODO: Unicode characters trip up Moto. Add following: \u0D85\u0200
-        VALID_LABEL = u"hello_world-123"
+        VALID_LABEL = u"hello-world-123"
         original_label = obj.label
         obj.label = VALID_LABEL
         # setting spaces should raise an exception

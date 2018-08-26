@@ -78,8 +78,8 @@ class BaseCloudResource(CloudResource):
             log.debug("InvalidLabelException raised on %s", name)
             raise InvalidLabelException(
                 u"Invalid label: %s. Label must be at most 63 characters "
-                "long and consist of lowercase letters, numbers, "
-                "underscores, dashes or international characters" % name)
+                "long and consist of lowercase letters, numbers, or dashes. "
+                "The label must not start or end with a dash." % name)
 
     @staticmethod
     def _generate_name_from_label(label, default):

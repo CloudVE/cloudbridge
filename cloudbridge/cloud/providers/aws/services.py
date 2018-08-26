@@ -137,7 +137,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
                   "[label: %s id: %s description: %s]", label, network_id,
                   description)
         AWSVMFirewall.assert_valid_resource_name(label)
-        name = AWSVMFirewall._generate_name_from_label(label)
+        name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
         obj = self.svc.create('create_security_group', GroupName=name,
                               Description=description, VpcId=network_id)
         obj.label = label

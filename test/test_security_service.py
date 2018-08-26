@@ -99,7 +99,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_crud_vm_firewall_rules(self):
-        label = 'cb-crudfw_rules-{0}'.format(helpers.get_uuid())
+        label = 'cb-crudfw-rules-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values

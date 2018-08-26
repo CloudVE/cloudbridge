@@ -442,7 +442,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         log.debug("Creating a new snapshot of the %s volume.", label)
         OpenStackSnapshot.assert_valid_resource_name(label)
-        name = OpenStackSnapshot._generate_name_from_label(label)
+        name = OpenStackSnapshot._generate_name_from_label(label, 'cb-snap')
 
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
                      else volume)
@@ -815,7 +815,7 @@ class OpenStackNetworkService(BaseNetworkService):
         log.debug("Creating OpenStack Network with the params: "
                   "[label: %s Cinder Block: %s]", label, cidr_block)
         OpenStackNetwork.assert_valid_resource_name(label)
-        name = OpenStackNetwork._generate_name_from_label(label)
+        name = OpenStackNetwork._generate_name_from_label(label, 'cb-net')
         net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})
         return OpenStackNetwork(self.provider, network.get('network'))

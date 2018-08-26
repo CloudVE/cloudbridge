@@ -452,7 +452,7 @@ class OpenStackInstance(BaseInstance):
         """
         log.debug("Creating OpenStack Image with the label %s", label)
         self.assert_valid_resource_name(label)
-        name = self._generate_name_from_label(label)
+        name = self._generate_name_from_label(label, 'cb-img')
 
         image_id = self._os_instance.create_image(name)
         img = OpenStackMachineImage(
@@ -783,7 +783,7 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        vol_label = "from_snap_{0}".format(self.id or self.label)
+        vol_label = "from-snap-{0}".format(self.id or self.label)
         name = self._generate_name_from_label(vol_label)
         size = size if size else self._snapshot.size
         os_vol = self._provider.cinder.volumes.create(

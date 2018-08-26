@@ -124,6 +124,7 @@ class LabeledCloudResource(CloudResource):
           numeric characters, and dashes.
         * Must begin with an alphanumeric character and end with one
           (i.e. cannot begin or end with a dash)
+        * Must be at least 3 characters in length.
 
         Some resources may not support labels, in which case, a
         NotImplementedError will be thrown.

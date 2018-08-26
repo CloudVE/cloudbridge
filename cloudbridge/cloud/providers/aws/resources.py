@@ -92,7 +92,7 @@ class AWSMachineImage(BaseMachineImage):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_label(value)
+        self.assert_valid_resource_name(value)
         self._ec2_image.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
 
     @property
@@ -310,7 +310,7 @@ class AWSInstance(BaseInstance):
 
     def create_image(self, label=None):
         self.assert_valid_resource_name(label)
-        name = self._generate_name_from_label(label)
+        name = self._generate_name_from_label(label, 'cb-img')
 
         image = AWSMachineImage(self._provider,
                                 self._ec2_instance.create_image(Name=name))
@@ -582,7 +582,7 @@ class AWSSnapshot(BaseSnapshot):
         self._snapshot.delete()
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
-        label = "from_snap_{0}".format(self.label or self.id)
+        label = "from-snap-{0}".format(self.label or self.id)
         cb_vol = self._provider.storage.volumes.create(
             label=label,
             size=size,
