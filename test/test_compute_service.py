@@ -107,8 +107,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertTrue(test_instance.private_ips[0], "private ip should"
                             " contain a valid value")
             self.assertEqual(
-                test_instance.key_pair_name,
-                kp.name)
+                test_instance.key_pair_id,
+                kp.id)
             self.assertIsInstance(test_instance.vm_firewalls, list)
             self.assertEqual(
                 test_instance.vm_firewalls[0],

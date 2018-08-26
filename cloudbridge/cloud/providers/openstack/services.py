@@ -1,9 +1,7 @@
 """
 Services implemented by the OpenStack provider.
 """
-import fnmatch
 import logging
-import re
 
 from cinderclient.exceptions import NotFound as CinderNotFound
 
@@ -261,16 +259,9 @@ class OpenStackImageService(BaseImageService):
             return None
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
-        label = kwargs.pop('label', None)
-        log.debug("Searching for OpenStack image with label: %s", label)
-        regex = fnmatch.translate(label)
-        cb_images = [
-            img
-            for img in self
-            if ((img.label and re.search(regex, img.label))
-                or img.name == name)]
-        return oshelpers.to_server_paged_list(self.provider, cb_images)
+        filters = ['name', 'label']
+        obj_list = self
+        return cb_helpers.generic_find(filters, kwargs, obj_list)
 
     def list(self, filter_by_owner=True, limit=None, marker=None):
         """
@@ -424,11 +415,12 @@ class OpenStackSnapshotService(BaseSnapshotService):
         search_opts = {'name': label,  # TODO: Cinder is ignoring name
                        'limit': oshelpers.os_result_limit(self.provider),
                        'marker': None}
-        log.debug("Searching for an OpenStack volume with the following "
+        log.debug("Searching for an OpenStack snapshot with the following "
                   "params: %s", search_opts)
         cb_snaps = [
             OpenStackSnapshot(self.provider, snap) for
-            snap in self.provider.cinder.volume_snapshots.list(search_opts)]
+            snap in self.provider.cinder.volume_snapshots.list(search_opts)
+            if snap.name == label]
 
         return oshelpers.to_server_paged_list(self.provider, cb_snaps)
 
@@ -450,12 +442,13 @@ class OpenStackSnapshotService(BaseSnapshotService):
         """
         log.debug("Creating a new snapshot of the %s volume.", label)
         OpenStackSnapshot.assert_valid_resource_label(label)
+        name = OpenStackSnapshot._generate_name_from_label(label)
 
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
                      else volume)
 
         os_snap = self.provider.cinder.volume_snapshots.create(
-            volume_id, name=label,
+            volume_id, name=name,
             description=description)
         return OpenStackSnapshot(self.provider, os_snap)
 
@@ -651,9 +644,11 @@ class OpenStackInstanceService(BaseInstanceService):
             if vm_firewalls:
                 if isinstance(vm_firewalls, list) and \
                         isinstance(vm_firewalls[0], VMFirewall):
-                    sg_name_list = [sg.label for sg in vm_firewalls]
+                    sg_name_list = [sg.name for sg in vm_firewalls]
                 else:
-                    sg_name_list = vm_firewalls
+                    sg_list = (self.provider.security.vm_firewalls.get(sg)
+                               for sg in vm_firewalls)
+                    sg_name_list = (sg[0].name for sg in sg_list if sg)
 
         log.debug("Launching in subnet %s", subnet_id)
         os_instance = self.provider.nova.servers.create(

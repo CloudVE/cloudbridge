@@ -624,7 +624,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
-    def key_pair_name(self):
+    def key_pair_id(self):
         """
         Get the id of the key pair associated with this instance.
 
@@ -820,7 +820,7 @@ class LaunchConfig(object):
         pass
 
 
-class MachineImage(ObjectLifeCycleMixin, CloudResource):
+class MachineImage(ObjectLifeCycleMixin, LabeledCloudResource):
 
     __metaclass__ = ABCMeta
 

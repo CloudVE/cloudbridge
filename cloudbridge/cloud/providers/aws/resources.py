@@ -82,6 +82,20 @@ class AWSMachineImage(BaseMachineImage):
             log.warn("Cannot get name for image {0}: {1}".format(self.id, e))
 
     @property
+    # pylint:disable=arguments-differ
+    def label(self):
+        """
+        .. note:: an instance must have a (case sensitive) tag ``Name``
+        """
+        return find_tag_value(self._ec2_image.tags, 'Name')
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._ec2_image.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+
+    @property
     def description(self):
         try:
             return self._ec2_image.description
@@ -291,7 +305,7 @@ class AWSInstance(BaseInstance):
         ]))
 
     @property
-    def key_pair_name(self):
+    def key_pair_id(self):
         return self._ec2_instance.key_name
 
     def create_image(self, label=None):

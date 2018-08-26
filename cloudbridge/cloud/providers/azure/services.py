@@ -543,8 +543,8 @@ class AzureInstanceService(BaseInstanceService):
         # Key_pair is mandatory in azure and it should not be None.
         temp_key_pair = None
         if key_pair:
-            key_pair = (self.provider.security.key_pairs.get(key_pair)
-                        if isinstance(key_pair, str) else key_pair)
+            key_pair = (key_pair if isinstance(key_pair, AzureKeyPair)
+                        else self.provider.security.key_pairs.get(key_pair))
         else:
             # Create a temporary keypair if none is provided to keep Azure
             # happy, but the private key will be discarded, so it'll be all
@@ -598,7 +598,7 @@ class AzureInstanceService(BaseInstanceService):
             params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
 
         if not temp_key_pair:
-            params['tags'].update(Key_Pair=key_pair.name)
+            params['tags'].update(Key_Pair=key_pair.id)
 
         try:
             vm = self.provider.azure_client.create_vm(instance_name, params)

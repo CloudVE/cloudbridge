@@ -1397,7 +1397,7 @@ class AzureInstance(BaseInstance):
                 if nic.network_security_group]
 
     @property
-    def key_pair_name(self):
+    def key_pair_id(self):
         """
         Get the name of the key pair associated with this instance.
         """

@@ -365,7 +365,7 @@ class AWSImageService(BaseImageService):
             log.debug("Searching for AWS Image Service %s", name)
             obj_list = self.svc.find(filter_name='name', filter_value=name)
         else:
-            obj_list = self.svc
+            obj_list = self
         filters = ['label']
         return cb_helpers.generic_find(filters, kwargs, obj_list)
 

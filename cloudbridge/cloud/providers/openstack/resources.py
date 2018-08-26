@@ -117,8 +117,7 @@ class OpenStackMachineImage(BaseMachineImage):
         Set the image label.
         """
         self.assert_valid_resource_label(value)
-        self._os_image.name = value
-        self._os_image.update(name=value)
+        self._provider.os_conn.image.update_image(self._os_image, name=value)
 
     @property
     def description(self):
@@ -664,9 +663,8 @@ class OpenStackVolume(BaseVolume):
         """
         log.debug("Creating snapchat of volume: %s with the "
                   "description: %s", label, description)
-        name = self._generate_name_from_label(label)
         return self._provider.storage.snapshots.create(
-            name, self, description=description)
+            self, label=label, description=description)
 
     def delete(self):
         """
