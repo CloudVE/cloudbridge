@@ -92,8 +92,9 @@ class AWSMachineImage(BaseMachineImage):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._ec2_image.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._ec2_image.create_tags(Tags=[{'Key': 'Name',
+                                           'Value': value or ""}])
 
     @property
     def description(self):
@@ -250,8 +251,9 @@ class AWSInstance(BaseInstance):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._ec2_instance.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._ec2_instance.create_tags(Tags=[{'Key': 'Name',
+                                              'Value': value or ""}])
 
     @property
     def public_ips(self):
@@ -309,7 +311,7 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.key_name
 
     def create_image(self, label=None):
-        self.assert_valid_resource_name(label)
+        self.assert_valid_resource_label(label)
         name = self._generate_name_from_label(label, 'cb-img')
 
         image = AWSMachineImage(self._provider,
@@ -420,8 +422,8 @@ class AWSVolume(BaseVolume):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     @property
     def description(self):
@@ -429,7 +431,8 @@ class AWSVolume(BaseVolume):
 
     @description.setter
     def description(self, value):
-        self._volume.create_tags(Tags=[{'Key': 'Description', 'Value': value}])
+        self._volume.create_tags(Tags=[{'Key': 'Description',
+                                        'Value': value or ""}])
 
     @property
     def size(self):
@@ -478,7 +481,7 @@ class AWSVolume(BaseVolume):
         snap = AWSSnapshot(
             self._provider,
             self._volume.create_snapshot(
-                Description=description))
+                Description=description or ""))
         snap.label = label
         return snap
 
@@ -537,8 +540,9 @@ class AWSSnapshot(BaseSnapshot):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._snapshot.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._snapshot.create_tags(Tags=[{'Key': 'Name',
+                                          'Value': value or ""}])
 
     @property
     def description(self):
@@ -547,7 +551,7 @@ class AWSSnapshot(BaseSnapshot):
     @description.setter
     def description(self, value):
         self._snapshot.create_tags(Tags=[{
-            'Key': 'Description', 'Value': value}])
+            'Key': 'Description', 'Value': value or ""}])
 
     @property
     def size(self):
@@ -621,8 +625,9 @@ class AWSVMFirewall(BaseVMFirewall):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._vm_firewall.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
+                                             'Value': value or ""}])
 
     @property
     def network_id(self):
@@ -966,8 +971,8 @@ class AWSNetwork(BaseNetwork):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     @property
     def external(self):
@@ -1042,8 +1047,8 @@ class AWSSubnet(BaseSubnet):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     @property
     def cidr_block(self):
@@ -1155,8 +1160,9 @@ class AWSRouter(BaseRouter):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._route_table.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._route_table.create_tags(Tags=[{'Key': 'Name',
+                                             'Value': value or ""}])
 
     def refresh(self):
         try:
@@ -1216,8 +1222,7 @@ class AWSGatewayContainer(BaseGatewayContainer):
     def get_or_create_inet_gateway(self, label=None):
         log.debug("Get or create inet gateway %s on net %s", label,
                   self._network)
-        if label:
-            AWSInternetGateway.assert_valid_resource_name(label)
+        AWSInternetGateway.assert_valid_resource_label(label)
 
         network_id = self._network.id if isinstance(
             self._network, AWSNetwork) else self._network
@@ -1273,8 +1278,8 @@ class AWSInternetGateway(BaseInternetGateway):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._gateway.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+        self.assert_valid_resource_label(value)
+        self._gateway.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     def refresh(self):
         try:

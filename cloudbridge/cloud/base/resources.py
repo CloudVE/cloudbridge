@@ -60,26 +60,53 @@ class BaseCloudResource(CloudResource):
     """
     Base implementation of a CloudBridge Resource.
     """
-
-    # Regular expression for valid cloudbridge resource labels and names.
-    CB_LABEL_PATTERN = re.compile(r"^[a-z][-a-z0-9]{1,61}[a-z0-9]$")
+    # Regular expression for valid cloudbridge resource labels.
+    # Can be None or any alphanumeric string that does not start
+    # or end with a dash
+    # based on: https://stackoverflow.com/questions/2525327/regex-for-a-za-z0-9
+    # -with-dashes-allowed-in-between-but-not-at-the-start-or-e
+    CB_LABEL_PATTERN = re.compile(
+        r"(?=[a-z0-9\-]{1,63}$)^[a-z0-9]+(\-[a-z0-9]+)*$")
+    # Same as the above, but must be at least 3 characters in length
+    CB_NAME_PATTERN = re.compile(r"^[a-z][-a-z0-9]{1,61}[a-z0-9]$")
 
     def __init__(self, provider):
         self.__provider = provider
 
     @staticmethod
+    def is_valid_resource_label(label):
+        if not label:
+            return True
+        else:
+            return (True if BaseCloudResource.CB_LABEL_PATTERN.match(label)
+                    else False)
+
+    @staticmethod
     def is_valid_resource_name(name):
-        return (True if BaseCloudResource.CB_LABEL_PATTERN.match(name)
-                else False)
+        if not name:
+            return False
+        else:
+            return (True if BaseCloudResource.CB_NAME_PATTERN.match(name)
+                    else False)
+
+    @staticmethod
+    def assert_valid_resource_label(name):
+        if not BaseCloudResource.is_valid_resource_label(name):
+            log.debug("InvalidLabelException raised on %s", name)
+            raise InvalidLabelException(
+                u"Invalid label: %s. Label must be at most 63 characters "
+                "long and consist of lowercase letters, numbers, or dashes. "
+                "The label must not start or end with a dash." % name)
 
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseCloudResource.is_valid_resource_name(name):
             log.debug("InvalidLabelException raised on %s", name)
             raise InvalidLabelException(
-                u"Invalid label: %s. Label must be at most 63 characters "
-                "long and consist of lowercase letters, numbers, or dashes. "
-                "The label must not start or end with a dash." % name)
+                u"Invalid name: %s. Name must be at least 3 characters long"
+                " and at most 63 characters. It must consist of lowercase"
+                " letters, numbers, or dashes. The label must not start or"
+                " end with a dash." % name)
 
     @staticmethod
     def _generate_name_from_label(label, default):

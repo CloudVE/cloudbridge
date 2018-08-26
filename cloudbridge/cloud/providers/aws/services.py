@@ -132,14 +132,15 @@ class AWSVMFirewallService(BaseVMFirewallService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, description, network_id, label=None):
+    def create(self, network_id, label=None, description=None):
         log.debug("Creating Firewall Service with the parameters "
                   "[label: %s id: %s description: %s]", label, network_id,
                   description)
-        AWSVMFirewall.assert_valid_resource_name(label)
+        AWSVMFirewall.assert_valid_resource_label(label)
         name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
         obj = self.svc.create('create_security_group', GroupName=name,
-                              Description=description, VpcId=network_id)
+                              Description=description or name,
+                              VpcId=network_id)
         obj.label = label
         return obj
 
@@ -216,7 +217,7 @@ class AWSVolumeService(BaseVolumeService):
                   "[label: %s size: %s zone: %s snapshot: %s "
                   "description: %s]", label, size, zone, snapshot,
                   description)
-        AWSVolume.assert_valid_resource_name(label)
+        AWSVolume.assert_valid_resource_label(label)
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
@@ -267,7 +268,7 @@ class AWSSnapshotService(BaseSnapshotService):
         log.debug("Creating a new AWS snapshot Service with the "
                   "parameters [label: %s volume: %s description: %s]",
                   label, volume, description)
-        AWSSnapshot.assert_valid_resource_name(label)
+        AWSSnapshot.assert_valid_resource_label(label)
 
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
@@ -416,7 +417,7 @@ class AWSInstanceService(BaseInstanceService):
                   "key pair: %s firewalls: %s user data: %s config %s "
                   "others: %s]", label, image, vm_type, subnet, zone,
                   key_pair, vm_firewalls, user_data, launch_config, kwargs)
-        AWSInstance.assert_valid_resource_name(label)
+        AWSInstance.assert_valid_resource_label(label)
 
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
@@ -669,7 +670,7 @@ class AWSNetworkService(BaseNetworkService):
     def create(self, cidr_block, label=None):
         log.debug("Creating AWS Network Service with the params "
                   "[label: %s block: %s]", label, cidr_block)
-        AWSNetwork.assert_valid_resource_name(label)
+        AWSNetwork.assert_valid_resource_label(label)
 
         cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block)
         # Wait until ready to tag instance
@@ -715,7 +716,7 @@ class AWSSubnetService(BaseSubnetService):
         log.debug("Creating AWS Subnet Service with the params "
                   "[label: %s network: %s block: %s zone: %s]",
                   label, network, cidr_block, zone)
-        AWSSubnet.assert_valid_resource_name(label)
+        AWSSubnet.assert_valid_resource_label(label)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
@@ -802,7 +803,7 @@ class AWSRouterService(BaseRouterService):
     def create(self, network, label=None):
         log.debug("Creating AWS Router Service with the params "
                   "[label: %s network: %s]", label, network)
-        AWSRouter.assert_valid_resource_name(label)
+        AWSRouter.assert_valid_resource_label(label)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 

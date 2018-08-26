@@ -32,7 +32,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         sit.check_crud(self, self.provider.security.key_pairs, KeyPair,
                        "cb-crudkp", create_kp, cleanup_kp,
-                       extra_test_func=extra_tests)
+                       supports_labels=False, extra_test_func=extra_tests)
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_key_pair_properties(self):
@@ -124,7 +124,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
                 sit.check_crud(self, fw.rules, VMFirewallRule, "cb-crudfwrule",
                                create_fw_rule, cleanup_fw_rule,
-                               skip_label_check=True)
+                               skip_name_check=True)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_rule_properties(self):

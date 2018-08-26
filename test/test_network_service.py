@@ -120,7 +120,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 lambda: helpers.delete_test_gateway(net, gw)):
             sit.check_crud(self, gw.floating_ips, FloatingIP,
                            "cb-crudfip", create_fip, cleanup_fip,
-                           skip_label_check=True)
+                           skip_name_check=True)
 
     def test_floating_ip_properties(self):
         # Check floating IP address

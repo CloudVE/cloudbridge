@@ -116,7 +116,7 @@ class OpenStackMachineImage(BaseMachineImage):
         """
         Set the image label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.os_conn.image.update_image(self._os_image, name=value)
 
     @property
@@ -316,7 +316,7 @@ class OpenStackInstance(BaseInstance):
         """
         Set the instance label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
 
         self._os_instance.name = value
         self._os_instance.update(name=value)
@@ -451,7 +451,7 @@ class OpenStackInstance(BaseInstance):
         Create a new image based on this instance.
         """
         log.debug("Creating OpenStack Image with the label %s", label)
-        self.assert_valid_resource_name(label)
+        self.assert_valid_resource_label(label)
         name = self._generate_name_from_label(label, 'cb-img')
 
         image_id = self._os_instance.create_image(name)
@@ -599,7 +599,7 @@ class OpenStackVolume(BaseVolume):
         """
         Set the volume label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._volume.name = value
         self._volume.update(name=value)
 
@@ -729,7 +729,7 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Set the snapshot label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._snapshot.name = value
         self._snapshot.update(name=value)
 
@@ -818,8 +818,7 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
 
     def get_or_create_inet_gateway(self, label=None):
         """For OS, inet gtw is any net that has `external` property set."""
-        if label:
-            OpenStackInternetGateway.assert_valid_resource_name(label)
+        OpenStackInternetGateway.assert_valid_resource_label(label)
 
         external_nets = (n for n in self._provider.networking.networks
                          if n.external)
@@ -878,7 +877,7 @@ class OpenStackNetwork(BaseNetwork):
         """
         Set the network label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_network(self.id,
                                               {'network': {'name': value}})
         self.refresh()
@@ -959,7 +958,7 @@ class OpenStackSubnet(BaseSubnet):
         """
         Set the subnet label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_subnet(
             self.id, {'subnet': {'name': value}})
         self._subnet['name'] = value
@@ -1085,7 +1084,7 @@ class OpenStackRouter(BaseRouter):
         """
         Set the router label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_router(
             self.id, {'router': {'name': value}})
         self.refresh()
@@ -1162,14 +1161,14 @@ class OpenStackInternetGateway(BaseInternetGateway):
 
     @property
     def label(self):
-        return self._gateway_net.get('name', None)
+        return self._gateway_net.tags.get('gateway_name', None)
 
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
-        self._provider.neutron.update_network(self.id,
-                                              {'network': {'name': value}})
+        self.assert_valid_resource_label(value)
+        self._provider.neutron_client.add_tag('network', self.id,
+                                              {'gateway_name': value})
         self.refresh()
 
     @property
@@ -1235,7 +1234,7 @@ class OpenStackVMFirewall(BaseVMFirewall):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.os_conn.network.update_security_group(self.id,
                                                              name=value)
         self.refresh()

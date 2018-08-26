@@ -140,10 +140,11 @@ def check_obj_label(test, obj):
     label_property = getattr(type(obj), 'label', None)
     if isinstance(label_property, property):
         test.assertIsInstance(obj, LabeledCloudResource)
-        # setting letters, numbers and international characters should succeed
-        # TODO: Unicode characters trip up Moto. Add following: \u0D85\u0200
-        VALID_LABEL = u"hello-world-123"
         original_label = obj.label
+        # A none value should be allowed
+        obj.label = None
+        test.assertFalse(obj.label)
+        VALID_LABEL = u"hello-world-123"
         obj.label = VALID_LABEL
         # setting spaces should raise an exception
         with test.assertRaises(InvalidLabelException):
@@ -154,6 +155,12 @@ def check_obj_label(test, obj):
         # setting special characters should raise an exception
         with test.assertRaises(InvalidLabelException):
             obj.label = "hello.world:how_goes_it"
+        # Starting with a dash should raise an exception
+        with test.assertRaises(InvalidLabelException):
+            obj.label = "-hello"
+        # Ending with a dash should raise an exception
+        with test.assertRaises(InvalidLabelException):
+            obj.label = "hello-"
         # setting a length > 63 should result in an exception
         with test.assertRaises(InvalidLabelException,
                                msg="Label of length > 64 is not allowed"):
@@ -207,7 +214,7 @@ def check_standard_behaviour(test, service, obj):
 
 
 def check_create(test, service, iface, name_prefix,
-                 create_func, cleanup_func):
+                 create_func, cleanup_func, supports_labels):
     # check create with invalid label
     with test.assertRaises(InvalidLabelException):
         # spaces should raise an exception
@@ -219,15 +226,41 @@ def check_create(test, service, iface, name_prefix,
     # setting special characters should raise an exception
     with test.assertRaises(InvalidLabelException):
         create_func("hello.world:how_goes_it")
+    # Starting with a dash should raise an exception
+    with test.assertRaises(InvalidLabelException):
+        create_func("-hello")
+    # Ending with a dash should raise an exception
+    with test.assertRaises(InvalidLabelException):
+        create_func("hello-")
+    # underscores are not allowed
+    with test.assertRaises(InvalidLabelException):
+        create_func("hello_bucket")
     # setting a length > 63 should result in an exception
     with test.assertRaises(InvalidLabelException,
                            msg="Label of length > 63 should be disallowed"):
         create_func("a" * 64)
+    #  name cannot be an IP address
+    with test.assertRaises(InvalidLabelException):
+        create_func("197.10.100.42")
+
+    if supports_labels:
+        # empty labels should be allowed
+        obj = None
+        with helpers.cleanup_action(lambda: cleanup_func(obj)):
+            obj = create_func(None)
+    else:  # supports name only
+        # empty name are not allowed
+        with test.assertRaises(InvalidLabelException):
+            create_func(None)
+        # names of length less than 3 should raise an exception
+        with test.assertRaises(InvalidLabelException):
+            create_func("cb")
 
 
 def check_crud(test, service, iface, label_prefix,
                create_func, cleanup_func, extra_test_func=None,
-               custom_check_delete=None, skip_label_check=False):
+               custom_check_delete=None, supports_labels=True,
+               skip_name_check=False):
     """
     Checks crud behaviour of a given cloudbridge service. The create_func will
     be used as a factory function to create a service object and the
@@ -273,21 +306,26 @@ def check_crud(test, service, iface, label_prefix,
                                 instead of the standard check_delete function
                                 to make sure that the object has been deleted.
 
-    :type  skip_label_check: ``boolean``
-    :param skip_label_check:  If True, the invalid label checking will be
+    :type  supports_labels: ``boolean``
+    :param supports_labels:  Indicates whether the resource supports labels.
+        If so, label related tests will be run.
+
+    :type  skip_name_check: ``boolean``
+    :param skip_name_check:  If True, the name related checking will be
                              skipped.
+
     """
 
     obj = None
     with helpers.cleanup_action(lambda: cleanup_func(obj)):
-        if not skip_label_check:
-            check_create(test, service, iface, label_prefix,
-                         create_func, cleanup_func)
         label = "{0}-{1}".format(label_prefix, helpers.get_uuid())
         obj = create_func(label)
         if issubclass(iface, ObjectLifeCycleMixin):
             obj.wait_till_ready()
         check_standard_behaviour(test, service, obj)
+        if not skip_name_check:
+            check_create(test, service, iface, label_prefix,
+                         create_func, cleanup_func, supports_labels)
         if extra_test_func:
             extra_test_func(obj)
     if custom_check_delete:

@@ -8,7 +8,6 @@ from unittest import skip
 
 import requests
 
-from cloudbridge.cloud.interfaces.exceptions import InvalidLabelException
 from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
@@ -36,25 +35,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             if bucket:
                 bucket.delete()
 
-        with self.assertRaises(InvalidLabelException):
-            # underscores are not allowed in bucket names
-            create_bucket("cb_bucket")
-
-        with self.assertRaises(InvalidLabelException):
-            # names of length less than 3 should raise an exception
-            create_bucket("cb")
-
-        with self.assertRaises(InvalidLabelException):
-            # names of length greater than 63 should raise an exception
-            create_bucket("a" * 64)
-
-        with self.assertRaises(InvalidLabelException):
-            # bucket name cannot be an IP address
-            create_bucket("197.10.100.42")
-
         sit.check_crud(self, self.provider.storage.buckets, Bucket,
                        "cb-crudbucket", create_bucket, cleanup_bucket,
-                       skip_label_check=True)
+                       supports_labels=False)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket_object(self):
@@ -79,7 +62,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
             sit.check_crud(self, test_bucket.objects, BucketObject,
                            "cb-bucketobj", create_bucket_obj,
-                           cleanup_bucket_obj, skip_label_check=True)
+                           cleanup_bucket_obj, skip_name_check=True)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket_object_properties(self):

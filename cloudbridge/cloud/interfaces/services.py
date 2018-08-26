@@ -1119,18 +1119,18 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, description, network_id):
+    def create(self, network_id, label=None, description=None):
         """
         Create a new VMFirewall.
 
-        :type name: str
-        :param name: The name of the new VM firewall.
+        :type  network_id: ``str``
+        :param network_id: Network ID under which to create the VM firewall.
+
+        :type label: str
+        :param label: The label for the new VM firewall.
 
         :type description: str
         :param description: The description of the new VM firewall.
-
-        :type  network_id: ``str``
-        :param network_id: Network ID under which to create the VM firewall.
 
         :rtype: ``object`` of :class:`.VMFirewall`
         :return:  A VMFirewall instance or ``None`` if one was not created.
