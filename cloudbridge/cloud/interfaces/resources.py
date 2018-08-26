@@ -93,6 +93,9 @@ class CloudResource(object):
         is set at creation time. It is not necessarily unique.
         In Azure, the machine image's name corresponds to cloudbridge's name
         property. In Azure, it also happens to be the same as the id property.
+
+        The name property and the label property share the same character
+        restrictions. see :py:attr:`~LabeledCloudResource.label`
         """
         pass
 
@@ -116,9 +119,11 @@ class LabeledCloudResource(CloudResource):
         in the underlying cloud provider, or be simulated through tags/labels.
 
         The label property adheres to the following restrictions:
-        * Labels cannot be longer than 63 characters
-        * May only contain lowercase letters, numeric characters, underscores,
-          and dashes. International characters are allowed.
+        * Labels cannot be longer than 63 characters.
+        * May only contain ascii characters comprising of lowercase letters,
+          numeric characters, and dashes.
+        * Must begin with an alphanumeric character and end with one
+          (i.e. cannot begin or end with a dash)
 
         Some resources may not support labels, in which case, a
         NotImplementedError will be thrown.

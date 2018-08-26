@@ -61,12 +61,7 @@ class BaseCloudResource(CloudResource):
     Base implementation of a CloudBridge Resource.
     """
 
-    # Regular expression for valid cloudbridge resource labels.
-    # They, must match the same criteria as GCE labels.
-    # as discussed here: https://github.com/CloudVE/cloudbridge/issues/55
-    #
-    # NOTE: The following regex is based on GCEs internal validation logic,
-    # and is significantly complex to allow for international characters.
+    # Regular expression for valid cloudbridge resource labels and names.
     CB_LABEL_PATTERN = re.compile(r"^[a-z][-a-z0-9]{1,61}[a-z0-9]$")
 
     def __init__(self, provider):
