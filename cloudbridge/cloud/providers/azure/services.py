@@ -67,12 +67,10 @@ class AzureVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
     def create(self, label=None, description=None, network_id=None):
+        name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         parameters = {"location": self.provider.region_name}
         if label:
-            AzureVMFirewall.assert_valid_resource_name(label)
             parameters.update({'tags': {'Label': label}})
-        else:
-            label = "cb-fw"
 
         if description:
             tags = parameters.get('tags')
@@ -81,7 +79,6 @@ class AzureVMFirewallService(BaseVMFirewallService):
             else:
                 parameters.update({'tags': {'Description': description}})
 
-        name = "{0}-{1}".format(label, uuid.uuid4().hex[:6])
         fw = self.provider.azure_client.create_vm_firewall(name,
                                                            parameters)
 
@@ -244,7 +241,7 @@ class AzureBucketService(BaseBucketService):
         Create a new bucket.
         """
         AzureBucket.assert_valid_resource_name(name)
-        bucket = self.provider.azure_client.create_container(name.lower())
+        bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
 
 
@@ -309,19 +306,14 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, size, label=None, description=None,
-               zone=None, snapshot=None):
+    def create(self, size, zone=None, label=None, description=None,
+               snapshot=None):
         """
         Creates a new volume.
         """
-        AzureVolume.assert_valid_resource_name(label)
+        disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         if label:
-            AzureVolume.assert_valid_resource_name(label)
             tags = {'Label': label}
-        else:
-            label = "cb-vol"
-
-        disk_name = "{0}-{1}".format(label, uuid.uuid4().hex[:6])
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot = (self.provider.storage.snapshots.get(snapshot)
@@ -416,13 +408,11 @@ class AzureSnapshotService(BaseSnapshotService):
         volume = (self.provider.storage.volumes.get(volume)
                   if isinstance(volume, str) else volume)
 
-        if label:
-            AzureSnapshot.assert_valid_resource_name(label)
-            tags = {'Label': label}
-        else:
-            label = "cb-snap"
+        snapshot_name = AzureSnapshot._generate_name_from_label(label,
+                                                                "cb-snap")
 
-        snapshot_name = "{0}-{1}".format(label, uuid.uuid4().hex[:6])
+        if label:
+            tags = {'Label': label}
 
         if description:
             if not tags:
@@ -479,14 +469,8 @@ class AzureInstanceService(BaseInstanceService):
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
 
-        if label:
-            prefix = label
-        else:
-            prefix = "cb-ins"
-
-        instance_name = "{0}-{1}".format(prefix, uuid.uuid4().hex[:6])
-
-        AzureInstance.assert_valid_resource_name(instance_name)
+        instance_name = AzureInstance._generate_name_from_label(label,
+                                                                "cb-ins")
 
         image = (image if isinstance(image, AzureMachineImage) else
                  self.provider.compute.images.get(image))
@@ -551,7 +535,7 @@ class AzureInstanceService(BaseInstanceService):
             # but useless. However, this will allow an instance to be launched
             # without specifying a keypair, so users may still be able to login
             # if they have a preinstalled keypair/password baked into the image
-            temp_kp_name = "".join(["cb_default_kp_",
+            temp_kp_name = "".join(["cb-default-kp_",
                                    str(uuid.uuid5(uuid.NAMESPACE_OID,
                                                   instance_name))[-6:]])
             key_pair = self.provider.security.key_pairs.create(
@@ -913,8 +897,7 @@ class AzureNetworkService(BaseNetworkService):
     def create(self, cidr_block, label=None):
         # Azure requires CIDR block to be specified when creating a network
         # so set a default one and use the largest allowed netmask.
-        AzureNetwork.assert_valid_resource_label(label)
-        network_name = AzureNetwork._generate_name_from_label(label)
+        network_name = AzureNetwork._generate_name_from_label(label, 'cb-net')
 
         params = {
             'location': self.provider.azure_client.region_name,
@@ -1029,20 +1012,16 @@ class AzureSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, network, cidr_block, prefix=None, **kwargs):
+    def create(self, network, cidr_block, name=None, **kwargs):
         """
         Create subnet
         """
         network_id = network.id \
             if isinstance(network, Network) else network
 
-        if prefix:
-            AzureSubnet.assert_valid_resource_name(prefix)
-
-        else:
-            prefix = "cb-sn"
-
-        subnet_name = "{0}-{1}".format(prefix, uuid.uuid4().hex[:6])
+        # Although Subnet doesn't support labels, use the same logic
+        # to append a uuid to the name.
+        subnet_name = AzureSubnet._generate_name_from_label(name, "cb-sn")
 
         subnet_info = self.provider.azure_client\
             .create_subnet(
@@ -1118,14 +1097,12 @@ class AzureRouterService(BaseRouterService):
                                      limit=limit, marker=marker)
 
     def create(self, network, label=None):
-        AzureRouter.assert_valid_resource_name(label)
+        router_name = AzureRouter._generate_name_from_label(label, "cb-router")
+
         parameters = {"location": self.provider.region_name}
         if label:
             parameters.update(tags={'Label': label})
-        else:
-            label = 'cb-router'
 
-        router_name = "{0}-{1}".format(label, uuid.uuid4().hex[:6])
         route = self.provider.azure_client. \
             create_route_table(router_name, parameters)
         return AzureRouter(self.provider, route)

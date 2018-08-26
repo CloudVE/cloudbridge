@@ -202,7 +202,6 @@ listed in order to help map each resource with the service that handles it.
     # Key Pair
     kp = provider.security.key_pairs.get('keypair ID')
     kp_list = provider.security.key_pairs.find(name='cloudbridge_intro')
-    kp_list = provider.security.key_pairs.find(label='cloudbridge_intro')
     kp = kp_list[0]
 
     # Network

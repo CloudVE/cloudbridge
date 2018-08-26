@@ -167,7 +167,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
     def create(self, name, public_key_material=None):
         log.debug("Creating a new key pair with the name: %s", name)
-        OpenStackKeyPair.assert_valid_resource_label(name)
+        OpenStackKeyPair.assert_valid_resource_name(name)
 
         existing_kp = self.find(name=name)
         if existing_kp:
@@ -209,7 +209,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                                      limit=limit, marker=marker)
 
     def create(self, description, network_id, label=None):
-        OpenStackVMFirewall.assert_valid_resource_label(label)
+        OpenStackVMFirewall.assert_valid_resource_name(label)
         log.debug("Creating OpenStack VM Firewall with the params: "
                   "[label: %s network id: %s description: %s]", label,
                   network_id, description)
@@ -374,7 +374,7 @@ class OpenStackVolumeService(BaseVolumeService):
         log.debug("Creating a new volume with the params: "
                   "[label: %s size: %s zone: %s snapshot: %s description: %s]",
                   label, size, zone, snapshot, description)
-        OpenStackVolume.assert_valid_resource_label(label)
+        OpenStackVolume.assert_valid_resource_name(label)
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
@@ -441,7 +441,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
         Creates a new snapshot of a given volume.
         """
         log.debug("Creating a new snapshot of the %s volume.", label)
-        OpenStackSnapshot.assert_valid_resource_label(label)
+        OpenStackSnapshot.assert_valid_resource_name(label)
         name = OpenStackSnapshot._generate_name_from_label(label)
 
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
@@ -507,7 +507,7 @@ class OpenStackBucketService(BaseBucketService):
         Create a new bucket.
         """
         log.debug("Creating a new OpenStack Bucket with the name: %s", name)
-        OpenStackBucket.assert_valid_resource_label(name)
+        OpenStackBucket.assert_valid_resource_name(name)
 
         self.provider.swift.put_container(name)
         return self.get(name)
@@ -587,7 +587,7 @@ class OpenStackInstanceService(BaseInstanceService):
                launch_config=None,
                **kwargs):
         """Create a new virtual machine instance."""
-        OpenStackInstance.assert_valid_resource_label(label)
+        OpenStackInstance.assert_valid_resource_name(label)
 
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
@@ -814,7 +814,7 @@ class OpenStackNetworkService(BaseNetworkService):
     def create(self, cidr_block, label=None):
         log.debug("Creating OpenStack Network with the params: "
                   "[label: %s Cinder Block: %s]", label, cidr_block)
-        OpenStackNetwork.assert_valid_resource_label(label)
+        OpenStackNetwork.assert_valid_resource_name(label)
         name = OpenStackNetwork._generate_name_from_label(label)
         net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})
@@ -848,7 +848,7 @@ class OpenStackSubnetService(BaseSubnetService):
         log.debug("Creating OpenStack Subnet with the params: "
                   "[Label: %s Network: %s Cinder Block: %s Zone: -ignored-]",
                   label, network, cidr_block)
-        OpenStackSubnet.assert_valid_resource_label(label)
+        OpenStackSubnet.assert_valid_resource_name(label)
 
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
@@ -924,7 +924,7 @@ class OpenStackRouterService(BaseRouterService):
             ?expanded=delete-router-detail,create-router-detail#create-router
         """
         log.debug("Creating OpenStack Router with the label: %s", label)
-        OpenStackRouter.assert_valid_resource_label(label)
+        OpenStackRouter.assert_valid_resource_name(label)
 
         body = {'router': {'name': label}} if label else None
         router = self.provider.neutron.create_router(body)

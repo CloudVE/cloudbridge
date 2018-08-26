@@ -14,7 +14,7 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
         """
         Test object life cycle methods by using a volume.
         """
-        label = "cb_objlifecycle-{0}".format(helpers.get_uuid())
+        label = "cb-objlifecycle-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
             1,
             helpers.get_provider_test_data(self.provider, "placement"),

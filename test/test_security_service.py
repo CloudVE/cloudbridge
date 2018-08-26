@@ -31,12 +31,12 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 self.provider.security.key_pairs.create(name=kp.name)
 
         sit.check_crud(self, self.provider.security.key_pairs, KeyPair,
-                       "cb_crudkp", create_kp, cleanup_kp,
+                       "cb-crudkp", create_kp, cleanup_kp,
                        extra_test_func=extra_tests)
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_key_pair_properties(self):
-        name = 'cb_kpprops-{0}'.format(helpers.get_uuid())
+        name = 'cb-kpprops-{0}'.format(helpers.get_uuid())
         kp = self.provider.security.key_pairs.create(name=name)
         with helpers.cleanup_action(lambda: kp.delete()):
             self.assertIsNotNone(
@@ -49,7 +49,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_import_key_pair(self):
-        name = 'cb_kpimport-{0}'.format(helpers.get_uuid())
+        name = 'cb-kpimport-{0}'.format(helpers.get_uuid())
 
         public_key, _ = cb_helpers.generate_key_pair()
         kp = self.provider.security.key_pairs.create(
@@ -60,7 +60,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_crud_vm_firewall(self):
-        label = 'cb_crudfw-{0}'.format(helpers.get_uuid())
+        label = 'cb-crudfw-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -79,11 +79,11 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             net, _ = helpers.create_test_network(self.provider, label)
 
             sit.check_crud(self, self.provider.security.vm_firewalls,
-                           VMFirewall, "cb_crudfw", create_fw, cleanup_fw)
+                           VMFirewall, "cb-crudfw", create_fw, cleanup_fw)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_properties(self):
-        label = 'cb_propfw-{0}'.format(helpers.get_uuid())
+        label = 'cb-propfw-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -99,7 +99,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_crud_vm_firewall_rules(self):
-        label = 'cb_crudfw_rules-{0}'.format(helpers.get_uuid())
+        label = 'cb-crudfw_rules-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -122,13 +122,13 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                     if rule:
                         rule.delete()
 
-                sit.check_crud(self, fw.rules, VMFirewallRule, "cb_crudfwrule",
+                sit.check_crud(self, fw.rules, VMFirewallRule, "cb-crudfwrule",
                                create_fw_rule, cleanup_fw_rule,
                                skip_label_check=True)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_rule_properties(self):
-        label = 'cb_propfwrule-{0}'.format(helpers.get_uuid())
+        label = 'cb-propfwrule-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -151,7 +151,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_rule_add_twice(self):
-        label = 'cb_fwruletwice-{0}'.format(helpers.get_uuid())
+        label = 'cb-fwruletwice-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -175,7 +175,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_group_rule(self):
-        label = 'cb_fwrule-{0}'.format(helpers.get_uuid())
+        label = 'cb-fwrule-{0}'.format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values

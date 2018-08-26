@@ -547,11 +547,12 @@ class AzureVolume(BaseVolume):
                     vm.storage_profile.data_disks.remove(item)
                     self._provider.azure_client.update_vm(vm.id, vm)
 
-    def create_snapshot(self, name, description=None):
+    def create_snapshot(self, label=None, description=None):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.storage.snapshots.create(name, self)
+        return self._provider.storage.snapshots.create(self,
+                                                       label, description)
 
     def delete(self):
         """
@@ -995,7 +996,7 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
         if label:
             public_ip_parameters.update(tags={'Label': label})
 
-        AzureFloatingIP.assert_valid_resource_label(label)
+        AzureFloatingIP.assert_valid_resource_name(label)
         public_ip_name = AzureFloatingIP._generate_name_from_label(label)
 
         floating_ip = self._provider.azure_client.\

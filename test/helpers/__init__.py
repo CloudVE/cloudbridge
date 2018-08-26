@@ -140,7 +140,7 @@ def get_test_gateway(provider, label):
 
     This includes creating a network for the gateway, which is also returned.
     """
-    net_label = 'cb_testgwnet-{0}'.format(get_uuid())
+    net_label = 'cb-testgwnet-{0}'.format(get_uuid())
     net = provider.networking.networks.create(
         label=net_label, cidr_block='10.0.0.0/16')
     return net, net.gateways.get_or_create_inet_gateway(label=label)
