@@ -715,7 +715,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     #
     # Note: The following regex is based on: https://stackoverflow.com/question
     # s/537772/what-is-the-most-correct-regular-expression-for-a-unix-file-path
-    CB_LABEL_PATTERN = re.compile(r"^[a-z][-a-z0-9]{1,61}[a-z0-9]$")
+    CB_LABEL_PATTERN = re.compile(r"[^\0]+")
 
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
@@ -753,29 +753,8 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
 
 class BaseBucket(BaseCloudResource, Bucket):
 
-    # Regular expression for valid bucket names.
-    # They, must match the following criteria: http://docs.aws.amazon.com/aws
-    # cloudtrail/latest/userguide/cloudtrail-s3-bucket-naming-requirements.html
-    #
-    # NOTE: The following regex is based on: https://stackoverflow.com/questio
-    # ns/2063213/regular-expression-for-validating-dns-label-host-name
-    CB_LABEL_PATTERN = re.compile(r"^[a-z][-a-z0-9]{1,61}[a-z0-9]$")
-
     def __init__(self, provider):
         super(BaseBucket, self).__init__(provider)
-
-    @staticmethod
-    def is_valid_resource_name(name):
-        return True if BaseBucket.CB_LABEL_PATTERN.match(name) else False
-
-    @staticmethod
-    def assert_valid_resource_name(name):
-        if not BaseBucket.is_valid_resource_name(name):
-            log.debug("Invalid bucket name %s", name, exc_info=True)
-            raise InvalidLabelException(
-                u"Invalid bucket name: %s. Name must match criteria defined "
-                "in: http://docs.aws.amazon.com/awscloudtrail/latest/userguide"
-                "/cloudtrail-s3-bucket-naming-requirements.html" % name)
 
     def __eq__(self, other):
         return (isinstance(other, Bucket) and
