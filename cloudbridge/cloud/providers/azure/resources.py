@@ -1420,7 +1420,7 @@ class AzureInstance(BaseInstance):
         """
         return self._vm.tags.get('Key_Pair')
 
-    def create_image(self, label=None, private_key_path=None):
+    def create_image(self, label, private_key_path=None):
         """
         Create a new image based on this instance. Documentation for create
         image available at https://docs.microsoft.com/en-us/azure/virtual-ma

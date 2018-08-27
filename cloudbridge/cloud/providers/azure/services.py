@@ -70,6 +70,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         parameters = {"location": self.provider.region_name}
         if label:
+            AzureVMFirewall.assert_valid_resource_label(label)
             parameters.update({'tags': {'Label': label}})
 
         if description:
@@ -313,6 +314,7 @@ class AzureVolumeService(BaseVolumeService):
         """
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         if label:
+            AzureVolume.assert_valid_resource_label(label)
             tags = {'Label': label}
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
@@ -412,6 +414,7 @@ class AzureSnapshotService(BaseSnapshotService):
                                                                 "cb-snap")
 
         if label:
+            AzureSnapshot.assert_valid_resource_label(label)
             tags = {'Label': label}
 
         if description:
@@ -465,9 +468,11 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, image, vm_type, label=None, subnet=None, zone=None,
+    def create(self, image, vm_type, label, subnet=None, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
+
+        AzureInstance.assert_valid_resource_label(label)
 
         instance_name = AzureInstance._generate_name_from_label(label,
                                                                 "cb-ins")
@@ -1018,6 +1023,7 @@ class AzureSubnetService(BaseSubnetService):
 
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels
+        AzureSubnet.assert_valid_resource_label(label)
         subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
 
         subnet_info = self.provider.azure_client\
@@ -1100,6 +1106,7 @@ class AzureRouterService(BaseRouterService):
 
         parameters = {"location": self.provider.region_name}
         if label:
+            AzureRouter.assert_valid_resource_label(label)
             parameters.update(tags={'Label': label})
 
         route = self.provider.azure_client. \
