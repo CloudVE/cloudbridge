@@ -210,11 +210,12 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
 
     def create(self, description, network_id, label=None):
         OpenStackVMFirewall.assert_valid_resource_label(label)
+        name = OpenStackVMFirewall._generate_name_from_label(label, 'cb-fw')
         log.debug("Creating OpenStack VM Firewall with the params: "
                   "[label: %s network id: %s description: %s]", label,
                   network_id, description)
         sg = self.provider.os_conn.network.create_security_group(
-            name=label, description=description)
+            name=name, description=description or name)
         if sg:
             return OpenStackVMFirewall(self.provider, sg)
         return None
@@ -631,7 +632,8 @@ class OpenStackInstanceService(BaseInstanceService):
             port_def = {
                 "port": {
                     "admin_state_up": True,
-                    "name": label,
+                    "name": OpenStackInstance._generate_name_from_label(
+                        label, 'cb-port'),
                     "network_id": net_id,
                     "fixed_ips": [{"subnet_id": subnet_id}],
                     "security_groups": sg_id_list
@@ -849,14 +851,16 @@ class OpenStackSubnetService(BaseSubnetService):
                   "[Label: %s Network: %s Cinder Block: %s Zone: -ignored-]",
                   label, network, cidr_block)
         OpenStackSubnet.assert_valid_resource_label(label)
-
+        name = OpenStackSubnet._generate_name_from_label(label, 'cb-subnet')
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
-        subnet_info = {'name': label, 'network_id': network_id,
+        subnet_info = {'name': name, 'network_id': network_id,
                        'cidr': cidr_block, 'ip_version': 4}
         subnet = (self.provider.neutron.create_subnet({'subnet': subnet_info})
                   .get('subnet'))
-        return OpenStackSubnet(self.provider, subnet)
+        cb_subnet = OpenStackSubnet(self.provider, subnet)
+        cb_subnet.label = label
+        return cb_subnet
 
     def get_or_create_default(self, zone):
         """

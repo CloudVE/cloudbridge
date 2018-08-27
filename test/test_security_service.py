@@ -200,9 +200,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 direction=TrafficDirection.INBOUND, src_dest_fw=fw,
                 protocol='tcp', from_port=1, to_port=65535)
             self.assertTrue(
-                rule.src_dest_fw.label == label,
+                rule.src_dest_fw.label == fw.label,
                 "Expected VM firewall rule label {0}. Got {1}."
-                .format(label, rule.src_dest_fw.label))
+                .format(fw.label, rule.src_dest_fw.label))
             for r in fw.rules:
                 r.delete()
             fw = self.provider.security.vm_firewalls.get(fw.id)  # update

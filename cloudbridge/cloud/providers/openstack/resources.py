@@ -117,7 +117,8 @@ class OpenStackMachineImage(BaseMachineImage):
         Set the image label.
         """
         self.assert_valid_resource_label(value)
-        self._provider.os_conn.image.update_image(self._os_image, name=value)
+        self._provider.os_conn.image.update_image(
+            self._os_image, name=value or "")
 
     @property
     def description(self):
@@ -319,7 +320,7 @@ class OpenStackInstance(BaseInstance):
         self.assert_valid_resource_label(value)
 
         self._os_instance.name = value
-        self._os_instance.update(name=value)
+        self._os_instance.update(name=value or "cb-inst")
 
     @property
     def public_ips(self):
@@ -601,7 +602,7 @@ class OpenStackVolume(BaseVolume):
         """
         self.assert_valid_resource_label(value)
         self._volume.name = value
-        self._volume.update(name=value)
+        self._volume.update(name=value or "")
 
     @property
     def description(self):
@@ -731,7 +732,7 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         self.assert_valid_resource_label(value)
         self._snapshot.name = value
-        self._snapshot.update(name=value)
+        self._snapshot.update(name=value or "")
 
     @property
     def description(self):
@@ -878,8 +879,8 @@ class OpenStackNetwork(BaseNetwork):
         Set the network label.
         """
         self.assert_valid_resource_label(value)
-        self._provider.neutron.update_network(self.id,
-                                              {'network': {'name': value}})
+        self._provider.neutron.update_network(
+            self.id, {'network': {'name': value or ""}})
         self.refresh()
 
     @property
@@ -960,7 +961,7 @@ class OpenStackSubnet(BaseSubnet):
         """
         self.assert_valid_resource_label(value)
         self._provider.neutron.update_subnet(
-            self.id, {'subnet': {'name': value}})
+            self.id, {'subnet': {'name': value or ""}})
         self._subnet['name'] = value
 
     @property
@@ -1086,7 +1087,7 @@ class OpenStackRouter(BaseRouter):
         """
         self.assert_valid_resource_label(value)
         self._provider.neutron.update_router(
-            self.id, {'router': {'name': value}})
+            self.id, {'router': {'name': value or ""}})
         self.refresh()
 
     def refresh(self):
@@ -1167,8 +1168,8 @@ class OpenStackInternetGateway(BaseInternetGateway):
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._provider.neutron_client.add_tag('network', self.id,
-                                              {'gateway_name': value})
+        self._provider.neutron_client.add_tag(
+            'network', self.id, {'gateway_name': value or ""})
         self.refresh()
 
     @property
@@ -1235,8 +1236,8 @@ class OpenStackVMFirewall(BaseVMFirewall):
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._provider.os_conn.network.update_security_group(self.id,
-                                                             name=value)
+        self._provider.os_conn.network.update_security_group(
+            self.id, name=value or "")
         self.refresh()
 
     @property
