@@ -112,7 +112,7 @@ class BaseCloudResource(CloudResource):
     def _generate_name_from_label(label, default):
         if not label:
             label = default
-        name = label[:57] + '-' + uuid.uuid4().hex[:6]
+        name = label[:55] + '-' + uuid.uuid4().hex[:6]
         BaseCloudResource.assert_valid_resource_name(name)
         return name
 

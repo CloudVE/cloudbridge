@@ -60,7 +60,7 @@ class AzureVMFirewall(BaseVMFirewall):
     @label.setter
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._vm_firewall.tags.update(Label=value)
+        self._vm_firewall.tags.update(Label=value or "")
         self._provider.azure_client.update_vm_firewall_tags(
             self.id, self._vm_firewall.tags)
 
@@ -70,7 +70,7 @@ class AzureVMFirewall(BaseVMFirewall):
 
     @description.setter
     def description(self, value):
-        self._vm_firewall.tags.update(Description=value)
+        self._vm_firewall.tags.update(Description=value or "")
         self._provider.azure_client.\
             update_vm_firewall_tags(self.id,
                                     self._vm_firewall.tags)
@@ -470,7 +470,7 @@ class AzureVolume(BaseVolume):
         Set the volume label.
         """
         self.assert_valid_resource_label(value)
-        self._volume.tags.update(Label=value)
+        self._volume.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_disk_tags(self.id,
                              self._volume.tags)
@@ -481,7 +481,7 @@ class AzureVolume(BaseVolume):
 
     @description.setter
     def description(self, value):
-        self._volume.tags.update(Description=value)
+        self._volume.tags.update(Description=value or "")
         self._provider.azure_client. \
             update_disk_tags(self.id,
                              self._volume.tags)
@@ -628,7 +628,7 @@ class AzureSnapshot(BaseSnapshot):
         Set the snapshot label.
         """
         self.assert_valid_resource_label(value)
-        self._snapshot.tags.update(Label=value)
+        self._snapshot.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_snapshot_tags(self.id,
                                  self._snapshot.tags)
@@ -639,7 +639,7 @@ class AzureSnapshot(BaseSnapshot):
 
     @description.setter
     def description(self, value):
-        self._snapshot.tags.update(Description=value)
+        self._snapshot.tags.update(Description=value or "")
         self._provider.azure_client. \
             update_snapshot_tags(self.id,
                                  self._snapshot.tags)
@@ -688,7 +688,7 @@ class AzureSnapshot(BaseSnapshot):
         Create a new Volume from this Snapshot.
         """
         return self._provider.storage.volumes. \
-            create(self.name, self.size,
+            create(self.size, label=self.name,
                    zone=placement, snapshot=self)
 
 
@@ -752,7 +752,7 @@ class AzureMachineImage(BaseMachineImage):
         """
         if not self.is_gallery_image:
             self.assert_valid_resource_label(value)
-            self._image.tags.update(Label=value)
+            self._image.tags.update(Label=value or "")
             self._provider.azure_client. \
                 update_image_tags(self.id, self._image.tags)
 
@@ -776,7 +776,7 @@ class AzureMachineImage(BaseMachineImage):
         Set the image description.
         """
         if not self.is_gallery_image:
-            self._image.tags.update(Description=value)
+            self._image.tags.update(Description=value or "")
             self._provider.azure_client. \
                 update_image_tags(self.id, self._image.tags)
 
@@ -898,7 +898,7 @@ class AzureNetwork(BaseNetwork):
         Set the network label.
         """
         self.assert_valid_resource_label(value)
-        self._network.tags.update(Label=value)
+        self._network.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_network_tags(self.id, self._network)
 
@@ -1040,7 +1040,7 @@ class AzureFloatingIP(BaseFloatingIP):
         Set the floating IP label.
         """
         self.assert_valid_resource_label(value)
-        self._ip.tags.update(Label=value)
+        self._ip.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_fip_tags(self.id, self._ip)
 
@@ -1164,17 +1164,20 @@ class AzureSubnet(BaseSubnet):
     def label(self):
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels
-        az_network = self._network._network
-        return az_network.tags.get('SubnetLabel_' + self.name, None)
+        network = self._network
+        az_network = network._network
+        return az_network.tags.get('SubnetLabel_' + network.name, None)
 
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        az_network = self._network._network
-        kwargs = {'SubnetLabel_' + self.name: value}
+        network = self._network
+        az_network = network._network
+        kwargs = {'SubnetLabel_' + network.name: value or ""}
         az_network.tags.update(**kwargs)
-        self._provider.azure_client.update_network_tags(self.id, az_network)
+        self._provider.azure_client.update_network_tags(
+            az_network.id, az_network)
 
     @property
     def resource_id(self):
@@ -1299,7 +1302,7 @@ class AzureInstance(BaseInstance):
         Set the instance label.
         """
         self.assert_valid_resource_label(value)
-        self._vm.tags.update(Label=value)
+        self._vm.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_vm_tags(self.id, self._vm)
 
@@ -1704,7 +1707,7 @@ class AzureRouter(BaseRouter):
         Set the router label.
         """
         self.assert_valid_resource_label(value)
-        self._route_table.tags.update(Label=value)
+        self._route_table.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_route_table_tags(self._route_table.name,
                                     self._route_table)

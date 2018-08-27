@@ -535,7 +535,7 @@ class AzureInstanceService(BaseInstanceService):
             # but useless. However, this will allow an instance to be launched
             # without specifying a keypair, so users may still be able to login
             # if they have a preinstalled keypair/password baked into the image
-            temp_kp_name = "".join(["cb-default-kp_",
+            temp_kp_name = "".join(["cb-default-kp-",
                                    str(uuid.uuid5(uuid.NAMESPACE_OID,
                                                   instance_name))[-6:]])
             key_pair = self.provider.security.key_pairs.create(
