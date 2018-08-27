@@ -31,7 +31,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['networking.networks'])
     def test_network_properties(self):
         label = 'cb-propnetwork-{0}'.format(helpers.get_uuid())
-        subnet_label = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
+        subnet_name = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
             name=label, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
@@ -51,7 +51,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             cidr = '10.0.1.0/24'
             sn = net.create_subnet(
-                label=subnet_label, cidr_block=cidr,
+                name=subnet_name, cidr_block=cidr,
                 zone=helpers.get_provider_test_data(self.provider,
                                                     'placement'))
             with helpers.cleanup_action(lambda: sn.delete()):
@@ -85,9 +85,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         # correct value
         net = None
 
-        def create_subnet(label):
+        def create_subnet(name):
             return self.provider.networking.subnets.create(
-                network=net, cidr_block="10.0.0.0/24", label=label,
+                network=net, cidr_block="10.0.0.0/24", name=name,
                 zone=helpers.get_provider_test_data(
                     self.provider, 'placement'))
 
@@ -171,7 +171,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             router = self.provider.networking.routers.create(network=net,
                                                              label=label)
             cidr = '10.0.1.0/24'
-            sn = net.create_subnet(label=label, cidr_block=cidr,
+            sn = net.create_subnet(name=label, cidr_block=cidr,
                                    zone=helpers.get_provider_test_data(
                                        self.provider, 'placement'))
 

@@ -1038,17 +1038,7 @@ class AWSSubnet(BaseSubnet):
 
     @property
     def name(self):
-        return self.id
-
-    @property
-    def label(self):
         return find_tag_value(self._subnet.tags, 'Name')
-
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     @property
     def cidr_block(self):

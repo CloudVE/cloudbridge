@@ -845,13 +845,14 @@ class OpenStackSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, network, cidr_block, zone, label=None):
+    def create(self, network, cidr_block, zone, name=None):
         """zone param is ignored."""
         log.debug("Creating OpenStack Subnet with the params: "
                   "[Label: %s Network: %s Cinder Block: %s Zone: -ignored-]",
-                  label, network, cidr_block)
-        OpenStackSubnet.assert_valid_resource_label(label)
-        name = OpenStackSubnet._generate_name_from_label(label, 'cb-subnet')
+                  name, network, cidr_block)
+        OpenStackSubnet.assert_valid_resource_name(name)
+        if not name:
+            name = self.CB_DEFAULT_SUBNET_NAME
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
         subnet_info = {'name': name, 'network_id': network_id,
@@ -859,7 +860,6 @@ class OpenStackSubnetService(BaseSubnetService):
         subnet = (self.provider.neutron.create_subnet({'subnet': subnet_info})
                   .get('subnet'))
         cb_subnet = OpenStackSubnet(self.provider, subnet)
-        cb_subnet.label = label
         return cb_subnet
 
     def get_or_create_default(self, zone):
@@ -867,7 +867,7 @@ class OpenStackSubnetService(BaseSubnetService):
         Subnet zone is not supported by OpenStack and is thus ignored.
         """
         try:
-            sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)
+            sn = self.find(name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME)
             if sn:
                 return sn[0]
             # No default; create one
@@ -875,7 +875,7 @@ class OpenStackSubnetService(BaseSubnetService):
                 name=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME,
                 cidr_block='10.0.0.0/16')
             sn = net.create_subnet(
-                label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
+                name=OpenStackSubnet.CB_DEFAULT_SUBNET_NAME,
                 cidr_block='10.0.0.0/24')
             router = self.provider.networking.routers.create(
                 network=net, label=OpenStackRouter.CB_DEFAULT_ROUTER_LABEL)

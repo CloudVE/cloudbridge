@@ -702,21 +702,21 @@ class AWSSubnetService(BaseSubnetService):
             return self.svc.list(limit=limit, marker=marker)
 
     def find(self, **kwargs):
-        label = kwargs.pop('label', None)
+        name = kwargs.pop('name', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+                            " Supported attributes: %s" % (kwargs, 'name'))
 
-        log.debug("Searching for AWS Subnet Service %s", label)
-        return self.svc.find(filter_name='tag:Name', filter_value=label)
+        log.debug("Searching for AWS Subnet Service %s", name)
+        return self.svc.find(filter_name='tag:Name', filter_value=name)
 
-    def create(self, network, cidr_block, zone, label=None):
+    def create(self, network, cidr_block, zone, name=None):
         log.debug("Creating AWS Subnet Service with the params "
-                  "[label: %s network: %s block: %s zone: %s]",
-                  label, network, cidr_block, zone)
-        AWSSubnet.assert_valid_resource_label(label)
+                  "[name: %s network: %s block: %s zone: %s]",
+                  name, network, cidr_block, zone)
+        AWSSubnet.assert_valid_resource_name(name)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
@@ -724,8 +724,12 @@ class AWSSubnetService(BaseSubnetService):
                                  VpcId=network_id,
                                  CidrBlock=cidr_block,
                                  AvailabilityZone=zone)
-        if label:
-            subnet.label = label
+        if not name:
+            name = self.CB_DEFAULT_SUBNET_NAME
+
+        # pylint:disable=protected-access
+        subnet._subnet.create_tags(Tags=[{'Key': 'Name',
+                                          'Value': name or ""}])
         return subnet
 
     def get_or_create_default(self, zone):
@@ -748,7 +752,7 @@ class AWSSubnetService(BaseSubnetService):
             # pylint:disable=protected-access
             for tag in sn._subnet.tags or {}:
                 if (tag.get('Key') == 'Name' and
-                        tag.get('Value') == AWSSubnet.CB_DEFAULT_SUBNET_LABEL):
+                        tag.get('Value') == AWSSubnet.CB_DEFAULT_SUBNET_NAME):
                     return sn
         # No provider-default Subnet exists, try to create it (net + subnets)
         default_net = self.provider.networking.networks.create(
@@ -759,7 +763,7 @@ class AWSSubnetService(BaseSubnetService):
         default_sn = None
         for i, z in enumerate(region.zones):
             sn = self.create(default_net, '10.0.{0}.0/24'.format(i), z.name,
-                             label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL)
+                             label=AWSSubnet.CB_DEFAULT_SUBNET_NAME)
             if zone and zone == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet

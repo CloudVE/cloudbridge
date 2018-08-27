@@ -324,7 +324,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label, self.name)
+                                            self.label, self.id)
 
 
 class BaseLaunchConfig(LaunchConfig):
@@ -425,7 +425,7 @@ class BaseMachineImage(
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
+                                            self.label or self.name, self.id)
 
 
 class BaseAttachmentInfo(AttachmentInfo):
@@ -471,7 +471,7 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label, self.name)
+                                            self.label or self.name, self.id)
 
 
 class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
@@ -497,7 +497,7 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label, self.name)
+                                            self.label or self.name, self.id)
 
 
 class BaseKeyPair(BaseCloudResource, KeyPair):
@@ -812,14 +812,14 @@ class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
-                                             'cloudbridge-net')
+                                             'cb-net')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.id, self.label)
+                                            self.label or self.name, self.id)
 
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
@@ -828,9 +828,9 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
-    def create_subnet(self, cidr_block, label=None, zone=None):
+    def create_subnet(self, cidr_block, name=None, zone=None):
         return self._provider.networking.subnets.create(
-            label=label, network=self, cidr_block=cidr_block, zone=zone)
+            network=self, cidr_block=cidr_block, zone=zone, name=name)
 
     def __eq__(self, other):
         return (isinstance(other, Network) and
@@ -841,15 +841,15 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
 class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
-    CB_DEFAULT_SUBNET_LABEL = os.environ.get('CB_DEFAULT_SUBNET_LABEL',
-                                             'cloudbridge-subnet')
+    CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
+                                            'cb-subnet')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.id, self.label)
+                                            self.name, self.id)
 
     def __eq__(self, other):
         return (isinstance(other, Subnet) and
@@ -929,8 +929,8 @@ class BaseRouter(BaseCloudResource, Router):
         super(BaseRouter, self).__init__(provider)
 
     def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,
-                                            self.label)
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.label or self.name, self.id)
 
     def __eq__(self, other):
         return (isinstance(other, Router) and
@@ -950,8 +950,8 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
         self.__provider = provider
 
     def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__, self.id,
-                                            self.label)
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.label or self.name, self.id)
 
     def __eq__(self, other):
         return (isinstance(other, InternetGateway) and
