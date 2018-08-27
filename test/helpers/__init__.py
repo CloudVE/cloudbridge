@@ -112,14 +112,14 @@ def get_provider_test_data(provider, key):
     return None
 
 
-def create_test_network(provider, label):
+def create_test_network(provider, name):
     """
     Create a network with one subnet, returning the network and subnet objects.
     """
-    net = provider.networking.networks.create(label=label,
+    net = provider.networking.networks.create(name=name,
                                               cidr_block='10.0.0.0/16')
     cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
-    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block), label=label,
+    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block), label=name,
                            zone=get_provider_test_data(provider, 'placement'))
     return net, sn
 
@@ -142,7 +142,7 @@ def get_test_gateway(provider, label):
     """
     net_label = 'cb-testgwnet-{0}'.format(get_uuid())
     net = provider.networking.networks.create(
-        label=net_label, cidr_block='10.0.0.0/16')
+        name=net_label, cidr_block='10.0.0.0/16')
     return net, net.gateways.get_or_create_inet_gateway(label=label)
 
 

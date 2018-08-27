@@ -18,21 +18,22 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_net(label):
             return self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
+                name=label, cidr_block='10.0.0.0/16')
 
         def cleanup_net(net):
             if net:
                 self.provider.networking.networks.delete(network_id=net.id)
 
         sit.check_crud(self, self.provider.networking.networks, Network,
-                       "cb-crudnetwork", create_net, cleanup_net)
+                       "cb-crudnetwork", create_net, cleanup_net,
+                       supports_labels=False)
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_network_properties(self):
         label = 'cb-propnetwork-{0}'.format(helpers.get_uuid())
         subnet_label = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
-            label=label, cidr_block='10.0.0.0/16')
+            name=label, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
             lambda: net.delete()
         ):
@@ -96,7 +97,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         net_label = 'cb-crudsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
-            label=net_label, cidr_block='10.0.0.0/16')
+            name=net_label, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
             lambda:
                 self.provider.networking.networks.delete(network_id=net.id)
@@ -166,7 +167,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         gteway = None
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
             net = self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
+                name=label, cidr_block='10.0.0.0/16')
             router = self.provider.networking.routers.create(network=net,
                                                              label=label)
             cidr = '10.0.1.0/24'

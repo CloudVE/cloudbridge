@@ -784,7 +784,7 @@ class OpenStackSnapshot(BaseSnapshot):
         Create a new Volume from this Snapshot.
         """
         vol_label = "from-snap-{0}".format(self.id or self.label)
-        name = self._generate_name_from_label(vol_label)
+        name = self._generate_name_from_label(vol_label, 'cb-vol')
         size = size if size else self._snapshot.size
         os_vol = self._provider.cinder.volumes.create(
             size, name=name, availability_zone=placement,

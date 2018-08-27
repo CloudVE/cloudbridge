@@ -894,11 +894,8 @@ class AzureNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, cidr_block, label=None):
-        # Azure requires CIDR block to be specified when creating a network
-        # so set a default one and use the largest allowed netmask.
-        network_name = AzureNetwork._generate_name_from_label(label, 'cb-net')
-
+    def create(self, name, cidr_block):
+        AzureNetwork.assert_valid_resource_name(name)
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
@@ -906,10 +903,10 @@ class AzureNetworkService(BaseNetworkService):
             }
         }
 
-        if label:
-            params.update(tags={'Label': label})
+        if name:
+            params.update(tags={'Label': name})
 
-        az_network = self.provider.azure_client.create_network(network_name,
+        az_network = self.provider.azure_client.create_network(name,
                                                                params)
         cb_network = AzureNetwork(self.provider, az_network)
         return cb_network
@@ -1046,13 +1043,13 @@ class AzureSubnetService(BaseSubnetService):
 
         # No provider-default Subnet exists, try to create it (net + subnets)
         networks = self.provider.networking.networks.find(
-            label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
+            label=AzureNetwork.CB_DEFAULT_NETWORK_NAME)
 
         if networks:
             network = networks[0]
         else:
             network = self.provider.networking.networks.create(
-                '10.0.0.0/16', label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
+                AzureNetwork.CB_DEFAULT_NETWORK_NAME, '10.0.0.0/16')
 
         subnet = self.create(network, default_cidr,
                              prefix=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)

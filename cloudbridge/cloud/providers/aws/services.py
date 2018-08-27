@@ -667,16 +667,16 @@ class AWSNetworkService(BaseNetworkService):
         log.debug("Searching for AWS Network Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def create(self, cidr_block, label=None):
+    def create(self, name, cidr_block):
         log.debug("Creating AWS Network Service with the params "
-                  "[label: %s block: %s]", label, cidr_block)
-        AWSNetwork.assert_valid_resource_label(label)
+                  "[name: %s block: %s]", name, cidr_block)
+        AWSNetwork.assert_valid_resource_name(name)
 
         cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block)
         # Wait until ready to tag instance
         cb_net.wait_till_ready()
-        if label:
-            cb_net.label = label
+        if name:
+            cb_net.label = name
         return cb_net
 
 
@@ -752,7 +752,7 @@ class AWSSubnetService(BaseSubnetService):
                     return sn
         # No provider-default Subnet exists, try to create it (net + subnets)
         default_net = self.provider.networking.networks.create(
-            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
+            name=AWSNetwork.CB_DEFAULT_NETWORK_NAME,
             cidr_block='10.0.0.0/16')
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)

@@ -811,8 +811,8 @@ class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
 
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
-    CB_DEFAULT_NETWORK_LABEL = os.environ.get('CB_DEFAULT_NETWORK_LABEL',
-                                              'cloudbridge-net')
+    CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
+                                             'cloudbridge-net')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)

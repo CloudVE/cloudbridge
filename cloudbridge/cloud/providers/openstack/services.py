@@ -810,13 +810,15 @@ class OpenStackNetworkService(BaseNetworkService):
                     .get('networks') if network]
         return ClientPagedResultList(self.provider, networks)
 
-    def create(self, cidr_block, label=None):
+    def create(self, name, cidr_block):
         log.debug("Creating OpenStack Network with the params: "
-                  "[label: %s Cinder Block: %s]", label, cidr_block)
-        OpenStackNetwork.assert_valid_resource_label(label)
-        net_info = {'name': label}
+                  "[name: %s Cinder Block: %s]", name, cidr_block)
+        OpenStackNetwork.assert_valid_resource_name(name)
+        net_info = {'name': name}
         network = self.provider.neutron.create_network({'network': net_info})
-        return OpenStackNetwork(self.provider, network.get('network'))
+        cb_net = OpenStackNetwork(self.provider, network.get('network'))
+        cb_net.label = name
+        return cb_net
 
 
 class OpenStackSubnetService(BaseSubnetService):
@@ -866,7 +868,7 @@ class OpenStackSubnetService(BaseSubnetService):
                 return sn[0]
             # No default; create one
             net = self.provider.networking.networks.create(
-                label=OpenStackNetwork.CB_DEFAULT_NETWORK_LABEL,
+                name=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME,
                 cidr_block='10.0.0.0/16')
             sn = net.create_subnet(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
