@@ -211,7 +211,7 @@ def cleanup_test_resources(instance=None, network=None, vm_firewall=None,
 
 
 def get_uuid():
-    return str(uuid.uuid4())
+    return str(uuid.uuid4())[:6]
 
 
 class ProviderTestBase(unittest.TestCase):

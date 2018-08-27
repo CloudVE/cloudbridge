@@ -1770,7 +1770,7 @@ class AzureInternetGateway(BaseInternetGateway):
 
     @property
     def label(self):
-        None
+        return None
 
     def refresh(self):
         pass

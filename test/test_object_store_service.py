@@ -1,7 +1,6 @@
 import filecmp
 import os
 import tempfile
-import uuid
 from datetime import datetime
 from io import BytesIO
 from unittest import skip
@@ -57,7 +56,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 bucket_obj.delete()
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
-            name = "cb-crudbucketobj-{0}".format(uuid.uuid4())
+            name = "cb-crudbucketobj-{0}".format(helpers.get_uuid())
             test_bucket = self.provider.storage.buckets.create(name)
 
             sit.check_crud(self, test_bucket.objects, BucketObject,
@@ -71,7 +70,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         check whether list properly detects the new content.
         Delete everything afterwards.
         """
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
 
         # ensure that the bucket is empty
@@ -129,7 +128,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
@@ -152,7 +151,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_generate_url(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
@@ -174,7 +173,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_from_file(self):
-        name = "cbtestbucketobjs-{0}".format(uuid.uuid4())
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
 
         with helpers.cleanup_action(lambda: test_bucket.delete()):
@@ -205,7 +204,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             out.truncate(6 * 1024 * 1024 * 1024)  # 6 Gig...
         with helpers.cleanup_action(lambda: os.remove(six_gig_file)):
             download_file = "{0}/cbtestfile-{1}".format(temp_dir, file_name)
-            bucket_name = "cbtestbucketlargeobjs-{0}".format(uuid.uuid4())
+            bucket_name = "cbtestbucketlargeobjs-{0}".format(
+                                                            helpers.get_uuid())
             test_bucket = self.provider.storage.buckets.create(bucket_name)
             with helpers.cleanup_action(lambda: test_bucket.delete()):
                 test_obj = test_bucket.objects.create(file_name)
