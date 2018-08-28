@@ -899,7 +899,7 @@ class AzureNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, name, cidr_block):
+    def create(self, cidr_block, label=None):
         AzureNetwork.assert_valid_resource_name(name)
         params = {
             'location': self.provider.azure_client.region_name,
@@ -908,10 +908,12 @@ class AzureNetworkService(BaseNetworkService):
             }
         }
 
-        if name:
-            params.update(tags={'Label': name})
+        if label:
+            params.update(tags={'Label': label})
 
-        az_network = self.provider.azure_client.create_network(name,
+        network_name = AzureNetwork._generate_name_from_label(label, 'cb-net')
+
+        az_network = self.provider.azure_client.create_network(network_name,
                                                                params)
         cb_network = AzureNetwork(self.provider, az_network)
         return cb_network
@@ -1049,13 +1051,13 @@ class AzureSubnetService(BaseSubnetService):
 
         # No provider-default Subnet exists, try to create it (net + subnets)
         networks = self.provider.networking.networks.find(
-            label=AzureNetwork.CB_DEFAULT_NETWORK_NAME)
+            label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
 
         if networks:
             network = networks[0]
         else:
             network = self.provider.networking.networks.create(
-                AzureNetwork.CB_DEFAULT_NETWORK_NAME, '10.0.0.0/16')
+                '10.0.0.0/16', label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
 
         subnet = self.create(network, default_cidr,
                              prefix=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)

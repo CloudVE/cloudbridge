@@ -1166,7 +1166,7 @@ class AzureSubnet(BaseSubnet):
         # tags to track the subnet's labels
         network = self._network
         az_network = network._network
-        return az_network.tags.get('SubnetLabel_' + network.name, None)
+        return az_network.tags.get('SubnetLabel_' + self.name, None)
 
     @label.setter
     # pylint:disable=arguments-differ
@@ -1174,7 +1174,7 @@ class AzureSubnet(BaseSubnet):
         self.assert_valid_resource_label(value)
         network = self._network
         az_network = network._network
-        kwargs = {'SubnetLabel_' + network.name: value or ""}
+        kwargs = {'SubnetLabel_' + self.name: value or ""}
         az_network.tags.update(**kwargs)
         self._provider.azure_client.update_network_tags(
             az_network.id, az_network)

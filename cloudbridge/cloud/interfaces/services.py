@@ -628,12 +628,12 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, name, cidr_block):
+    def create(self, cidr_block, label=None):
         """
         Create a new network.
 
-        :type name: ``str``
-        :param name: A label for the network.
+        :type label: ``str``
+        :param label: A label for the network.
 
         :type cidr_block: ``str``
         :param cidr_block: The cidr block for this network. Some providers
