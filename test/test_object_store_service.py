@@ -7,6 +7,7 @@ from unittest import skip
 
 import requests
 
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import Bucket
 from cloudbridge.cloud.interfaces.resources import BucketObject
@@ -58,6 +59,8 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             name = "cb-crudbucketobj-{0}".format(helpers.get_uuid())
             test_bucket = self.provider.storage.buckets.create(name)
+            with self.assertRaises(DuplicateResourceException):
+                self.provider.storage.buckets.create(name)
 
             sit.check_crud(self, test_bucket.objects, BucketObject,
                            "cb-bucketobj", create_bucket_obj,
