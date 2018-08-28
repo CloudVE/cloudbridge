@@ -1060,7 +1060,7 @@ class AzureSubnetService(BaseSubnetService):
                 '10.0.0.0/16', label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
 
         subnet = self.create(network, default_cidr,
-                             prefix=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)
+                             label=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)
         return subnet
 
     def delete(self, subnet):
