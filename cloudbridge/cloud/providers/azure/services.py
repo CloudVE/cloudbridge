@@ -900,7 +900,7 @@ class AzureNetworkService(BaseNetworkService):
                                      matches if matches else [])
 
     def create(self, cidr_block, label=None):
-        AzureNetwork.assert_valid_resource_name(name)
+        AzureNetwork.assert_valid_resource_label(label)
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {

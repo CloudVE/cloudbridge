@@ -18,7 +18,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_net(label):
             return self.provider.networking.networks.create(
-                name=label, cidr_block='10.0.0.0/16')
+                label=label, cidr_block='10.0.0.0/16')
 
         def cleanup_net(net):
             if net:
