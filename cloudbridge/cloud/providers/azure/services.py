@@ -1004,7 +1004,7 @@ class AzureSubnetService(BaseSubnetService):
 
     def find(self, network=None, **kwargs):
         obj_list = self._list_subnets(network)
-        filters = ['name']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.

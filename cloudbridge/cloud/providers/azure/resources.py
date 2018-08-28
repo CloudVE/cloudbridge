@@ -976,17 +976,13 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
         return ClientPagedResultList(self._provider, floating_ips,
                                      limit=limit, marker=marker)
 
-    def create(self, label=None):
+    def create(self):
         public_ip_parameters = {
             'location': self._provider.azure_client.region_name,
             'public_ip_allocation_method': 'Static'
         }
-        if label:
-            public_ip_parameters.update(tags={'Label': label})
 
-        AzureFloatingIP.assert_valid_resource_label(label)
-        public_ip_name = AzureFloatingIP._generate_name_from_label(
-            label, 'cb-fip')
+        public_ip_name = self._generate_name_from_label('cb-fip', 'cb-fip')
 
         floating_ip = self._provider.azure_client.\
             create_floating_ip(public_ip_name, public_ip_parameters)
@@ -1011,26 +1007,6 @@ class AzureFloatingIP(BaseFloatingIP):
     @property
     def resource_id(self):
         return self._ip.id
-
-    @property
-    def label(self):
-        """
-        Get the floating IP label.
-
-        .. note:: an instance must have a (case sensitive) tag ``Label``
-        """
-        return self._ip.tags.get('Label', None)
-
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        """
-        Set the floating IP label.
-        """
-        self.assert_valid_resource_label(value)
-        self._ip.tags.update(Label=value or "")
-        self._provider.azure_client. \
-            update_fip_tags(self.id, self._ip)
 
     @property
     def public_ip(self):
@@ -1132,6 +1108,7 @@ class AzureSubnet(BaseSubnet):
         super(AzureSubnet, self).__init__(provider)
         self._subnet = subnet
         self._state = self._subnet.provisioning_state
+        self._tag_name = None
 
     @property
     def id(self):
@@ -1149,7 +1126,7 @@ class AzureSubnet(BaseSubnet):
         # tags to track the subnet's labels
         network = self._network
         az_network = network._network
-        return az_network.tags.get('SubnetLabel_' + self.name, None)
+        return az_network.tags.get(self.tag_name, None)
 
     @label.setter
     # pylint:disable=arguments-differ
@@ -1157,10 +1134,16 @@ class AzureSubnet(BaseSubnet):
         self.assert_valid_resource_label(value)
         network = self._network
         az_network = network._network
-        kwargs = {'SubnetLabel_' + self.name: value or ""}
+        kwargs = {self.tag_name: value or ""}
         az_network.tags.update(**kwargs)
         self._provider.azure_client.update_network_tags(
             az_network.id, az_network)
+
+    @property
+    def tag_name(self):
+        if not self._tag_name:
+            self._tag_name = 'SubnetLabel_' + self._subnet.name
+        return self._tag_name
 
     @property
     def resource_id(self):

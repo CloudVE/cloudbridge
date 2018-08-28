@@ -88,7 +88,7 @@ TEST_DATA_CONFIG = {
         "image": os.environ.get('CB_IMAGE_OS',
                                 'acb53109-941f-4593-9bf8-4a53cb9e0739'),
         "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
-        "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
+        "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
     },
     "AzureCloudProvider": {
         "placement":
