@@ -76,7 +76,7 @@ class BaseCloudResource(CloudResource):
     @staticmethod
     def is_valid_resource_label(label):
         if not label:
-            return True
+            return False
         else:
             return (True if BaseCloudResource.CB_LABEL_PATTERN.match(label)
                     else False)

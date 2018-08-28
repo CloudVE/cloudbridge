@@ -88,6 +88,8 @@ def check_find_non_existent(test, service, obj):
         find_objs = service.find(label="random_imagined_obj_name")
     else:
         find_objs = service.find(name="random_imagined_obj_name")
+    with test.assertRaises(TypeError):
+        service.find(notaparameter="random_imagined_obj_name")
     test.assertTrue(
         len(find_objs) == 0,
         "Find non-existent object for %s returned unexpected objects: %s"
@@ -141,12 +143,11 @@ def check_obj_label(test, obj):
     if isinstance(label_property, property):
         test.assertIsInstance(obj, LabeledCloudResource)
         original_label = obj.label
-        # A none value should be allowed
-        obj.label = None
-        # Assigning None should result in a None or empty string
-        test.assertFalse(obj.label)
         VALID_LABEL = u"hello-world-123"
         obj.label = VALID_LABEL
+        # A none value should not be allowed
+        with test.assertRaises(InvalidLabelException):
+            obj.label = None
         # setting spaces should raise an exception
         with test.assertRaises(InvalidLabelException):
             obj.label = "hello world"

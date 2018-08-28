@@ -130,7 +130,7 @@ class AzureCloudProvider(BaseCloudProvider):
                     self._azure_client.\
                         create_resource_group(self.resource_group,
                                               resource_group_params)
-                except CloudError as cloud_error2: # pragma: no cover
+                except CloudError as cloud_error2:  # pragma: no cover
                     if cloud_error2.error.error == "AuthorizationFailed":
                         mess = 'The following error was returned by Azure:\n' \
                                '%s\n\nThis is likely because the Role' \
