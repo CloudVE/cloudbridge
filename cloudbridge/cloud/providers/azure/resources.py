@@ -3,6 +3,7 @@ DataTypes used by this provider
 """
 import collections
 import logging
+from uuid import uuid4
 
 from azure.common import AzureException
 from azure.mgmt.devtestlabs.models import GalleryImageReference
@@ -982,7 +983,7 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
             'public_ip_allocation_method': 'Static'
         }
 
-        public_ip_name = self._generate_name_from_label('cb-fip', 'cb-fip')
+        public_ip_name = 'cb-fip-' + uuid4().hex[:6]
 
         floating_ip = self._provider.azure_client.\
             create_floating_ip(public_ip_name, public_ip_parameters)
@@ -1002,7 +1003,7 @@ class AzureFloatingIP(BaseFloatingIP):
 
     @property
     def name(self):
-        return self._ip.name
+        return self._ip.ip_address
 
     @property
     def resource_id(self):
@@ -1711,7 +1712,6 @@ class AzureInternetGateway(BaseInternetGateway):
     def __init__(self, provider, gateway, gateway_net):
         super(AzureInternetGateway, self).__init__(provider)
         self._gateway = gateway
-        self._name = None
         self._network_id = gateway_net.id if isinstance(
             gateway_net, AzureNetwork) else gateway_net
         self._state = ''
@@ -1720,11 +1720,11 @@ class AzureInternetGateway(BaseInternetGateway):
 
     @property
     def id(self):
-        return None
+        return "cb-gateway-wrapper"
 
     @property
     def name(self):
-        return None
+        return "cb-gateway-wrapper"
 
     @property
     def label(self):

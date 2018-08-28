@@ -873,7 +873,7 @@ class OpenStackSubnetService(BaseSubnetService):
                 return sn[0]
             # No default; create one
             net = self.provider.networking.networks.create(
-                label=OpenStackNetwork.CB_DEFAULT_NETWORK_NAME,
+                label=OpenStackNetwork.CB_DEFAULT_NETWORK_LABEL,
                 cidr_block='10.0.0.0/16')
             sn = net.create_subnet(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
