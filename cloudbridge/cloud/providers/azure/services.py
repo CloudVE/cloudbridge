@@ -993,7 +993,7 @@ class AzureSubnetService(BaseSubnetService):
                         net.id
                     ))
                 except CloudError as cloud_error:
-                    if cloud_error.error.error == "ResourceNotFound":
+                    if "NotFound" in cloud_error.error.error:
                         log.exception(cloud_error)
                     else:
                         raise cloud_error

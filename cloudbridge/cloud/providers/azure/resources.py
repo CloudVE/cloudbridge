@@ -185,10 +185,6 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
         return self._rule.name
 
     @property
-    def label(self):
-        raise NotImplementedError("Azure Firewall Rules do not support labels")
-
-    @property
     def direction(self):
         return (TrafficDirection.INBOUND if self._rule.direction == "Inbound"
                 else TrafficDirection.OUTBOUND)
@@ -248,10 +244,6 @@ class AzureBucketObject(BaseBucketObject):
     @property
     def name(self):
         return self._key.name
-
-    @property
-    def label(self):
-        raise NotImplementedError("Azure Bucket Objects do not support labels")
 
     @property
     def size(self):
@@ -343,10 +335,6 @@ class AzureBucket(BaseBucket):
         Get this bucket's name.
         """
         return self._bucket.name
-
-    @property
-    def label(self):
-        raise NotImplementedError("Azure Buckets do not support labels")
 
     def delete(self, delete_contents=True):
         """
@@ -1124,11 +1112,6 @@ class AzurePlacementZone(BasePlacementZone):
         return self._azure_region
 
     @property
-    def label(self):
-        raise NotImplementedError("Azure Placement Zones do not support "
-                                  "labels")
-
-    @property
     def region_name(self):
         """
             Get the region that this zone belongs to.
@@ -1607,10 +1590,6 @@ class AzureVMType(BaseVMType):
         return self._vm_type.name
 
     @property
-    def label(self):
-        raise NotImplementedError("Azure VMTypes do not support labels")
-
-    @property
     def family(self):
         """
         Python sdk does not return family details.
@@ -1663,10 +1642,6 @@ class AzureKeyPair(BaseKeyPair):
     @property
     def name(self):
         return self._key_pair.Name
-
-    @property
-    def label(self):
-        raise NotImplementedError("Azure Key Pairs do not support labels")
 
     def delete(self):
         self._provider.azure_client.delete_public_key(self._key_pair)
