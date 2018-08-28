@@ -35,9 +35,14 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             if bucket:
                 bucket.delete()
 
+        def extra_tests(bucket):
+            # Recreating existing bucket should raise an exception
+            with self.assertRaises(DuplicateResourceException):
+                self.provider.storage.buckets.create(name=bucket.name)
+
         sit.check_crud(self, self.provider.storage.buckets, Bucket,
                        "cb-crudbucket", create_bucket, cleanup_bucket,
-                       supports_labels=False)
+                       supports_labels=False, extra_test_func=extra_tests)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket_object(self):
@@ -59,8 +64,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: test_bucket.delete()):
             name = "cb-crudbucketobj-{0}".format(helpers.get_uuid())
             test_bucket = self.provider.storage.buckets.create(name)
-            with self.assertRaises(DuplicateResourceException):
-                self.provider.storage.buckets.create(name)
 
             sit.check_crud(self, test_bucket.objects, BucketObject,
                            "cb-bucketobj", create_bucket_obj,
