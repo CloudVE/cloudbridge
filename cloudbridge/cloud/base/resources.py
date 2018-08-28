@@ -548,7 +548,8 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         self._key_pair.delete()
 
     def __repr__(self):
-        return "<CBKeyPair: {0}>".format(self.id)
+        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
+                                            self.name, self.id)
 
 
 class BaseVMFirewall(BaseCloudResource, VMFirewall):
@@ -812,7 +813,7 @@ class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_NAME = os.environ.get('CB_DEFAULT_NETWORK_NAME',
-                                             'cb-net')
+                                             'cloudbridge-net')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
@@ -828,9 +829,9 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
-    def create_subnet(self, cidr_block, name=None, zone=None):
+    def create_subnet(self, cidr_block, label=None, zone=None):
         return self._provider.networking.subnets.create(
-            network=self, cidr_block=cidr_block, zone=zone, name=name)
+            label=label, network=self, cidr_block=cidr_block, zone=zone)
 
     def __eq__(self, other):
         return (isinstance(other, Network) and
@@ -841,15 +842,15 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
 class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
-    CB_DEFAULT_SUBNET_NAME = os.environ.get('CB_DEFAULT_SUBNET_NAME',
-                                            'cb-subnet')
+    CB_DEFAULT_SUBNET_LABEL = os.environ.get('CB_DEFAULT_SUBNET_LABEL',
+                                             'cloudbridge-subnet')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
+                                            self.label or self.name, self.id)
 
     def __eq__(self, other):
         return (isinstance(other, Subnet) and
@@ -911,7 +912,7 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
     def __repr__(self):
         return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.id, self.name)
+                                            self.name, self.id)
 
     def __eq__(self, other):
         return (isinstance(other, FloatingIP) and

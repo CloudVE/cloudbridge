@@ -952,7 +952,7 @@ class AzureNetwork(BaseNetwork):
         """
         return self._provider.networking.subnets.list(network=self.id)
 
-    def create_subnet(self, cidr_block, name=None, zone=None):
+    def create_subnet(self, cidr_block, label=None, zone=None):
         """
         Create the subnet with cidr_block
         :param cidr_block:
@@ -961,7 +961,7 @@ class AzureNetwork(BaseNetwork):
         :return:
         """
         return self._provider.networking.subnets. \
-            create(network=self.id, cidr_block=cidr_block, name=name)
+            create(network=self.id, cidr_block=cidr_block, label=label)
 
     @property
     def gateways(self):

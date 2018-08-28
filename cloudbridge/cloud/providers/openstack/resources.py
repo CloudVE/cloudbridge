@@ -948,7 +948,21 @@ class OpenStackSubnet(BaseSubnet):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return self._subnet.get('name', None)
+
+    @label.setter
+    def label(self, value):  # pylint:disable=arguments-differ
+        """
+        Set the subnet label.
+        """
+        self.assert_valid_resource_label(value)
+        self._provider.neutron.update_subnet(
+            self.id, {'subnet': {'name': value or ""}})
+        self._subnet['name'] = value
 
     @property
     def cidr_block(self):

@@ -950,7 +950,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, cidr_block, name=None, zone=None):
+    def create_subnet(self, cidr_block, label=None, zone=None):
         """
         Create a new network subnet and associate it with this Network.
 
@@ -1000,11 +1000,19 @@ class SubnetState(object):
     ERROR = "error"
 
 
-class Subnet(ObjectLifeCycleMixin, CloudResource):
+class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
     """
     Represents a subnet, as part of a Network.
     """
     __metaclass__ = ABCMeta
+
+    @LabeledCloudResource.label.setter
+    @abstractmethod
+    def label(self, value):
+        """
+        Set the resource label.
+        """
+        pass
 
     @abstractproperty
     def cidr_block(self):
