@@ -115,6 +115,15 @@ class BaseCloudResource(CloudResource):
         js = {k: v for(k, v) in attr if not k.startswith('_')}
         return js
 
+    def __repr__(self):
+        name_or_label = getattr(self, 'label', self.name)
+        if name_or_label == self.id:
+            return "<CB-{0}: {1}>".format(
+                self.__class__.__name__, self.id)
+        else:
+            return "<CB-{0}: {1} ({2})>".format(
+                self.__class__.__name__, name_or_label, self.id)
+
 
 class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
     """
@@ -281,10 +290,6 @@ class BaseVMType(BaseCloudResource, VMType):
     def size_total_disk(self):
         return self.size_root_disk + self.size_ephemeral_disks
 
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
-
 
 class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
 
@@ -310,10 +315,6 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
             terminal_states=[InstanceState.DELETED, InstanceState.ERROR],
             timeout=timeout,
             interval=interval)
-
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label, self.id)
 
 
 class BaseLaunchConfig(LaunchConfig):
@@ -412,10 +413,6 @@ class BaseMachineImage(
             timeout=timeout,
             interval=interval)
 
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label or self.name, self.id)
-
 
 class BaseAttachmentInfo(AttachmentInfo):
 
@@ -458,10 +455,6 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
             timeout=timeout,
             interval=interval)
 
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label or self.name, self.id)
-
 
 class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
 
@@ -483,10 +476,6 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
             terminal_states=[SnapshotState.ERROR],
             timeout=timeout,
             interval=interval)
-
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label or self.name, self.id)
 
 
 class BaseKeyPair(BaseCloudResource, KeyPair):
@@ -536,10 +525,6 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         #  multiple providers.
         self._key_pair.delete()
 
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
-
 
 class BaseVMFirewall(BaseCloudResource, VMFirewall):
 
@@ -588,10 +573,6 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         Delete this VM firewall.
         """
         return self._vm_firewall.delete()
-
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label or self.name, self.id)
 
 
 class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
@@ -686,10 +667,6 @@ class BasePlacementZone(BaseCloudResource, PlacementZone):
     def __init__(self, provider):
         super(BasePlacementZone, self).__init__(provider)
 
-    def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.id)
-
     def __eq__(self, other):
         return (isinstance(other, PlacementZone) and
                 # pylint:disable=protected-access
@@ -701,10 +678,6 @@ class BaseRegion(BaseCloudResource, Region):
 
     def __init__(self, provider):
         super(BaseRegion, self).__init__(provider)
-
-    def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.id)
 
     def __eq__(self, other):
         return (isinstance(other, Region) and
@@ -758,10 +731,6 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
                 # check from most to least likely mutables
                 self.name == other.name)
 
-    def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.id)
-
 
 class BaseBucket(BaseCloudResource, Bucket):
 
@@ -775,10 +744,6 @@ class BaseBucket(BaseCloudResource, Bucket):
                 self.id == other.id and
                 # check from most to least likely mutables
                 self.name == other.name)
-
-    def __repr__(self):
-        return "<CB-{0}: {1}>".format(self.__class__.__name__,
-                                      self.id)
 
 
 class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
@@ -807,10 +772,6 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
 
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label or self.name, self.id)
-
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [NetworkState.AVAILABLE],
@@ -836,10 +797,6 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
-
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label or self.name, self.id)
 
     def __eq__(self, other):
         return (isinstance(other, Subnet) and
@@ -899,10 +856,6 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
             timeout=timeout,
             interval=interval)
 
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.name, self.id)
-
     def __eq__(self, other):
         return (isinstance(other, FloatingIP) and
                 # pylint:disable=protected-access
@@ -917,10 +870,6 @@ class BaseRouter(BaseCloudResource, Router):
 
     def __init__(self, provider):
         super(BaseRouter, self).__init__(provider)
-
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label or self.name, self.id)
 
     def __eq__(self, other):
         return (isinstance(other, Router) and
@@ -938,10 +887,6 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
     def __init__(self, provider):
         super(BaseInternetGateway, self).__init__(provider)
         self.__provider = provider
-
-    def __repr__(self):
-        return "<CB-{0}: {1} ({2})>".format(self.__class__.__name__,
-                                            self.label or self.name, self.id)
 
     def __eq__(self, other):
         return (isinstance(other, InternetGateway) and
