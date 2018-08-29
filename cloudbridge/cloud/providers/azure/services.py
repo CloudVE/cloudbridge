@@ -421,11 +421,9 @@ class AzureSnapshotService(BaseSnapshotService):
                 'create_option': DiskCreateOption.copy,
                 'source_uri': volume.resource_id
             },
-            'disk_size_gb': volume.size
+            'disk_size_gb': volume.size,
+            'tags': tags
         }
-
-        if tags:
-            params.update(tags=tags)
 
         azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,
                                                                 params)
@@ -1101,7 +1099,7 @@ class AzureRouterService(BaseRouterService):
         router_name = AzureRouter._generate_name_from_label(label, "cb-router")
 
         parameters = {"location": self.provider.region_name,
-                      "Label": label}
+                      "tags": {'Label': label}}
 
         route = self.provider.azure_client. \
             create_route_table(router_name, parameters)

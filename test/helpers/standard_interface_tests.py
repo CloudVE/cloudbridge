@@ -143,8 +143,13 @@ def check_obj_label(test, obj):
     if isinstance(label_property, property):
         test.assertIsInstance(obj, LabeledCloudResource)
         original_label = obj.label
+        # Three character labels should be allowed
+        obj.label = "abc"
         VALID_LABEL = u"hello-world-123"
         obj.label = VALID_LABEL
+        # Two character labels should not be allowed
+        with test.assertRaises(InvalidLabelException):
+            obj.label = "ab"
         # A none value should not be allowed
         with test.assertRaises(InvalidLabelException):
             obj.label = None
