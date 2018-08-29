@@ -73,7 +73,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
                       "tags": {'Label': label}}
 
         if description:
-            parameters.tags.update(Description=description)
+            parameters['tags'].update(Description=description)
 
         fw = self.provider.azure_client.create_vm_firewall(name,
                                                            parameters)
