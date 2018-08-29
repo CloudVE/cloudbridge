@@ -819,7 +819,8 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
 
     def get_or_create_inet_gateway(self, label=None):
         """For OS, inet gtw is any net that has `external` property set."""
-        OpenStackInternetGateway.assert_valid_resource_label(label)
+        if label:
+            OpenStackInternetGateway.assert_valid_resource_label(label)
 
         external_nets = (n for n in self._provider.networking.networks
                          if n.external)
