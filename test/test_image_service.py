@@ -1,5 +1,5 @@
 from cloudbridge.cloud.interfaces import MachineImageState
-from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import Instance, MachineImage
 
 from test import helpers
 from test.helpers import ProviderTestBase
@@ -19,6 +19,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
         label is the expected one and whether list_images is functional.
         """
         instance_label = "cb-crudimage-{0}".format(helpers.get_uuid())
+        img_inst_label = "cb-crudimage-{0}".format(helpers.get_uuid())
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -40,6 +41,42 @@ class CloudImageServiceTestCase(ProviderTestBase):
             img.refresh()
             self.assertGreater(img.min_disk, 0, "Minimum disk"
                                " size required by image is invalid")
+            create_instance_from_image(img)
+
+        def create_instance_from_image(img):
+            img_instance = None
+            with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                    img_instance)):
+                img_instance = self.provider.compute.instances.create(
+                    img_inst_label, img,
+                    helpers.get_provider_test_data(self.provider, 'vm_type'),
+                    subnet=subnet,
+                    zone=helpers.get_provider_test_data(
+                        self.provider, 'placement'),
+                    key_pair=None,
+                    vm_firewalls=None,
+                    launch_config=None,
+                    user_data=None)
+                self.assertIsInstance(img_instance, Instance)
+                self.assertEqual(
+                    img_instance.label, img_inst_label,
+                    "Instance label {0} is not equal to the expected label"
+                    " {1}".format(img_instance.label, img_inst_label))
+                image_id = img.id
+                self.assertEqual(img_instance.image_id, image_id,
+                                 "Image id {0} is not equal to the expected id"
+                                 " {1}".format(img_instance.image_id,
+                                               image_id))
+                self.assertIsInstance(img_instance.public_ips, list)
+                if img_instance.public_ips:
+                    self.assertTrue(
+                        img_instance.public_ips[0],
+                        "public ip should contain a"
+                        " valid value if a list of public_ips exist")
+                self.assertIsInstance(img_instance.private_ips, list)
+                self.assertTrue(img_instance.private_ips[0],
+                                "private ip should"
+                                " contain a valid value")
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, net)):

@@ -1342,10 +1342,13 @@ class AzureInstance(BaseInstance):
         """
         # Not tested for resource group images
         reference_dict = self._vm.storage_profile.image_reference.as_dict()
-        return ':'.join([reference_dict['publisher'],
-                         reference_dict['offer'],
-                         reference_dict['sku'],
-                         reference_dict['version']])
+        if reference_dict.get('publisher'):
+            return ':'.join([reference_dict['publisher'],
+                             reference_dict['offer'],
+                             reference_dict['sku'],
+                             reference_dict['version']])
+        else:
+            return reference_dict['id']
 
     @property
     def zone_id(self):
