@@ -73,11 +73,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
                       "tags": {'Label': label}}
 
         if description:
-            tags = parameters.get('tags')
-            if tags:
-                tags.update(Description=description)
-            else:
-                parameters.update({'tags': {'Description': description}})
+            parameters.tags.update(Description=description)
 
         fw = self.provider.azure_client.create_vm_firewall(name,
                                                            parameters)
@@ -320,8 +316,6 @@ class AzureVolumeService(BaseVolumeService):
                     if snapshot and isinstance(snapshot, str) else snapshot)
 
         if description:
-            if not tags:
-                tags = {}
             tags.update(Description=description)
 
         if snapshot:
@@ -331,11 +325,9 @@ class AzureVolumeService(BaseVolumeService):
                 'creation_data': {
                     'create_option': DiskCreateOption.copy,
                     'source_uri': snapshot.resource_id
-                }
+                },
+                'tags': tags
             }
-
-            if tags:
-                params.update(tags=tags)
 
             disk = self.provider.azure_client.create_snapshot_disk(disk_name,
                                                                    params)
@@ -347,11 +339,9 @@ class AzureVolumeService(BaseVolumeService):
                 'disk_size_gb': size,
                 'creation_data': {
                     'create_option': DiskCreateOption.empty
-                }
+                },
+                'tags': tags
             }
-
-            if tags:
-                params.update(tags=tags)
 
             disk = self.provider.azure_client.create_empty_disk(disk_name,
                                                                 params)
@@ -563,12 +553,10 @@ class AzureInstanceService(BaseInstanceService):
                     'id': nic_info.id
                 }]
             },
-            'storage_profile': storage_profile,
-            'tags': {}
+            'storage_profile': storage_profile
         }
 
-        if label:
-            params['tags'].update(Label=label)
+        params.update(tags={'Label': label})
 
         for disk_def in storage_profile.get('data_disks', []):
             params['tags'] = dict(disk_def.get('tags', {}), **params['tags'])
@@ -899,8 +887,7 @@ class AzureNetworkService(BaseNetworkService):
             }
         }
 
-        if label:
-            params.update(tags={'Label': label})
+        params.update(tags={'Label': label})
 
         network_name = AzureNetwork._generate_name_from_label(label, 'cb-net')
 
