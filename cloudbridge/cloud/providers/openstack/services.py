@@ -12,6 +12,8 @@ from novaclient.exceptions import NotFound as NovaNotFound
 from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
 
+from swiftclient import ClientException as SwiftClientException
+
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -508,9 +510,13 @@ class OpenStackBucketService(BaseBucketService):
         """
         log.debug("Creating a new OpenStack Bucket with the name: %s", name)
         OpenStackBucket.assert_valid_resource_name(name)
-
-        self.provider.swift.put_container(name)
-        return self.get(name)
+        try:
+            self.provider.swift.head_container(name)
+            raise DuplicateResourceException(
+                'Bucket already exists with name {0}'.format(name))
+        except SwiftClientException:
+            self.provider.swift.put_container(name)
+            return self.get(name)
 
 
 class OpenStackRegionService(BaseRegionService):
