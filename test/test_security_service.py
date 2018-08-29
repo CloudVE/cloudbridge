@@ -32,7 +32,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         sit.check_crud(self, self.provider.security.key_pairs, KeyPair,
                        "cb-crudkp", create_kp, cleanup_kp,
-                       supports_labels=False, extra_test_func=extra_tests)
+                       extra_test_func=extra_tests)
 
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_key_pair_properties(self):

@@ -216,7 +216,7 @@ def check_standard_behaviour(test, service, obj):
 
 
 def check_create(test, service, iface, name_prefix,
-                 create_func, cleanup_func, supports_labels):
+                 create_func, cleanup_func):
     # check create with invalid label
     with test.assertRaises(InvalidLabelException):
         # spaces should raise an exception
@@ -245,27 +245,17 @@ def check_create(test, service, iface, name_prefix,
     with test.assertRaises(InvalidLabelException):
         create_func("197.10.100.42")
 
-    if supports_labels:
-        # Comment out this test for now because actually creating two
-        # objects violates certain test assumptions
-        pass
-        # empty labels should be allowed
-        # obj = None
-#         with helpers.cleanup_action(lambda: cleanup_func(obj)):
-#             obj = create_func(None)
-    else:  # supports name only
-        # empty name are not allowed
-        with test.assertRaises(InvalidLabelException):
-            create_func(None)
-        # names of length less than 3 should raise an exception
-        with test.assertRaises(InvalidLabelException):
-            create_func("cb")
+    # empty name are not allowed
+    with test.assertRaises(InvalidLabelException):
+        create_func(None)
+    # names of length less than 3 should raise an exception
+    with test.assertRaises(InvalidLabelException):
+        create_func("cb")
 
 
 def check_crud(test, service, iface, label_prefix,
                create_func, cleanup_func, extra_test_func=None,
-               custom_check_delete=None, supports_labels=True,
-               skip_name_check=False):
+               custom_check_delete=None, skip_name_check=False):
     """
     Checks crud behaviour of a given cloudbridge service. The create_func will
     be used as a factory function to create a service object and the
@@ -311,10 +301,6 @@ def check_crud(test, service, iface, label_prefix,
                                 instead of the standard check_delete function
                                 to make sure that the object has been deleted.
 
-    :type  supports_labels: ``boolean``
-    :param supports_labels:  Indicates whether the resource supports labels.
-        If so, label related tests will be run.
-
     :type  skip_name_check: ``boolean``
     :param skip_name_check:  If True, the name related checking will be
                              skipped.
@@ -326,7 +312,7 @@ def check_crud(test, service, iface, label_prefix,
         label = "{0}-{1}".format(label_prefix, helpers.get_uuid())
         if not skip_name_check:
             check_create(test, service, iface, label_prefix,
-                         create_func, cleanup_func, supports_labels)
+                         create_func, cleanup_func)
         obj = create_func(label)
         if issubclass(iface, ObjectLifeCycleMixin):
             obj.wait_till_ready()

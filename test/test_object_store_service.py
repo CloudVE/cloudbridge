@@ -42,7 +42,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
         sit.check_crud(self, self.provider.storage.buckets, Bucket,
                        "cb-crudbucket", create_bucket, cleanup_bucket,
-                       supports_labels=False, extra_test_func=extra_tests)
+                       extra_test_func=extra_tests)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket_object(self):

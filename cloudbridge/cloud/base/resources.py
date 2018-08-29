@@ -60,26 +60,15 @@ class BaseCloudResource(CloudResource):
     """
     Base implementation of a CloudBridge Resource.
     """
-    # Regular expression for valid cloudbridge resource labels.
-    # Can be None or any alphanumeric string that does not start
-    # or end with a dash
-    # based on: https://stackoverflow.com/questions/2525327/regex-for-a-za-z0-9
+    # Regular expression for valid cloudbridge resource names/labels.
+    # Can be alphanumeric string that does not start or end with a dash
+    # Must be at least 3 characters in length.
+    # Ref: https://stackoverflow.com/questions/2525327/regex-for-a-za-z0-9
     # -with-dashes-allowed-in-between-but-not-at-the-start-or-e
-    CB_LABEL_PATTERN = re.compile(
-        r"(?=[a-z0-9\-]{1,63}$)^[a-z0-9]+(\-[a-z0-9]+)*$")
-    # Same as the above, but must be at least 3 characters in length
     CB_NAME_PATTERN = re.compile(r"^[a-z][-a-z0-9]{1,61}[a-z0-9]$")
 
     def __init__(self, provider):
         self.__provider = provider
-
-    @staticmethod
-    def is_valid_resource_label(label):
-        if not label:
-            return False
-        else:
-            return (True if BaseCloudResource.CB_LABEL_PATTERN.match(label)
-                    else False)
 
     @staticmethod
     def is_valid_resource_name(name):
@@ -91,7 +80,7 @@ class BaseCloudResource(CloudResource):
 
     @staticmethod
     def assert_valid_resource_label(name):
-        if not BaseCloudResource.is_valid_resource_label(name):
+        if not BaseCloudResource.is_valid_resource_name(name):
             log.debug("InvalidLabelException raised on %s", name)
             raise InvalidLabelException(
                 u"Invalid label: %s. Label must be at most 63 characters "
@@ -738,14 +727,14 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
     #
     # Note: The following regex is based on: https://stackoverflow.com/question
     # s/537772/what-is-the-most-correct-regular-expression-for-a-unix-file-path
-    CB_LABEL_PATTERN = re.compile(r"[^\0]+")
+    CB_NAME_PATTERN = re.compile(r"[^\0]+")
 
     def __init__(self, provider):
         super(BaseBucketObject, self).__init__(provider)
 
     @staticmethod
     def is_valid_resource_name(name):
-        return (True if BaseBucketObject.CB_LABEL_PATTERN.match(name)
+        return (True if BaseBucketObject.CB_NAME_PATTERN.match(name)
                 else False)
 
     @staticmethod
