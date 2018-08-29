@@ -553,10 +553,9 @@ class AzureInstanceService(BaseInstanceService):
                     'id': nic_info.id
                 }]
             },
-            'storage_profile': storage_profile
+            'storage_profile': storage_profile,
+            'tags': {'Label': label}
         }
-
-        params.update(tags={'Label': label})
 
         for disk_def in storage_profile.get('data_disks', []):
             params['tags'] = dict(disk_def.get('tags', {}), **params['tags'])
@@ -884,10 +883,9 @@ class AzureNetworkService(BaseNetworkService):
             'location': self.provider.azure_client.region_name,
             'address_space': {
                 'address_prefixes': [cidr_block]
-            }
+            },
+            'tags': {'Label': label}
         }
-
-        params.update(tags={'Label': label})
 
         network_name = AzureNetwork._generate_name_from_label(label, 'cb-net')
 
