@@ -309,7 +309,7 @@ class AWSBucketService(BaseBucketService):
             # Bucket instance to allow further operations.
             # http://stackoverflow.com/questions/32331456/using-boto-upload-file-to-s3-
             # sub-folder-when-i-have-no-permissions-on-listing-fo
-            if e.response['Error']['Code'] == 403:
+            if e.response['Error']['Code'] == "403":
                 log.warning("AWS Bucket %s already exists but user doesn't "
                             "have enough permissions to access the bucket",
                             bucket_id)
@@ -338,13 +338,31 @@ class AWSBucketService(BaseBucketService):
         # LocationConstraint results in an InvalidLocationConstraint.
         # Therefore, it must be special-cased and omitted altogether.
         # See: https://github.com/boto/boto3/issues/125
+        # In addition, us-east-1 also behaves differently when it comes
+        # to raising duplicate resource exceptions, so perform a manual
+        # check
         if loc_constraint == 'us-east-1':
-            return self.svc.create('create_bucket', Bucket=name)
+            try:
+                # check whether bucket already exists
+                self.provider.s3_conn.meta.client.head_bucket(Bucket=name)
+            except ClientError as e:
+                if e.response['Error']['Code'] == "404":
+                    # bucket doesn't exist, go ahead and create it
+                    return self.svc.create('create_bucket', Bucket=name)
+            raise DuplicateResourceException(
+                    'Bucket already exists with name {0}'.format(name))
         else:
-            return self.svc.create('create_bucket', Bucket=name,
-                                   CreateBucketConfiguration={
-                                       'LocationConstraint': loc_constraint
-                                   })
+            try:
+                return self.svc.create('create_bucket', Bucket=name,
+                                       CreateBucketConfiguration={
+                                           'LocationConstraint': loc_constraint
+                                        })
+            except ClientError as e:
+                if e.response['Error']['Code'] == "BucketAlreadyOwnedByYou":
+                    raise DuplicateResourceException(
+                        'Bucket already exists with name {0}'.format(name))
+                else:
+                    raise
 
 
 class AWSImageService(BaseImageService):
