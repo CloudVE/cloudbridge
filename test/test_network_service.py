@@ -86,7 +86,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_subnet(label):
             return self.provider.networking.subnets.create(
-                network=net, cidr_block="10.0.0.0/24", label=label,
+                label=label, network=net, cidr_block="10.0.0.0/24",
                 zone=helpers.get_provider_test_data(
                     self.provider, 'placement'))
 
@@ -167,8 +167,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
             net = self.provider.networking.networks.create(
                 label=label, cidr_block='10.0.0.0/16')
-            router = self.provider.networking.routers.create(network=net,
-                                                             label=label)
+            router = self.provider.networking.routers.create(label=label,
+                                                             network=net)
             cidr = '10.0.1.0/24'
             sn = net.create_subnet(label=label, cidr_block=cidr,
                                    zone=helpers.get_provider_test_data(
@@ -188,7 +188,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 #                     router.id, router.network_id))
 
             router.attach_subnet(sn)
-            gteway = net.gateways.get_or_create_inet_gateway(label=label)
+            gteway = net.gateways.get_or_create_inet_gateway(name=label)
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 

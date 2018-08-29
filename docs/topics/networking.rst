@@ -94,7 +94,7 @@ The additional step that's required here is to assign a floating IP to the VM:
 
     router = provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway(net, name)
+    gateway = net.gateways.get_or_create_inet_gateway(name)
     router.attach_gateway(gateway)
 
     fip = provider.networking.floating_ips.create()

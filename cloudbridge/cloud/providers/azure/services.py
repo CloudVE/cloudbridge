@@ -66,12 +66,11 @@ class AzureVMFirewallService(BaseVMFirewallService):
                for fw in self.provider.azure_client.list_vm_firewall()]
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
-    def create(self, label=None, description=None, network_id=None):
+    def create(self, label, description=None, network_id=None):
+        AzureVMFirewall.assert_valid_resource_label(label)
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
-        parameters = {"location": self.provider.region_name}
-        if label:
-            AzureVMFirewall.assert_valid_resource_label(label)
-            parameters.update({'tags': {'Label': label}})
+        parameters = {"location": self.provider.region_name,
+                      "tags": {'Label': label}}
 
         if description:
             tags = parameters.get('tags')
@@ -307,15 +306,14 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, size, zone=None, label=None, description=None,
+    def create(self, label, size, zone=None, description=None,
                snapshot=None):
         """
         Creates a new volume.
         """
+        AzureVolume.assert_valid_resource_label(label)
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
-        if label:
-            AzureVolume.assert_valid_resource_label(label)
-            tags = {'Label': label}
+        tags = {'Label': label}
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot = (self.provider.storage.snapshots.get(snapshot)
@@ -403,24 +401,19 @@ class AzureSnapshotService(BaseSnapshotService):
                  self.provider.azure_client.list_snapshots()]
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
-    def create(self, volume, label=None, description=None):
+    def create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
-        volume = (self.provider.storage.volumes.get(volume)
-                  if isinstance(volume, str) else volume)
-
+        AzureSnapshot.assert_valid_resource_label(label)
         snapshot_name = AzureSnapshot._generate_name_from_label(label,
                                                                 "cb-snap")
-
-        if label:
-            AzureSnapshot.assert_valid_resource_label(label)
-            tags = {'Label': label}
-
+        tags = {'Label': label}
         if description:
-            if not tags:
-                tags = {}
             tags.update(Description=description)
+
+        volume = (self.provider.storage.volumes.get(volume)
+                  if isinstance(volume, str) else volume)
 
         params = {
             'location': self.provider.azure_client.region_name,
@@ -468,7 +461,7 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, image, vm_type, label, subnet=None, zone=None,
+    def create(self, label, image, vm_type, subnet=None, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
 
@@ -899,7 +892,7 @@ class AzureNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, cidr_block, label=None):
+    def create(self, label, cidr_block):
         AzureNetwork.assert_valid_resource_label(label)
         params = {
             'location': self.provider.azure_client.region_name,
@@ -1016,17 +1009,17 @@ class AzureSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, network, cidr_block, label=None, **kwargs):
+    def create(self, label, network, cidr_block, **kwargs):
         """
         Create subnet
         """
-        network_id = network.id \
-            if isinstance(network, Network) else network
-
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels
         AzureSubnet.assert_valid_resource_label(label)
         subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
+
+        network_id = network.id \
+            if isinstance(network, Network) else network
 
         subnet_info = self.provider.azure_client\
             .create_subnet(
@@ -1057,10 +1050,10 @@ class AzureSubnetService(BaseSubnetService):
             network = networks[0]
         else:
             network = self.provider.networking.networks.create(
-                '10.0.0.0/16', label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
+                AzureNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
 
-        subnet = self.create(network, default_cidr,
-                             label=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)
+        subnet = self.create(AzureSubnet.CB_DEFAULT_SUBNET_LABEL, network,
+                             default_cidr)
         return subnet
 
     def delete(self, subnet):
@@ -1103,13 +1096,12 @@ class AzureRouterService(BaseRouterService):
                                      routes,
                                      limit=limit, marker=marker)
 
-    def create(self, network, label=None):
+    def create(self, label, network):
+        AzureRouter.assert_valid_resource_label(label)
         router_name = AzureRouter._generate_name_from_label(label, "cb-router")
 
-        parameters = {"location": self.provider.region_name}
-        if label:
-            AzureRouter.assert_valid_resource_label(label)
-            parameters.update(tags={'Label': label})
+        parameters = {"location": self.provider.region_name,
+                      "Label": label}
 
         route = self.provider.azure_client. \
             create_route_table(router_name, parameters)

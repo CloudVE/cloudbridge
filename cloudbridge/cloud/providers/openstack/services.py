@@ -208,7 +208,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, firewalls,
                                      limit=limit, marker=marker)
 
-    def create(self, description, network_id, label=None):
+    def create(self, label, description, network_id):
         OpenStackVMFirewall.assert_valid_resource_label(label)
         name = OpenStackVMFirewall._generate_name_from_label(label, 'cb-fw')
         log.debug("Creating OpenStack VM Firewall with the params: "
@@ -368,7 +368,7 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
-    def create(self, size, zone, label=None, snapshot=None, description=None):
+    def create(self, label, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
         """
@@ -437,7 +437,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
                              'marker': marker})]
         return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
 
-    def create(self, volume, label=None, description=None):
+    def create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
@@ -582,7 +582,7 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, image, vm_type, subnet, zone, label=None,
+    def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None,
                **kwargs):
@@ -812,7 +812,7 @@ class OpenStackNetworkService(BaseNetworkService):
                     .get('networks') if network]
         return ClientPagedResultList(self.provider, networks)
 
-    def create(self, cidr_block, label=None):
+    def create(self, label, cidr_block):
         log.debug("Creating OpenStack Network with the params: "
                   "[label: %s Cinder Block: %s]", label, cidr_block)
         OpenStackNetwork.assert_valid_resource_label(label)
@@ -846,7 +846,7 @@ class OpenStackSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, network, cidr_block, zone, label=None):
+    def create(self, label, network, cidr_block, zone):
         """zone param is ignored."""
         log.debug("Creating OpenStack Subnet with the params: "
                   "[Label: %s Network: %s Cinder Block: %s Zone: -ignored-]",
@@ -920,7 +920,7 @@ class OpenStackRouterService(BaseRouterService):
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
-    def create(self, network, label=None):
+    def create(self, label, network):
         """
         ``network`` is not used by OpenStack.
 

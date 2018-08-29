@@ -98,7 +98,7 @@ class ComputeService(CloudService):
             image = provider.compute.images.find(name='Ubuntu 16.04')[0]
             size = provider.compute.vm_types.find(name='m1.small')
             instance = provider.compute.instances.create('Hello', image, size)
-            print(instance.id, instance.name)
+            print(instance.id, instance.label)
 
         :rtype: :class:`.InstanceService`
         :return: an InstanceService object
@@ -213,12 +213,16 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, image, vm_type, subnet, label=None, zone=None,
+    def create(self, label, image, vm_type, subnet, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None,
                **kwargs):
         """
         Creates a new virtual machine instance.
+
+        :type  label: ``str``
+        :param label: The label of the virtual machine instance. The instance
+                      name will be derived from this label.
 
         :type  image: ``MachineImage`` or ``str``
         :param image: The MachineImage object or id to boot the virtual machine
@@ -238,10 +242,6 @@ class InstanceService(PageableObjectMixin, CloudService):
                        have proper subnet support and are not guaranteed to
                        work. Some providers (e.g. OpenStack) support a null
                        value but the behaviour is implementation specific.
-
-        :type  label: ``str``
-        :param label: The label of the virtual machine instance. The instance
-                      name will be derived from this label.
 
         :type  zone: ``Zone`` or ``str``
         :param zone: The Zone or its id, where the instance should be placed.
@@ -333,18 +333,18 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, size, zone, label=None, snapshot=None, description=None):
+    def create(self, label, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
+
+        :type  label: ``str``
+        :param label: The label for the volume.
 
         :type  size: ``int``
         :param size: The size of the volume (in GB).
 
         :type  zone: ``str`` or :class:`.PlacementZone` object
         :param zone: The availability zone in which the Volume will be created.
-
-        :type  label: ``str``
-        :param label: The label for the volume.
 
         :type  snapshot: ``str`` or :class:`.Snapshot` object
         :param snapshot: An optional reference to a snapshot from which this
@@ -400,15 +400,15 @@ class SnapshotService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, volume, label=None, description=None):
+    def create(self, label, volume, description=None):
         """
         Creates a new snapshot off a volume.
 
-        :type  volume: ``str`` or ``Volume``
-        :param volume: The volume to create a snapshot of.
-
         :type  label: ``str``
         :param label: The label for the snapshot.
+
+        :type  volume: ``str`` or ``Volume``
+        :param volume: The volume to create a snapshot of.
 
         :type  description: ``str``
         :param description: An optional description that may be supported by
@@ -628,7 +628,7 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, cidr_block, label=None):
+    def create(self, label, cidr_block):
         """
         Create a new network.
 
@@ -730,9 +730,12 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network_id, cidr_block, zone, label=None):
+    def create(self, label, network_id, cidr_block, zone):
         """
         Create a new subnet within the supplied network.
+
+        :type label: ``str``
+        :param label: The subnet label.
 
         :type network: :class:`.Network` object or ``str``
         :param network: Network object or ID under which to create the subnet.
@@ -744,9 +747,6 @@ class SubnetService(PageableObjectMixin, CloudService):
         :type zone: ``str``
         :param zone: A placement zone for the subnet. Some providers
                      may not support this, in which case the value is ignored.
-
-        :type label: ``str``
-        :param label: The subnet label.
 
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object
@@ -824,15 +824,15 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network, label=None):
+    def create(self, label, network):
         """
         Create a new router.
 
-        :type network: :class:`.Network` object or ``str``
-        :param network: Network object or ID under which to create the router.
-
         :type label: ``str``
         :param label: A router label.
+
+        :type network: :class:`.Network` object or ``str``
+        :param network: Network object or ID under which to create the router.
 
         :rtype: ``object`` of :class:`.Router`
         :return:  A Router object
@@ -1119,15 +1119,15 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, network_id, label=None, description=None):
+    def create(self, label, network_id, description=None):
         """
         Create a new VMFirewall.
 
-        :type  network_id: ``str``
-        :param network_id: Network ID under which to create the VM firewall.
-
         :type label: str
         :param label: The label for the new VM firewall.
+
+        :type  network_id: ``str``
+        :param network_id: Network ID under which to create the VM firewall.
 
         :type description: str
         :param description: The description of the new VM firewall.

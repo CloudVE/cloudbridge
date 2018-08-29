@@ -224,10 +224,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                 " not stable enough yet")
 
         test_vol = self.provider.storage.volumes.create(
-           1,
+           label, 1,
            helpers.get_provider_test_data(self.provider,
-                                          "placement"),
-           label=label)
+                                          "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(label=label,
@@ -334,7 +333,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 (fw, test_inst.vm_firewalls))
 
             # check floating ips
-            router = self.provider.networking.routers.create(net, label=label)
+            router = self.provider.networking.routers.create(label, net)
             gateway = None
 
             def cleanup_router(router, gateway):
@@ -346,7 +345,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             with helpers.cleanup_action(lambda: cleanup_router(router,
                                                                gateway)):
                 router.attach_subnet(subnet)
-                gateway = net.gateways.get_or_create_inet_gateway(label=label)
+                gateway = net.gateways.get_or_create_inet_gateway(name=label)
                 router.attach_gateway(gateway)
                 # check whether adding an elastic ip works
                 fip = gateway.floating_ips.create()

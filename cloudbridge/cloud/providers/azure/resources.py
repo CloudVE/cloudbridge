@@ -536,12 +536,12 @@ class AzureVolume(BaseVolume):
                     vm.storage_profile.data_disks.remove(item)
                     self._provider.azure_client.update_vm(vm.id, vm)
 
-    def create_snapshot(self, label=None, description=None):
+    def create_snapshot(self, label, description=None):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.storage.snapshots.create(self,
-                                                       label, description)
+        return self._provider.storage.snapshots.create(label, self,
+                                                       description)
 
     def delete(self):
         """
@@ -677,8 +677,7 @@ class AzureSnapshot(BaseSnapshot):
         Create a new Volume from this Snapshot.
         """
         return self._provider.storage.volumes. \
-            create(self.size, label=self.name,
-                   zone=placement, snapshot=self)
+            create(self.name, self.size, zone=placement, snapshot=self)
 
 
 class AzureMachineImage(BaseMachineImage):
@@ -834,7 +833,7 @@ class AzureGatewayContainer(BaseGatewayContainer):
         self.gateway_singleton = AzureInternetGateway(self._provider, None,
                                                       network)
 
-    def get_or_create_inet_gateway(self, label=None):
+    def get_or_create_inet_gateway(self, name=None):
         gateway = AzureInternetGateway(self._provider, None, self._network)
         return gateway
 
@@ -941,7 +940,7 @@ class AzureNetwork(BaseNetwork):
         """
         return self._provider.networking.subnets.list(network=self.id)
 
-    def create_subnet(self, cidr_block, label=None, zone=None):
+    def create_subnet(self, label, cidr_block, zone=None):
         """
         Create the subnet with cidr_block
         :param cidr_block:
@@ -950,7 +949,7 @@ class AzureNetwork(BaseNetwork):
         :return:
         """
         return self._provider.networking.subnets. \
-            create(network=self.id, cidr_block=cidr_block, label=label)
+            create(label=label, network=self.id, cidr_block=cidr_block)
 
     @property
     def gateways(self):
@@ -1725,10 +1724,6 @@ class AzureInternetGateway(BaseInternetGateway):
     @property
     def name(self):
         return "cb-gateway-wrapper"
-
-    @property
-    def label(self):
-        return None
 
     def refresh(self):
         pass

@@ -310,7 +310,7 @@ class AWSInstance(BaseInstance):
     def key_pair_id(self):
         return self._ec2_instance.key_name
 
-    def create_image(self, label=None):
+    def create_image(self, label):
         self.assert_valid_resource_label(label)
         name = self._generate_name_from_label(label, 'cb-img')
 
@@ -477,7 +477,7 @@ class AWSVolume(BaseVolume):
                 Device=a.device,
                 Force=force)
 
-    def create_snapshot(self, label=None, description=None):
+    def create_snapshot(self, label, description=None):
         snap = AWSSnapshot(
             self._provider,
             self._volume.create_snapshot(
@@ -1219,11 +1219,9 @@ class AWSGatewayContainer(BaseGatewayContainer):
                                   cb_resource=AWSInternetGateway,
                                   boto_collection_name='internet_gateways')
 
-    def get_or_create_inet_gateway(self, label=None):
-        log.debug("Get or create inet gateway %s on net %s", label,
+    def get_or_create_inet_gateway(self, name=None):
+        log.debug("Get or create inet gateway %s on net %s", name,
                   self._network)
-        AWSInternetGateway.assert_valid_resource_label(label)
-
         network_id = self._network.id if isinstance(
             self._network, AWSNetwork) else self._network
         # Don't filter by label because it may conflict with at least the
@@ -1235,8 +1233,9 @@ class AWSGatewayContainer(BaseGatewayContainer):
             return gtw[0]  # There can be only one gtw attached to a VPC
         # Gateway does not exist so create one and attach to the supplied net
         cb_gateway = self.svc.create('create_internet_gateway')
-        if label:
-            cb_gateway.label = label
+        if name:
+            AWSInternetGateway.assert_valid_resource_name(name)
+            cb_gateway.label = name
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 
@@ -1269,17 +1268,7 @@ class AWSInternetGateway(BaseInternetGateway):
 
     @property
     def name(self):
-        return self.id
-
-    @property
-    def label(self):
         return find_tag_value(self._gateway.tags, 'Name')
-
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._gateway.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     def refresh(self):
         try:

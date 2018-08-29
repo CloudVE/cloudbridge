@@ -116,12 +116,11 @@ def create_test_network(provider, label):
     """
     Create a network with one subnet, returning the network and subnet objects.
     """
-    net = provider.networking.networks.create(cidr_block='10.0.0.0/16',
-                                              label=label)
+    net = provider.networking.networks.create(label=label,
+                                              cidr_block='10.0.0.0/16')
     cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
-    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block),
-                           zone=get_provider_test_data(provider, 'placement'),
-                           label=label)
+    sn = net.create_subnet(label=label, cidr_block='{0}/28'.format(cidr_block),
+                           zone=get_provider_test_data(provider, 'placement'))
     return net, sn
 
 
@@ -142,9 +141,9 @@ def get_test_gateway(provider, label):
     This includes creating a network for the gateway, which is also returned.
     """
     net_label = 'cb-testgwnet-{0}'.format(get_uuid())
-    net = provider.networking.networks.create(
-        cidr_block='10.0.0.0/16', label=net_label)
-    return net, net.gateways.get_or_create_inet_gateway(label=label)
+    net = provider.networking.networks.create(label=net_label,
+                                              cidr_block='10.0.0.0/16')
+    return net, net.gateways.get_or_create_inet_gateway(name=label)
 
 
 def delete_test_gateway(network, gateway):
@@ -161,9 +160,8 @@ def create_test_instance(
         key_pair=None, vm_firewalls=None, user_data=None):
 
     instance = provider.compute.instances.create(
-        get_provider_test_data(provider, 'image'),
+        instance_label, get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'vm_type'),
-        label=instance_label,
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
         key_pair=key_pair,

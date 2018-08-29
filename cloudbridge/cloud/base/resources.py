@@ -829,7 +829,7 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
-    def create_subnet(self, cidr_block, label=None, zone=None):
+    def create_subnet(self, label, cidr_block, zone=None):
         return self._provider.networking.subnets.create(
             label=label, network=self, cidr_block=cidr_block, zone=zone)
 

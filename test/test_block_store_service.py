@@ -27,9 +27,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         """
         def create_vol(label):
             return self.provider.storage.volumes.create(
-                1,
-                helpers.get_provider_test_data(self.provider, "placement"),
-                label=label)
+                label, 1,
+                helpers.get_provider_test_data(self.provider, "placement"))
 
         def cleanup_vol(vol):
             if vol:
@@ -58,7 +57,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.provider, label, subnet=subnet)
 
             test_vol = self.provider.storage.volumes.create(
-                1, test_instance.zone_id, label=label)
+                label, 1, test_instance.zone_id)
             with helpers.cleanup_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready()
                 test_vol.attach(test_instance, '/dev/sda2')
@@ -89,7 +88,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.provider, label, subnet=subnet)
 
             test_vol = self.provider.storage.volumes.create(
-                1, test_instance.zone_id, label=label, description=vol_desc)
+                label, 1, test_instance.zone_id, description=vol_desc)
             with helpers.cleanup_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready()
                 self.assertTrue(
@@ -140,9 +139,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         """
         label = "cb-crudsnap-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
-            1,
-            helpers.get_provider_test_data(self.provider, "placement"),
-            label=label)
+            label, 1,
+            helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
 
@@ -177,9 +175,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         """
         label = "cb-snapprop-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
-            1,
-            helpers.get_provider_test_data(self.provider, "placement"),
-            label=label)
+            label, 1,
+            helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             snap_label = "cb-snap-{0}".format(label)
@@ -215,9 +212,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 # Test volume creation from a snapshot (via VolumeService)
                 sv_label = "cb-snapvol-{0}".format(test_snap.name)
                 snap_vol = self.provider.storage.volumes.create(
-                    1,
+                    sv_label, 1,
                     helpers.get_provider_test_data(self.provider, "placement"),
-                    label=sv_label,
                     snapshot=test_snap)
                 with helpers.cleanup_action(lambda: snap_vol.delete()):
                     snap_vol.wait_till_ready()

@@ -132,7 +132,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, network_id, label=None, description=None):
+    def create(self, label, network_id, description=None):
         log.debug("Creating Firewall Service with the parameters "
                   "[label: %s id: %s description: %s]", label, network_id,
                   description)
@@ -212,7 +212,7 @@ class AWSVolumeService(BaseVolumeService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, size, zone, label=None, snapshot=None, description=None):
+    def create(self, label, size, zone, snapshot=None, description=None):
         log.debug("Creating AWS Volume Service with the parameters "
                   "[label: %s size: %s zone: %s snapshot: %s "
                   "description: %s]", label, size, zone, snapshot,
@@ -261,7 +261,7 @@ class AWSSnapshotService(BaseSnapshotService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, volume, label=None, description=None):
+    def create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
@@ -409,7 +409,7 @@ class AWSInstanceService(BaseInstanceService):
                                   cb_resource=AWSInstance,
                                   boto_collection_name='instances')
 
-    def create(self, image, vm_type, subnet, zone, label=None,
+    def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         log.debug("Creating AWS Instance Service with the params "
@@ -667,7 +667,7 @@ class AWSNetworkService(BaseNetworkService):
         log.debug("Searching for AWS Network Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def create(self, cidr_block, label=None):
+    def create(self, label, cidr_block):
         log.debug("Creating AWS Network Service with the params "
                   "[label: %s block: %s]", label, cidr_block)
         AWSNetwork.assert_valid_resource_label(label)
@@ -712,7 +712,7 @@ class AWSSubnetService(BaseSubnetService):
         log.debug("Searching for AWS Subnet Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def create(self, network, cidr_block, zone, label=None):
+    def create(self, label, network, cidr_block, zone):
         log.debug("Creating AWS Subnet Service with the params "
                   "[label: %s network: %s block: %s zone: %s]",
                   label, network, cidr_block, zone)
@@ -758,8 +758,8 @@ class AWSSubnetService(BaseSubnetService):
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
         for i, z in enumerate(region.zones):
-            sn = self.create(default_net, '10.0.{0}.0/24'.format(i), z.name,
-                             label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL)
+            sn = self.create(AWSSubnet.CB_DEFAULT_SUBNET_LABEL, default_net,
+                             '10.0.{0}.0/24'.format(i), z)
             if zone and zone == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
@@ -800,7 +800,7 @@ class AWSRouterService(BaseRouterService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, network, label=None):
+    def create(self, label, network):
         log.debug("Creating AWS Router Service with the params "
                   "[label: %s network: %s]", label, network)
         AWSRouter.assert_valid_resource_label(label)

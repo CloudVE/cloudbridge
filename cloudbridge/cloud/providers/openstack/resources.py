@@ -447,7 +447,7 @@ class OpenStackInstance(BaseInstance):
         """
         return self._os_instance.key_name
 
-    def create_image(self, label=None):
+    def create_image(self, label):
         """
         Create a new image based on this instance.
         """
@@ -658,14 +658,14 @@ class OpenStackVolume(BaseVolume):
         """
         self._volume.detach()
 
-    def create_snapshot(self, label=None, description=None):
+    def create_snapshot(self, label, description=None):
         """
         Create a snapshot of this Volume.
         """
         log.debug("Creating snapchat of volume: %s with the "
                   "description: %s", label, description)
         return self._provider.storage.snapshots.create(
-            self, label=label, description=description)
+            label, self, description=description)
 
     def delete(self):
         """
@@ -809,7 +809,7 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
         # all available networks and perform an assignment test to infer valid
         # floating ip nets.
         dummy_router = self._provider.networking.routers.create(
-            network=self._network, label='cb-conn-test-router')
+            label='cb-conn-test-router', network=self._network)
         with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
             try:
                 dummy_router.attach_gateway(external_net)
@@ -817,11 +817,8 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
             except Exception:
                 return False
 
-    def get_or_create_inet_gateway(self, label=None):
+    def get_or_create_inet_gateway(self, name=None):
         """For OS, inet gtw is any net that has `external` property set."""
-        if label:
-            OpenStackInternetGateway.assert_valid_resource_label(label)
-
         external_nets = (n for n in self._provider.networking.networks
                          if n.external)
         for net in external_nets:

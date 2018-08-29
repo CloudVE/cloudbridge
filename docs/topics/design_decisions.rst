@@ -87,7 +87,7 @@ It is intended as a reference.
   label at all, yet needed to be named during object creation. However, we
   could not use display_id for this purpose became the display_id, by
   definition, is unchangeable. It could not be called label because the label,
-  in constrast, was changeable. Therefore, it seemed like we were back to
+  in contrast, was changeable. Therefore, it seemed like we were back to
   calling it `name` instead, introducing yet a fourth term. To simplify this,
   it was then decided that `display_id` and `name` would be collapsed together
   into one term and be called `name` instead. All resources would have an `id`

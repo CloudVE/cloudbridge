@@ -640,7 +640,7 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_image(self, label=None):
+    def create_image(self, label):
         """
         Create a new image based on this instance.
 
@@ -731,7 +731,7 @@ class LaunchConfig(object):
         lc.add_block_device(...)
 
         inst = provider.compute.instances.create(
-            image, vm_type, network, label='MyVM', launch_config=lc)
+            'MyVM', image, vm_type, network, launch_config=lc)
     """
 
     @abstractmethod
@@ -950,17 +950,17 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, cidr_block, label=None, zone=None):
+    def create_subnet(self, label, cidr_block, zone=None):
         """
         Create a new network subnet and associate it with this Network.
-
-        :type cidr_block: ``str``
-        :param cidr_block: CIDR block within this Network to assign to the
-                           subnet.
 
         :type label: ``str``
         :param label: The subnet label. The subnet name will be derived from
                       this label.
+
+        :type cidr_block: ``str``
+        :param cidr_block: CIDR block within this Network to assign to the
+                           subnet.
 
         :type zone: ``str``
         :param zone: Placement zone where to create the subnet. Some providers
@@ -1326,15 +1326,15 @@ class GatewayContainer(PageableObjectMixin):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self, label=None):
+    def get_or_create_inet_gateway(self, name=None):
         """
         Creates new or returns an existing internet gateway for a network.
 
         The returned gateway object can subsequently be attached to a router to
         provide internet routing to a network.
 
-        :type  label: ``str``
-        :param label: The gateway label.
+        :type  name: ``str``
+        :param name: The gateway label.
 
         :rtype: ``object``  of :class:`.InternetGateway` or ``None``
         :return: an InternetGateway object of ``None`` if not found.
@@ -1362,19 +1362,11 @@ class GatewayContainer(PageableObjectMixin):
         pass
 
 
-class Gateway(LabeledCloudResource):
+class Gateway(CloudResource):
     """
     Represents a gateway resource.
     """
     __metaclass__ = ABCMeta
-
-    @LabeledCloudResource.label.setter
-    @abstractmethod
-    def label(self, value):
-        """
-        Set the resource label.
-        """
-        pass
 
     @abstractproperty
     def network_id(self):
@@ -1606,7 +1598,7 @@ class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_snapshot(self, label=None, description=None):
+    def create_snapshot(self, label, description=None):
         """
         Create a snapshot of this Volume.
 
