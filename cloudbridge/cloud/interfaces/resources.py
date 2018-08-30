@@ -119,12 +119,12 @@ class LabeledCloudResource(CloudResource):
         in the underlying cloud provider, or be simulated through tags/labels.
 
         The label property adheres to the following restrictions:
-        * Labels cannot be longer than 63 characters.
-        * May only contain ascii characters comprising of lowercase letters,
+        * Must be at least 3 characters in length.
+        * Cannot be longer than 63 characters.
+        * May only contain ASCII characters comprising of lowercase letters,
           numeric characters, and dashes.
         * Must begin with an alphanumeric character and end with one
           (i.e. cannot begin or end with a dash)
-        * Must be at least 3 characters in length.
 
         Some resources may not support labels, in which case, a
         NotImplementedError will be thrown.
@@ -731,7 +731,7 @@ class LaunchConfig(object):
         lc.add_block_device(...)
 
         inst = provider.compute.instances.create(
-            'MyVM', image, vm_type, network, launch_config=lc)
+            'MyVM', image, vm_type, subnet, launch_config=lc)
     """
 
     @abstractmethod
@@ -2233,6 +2233,11 @@ class BucketObject(CloudResource):
         """
         Retrieve the name of the current object.
 
+        The bucket object name adheres to a naming requirement that is more
+        relaxed than the naming requirement enforced across CloudBridge. More
+        details are available here: http://docs.aws.amazon.com/AmazonS3/latest/
+        dev/UsingMetadata.html#object-key-guidelines
+
         :rtype: ``str``
         :return: Name for this object as returned by the cloud middleware.
         """
@@ -2363,7 +2368,7 @@ class Bucket(CloudResource):
             # Show all objects in bucket
             print(list(bucket.objects))
 
-            # Find an object by label
+            # Find an object by name
             print(bucket.objects.find(name='my_obj.txt'))
 
             # Get first page of bucket list

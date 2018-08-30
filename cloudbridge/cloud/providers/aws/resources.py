@@ -1235,7 +1235,13 @@ class AWSGatewayContainer(BaseGatewayContainer):
         cb_gateway = self.svc.create('create_internet_gateway')
         if name:
             AWSInternetGateway.assert_valid_resource_name(name)
-            cb_gateway.label = name
+            cb_gateway._gateway.create_tags(
+                Tags=[{'Key': 'Name', 'Value': name}])
+        else:
+            cb_gateway._gateway.create_tags(
+                Tags=[{'Key': 'Name',
+                       'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                       }])
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 

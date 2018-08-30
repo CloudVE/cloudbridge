@@ -8,7 +8,7 @@ This includes:
 import uuid
 
 from cloudbridge.cloud.interfaces.exceptions \
-    import InvalidLabelException
+    import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import LabeledCloudResource
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
@@ -148,28 +148,28 @@ def check_obj_label(test, obj):
         VALID_LABEL = u"hello-world-123"
         obj.label = VALID_LABEL
         # Two character labels should not be allowed
-        with test.assertRaises(InvalidLabelException):
+        with test.assertRaises(InvalidNameException):
             obj.label = "ab"
         # A none value should not be allowed
-        with test.assertRaises(InvalidLabelException):
+        with test.assertRaises(InvalidNameException):
             obj.label = None
         # setting spaces should raise an exception
-        with test.assertRaises(InvalidLabelException):
+        with test.assertRaises(InvalidNameException):
             obj.label = "hello world"
         # setting upper case characters should raise an exception
-        with test.assertRaises(InvalidLabelException):
+        with test.assertRaises(InvalidNameException):
             obj.label = "helloWorld"
         # setting special characters should raise an exception
-        with test.assertRaises(InvalidLabelException):
+        with test.assertRaises(InvalidNameException):
             obj.label = "hello.world:how_goes_it"
         # Starting with a dash should raise an exception
-        with test.assertRaises(InvalidLabelException):
+        with test.assertRaises(InvalidNameException):
             obj.label = "-hello"
         # Ending with a dash should raise an exception
-        with test.assertRaises(InvalidLabelException):
+        with test.assertRaises(InvalidNameException):
             obj.label = "hello-"
         # setting a length > 63 should result in an exception
-        with test.assertRaises(InvalidLabelException,
+        with test.assertRaises(InvalidNameException,
                                msg="Label of length > 64 is not allowed"):
             obj.label = "a" * 64
         # refreshing should yield the last successfully set label
@@ -223,38 +223,38 @@ def check_standard_behaviour(test, service, obj):
 def check_create(test, service, iface, name_prefix,
                  create_func, cleanup_func):
     # check create with invalid label
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         # spaces should raise an exception
         create_func("hello world")
     # check create with invalid label
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         # uppercase characters should raise an exception
         create_func("helloWorld")
     # setting special characters should raise an exception
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         create_func("hello.world:how_goes_it")
     # Starting with a dash should raise an exception
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         create_func("-hello")
     # Ending with a dash should raise an exception
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         create_func("hello-")
     # underscores are not allowed
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         create_func("hello_bucket")
     # setting a length > 63 should result in an exception
-    with test.assertRaises(InvalidLabelException,
+    with test.assertRaises(InvalidNameException,
                            msg="Label of length > 63 should be disallowed"):
         create_func("a" * 64)
     #  name cannot be an IP address
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         create_func("197.10.100.42")
 
     # empty name are not allowed
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         create_func(None)
     # names of length less than 3 should raise an exception
-    with test.assertRaises(InvalidLabelException):
+    with test.assertRaises(InvalidNameException):
         create_func("cb")
 
 

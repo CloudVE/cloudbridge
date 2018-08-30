@@ -16,6 +16,7 @@ import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidLabelException
+from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -83,18 +84,19 @@ class BaseCloudResource(CloudResource):
         if not BaseCloudResource.is_valid_resource_name(name):
             log.debug("InvalidLabelException raised on %s", name)
             raise InvalidLabelException(
-                u"Invalid label: %s. Label must be at most 63 characters "
-                "long and consist of lowercase letters, numbers, or dashes. "
-                "The label must not start or end with a dash." % name)
+                u"Invalid label: %s. Label must be at least 3 characters long"
+                " and at most 63 characters. It must consist of lowercase"
+                " letters, numbers, or dashes. The label must not start or"
+                " end with a dash." % name)
 
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseCloudResource.is_valid_resource_name(name):
             log.debug("InvalidLabelException raised on %s", name)
-            raise InvalidLabelException(
+            raise InvalidNameException(
                 u"Invalid name: %s. Name must be at least 3 characters long"
                 " and at most 63 characters. It must consist of lowercase"
-                " letters, numbers, or dashes. The label must not start or"
+                " letters, numbers, or dashes. The name must not start or"
                 " end with a dash." % name)
 
     @staticmethod
@@ -716,7 +718,7 @@ class BaseBucketObject(BaseCloudResource, BucketObject):
             log.debug("InvalidLabelException raised on %s", name,
                       exc_info=True)
             raise InvalidLabelException(
-                u"Invalid object label: %s. Label must match criteria defined "
+                u"Invalid object name: %s. Name must match criteria defined "
                 "in: http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingMeta"
                 "data.html#object-key-guidelines" % name)
 
@@ -881,8 +883,8 @@ class BaseRouter(BaseCloudResource, Router):
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):
 
-    CB_DEFAULT_INET_GATEWAY_LABEL = os.environ.get(
-        'CB_DEFAULT_INET_GATEWAY_LABEL', 'cloudbridge-inetgateway')
+    CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
+        'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge-inetgateway')
 
     def __init__(self, provider):
         super(BaseInternetGateway, self).__init__(provider)
