@@ -60,11 +60,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_crud_vm_firewall(self):
-        label = 'cb-crudfw-{0}'.format(helpers.get_uuid())
-
-        # Declare these variables and late binding will allow
-        # the cleanup method access to the most current values
-        net = None
 
         def create_fw(label):
             return self.provider.security.vm_firewalls.create(
@@ -74,12 +69,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             if fw:
                 fw.delete()
 
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net)):
-            net, _ = helpers.create_test_network(self.provider, label)
+        net, _ = helpers.get_or_create_default_network(self.provider)
 
-            sit.check_crud(self, self.provider.security.vm_firewalls,
-                           VMFirewall, "cb-crudfw", create_fw, cleanup_fw)
+        sit.check_crud(self, self.provider.security.vm_firewalls,
+                       VMFirewall, "cb-crudfw", create_fw, cleanup_fw)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_properties(self):
@@ -87,11 +80,10 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
-        net = None
         fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net, vm_firewall=fw)):
-            net, _ = helpers.create_test_network(self.provider, label)
+                vm_firewall=fw)):
+            net, _ = helpers.get_or_create_default_network(self.provider)
             fw = self.provider.security.vm_firewalls.create(
                 label=label, description=label, network_id=net.id)
 
@@ -101,30 +93,25 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_crud_vm_firewall_rules(self):
         label = 'cb-crudfw-rules-{0}'.format(helpers.get_uuid())
 
-        # Declare these variables and late binding will allow
-        # the cleanup method access to the most current values
-        net = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net)):
-            net, _ = helpers.create_test_network(self.provider, label)
+        net, _ = helpers.get_or_create_default_network(self.provider)
 
-            fw = None
-            with helpers.cleanup_action(lambda: fw.delete()):
-                fw = self.provider.security.vm_firewalls.create(
-                    label=label, description=label, network_id=net.id)
+        fw = None
+        with helpers.cleanup_action(lambda: fw.delete()):
+            fw = self.provider.security.vm_firewalls.create(
+                label=label, description=label, network_id=net.id)
 
-                def create_fw_rule(label):
-                    return fw.rules.create(
-                        direction=TrafficDirection.INBOUND, protocol='tcp',
-                        from_port=1111, to_port=1111, cidr='0.0.0.0/0')
+            def create_fw_rule(label):
+                return fw.rules.create(
+                    direction=TrafficDirection.INBOUND, protocol='tcp',
+                    from_port=1111, to_port=1111, cidr='0.0.0.0/0')
 
-                def cleanup_fw_rule(rule):
-                    if rule:
-                        rule.delete()
+            def cleanup_fw_rule(rule):
+                if rule:
+                    rule.delete()
 
-                sit.check_crud(self, fw.rules, VMFirewallRule, "cb-crudfwrule",
-                               create_fw_rule, cleanup_fw_rule,
-                               skip_name_check=True)
+            sit.check_crud(self, fw.rules, VMFirewallRule, "cb-crudfwrule",
+                           create_fw_rule, cleanup_fw_rule,
+                           skip_name_check=True)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_rule_properties(self):
@@ -135,8 +122,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         net = None
         fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net, vm_firewall=fw)):
-            net, _ = helpers.create_test_network(self.provider, label)
+                vm_firewall=fw)):
+            net, _ = helpers.get_or_create_default_network(self.provider)
             fw = self.provider.security.vm_firewalls.create(
                 label=label, description=label, network_id=net.id)
 
@@ -158,9 +145,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         net = None
         fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net, vm_firewall=fw)):
+                vm_firewall=fw)):
 
-            net, _ = helpers.create_test_network(self.provider, label)
+            net, _ = helpers.get_or_create_default_network(self.provider)
             fw = self.provider.security.vm_firewalls.create(
                 label=label, description=label, network_id=net.id)
 
@@ -182,8 +169,8 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         net = None
         fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                network=net, vm_firewall=fw)):
-            net, _ = helpers.create_test_network(self.provider, label)
+                vm_firewall=fw)):
+            net, _ = helpers.get_or_create_default_network(self.provider)
             fw = self.provider.security.vm_firewalls.create(
                 label=label, description=label, network_id=net.id)
             rules = list(fw.rules)

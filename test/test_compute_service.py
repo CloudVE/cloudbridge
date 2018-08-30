@@ -48,13 +48,11 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "Instance %s should have been deleted but still exists." %
                 label)
 
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                                               network=net)):
-            net, subnet = helpers.create_test_network(self.provider, label)
+        net, subnet = helpers.get_or_create_default_network(self.provider)
 
-            sit.check_crud(self, self.provider.compute.instances, Instance,
-                           "cb-instcrud", create_inst, cleanup_inst,
-                           custom_check_delete=check_deleted)
+        sit.check_crud(self, self.provider.compute.instances, Instance,
+                       "cb-instcrud", create_inst, cleanup_inst,
+                       custom_check_delete=check_deleted)
 
     def _is_valid_ip(self, address):
         try:
@@ -72,12 +70,11 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         test_instance = None
-        net = None
         fw = None
         kp = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_instance, net, fw, kp)):
-            net, subnet = helpers.create_test_network(self.provider, label)
+                test_instance, fw, kp)):
+            net, subnet = helpers.get_or_create_default_network(self.provider)
             kp = self.provider.security.key_pairs.create(name=label)
             fw = self.provider.security.vm_firewalls.create(
                 label=label, description=label, network_id=net.id)
@@ -276,27 +273,25 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 for _ in range(vm_type.num_ephemeral_disks):
                     lc.add_ephemeral_device()
 
-                net, subnet = helpers.create_test_network(self.provider, label)
+                net, subnet = helpers.get_or_create_default_network(
+                    self.provider)
+
+                inst = helpers.create_test_instance(
+                    self.provider,
+                    label,
+                    subnet=subnet,
+                    launch_config=lc)
 
                 with helpers.cleanup_action(lambda:
-                                            helpers.delete_test_network(net)):
-
-                    inst = helpers.create_test_instance(
-                        self.provider,
-                        label,
-                        subnet=subnet,
-                        launch_config=lc)
-
-                    with helpers.cleanup_action(lambda:
-                                                helpers.delete_test_instance(
-                                                    inst)):
-                        try:
-                            inst.wait_till_ready()
-                        except WaitStateException as e:
-                            self.fail("The block device mapped launch did not "
-                                      " complete successfully: %s" % e)
-                        # TODO: Check instance attachments and make sure they
-                        # correspond to requested mappings
+                                            helpers.delete_test_instance(
+                                                inst)):
+                    try:
+                        inst.wait_till_ready()
+                    except WaitStateException as e:
+                        self.fail("The block device mapped launch did not "
+                                  " complete successfully: %s" % e)
+                    # TODO: Check instance attachments and make sure they
+                    # correspond to requested mappings
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.vm_firewalls'])
@@ -306,11 +301,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         test_inst = None
-        net = None
         fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_inst, net, fw)):
-            net, subnet = helpers.create_test_network(self.provider, label)
+                test_inst, fw)):
+            net, subnet = helpers.get_or_create_default_network(self.provider)
             test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(

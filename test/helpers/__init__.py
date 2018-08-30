@@ -112,15 +112,14 @@ def get_provider_test_data(provider, key):
     return None
 
 
-def create_test_network(provider, label):
+def get_or_create_default_network(provider):
     """
-    Create a network with one subnet, returning the network and subnet objects.
+    Get the default network with the default subnet, if already created,
+    or create then return them
     """
-    net = provider.networking.networks.create(label=label,
-                                              cidr_block='10.0.0.0/16')
-    cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
-    sn = net.create_subnet(label=label, cidr_block='{0}/28'.format(cidr_block),
-                           zone=get_provider_test_data(provider, 'placement'))
+    sn = provider.networking.subnets.get_or_create_default(
+        zone=get_provider_test_data(provider, 'placement'))
+    net = provider.networking.networks.get(sn.network_id)
     return net, sn
 
 

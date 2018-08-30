@@ -47,12 +47,11 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         label = "cb-attachvol-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
-        net = None
         test_instance = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_instance, net)):
-            net, subnet = helpers.create_test_network(
-                self.provider, label)
+                test_instance)):
+            net, subnet = helpers.get_or_create_default_network(
+                self.provider)
             test_instance = helpers.get_test_instance(
                 self.provider, label, subnet=subnet)
 
@@ -79,11 +78,10 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         test_instance = None
-        net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_instance, net)):
-            net, subnet = helpers.create_test_network(
-                self.provider, label)
+                test_instance)):
+            net, subnet = helpers.get_or_create_default_network(
+                self.provider)
             test_instance = helpers.get_test_instance(
                 self.provider, label, subnet=subnet)
 

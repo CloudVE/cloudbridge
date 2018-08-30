@@ -137,6 +137,7 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
     """
 
     def wait_for(self, target_states, terminal_states=None, timeout=None,
+
                  interval=None):
         if timeout is None:
             timeout = self._provider.config.default_wait_timeout

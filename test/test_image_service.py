@@ -24,7 +24,6 @@ class CloudImageServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         test_instance = None
-        net = None
         subnet = None
 
         def create_img(label):
@@ -79,9 +78,9 @@ class CloudImageServiceTestCase(ProviderTestBase):
                                 " contain a valid value")
 
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_instance, net)):
-            net, subnet = helpers.create_test_network(
-                self.provider, instance_label)
+                test_instance)):
+            net, subnet = helpers.get_or_create_default_network(
+                self.provider)
             test_instance = helpers.get_test_instance(
                 self.provider, instance_label, subnet=subnet)
             sit.check_crud(self, self.provider.compute.images, MachineImage,
