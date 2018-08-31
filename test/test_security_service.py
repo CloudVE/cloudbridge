@@ -196,7 +196,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 len(list(fw.rules)) == 0,
                 "Deleting VMFirewallRule should delete it: {0}".format(
-                    fw.rules if fw else []))
+                    fw.rules))
         fwl = self.provider.security.vm_firewalls.list()
         found_fw = [f for f in fwl if f.name == name]
         self.assertTrue(
