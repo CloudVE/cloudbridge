@@ -24,7 +24,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         label = "cb-instcrud-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
-        net = None
         subnet = None
 
         def create_inst(label):
@@ -48,7 +47,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "Instance %s should have been deleted but still exists." %
                 label)
 
-        net, subnet = helpers.get_or_create_default_network(self.provider)
+        subnet = helpers.get_or_create_default_subnet(self.provider)
 
         sit.check_crud(self, self.provider.compute.instances, Instance,
                        "cb-instcrud", create_inst, cleanup_inst,
@@ -74,7 +73,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         kp = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, fw, kp)):
-            net, subnet = helpers.get_or_create_default_network(self.provider)
+            subnet = helpers.get_or_create_default_subnet(self.provider)
+            net = subnet.network
             kp = self.provider.security.key_pairs.create(name=label)
             fw = self.provider.security.vm_firewalls.create(
                 label=label, description=label, network_id=net.id)
@@ -273,7 +273,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 for _ in range(vm_type.num_ephemeral_disks):
                     lc.add_ephemeral_device()
 
-                net, subnet = helpers.get_or_create_default_network(
+                subnet = helpers.get_or_create_default_subnet(
                     self.provider)
 
                 inst = helpers.create_test_instance(
@@ -304,7 +304,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_inst, fw)):
-            net, subnet = helpers.get_or_create_default_network(self.provider)
+            subnet = helpers.get_or_create_default_subnet(self.provider)
+            net = subnet.network
             test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(

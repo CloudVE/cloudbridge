@@ -112,15 +112,12 @@ def get_provider_test_data(provider, key):
     return None
 
 
-def get_or_create_default_network(provider):
+def get_or_create_default_subnet(provider):
     """
-    Get the default network with the default subnet, if already created,
-    or create then return them
+    Return the default subnet to be used for tests
     """
-    sn = provider.networking.subnets.get_or_create_default(
+    return provider.networking.subnets.get_or_create_default(
         zone=get_provider_test_data(provider, 'placement'))
-    net = provider.networking.networks.get(sn.network_id)
-    return net, sn
 
 
 def delete_test_network(network):
@@ -197,15 +194,13 @@ def delete_test_instance(instance):
                           terminal_states=[InstanceState.ERROR])
 
 
-def cleanup_test_resources(instance=None, network=None, vm_firewall=None,
+def cleanup_test_resources(instance=None, vm_firewall=None,
                            key_pair=None):
     """Clean up any combination of supplied resources."""
-    with cleanup_action(lambda: delete_test_network(network)
-                        if network else None):
-        with cleanup_action(lambda: key_pair.delete() if key_pair else None):
-            with cleanup_action(lambda: vm_firewall.delete()
-                                if vm_firewall else None):
-                delete_test_instance(instance)
+    with cleanup_action(lambda: key_pair.delete() if key_pair else None):
+        with cleanup_action(lambda: vm_firewall.delete()
+                            if vm_firewall else None):
+            delete_test_instance(instance)
 
 
 def get_uuid():

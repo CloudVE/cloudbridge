@@ -50,7 +50,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         test_instance = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance)):
-            net, subnet = helpers.get_or_create_default_network(
+            subnet = helpers.get_or_create_default_subnet(
                 self.provider)
             test_instance = helpers.get_test_instance(
                 self.provider, label, subnet=subnet)
@@ -80,7 +80,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         test_instance = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance)):
-            net, subnet = helpers.get_or_create_default_network(
+            subnet = helpers.get_or_create_default_subnet(
                 self.provider)
             test_instance = helpers.get_test_instance(
                 self.provider, label, subnet=subnet)
