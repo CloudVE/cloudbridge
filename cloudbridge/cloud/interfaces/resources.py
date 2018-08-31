@@ -1035,6 +1035,16 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractproperty
+    def network(self):
+        """
+        The parent network object associated with this this subnet.
+
+        :rtype: ``Network``
+        :return: `Network` object
+        """
+        pass
+
+    @abstractproperty
     def zone(self):
         """
         Placement zone of the subnet.

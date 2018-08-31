@@ -807,6 +807,10 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
                 self._provider == other._provider and
                 self.id == other.id)
 
+    @property
+    def network(self):
+        return self._provider.networking.networks.get(self.network_id)
+
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
             [SubnetState.AVAILABLE],

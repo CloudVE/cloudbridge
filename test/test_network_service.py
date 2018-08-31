@@ -69,10 +69,15 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     net.subnets, [sn],
                     "Network should have exactly one subnet: %s." % sn.id)
 
-                self.assertIn(
+                self.assertEqual(
                     net.id, sn.network_id,
-                    "Network ID %s should be specified in the subnet's network"
-                    " id %s." % (net.id, sn.network_id))
+                    "Network ID %s and subnet's network id %s should be"
+                    " equal." % (net.id, sn.network_id))
+
+                self.assertEqual(
+                    net, sn.network,
+                    "Network obj %s and subnet's parent net obj %s"
+                    " should be equal." % (net, sn.network))
 
                 self.assertEqual(
                     cidr, sn.cidr_block,
