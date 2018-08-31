@@ -175,8 +175,11 @@ class BotoGenericService(object):
         PaginationConfig = {}
         if limit:
             PaginationConfig = {'MaxItems': limit, 'PageSize': limit}
-        if marker:
-            PaginationConfig.update({'StartingToken': marker})
+
+        # TODO: Paging with marker
+        # if marker:
+        #     PaginationConfig.update({'StartingToken': marker})
+
         params.update({'PaginationConfig': PaginationConfig})
         args = trim_empty_params(params)
         pages = paginator.paginate(**args)
