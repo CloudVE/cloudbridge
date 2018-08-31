@@ -176,9 +176,8 @@ class BotoGenericService(object):
         if limit:
             PaginationConfig = {'MaxItems': limit, 'PageSize': limit}
 
-        # TODO: Paging with marker
-        # if marker:
-        #     PaginationConfig.update({'StartingToken': marker})
+        if marker:
+            PaginationConfig.update({'StartingToken': marker})
 
         params.update({'PaginationConfig': PaginationConfig})
         args = trim_empty_params(params)
@@ -203,7 +202,6 @@ class BotoGenericService(object):
         else:
             log.debug("Does not support server side pagination. Client will"
                       " limit and page results.")
-            # Do not limit, let the ClientPagedResultList enforce limit
             return (None, collection)
 
     def list(self, limit=None, marker=None, collection=None, **kwargs):
@@ -215,6 +213,7 @@ class BotoGenericService(object):
                            current resource. See http://boto3.readthedocs.io/
                            en/latest/guide/collections.html
         """
+        limit = limit or self.provider.config.default_result_limit
         collection = collection or self.boto_collection.filter(**kwargs)
         resume_token, boto_objs = self._make_query(collection, limit, marker)
 
