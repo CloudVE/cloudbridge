@@ -183,7 +183,10 @@ class AWSVMType(BaseVMType):
 
     @property
     def vcpus(self):
-        return self._inst_dict.get('vCPU')
+        vcpus = self._inst_dict.get('vCPU')
+        if vcpus == 'N/A':
+            return None
+        return vcpus
 
     @property
     def ram(self):
