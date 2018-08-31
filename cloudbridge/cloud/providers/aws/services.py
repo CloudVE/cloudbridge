@@ -256,10 +256,12 @@ class AWSSnapshotService(BaseSnapshotService):
                             " Supported attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Snapshot Service %s", label)
-        return self.svc.find(filter_name='tag:Name', filter_value=label)
+        return self.svc.find(filter_name='tag:Name', filter_value=label,
+                             OwnerIds=['self', 'amazon'])
 
     def list(self, limit=None, marker=None):
-        return self.svc.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker,
+                             OwnerIds=['self', 'amazon'])
 
     def create(self, label, volume, description=None):
         """

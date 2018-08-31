@@ -789,12 +789,13 @@ class AzureImageService(BaseImageService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def list(self, limit=None, marker=None):
+    def list(self, filter_by_owner=True, limit=None, marker=None):
         """
         List all images.
         """
         azure_images = self.provider.azure_client.list_images()
-        azure_gallery_refs = self.provider.azure_client.list_gallery_refs()
+        azure_gallery_refs = self.provider.azure_client.list_gallery_refs() \
+            if not filter_by_owner else []
         cb_images = [AzureMachineImage(self.provider, img)
                      for img in azure_images + azure_gallery_refs]
         return ClientPagedResultList(self.provider, cb_images,

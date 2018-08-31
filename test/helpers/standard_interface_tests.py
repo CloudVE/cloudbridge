@@ -7,6 +7,8 @@ This includes:
 """
 import uuid
 
+import tenacity
+
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
 from cloudbridge.cloud.interfaces.resources import LabeledCloudResource
@@ -39,6 +41,10 @@ def check_obj_properties(test, obj):
     check_obj_label(test, obj)
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(3),
+                retry=tenacity.retry_if_exception_type(AssertionError),
+                wait=tenacity.wait_fixed(5),
+                reraise=True)
 def check_list(test, service, obj):
     list_objs = service.list()
     test.assertIsInstance(list_objs, ResultList)
@@ -112,6 +118,10 @@ def check_get_non_existent(test, service):
         % (type(service).__name__, get_objs))
 
 
+@tenacity.retry(stop=tenacity.stop_after_attempt(3),
+                retry=tenacity.retry_if_exception_type(AssertionError),
+                wait=tenacity.wait_fixed(5),
+                reraise=True)
 def check_delete(test, service, obj, perform_delete=False):
     if perform_delete:
         obj.delete()

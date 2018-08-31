@@ -486,6 +486,7 @@ class AWSVolume(BaseVolume):
                                     'Tags': [{'Key': 'Name',
                                               'Value': label}]}],
                 Description=description or ""))
+        snap.wait_till_ready()
         return snap
 
     def delete(self):

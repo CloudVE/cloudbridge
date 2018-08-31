@@ -130,16 +130,15 @@ def delete_test_network(network):
                 pass
 
 
-def get_test_gateway(provider, label):
+def get_test_gateway(provider):
     """
     Get an internet gateway for testing.
 
     This includes creating a network for the gateway, which is also returned.
     """
-    net_label = 'cb-testgwnet-{0}'.format(get_uuid())
-    net = provider.networking.networks.create(label=net_label,
-                                              cidr_block='10.0.0.0/16')
-    return net, net.gateways.get_or_create_inet_gateway(name=label)
+    sn = get_or_create_default_subnet(provider)
+    net = sn.network
+    return net, net.gateways.get_or_create_inet_gateway()
 
 
 def delete_test_gateway(network, gateway):
@@ -237,7 +236,7 @@ class ProviderTestBase(unittest.TestCase):
                                                     get_mock=use_mock_drivers)
         config = {'default_wait_interval':
                   self.get_provider_wait_interval(provider_class),
-                  'default_result_limit': 1}
+                  'default_result_limit': 5}
         return provider_class(config)
 
     @property
