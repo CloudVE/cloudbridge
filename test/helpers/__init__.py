@@ -195,12 +195,14 @@ def delete_test_instance(instance):
 
 
 def cleanup_test_resources(instance=None, vm_firewall=None,
-                           key_pair=None):
+                           key_pair=None, network=None):
     """Clean up any combination of supplied resources."""
-    with cleanup_action(lambda: key_pair.delete() if key_pair else None):
-        with cleanup_action(lambda: vm_firewall.delete()
-                            if vm_firewall else None):
-            delete_test_instance(instance)
+    with cleanup_action(lambda: delete_test_network(network)
+                        if network else None):
+        with cleanup_action(lambda: key_pair.delete() if key_pair else None):
+            with cleanup_action(lambda: vm_firewall.delete()
+                                if vm_firewall else None):
+                delete_test_instance(instance)
 
 
 def get_uuid():
