@@ -478,11 +478,14 @@ class AWSVolume(BaseVolume):
                 Force=force)
 
     def create_snapshot(self, label, description=None):
+        self.assert_valid_resource_label(label)
         snap = AWSSnapshot(
             self._provider,
             self._volume.create_snapshot(
+                TagSpecifications=[{'ResourceType': 'snapshot',
+                                    'Tags': [{'Key': 'Name',
+                                              'Value': label}]}],
                 Description=description or ""))
-        snap.label = label
         return snap
 
     def delete(self):
