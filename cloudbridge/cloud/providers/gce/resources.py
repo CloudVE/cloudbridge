@@ -375,6 +375,8 @@ class GCEFirewallsDelegate(object):
             info['network_name'] = self.network_name(firewall)
             if 'direction' in firewall:
                 info['direction'] = firewall['direction']
+            if 'priority' in firewall:
+                info['priority'] = firewall['priority']
             return info
         return info
 
@@ -508,6 +510,7 @@ class GCEVMFirewall(BaseVMFirewall):
     def delete(self):
         for rule in self._rule_container:
             rule.delete()
+        self._rule_container.dummy_rule.force_delete()
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -530,14 +533,25 @@ class GCEVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
     def __init__(self, firewall):
         super(GCEVMFirewallRuleContainer, self).__init__(
                 firewall.delegate.provider, firewall)
+        self._dummy_rule = None
 
     def list(self, limit=None, marker=None):
         rules = []
         for firewall in self.firewall.delegate.iter_firewalls(
                 self.firewall.name, self.firewall.network.name):
-            rules.append(GCEVMFirewallRule(self.firewall, firewall['id']))
+            rule = GCEVMFirewallRule(self.firewall, firewall['id'])
+            if rule.is_dummy_rule():
+                self._dummy_rule = rule
+            else:
+                rules.append(rule)
         return ClientPagedResultList(self._provider, rules,
                                      limit=limit, marker=marker)
+
+    @property
+    def dummy_rule(self):
+        if not self._dummy_rule:
+            self.list()
+        return self._dummy_rule
 
     @staticmethod
     def to_port_range(from_port, to_port):
@@ -660,7 +674,31 @@ class GCEVMFirewallRule(BaseVMFirewallRule):
                 self.firewall.delegate, info['src_dest_tag'],
                 self.firewall.network)
 
+    @property
+    def priority(self):
+        info = self.firewall.delegate.get_firewall_info(self._rule)
+        # The default firewall rule priority, when not specified, is 1000.
+        if info is None or 'priority' not in info:
+            return 1000
+        return info['priority']
+
+    def is_dummy_rule(self):
+        if self.priority != 65534:
+            return False
+        if self.direction != TrafficDirection.OUTBOUND:
+            return False
+        if self.protocol != 'tcp':
+            return False
+        if self.cidr != '0.0.0.0/0':
+            return False
+        return True
+
     def delete(self):
+        if (self.is_dummy_rule()):
+            return
+        self.force_delete()
+
+    def force_delete(self):
         self.firewall.delegate.delete_firewall_id(self._rule)
 
 

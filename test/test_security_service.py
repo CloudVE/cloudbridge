@@ -183,16 +183,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             net, _ = helpers.create_test_network(self.provider, name)
             fw = self.provider.security.vm_firewalls.create(
                 name=name, description=name, network_id=net.id)
-            rules = list(fw.rules)
-            self.assertTrue(
-                # TODO: This should be made consistent across all providers.
-                # Currently, OpenStack creates two rules, one for IPV6 and
-                # another for IPV4
-                len(rules) >= 1, "Expected a single VM firewall rule allowing"
-                " all outbound traffic. Got {0}.".format(rules))
-            self.assertEqual(
-                rules[0].direction, TrafficDirection.OUTBOUND,
-                "Expected rule to be outbound. Got {0}.".format(rules))
             rule = fw.rules.create(
                 direction=TrafficDirection.INBOUND, src_dest_fw=fw,
                 protocol='tcp', from_port=1, to_port=65535)
@@ -204,7 +194,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
                 r.delete()
             fw = self.provider.security.vm_firewalls.get(fw.id)  # update
             self.assertTrue(
-                fw is None or len(list(fw.rules)) == 0,
+                len(list(fw.rules)) == 0,
                 "Deleting VMFirewallRule should delete it: {0}".format(
                     fw.rules if fw else []))
         fwl = self.provider.security.vm_firewalls.list()
