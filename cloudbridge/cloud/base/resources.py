@@ -4,6 +4,7 @@ Base implementation for data objects exposed through a provider or service
 import inspect
 import itertools
 import logging
+import os
 import re
 import shutil
 import time
