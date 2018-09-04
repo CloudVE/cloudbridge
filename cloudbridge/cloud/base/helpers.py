@@ -1,4 +1,5 @@
 import fnmatch
+import os
 import re
 import sys
 import traceback
@@ -103,3 +104,28 @@ def cleanup_action(cleanup_func):
     except Exception as e:
         print("Error during cleanup: {0}".format(e))
         traceback.print_exc()
+
+
+def get_env(varname, default_value=None):
+    """
+    Return the value of the environment variable or default_value.
+
+    This is a helper method that wraps ``os.environ.get`` to ensure type
+    compatibility across py2 and py3. For py2, any value obtained from an
+    environment variable, ensure ``unicode`` type and ``str`` for py3. The
+    casting is done only for string variables.
+
+    :type varname: ``str``
+    :param varname: Name of the environment variable for which to check.
+
+    :param default_value: Return this value is the env var is not found.
+                          Defaults to ``None``.
+
+    :return: Value of the supplied environment if found; value of
+             ``default_value`` otherwise.
+    """
+    value = os.environ.get(varname, default_value)
+    if isinstance(value, six.string_types) and not isinstance(
+            value, six.text_type):
+        return six.u(value)
+    return value

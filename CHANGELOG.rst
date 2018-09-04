@@ -1,3 +1,32 @@
+1.0.0 - Aug ??, 2018. (sha ??)
+-------
+
+* Added Microsoft Azure as a provider
+* Restructured the interface to make it more comprehensible and uniform across
+  all supported providers. See `issue #69 <https://github.com/CloudVE/cloudbridge/issues/69>`_
+  for more details as well as the library layout image for an easy visual
+  reference: https://github.com/CloudVE/cloudbridge#quick-reference.
+* Migrated AWS implementation to use boto3 library from boto (thanks @01000101)
+* Cleaned up use of ``name`` property for resources. Resources now have ``id``,
+  ``name``, and ``label`` properties to represent respectively: a unique
+  identifier supplied by the provider; a descriptive, unchangeable name; and a
+  user-supplied label that can be modified during the existence of a resource.
+* Added enforcement of name and label value: names must be less than 64 chars
+  in length and consist of only lower case letters and dashes
+* Refactored tests and extracted standard interface tests where all resources
+  are being tested using the same code structure. Also, tests will run only
+  for providers that implement a given service.
+* Moved the repository from github.com/gvlproject to github.com/cloudve org
+* When deleting an OpenStack network, clear any ports
+* Added support for launching OpenStack instances into a specific subnet
+* Update image list interface to allow filtering by owner
+* When listing images on AWS, filter only the ones by current account owner
+* Retrieve AWS instance types from a public service to include latest values
+* Instance state uses ``DELETED`` state instead of ``TERMINATED``
+* Return VM type RAM in GB
+* Add implementation for ``generate_url`` on OpenStack
+* General documentation updates
+
 0.3.3 - Aug 7, 2017. (sha 348e1e88935f61f53a83ed8d6a0e012a46621e25)
 -------
 
@@ -12,7 +41,7 @@
 0.3.1 - April 18, 2017. (sha f36a462e886d8444cb2818f6573677ecf0565315)
 -------
 
-* Patch for binary file handling in openstack
+* Patch for binary file handling in OpenStack
 
 0.3.0 - April 11, 2017. (sha 13539ccda9e4809082796574d18b1b9bb3f2c624)
 -------
@@ -23,7 +52,7 @@
 * Added supports for accessing EC2 containers with restricted permissions.
 * Removed exists() method from object store interface. Use get()==None check
   instead.
-* New method (img.min_disk) for geting size of machine image.
+* New method (img.min_disk) for getting size of machine image.
 * Test improvements (flake8 during build, more tests)
 * Misc bug fixes and improvements
 * Changed library to beta state
@@ -66,5 +95,5 @@
 * Support for AWS and OpenStack clouds
 * Basic usage docs and complete API docs
 * 95% test coverage
-* Support for AWS mock test provder (via
+* Support for AWS mock test provider (via
   `moto <https://github.com/spulec/moto>`_)

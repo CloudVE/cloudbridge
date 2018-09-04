@@ -888,7 +888,7 @@ class BaseRouter(BaseCloudResource, Router):
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):
 
-    CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
+    CB_DEFAULT_INET_GATEWAY_NAME = cb_helpers.get_env(
         'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge-inetgateway')
 
     def __init__(self, provider):
