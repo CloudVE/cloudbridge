@@ -300,17 +300,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
-        net = None
         test_inst = None
         fw = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_inst, fw, network=net)):
-            net = self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
-            subnet = net.create_subnet(
-                label=label, cidr_block='10.0.1.0/24',
-                zone=helpers.get_provider_test_data(self.provider,
-                                                    'placement'))
+                test_inst, fw)):
+            subnet = helpers.get_or_create_default_subnet(self.provider)
+            net = subnet.network
             test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(

@@ -138,16 +138,15 @@ def get_test_gateway(provider):
     """
     sn = get_or_create_default_subnet(provider)
     net = sn.network
-    return net, net.gateways.get_or_create_inet_gateway()
+    return net.gateways.get_or_create_inet_gateway()
 
 
-def delete_test_gateway(network, gateway):
+def delete_test_gateway(gateway):
     """
     Delete the supplied network and gateway.
     """
-    with cleanup_action(lambda: network.delete()):
-        with cleanup_action(lambda: gateway.delete()):
-            pass
+    with cleanup_action(lambda: gateway.delete()):
+        pass
 
 
 def create_test_instance(

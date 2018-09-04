@@ -261,7 +261,7 @@ class AWSSnapshotService(BaseSnapshotService):
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker,
-                             OwnerIds=['self', 'amazon'])
+                             OwnerIds=['self'])
 
     def create(self, label, volume, description=None):
         """
