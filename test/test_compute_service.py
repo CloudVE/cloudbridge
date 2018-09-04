@@ -350,13 +350,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 router.attach_subnet(subnet)
                 gateway = net.gateways.get_or_create_inet_gateway(name)
                 router.attach_gateway(gateway)
-                # check whether adding an elastic ip works
-                fip = gateway.floating_ips.create()
-                self.assertFalse(
-                    fip.in_use,
-                    "Newly created floating IP address should not be in use.")
+                fip = None
 
                 with helpers.cleanup_action(lambda: fip.delete()):
+                    # check whether adding an elastic ip works
+                    fip = gateway.floating_ips.create()
+                    self.assertFalse(
+                        fip.in_use,
+                        "Newly created floating IP should not be in use.")
+
                     with helpers.cleanup_action(
                             lambda: test_inst.remove_floating_ip(fip)):
                         test_inst.add_floating_ip(fip)

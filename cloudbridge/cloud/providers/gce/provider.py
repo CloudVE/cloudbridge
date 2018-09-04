@@ -11,6 +11,7 @@ from string import Template
 
 import cloudbridge as cb
 from cloudbridge.cloud.base import BaseCloudProvider
+from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 
 import googleapiclient
 from googleapiclient import discovery
@@ -229,18 +230,15 @@ class GCECloudProvider(BaseCloudProvider):
         # service connections, lazily initialized
         self._gce_compute = None
         self._gcs_storage = None
+        self._credentials_cache = None
+        self._compute_resources_cache = None
+        self._storage_resources_cache = None
 
         # Initialize provider services
         self._compute = GCEComputeService(self)
         self._security = GCESecurityService(self)
         self._networking = GCENetworkingService(self)
         self._storage = GCPStorageService(self)
-
-        self._compute_resources = GCPResources(self.gce_compute,
-                                               project=self.project_name,
-                                               region=self.region_name,
-                                               zone=self.default_zone)
-        self._storage_resources = GCPResources(self.gcs_storage)
 
     @property
     def compute(self):
@@ -271,12 +269,39 @@ class GCECloudProvider(BaseCloudProvider):
         return self._gcs_storage
 
     @property
+    def _compute_resources(self):
+        if not self._compute_resources_cache:
+            self._compute_resources_cache = GCPResources(
+                    self.gce_compute,
+                    project=self.project_name,
+                    region=self.region_name,
+                    zone=self.default_zone)
+        return self._compute_resources_cache
+
+    @property
+    def _storage_resources(self):
+        if not self._storage_resources_cache:
+            self._storage_resources_cache = GCPResources(self.gcs_storage)
+        return self._storage_resources_cache
+
+    @property
     def _credentials(self):
-        if self.credentials_dict:
-            return ServiceAccountCredentials.from_json_keyfile_dict(
-                self.credentials_dict)
-        else:
-            return GoogleCredentials.get_application_default()
+        if not self._credentials_cache:
+            if self.credentials_dict:
+                self._credentials_cache = (
+                        ServiceAccountCredentials.from_json_keyfile_dict(
+                                self.credentials_dict))
+            else:
+                self._credentials_cache = (
+                        GoogleCredentials.get_application_default())
+        return self._credentials_cache
+
+    def sign_blob(self, string_to_sign):
+        return self._credentials.sign_blob(string_to_sign)[1]
+
+    @property
+    def client_id(self):
+        return self._credentials.service_account_email
 
     def _connect_gcs_storage(self):
         return discovery.build('storage', 'v1', credentials=self._credentials,
@@ -311,6 +336,8 @@ class GCECloudProvider(BaseCloudProvider):
         return out if out else self._storage_resources.parse_url(url)
 
     def get_resource(self, resource, url_or_name, **kwargs):
+        if not url_or_name:
+            return None
         resource_url = (
             self._compute_resources.get_resource_url_with_default(
                 resource, url_or_name, **kwargs) or
@@ -324,3 +351,11 @@ class GCECloudProvider(BaseCloudProvider):
             cb.log.warning(
                 "googleapiclient.errors.HttpError: {0}".format(http_error))
             return None
+
+    def authenticate(self):
+        try:
+            self.gce_compute
+            return True
+        except Exception as e:
+            raise ProviderConnectionException(
+                'Authentication with Google cloud provider failed: %s', e)

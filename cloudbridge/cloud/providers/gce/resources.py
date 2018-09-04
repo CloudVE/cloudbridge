@@ -1,11 +1,13 @@
 """
 DataTypes used by this provider
 """
+import base64
+import calendar
 import hashlib
 import inspect
 import io
-import json
 import math
+import time
 import uuid
 
 import cloudbridge as cb
@@ -30,6 +32,7 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -41,6 +44,7 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.gce import helpers
 
@@ -55,11 +59,11 @@ except NameError:
 
 class GCEKeyPair(BaseKeyPair):
 
-    def __init__(self, provider, kp_id, kp_name, kp_material=None):
+    def __init__(self, provider, kp_id, kp_name, private_key=None):
         super(GCEKeyPair, self).__init__(provider, None)
         self._kp_id = kp_id
         self._kp_name = kp_name
-        self._kp_material = kp_material
+        self._private_key = private_key
 
     @property
     def id(self):
@@ -67,8 +71,7 @@ class GCEKeyPair(BaseKeyPair):
 
     @property
     def name(self):
-        # use e-mail as keyname if possible, or ID if not
-        return self._kp_name or self.id
+        return self._kp_name
 
     def delete(self):
         svc = self._provider.security.key_pairs
@@ -86,11 +89,7 @@ class GCEKeyPair(BaseKeyPair):
 
     @property
     def material(self):
-        return self._kp_material
-
-    @material.setter
-    def material(self, value):
-        self._kp_material = value
+        return self._private_key
 
 
 class GCEVMType(BaseVMType):
@@ -269,31 +268,44 @@ class GCEFirewallsDelegate(object):
             self._delete_firewall(firewall)
         self._update_list_response()
 
-    def add_firewall(self, tag, ip_protocol, port, source_range, source_tag,
-                     description, network_name):
+    def add_firewall(self, tag, direction, protocol, priority, port,
+                     src_dest_range, src_dest_tag, description, network_name):
         """
         Create a new firewall.
         """
-        if self.find_firewall(tag, ip_protocol, port, source_range,
-                              source_tag, network_name) is not None:
+        if self.find_firewall(
+                tag, direction, protocol, port, src_dest_range, src_dest_tag,
+                network_name) is not None:
             return True
         # Do not let the user accidentally open traffic from the world by not
         # explicitly specifying the source.
-        if source_tag is None and source_range is None:
+        if src_dest_tag is None and src_dest_range is None:
             return False
         firewall = {
             'name': 'firewall-{0}'.format(uuid.uuid4()),
             'network': GCEFirewallsDelegate._NETWORK_URL_PREFIX + network_name,
-            'allowed': [{'IPProtocol': str(ip_protocol)}],
+            'allowed': [{'IPProtocol': str(protocol)}],
             'targetTags': [tag]}
         if description is not None:
             firewall['description'] = description
         if port is not None:
             firewall['allowed'][0]['ports'] = [port]
-        if source_range is not None:
-            firewall['sourceRanges'] = [source_range]
-        if source_tag is not None:
-            firewall['sourceTags'] = [source_tag]
+        if direction == TrafficDirection.INBOUND:
+            firewall['direction'] = 'INGRESS'
+            src_dest_str = 'source'
+        else:
+            firewall['direction'] = 'EGRESS'
+            src_dest_str = 'destination'
+        if src_dest_range is not None:
+            firewall[src_dest_str + 'Ranges'] = [src_dest_range]
+        if src_dest_tag is not None:
+            if direction == TrafficDirection.OUTBOUND:
+                cb.log.warning('GCP does not support egress rules to network '
+                               'tags. Only IP ranges are acceptable.')
+            else:
+                firewall['sourceTags'] = [src_dest_tag]
+        if priority is not None:
+            firewall['priority'] = priority
         project_name = self._provider.project_name
         try:
             response = (self._provider
@@ -311,24 +323,28 @@ class GCEFirewallsDelegate(object):
             self._update_list_response()
         return True
 
-    def find_firewall(self, tag, ip_protocol, port, source_range, source_tag,
-                      network_name):
+    def find_firewall(self, tag, direction, protocol, port, src_dest_range,
+                      src_dest_tag, network_name):
         """
         Find a firewall with give parameters.
         """
-        if source_range is None and source_tag is None:
-            source_range = '0.0.0.0/0'
+        if src_dest_range is None and src_dest_tag is None:
+            src_dest_range = '0.0.0.0/0'
+        if direction == TrafficDirection.INBOUND:
+            src_dest_str = 'source'
+        else:
+            src_dest_str = 'destination'
         for firewall in self.iter_firewalls(tag, network_name):
-            if firewall['allowed'][0]['IPProtocol'] != ip_protocol:
+            if firewall['allowed'][0]['IPProtocol'] != protocol:
                 continue
             if not self._check_list_in_dict(firewall['allowed'][0], 'ports',
                                             port):
                 continue
-            if not self._check_list_in_dict(firewall, 'sourceRanges',
-                                            source_range):
+            if not self._check_list_in_dict(firewall, src_dest_str + 'Ranges',
+                                            src_dest_range):
                 continue
-            if not self._check_list_in_dict(firewall, 'sourceTags',
-                                            source_tag):
+            if not self._check_list_in_dict(firewall, src_dest_str + 'Tags',
+                                            src_dest_tag):
                 continue
             return firewall['id']
         return None
@@ -343,17 +359,24 @@ class GCEFirewallsDelegate(object):
                 continue
             if ('sourceRanges' in firewall and
                     len(firewall['sourceRanges']) == 1):
-                info['source_range'] = firewall['sourceRanges'][0]
+                info['src_dest_range'] = firewall['sourceRanges'][0]
+            elif ('destinationRanges' in firewall and
+                    len(firewall['destinationRanges']) == 1):
+                info['src_dest_range'] = firewall['destinationRanges'][0]
             if 'sourceTags' in firewall and len(firewall['sourceTags']) == 1:
-                info['source_tag'] = firewall['sourceTags'][0]
+                info['src_dest_tag'] = firewall['sourceTags'][0]
             if 'targetTags' in firewall and len(firewall['targetTags']) == 1:
                 info['target_tag'] = firewall['targetTags'][0]
             if 'IPProtocol' in firewall['allowed'][0]:
-                info['ip_protocol'] = firewall['allowed'][0]['IPProtocol']
+                info['protocol'] = firewall['allowed'][0]['IPProtocol']
             if ('ports' in firewall['allowed'][0] and
                     len(firewall['allowed'][0]['ports']) == 1):
                 info['port'] = firewall['allowed'][0]['ports'][0]
             info['network_name'] = self.network_name(firewall)
+            if 'direction' in firewall:
+                info['direction'] = firewall['direction']
+            if 'priority' in firewall:
+                info['priority'] = firewall['priority']
             return info
         return info
 
@@ -431,13 +454,14 @@ class GCEVMFirewall(BaseVMFirewall):
 
     def __init__(self, delegate, tag, network=None, description=None):
         super(GCEVMFirewall, self).__init__(delegate.provider, tag)
-        self._description = description
         self._delegate = delegate
+        self._description = description
         if network is None:
             self._network = delegate.provider.networking.networks.get_by_name(
                     GCEFirewallsDelegate.DEFAULT_NETWORK)
         else:
             self._network = network
+        self._rule_container = GCEVMFirewallRuleContainer(self)
 
     @property
     def id(self):
@@ -466,13 +490,14 @@ class GCEVMFirewall(BaseVMFirewall):
         If the GCE firewalls are created using this API, they all have the same
         description.
         """
-        if self._description is not None:
-            return self._description
-        for firewall in self._delegate.iter_firewalls(self._vm_firewall,
-                                                      self._network.name):
-            if 'description' in firewall:
-                return firewall['description']
-        return None
+        if self._description is None:
+            for firewall in self._delegate.iter_firewalls(self._vm_firewall,
+                                                          self._network.name):
+                if 'description' in firewall:
+                    self._description = firewall['description']
+        if self._description is None:
+            self._description = ''
+        return self._description
 
     @property
     def network_id(self):
@@ -480,11 +505,53 @@ class GCEVMFirewall(BaseVMFirewall):
 
     @property
     def rules(self):
-        out = []
-        for firewall in self._delegate.iter_firewalls(self._vm_firewall,
-                                                      self._network.name):
-            out.append(GCEVMFirewallRule(self._delegate, firewall['id']))
-        return out
+        return self._rule_container
+
+    def delete(self):
+        for rule in self._rule_container:
+            rule.delete()
+        self._rule_container.dummy_rule.force_delete()
+
+    def to_json(self):
+        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
+        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        json_rules = [r.to_json() for r in self.rules]
+        js['rules'] = json_rules
+        return js
+
+    @property
+    def network(self):
+        return self._network
+
+    @property
+    def delegate(self):
+        return self._delegate
+
+
+class GCEVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
+
+    def __init__(self, firewall):
+        super(GCEVMFirewallRuleContainer, self).__init__(
+                firewall.delegate.provider, firewall)
+        self._dummy_rule = None
+
+    def list(self, limit=None, marker=None):
+        rules = []
+        for firewall in self.firewall.delegate.iter_firewalls(
+                self.firewall.name, self.firewall.network.name):
+            rule = GCEVMFirewallRule(self.firewall, firewall['id'])
+            if rule.is_dummy_rule():
+                self._dummy_rule = rule
+            else:
+                rules.append(rule)
+        return ClientPagedResultList(self._provider, rules,
+                                     limit=limit, marker=marker)
+
+    @property
+    def dummy_rule(self):
+        if not self._dummy_rule:
+            self.list()
+        return self._dummy_rule
 
     @staticmethod
     def to_port_range(from_port, to_port):
@@ -495,75 +562,61 @@ class GCEVMFirewall(BaseVMFirewall):
         else:
             return to_port
 
-    def add_rule(self, ip_protocol, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        port = GCEVMFirewall.to_port_range(from_port, to_port)
-        src_tag = src_group.name if src_group is not None else None
-        self._delegate.add_firewall(self._vm_firewall, ip_protocol, port,
-                                    cidr_ip, src_tag, self.description,
-                                    self._network.name)
-        return self.get_rule(ip_protocol, from_port, to_port, cidr_ip,
-                             src_group)
-
-    def get_rule(self, ip_protocol=None, from_port=None, to_port=None,
-                 cidr_ip=None, src_group=None):
-        port = GCEVMFirewall.to_port_range(from_port, to_port)
-        src_tag = src_group.name if src_group is not None else None
-        firewall_id = self._delegate.find_firewall(
-                self._vm_firewall, ip_protocol, port, cidr_ip, src_tag,
-                self._network.name)
-        if firewall_id is None:
+    def create_with_priority(self, direction, protocol, priority,
+                             from_port=None, to_port=None, cidr=None,
+                             src_dest_fw=None):
+        port = GCEVMFirewallRuleContainer.to_port_range(from_port, to_port)
+        src_dest_tag = None
+        src_dest_fw_id = None
+        if src_dest_fw:
+            src_dest_tag = src_dest_fw.name
+            src_dest_fw_id = src_dest_fw.id
+        if not self.firewall.delegate.add_firewall(
+                self.firewall.name, direction, protocol, priority, port, cidr,
+                src_dest_tag, self.firewall.description,
+                self.firewall.network.name):
             return None
-        return GCEVMFirewallRule(self._delegate, firewall_id)
+        rules = self.find(direction=direction, protocol=protocol,
+                          from_port=from_port, to_port=to_port, cidr=cidr,
+                          src_dest_fw_id=src_dest_fw_id)
+        if len(rules) < 1:
+            return None
+        return rules[0]
 
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
-        json_rules = [r.to_json() for r in self.rules]
-        js['rules'] = [json.loads(r) for r in json_rules]
-        return json.dumps(js, sort_keys=True)
-
-    def delete(self):
-        for rule in self.rules:
-            rule.delete()
+    def create(self, direction, protocol, from_port=None, to_port=None,
+               cidr=None, src_dest_fw=None):
+        return self.create_with_priority(direction, protocol, 1000, from_port,
+                                         to_port, cidr, src_dest_fw)
 
 
 class GCEVMFirewallRule(BaseVMFirewallRule):
 
-    def __init__(self, delegate, firewall_id):
-        super(GCEVMFirewallRule, self).__init__(
-                delegate.provider, firewall_id, None)
-        self._delegate = delegate
-
-    @property
-    def parent(self):
-        """
-        Return the VM firewall to which this rule belongs.
-        """
-        info = self._delegate.get_firewall_info(self._rule)
-        if info is None:
-            return None
-        if 'target_tag' not in info or info['network_name'] is None:
-            return None
-        network = self._delegate.network.get_by_name(info['network_name'])
-        if network is None:
-            return None
-        return GCEVMFirewall(self._delegate, info['target_tag'], network)
+    def __init__(self, parent_fw, rule):
+        super(GCEVMFirewallRule, self).__init__(parent_fw, rule)
 
     @property
     def id(self):
         return self._rule
 
     @property
-    def ip_protocol(self):
-        info = self._delegate.get_firewall_info(self._rule)
-        if info is None or 'ip_protocol' not in info:
+    def direction(self):
+        info = self.firewall.delegate.get_firewall_info(self._rule)
+        if info is None:
             return None
-        return info['ip_protocol']
+        if 'direction' in info and info['direction'] == 'EGRESS':
+            return TrafficDirection.OUTBOUND
+        return TrafficDirection.INBOUND
+
+    @property
+    def protocol(self):
+        info = self.firewall.delegate.get_firewall_info(self._rule)
+        if info is None or 'protocol' not in info:
+            return None
+        return info['protocol']
 
     @property
     def from_port(self):
-        info = self._delegate.get_firewall_info(self._rule)
+        info = self.firewall.delegate.get_firewall_info(self._rule)
         if info is None or 'port' not in info:
             return 0
         port = info['port']
@@ -578,7 +631,7 @@ class GCEVMFirewallRule(BaseVMFirewallRule):
 
     @property
     def to_port(self):
-        info = self._delegate.get_firewall_info(self._rule)
+        info = self.firewall.delegate.get_firewall_info(self._rule)
         if info is None or 'port' not in info:
             return 0
         port = info['port']
@@ -592,40 +645,61 @@ class GCEVMFirewallRule(BaseVMFirewallRule):
         return 0
 
     @property
-    def cidr_ip(self):
-        """
-        Return the IP of machines from which this rule allows traffic.
-        """
-        info = self._delegate.get_firewall_info(self._rule)
-        if info is None or 'source_range' not in info:
+    def cidr(self):
+        info = self.firewall.delegate.get_firewall_info(self._rule)
+        if info is None or 'src_dest_range' not in info:
             return None
-        return info['source_range']
+        return info['src_dest_range']
 
     @property
-    def group(self):
+    def src_dest_fw_id(self):
         """
-        Return the VM firewall from which this rule allows traffic.
+        Return the VM firewall given access by this rule.
         """
-        info = self._delegate.get_firewall_info(self._rule)
-        if info is None:
+        info = self.firewall.delegate.get_firewall_info(self._rule)
+        if info is None or 'src_dest_tag' not in info:
             return None
-        if 'source_tag' not in info or info['network_name'] is None:
-            return None
-        network = self._delegate.provider.networking.networks.get_by_name(
-                info['network_name'])
-        if network is None:
-            return None
-        return GCEVMFirewall(self._delegate, info['source_tag'], network)
+        return GCEFirewallsDelegate.tag_network_id(info['src_dest_tag'],
+                                                   self.firewall.network.name)
 
-    def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
-        js['group'] = self.group.id if self.group else ''
-        js['parent'] = self.parent.id if self.parent else ''
-        return json.dumps(js, sort_keys=True)
+    @property
+    def src_dest_fw(self):
+        """
+        Return the VM firewall given access by this rule.
+        """
+        info = self.firewall.delegate.get_firewall_info(self._rule)
+        if info is None or 'src_dest_tag' not in info:
+            return None
+        return GCEVMFirewall(
+                self.firewall.delegate, info['src_dest_tag'],
+                self.firewall.network)
+
+    @property
+    def priority(self):
+        info = self.firewall.delegate.get_firewall_info(self._rule)
+        # The default firewall rule priority, when not specified, is 1000.
+        if info is None or 'priority' not in info:
+            return 1000
+        return info['priority']
+
+    def is_dummy_rule(self):
+        if self.priority != 65534:
+            return False
+        if self.direction != TrafficDirection.OUTBOUND:
+            return False
+        if self.protocol != 'tcp':
+            return False
+        if self.cidr != '0.0.0.0/0':
+            return False
+        return True
 
     def delete(self):
-        self._delegate.delete_firewall_id(self._rule)
+        if (self.is_dummy_rule()):
+            return
+        self.force_delete()
+
+    def force_delete(self):
+        self.firewall.delegate.delete_firewall_id(self._rule)
 
 
 class GCEMachineImage(BaseMachineImage):
@@ -706,9 +780,10 @@ class GCEMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
+        name = self.name
         self._gce_image = self._provider.get_resource('images', self.id)
         if not self._gce_image:
-            self._gce_image = {'status': 'UNKNOWN'}
+            self._gce_image = {'name': name, 'status': 'UNKNOWN'}
 
 
 class GCEInstance(BaseInstance):
@@ -758,12 +833,12 @@ class GCEInstance(BaseInstance):
         """
         Set the instance name.
         """
-        GCEInstance.assert_valid_resource_name(name)
+        GCEInstance.assert_valid_resource_name(value)
         # In GCE, the name of the instance is provided by the client when
         # initially creating the resource. The name cannot be changed after
         # the instance is created.
         cb.log.warning("Setting instance name after it is created is not "
-                       "supported by this provider.")
+                       "supported by this provider: %s", value)
 
     @property
     def public_ips(self):
@@ -784,7 +859,7 @@ class GCEInstance(BaseInstance):
                 if 'natIP' in access_config:
                     ips.append(access_config['natIP'])
         for ip in self.inet_gateway.floating_ips:
-            if ip.in_use():
+            if ip.in_use:
                 if ip.private_ip in self.private_ips:
                     ips.append(ip.public_ip)
         return ips
@@ -847,14 +922,16 @@ class GCEInstance(BaseInstance):
         """
         Permanently terminate this instance.
         """
+        name = self.name
         response = (self._provider
                         .gce_compute
                         .instances()
                         .delete(project=self._provider.project_name,
                                 zone=self.zone_name,
-                                instance=self.name)
+                                instance=name)
                         .execute())
         self._provider.wait_for_operation(response, zone=self.zone_name)
+        self._gce_instance = {'name': name, 'status': 'UNKNOWN'}
 
     def stop(self):
         """
@@ -927,7 +1004,10 @@ class GCEInstance(BaseInstance):
         """
         Get the name of the key pair associated with this instance.
         """
-        return self._provider.security.key_pairs.name
+        try:
+            return next(self._provider.security.key_pairs)
+        except StopIteration:
+            return None
 
     @property
     def inet_gateway(self):
@@ -974,7 +1054,7 @@ class GCEInstance(BaseInstance):
         try:
             for target_instance in helpers.iter_all(
                     self._provider.gce_compute.targetInstances(),
-                    project=self.name,
+                    project=self._provider.project_name,
                     zone=self.zone_name):
                 url = self._provider.parse_url(target_instance['instance'])
                 if url.parameters['instance'] == self.name:
@@ -1000,7 +1080,7 @@ class GCEInstance(BaseInstance):
             response = (self._provider
                             .gce_compute
                             .targetInstances()
-                            .insert(project=self.name,
+                            .insert(project=self._provider.project_name,
                                     zone=self.zone_name,
                                     body=body)
                             .execute())
@@ -1117,54 +1197,46 @@ class GCEInstance(BaseInstance):
             return False
         return True
 
-    def add_floating_ip(self, ip_address):
+    def add_floating_ip(self, floating_ip):
         """
         Add an elastic IP address to this instance.
         """
-        for ip in self.inet_gateway.floating_ips:
-            if ip.public_ip == ip_address:
-                if ip.in_use():
-                    if ip.private_ip not in self.private_ips:
-                        cb.log.warning(
-                            'Floating IP "%s" is already associated to "%s".',
-                            ip_address, self.name)
-                    return
-                target_instance = self._get_target_instance()
-                if not target_instance:
-                    cb.log.warning(
-                            'Could not create a targetInstance for "%s"',
-                            self.name)
-                    return
-                if not self._forward(ip, target_instance):
-                    cb.log.warning('Could not forward "%s" to "%s"',
-                                   ip.public_ip, target_instance['selfLink'])
-                return
-        cb.log.warning('Floating IP "%s" does not exist.', ip_address)
+        fip = (floating_ip if isinstance(floating_ip, GCEFloatingIP)
+               else self.inet_gateway.floating_ips.get(floating_ip))
+        if fip.in_use:
+            if fip.private_ip not in self.private_ips:
+                cb.log.warning('Floating IP "%s" is not associated to "%s"',
+                               fip.public_ip, self.name)
+            return
+        target_instance = self._get_target_instance()
+        if not target_instance:
+            cb.log.warning('Could not create a targetInstance for "%s"',
+                           self.name)
+            return
+        if not self._forward(fip, target_instance):
+            cb.log.warning('Could not forward "%s" to "%s"',
+                           fip.public_ip, target_instance['selfLink'])
 
-    def remove_floating_ip(self, ip_address):
+    def remove_floating_ip(self, floating_ip):
         """
         Remove a elastic IP address from this instance.
         """
-        for ip in self.inet_gateway.floating_ips:
-            if ip.public_ip == ip_address:
-                if not ip.in_use() or ip.private_ip not in self.private_ips:
-                    cb.log.warning(
-                        'Floating IP "%s" is not associated to "%s".',
-                        ip_address, self.name)
-                    return
-                target_instance = self._get_target_instance()
-                if not target_instance:
-                    # We should not be here.
-                    cb.log.warning('Something went wrong! "%s" is associated '
-                                   'to "%s" with no target instance',
-                                   ip_address, self.name)
-                    return
-                if not self._delete_existing_rule(ip, target_instance):
-                    cb.log.warning(
-                        'Could not remove floating IP "%s" from instance "%s"',
-                        ip.public_ip, self.name)
-                return
-        cb.log.warning('Floating IP "%s" does not exist.', ip_address)
+        fip = (floating_ip if isinstance(floating_ip, GCEFloatingIP)
+               else self.inet_gateway.floating_ips.get(floating_ip))
+        if not fip.in_use or fip.private_ip not in self.private_ips:
+            cb.log.warning('Floating IP "%s" is not associated to "%s"',
+                           fip.public_ip, self.name)
+            return
+        target_instance = self._get_target_instance()
+        if not target_instance:
+            # We should not be here.
+            cb.log.warning('Something went wrong! "%s" is associated to "%s" '
+                           'with no target instance', fip.public_ip, self.name)
+            return
+        if not self._delete_existing_rule(fip, target_instance):
+            cb.log.warning(
+                'Could not remove floating IP "%s" from instance "%s"',
+                fip.public_ip, self.name)
 
     @property
     def state(self):
@@ -1176,9 +1248,10 @@ class GCEInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
+        name = self.name
         self._gce_instance = self._provider.get_resource('instances', self.id)
         if not self._gce_instance:
-            self._gce_instance = {'status': 'UNKNOWN'}
+            self._gce_instance = {'name': name, 'status': 'UNKNOWN'}
 
     def add_vm_firewall(self, sg):
         tag = sg.name if isinstance(sg, GCEVMFirewall) else sg
@@ -1255,7 +1328,7 @@ class GCENetwork(BaseNetwork):
 
     @property
     def subnets(self):
-        return self._provider.networking.subnets.list(network=self)
+        return list(self._provider.networking.subnets.iter(network=self))
 
     def delete(self):
         try:
@@ -1345,37 +1418,7 @@ class GCEFloatingIP(BaseFloatingIP):
     def __init__(self, provider, floating_ip):
         super(GCEFloatingIP, self).__init__(provider)
         self._ip = floating_ip
-
-        # We use regional IPs to simulate floating IPs not global IPs because
-        # global IPs can be forwarded only to load balancing resources, not to
-        # a specific instance. Find out the region to which the IP belongs.
-        url = provider.parse_url(self._ip['region'])
-        self._region_name = url.parameters['region']
-
-        # Check if the address is used by a resource.
-        self._rule = None
-        self._target_instance = None
-        if 'users' in floating_ip and len(floating_ip['users']) > 0:
-            if len(floating_ip['users']) > 1:
-                cb.log.warning('Address "%s" in use by more than one resource',
-                               floating_ip['address'])
-            resource_parsed_url = provider.parse_url(floating_ip['users'][0])
-            resource = resource_parsed_url.get_resource()
-            if resource['kind'] == 'compute#forwardingRule':
-                self._rule = resource
-                target = provider.parse_url(resource['target']).get_resource()
-                if target['kind'] == 'compute#targetInstance':
-                    url = provider.parse_url(target['instance'])
-                    try:
-                        self._target_instance = url.get_resource()
-                    except googleapiclient.errors.HttpError:
-                        self._target_instance = GCEFloatingIP._DEAD_INSTANCE
-                else:
-                    cb.log.warning('Address "%s" is forwarded to a %s',
-                                   floating_ip['address'], target['kind'])
-            else:
-                cb.log.warning('Address "%s" in use by a %s',
-                               floating_ip['address'], resource['kind'])
+        self._process_ip_users()
 
     @property
     def id(self):
@@ -1383,7 +1426,11 @@ class GCEFloatingIP(BaseFloatingIP):
 
     @property
     def region_name(self):
-        return self._region_name
+        # We use regional IPs to simulate floating IPs not global IPs because
+        # global IPs can be forwarded only to load balancing resources, not to
+        # a specific instance. Find out the region to which the IP belongs.
+        url = self._provider.parse_url(self._ip['region'])
+        return url.parameters['region']
 
     @property
     def public_ip(self):
@@ -1396,6 +1443,7 @@ class GCEFloatingIP(BaseFloatingIP):
             return None
         return self._target_instance['networkInterfaces'][0]['networkIP']
 
+    @property
     def in_use(self):
         return True if self._target_instance else False
 
@@ -1407,26 +1455,55 @@ class GCEFloatingIP(BaseFloatingIP):
                             .gce_compute
                             .forwardingRules()
                             .delete(project=project_name,
-                                    region=self._region_name,
+                                    region=self.region_name,
                                     forwardingRule=self._rule['name'])
                             .execute())
             self._provider.wait_for_operation(response,
-                                              region=self._region_name)
+                                              region=self.region_name)
 
         # Release the address.
         response = (self._provider
                         .gce_compute
                         .addresses()
                         .delete(project=project_name,
-                                region=self._region_name,
+                                region=self.region_name,
                                 address=self._ip['name'])
                         .execute())
-        self._provider.wait_for_operation(response, region=self._region_name)
+        self._provider.wait_for_operation(response, region=self.region_name)
 
     def refresh(self):
         self._ip = self._provider.get_resource('addresses', self.id)
         if not self._ip:
             self._ip = {'status': 'UNKNOWN'}
+        else:
+            self._process_ip_users()
+
+    def _process_ip_users(self):
+        self._rule = None
+        self._target_instance = None
+
+        if 'users' in self._ip and len(self._ip['users']) > 0:
+            provider = self._provider
+            if len(self._ip['users']) > 1:
+                cb.log.warning('Address "%s" in use by more than one resource',
+                               self._ip['address'])
+            resource_parsed_url = provider.parse_url(self._ip['users'][0])
+            resource = resource_parsed_url.get_resource()
+            if resource['kind'] == 'compute#forwardingRule':
+                self._rule = resource
+                target = provider.parse_url(resource['target']).get_resource()
+                if target['kind'] == 'compute#targetInstance':
+                    url = provider.parse_url(target['instance'])
+                    try:
+                        self._target_instance = url.get_resource()
+                    except googleapiclient.errors.HttpError:
+                        self._target_instance = GCEFloatingIP._DEAD_INSTANCE
+                else:
+                    cb.log.warning('Address "%s" is forwarded to a %s',
+                                   self._ip['address'], target['kind'])
+            else:
+                cb.log.warning('Address "%s" in use by a %s',
+                               self._ip['address'], resource['kind'])
 
 
 class GCERouter(BaseRouter):
@@ -1483,10 +1560,14 @@ class GCERouter(BaseRouter):
             subnet = self._provider.networking.subnets.get(subnet)
         if subnet.network_id == self.network_id:
             return
-        cb.log.warning('GCE routers should be attached at creation time')
+        cb.log.warning('Google Cloud Routers automatically learn new subnets '
+                       'in your VPC network and announces them to your '
+                       'on-premises network')
 
     def detach_subnet(self, network_id):
-        cb.log.warning('GCE routers are always attached')
+        cb.log.warning('Cannot detach from subnet. Google Cloud Routers '
+                       'automatically learn new subnets in your VPC network '
+                       'and announces them to your on-premises network')
 
     def attach_gateway(self, gateway):
         pass
@@ -1572,6 +1653,7 @@ class GCESubnet(BaseSubnet):
 
     @name.setter
     def name(self, value):
+        GCESubnet.assert_valid_resource_name(value)
         if value == self.name:
             return
         cb.log.warning('Cannot change the name of a GCE subnetwork')
@@ -1594,7 +1676,7 @@ class GCESubnet(BaseSubnet):
 
     @property
     def region_name(self):
-        parsed_url = self.provider.parse_url(self.id)
+        parsed_url = self._provider.parse_url(self.id)
         return parsed_url.parameters['region']
 
     @property
@@ -2008,7 +2090,21 @@ class GCSObject(BaseBucketObject):
              .execute())
 
     def generate_url(self, expires_in=0):
-        return self._obj['mediaLink']
+        """
+        Generates a signed URL accessible to everyone.
+        """
+        expiration = calendar.timegm(time.gmtime()) + 2 * 24 * 60 * 60
+        signature = self._provider.sign_blob(
+                'GET\n\n\n%d\n/%s/%s' %
+                (expiration, self._obj['bucket'], self.name))
+        encoded_signature = base64.b64encode(signature)
+        url_encoded_signature = (encoded_signature.replace('+', '%2B')
+                                                  .replace('/', '%2F'))
+        return ('https://storage.googleapis.com/%s/%s?GoogleAccessId=%s'
+                '&Expires=%d&Signature=%s' % (self._obj['bucket'], self.name,
+                                              self._provider.client_id,
+                                              expiration,
+                                              url_encoded_signature))
 
 
 class GCSBucketContainer(BaseBucketContainer):
@@ -2095,6 +2191,10 @@ class GCSBucket(BaseBucket):
              .buckets()
              .delete(bucket=self.name)
              .execute())
+        # GCS has a rate limit of 1 operation per 2 seconds for bucket
+        # creation/deletion: https://cloud.google.com/storage/quotas.  Throttle
+        # here to avoid future failures.
+        time.sleep(2)
 
     def create_object(self, name):
         """
