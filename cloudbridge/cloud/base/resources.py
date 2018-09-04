@@ -4,7 +4,6 @@ Base implementation for data objects exposed through a provider or service
 import inspect
 import itertools
 import logging
-import os
 import re
 import shutil
 import time
@@ -888,7 +887,7 @@ class BaseRouter(BaseCloudResource, Router):
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):
 
-    CB_DEFAULT_INET_GATEWAY_NAME = os.environ.get(
+    CB_DEFAULT_INET_GATEWAY_NAME = cb_helpers.get_env(
         'CB_DEFAULT_INET_GATEWAY_NAME', 'cloudbridge-inetgateway')
 
     def __init__(self, provider):
