@@ -381,6 +381,7 @@ class AWSInstance(BaseInstance):
     def refresh(self):
         try:
             self._ec2_instance.reload()
+            self._unknown_state = False
         except ClientError:
             # The instance no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -513,6 +514,7 @@ class AWSVolume(BaseVolume):
     def refresh(self):
         try:
             self._volume.reload()
+            self._unknown_state = False
         except ClientError:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -593,6 +595,7 @@ class AWSSnapshot(BaseSnapshot):
     def refresh(self):
         try:
             self._snapshot.reload()
+            self._unknown_state = False
         except ClientError:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -1100,6 +1103,7 @@ class AWSSubnet(BaseSubnet):
     def refresh(self):
         try:
             self._subnet.reload()
+            self._unknown_state = False
         except ClientError:
             # subnet no longer exists
             self._unknown_state = True
