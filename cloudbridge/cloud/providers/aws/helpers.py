@@ -198,11 +198,13 @@ class BotoGenericService(object):
         if client.can_paginate(list_op):
             log.debug("Supports server side pagination. Server will"
                       " limit and page results.")
-            return self._get_paginated_results(limit, marker, collection)
+            res_token, items = self._get_paginated_results(limit, marker,
+                                                           collection)
+            return 'server', res_token, items
         else:
             log.debug("Does not support server side pagination. Client will"
                       " limit and page results.")
-            return (None, collection)
+            return 'client', None, collection
 
     def list(self, limit=None, marker=None, collection=None, **kwargs):
         """
@@ -215,15 +217,18 @@ class BotoGenericService(object):
         """
         limit = limit or self.provider.config.default_result_limit
         collection = collection or self.boto_collection.filter(**kwargs)
-        resume_token, boto_objs = self._make_query(collection, limit, marker)
-
+        pag_type, resume_token, boto_objs = self._make_query(collection,
+                                                             limit,
+                                                             marker)
         # Wrap in CB objects.
         results = [self.cb_resource(self.provider, obj) for obj in boto_objs]
 
-        if resume_token:
-            log.debug("Received a resume token, using server pagination.")
-            return ServerPagedResultList(is_truncated=True,
-                                         marker=resume_token,
+        if pag_type == 'server':
+            log.debug("Using server pagination.")
+            return ServerPagedResultList(is_truncated=True if resume_token
+                                         else False,
+                                         marker=resume_token if resume_token
+                                         else None,
                                          supports_total=False,
                                          data=results)
         else:

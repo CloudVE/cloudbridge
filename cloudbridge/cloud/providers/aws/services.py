@@ -141,6 +141,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
         obj = self.svc.create('create_security_group', GroupName=name,
                               Description=description or name,
                               VpcId=network_id)
+        obj.wait_till_ready()
         obj.label = label
         return obj
 
@@ -257,7 +258,7 @@ class AWSSnapshotService(BaseSnapshotService):
 
         log.debug("Searching for AWS Snapshot Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label,
-                             OwnerIds=['self', 'amazon'])
+                             OwnerIds=['self'])
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker,

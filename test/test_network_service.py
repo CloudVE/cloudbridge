@@ -154,23 +154,30 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['networking.routers'])
     def test_crud_router(self):
 
-        def _cleanup(subnet, router, gateway):
-            with helpers.cleanup_action(lambda: gateway.delete()):
-                with helpers.cleanup_action(lambda: router.delete()):
-                    router.detach_subnet(subnet)
-                    router.detach_gateway(gateway)
+        def _cleanup(net, subnet, router, gateway):
+            with helpers.cleanup_action(lambda: router.delete()):
+                with helpers.cleanup_action(lambda: net.delete()):
+                    with helpers.cleanup_action(lambda: subnet.delete()):
+                        with helpers.cleanup_action(lambda: gateway.delete()):
+                            router.detach_subnet(subnet)
+                            router.detach_gateway(gateway)
 
         label = 'cb-crudrouter-{0}'.format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
+        net = None
         sn = None
         router = None
         gteway = None
-        with helpers.cleanup_action(lambda: _cleanup(sn, router, gteway)):
-            sn = helpers.get_or_create_default_subnet(self.provider)
-            net = sn.network
+        with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
+            net = self.provider.networking.networks.create(
+                label=label, cidr_block='10.0.0.0/16')
             router = self.provider.networking.routers.create(label=label,
                                                              network=net)
+            cidr = '10.0.1.0/24'
+            sn = net.create_subnet(label=label, cidr_block=cidr,
+                                   zone=helpers.get_provider_test_data(
+                                       self.provider, 'placement'))
 
             # Check basic router properties
             sit.check_standard_behaviour(
