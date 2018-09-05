@@ -1,7 +1,9 @@
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
+from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import SubnetState
 
 import test.helpers as helpers
 from test.helpers import ProviderTestBase
@@ -22,7 +24,13 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def cleanup_net(net):
             if net:
-                self.provider.networking.networks.delete(network_id=net.id)
+                net.delete()
+                net.refresh()
+                self.assertTrue(
+                    net.state == NetworkState.UNKNOWN,
+                    "Network.state must be unknown when refreshing after "
+                    "a delete but got %s"
+                    % net.state)
 
         sit.check_crud(self, self.provider.networking.networks, Network,
                        "cb-crudnetwork", create_net, cleanup_net)
@@ -98,7 +106,13 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def cleanup_subnet(subnet):
             if subnet:
-                self.provider.networking.subnets.delete(subnet=subnet)
+                subnet.delete()
+                subnet.refresh()
+                self.assertTrue(
+                    subnet.state == SubnetState.UNKNOWN,
+                    "Subnet.state must be unknown when refreshing after "
+                    "a delete but got %s"
+                    % subnet.state)
 
         sit.check_crud(self, self.provider.networking.subnets, Subnet,
                        "cb-crudsubnet", create_subnet, cleanup_subnet)

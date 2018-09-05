@@ -35,6 +35,12 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 vol.delete()
                 vol.wait_for([VolumeState.DELETED, VolumeState.UNKNOWN],
                              terminal_states=[VolumeState.ERROR])
+                vol.refresh()
+                self.assertTrue(
+                    vol.state == VolumeState.UNKNOWN,
+                    "Volume.state must be unknown when refreshing after a "
+                    "delete but got %s"
+                    % vol.state)
 
         sit.check_crud(self, self.provider.storage.volumes, Volume,
                        "cb-createvol", create_vol, cleanup_vol)
@@ -151,6 +157,12 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     snap.delete()
                     snap.wait_for([SnapshotState.UNKNOWN],
                                   terminal_states=[SnapshotState.ERROR])
+                    snap.refresh()
+                    self.assertTrue(
+                        snap.state == SnapshotState.UNKNOWN,
+                        "Snapshot.state must be unknown when refreshing after "
+                        "a delete but got %s"
+                        % snap.state)
 
             sit.check_crud(self, self.provider.storage.snapshots, Snapshot,
                            "cb-snap", create_snap, cleanup_snap)

@@ -14,6 +14,7 @@ from cloudbridge.cloud.interfaces.exceptions \
 from cloudbridge.cloud.interfaces.resources import LabeledCloudResource
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
+from cloudbridge.cloud.providers.aws.services import AWSImageService
 
 import test.helpers as helpers
 
@@ -89,9 +90,14 @@ def check_find(test, service, obj):
 
 
 def check_find_non_existent(test, service, obj):
-    # check find
+    args = {}
+    # AWSImageService.find looks through all public images by default
+    # In order to get tests to run faster, looking for these non existent
+    # values only in images owned by the current user
+    if isinstance(service, AWSImageService):
+        args = {'owners': ['self']}
     if isinstance(obj, LabeledCloudResource):
-        find_objs = service.find(label="random_imagined_obj_name")
+        find_objs = service.find(label="random_imagined_obj_name", **args)
     else:
         find_objs = service.find(name="random_imagined_obj_name")
     with test.assertRaises(TypeError):

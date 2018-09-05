@@ -34,6 +34,12 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 img.delete()
                 img.wait_for(
                     [MachineImageState.UNKNOWN, MachineImageState.ERROR])
+                img.refresh()
+                self.assertTrue(
+                    img.state == MachineImageState.UNKNOWN,
+                    "MachineImage.state must be unknown when refreshing after "
+                    "a delete but got %s"
+                    % img.state)
 
         def extra_tests(img):
             # check image size

@@ -249,25 +249,17 @@ class AWSSnapshotService(BaseSnapshotService):
 
     def find(self, **kwargs):
         # Filter by description or label
-        descr = kwargs.pop('description', None)
-        label = kwargs.pop('label', None)
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" %
-                            (kwargs, 'label, description'))
+        label = kwargs.get('label', None)
+
         obj_list = []
-        if descr:
-            log.debug("Searching for AWS Snapshot with description %s", descr)
-            obj_list.extend(self.svc.find(filter_name='tag:Description',
-                                          filter_value=descr))
         if label:
             log.debug("Searching for AWS Snapshot with label %s", label)
             obj_list.extend(self.svc.find(filter_name='tag:Name',
-                                          filter_value=label))
-        if not descr and not label:
+                                          filter_value=label,
+                                          OwnerIds=['self']))
+        else:
             obj_list = list(self)
-        filters = ['label', 'description']
+        filters = ['label']
         return cb_helpers.generic_find(filters, kwargs, obj_list)
 
     def list(self, limit=None, marker=None):
@@ -392,23 +384,21 @@ class AWSImageService(BaseImageService):
 
     def find(self, **kwargs):
         # Filter by name or label
-        name = kwargs.pop('name', None)
-        label = kwargs.pop('label', None)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" %
-                            (kwargs, 'label, name'))
+        name = kwargs.get('name', None)
+        label = kwargs.get('label', None)
+        owner = kwargs.pop('owners', None)
+        extra_args = {}
+        if owner:
+            extra_args.update(Owners=owner)
 
         obj_list = []
         if name:
             log.debug("Searching for AWS Image Service %s", name)
             obj_list.extend(self.svc.find(filter_name='name',
-                                          filter_value=name))
+                                          filter_value=name, **extra_args))
         if label:
             obj_list.extend(self.svc.find(filter_name='tag:Name',
-                                          filter_value=label))
+                                          filter_value=label, **extra_args))
         if not name and not label:
             obj_list = self
 

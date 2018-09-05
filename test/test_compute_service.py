@@ -36,6 +36,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             if inst:
                 inst.delete()
                 inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN])
+                inst.refresh()
+                self.assertTrue(
+                    inst.state == InstanceState.UNKNOWN,
+                    "Instance.state must be unknown when refreshing after a "
+                    "delete but got %s"
+                    % inst.state)
 
         def check_deleted(inst):
             deleted_inst = self.provider.compute.instances.get(
@@ -366,6 +372,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                             fip.in_use,
                             "Attached floating IP address should be in use.")
                     test_inst.refresh()
+                    test_inst.reboot()
+                    test_inst.wait_till_ready()
                     self.assertNotIn(
                         fip.public_ip,
                         test_inst.public_ips + test_inst.private_ips)
