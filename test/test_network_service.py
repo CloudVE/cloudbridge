@@ -92,7 +92,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_subnet(label):
             return self.provider.networking.subnets.create(
-                label=label, network=net, cidr_block="10.0.0.0/24",
+                label=label, network=net, cidr_block="10.2.0.0/24",
                 zone=helpers.get_provider_test_data(
                     self.provider, 'placement'))
 
@@ -168,7 +168,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 label=label, cidr_block='10.0.0.0/16')
             router = self.provider.networking.routers.create(label=label,
                                                              network=net)
-            cidr = '10.0.1.0/24'
+            cidr = '10.1.0.0/24'
             sn = net.create_subnet(label=label, cidr_block=cidr,
                                    zone=helpers.get_provider_test_data(
                                        self.provider, 'placement'))
