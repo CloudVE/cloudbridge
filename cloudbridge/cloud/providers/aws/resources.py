@@ -234,6 +234,7 @@ class AWSInstance(BaseInstance):
     def __init__(self, provider, ec2_instance):
         super(AWSInstance, self).__init__(provider)
         self._ec2_instance = ec2_instance
+        self._unknown_state = False
 
     @property
     def id(self):
@@ -368,6 +369,8 @@ class AWSInstance(BaseInstance):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return InstanceState.UNKNOWN
         try:
             return AWSInstance.INSTANCE_STATE_MAP.get(
                 self._ec2_instance.state['Name'], InstanceState.UNKNOWN)
@@ -381,7 +384,7 @@ class AWSInstance(BaseInstance):
         except ClientError:
             # The instance no longer exists and cannot be refreshed.
             # set the state to unknown
-            self._ec2_instance.state = {'Name': InstanceState.UNKNOWN}
+            self._unknown_state = True
 
     # pylint:disable=unused-argument
     def _wait_till_exists(self, timeout=None, interval=None):
@@ -405,6 +408,7 @@ class AWSVolume(BaseVolume):
     def __init__(self, provider, volume):
         super(AWSVolume, self).__init__(provider)
         self._volume = volume
+        self._unknown_state = False
 
     @property
     def id(self):
@@ -497,6 +501,8 @@ class AWSVolume(BaseVolume):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return VolumeState.UNKNOWN
         try:
             return AWSVolume.VOLUME_STATE_MAP.get(
                 self._volume.state, VolumeState.UNKNOWN)
@@ -510,7 +516,7 @@ class AWSVolume(BaseVolume):
         except ClientError:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._volume.state = VolumeState.UNKNOWN
+            self._unknown_state = True
 
 
 class AWSSnapshot(BaseSnapshot):
@@ -527,6 +533,7 @@ class AWSSnapshot(BaseSnapshot):
     def __init__(self, provider, snapshot):
         super(AWSSnapshot, self).__init__(provider)
         self._snapshot = snapshot
+        self._unknown_state = False
 
     @property
     def id(self):
@@ -574,6 +581,8 @@ class AWSSnapshot(BaseSnapshot):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return SnapshotState.UNKNOWN
         try:
             return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
                 self._snapshot.state, SnapshotState.UNKNOWN)
@@ -587,7 +596,7 @@ class AWSSnapshot(BaseSnapshot):
         except ClientError:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._snapshot.state = SnapshotState.UNKNOWN
+            self._unknown_state = True
 
     def delete(self):
         self._snapshot.delete()
@@ -962,6 +971,7 @@ class AWSNetwork(BaseNetwork):
         super(AWSNetwork, self).__init__(provider)
         self._vpc = network
         self._gtw_container = AWSGatewayContainer(provider, self)
+        self._unknown_state = False
 
     @property
     def id(self):
@@ -991,6 +1001,8 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return NetworkState.UNKNOWN
         try:
             return AWSNetwork._NETWORK_STATE_MAP.get(
                 self._vpc.state, NetworkState.UNKNOWN)
@@ -1015,7 +1027,7 @@ class AWSNetwork(BaseNetwork):
         except ClientError:
             # The network no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._vpc.state = NetworkState.UNKNOWN
+            self._unknown_state = True
 
     def wait_till_ready(self, timeout=None, interval=None):
         self._provider.ec2_conn.meta.client.get_waiter('vpc_available').wait(
@@ -1038,6 +1050,7 @@ class AWSSubnet(BaseSubnet):
     def __init__(self, provider, subnet):
         super(AWSSubnet, self).__init__(provider)
         self._subnet = subnet
+        self._unknown_state = False
 
     @property
     def id(self):
@@ -1075,6 +1088,8 @@ class AWSSubnet(BaseSubnet):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return SubnetState.UNKNOWN
         try:
             return self._SUBNET_STATE_MAP.get(
                 self._subnet.state, SubnetState.UNKNOWN)
@@ -1083,13 +1098,11 @@ class AWSSubnet(BaseSubnet):
             return SubnetState.UNKNOWN
 
     def refresh(self):
-        subnet = self._provider.networking.subnets.get(self.id)
-        if subnet:
-            # pylint:disable=protected-access
-            self._subnet = subnet._subnet
-        else:
+        try:
+            self._subnet.reload()
+        except ClientError:
             # subnet no longer exists
-            self._subnet.state = SubnetState.UNKNOWN
+            self._unknown_state = True
 
 
 class AWSFloatingIPContainer(BaseFloatingIPContainer):

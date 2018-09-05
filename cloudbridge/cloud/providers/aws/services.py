@@ -141,7 +141,6 @@ class AWSVMFirewallService(BaseVMFirewallService):
         obj = self.svc.create('create_security_group', GroupName=name,
                               Description=description or name,
                               VpcId=network_id)
-        obj.wait_till_ready()
         obj.label = label
         return obj
 
@@ -739,12 +738,15 @@ class AWSSubnetService(BaseSubnetService):
                   label, network, cidr_block, zone)
         AWSSubnet.assert_valid_resource_label(label)
 
+        zone_name = zone.name if isinstance(
+            zone, AWSPlacementZone) else zone
+
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
         subnet = self.svc.create('create_subnet',
                                  VpcId=network_id,
                                  CidrBlock=cidr_block,
-                                 AvailabilityZone=zone)
+                                 AvailabilityZone=zone_name)
         if label:
             subnet.label = label
         return subnet
@@ -764,17 +766,23 @@ class AWSSubnetService(BaseSubnetService):
             # pylint:disable=protected-access
             if sn._subnet.default_for_az:
                 return sn
-        # No provider-default Subnet exists, look for a library-default one
-        for sn in snl:
-            # pylint:disable=protected-access
-            for tag in sn._subnet.tags or {}:
-                if (tag.get('Key') == 'Name' and
-                        tag.get('Value') == AWSSubnet.CB_DEFAULT_SUBNET_LABEL):
-                    return sn
+
+        # Refresh the list for the default label
+        snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL)
+
+        if len(snl) > 0:
+            return snl[0]
+
         # No provider-default Subnet exists, try to create it (net + subnets)
-        default_net = self.provider.networking.networks.create(
-            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
-            cidr_block='10.0.0.0/16')
+        # Check if default net exists
+        default_nets = self.provider.networking.networks.find(
+            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+        if len(default_nets) > 0:
+            default_net = default_nets[0]
+        else:
+            default_net = self.provider.networking.networks.create(
+                label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
+                cidr_block='10.0.0.0/16')
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None

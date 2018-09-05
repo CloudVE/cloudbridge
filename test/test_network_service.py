@@ -87,7 +87,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_subnet(self):
         # Late binding will make sure that create_subnet gets the
         # correct value
-        net = None
+        sn = helpers.get_or_create_default_subnet(self.provider)
+        net = sn.network
 
         def create_subnet(label):
             return self.provider.networking.subnets.create(
@@ -99,15 +100,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             if subnet:
                 self.provider.networking.subnets.delete(subnet=subnet)
 
-        net_label = 'cb-crudsubnet-{0}'.format(helpers.get_uuid())
-        net = self.provider.networking.networks.create(
-            label=net_label, cidr_block='10.0.0.0/16')
-        with helpers.cleanup_action(
-            lambda:
-                self.provider.networking.networks.delete(network_id=net.id)
-        ):
-            sit.check_crud(self, self.provider.networking.subnets, Subnet,
-                           "cb-crudsubnet", create_subnet, cleanup_subnet)
+        sit.check_crud(self, self.provider.networking.subnets, Subnet,
+                       "cb-crudsubnet", create_subnet, cleanup_subnet)
 
     def test_crud_floating_ip(self):
         gw = helpers.get_test_gateway(
@@ -155,8 +149,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_router(self):
 
         def _cleanup(net, subnet, router, gateway):
-            with helpers.cleanup_action(lambda: router.delete()):
-                with helpers.cleanup_action(lambda: net.delete()):
+            with helpers.cleanup_action(lambda: net.delete()):
+                with helpers.cleanup_action(lambda: router.delete()):
                     with helpers.cleanup_action(lambda: subnet.delete()):
                         with helpers.cleanup_action(lambda: gateway.delete()):
                             router.detach_subnet(subnet)
