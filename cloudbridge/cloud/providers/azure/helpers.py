@@ -1,23 +1,23 @@
 from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 
 
-def filter_by_tag(list_items, filters):
-    """
-    This function filter items on the tags
-    :param list_items:
-    :param filters:
-    :return:
-    """
-    filtered_list = []
-    if filters:
-        for obj in list_items:
-            for key in filters:
-                if obj.tags and filters[key] in obj.tags.get(key, ''):
-                    filtered_list.append(obj)
-
-        return filtered_list
-    else:
-        return list_items
+# def filter_by_tag(list_items, filters):
+#     """
+#     This function filter items on the tags
+#     :param list_items:
+#     :param filters:
+#     :return:
+#     """
+#     filtered_list = []
+#     if filters:
+#         for obj in list_items:
+#             for key in filters:
+#                 if obj.tags and filters[key] in obj.tags.get(key, ''):
+#                     filtered_list.append(obj)
+#
+#         return filtered_list
+#     else:
+#         return list_items
 
 
 def parse_url(template_urls, original_url):

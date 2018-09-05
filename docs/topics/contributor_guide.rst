@@ -8,7 +8,7 @@ CloudBridge Provider.
    :maxdepth: 1
 
     Design Goals <design_goals.rst>
-    Design Decisions <design-decisions.rst>
+    Design Decisions <design_decisions.rst>
     Testing <testing.rst>
     Provider Development Walkthrough <provider_development.rst>
     Release Process <release_process.rst>

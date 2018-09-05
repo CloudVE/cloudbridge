@@ -3,7 +3,7 @@ DataTypes used by this provider
 """
 import collections
 import logging
-import uuid
+from uuid import uuid4
 
 from azure.common import AzureException
 from azure.mgmt.devtestlabs.models import GalleryImageReference
@@ -52,12 +52,16 @@ class AzureVMFirewall(BaseVMFirewall):
 
     @property
     def name(self):
-        return self._vm_firewall.tags.get('Name', self._vm_firewall.name)
+        return self._vm_firewall.name
 
-    @name.setter
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._vm_firewall.tags.update(Name=value)
+    @property
+    def label(self):
+        return self._vm_firewall.tags.get('Label', None)
+
+    @label.setter
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._vm_firewall.tags.update(Label=value or "")
         self._provider.azure_client.update_vm_firewall_tags(
             self.id, self._vm_firewall.tags)
 
@@ -67,7 +71,7 @@ class AzureVMFirewall(BaseVMFirewall):
 
     @description.setter
     def description(self, value):
-        self._vm_firewall.tags.update(Description=value)
+        self._vm_firewall.tags.update(Description=value or "")
         self._provider.azure_client.\
             update_vm_firewall_tags(self.id,
                                     self._vm_firewall.tags)
@@ -141,7 +145,7 @@ class AzureVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
             cidr = '0.0.0.0/0'
 
         count = len(self.firewall._vm_firewall.security_rules) + 1
-        rule_name = "Rule - " + str(count)
+        rule_name = "cb-rule-" + str(count)
         priority = 1000 + count
         destination_port_range = str(from_port) + "-" + str(to_port)
         source_port_range = '*'
@@ -178,13 +182,13 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
         return self._rule.id
 
     @property
+    def name(self):
+        return self._rule.name
+
+    @property
     def direction(self):
         return (TrafficDirection.INBOUND if self._rule.direction == "Inbound"
                 else TrafficDirection.OUTBOUND)
-
-    @property
-    def name(self):
-        return self._rule.name
 
     @property
     def protocol(self):
@@ -240,9 +244,6 @@ class AzureBucketObject(BaseBucketObject):
 
     @property
     def name(self):
-        """
-        Get this object's name.
-        """
         return self._key.name
 
     @property
@@ -267,7 +268,7 @@ class AzureBucketObject(BaseBucketObject):
         iterable.
         """
         content_stream = self._provider.azure_client. \
-            get_blob_content(self._container.name, self._key.name)
+            get_blob_content(self._container.id, self._key.name)
         if content_stream:
             content_stream.seek(0)
         return content_stream
@@ -279,7 +280,7 @@ class AzureBucketObject(BaseBucketObject):
         """
         try:
             self._provider.azure_client.create_blob_from_text(
-                self._container.name, self.name, data)
+                self._container.id, self.id, data)
             return True
         except AzureException as azureEx:
             log.exception(azureEx)
@@ -291,7 +292,7 @@ class AzureBucketObject(BaseBucketObject):
         """
         try:
             self._provider.azure_client.create_blob_from_file(
-                self._container.name, self.name, path)
+                self._container.id, self.id, path)
             return True
         except AzureException as azureEx:
             log.exception(azureEx)
@@ -304,19 +305,19 @@ class AzureBucketObject(BaseBucketObject):
         :rtype: bool
         :return: True if successful
         """
-        self._provider.azure_client.delete_blob(self._container.name,
-                                                self.name)
+        self._provider.azure_client.delete_blob(self._container.id,
+                                                self.id)
 
     def generate_url(self, expires_in):
         """
         Generate a URL to this object.
         """
         return self._provider.azure_client.get_blob_url(
-            self._container.name, self.name, expires_in)
+            self._container.id, self.id, expires_in)
 
     def refresh(self):
         self._key = self._provider.azure_client.get_blob(
-            self._container.name, self._key.name)
+            self._container.id, self._key.id)
 
 
 class AzureBucket(BaseBucket):
@@ -363,7 +364,8 @@ class AzureBucketContainer(BaseBucketContainer):
         Retrieve a given object from this bucket.
         """
         try:
-            obj = self._provider.azure_client.get_blob(self.bucket.name, key)
+            obj = self._provider.azure_client.get_blob(self.bucket.name,
+                                                       key)
             return AzureBucketObject(self._provider, self.bucket, obj)
         except AzureException as azureEx:
             log.exception(azureEx)
@@ -434,27 +436,30 @@ class AzureVolume(BaseVolume):
         return self._volume.id
 
     @property
+    def name(self):
+        return self._volume.name
+
+    @property
     def tags(self):
         return self._volume.tags
 
     @property
-    def name(self):
+    def label(self):
         """
-        Get the volume name.
+        Get the volume label.
 
-        .. note:: an instance must have a (case sensitive) tag ``Name``
+        .. note:: an instance must have a (case sensitive) tag ``Label``
         """
-        return self._volume.tags.get('Name', self._volume.name)
+        return self._volume.tags.get('Label', None)
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the volume name.
+        Set the volume label.
         """
-        # self._volume.name = value
-        self.assert_valid_resource_name(value)
-        self._volume.tags.update(Name=value)
+        self.assert_valid_resource_label(value)
+        self._volume.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_disk_tags(self.id,
                              self._volume.tags)
@@ -465,7 +470,7 @@ class AzureVolume(BaseVolume):
 
     @description.setter
     def description(self, value):
-        self._volume.tags.update(Description=value)
+        self._volume.tags.update(Description=value or "")
         self._provider.azure_client. \
             update_disk_tags(self.id,
                              self._volume.tags)
@@ -531,11 +536,12 @@ class AzureVolume(BaseVolume):
                     vm.storage_profile.data_disks.remove(item)
                     self._provider.azure_client.update_vm(vm.id, vm)
 
-    def create_snapshot(self, name, description=None):
+    def create_snapshot(self, label, description=None):
         """
         Create a snapshot of this Volume.
         """
-        return self._provider.storage.snapshots.create(name, self)
+        return self._provider.storage.snapshots.create(label, self,
+                                                       description)
 
     def delete(self):
         """
@@ -588,26 +594,30 @@ class AzureSnapshot(BaseSnapshot):
         return self._snapshot.id
 
     @property
+    def name(self):
+        return self._snapshot.name
+
+    @property
     def resource_id(self):
         return self._snapshot.id
 
     @property
-    def name(self):
+    def label(self):
         """
-        Get the snapshot name.
+        Get the snapshot label.
 
-        .. note:: an instance must have a (case sensitive) tag ``Name``
+        .. note:: an instance must have a (case sensitive) tag ``Label``
         """
-        return self._snapshot.tags.get('Name', self._snapshot.name)
+        return self._snapshot.tags.get('Label', None)
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the snapshot name.
+        Set the snapshot label.
         """
-        self.assert_valid_resource_name(value)
-        self._snapshot.tags.update(Name=value)
+        self.assert_valid_resource_label(value)
+        self._snapshot.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_snapshot_tags(self.id,
                                  self._snapshot.tags)
@@ -618,7 +628,7 @@ class AzureSnapshot(BaseSnapshot):
 
     @description.setter
     def description(self, value):
-        self._snapshot.tags.update(Description=value)
+        self._snapshot.tags.update(Description=value or "")
         self._provider.azure_client. \
             update_snapshot_tags(self.id,
                                  self._snapshot.tags)
@@ -667,8 +677,7 @@ class AzureSnapshot(BaseSnapshot):
         Create a new Volume from this Snapshot.
         """
         return self._provider.storage.volumes. \
-            create(self.name, self.size,
-                   zone=placement, snapshot=self)
+            create(self.name, self.size, zone=placement, snapshot=self)
 
 
 class AzureMachineImage(BaseMachineImage):
@@ -698,39 +707,40 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        if isinstance(self._image, GalleryImageReference):
-            return azure_helpers.generate_urn(self._image)
-        else:
-            return self._image.id
-
-    @property
-    def resource_id(self):
-        if isinstance(self._image, GalleryImageReference):
+        if self.is_gallery_image:
             return azure_helpers.generate_urn(self._image)
         else:
             return self._image.id
 
     @property
     def name(self):
-        """
-        Get the image name.
-
-        :rtype: ``str``
-        :return: Name for this image as returned by the cloud middleware.
-        """
-        if isinstance(self._image, GalleryImageReference):
+        if self.is_gallery_image:
             return azure_helpers.generate_urn(self._image)
         else:
-            return self._image.tags.get('Name', self._image.name)
+            return self._image.name
 
-    @name.setter
-    def name(self, value):
+    @property
+    def resource_id(self):
+        if self.is_gallery_image:
+            return azure_helpers.generate_urn(self._image)
+        else:
+            return self._image.id
+
+    @property
+    def label(self):
+        if self.is_gallery_image:
+            return azure_helpers.generate_urn(self._image)
+        else:
+            return self._image.tags.get('Label', None)
+
+    @label.setter
+    def label(self, value):
         """
-        Set the image name.
+        Set the image label when it is a private image.
         """
-        if not isinstance(self._image, GalleryImageReference):
-            self.assert_valid_resource_name(value)
-            self._image.tags.update(Name=value)
+        if not self.is_gallery_image:
+            self.assert_valid_resource_label(value)
+            self._image.tags.update(Label=value or "")
             self._provider.azure_client. \
                 update_image_tags(self.id, self._image.tags)
 
@@ -742,7 +752,7 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        if isinstance(self._image, GalleryImageReference):
+        if self.is_gallery_image:
             return 'Public gallery image from the Azure Marketplace: '\
                     + self.name
         else:
@@ -753,8 +763,8 @@ class AzureMachineImage(BaseMachineImage):
         """
         Set the image description.
         """
-        if not isinstance(self._image, GalleryImageReference):
-            self._image.tags.update(Description=value)
+        if not self.is_gallery_image:
+            self._image.tags.update(Description=value or "")
             self._provider.azure_client. \
                 update_image_tags(self.id, self._image.tags)
 
@@ -769,7 +779,7 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        if isinstance(self._image, GalleryImageReference):
+        if self.is_gallery_image:
             return 0
         else:
             return self._image.storage_profile.os_disk.disk_size_gb or 0
@@ -778,12 +788,12 @@ class AzureMachineImage(BaseMachineImage):
         """
         Delete this image
         """
-        if not isinstance(self._image, GalleryImageReference):
+        if not self.is_gallery_image:
             self._provider.azure_client.delete_image(self.id)
 
     @property
     def state(self):
-        if isinstance(self._image, GalleryImageReference):
+        if self.is_gallery_image:
             return MachineImageState.AVAILABLE
         else:
             return AzureMachineImage.IMAGE_STATE_MAP.get(
@@ -802,7 +812,7 @@ class AzureMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        if not isinstance(self._image, dict):
+        if not self.is_gallery_image:
             try:
                 self._image = self._provider.azure_client.get_image(self.id)
                 self._state = self._image.provisioning_state
@@ -824,11 +834,7 @@ class AzureGatewayContainer(BaseGatewayContainer):
                                                       network)
 
     def get_or_create_inet_gateway(self, name=None):
-        if name:
-            AzureInternetGateway.assert_valid_resource_name(name)
         gateway = AzureInternetGateway(self._provider, None, self._network)
-        if name:
-            gateway.name = name
         return gateway
 
     def list(self, limit=None, marker=None):
@@ -857,26 +863,30 @@ class AzureNetwork(BaseNetwork):
         return self._network.id
 
     @property
+    def name(self):
+        return self._network.name
+
+    @property
     def resource_id(self):
         return self._network.id
 
     @property
-    def name(self):
+    def label(self):
         """
-        Get the network name.
+        Get the network label.
 
-        .. note:: the network must have a (case sensitive) tag ``Name``
+        .. note:: the network must have a (case sensitive) tag ``Label``
         """
-        return self._network.tags.get('Name', self._network.name)
+        return self._network.tags.get('Label', None)
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the network name.
+        Set the network label.
         """
-        self.assert_valid_resource_name(value)
-        self._network.tags.update(Name=value)
+        self.assert_valid_resource_label(value)
+        self._network.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_network_tags(self.id, self._network)
 
@@ -930,16 +940,16 @@ class AzureNetwork(BaseNetwork):
         """
         return self._provider.networking.subnets.list(network=self.id)
 
-    def create_subnet(self, cidr_block, name=None, zone=None):
+    def create_subnet(self, label, cidr_block, zone=None):
         """
         Create the subnet with cidr_block
         :param cidr_block:
-        :param name:
+        :param label:
         :param zone:
         :return:
         """
         return self._provider.networking.subnets. \
-            create(network=self.id, cidr_block=cidr_block, name=name)
+            create(label=label, network=self.id, cidr_block=cidr_block)
 
     @property
     def gateways(self):
@@ -967,14 +977,15 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
                                      limit=limit, marker=marker)
 
     def create(self):
-        public_ip_address_name = "{0}-{1}".format(
-            'public_ip', uuid.uuid4().hex[:6])
         public_ip_parameters = {
             'location': self._provider.azure_client.region_name,
             'public_ip_allocation_method': 'Static'
         }
+
+        public_ip_name = 'cb-fip-' + uuid4().hex[:6]
+
         floating_ip = self._provider.azure_client.\
-            create_floating_ip(public_ip_address_name, public_ip_parameters)
+            create_floating_ip(public_ip_name, public_ip_parameters)
         return AzureFloatingIP(self._provider, floating_ip, self._network_id)
 
 
@@ -988,6 +999,10 @@ class AzureFloatingIP(BaseFloatingIP):
     @property
     def id(self):
         return self._ip.id
+
+    @property
+    def name(self):
+        return self._ip.ip_address
 
     @property
     def resource_id(self):
@@ -1093,23 +1108,46 @@ class AzureSubnet(BaseSubnet):
         super(AzureSubnet, self).__init__(provider)
         self._subnet = subnet
         self._state = self._subnet.provisioning_state
+        self._tag_name = None
 
     @property
     def id(self):
         return self._subnet.id
 
     @property
-    def resource_id(self):
-        return self._subnet.id
+    def name(self):
+        net_name = self.network_id.split('/')[-1]
+        sn_name = self._subnet.name
+        return '{0}/{1}'.format(net_name, sn_name)
 
     @property
-    def name(self):
-        """
-        Get the subnet name.
+    def label(self):
+        # Although Subnet doesn't support labels, we use the parent Network's
+        # tags to track the subnet's labels
+        network = self._network
+        az_network = network._network
+        return az_network.tags.get(self.tag_name, None)
 
-        .. note:: the subnet must have a (case sensitive) tag ``Name``
-        """
-        return self._subnet.name
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        network = self._network
+        az_network = network._network
+        kwargs = {self.tag_name: value or ""}
+        az_network.tags.update(**kwargs)
+        self._provider.azure_client.update_network_tags(
+            az_network.id, az_network)
+
+    @property
+    def tag_name(self):
+        if not self._tag_name:
+            self._tag_name = 'SubnetLabel_' + self._subnet.name
+        return self._tag_name
+
+    @property
+    def resource_id(self):
+        return self._subnet.id
 
     @property
     def zone(self):
@@ -1204,26 +1242,33 @@ class AzureInstance(BaseInstance):
         return self._vm.id
 
     @property
+    def name(self):
+        """
+        Get the instance name.
+        """
+        return self._vm.name
+
+    @property
     def resource_id(self):
         return self._vm.id
 
     @property
-    def name(self):
+    def label(self):
         """
-        Get the instance name.
+        Get the instance label.
 
-        .. note:: an instance must have a (case sensitive) tag ``Name``
+        .. note:: an instance must have a (case sensitive) tag ``Label``
         """
-        return self._vm.tags.get('Name', self._vm.name)
+        return self._vm.tags.get('Label', None)
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the instance name.
+        Set the instance label.
         """
-        self.assert_valid_resource_name(value)
-        self._vm.tags.update(Name=value)
+        self.assert_valid_resource_label(value)
+        self._vm.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_vm_tags(self.id, self._vm)
 
@@ -1297,10 +1342,13 @@ class AzureInstance(BaseInstance):
         """
         # Not tested for resource group images
         reference_dict = self._vm.storage_profile.image_reference.as_dict()
-        return ':'.join([reference_dict['publisher'],
-                         reference_dict['offer'],
-                         reference_dict['sku'],
-                         reference_dict['version']])
+        if reference_dict.get('publisher'):
+            return ':'.join([reference_dict['publisher'],
+                             reference_dict['offer'],
+                             reference_dict['sku'],
+                             reference_dict['version']])
+        else:
+            return reference_dict['id']
 
     @property
     def zone_id(self):
@@ -1335,13 +1383,13 @@ class AzureInstance(BaseInstance):
                 if nic.network_security_group]
 
     @property
-    def key_pair_name(self):
+    def key_pair_id(self):
         """
         Get the name of the key pair associated with this instance.
         """
         return self._vm.tags.get('Key_Pair')
 
-    def create_image(self, name, private_key_path=None):
+    def create_image(self, label, private_key_path=None):
         """
         Create a new image based on this instance. Documentation for create
         image available at https://docs.microsoft.com/en-us/azure/virtual-ma
@@ -1354,7 +1402,8 @@ class AzureInstance(BaseInstance):
         CloudBridge interface to pass the private key file path
         """
 
-        self.assert_valid_resource_name(name)
+        self.assert_valid_resource_label(label)
+        name = self._generate_name_from_label(label, 'cb-img')
 
         if not self._state == 'VM generalized':
             if not self._state == 'VM running':
@@ -1370,10 +1419,11 @@ class AzureInstance(BaseInstance):
             'source_virtual_machine': {
                 'id': self.resource_id
             },
-            'tags': {'Name': name}
+            'tags': {'Label': label}
         }
 
-        image = self._provider.azure_client.create_image(name, create_params)
+        image = self._provider.azure_client.create_image(name,
+                                                         create_params)
         return AzureMachineImage(self._provider, image)
 
     def _deprovision(self, private_key_path):
@@ -1592,6 +1642,10 @@ class AzureRouter(BaseRouter):
 
     @property
     def id(self):
+        return self._route_table.id
+
+    @property
+    def name(self):
         return self._route_table.name
 
     @property
@@ -1599,22 +1653,22 @@ class AzureRouter(BaseRouter):
         return self._route_table.id
 
     @property
-    def name(self):
+    def label(self):
         """
-        Get the router name.
+        Get the router label.
 
-        .. note:: the router must have a (case sensitive) tag ``Name``
+        .. note:: the router must have a (case sensitive) tag ``Label``
         """
-        return self._route_table.tags.get('Name', self._route_table.name)
+        return self._route_table.tags.get('Label', None)
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the router name.
+        Set the router label.
         """
-        self.assert_valid_resource_name(value)
-        self._route_table.tags.update(Name=value)
+        self.assert_valid_resource_label(value)
+        self._route_table.tags.update(Label=value or "")
         self._provider.azure_client. \
             update_route_table_tags(self._route_table.name,
                                     self._route_table)
@@ -1660,7 +1714,6 @@ class AzureInternetGateway(BaseInternetGateway):
     def __init__(self, provider, gateway, gateway_net):
         super(AzureInternetGateway, self).__init__(provider)
         self._gateway = gateway
-        self._name = None
         self._network_id = gateway_net.id if isinstance(
             gateway_net, AzureNetwork) else gateway_net
         self._state = ''
@@ -1669,25 +1722,11 @@ class AzureInternetGateway(BaseInternetGateway):
 
     @property
     def id(self):
-        return self._name
+        return "cb-gateway-wrapper"
 
     @property
     def name(self):
-        """
-        Get the gateway name.
-
-        .. note:: the gateway must have a (case sensitive) tag ``Name``
-        """
-        return self._name
-
-    @name.setter
-    # pylint:disable=arguments-differ
-    def name(self, value):
-        """
-        Set the router name.
-        """
-        self.assert_valid_resource_name(value)
-        self._name = value
+        return "cb-gateway-wrapper"
 
     def refresh(self):
         pass

@@ -31,9 +31,12 @@ class CloudResource(object):
 
     This interface has a  _provider property that can be used to access the
     provider associated with the resource, which is only intended for use by
-    subclasses. Every cloudbridge resource also has an id and name property.
-    The id property is a unique identifier for the resource. The name property
-    is a display value.
+    subclasses. Every cloudbridge resource also has an id, a name and a
+    label property. The id property is a unique identifier for the resource.
+    The name is a more user-friendly version of an id, suitable for
+    display to an end-user. However, it cannot be used in place of id. See
+    @name documentation. The label property is a user-assignable
+    identifier for the resource.
     """
     __metaclass__ = ABCMeta
 
@@ -66,29 +69,33 @@ class CloudResource(object):
     @abstractproperty
     def name(self):
         """
-        Get the resource name.
+        Get the name id for the resource.
 
-        The name property is typically a user-friendly display value for the
-        resource. Some resources may allow the resource name to be set.
+        The name property is typically a user-friendly id value for the
+        resource. The name is different from the id property in the
+        following ways:
+        1. The name property is often a more user-friendly value to
+           display to the user than the id property.
+        2. The name may sometimes be the same as the id, but should never
+           be used in place of the id.
+        3. The id is what will uniquely identify a resource, and will be used
+           internally by cloudbridge for all get operations etc.
+        4. All resources have a name.
+        5. The name is read-only.
+        6. However, the name may not necessarily be unique, which is the
+           reason why it should not be used for uniquely identifying a
+           resource.
+        Example:
+        The AWS machine image name maps to a cloudbridge name. It is not
+        editable and is a user friendly name such as 'Ubuntu 14.04' and
+        corresponds to the ami-name. It is distinct from the ami-id, which
+        maps to cloudbridge's id property. The ami-name cannot be edited, and
+        is set at creation time. It is not necessarily unique.
+        In Azure, the machine image's name corresponds to cloudbridge's name
+        property. In Azure, it also happens to be the same as the id property.
 
-        The name property adheres to the following restrictions for most
-        cloudbridge resources:
-        * Names cannot be longer than 63 characters
-        * May only contain lowercase letters, numeric characters, underscores,
-          and dashes. International characters are allowed.
-
-        Some resources may relax/increase these restrictions (e.g. Buckets)
-        depending on their requirements. Consult the resource specific
-        documentation for exact restrictions.
-
-        Some resources may allow an existing resource name to be changed.
-        However, this may lead to cloud-dependent code because not all all
-        providers support this capability. See
-        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
-        for more details and potential implications.
-
-        :rtype: ``str``
-        :return: Name for this resource as returned by the cloud middleware.
+        The name property and the label property share the same character
+        restrictions. see :py:attr:`~LabeledCloudResource.label`
         """
         pass
 
@@ -96,6 +103,35 @@ class CloudResource(object):
     def to_json(self):
         """
         Returns a JSON representation of the CloudResource object.
+        """
+        pass
+
+
+class LabeledCloudResource(CloudResource):
+
+    @abstractproperty
+    def label(self):
+        """
+        Get the resource label.
+
+        The label property is a user-defined, editable identifier for a
+        resource. It will often correspond to a user editable resource label
+        in the underlying cloud provider, or be simulated through tags/labels.
+
+        The label property adheres to the following restrictions:
+        * Must be at least 3 characters in length.
+        * Cannot be longer than 63 characters.
+        * May only contain ASCII characters comprising of lowercase letters,
+          numeric characters, and dashes.
+        * Must begin with an alphanumeric character and end with one
+          (i.e. cannot begin or end with a dash)
+
+        Some resources may not support labels, in which case, a
+        NotImplementedError will be thrown.
+
+        :rtype: ``str``
+        :return: Label for this resource as returned by the cloud middleware.
+        :throws NotImplementedError if this resource does not support labels
         """
         pass
 
@@ -460,19 +496,15 @@ class InstanceState(object):
     ERROR = "error"
 
 
-class Instance(ObjectLifeCycleMixin, CloudResource):
+class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
 
     __metaclass__ = ABCMeta
 
-    @CloudResource.name.setter
+    @LabeledCloudResource.label.setter
     @abstractmethod
-    def name(self, value):
+    def label(self, value):
         """
-        Set the instance name.
-
-        Note that the changing the name of an existing resource may result in
-        cloud-dependent code. See the following page for more details:
-        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
+        Set the instance label.
         """
         pass
 
@@ -506,7 +538,7 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         object, you can use the ``instance.vm_type`` property instead.
 
         :rtype: ``str``
-        :return: VM type name for this instance (e.g., ``m1.large``)
+        :return: VM type id for this instance (e.g., ``m1.large``)
         """
         pass
 
@@ -598,17 +630,17 @@ class Instance(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractproperty
-    def key_pair_name(self):
+    def key_pair_id(self):
         """
-        Get the name of the key pair associated with this instance.
+        Get the id of the key pair associated with this instance.
 
         :rtype: ``str``
-        :return: Name of the ssh key pair associated with this instance.
+        :return: Id of the ssh key pair associated with this instance.
         """
         pass
 
     @abstractmethod
-    def create_image(self, name):
+    def create_image(self, label):
         """
         Create a new image based on this instance.
 
@@ -698,8 +730,8 @@ class LaunchConfig(object):
         lc = provider.compute.instances.create_launch_config()
         lc.add_block_device(...)
 
-        inst = provider.compute.instances.create(name, image, vm_type,
-                                                 network, launch_config=lc)
+        inst = provider.compute.instances.create(
+            'MyVM', image, vm_type, subnet, launch_config=lc)
     """
 
     @abstractmethod
@@ -794,7 +826,7 @@ class LaunchConfig(object):
         pass
 
 
-class MachineImage(ObjectLifeCycleMixin, CloudResource):
+class MachineImage(ObjectLifeCycleMixin, LabeledCloudResource):
 
     __metaclass__ = ABCMeta
 
@@ -850,11 +882,19 @@ class NetworkState(object):
     ERROR = "error"
 
 
-class Network(ObjectLifeCycleMixin, CloudResource):
+class Network(ObjectLifeCycleMixin, LabeledCloudResource):
     """
     Represents a software-defined network, like the Virtual Private Cloud.
     """
     __metaclass__ = ABCMeta
+
+    @LabeledCloudResource.label.setter
+    @abstractmethod
+    def label(self, value):
+        """
+        Set the resource label.
+        """
+        pass
 
     @abstractproperty
     def external(self):
@@ -910,13 +950,13 @@ class Network(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, name, cidr_block, zone=None):
+    def create_subnet(self, label, cidr_block, zone=None):
         """
         Create a new network subnet and associate it with this Network.
 
-        :type name: ``str``
-        :param name: The subnet name. The name will be set if the
-                     provider supports it.
+        :type label: ``str``
+        :param label: The subnet label. The subnet name will be derived from
+                      this label.
 
         :type cidr_block: ``str``
         :param cidr_block: CIDR block within this Network to assign to the
@@ -960,11 +1000,19 @@ class SubnetState(object):
     ERROR = "error"
 
 
-class Subnet(ObjectLifeCycleMixin, CloudResource):
+class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
     """
     Represents a subnet, as part of a Network.
     """
     __metaclass__ = ABCMeta
+
+    @LabeledCloudResource.label.setter
+    @abstractmethod
+    def label(self, value):
+        """
+        Set the resource label.
+        """
+        pass
 
     @abstractproperty
     def cidr_block(self):
@@ -983,6 +1031,16 @@ class Subnet(ObjectLifeCycleMixin, CloudResource):
 
         :rtype: ``str``
         :return: Network ID.
+        """
+        pass
+
+    @abstractproperty
+    def network(self):
+        """
+        The parent network object associated with this this subnet.
+
+        :rtype: ``Network``
+        :return: `Network` object
         """
         pass
 
@@ -1043,7 +1101,7 @@ class FloatingIPContainer(PageableObjectMixin):
         """
         Searches for a FloatingIP by a given list of attributes.
 
-        Supported attributes: name, public_ip
+        Supported attributes: label, public_ip
 
         Example:
 
@@ -1156,11 +1214,24 @@ class RouterState(object):
     DETACHED = "detached"
 
 
-class Router(CloudResource):
+class Router(LabeledCloudResource):
     """
     Represents a private network router.
+
+    This logical router is meant to roughly mimic the properties of a physical
+    router. Therefore, attaching a subnet can be thought of as plugging in a
+    network cable to enable routing to/from that subnet. Attaching a gateway
+    can be thought of as plugging in an upstream link.
     """
     __metaclass__ = ABCMeta
+
+    @LabeledCloudResource.label.setter
+    @abstractmethod
+    def label(self, value):
+        """
+        Set the resource label.
+        """
+        pass
 
     @abstractproperty
     def state(self):
@@ -1273,8 +1344,7 @@ class GatewayContainer(PageableObjectMixin):
         provide internet routing to a network.
 
         :type  name: ``str``
-        :param name: The gateway name. This applies only if creating a gateway
-                     and if the provider supports it.
+        :param name: The gateway label.
 
         :rtype: ``object``  of :class:`.InternetGateway` or ``None``
         :return: an InternetGateway object of ``None`` if not found.
@@ -1402,22 +1472,18 @@ class VolumeState(object):
     ERROR = "error"
 
 
-class Volume(ObjectLifeCycleMixin, CloudResource):
+class Volume(ObjectLifeCycleMixin, LabeledCloudResource):
     """
     Represents a block storage device (aka volume).
     """
 
     __metaclass__ = ABCMeta
 
-    @CloudResource.name.setter
+    @LabeledCloudResource.label.setter
     @abstractmethod
-    def name(self, value):
+    def label(self, value):
         """
-        Set the volume name.
-
-        Note that the changing the name of an existing resource may result in
-        cloud-dependent code. See the following page for more details:
-        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
+        Set the volume label.
         """
         pass
 
@@ -1427,7 +1493,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
         Get the volume description.
 
         Some cloud providers may not support this property, and will return the
-        volume name instead.
+        volume label instead.
 
         :rtype: ``str``
         :return: Description for this volume as returned by the cloud
@@ -1443,7 +1509,7 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
 
         Some cloud providers may not support this property, and setting the
         description may have no effect (providers that do not support this
-        property will always return the volume name as the description).
+        property will always return the volume label as the description).
         """
         pass
 
@@ -1542,12 +1608,12 @@ class Volume(ObjectLifeCycleMixin, CloudResource):
         pass
 
     @abstractmethod
-    def create_snapshot(self, name, description=None):
+    def create_snapshot(self, label, description=None):
         """
         Create a snapshot of this Volume.
 
-        :type name: ``str``
-        :param name: The name of this snapshot.
+        :type label: ``str``
+        :param label: The label for this snapshot.
 
         :type description: ``str``
         :param description: A description of the snapshot.
@@ -1587,22 +1653,18 @@ class SnapshotState(object):
     ERROR = "error"
 
 
-class Snapshot(ObjectLifeCycleMixin, CloudResource):
+class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
     """
     Represents a snapshot of a block storage device.
     """
 
     __metaclass__ = ABCMeta
 
-    @CloudResource.name.setter
+    @LabeledCloudResource.label.setter
     @abstractmethod
-    def name(self, value):
+    def label(self, value):
         """
-        Set the snapshot name.
-
-        Note that the changing the name of an existing resource may result in
-        cloud-dependent code. See the following page for more details:
-        http://cloudbridge.cloudve.org/en/latest/topics/design-decisions.html
+        Set the snapshot label.
         """
         pass
 
@@ -1612,7 +1674,7 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
         Get the snapshot description.
 
         Some cloud providers may not support this property, and will return the
-        snapshot name instead.
+        snapshot label instead.
 
         :rtype: ``str``
         :return: Description for this snapshot as returned by the cloud
@@ -1628,7 +1690,7 @@ class Snapshot(ObjectLifeCycleMixin, CloudResource):
 
         Some cloud providers may not support this property, and setting the
         description may have no effect (providers that do not support this
-        property will always return the snapshot name as the description).
+        property will always return the snapshot label as the description).
 
         :type value: ``str``
         :param value: The value for the snapshot description.
@@ -1795,7 +1857,7 @@ class PlacementZone(CloudResource):
         A region this placement zone is associated with.
 
         :rtype: ``str``
-        :return: The name of the region the zone is associated with.
+        :return: The id of the region the zone is associated with.
         """
         pass
 
@@ -1892,7 +1954,7 @@ class VMType(CloudResource):
         pass
 
 
-class VMFirewall(CloudResource):
+class VMFirewall(LabeledCloudResource):
     """
     Represents a firewall resource applied to virtual machines.
 
@@ -1900,6 +1962,14 @@ class VMFirewall(CloudResource):
     """
 
     __metaclass__ = ABCMeta
+
+    @LabeledCloudResource.label.setter
+    @abstractmethod
+    def label(self, value):
+        """
+        Set the resource label.
+        """
+        pass
 
     @abstractproperty
     def description(self):
@@ -1954,7 +2024,7 @@ class VMFirewallRuleContainer(PageableObjectMixin):
 
             fw = provider.security.vm_firewalls.get('my_fw_id')
             rule = fw.rules.get('rule_id')
-            print(rule.id, rule.name)
+            print(rule.id, rule.label)
 
         :rtype: :class:`.FirewallRule`
         :return:  a FirewallRule instance
@@ -2026,8 +2096,8 @@ class VMFirewallRuleContainer(PageableObjectMixin):
         """
         Find a firewall rule filtered by the given parameters.
 
-        :type name: str
-        :param name: The name of the VM firewall to retrieve.
+        :type label: str
+        :param label: The label of the VM firewall to retrieve.
 
         :type protocol: ``str``
         :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
@@ -2289,11 +2359,6 @@ class Bucket(CloudResource):
         """
         Retrieve the name of the current bucket.
 
-        The bucket name adheres to a naming requirement that is more
-        relaxed than the naming requirement enforced across CloudBridge. More
-        details are available here: http://docs.aws.amazon.com/awscloudtrail/
-        latest/userguide/cloudtrail-s3-bucket-naming-requirements.html
-
         :rtype: ``str``
         :return: Name for this instance as returned by the cloud middleware.
         """
@@ -2384,7 +2449,7 @@ class BucketContainer(PageableObjectMixin):
     @abstractmethod
     def find(self, **kwargs):
         """
-        Searche for an object by a given list of attributes.
+        Search for an object by a given list of attributes.
 
         Supported attributes: ``name``
 

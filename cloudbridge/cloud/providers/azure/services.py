@@ -22,7 +22,6 @@ from cloudbridge.cloud.interfaces.exceptions import \
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
 
-from . import helpers as azure_helpers
 from .resources import AzureBucket, \
     AzureInstance, AzureKeyPair, \
     AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
@@ -67,15 +66,17 @@ class AzureVMFirewallService(BaseVMFirewallService):
                for fw in self.provider.azure_client.list_vm_firewall()]
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
-    def create(self, name, description, network_id=None):
-        AzureVMFirewall.assert_valid_resource_name(name)
+    def create(self, label, description=None, network_id=None):
+        AzureVMFirewall.assert_valid_resource_label(label)
+        name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         parameters = {"location": self.provider.region_name,
-                      'tags': {'Name': name}}
+                      "tags": {'Label': label}}
 
         if description:
             parameters['tags'].update(Description=description)
 
-        fw = self.provider.azure_client.create_vm_firewall(name, parameters)
+        fw = self.provider.azure_client.create_vm_firewall(name,
+                                                           parameters)
 
         # Add default rules to negate azure default rules.
         # See: https://github.com/CloudVE/cloudbridge/issues/106
@@ -86,7 +87,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
             # only 0-4096 are allowed for custom rules
             rule.priority = rule.priority - 61440
             rule.access = "Deny"
-            self._provider.azure_client.create_vm_firewall_rule(
+            self.provider.azure_client.create_vm_firewall_rule(
                 fw.id, rule_name, rule)
 
         # Add a new custom rule allowing all outbound traffic to the internet
@@ -98,7 +99,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
                       "destination_address_prefix": "Internet",
                       "access": "Allow",
                       "direction": "Outbound"}
-        result = self._provider.azure_client.create_vm_firewall_rule(
+        result = self.provider.azure_client.create_vm_firewall_rule(
             fw.id, "cb-default-internet-outbound", parameters)
         fw.security_rules.append(result)
 
@@ -106,18 +107,18 @@ class AzureVMFirewallService(BaseVMFirewallService):
         return cb_fw
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['label', 'name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        filters = {'Name': name}
-        fws = [AzureVMFirewall(self.provider, vm_firewall)
-               for vm_firewall in azure_helpers.filter_by_tag(
-               self.provider.azure_client.list_vm_firewall(), filters)]
-        return ClientPagedResultList(self.provider, fws)
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
     def delete(self, group_id):
         self.provider.azure_client.delete_vm_firewall(group_id)
@@ -153,16 +154,18 @@ class AzureKeyPairService(BaseKeyPairService):
                                      data=results)
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        key_pair = self.get(name)
         return ClientPagedResultList(self.provider,
-                                     [key_pair] if key_pair else [])
+                                     matches if matches else [])
 
     def create(self, name, public_key_material=None):
         AzureKeyPair.assert_valid_resource_name(name)
@@ -207,17 +210,18 @@ class AzureBucketService(BaseBucketService):
             return None
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in
-                   self.provider.azure_client.list_containers(prefix=name)]
-        return ClientPagedResultList(self.provider, buckets)
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
     def list(self, limit=None, marker=None):
         """
@@ -233,7 +237,7 @@ class AzureBucketService(BaseBucketService):
         Create a new bucket.
         """
         AzureBucket.assert_valid_resource_name(name)
-        bucket = self.provider.azure_client.create_container(name.lower())
+        bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
 
 
@@ -276,18 +280,18 @@ class AzureVolumeService(BaseVolumeService):
             return None
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['name', 'label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        filters = {'Name': name}
-        cb_vols = [AzureVolume(self.provider, volume)
-                   for volume in azure_helpers.filter_by_tag(
-                   self.provider.azure_client.list_disks(), filters)]
-        return ClientPagedResultList(self.provider, cb_vols)
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
     def list(self, limit=None, marker=None):
         """
@@ -298,18 +302,22 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, name, size, zone=None, snapshot=None, description=None):
+    def create(self, label, size, zone=None, description=None,
+               snapshot=None):
         """
         Creates a new volume.
         """
-        AzureVolume.assert_valid_resource_name(name)
+        AzureVolume.assert_valid_resource_label(label)
+        disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
+        tags = {'Label': label}
+
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot = (self.provider.storage.snapshots.get(snapshot)
                     if snapshot and isinstance(snapshot, str) else snapshot)
-        disk_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
-        tags = {'Name': name}
+
         if description:
             tags.update(Description=description)
+
         if snapshot:
             params = {
                 'location':
@@ -332,7 +340,8 @@ class AzureVolumeService(BaseVolumeService):
                 'creation_data': {
                     'create_option': DiskCreateOption.empty
                 },
-                'tags': tags}
+                'tags': tags
+            }
 
             disk = self.provider.azure_client.create_empty_disk(disk_name,
                                                                 params)
@@ -360,18 +369,18 @@ class AzureSnapshotService(BaseSnapshotService):
             return None
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['name', 'label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        filters = {'Name': name}
-        cb_snapshots = [AzureSnapshot(self.provider, snapshot)
-                        for snapshot in azure_helpers.filter_by_tag(
-                        self.provider.azure_client.list_snapshots(), filters)]
-        return ClientPagedResultList(self.provider, cb_snapshots)
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
     def list(self, limit=None, marker=None):
         """
@@ -382,19 +391,19 @@ class AzureSnapshotService(BaseSnapshotService):
                  self.provider.azure_client.list_snapshots()]
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
-    def create(self, name, volume, description=None):
+    def create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
-        AzureSnapshot.assert_valid_resource_name(name)
-        volume = (self.provider.storage.volumes.get(volume)
-                  if isinstance(volume, str) else volume)
-
-        tags = {'Name': name}
-        snapshot_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
-
+        AzureSnapshot.assert_valid_resource_label(label)
+        snapshot_name = AzureSnapshot._generate_name_from_label(label,
+                                                                "cb-snap")
+        tags = {'Label': label}
         if description:
             tags.update(Description=description)
+
+        volume = (self.provider.storage.volumes.get(volume)
+                  if isinstance(volume, str) else volume)
 
         params = {
             'location': self.provider.azure_client.region_name,
@@ -440,14 +449,14 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, name, image, vm_type, subnet=None, zone=None,
+    def create(self, label, image, vm_type, subnet=None, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
 
-        instance_name = name.replace("_", "-") if name \
-            else "{0} - {1}".format("cb", uuid.uuid4())
+        AzureInstance.assert_valid_resource_label(label)
 
-        AzureInstance.assert_valid_resource_name(instance_name)
+        instance_name = AzureInstance._generate_name_from_label(label,
+                                                                "cb-ins")
 
         image = (image if isinstance(image, AzureMachineImage) else
                  self.provider.compute.images.get(image))
@@ -478,7 +487,7 @@ class AzureInstanceService(BaseInstanceService):
                                                        instance_name, zone_id)
 
         nic_params = {
-            'location': self._provider.region_name,
+            'location': self.provider.region_name,
             'ip_configurations': [{
                 'name': instance_name + '_ip_config',
                 'private_ip_allocation_method': 'Dynamic',
@@ -504,15 +513,15 @@ class AzureInstanceService(BaseInstanceService):
         # Key_pair is mandatory in azure and it should not be None.
         temp_key_pair = None
         if key_pair:
-            key_pair = (self.provider.security.key_pairs.get(key_pair)
-                        if isinstance(key_pair, str) else key_pair)
+            key_pair = (key_pair if isinstance(key_pair, AzureKeyPair)
+                        else self.provider.security.key_pairs.get(key_pair))
         else:
             # Create a temporary keypair if none is provided to keep Azure
             # happy, but the private key will be discarded, so it'll be all
             # but useless. However, this will allow an instance to be launched
             # without specifying a keypair, so users may still be able to login
             # if they have a preinstalled keypair/password baked into the image
-            temp_kp_name = "".join(["cb_default_kp_",
+            temp_kp_name = "".join(["cb-default-kp-",
                                    str(uuid.uuid5(uuid.NAMESPACE_OID,
                                                   instance_name))[-6:]])
             key_pair = self.provider.security.key_pairs.create(
@@ -520,7 +529,7 @@ class AzureInstanceService(BaseInstanceService):
             temp_key_pair = key_pair
 
         params = {
-            'location': zone_id or self._provider.region_name,
+            'location': zone_id or self.provider.region_name,
             'os_profile': {
                 'admin_username': self.provider.vm_default_user_name,
                 'computer_name': instance_name,
@@ -545,7 +554,7 @@ class AzureInstanceService(BaseInstanceService):
                 }]
             },
             'storage_profile': storage_profile,
-            'tags': {'Name': name}
+            'tags': {'Label': label}
         }
 
         for disk_def in storage_profile.get('data_disks', []):
@@ -556,7 +565,7 @@ class AzureInstanceService(BaseInstanceService):
             params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
 
         if not temp_key_pair:
-            params['tags'].update(Key_Pair=key_pair.name)
+            params['tags'].update(Key_Pair=key_pair.id)
 
         try:
             vm = self.provider.azure_client.create_vm(instance_name, params)
@@ -575,7 +584,7 @@ class AzureInstanceService(BaseInstanceService):
                 temp_key_pair.delete()
         return AzureInstance(self.provider, vm)
 
-    def _resolve_launch_options(self, name, subnet=None, zone_id=None,
+    def _resolve_launch_options(self, inst_name, subnet=None, zone_id=None,
                                 vm_firewalls=None):
         if subnet:
             # subnet's zone takes precedence
@@ -595,7 +604,8 @@ class AzureInstanceService(BaseInstanceService):
 
             if len(vm_firewalls) > 1:
                 new_fw = self.provider.security.vm_firewalls.\
-                    create('{0}-fw'.format(name), 'Merge vm firewall {0}'.
+                    create(label='{0}-fw'.format(inst_name),
+                           description='Merge vm firewall {0}'.
                            format(','.join(vm_firewalls_ids)))
 
                 for fw in vm_firewalls:
@@ -735,18 +745,18 @@ class AzureInstanceService(BaseInstanceService):
             return None
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['name', 'label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        filtr = {'Name': name}
-        instances = [AzureInstance(self.provider, inst)
-                     for inst in azure_helpers.filter_by_tag(
-                     self.provider.azure_client.list_vm(), filtr)]
-        return ClientPagedResultList(self.provider, instances)
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
 
 class AzureImageService(BaseImageService):
@@ -766,30 +776,26 @@ class AzureImageService(BaseImageService):
             return None
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['name', 'label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        filters = {'Name': name}
-        cb_images = [AzureMachineImage(self.provider, image)
-                     for image in azure_helpers.filter_by_tag(
-                     self.provider.azure_client.list_images(), filters)]
-        # All gallery image properties (id, resource_id, name) are the URN
-        # Improvement: wrap the filters by publisher, offer, etc...
-        cb_images.extend([AzureMachineImage(self.provider, image) for image
-                          in self.provider.azure_client.list_gallery_refs()
-                          if azure_helpers.generate_urn(image) == name])
-        return ClientPagedResultList(self.provider, cb_images)
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
-    def list(self, limit=None, marker=None):
+    def list(self, filter_by_owner=True, limit=None, marker=None):
         """
         List all images.
         """
         azure_images = self.provider.azure_client.list_images()
-        azure_gallery_refs = self.provider.azure_client.list_gallery_refs()
+        azure_gallery_refs = self.provider.azure_client.list_gallery_refs() \
+            if not filter_by_owner else []
         cb_images = [AzureMachineImage(self.provider, img)
                      for img in azure_images + azure_gallery_refs]
         return ClientPagedResultList(self.provider, cb_images,
@@ -859,36 +865,31 @@ class AzureNetworkService(BaseNetworkService):
                                      limit=limit, marker=marker)
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['name', 'label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        filters = {'Name': name}
-        networks = [
-            AzureNetwork(self.provider, network) for network
-            in azure_helpers.filter_by_tag(
-                self.provider.azure_client.list_networks(), filters)]
-        return ClientPagedResultList(self.provider, networks)
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
-    def create(self, name, cidr_block):
-        # Azure requires CIDR block to be specified when creating a network
-        # so set a default one and use the largest allowed netmask.
-        network_name = AzureNetwork.CB_DEFAULT_NETWORK_NAME
-        if name:
-            network_name = "{0}-{1}".format(name, uuid.uuid4().hex[:6])
-
-        AzureNetwork.assert_valid_resource_name(network_name)
-
+    def create(self, label, cidr_block):
+        AzureNetwork.assert_valid_resource_label(label)
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
                 'address_prefixes': [cidr_block]
             },
-            'tags': {'Name': name or AzureNetwork.CB_DEFAULT_NETWORK_NAME}
+            'tags': {'Label': label}
         }
+
+        network_name = AzureNetwork._generate_name_from_label(label, 'cb-net')
+
         az_network = self.provider.azure_client.create_network(network_name,
                                                                params)
         cb_network = AzureNetwork(self.provider, az_network)
@@ -969,7 +970,7 @@ class AzureSubnetService(BaseSubnetService):
                         net.id
                     ))
                 except CloudError as cloud_error:
-                    if cloud_error.error.error == "ResourceNotFound":
+                    if "NotFound" in cloud_error.error.error:
                         log.exception(cloud_error)
                     else:
                         raise cloud_error
@@ -980,22 +981,29 @@ class AzureSubnetService(BaseSubnetService):
 
     def find(self, network=None, **kwargs):
         obj_list = self._list_subnets(network)
-        filters = ['name']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
 
-    def create(self, network, cidr_block, name=None, **kwargs):
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
+    def create(self, label, network, cidr_block, **kwargs):
         """
         Create subnet
         """
-        AzureSubnet.assert_valid_resource_name(name)
+        # Although Subnet doesn't support labels, we use the parent Network's
+        # tags to track the subnet's labels
+        AzureSubnet.assert_valid_resource_label(label)
+        subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
+
         network_id = network.id \
             if isinstance(network, Network) else network
-
-        if not name:
-            subnet_name = AzureSubnet.CB_DEFAULT_SUBNET_NAME
-        else:
-            subnet_name = name
 
         subnet_info = self.provider.azure_client\
             .create_subnet(
@@ -1006,28 +1014,30 @@ class AzureSubnetService(BaseSubnetService):
                 }
             )
 
-        return AzureSubnet(self.provider, subnet_info)
+        subnet = AzureSubnet(self.provider, subnet_info)
+        subnet.label = label
+        return subnet
 
     def get_or_create_default(self, zone):
         default_cidr = '10.0.1.0/24'
 
         # No provider-default Subnet exists, look for a library-default one
-        matches = self.find(name=AzureSubnet.CB_DEFAULT_SUBNET_NAME)
+        matches = self.find(label=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)
         if matches:
             return matches[0]
 
         # No provider-default Subnet exists, try to create it (net + subnets)
         networks = self.provider.networking.networks.find(
-            name=AzureNetwork.CB_DEFAULT_NETWORK_NAME)
+            label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
 
         if networks:
             network = networks[0]
         else:
             network = self.provider.networking.networks.create(
-                AzureNetwork.CB_DEFAULT_NETWORK_NAME, '10.0.0.0/16')
+                AzureNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
 
-        subnet = self.create(network, default_cidr,
-                             name=AzureSubnet.CB_DEFAULT_SUBNET_NAME)
+        subnet = self.create(AzureSubnet.CB_DEFAULT_SUBNET_LABEL, network,
+                             default_cidr)
         return subnet
 
     def delete(self, subnet):
@@ -1049,19 +1059,18 @@ class AzureRouterService(BaseRouterService):
             return None
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        obj_list = self
+        filters = ['name', 'label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
 
-        filters = {'Name': name}
-        routes = [AzureRouter(self.provider, route)
-                  for route in azure_helpers.filter_by_tag(
-                  self.provider.azure_client.list_route_tables(), filters)]
-
-        return ClientPagedResultList(self.provider, routes)
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
     def list(self, limit=None, marker=None):
         routes = [AzureRouter(self.provider, route)
@@ -1071,10 +1080,13 @@ class AzureRouterService(BaseRouterService):
                                      routes,
                                      limit=limit, marker=marker)
 
-    def create(self, name, network):
-        AzureRouter.assert_valid_resource_name(name)
+    def create(self, label, network):
+        AzureRouter.assert_valid_resource_label(label)
+        router_name = AzureRouter._generate_name_from_label(label, "cb-router")
+
         parameters = {"location": self.provider.region_name,
-                      'tags': {'Name': name}}
+                      "tags": {'Label': label}}
+
         route = self.provider.azure_client. \
-            create_route_table(name, parameters)
+            create_route_table(router_name, parameters)
         return AzureRouter(self.provider, route)

@@ -132,24 +132,28 @@ class AWSVMFirewallService(BaseVMFirewallService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, name, description, network_id):
+    def create(self, label, network_id, description=None):
         log.debug("Creating Firewall Service with the parameters "
-                  "[name: %s id: %s description: %s]", name, network_id,
+                  "[label: %s id: %s description: %s]", label, network_id,
                   description)
-        AWSVMFirewall.assert_valid_resource_name(name)
-        return self.svc.create('create_security_group', GroupName=name,
-                               Description=description, VpcId=network_id)
+        AWSVMFirewall.assert_valid_resource_label(label)
+        name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
+        obj = self.svc.create('create_security_group', GroupName=name,
+                              Description=description or name,
+                              VpcId=network_id)
+        obj.label = label
+        return obj
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
-
+        # Filter by name or label
+        label = kwargs.pop('label', None)
+        log.debug("Searching for Firewall Service %s", label)
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
-
-        log.debug("Searching for Firewall Service %s", name)
-        return self.svc.find(filter_name='group-name', filter_value=name)
+                            " Supported attributes: %s" % (kwargs, 'label'))
+        return self.svc.find(filter_name='tag:Name',
+                             filter_value=label)
 
     def delete(self, firewall_id):
         log.info("Deleting Firewall Service with the id %s", firewall_id)
@@ -195,25 +199,25 @@ class AWSVolumeService(BaseVolumeService):
         return self.svc.get(volume_id)
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs, 'label'))
 
-        log.debug("Searching for AWS Volume Service %s", name)
-        return self.svc.find(filter_name='tag:Name', filter_value=name)
+        log.debug("Searching for AWS Volume Service %s", label)
+        return self.svc.find(filter_name='tag:Name', filter_value=label)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, name, size, zone, snapshot=None, description=None):
+    def create(self, label, size, zone, snapshot=None, description=None):
         log.debug("Creating AWS Volume Service with the parameters "
-                  "[name: %s size: %s zone: %s snapshot: %s "
-                  "description: %s]", name, size, zone, snapshot,
+                  "[label: %s size: %s zone: %s snapshot: %s "
+                  "description: %s]", label, size, zone, snapshot,
                   description)
-        AWSVolume.assert_valid_resource_name(name)
+        AWSVolume.assert_valid_resource_label(label)
 
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
@@ -224,7 +228,7 @@ class AWSVolumeService(BaseVolumeService):
                                  SnapshotId=snapshot_id)
         # Wait until ready to tag instance
         cb_vol.wait_till_ready()
-        cb_vol.name = name
+        cb_vol.label = label
         if description:
             cb_vol.description = description
         return cb_vol
@@ -244,34 +248,36 @@ class AWSSnapshotService(BaseSnapshotService):
         return self.svc.get(snapshot_id)
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs, 'label'))
 
-        log.debug("Searching for AWS Snapshot Service %s", name)
-        return self.svc.find(filter_name='tag:Name', filter_value=name)
+        log.debug("Searching for AWS Snapshot Service %s", label)
+        return self.svc.find(filter_name='tag:Name', filter_value=label,
+                             OwnerIds=['self'])
 
     def list(self, limit=None, marker=None):
-        return self.svc.list(limit=limit, marker=marker)
+        return self.svc.list(limit=limit, marker=marker,
+                             OwnerIds=['self'])
 
-    def create(self, name, volume, description=None):
+    def create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
         log.debug("Creating a new AWS snapshot Service with the "
-                  "parameters [name: %s volume: %s description: %s]",
-                  name, volume, description)
-        AWSSnapshot.assert_valid_resource_name(name)
+                  "parameters [label: %s volume: %s description: %s]",
+                  label, volume, description)
+        AWSSnapshot.assert_valid_resource_label(label)
 
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
         cb_snap = self.svc.create('create_snapshot', VolumeId=volume_id)
         # Wait until ready to tag instance
         cb_snap.wait_till_ready()
-        cb_snap.name = name
+        cb_snap.label = label
         if cb_snap.description:
             cb_snap.description = description
         return cb_snap
@@ -305,7 +311,7 @@ class AWSBucketService(BaseBucketService):
             # Bucket instance to allow further operations.
             # http://stackoverflow.com/questions/32331456/using-boto-upload-file-to-s3-
             # sub-folder-when-i-have-no-permissions-on-listing-fo
-            if e.response['Error']['Code'] == 403:
+            if e.response['Error']['Code'] == "403":
                 log.warning("AWS Bucket %s already exists but user doesn't "
                             "have enough permissions to access the bucket",
                             bucket_id)
@@ -334,13 +340,31 @@ class AWSBucketService(BaseBucketService):
         # LocationConstraint results in an InvalidLocationConstraint.
         # Therefore, it must be special-cased and omitted altogether.
         # See: https://github.com/boto/boto3/issues/125
+        # In addition, us-east-1 also behaves differently when it comes
+        # to raising duplicate resource exceptions, so perform a manual
+        # check
         if loc_constraint == 'us-east-1':
-            return self.svc.create('create_bucket', Bucket=name)
+            try:
+                # check whether bucket already exists
+                self.provider.s3_conn.meta.client.head_bucket(Bucket=name)
+            except ClientError as e:
+                if e.response['Error']['Code'] == "404":
+                    # bucket doesn't exist, go ahead and create it
+                    return self.svc.create('create_bucket', Bucket=name)
+            raise DuplicateResourceException(
+                    'Bucket already exists with name {0}'.format(name))
         else:
-            return self.svc.create('create_bucket', Bucket=name,
-                                   CreateBucketConfiguration={
-                                       'LocationConstraint': loc_constraint
-                                   })
+            try:
+                return self.svc.create('create_bucket', Bucket=name,
+                                       CreateBucketConfiguration={
+                                           'LocationConstraint': loc_constraint
+                                        })
+            except ClientError as e:
+                if e.response['Error']['Code'] == "BucketAlreadyOwnedByYou":
+                    raise DuplicateResourceException(
+                        'Bucket already exists with name {0}'.format(name))
+                else:
+                    raise
 
 
 class AWSImageService(BaseImageService):
@@ -356,15 +380,15 @@ class AWSImageService(BaseImageService):
         return self.svc.get(image_id)
 
     def find(self, **kwargs):
+        # Filter by name or label
         name = kwargs.pop('name', None)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
-
-        log.debug("Searching for AWS Image Service %s", name)
-        return self.svc.find(filter_name='name', filter_value=name)
+        if name:
+            log.debug("Searching for AWS Image Service %s", name)
+            obj_list = self.svc.find(filter_name='name', filter_value=name)
+        else:
+            obj_list = self
+        filters = ['label']
+        return cb_helpers.generic_find(filters, kwargs, obj_list)
 
     def list(self, filter_by_owner=True, limit=None, marker=None):
         return self.svc.list(Owners=['self'] if filter_by_owner else [],
@@ -405,15 +429,15 @@ class AWSInstanceService(BaseInstanceService):
                                   cb_resource=AWSInstance,
                                   boto_collection_name='instances')
 
-    def create(self, name, image, vm_type, subnet, zone,
+    def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         log.debug("Creating AWS Instance Service with the params "
-                  "[name: %s image: %s type: %s subnet: %s zone: %s "
+                  "[label: %s image: %s type: %s subnet: %s zone: %s "
                   "key pair: %s firewalls: %s user data: %s config %s "
-                  "others: %s]", name, image, vm_type, subnet, zone,
+                  "others: %s]", label, image, vm_type, subnet, zone,
                   key_pair, vm_firewalls, user_data, launch_config, kwargs)
-        AWSInstance.assert_valid_resource_name(name)
+        AWSInstance.assert_valid_resource_label(label)
 
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
@@ -450,7 +474,7 @@ class AWSInstanceService(BaseInstanceService):
             # pylint:disable=protected-access
             inst[0]._wait_till_exists()
             # Tag the instance w/ the name
-            inst[0].name = name
+            inst[0].label = label
             return inst[0]
         raise ValueError(
             'Expected a single object response, got a list: %s' % inst)
@@ -544,14 +568,14 @@ class AWSInstanceService(BaseInstanceService):
         return self.svc.get(instance_id)
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs, 'label'))
 
-        return self.svc.find(filter_name='tag:Name', filter_value=name)
+        return self.svc.find(filter_name='tag:Name', filter_value=label)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -653,26 +677,26 @@ class AWSNetworkService(BaseNetworkService):
         return self.svc.list(limit=limit, marker=marker)
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs, 'label'))
 
-        log.debug("Searching for AWS Network Service %s", name)
-        return self.svc.find(filter_name='tag:Name', filter_value=name)
+        log.debug("Searching for AWS Network Service %s", label)
+        return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def create(self, name, cidr_block):
+    def create(self, label, cidr_block):
         log.debug("Creating AWS Network Service with the params "
-                  "[name: %s block: %s]", name, cidr_block)
-        AWSNetwork.assert_valid_resource_name(name)
+                  "[label: %s block: %s]", label, cidr_block)
+        AWSNetwork.assert_valid_resource_label(label)
 
         cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block)
         # Wait until ready to tag instance
         cb_net.wait_till_ready()
-        if name:
-            cb_net.name = name
+        if label:
+            cb_net.label = label
         return cb_net
 
 
@@ -698,30 +722,33 @@ class AWSSubnetService(BaseSubnetService):
             return self.svc.list(limit=limit, marker=marker)
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs, 'label'))
 
-        log.debug("Searching for AWS Subnet Service %s", name)
-        return self.svc.find(filter_name='tag:Name', filter_value=name)
+        log.debug("Searching for AWS Subnet Service %s", label)
+        return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def create(self, name, network, cidr_block, zone):
+    def create(self, label, network, cidr_block, zone):
         log.debug("Creating AWS Subnet Service with the params "
-                  "[name: %s network: %s block: %s zone: %s]",
-                  name, network, cidr_block, zone)
-        AWSSubnet.assert_valid_resource_name(name)
+                  "[label: %s network: %s block: %s zone: %s]",
+                  label, network, cidr_block, zone)
+        AWSSubnet.assert_valid_resource_label(label)
+
+        zone_name = zone.name if isinstance(
+            zone, AWSPlacementZone) else zone
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
         subnet = self.svc.create('create_subnet',
                                  VpcId=network_id,
                                  CidrBlock=cidr_block,
-                                 AvailabilityZone=zone)
-        if name:
-            subnet.name = name
+                                 AvailabilityZone=zone_name)
+        if label:
+            subnet.label = label
         return subnet
 
     def get_or_create_default(self, zone):
@@ -739,22 +766,29 @@ class AWSSubnetService(BaseSubnetService):
             # pylint:disable=protected-access
             if sn._subnet.default_for_az:
                 return sn
-        # No provider-default Subnet exists, look for a library-default one
-        for sn in snl:
-            # pylint:disable=protected-access
-            for tag in sn._subnet.tags or {}:
-                if (tag.get('Key') == 'Name' and
-                        tag.get('Value') == AWSSubnet.CB_DEFAULT_SUBNET_NAME):
-                    return sn
+
+        # Refresh the list for the default label
+        snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL)
+
+        if len(snl) > 0:
+            return snl[0]
+
         # No provider-default Subnet exists, try to create it (net + subnets)
-        default_net = self.provider.networking.networks.create(
-            name=AWSNetwork.CB_DEFAULT_NETWORK_NAME, cidr_block='10.0.0.0/16')
+        # Check if default net exists
+        default_nets = self.provider.networking.networks.find(
+            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+        if len(default_nets) > 0:
+            default_net = default_nets[0]
+        else:
+            default_net = self.provider.networking.networks.create(
+                label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
+                cidr_block='10.0.0.0/16')
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
         for i, z in enumerate(region.zones):
-            sn = self.create(AWSSubnet.CB_DEFAULT_SUBNET_NAME, default_net,
-                             '10.0.{0}.0/24'.format(i), z.name)
+            sn = self.create(AWSSubnet.CB_DEFAULT_SUBNET_LABEL, default_net,
+                             '10.0.{0}.0/24'.format(i), z)
             if zone and zone == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
@@ -782,27 +816,27 @@ class AWSRouterService(BaseRouterService):
         return self.svc.get(router_id)
 
     def find(self, **kwargs):
-        name = kwargs.pop('name', None)
+        label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+                            " Supported attributes: %s" % (kwargs, 'label'))
 
-        log.debug("Searching for AWS Router Service %s", name)
-        return self.svc.find(filter_name='tag:Name', filter_value=name)
+        log.debug("Searching for AWS Router Service %s", label)
+        return self.svc.find(filter_name='tag:Name', filter_value=label)
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, name, network):
+    def create(self, label, network):
         log.debug("Creating AWS Router Service with the params "
-                  "[name: %s network: %s]", name, network)
-        AWSRouter.assert_valid_resource_name(name)
+                  "[label: %s network: %s]", label, network)
+        AWSRouter.assert_valid_resource_label(label)
 
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
         cb_router = self.svc.create('create_route_table', VpcId=network_id)
-        if name:
-            cb_router.name = name
+        if label:
+            cb_router.label = label
         return cb_router

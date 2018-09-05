@@ -30,6 +30,9 @@ matrix:
       env: TOX_ENV=pypy-azure
     - python: pypy-5.3.1
       env: TOX_ENV=pypy-openstack
+env:
+  global:
+    - PYTHONUNBUFFERED=True
 before_install:
     - |
       case "$TRAVIS_EVENT_TYPE" in

@@ -1,5 +1,4 @@
 import time
-import uuid
 
 import six
 
@@ -26,10 +25,9 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         Create a new volume, check whether the expected values are set,
         and delete it
         """
-        def create_vol(name):
+        def create_vol(label):
             return self.provider.storage.volumes.create(
-                name,
-                1,
+                label, 1,
                 helpers.get_provider_test_data(self.provider, "placement"))
 
         def cleanup_vol(vol):
@@ -39,27 +37,26 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                              terminal_states=[VolumeState.ERROR])
 
         sit.check_crud(self, self.provider.storage.volumes, Volume,
-                       "cb_createvol", create_vol, cleanup_vol)
+                       "cb-createvol", create_vol, cleanup_vol)
 
     @helpers.skipIfNoService(['storage.volumes'])
     def test_attach_detach_volume(self):
         """
         Create a new volume, and attempt to attach it to an instance
         """
-        name = "cb_attachvol-{0}".format(helpers.get_uuid())
+        label = "cb-attachvol-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
-        net = None
         test_instance = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_instance, net)):
-            net, subnet = helpers.create_test_network(
-                self.provider, name)
+                test_instance)):
+            subnet = helpers.get_or_create_default_subnet(
+                self.provider)
             test_instance = helpers.get_test_instance(
-                self.provider, name, subnet=subnet)
+                self.provider, label, subnet=subnet)
 
             test_vol = self.provider.storage.volumes.create(
-                name, 1, test_instance.zone_id)
+                label, 1, test_instance.zone_id)
             with helpers.cleanup_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready()
                 test_vol.attach(test_instance, '/dev/sda2')
@@ -76,21 +73,20 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         """
         Test volume properties
         """
-        name = "cb_volprops-{0}".format(helpers.get_uuid())
+        label = "cb-volprops-{0}".format(helpers.get_uuid())
         vol_desc = 'newvoldesc1'
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         test_instance = None
-        net = None
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                test_instance, net)):
-            net, subnet = helpers.create_test_network(
-                self.provider, name)
+                test_instance)):
+            subnet = helpers.get_or_create_default_subnet(
+                self.provider)
             test_instance = helpers.get_test_instance(
-                self.provider, name, subnet=subnet)
+                self.provider, label, subnet=subnet)
 
             test_vol = self.provider.storage.volumes.create(
-                name, 1, test_instance.zone_id, description=vol_desc)
+                label, 1, test_instance.zone_id, description=vol_desc)
             with helpers.cleanup_action(lambda: test_vol.delete()):
                 test_vol.wait_till_ready()
                 self.assertTrue(
@@ -121,11 +117,11 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     self.assertEqual(test_vol.attachments.device,
                                      "/dev/sda2")
                 test_vol.detach()
-                test_vol.name = 'newvolname1'
+                test_vol.label = 'newvolname1'
                 test_vol.wait_for(
                     [VolumeState.AVAILABLE],
                     terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
-                self.assertEqual(test_vol.name, 'newvolname1')
+                self.assertEqual(test_vol.label, 'newvolname1')
                 self.assertEqual(test_vol.description, vol_desc)
                 self.assertIsNone(test_vol.attachments)
                 test_vol.wait_for(
@@ -139,17 +135,16 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
         whether list_snapshots properly detects the new snapshot.
         Delete everything afterwards.
         """
-        name = "cb_crudsnap-{0}".format(helpers.get_uuid())
+        label = "cb-crudsnap-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
-            name,
-            1,
+            label, 1,
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
 
-            def create_snap(name):
-                return test_vol.create_snapshot(name=name,
-                                                description=name)
+            def create_snap(label):
+                return test_vol.create_snapshot(label=label,
+                                                description=label)
 
             def cleanup_snap(snap):
                 if snap:
@@ -158,34 +153,33 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                   terminal_states=[SnapshotState.ERROR])
 
             sit.check_crud(self, self.provider.storage.snapshots, Snapshot,
-                           "cb_snap", create_snap, cleanup_snap)
+                           "cb-snap", create_snap, cleanup_snap)
 
             # Test creation of a snap via SnapshotService
-            def create_snap2(name):
+            def create_snap2(label):
                 return self.provider.storage.snapshots.create(
-                    name=name, volume=test_vol, description=name)
+                    label=label, volume=test_vol, description=label)
 
             if (self.provider.PROVIDER_ID == ProviderList.AWS and
                     not isinstance(self.provider, TestMockHelperMixin)):
                 time.sleep(15)  # Or get SnapshotCreationPerVolumeRateExceeded
             sit.check_crud(self, self.provider.storage.snapshots, Snapshot,
-                           "cb_snaptwo", create_snap2, cleanup_snap)
+                           "cb-snaptwo", create_snap2, cleanup_snap)
 
     @helpers.skipIfNoService(['storage.snapshots'])
     def test_snapshot_properties(self):
         """
         Test snapshot properties
         """
-        name = "cb_snapprop-{0}".format(uuid.uuid4())
+        label = "cb-snapprop-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
-            name,
-            1,
+            label, 1,
             helpers.get_provider_test_data(self.provider, "placement"))
         with helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
-            snap_name = "cb_snap-{0}".format(name)
-            test_snap = test_vol.create_snapshot(name=snap_name,
-                                                 description=snap_name)
+            snap_label = "cb-snap-{0}".format(label)
+            test_snap = test_vol.create_snapshot(label=snap_label,
+                                                 description=snap_label)
 
             def cleanup_snap(snap):
                 if snap:
@@ -207,17 +201,16 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                     % test_vol.description)
                 self.assertEqual(test_vol.id, test_snap.volume_id)
                 self.assertIsNotNone(test_vol.create_time)
-                test_snap.name = 'snapnewname1'
+                test_snap.label = 'snapnewname1'
                 test_snap.description = 'snapnewdescription1'
                 test_snap.refresh()
-                self.assertEqual(test_snap.name, 'snapnewname1')
+                self.assertEqual(test_snap.label, 'snapnewname1')
                 self.assertEqual(test_snap.description, 'snapnewdescription1')
 
                 # Test volume creation from a snapshot (via VolumeService)
-                sv_name = "cb_snapvol_{0}".format(test_snap.name)
+                sv_label = "cb-snapvol-{0}".format(test_snap.name)
                 snap_vol = self.provider.storage.volumes.create(
-                    sv_name,
-                    1,
+                    sv_label, 1,
                     helpers.get_provider_test_data(self.provider, "placement"),
                     snapshot=test_snap)
                 with helpers.cleanup_action(lambda: snap_vol.delete()):

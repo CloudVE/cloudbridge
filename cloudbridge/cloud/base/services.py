@@ -186,7 +186,7 @@ class BaseSubnetService(
 
     def find(self, **kwargs):
         obj_list = self
-        filters = ['name']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 

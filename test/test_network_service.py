@@ -16,23 +16,23 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['networking.networks'])
     def test_crud_network(self):
 
-        def create_net(name):
+        def create_net(label):
             return self.provider.networking.networks.create(
-                name=name, cidr_block='10.0.0.0/16')
+                label=label, cidr_block='10.0.0.0/16')
 
         def cleanup_net(net):
             if net:
                 self.provider.networking.networks.delete(network_id=net.id)
 
         sit.check_crud(self, self.provider.networking.networks, Network,
-                       "cb_crudnetwork", create_net, cleanup_net)
+                       "cb-crudnetwork", create_net, cleanup_net)
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_network_properties(self):
-        name = 'cb_propnetwork-{0}'.format(helpers.get_uuid())
-        subnet_name = 'cb_propsubnet-{0}'.format(helpers.get_uuid())
+        label = 'cb-propnetwork-{0}'.format(helpers.get_uuid())
+        subnet_label = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
-            name=name, cidr_block='10.0.0.0/16')
+            label=label, cidr_block='10.0.0.0/16')
         with helpers.cleanup_action(
             lambda: net.delete()
         ):
@@ -48,9 +48,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 "Network CIDR %s does not contain the expected value."
                 % net.cidr_block)
 
-            cidr = '10.0.1.0/24'
+            cidr = '10.0.20.0/24'
             sn = net.create_subnet(
-                name=subnet_name, cidr_block=cidr,
+                label=subnet_label, cidr_block=cidr,
                 zone=helpers.get_provider_test_data(self.provider,
                                                     'placement'))
             with helpers.cleanup_action(lambda: sn.delete()):
@@ -69,10 +69,15 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     net.subnets, [sn],
                     "Network should have exactly one subnet: %s." % sn.id)
 
-                self.assertIn(
+                self.assertEqual(
                     net.id, sn.network_id,
-                    "Network ID %s should be specified in the subnet's network"
-                    " id %s." % (net.id, sn.network_id))
+                    "Network ID %s and subnet's network id %s should be"
+                    " equal." % (net.id, sn.network_id))
+
+                self.assertEqual(
+                    net, sn.network,
+                    "Network obj %s and subnet's parent net obj %s"
+                    " should be equal." % (net, sn.network))
 
                 self.assertEqual(
                     cidr, sn.cidr_block,
@@ -82,11 +87,12 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_subnet(self):
         # Late binding will make sure that create_subnet gets the
         # correct value
-        net = None
+        sn = helpers.get_or_create_default_subnet(self.provider)
+        net = sn.network
 
-        def create_subnet(name):
+        def create_subnet(label):
             return self.provider.networking.subnets.create(
-                network=net, cidr_block="10.0.0.0/24", name=name,
+                label=label, network=net, cidr_block="10.0.10.0/24",
                 zone=helpers.get_provider_test_data(
                     self.provider, 'placement'))
 
@@ -94,21 +100,14 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             if subnet:
                 self.provider.networking.subnets.delete(subnet=subnet)
 
-        net_name = 'cb_crudsubnet-{0}'.format(helpers.get_uuid())
-        net = self.provider.networking.networks.create(
-            name=net_name, cidr_block='10.0.0.0/16')
-        with helpers.cleanup_action(
-            lambda:
-                self.provider.networking.networks.delete(network_id=net.id)
-        ):
-            sit.check_crud(self, self.provider.networking.subnets, Subnet,
-                           "cb_crudsubnet", create_subnet, cleanup_subnet)
+        sit.check_crud(self, self.provider.networking.subnets, Subnet,
+                       "cb-crudsubnet", create_subnet, cleanup_subnet)
 
     def test_crud_floating_ip(self):
-        net, gw = helpers.get_test_gateway(
-            self.provider, 'cb_crudfipgw-{0}'.format(helpers.get_uuid()))
+        gw = helpers.get_test_gateway(
+            self.provider)
 
-        def create_fip(name):
+        def create_fip(label):
             fip = gw.floating_ips.create()
             return fip
 
@@ -117,18 +116,18 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 gw.floating_ips.delete(fip.id)
 
         with helpers.cleanup_action(
-                lambda: helpers.delete_test_gateway(net, gw)):
+                lambda: helpers.delete_test_gateway(gw)):
             sit.check_crud(self, gw.floating_ips, FloatingIP,
-                           "cb_crudfip", create_fip, cleanup_fip,
+                           "cb-crudfip", create_fip, cleanup_fip,
                            skip_name_check=True)
 
     def test_floating_ip_properties(self):
         # Check floating IP address
-        net, gw = helpers.get_test_gateway(
-            self.provider, 'cb_crudfipgw-{0}'.format(helpers.get_uuid()))
+        gw = helpers.get_test_gateway(
+            self.provider)
         fip = gw.floating_ips.create()
         with helpers.cleanup_action(
-                lambda: helpers.delete_test_gateway(net, gw)):
+                lambda: helpers.delete_test_gateway(gw)):
             with helpers.cleanup_action(lambda: fip.delete()):
                 fipl = list(gw.floating_ips)
                 self.assertIn(fip, fipl)
@@ -151,13 +150,13 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def _cleanup(net, subnet, router, gateway):
             with helpers.cleanup_action(lambda: net.delete()):
-                with helpers.cleanup_action(lambda: subnet.delete()):
-                    with helpers.cleanup_action(lambda: gateway.delete()):
-                        with helpers.cleanup_action(lambda: router.delete()):
+                with helpers.cleanup_action(lambda: router.delete()):
+                    with helpers.cleanup_action(lambda: subnet.delete()):
+                        with helpers.cleanup_action(lambda: gateway.delete()):
                             router.detach_subnet(subnet)
                             router.detach_gateway(gateway)
 
-        name = 'cb_crudrouter-{0}'.format(helpers.get_uuid())
+        label = 'cb-crudrouter-{0}'.format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         net = None
@@ -166,11 +165,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         gteway = None
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
             net = self.provider.networking.networks.create(
-                name=name, cidr_block='10.0.0.0/16')
-            router = self.provider.networking.routers.create(network=net,
-                                                             name=name)
-            cidr = '10.0.1.0/24'
-            sn = net.create_subnet(name=name, cidr_block=cidr,
+                label=label, cidr_block='10.0.0.0/16')
+            router = self.provider.networking.routers.create(label=label,
+                                                             network=net)
+            cidr = '10.0.15.0/24'
+            sn = net.create_subnet(label=label, cidr_block=cidr,
                                    zone=helpers.get_provider_test_data(
                                        self.provider, 'placement'))
 
@@ -188,7 +187,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 #                     router.id, router.network_id))
 
             router.attach_subnet(sn)
-            gteway = net.gateways.get_or_create_inet_gateway(name)
+            gteway = net.gateways.get_or_create_inet_gateway(name=label)
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 
