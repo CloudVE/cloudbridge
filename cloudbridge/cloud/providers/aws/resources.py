@@ -1027,6 +1027,7 @@ class AWSNetwork(BaseNetwork):
     def refresh(self):
         try:
             self._vpc.reload()
+            self._unknown_state = False
         except ClientError:
             # The network no longer exists and cannot be refreshed.
             # set the status to unknown
