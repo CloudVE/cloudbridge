@@ -138,21 +138,6 @@ class BotoGenericService(object):
         # pylint:disable=protected-access
         return collection._handler(collection._parent, params, page)
 
-    def _resource_iterator(self, collection, params, pages, limit):
-        """
-        Iterates through the pages of a paginated result, converting the
-        objects to BotoResources as necessary. This duplicates the logic in
-        boto's ResourceCollection(). pending issue:
-        https://github.com/boto/boto3/issues/1268
-        """
-        count = 0
-        for page in pages:
-            for item in self._to_boto_resource(collection, params, page):
-                count += 1
-                if limit is not None and count > limit:
-                    return
-                yield item
-
     def _get_paginated_results(self, limit, marker, collection):
         """
         If a Boto Paginator is available, use it. The results
@@ -183,9 +168,11 @@ class BotoGenericService(object):
         args = trim_empty_params(params)
         pages = paginator.paginate(**args)
         # resume_token is not populated unless the iterator is used
-        items = list(self._resource_iterator(collection, params, pages, limit))
+        items = pages.build_full_result()
+
+        boto_objs = self._to_boto_resource(collection, args, items)
         resume_token = pages.resume_token
-        return (resume_token, items)
+        return (resume_token, boto_objs)
 
     def _make_query(self, collection, limit, marker):
         """
