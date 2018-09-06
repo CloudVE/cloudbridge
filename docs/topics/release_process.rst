@@ -15,10 +15,19 @@ Release Process
    ``git shortlog <last release hash>..HEAD``
 
 5. Release to PyPi
+   (make sure you have run `pip install wheel`)
 
 .. code-block:: bash
 
    python setup.py sdist upload
    python setup.py bdist_wheel upload
 
-6. Tag release and make GitHub release.
+6. Tag release and make a GitHub release.
+
+.. code-block:: bash
+
+   git tag -a v1.0.0 -m "Release 1.0.0"
+   git push --tags
+
+7. Increment version number in ``cloudbridge/__init__.py`` to ``version-dev``
+   to indicate the development cycle, commit, and push the changes.
