@@ -76,8 +76,8 @@ class OpenStackMachineImage(BaseMachineImage):
         'saving': MachineImageState.PENDING,
         'active': MachineImageState.AVAILABLE,
         'killed': MachineImageState.ERROR,
-        'deleted': MachineImageState.ERROR,
-        'pending_delete': MachineImageState.ERROR,
+        'deleted': MachineImageState.UNKNOWN,
+        'pending_delete': MachineImageState.PENDING,
         'deactivated': MachineImageState.ERROR
     }
 

@@ -56,7 +56,7 @@ class AWSMachineImage(BaseMachineImage):
         'pending': MachineImageState.PENDING,
         'transient': MachineImageState.PENDING,
         'available': MachineImageState.AVAILABLE,
-        'deregistered': MachineImageState.ERROR,
+        'deregistered': MachineImageState.PENDING,
         'failed': MachineImageState.ERROR,
         'error': MachineImageState.ERROR,
         'invalid': MachineImageState.ERROR
