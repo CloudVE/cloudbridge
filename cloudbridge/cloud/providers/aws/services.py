@@ -386,6 +386,7 @@ class AWSImageService(BaseImageService):
         # Filter by name or label
         name = kwargs.get('name', None)
         label = kwargs.get('label', None)
+        # Popped here, not used in the generic find
         owner = kwargs.pop('owners', None)
         extra_args = {}
         if owner:

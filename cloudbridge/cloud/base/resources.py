@@ -848,7 +848,6 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
     @property
     def name(self):
-        # VM firewall rules don't support labels
         return self.public_ip
 
     @property

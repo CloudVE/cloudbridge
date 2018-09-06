@@ -823,6 +823,8 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
                          if n.external)
         for net in external_nets:
             if self._check_fip_connectivity(net):
+                if name:
+                    net.label = name
                 return OpenStackInternetGateway(self._provider, net)
         return None
 
@@ -1156,19 +1158,7 @@ class OpenStackInternetGateway(BaseInternetGateway):
 
     @property
     def name(self):
-        return self.id
-
-    @property
-    def label(self):
-        return self._gateway_net.tags.get('gateway_name', None)
-
-    @label.setter
-    # pylint:disable=arguments-differ
-    def label(self, value):
-        self.assert_valid_resource_label(value)
-        self._provider.neutron_client.add_tag(
-            'network', self.id, {'gateway_name': value or ""})
-        self.refresh()
+        return self._gateway_net.get('name', None)
 
     @property
     def network_id(self):
@@ -1513,10 +1503,12 @@ class OpenStackBucketContainer(BaseBucketContainer):
         _, object_list = self._provider.swift.get_container(
             self.bucket.name, prefix=name)
         if object_list:
-            return OpenStackBucketObject(self._provider, self.bucket,
-                                         object_list[0])
-        else:
-            return None
+            for ob in object_list:
+                if ob.name == name:
+                    return OpenStackBucketObject(self._provider,
+                                                 self.bucket,
+                                                 ob)
+        return None
 
     def list(self, limit=None, marker=None, prefix=None):
         """

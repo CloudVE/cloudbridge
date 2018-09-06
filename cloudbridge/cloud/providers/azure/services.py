@@ -108,7 +108,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
 
     def find(self, **kwargs):
         obj_list = self
-        filters = ['label', 'name']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
@@ -281,7 +281,7 @@ class AzureVolumeService(BaseVolumeService):
 
     def find(self, **kwargs):
         obj_list = self
-        filters = ['name', 'label']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
@@ -777,7 +777,7 @@ class AzureImageService(BaseImageService):
 
     def find(self, **kwargs):
         obj_list = self
-        filters = ['name', 'label']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
@@ -866,7 +866,7 @@ class AzureNetworkService(BaseNetworkService):
 
     def find(self, **kwargs):
         obj_list = self
-        filters = ['name', 'label']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
@@ -984,12 +984,6 @@ class AzureSubnetService(BaseSubnetService):
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
@@ -1060,7 +1054,7 @@ class AzureRouterService(BaseRouterService):
 
     def find(self, **kwargs):
         obj_list = self
-        filters = ['name', 'label']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.

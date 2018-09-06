@@ -124,7 +124,6 @@ class AWSMachineImage(BaseMachineImage):
         snapshot = self._provider.storage.snapshots.get(snapshot_id[0])
         if snapshot:
             snapshot.delete()
-            snapshot.wait_till_ready()
 
     @property
     def state(self):
