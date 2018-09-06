@@ -1494,17 +1494,16 @@ class OpenStackBucketContainer(BaseBucketContainer):
         """
         Retrieve a given object from this bucket.
         """
+        # Swift always returns a reference for the container first,
+        # followed by a list containing references to objects.
         _, object_list = self._provider.swift.get_container(
             self.bucket.name, prefix=name)
-        if object_list:
-            # Swift always returns a reference for the container first,
-            # followed by a list containing references to objects.
-            # Looping through list of objects
-            for ob in object_list[1]:
-                if ob.get('name') == name:
-                    return OpenStackBucketObject(self._provider,
-                                                 self.bucket,
-                                                 ob)
+        # Loop through list of objects looking for an exact name vs. a prefix
+        for obj in object_list:
+            if obj.get('name') == name:
+                return OpenStackBucketObject(self._provider,
+                                             self.bucket,
+                                             obj)
         return None
 
     def list(self, limit=None, marker=None, prefix=None):
