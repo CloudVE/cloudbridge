@@ -817,14 +817,12 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
             except Exception:
                 return False
 
-    def get_or_create_inet_gateway(self, name=None):
+    def get_or_create_inet_gateway(self):
         """For OS, inet gtw is any net that has `external` property set."""
         external_nets = (n for n in self._provider.networking.networks
                          if n.external)
         for net in external_nets:
             if self._check_fip_connectivity(net):
-                if name:
-                    net.label = name
                 return OpenStackInternetGateway(self._provider, net)
         return None
 
@@ -1499,8 +1497,11 @@ class OpenStackBucketContainer(BaseBucketContainer):
         _, object_list = self._provider.swift.get_container(
             self.bucket.name, prefix=name)
         if object_list:
-            for ob in object_list:
-                if ob.name == name:
+            # Swift always returns a reference for the container first,
+            # followed by a list containing references to objects.
+            # Looping through list of objects
+            for ob in object_list[1]:
+                if ob.get('name') == name:
                     return OpenStackBucketObject(self._provider,
                                                  self.bucket,
                                                  ob)

@@ -1244,8 +1244,8 @@ class AWSGatewayContainer(BaseGatewayContainer):
                                   cb_resource=AWSInternetGateway,
                                   boto_collection_name='internet_gateways')
 
-    def get_or_create_inet_gateway(self, name=None):
-        log.debug("Get or create inet gateway %s on net %s", name,
+    def get_or_create_inet_gateway(self):
+        log.debug("Get or create inet gatewayon net %s",
                   self._network)
         network_id = self._network.id if isinstance(
             self._network, AWSNetwork) else self._network
@@ -1258,15 +1258,10 @@ class AWSGatewayContainer(BaseGatewayContainer):
             return gtw[0]  # There can be only one gtw attached to a VPC
         # Gateway does not exist so create one and attach to the supplied net
         cb_gateway = self.svc.create('create_internet_gateway')
-        if name:
-            AWSInternetGateway.assert_valid_resource_name(name)
-            cb_gateway._gateway.create_tags(
-                Tags=[{'Key': 'Name', 'Value': name}])
-        else:
-            cb_gateway._gateway.create_tags(
-                Tags=[{'Key': 'Name',
-                       'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
-                       }])
+        cb_gateway._gateway.create_tags(
+            Tags=[{'Key': 'Name',
+                   'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                   }])
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 

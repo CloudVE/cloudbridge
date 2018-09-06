@@ -76,7 +76,7 @@ of the block and allow up to 16 IP addresses within a subnet (``/28``).
     sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28', zone=zone)
     router = provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway()
     router.attach_gateway(gateway)
 
 
@@ -94,7 +94,7 @@ The additional step that's required here is to assign a floating IP to the VM:
 
     router = provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway()
     router.attach_gateway(gateway)
 
     fip = provider.networking.floating_ips.create()

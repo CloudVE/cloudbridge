@@ -201,7 +201,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 #                     router.id, router.network_id))
 
             router.attach_subnet(sn)
-            gteway = net.gateways.get_or_create_inet_gateway(name=label)
+            gteway = net.gateways.get_or_create_inet_gateway()
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 

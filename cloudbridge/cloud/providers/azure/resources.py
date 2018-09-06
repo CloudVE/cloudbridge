@@ -833,7 +833,7 @@ class AzureGatewayContainer(BaseGatewayContainer):
         self.gateway_singleton = AzureInternetGateway(self._provider, None,
                                                       network)
 
-    def get_or_create_inet_gateway(self, name=None):
+    def get_or_create_inet_gateway(self):
         gateway = AzureInternetGateway(self._provider, None, self._network)
         return gateway
 

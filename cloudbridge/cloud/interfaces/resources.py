@@ -1336,7 +1336,7 @@ class GatewayContainer(PageableObjectMixin):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self, name=None):
+    def get_or_create_inet_gateway(self):
         """
         Creates new or returns an existing internet gateway for a network.
 

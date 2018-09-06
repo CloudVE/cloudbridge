@@ -27,13 +27,13 @@ REQS_AWS = ['boto3<1.8.0']
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
-REQS_AZURE = ['msrest>=0.5.4',
+REQS_AZURE = ['msrest>=0.5.5',
               'msrestazure>=0.5.0',
               'azure-common>=1.1.14',
               'azure-mgmt-devtestlabs>=2.2.0',
               'azure-mgmt-resource>=2.0.0',
               'azure-mgmt-compute>=4.0.1',
-              'azure-mgmt-network>=2.0.1',
+              'azure-mgmt-network>=2.1.0',
               'azure-mgmt-storage>=2.0.0',
               'azure-storage-blob>=1.3.1',
               'azure-cosmosdb-table>=1.0.4',

@@ -121,7 +121,7 @@ attaching an internet gateway to the subnet via a router.
     sn = net.create_subnet(cidr_block='10.0.0.0/28', label='my-subnet')
     router = provider.networking.routers.create(network=net, label='my-router')
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway(name='my-gateway')
+    gateway = net.gateways.get_or_create_inet_gateway()
     router.attach_gateway(gateway)
 
 
@@ -228,7 +228,7 @@ listed in order to help map each resource with the service that handles it.
     router = router_list[0]
 
     # Gateway
-    gateway = net.gateways.get_or_create_inet_gateway(name='my-gateway')
+    gateway = net.gateways.get_or_create_inet_gateway()
 
     # Floating IPs
     fip = gateway.floating_ips.get('FloatingIP ID')
