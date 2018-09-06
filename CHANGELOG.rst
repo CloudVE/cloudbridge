@@ -1,4 +1,4 @@
-1.0.0 - Aug ??, 2018. (sha ??)
+1.0.0 - September 6, 2018. (sha 11bccd822f21a598fc753995440cf1a409984889)
 -------
 
 * Added Microsoft Azure as a provider
@@ -27,7 +27,7 @@
 * Add implementation for ``generate_url`` on OpenStack
 * General documentation updates
 
-0.3.3 - Aug 7, 2017. (sha 348e1e88935f61f53a83ed8d6a0e012a46621e25)
+0.3.3 - August 7, 2017. (sha 348e1e88935f61f53a83ed8d6a0e012a46621e25)
 -------
 
 * Remove explicit versioning of requests and Babel
