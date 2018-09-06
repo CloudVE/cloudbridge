@@ -1495,10 +1495,6 @@ class OpenStackBucketContainer(BaseBucketContainer):
     def get(self, name):
         """
         Retrieve a given object from this bucket.
-
-        FIXME: If multiple objects match the name as their name prefix,
-        all will be returned by the provider but this method will only
-        return the first element.
         """
         _, object_list = self._provider.swift.get_container(
             self.bucket.name, prefix=name)
