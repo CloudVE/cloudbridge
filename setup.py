@@ -19,33 +19,33 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
             break
 
 REQS_BASE = [
-    'bunch==1.0.1',
+    'bunch>=1.0.1',
     'six>=1.11',
-    'tenacity>=5.0'
+    'tenacity>=4.12.0,<=5.0'
 ]
 REQS_AWS = ['boto3<1.8.0']
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
-REQS_AZURE = ['msrest>=0.5.4',
-              'msrestazure>=0.5.0',
-              'azure-common>=1.1.14',
-              'azure-mgmt-devtestlabs>=2.2.0',
-              'azure-mgmt-resource>=2.0.0',
-              'azure-mgmt-compute>=4.0.1',
-              'azure-mgmt-network>=2.1',
-              'azure-mgmt-storage>=2.0.0',
-              'azure-storage-blob>=1.3.1',
-              'azure-cosmosdb-table>=1.0.4',
-              'pysftp>=0.2.9']
+REQS_AZURE = ['msrest>=0.5.4,<0.6',
+              'msrestazure==0.5.0',
+              'azure-common==1.1.14',
+              'azure-mgmt-devtestlabs==2.2.0',
+              'azure-mgmt-resource==2.0.0',
+              'azure-mgmt-compute==4.0.1',
+              'azure-mgmt-network>=2.0.1,<=2.1',
+              'azure-mgmt-storage==2.0.0',
+              'azure-storage-blob==1.3.1',
+              'azure-cosmosdb-table==1.0.4',
+              'pysftp==0.2.9']
 REQS_OPENSTACK = [
-    'openstacksdk>=0.17',
-    'python-novaclient>=11.0',
-    'python-glanceclient>=2.12',
-    'python-cinderclient>=4.0',
-    'python-swiftclient>=3.6',
-    'python-neutronclient>=6.9',
-    'python-keystoneclient>=3.17'
+    'openstacksdk>=0.12.0,<=0.17',
+    'python-novaclient>=7.0.0,<=11.0',
+    'python-glanceclient>=2.5.0,<=2.12',
+    'python-cinderclient>=1.9.0,<=4.0',
+    'python-swiftclient>=3.2.0,<=3.6',
+    'python-neutronclient>=6.0.0,<=6.9',
+    'python-keystoneclient>=3.13.0,<=3.17'
 ]
 REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
