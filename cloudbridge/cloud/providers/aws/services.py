@@ -318,9 +318,8 @@ class AWSBucketService(BaseBucketService):
                 log.warning("AWS Bucket %s already exists but user doesn't "
                             "have enough permissions to access the bucket",
                             bucket_id)
-                bucket = self.provider.s3_conn.get_bucket(bucket_id,
-                                                          validate=False)
-                return AWSBucket(self.provider, bucket)
+                return AWSBucket(self.provider,
+                                 self.provider.s3_conn.Bucket(bucket_id))
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
