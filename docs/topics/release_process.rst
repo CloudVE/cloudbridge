@@ -14,11 +14,17 @@ Release Process
    changelog. List of commits can be obtained using
    ``git shortlog <last release hash>..HEAD``
 
-5. Release to PyPi
+5. Release to PyPi.
    (make sure you have run `pip install wheel`)
+   First, test release with PyPI staging server as described in:
+   https://hynek.me/articles/sharing-your-labor-of-love-pypi-quick-and-dirty/
+
+   Once tested, run:
 
 .. code-block:: bash
 
+   # remove stale files or wheel might package them
+   rm -r build dist
    python setup.py sdist upload
    python setup.py bdist_wheel upload
 
