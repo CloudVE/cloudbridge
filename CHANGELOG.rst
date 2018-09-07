@@ -1,3 +1,8 @@
+1.0.1 - September 7, 2018. (sha 3130492008c5e0e115b8dfec880d32a4ac90b761)
+-------
+* Fixed minor bug when retrieving buckets with only limited access
+* Relaxed some library version dependencies (e.g. six)
+
 1.0.0 - September 6, 2018. (sha 11bccd822f21a598fc753995440cf1a409984889)
 -------
 
