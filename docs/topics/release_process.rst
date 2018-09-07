@@ -8,6 +8,13 @@ Release Process
    a range with the upper limit being the latest known working version, and the
    lowest being the last known working version.
 
+   In general, our strategy is to make provider sdk libraries fixed within
+   relatively known compatibility ranges, so that we reduce the chances of
+   breakage. If someone uses cloudbridge, presumably, they do not use the sdks
+   directly. For all other libraries, especially, general purpose libraries
+   (e.g. six), our strategy is to make compatibility as broad and unrestricted
+   as possible.
+
 3. Run all ``tox`` tests.
 
 4. Add release notes to ``CHANGELOG.rst``. Also add last commit hash to

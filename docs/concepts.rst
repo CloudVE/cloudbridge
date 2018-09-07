@@ -31,7 +31,7 @@ The actual source code structure of CloudBridge also mirrors this organisation.
 Object identification and naming
 ---------------------------------
 
-In order to function uniformly across across cloud providers, object identity
+In order to function uniformly across cloud providers, object identity
 and naming must be conceptually consistent. In CloudBridge, there are three
 main properties for identifying and naming an object.
 
