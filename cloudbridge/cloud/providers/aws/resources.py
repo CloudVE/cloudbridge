@@ -1135,6 +1135,12 @@ class AWSFloatingIPContainer(BaseFloatingIPContainer):
         name = kwargs.pop('name', None)
         public_ip = kwargs.pop('public_ip', None)
 
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           'name, public_ip'))
+
         obj_list = []
 
         if name:
@@ -1146,7 +1152,8 @@ class AWSFloatingIPContainer(BaseFloatingIPContainer):
             log.debug("Searching for AWS Image Service %s", public_ip)
             obj_list.extend(self.svc.find(filter_name='public-ip',
                                           filter_value=public_ip))
-        return obj_list
+
+        return ClientPagedResultList(self._provider, obj_list)
 
     def list(self, limit=None, marker=None):
         log.debug("Listing all floating IPs under gateway %s", self.gateway)

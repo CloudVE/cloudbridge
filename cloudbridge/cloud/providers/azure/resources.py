@@ -965,8 +965,12 @@ class AzureFloatingIPContainer(BaseFloatingIPContainer):
     def get(self, fip_id):
         log.debug("Getting Azure Floating IP container with the id: %s",
                   fip_id)
-        fip = [fip for fip in self if fip.id == fip_id]
-        return fip[0] if fip else None
+        fips = [fip for fip in self if fip.id == fip_id]
+        if fips:
+            return fips[0]
+        else:
+            fips = [fip for fip in self if fip.public_ip == fip_id]
+        return fips[0] if fips else None
 
     def list(self, limit=None, marker=None):
         floating_ips = [AzureFloatingIP(self._provider, floating_ip,
