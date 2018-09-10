@@ -1,5 +1,5 @@
 """
-Package install information
+CloudBridge provides a uniform interface to multiple IaaS cloud providers.
 """
 
 import ast
@@ -63,6 +63,7 @@ setup(
     name='cloudbridge',
     version=version,
     description='A simple layer of abstraction over multiple cloud providers.',
+    long_description=__doc__,
     author='Galaxy and GVL Projects',
     author_email='help@genome.edu.au',
     url='http://cloudbridge.cloudve.org/',
