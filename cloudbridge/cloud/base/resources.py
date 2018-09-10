@@ -594,7 +594,11 @@ class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
         if matches:
             return matches[0]
         else:
-            return None
+            matches = [rule for rule in self if rule.name == rule_id]
+            if matches:
+                return matches[0]
+            else:
+                return None
 
     def find(self, **kwargs):
         obj_list = self

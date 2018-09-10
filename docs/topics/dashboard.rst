@@ -26,6 +26,7 @@ particular resource, but rather label a resource for easier distinction. It
 is however important to note that not all resources support labels. When
 supported, labels given at creation will also be used as a prefix to the name.
 
+
 Properties per Resource per Provider
 ------------------------------------
 The sections below will present a summary table detailing the CloudBridge
@@ -33,6 +34,7 @@ properties implemented for each resource, and their corresponding value in
 the provider's dashboard. It will also delineate the different types of
 CloudBridge resources, as well as present some design decisions made to
 preserve consistency across providers.
+
 
 Azure - Labeled Resources
 -------------------------
@@ -194,7 +196,9 @@ The FloatingIP resource has a traditional resource ID, but instead of a
 traditional name, its `name` property maps to its Public IP. Thus, the name
 seen in the Azure web portal will not map to the CloudBridge name, but will
 rather be auto-generated, while the Azure `IP Address` will map to CloudBridge
-name.
+name. Moreover, the corresponding `find` method for Floating IPs can thus help
+find a resource by `Public IP Address`, and the get method also accepts a
+'Public IP' instead of an 'ID'.
 
 In terms of the gateway, one of the major discrepancies in Azure is the
 non-existence of an InternetGateway. In fact, Azure resources are exposed
@@ -209,7 +213,7 @@ For a succinct comparison between AWS Gateways and Azure, see `this answer
 equivalent-of-aws-internet-gateways-in-azure?
 forum=WAVirtualMachinesVirtualNetwork>`_.
 
-Finally, Firewall Rules in Azure only differ from traditional unlabeled
+Finally, Firewall Rules in Azure differ from traditional unlabeled
 resources by the fact that they do not take a `name` parameter at creation.
 These rules can be found within each Firewall (i.e. Security Group) in the
 Azure web portal, and will have an automatically generated `name` of the form
