@@ -955,6 +955,91 @@ class AzureNetwork(BaseNetwork):
     def gateways(self):
         return self._gateway_service
 
+    def _replace_tag(self, old_tag_name, new_tag_name, new_tag_value):
+        tags = self._network.tags
+        tags.pop(old_tag_name)
+        if new_tag_name and new_tag_value:
+            tags.update({new_tag_name: new_tag_value})
+        self._network.tags = tags
+        self._provider.azure_client. \
+            update_network_tags(self.id, self._network)
+
+    def _existing_sn_tag(self, sn_name):
+        for tag in self._network.tags:
+            if "SubnetLabels" in tag and sn_name in tag:
+                return tag
+        return None
+
+    def _available_sn_tag(self, sn_name, sn_label):
+        max_name = 512 - len(sn_name)
+        max_label = 256 - len(sn_label)
+        for tag in self._network.tags:
+            if "SubnetLabels" in tag:
+                if len(tag) < max_name:
+                    value = self._network.tags.get(tag)
+                    if len(value) < max_label:
+                        return tag
+        return None
+
+    def _get_sn_label(self, sn_name):
+        tag = self._existing_sn_tag(sn_name)
+        if tag:
+            curr_names = tag.split('_')
+            curr_values = tag.split('_')
+            for i in range(curr_names):
+                if curr_names[i] == sn_name:
+                    return curr_values[i]
+        else:
+            return None
+
+    def _remove_sn_label(self, sn_name):
+        tag = self._existing_sn_tag(sn_name)
+        if tag:
+            curr_names = tag.split('_')
+            curr_values = tag.split('_')
+            for i in range(curr_names):
+                if curr_names[i] == sn_name:
+                    curr_names.pop(i)
+                    curr_values.pop(i)
+            if len(curr_names) <= 1:
+                curr_names = []
+                curr_values = []
+            self._replace_tag(tag, "_".join(curr_names), "_".join(curr_values))
+
+    def _replace_sn_label(self, tag, sn_name, new_label):
+        curr_names = tag.split('_')
+        curr_values = tag.split('_')
+        for i in range(curr_names):
+            if curr_names[i] == sn_name:
+                curr_values[i] = new_label
+        self._replace_tag(tag, tag, "_".join(curr_values))
+
+    def _add_sn_label(self, sn_name, sn_label):
+        # Refresh net to make sure tags are updated
+        self.refresh()
+        self.wait_till_ready()
+        # If the subnet is already tagged, replace the current value in the
+        # same tag
+        curr_tag = self._existing_sn_tag(sn_name)
+        if curr_tag:
+            self._replace_sn_label(curr_tag, sn_name, sn_label)
+        # If the subnet is not tagged, look for a tag with available space
+        # for the name and label, and append this subnet label to the tag
+        else:
+            curr_tag = self._available_sn_tag(sn_name, sn_label)
+            if curr_tag:
+                new_name = "_".join([curr_tag, sn_name])
+                new_value = "_".join([self._network.tags.get(curr_tag),
+                                      sn_label])
+                self._replace_tag(curr_tag, new_name, new_value)
+            # If this is the first tagged subnet, create a new tag for it
+            else:
+                new_name = '_'.join(['SubnetLabels', sn_name])
+                new_value = '_'.join(['', sn_label])
+                self._network.tags.update({new_name: new_value})
+                self._provider.azure_client. \
+                    update_network_tags(self.id, self._network)
+
 
 class AzureFloatingIPContainer(BaseFloatingIPContainer):
 
@@ -1108,7 +1193,6 @@ class AzureSubnet(BaseSubnet):
         super(AzureSubnet, self).__init__(provider)
         self._subnet = subnet
         self._state = self._subnet.provisioning_state
-        self._tag_name = None
 
     @property
     def id(self):
@@ -1125,25 +1209,18 @@ class AzureSubnet(BaseSubnet):
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels
         network = self._network
-        az_network = network._network
-        return az_network.tags.get(self.tag_name, None)
+        return network._get_sn_label(self._subnet.name)
 
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
         network = self._network
-        az_network = network._network
-        kwargs = {self.tag_name: value or ""}
-        az_network.tags.update(**kwargs)
-        self._provider.azure_client.update_network_tags(
-            az_network.id, az_network)
+        network._add_sn_label(self._subnet.name, value)
 
     @property
     def tag_name(self):
-        if not self._tag_name:
-            self._tag_name = 'SubnetLabel_' + self._subnet.name
-        return self._tag_name
+        return self._network._existing_sn_tag(self._subnet.name)
 
     @property
     def resource_id(self):
