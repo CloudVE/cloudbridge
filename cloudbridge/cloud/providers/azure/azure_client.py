@@ -80,6 +80,7 @@ VOLUME_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                       'disks/{diskName}',
                       '{diskName}']
 
+RES_GROUP_NAME = 'resourceGroupName'
 IMAGE_NAME = 'imageName'
 NETWORK_NAME = 'virtualNetworkName'
 NETWORK_INTERFACE_NAME = 'networkInterfaceName'
@@ -577,7 +578,8 @@ class AzureClient(object):
                                          version=url_params['version'])
         else:
             name = url_params.get(IMAGE_NAME)
-            return self.compute_client.images.get(self.resource_group, name)
+            res_group = url_params.get(RES_GROUP_NAME, self.resource_group)
+            return self.compute_client.images.get(res_group, name)
 
     def update_image_tags(self, image_id, tags):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
