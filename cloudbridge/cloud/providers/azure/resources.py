@@ -1247,6 +1247,7 @@ class AzureSubnet(BaseSubnet):
 
     def delete(self):
         self._provider.azure_client.delete_subnet(self.id)
+        self._network._remove_sn_label(self._subnet.name)
 
     @property
     def state(self):
