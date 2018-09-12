@@ -4,6 +4,8 @@ import string
 
 from botocore.exceptions import ClientError
 
+import cachetools
+
 import requests
 
 import cloudbridge.cloud.base.helpers as cb_helpers
@@ -603,6 +605,7 @@ class AWSVMTypeService(BaseVMTypeService):
         super(AWSVMTypeService, self).__init__(provider)
 
     @property
+    @cachetools.cached(cachetools.TTLCache(maxsize=1, ttl=24*3600))
     def instance_data(self):
         """
         Fetch info about the available instances.

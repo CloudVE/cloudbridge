@@ -21,7 +21,8 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
 REQS_BASE = [
     'bunch>=1.0.1',
     'six>=1.11',
-    'tenacity>=4.12.0,<=5.0'
+    'tenacity>=4.12.0,<=5.0',
+    'cachetools'
 ]
 REQS_AWS = ['boto3<1.8.0']
 # Install azure>=3.0.0 package to find which of the azure libraries listed
