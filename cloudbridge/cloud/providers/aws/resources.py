@@ -1245,7 +1245,7 @@ class AWSGatewayContainer(BaseGatewayContainer):
                                   boto_collection_name='internet_gateways')
 
     def get_or_create_inet_gateway(self):
-        log.debug("Get or create inet gatewayon net %s",
+        log.debug("Get or create inet gateway on net %s",
                   self._network)
         network_id = self._network.id if isinstance(
             self._network, AWSNetwork) else self._network

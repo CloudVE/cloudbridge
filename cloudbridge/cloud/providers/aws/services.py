@@ -772,10 +772,10 @@ class AWSSubnetService(BaseSubnetService):
             zone, AWSPlacementZone) else zone
         snl = self.svc.find('availabilityZone', zone_name)
         # Find first available default subnet by sorted order
-        # of availability zone. (e.g. prefer us-east-1a over 1e,
-        # This is because newer zones tend to have less compatibility
-        # with different instance types. (e.g. c5.large not available
-        # on us-east-1e as of 14 Dec. 2017
+        # of availability zone. Prefer zone us-east-1a over 1e,
+        # because newer zones tend to have less compatibility
+        # with different instance types (e.g. c5.large not available
+        # on us-east-1e as of 14 Dec. 2017).
         # pylint:disable=protected-access
         snl.sort(key=lambda sn: sn._subnet.availability_zone)
         for sn in snl:
@@ -789,22 +789,53 @@ class AWSSubnetService(BaseSubnetService):
         if len(snl) > 0:
             return snl[0]
 
-        # No provider-default Subnet exists, try to create it (net + subnets)
-        # Check if default net exists
+        """
+        No provider-default Subnet exists, try to create a CloudBridge-specific
+        network. This involves creating the network, subnets, internet gateway,
+        and connecting it all together so that the network has Internet
+        connectivity.
+        """
+        # Check if a default net already exists
         default_nets = self.provider.networking.networks.find(
             label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
         if len(default_nets) > 0:
             default_net = default_nets[0]
+            for sn in default_net.subnets:
+                if zone and zone == sn.zone.name:
+                    return sn
+            if len(default_net.subnets) == 0:
+                pass  # No subnets exist within the default net so continue
+            else:
+                return default_net.subnets[0]  # Pick a (first) subnet
         else:
+            log.info("Creating a CloudBridge-default network labeled {0}",
+                     AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
             default_net = self.provider.networking.networks.create(
                 label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
                 cidr_block='10.0.0.0/16')
+        # Get/create an internet gateway for the default network and a
+        # corresponding router if it does not already exist.
+        default_gtw = default_net.gateways.get_or_create_inet_gateway()
+        router_label = "{0}-router".format(AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+        default_routers = self.provider.networking.routers.find(
+            label=router_label)
+        if len(default_routers) == 0:
+            default_router = self.provider.networking.routers.create(
+                router_label, default_net)
+            default_router.attach_gateway(default_gtw)
+        else:
+            default_router = default_routers[0]
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
         for i, z in enumerate(region.zones):
-            sn = self.create(AWSSubnet.CB_DEFAULT_SUBNET_LABEL, default_net,
-                             '10.0.{0}.0/24'.format(i), z)
+            sn_label = "{0}-{1}".format(AWSSubnet.CB_DEFAULT_SUBNET_LABEL,
+                                        z.id[-1])
+            log.info("Creating default CloudBridge subnet {0}", sn_label)
+            sn = self.create(
+                sn_label, default_net, '10.0.{0}.0/24'.format(i), z)
+            # Create a route table entry between the SN and the inet gateway
+            default_router.attach_subnet(sn)
             if zone and zone == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
