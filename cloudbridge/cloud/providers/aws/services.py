@@ -811,34 +811,43 @@ class AWSSubnetService(BaseSubnetService):
             else:
                 return default_net.subnets[0]  # Pick a (first) subnet
         else:
-            log.info("Creating a CloudBridge-default network labeled {0}",
+            log.info("Creating a CloudBridge-default network labeled %s",
                      AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
             default_net = self.provider.networking.networks.create(
                 label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
                 cidr_block='10.0.0.0/16')
+
         # Get/create an internet gateway for the default network and a
         # corresponding router if it does not already exist.
-        default_gtw = default_net.gateways.get_or_create_inet_gateway()
-        router_label = "{0}-router".format(AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
-        default_routers = self.provider.networking.routers.find(
-            label=router_label)
-        if len(default_routers) == 0:
-            default_router = self.provider.networking.routers.create(
-                router_label, default_net)
-            default_router.attach_gateway(default_gtw)
-        else:
-            default_router = default_routers[0]
+        # NOTE: Comment this out because the docs instruct users to setup
+        # network connectivity manually. There's a bit of discrepancy here
+        # though because the provider-default network will have Internet
+        # connectivity (unlike the CloudBridge-default network with this
+        # being commented) and is hence left in the codebase.
+        # default_gtw = default_net.gateways.get_or_create_inet_gateway()
+        # router_label = "{0}-router".format(
+        #   AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+        # default_routers = self.provider.networking.routers.find(
+        #     label=router_label)
+        # if len(default_routers) == 0:
+        #     default_router = self.provider.networking.routers.create(
+        #         router_label, default_net)
+        #     default_router.attach_gateway(default_gtw)
+        # else:
+        #     default_router = default_routers[0]
+
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
         for i, z in enumerate(region.zones):
             sn_label = "{0}-{1}".format(AWSSubnet.CB_DEFAULT_SUBNET_LABEL,
                                         z.id[-1])
-            log.info("Creating default CloudBridge subnet {0}", sn_label)
+            log.info("Creating default CloudBridge subnet %s", sn_label)
             sn = self.create(
                 sn_label, default_net, '10.0.{0}.0/24'.format(i), z)
             # Create a route table entry between the SN and the inet gateway
-            default_router.attach_subnet(sn)
+            # See note above about why this is commented
+            # default_router.attach_subnet(sn)
             if zone and zone == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
