@@ -1142,7 +1142,7 @@ class AzureSubnet(BaseSubnet):
     @property
     def tag_name(self):
         if not self._tag_name:
-            self._tag_name = 'SubnetLabel_' + self._subnet.name
+            self._tag_name = 'SubnetLabel_{0}'.format(self._subnet.name)
         return self._tag_name
 
     @property
@@ -1696,6 +1696,13 @@ class AzureRouter(BaseRouter):
             attach_subnet_to_route_table(subnet.id,
                                          self.resource_id)
         self.refresh()
+
+    @property
+    def subnets(self):
+        if self._route_table.subnets:
+            return [AzureSubnet(self._provider, sn)
+                    for sn in self._route_table.subnets]
+        return []
 
     def detach_subnet(self, subnet):
         self._provider.azure_client. \

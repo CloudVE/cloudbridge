@@ -816,7 +816,7 @@ class RouterService(PageableObjectMixin, CloudService):
         """
         Searches for a router by a given list of attributes.
 
-        Supported attributes: name, label
+        Supported attributes: label
 
         :rtype: List of ``object`` of :class:`.Router`
         :return: A list of Router objects matching the supplied attributes.

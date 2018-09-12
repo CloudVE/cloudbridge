@@ -403,9 +403,9 @@ class OpenStackInstance(BaseInstance):
         Extract (one) subnet id associated with this instance.
 
         In OpenStack, instances are associated with ports instead of
-        instances so we need to dig through several connections to retrieve
-        the subnet_id. Further, there can potentially be several ports
-        connected to to different subnets. This implementation retrieves one
+        subnets so we need to dig through several connections to retrieve
+        the subnet_id. Further, there can potentially be several ports each
+        connected to different subnets. This implementation retrieves one
         subnet, the one corresponding to port associated with the first
         private IP associated with the instance.
         """
@@ -1122,6 +1122,19 @@ class OpenStackRouter(BaseRouter):
         if subnet.id in ret.get('subnet_ids', ""):
             return True
         return False
+
+    @property
+    def subnets(self):
+        # A router and a subnet are linked via a port, so traverse all ports
+        # to find a list of subnets associated with the current router.
+        subnets = []
+        for prt in self._provider.neutron.list_ports().get('ports'):
+            if prt.get('device_id') == self.id and \
+               prt.get('device_owner') == 'network:router_interface':
+                for fixed_ip in prt.get('fixed_ips'):
+                    subnets.append(self._provider.networking.subnets.get(
+                        fixed_ip.get('subnet_id')))
+        return subnets
 
     def attach_gateway(self, gateway):
         self._provider.neutron.add_gateway_router(

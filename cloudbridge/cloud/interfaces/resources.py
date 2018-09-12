@@ -1289,6 +1289,16 @@ class Router(LabeledCloudResource):
         """
         pass
 
+    @abstractproperty
+    def subnets(self):
+        """
+        List of subnets attached to this router.
+
+        :rtype: ``list`` of :class:`.Subnet` objects
+        :return: A list of subnets associated with this router.
+        """
+        pass
+
     @abstractmethod
     def attach_gateway(self, gateway):
         """

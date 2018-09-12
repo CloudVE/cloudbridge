@@ -1221,6 +1221,11 @@ class AWSRouter(BaseRouter):
             a.delete()
         self.refresh()
 
+    @property
+    def subnets(self):
+        return [AWSSubnet(self._provider, rta.subnet)
+                for rta in self._route_table.associations if rta.subnet]
+
     def attach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
