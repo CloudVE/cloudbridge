@@ -1010,7 +1010,11 @@ class OpenStackFloatingIPContainer(BaseFloatingIPContainer):
                 self._provider, self._provider.os_conn.network.get_ip(fip_id))
         except (ResourceNotFound, NotFoundException):
             log.debug("Floating IP %s not found.", fip_id)
-            return None
+            # Try getting by IP address instead of ID
+            fips = [OpenStackFloatingIP(self._provider, fip) for fip in
+                    self._provider.os_conn.network.ips(
+                        floating_ip_address=fip_id)]
+            return fips[0] if fips else None
 
     def list(self, limit=None, marker=None):
         fips = [OpenStackFloatingIP(self._provider, fip)
@@ -1019,6 +1023,30 @@ class OpenStackFloatingIPContainer(BaseFloatingIPContainer):
                 )]
         return ClientPagedResultList(self._provider, fips,
                                      limit=limit, marker=marker)
+
+    def find(self, **kwargs):
+        name = kwargs.pop('name', None)
+        public_ip = kwargs.pop('public_ip', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           'name, public_ip'))
+
+        fips_list = []
+        if name:
+            log.debug("Searching for AWS Image Service %s", name)
+            fips_list.extend([OpenStackFloatingIP(self._provider, fip)
+                              for fip in self._provider.os_conn.network.ips(
+                                      floating_ip_address=name)])
+        if public_ip:
+            log.debug("Searching for AWS Image Service %s", public_ip)
+            fips_list.extend([OpenStackFloatingIP(self._provider, fip)
+                              for fip in self._provider.os_conn.network.ips(
+                                      floating_ip_address=public_ip)])
+
+        return ClientPagedResultList(self._provider, fips_list)
 
     def create(self):
         return OpenStackFloatingIP(

@@ -129,7 +129,16 @@ class AWSVMFirewallService(BaseVMFirewallService):
 
     def get(self, firewall_id):
         log.debug("Getting Firewall Service with the id: %s", firewall_id)
-        return self.svc.get(firewall_id)
+        fw = self.svc.get(firewall_id)
+        if fw:
+            return fw
+        else:
+            fws = self.svc.find(filter_name='group-name',
+                                filter_value=firewall_id)
+            for fw in fws:
+                if fw.name == firewall_id:
+                    return fw
+        return None
 
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
@@ -381,7 +390,15 @@ class AWSImageService(BaseImageService):
 
     def get(self, image_id):
         log.debug("Getting AWS Image Service with the id: %s", image_id)
-        return self.svc.get(image_id)
+        img = self.svc.get(image_id)
+        if img:
+            return img
+        else:
+            imgs = self.svc.find(filter_name='name', filter_value=image_id)
+            for img in imgs:
+                if img.name ==  image_id:
+                    return img
+        return None
 
     def find(self, **kwargs):
         # Filter by name or label

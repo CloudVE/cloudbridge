@@ -1120,7 +1120,40 @@ class AWSFloatingIPContainer(BaseFloatingIPContainer):
 
     def get(self, fip_id):
         log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
-        return self.svc.get(fip_id)
+        fip = self.svc.get(fip_id)
+        if fip:
+            return fip
+        else:
+            fips = self.svc.find(filter_name='public-ip',
+                                 filter_value=fip_id)
+            for fip in fips:
+                if fip.public_ip == fip_id:
+                    return fip
+
+    def find(self, **kwargs):
+        # Filter by name or public_ip (both map to public_ip)
+        name = kwargs.pop('name', None)
+        public_ip = kwargs.pop('public_ip', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           'name, public_ip'))
+
+        obj_list = []
+
+        if name:
+            log.debug("Searching for AWS Image Service %s", name)
+            obj_list.extend(self.svc.find(filter_name='public-ip',
+                                          filter_value=name))
+        if public_ip:
+
+            log.debug("Searching for AWS Image Service %s", public_ip)
+            obj_list.extend(self.svc.find(filter_name='public-ip',
+                                          filter_value=public_ip))
+
+        return ClientPagedResultList(self._provider, obj_list)
 
     def list(self, limit=None, marker=None):
         log.debug("Listing all floating IPs under gateway %s", self.gateway)
