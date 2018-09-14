@@ -7,6 +7,7 @@ from azure.common.credentials import ServicePrincipalCredentials
 from azure.cosmosdb.table.tableservice import TableService
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.devtestlabs.models import GalleryImageReference
+from azure.mgmt.marketplaceordering import MarketplaceOrderingAgreements
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
@@ -170,6 +171,7 @@ class AzureClient(object):
         self._resource_client = None
         self._storage_client = None
         self._network_management_client = None
+        self._marketplace_agreement_client = None
         self._subscription_client = None
         self._compute_client = None
         self._access_key_result = None
@@ -253,6 +255,14 @@ class AzureClient(object):
             self._network_management_client = NetworkManagementClient(
                 self._credentials, self.subscription_id)
         return self._network_management_client
+
+    @property
+    def marketplace_agreement_client(self):
+        if not self._marketplace_agreement_client:
+            self._marketplace_agreement_client = MarketplaceOrderingAgreements(
+                self._credentials, self.subscription_id)
+        return self._marketplace_agreement_client
+
 
     @property
     def blob_service(self):
@@ -563,6 +573,16 @@ class AzureClient(object):
         azure_images = list(self.compute_client.images.
                             list_by_resource_group(self.resource_group))
         return azure_images
+
+    def get_marketplace_agreement(self, publisher_id, offer_id, plan_id):
+        return self.marketplace_agreement_client.marketplace_agreements\
+            .get(publisher_id, offer_id, plan_id)
+
+    def accept_marketplace_agreement(self, publisher_id, offer_id,
+                                     plan_id, agr):
+        agr.accepted = True
+        self.marketplace_agreement_client.marketplace_agreements.create(
+                                        publisher_id, offer_id, plan_id, agr)
 
     def list_gallery_refs(self):
         return gallery_image_references

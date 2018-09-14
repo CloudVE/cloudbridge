@@ -31,6 +31,7 @@ REQS_AWS = ['boto3<1.8.0']
 REQS_AZURE = ['msrest>=0.5.4,<0.6',
               'msrestazure==0.5.0',
               'azure-common==1.1.14',
+              'azure-mgmt-marketplaceordering==0.1.0',
               'azure-mgmt-devtestlabs==2.2.0',
               'azure-mgmt-resource==2.0.0',
               'azure-mgmt-compute==4.0.1',
