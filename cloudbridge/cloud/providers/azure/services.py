@@ -567,6 +567,14 @@ class AzureInstanceService(BaseInstanceService):
         if not temp_key_pair:
             params['tags'].update(Key_Pair=key_pair.id)
 
+        image_ref = storage_profile.get('image_reference')
+        if image_ref:
+            sku = image_ref.get('sku')
+            if sku:
+                params.update(plan={"name": sku,
+                                    "publisher": image_ref.get("publisher"),
+                                    "product": image_ref.get("offer")})
+
         try:
             vm = self.provider.azure_client.create_vm(instance_name, params)
         except Exception as e:
