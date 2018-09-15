@@ -575,8 +575,11 @@ class AzureClient(object):
         return azure_images
 
     def get_marketplace_agreement(self, publisher_id, offer_id, plan_id):
-        return self.marketplace_agreement_client.marketplace_agreements\
-            .get(publisher_id, offer_id, plan_id)
+        try:
+            return self.marketplace_agreement_client.marketplace_agreements\
+                .get(publisher_id, offer_id, plan_id)
+        except Exception as e:
+            return None
 
     def accept_marketplace_agreement(self, publisher_id, offer_id,
                                      plan_id, agr):

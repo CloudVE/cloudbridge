@@ -571,9 +571,17 @@ class AzureInstanceService(BaseInstanceService):
         if image_ref:
             sku = image_ref.get('sku')
             if sku:
-                params.update(plan={"name": sku,
-                                    "publisher": image_ref.get("publisher"),
-                                    "product": image_ref.get("offer")})
+                publisher = image_ref.get("publisher")
+                offer = image_ref.get("offer")
+                agreement = self.provider.azure_client. \
+                    get_marketplace_agreement(publisher, offer, sku)
+                # TODO: Give link to terms to user before accepting
+                if agreement:
+                    self.provider.azure_client.accept_marketplace_agreement(
+                        publisher, offer, sku, agreement)
+                    params.update(plan={"name": sku,
+                                        "publisher": publisher,
+                                        "product": offer})
 
         try:
             vm = self.provider.azure_client.create_vm(instance_name, params)
