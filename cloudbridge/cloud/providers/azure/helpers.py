@@ -53,14 +53,21 @@ def parse_url(template_urls, original_url):
     return resource_param
 
 
-def generate_urn(gallery_image):
+MARKETPLACE_ID = '/Subscriptions/{subscriptionId}/Providers/'\
+                 'Microsoft.Compute/Locations/{locationName}'\
+                 '/Publishers/{publisherName}/ArtifactTypes/VMImage/'\
+                 'Offers/{offerName}/Skus/{skuName}/'\
+                 'Versions/{versionName}'
+
+def generate_urn(image_id):
     """
-    This function takes an azure gallery image and outputs a corresponding URN
+    This function takes an azure marketplace image ID and outputs a
+    corresponding URN
     :param gallery_image: a GalleryImageReference object
     :return: URN as string
     """
-    reference_dict = gallery_image.as_dict()
-    return ':'.join([reference_dict['publisher'],
-                     reference_dict['offer'],
-                     reference_dict['sku'],
-                     reference_dict['version']])
+    url_params = parse_url([MARKETPLACE_ID], image_id)
+    return ':'.join([url_params['publisherName'],
+                     url_params['offerName'],
+                     url_params['skuName'],
+                     url_params['versionName']])

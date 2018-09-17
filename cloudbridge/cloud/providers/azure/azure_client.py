@@ -6,7 +6,6 @@ from azure.common import AzureConflictHttpError
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.cosmosdb.table.tableservice import TableService
 from azure.mgmt.compute import ComputeManagementClient
-from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.marketplaceordering import MarketplaceOrderingAgreements
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
@@ -17,6 +16,8 @@ from azure.storage.blob import BlockBlobService
 from azure.storage.common import TokenCredential
 
 from msrestazure.azure_exceptions import CloudError
+
+from packaging import version as ver_pckg
 
 import tenacity
 
@@ -32,6 +33,11 @@ IMAGE_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                      '{resourceGroupName}/providers/Microsoft.Compute/'
                      'images/{imageName}',
                      '{imageName}',
+                     '/Subscriptions/{subscriptionId}/Providers/'
+                     'Microsoft.Compute/Locations/{locationName}'
+                     '/Publishers/{publisherName}/ArtifactTypes/VMImage/'
+                     'Offers/{offerName}/Skus/{skuName}/'
+                     'Versions/{versionName}',
                      '{publisher}:{offer}:{sku}:{version}']
 NETWORK_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                        '{resourceGroupName}/providers/Microsoft.Network'
@@ -81,7 +87,12 @@ VOLUME_RESOURCE_ID = ['/subscriptions/{subscriptionId}/resourceGroups/'
                       'disks/{diskName}',
                       '{diskName}']
 
+RES_GROUP_NAME = 'resourceGroupName'
 IMAGE_NAME = 'imageName'
+IMAGE_PUBLISHER_NAME = 'publisherName'
+IMAGE_OFFER_NAME = 'offerName'
+IMAGE_SKU_NAME = 'skuName'
+IMAGE_VERSION_NAME = 'versionName'
 NETWORK_NAME = 'virtualNetworkName'
 NETWORK_INTERFACE_NAME = 'networkInterfaceName'
 PUBLIC_IP_NAME = 'publicIpAddressName'
@@ -96,62 +107,20 @@ VOLUME_NAME = 'diskName'
 # Listing possible somewhat through:
 # azure.mgmt.devtestlabs.operations.GalleryImageOperations
 gallery_image_references = \
-    [GalleryImageReference(publisher='Canonical',
-                           offer='UbuntuServer',
-                           sku='16.04.0-LTS',
-                           version='latest'),
-     GalleryImageReference(publisher='Canonical',
-                           offer='UbuntuServer',
-                           sku='14.04.5-LTS',
-                           version='latest'),
-     GalleryImageReference(publisher='OpenLogic',
-                           offer='CentOS',
-                           sku='7.5',
-                           version='latest'),
-     GalleryImageReference(publisher='OpenLogic',
-                           offer='CentOS',
-                           sku='6.9',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftWindowsServer',
-                           offer='WindowsServer',
-                           sku='2016-Nano-Server',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftWindowsServer',
-                           offer='WindowsServer',
-                           sku='2016-Datacenter',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftWindowsDesktop',
-                           offer='Windows-10',
-                           sku='rs4-pron',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftVisualStudio',
-                           offer='Windows',
-                           sku='Windows-10-N-x64',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftVisualStudio',
-                           offer='VisualStudio',
-                           sku='VS-2017-Ent-WS2016',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftSQLServer',
-                           offer='SQL2017-WS2016',
-                           sku='Web',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftSQLServer',
-                           offer='SQL2017-WS2016',
-                           sku='Standard',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftSQLServer',
-                           offer='SQL2017-WS2016',
-                           sku='SQLDEV',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftSQLServer',
-                           offer='SQL2017-WS2016',
-                           sku='Express',
-                           version='latest'),
-     GalleryImageReference(publisher='MicrosoftSQLServer',
-                           offer='SQL2017-WS2016',
-                           sku='Enterprise',
-                           version='latest')]
+    ['Canonical:UbuntuServer:16.04.0-LTS:latest',
+     'Canonical:UbuntuServer:14.04.5-LTS:latest',
+     'OpenLogic:CentOS:7.5:latest',
+     'OpenLogic:CentOS:6.9:latest',
+     'MicrosoftWindowsServer:WindowsServer:2016-Nano-Server:latest',
+     'MicrosoftWindowsServer:WindowsServer:2016-Datacenter:latest',
+     'MicrosoftWindowsDesktop:Windows-10:rs4-pron:latest',
+     'MicrosoftVisualStudio:Windows:Windows-10-N-x64:latest',
+     'MicrosoftVisualStudio:VisualStudio:VS-2017-Ent-WS2016:latest',
+     'MicrosoftSQLServer:SQL2017-WS2016:Web:latest',
+     'MicrosoftSQLServer:SQL2017-WS2016:Standard:latest',
+     'MicrosoftSQLServer:SQL2017-WS2016:SQLDEV:latest',
+     'MicrosoftSQLServer:SQL2017-WS2016:Express:latest',
+     'MicrosoftSQLServer:SQL2017-WS2016:Enterprise:latest']
 
 
 class AzureClient(object):
@@ -555,7 +524,7 @@ class AzureClient(object):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
         # If it is a gallery image, it will always have an offer
-        return 'offer' in url_params
+        return 'offer' in url_params or 'offerName' in url_params
 
     def create_image(self, name, params):
         return self.compute_client.images. \
@@ -575,11 +544,8 @@ class AzureClient(object):
         return azure_images
 
     def get_marketplace_agreement(self, publisher_id, offer_id, plan_id):
-        try:
-            return self.marketplace_agreement_client.marketplace_agreements\
+        return self.marketplace_agreement_client.marketplace_agreements\
                 .get(publisher_id, offer_id, plan_id)
-        except Exception as e:
-            return None
 
     def accept_marketplace_agreement(self, publisher_id, offer_id,
                                      plan_id, agr):
@@ -588,19 +554,40 @@ class AzureClient(object):
                                         publisher_id, offer_id, plan_id, agr)
 
     def list_gallery_refs(self):
-        return gallery_image_references
+        return [self.get_image(urn) for urn in gallery_image_references]
 
     def get_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
+        # ID is a URN reference or a Marketplace image ID
         if self.is_gallery_image(image_id):
-            return GalleryImageReference(publisher=url_params['publisher'],
-                                         offer=url_params['offer'],
-                                         sku=url_params['sku'],
-                                         version=url_params['version'])
+            # Image ID is a URN reference. Get marketplace object for this
+            # image
+            if 'offer' in url_params:
+                publisher = url_params['publisher']
+                offer = url_params['offer']
+                sku = url_params['sku']
+                version = url_params['version']
+                # To avoid forcing users to keep track of versions, we fetch
+                # the latest version when a URN is specified with version
+                # 'latest'
+                if 'latest' in version.lower():
+                    imgs = self.compute_client.\
+                                virtual_machine_images.list(
+                                    self.region_name, publisher, offer, sku)
+                    versions = [ver_pckg.parse(v.name) for v in imgs]
+
+                    # This is necessary to make sure the form remains the same
+                    # because str(package.version.parse('1.01.2')) == 1.1.2
+                    max_ind = versions.index(max(versions))
+                    version = imgs[max_ind].name
+
+            return self.compute_client.virtual_machine_images.get(
+                self.region_name, publisher, offer, sku, version)
         else:
             name = url_params.get(IMAGE_NAME)
-            return self.compute_client.images.get(self.resource_group, name)
+            res_group = url_params.get(RES_GROUP_NAME, self.resource_group)
+            return self.compute_client.images.get(res_group, name)
 
     def update_image_tags(self, image_id, tags):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,

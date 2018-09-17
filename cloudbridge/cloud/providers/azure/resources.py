@@ -6,8 +6,8 @@ import logging
 from uuid import uuid4
 
 from azure.common import AzureException
-from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
+from azure.mgmt.compute.models import VirtualMachineImage
 
 from msrestazure.azure_exceptions import CloudError
 
@@ -692,7 +692,7 @@ class AzureMachineImage(BaseMachineImage):
         # Image can be either a dict for public image reference
         # or the Azure iamge object
         self._image = image
-        if isinstance(self._image, GalleryImageReference):
+        if isinstance(self._image, VirtualMachineImage):
             self._state = 'Succeeded'
         else:
             self._state = self._image.provisioning_state
@@ -707,28 +707,22 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        if self.is_gallery_image:
-            return azure_helpers.generate_urn(self._image)
-        else:
-            return self._image.id
+        return self._image.id
 
     @property
     def name(self):
-        if self.is_gallery_image:
-            return azure_helpers.generate_urn(self._image)
+        if self.is_marketplace_image:
+            return azure_helpers.generate_urn(self._image.id)
         else:
             return self._image.name
 
     @property
     def resource_id(self):
-        if self.is_gallery_image:
-            return azure_helpers.generate_urn(self._image)
-        else:
-            return self._image.id
+        return self._image.id
 
     @property
     def label(self):
-        if self.is_gallery_image:
+        if self.is_marketplace_image:
             return azure_helpers.generate_urn(self._image)
         else:
             return self._image.tags.get('Label', None)
@@ -738,7 +732,7 @@ class AzureMachineImage(BaseMachineImage):
         """
         Set the image label when it is a private image.
         """
-        if not self.is_gallery_image:
+        if not self.is_marketplace_image:
             self.assert_valid_resource_label(value)
             self._image.tags.update(Label=value or "")
             self._provider.azure_client. \
@@ -752,9 +746,9 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        if self.is_gallery_image:
-            return 'Public gallery image from the Azure Marketplace: '\
-                    + self.name
+        if self.is_marketplace_image:
+            return \
+                'Public image from the Azure Marketplace: {}'.format(self.name)
         else:
             return self._image.tags.get('Description', None)
 
@@ -763,7 +757,7 @@ class AzureMachineImage(BaseMachineImage):
         """
         Set the image description.
         """
-        if not self.is_gallery_image:
+        if not self.is_marketplace_image:
             self._image.tags.update(Description=value or "")
             self._provider.azure_client. \
                 update_image_tags(self.id, self._image.tags)
@@ -779,7 +773,7 @@ class AzureMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        if self.is_gallery_image:
+        if self.is_marketplace_image:
             return 0
         else:
             return self._image.storage_profile.os_disk.disk_size_gb or 0
@@ -788,34 +782,39 @@ class AzureMachineImage(BaseMachineImage):
         """
         Delete this image
         """
-        if not self.is_gallery_image:
+        if not self.is_marketplace_image:
             self._provider.azure_client.delete_image(self.id)
 
     @property
     def state(self):
-        if self.is_gallery_image:
+        if self.is_marketplace_image:
             return MachineImageState.AVAILABLE
         else:
             return AzureMachineImage.IMAGE_STATE_MAP.get(
                 self._state, MachineImageState.UNKNOWN)
 
     @property
-    def is_gallery_image(self):
+    def is_marketplace_image(self):
         """
         Returns true if the image is a public reference and false if it
         is a private image in the resource group.
         """
-        return isinstance(self._image, GalleryImageReference)
+        return isinstance(self._image, VirtualMachineImage)
 
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        if not self.is_gallery_image:
+        if not self.is_marketplace_image:
             try:
                 self._image = self._provider.azure_client.get_image(self.id)
-                self._state = self._image.provisioning_state
+                if isinstance(self._image, VirtualMachineImage):
+                    self._state = 'Succeeded'
+                else:
+                    self._state = self._image.provisioning_state
+                    if not self._image.tags:
+                        self._image.tags = {}
             except CloudError as cloud_error:
                 log.exception(cloud_error.message)
                 # image no longer exists
