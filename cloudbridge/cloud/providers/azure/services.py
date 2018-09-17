@@ -810,8 +810,8 @@ class AzureImageService(BaseImageService):
         List all images.
         """
         azure_images = self.provider.azure_client.list_images()
-        azure_gallery_refs = self.provider.azure_client.list_gallery_refs() \
-            if not filter_by_owner else []
+        azure_gallery_refs = self.provider.azure_client.\
+            list_basic_marketplace_images() if not filter_by_owner else []
         cb_images = [AzureMachineImage(self.provider, img)
                      for img in azure_images + azure_gallery_refs]
         return ClientPagedResultList(self.provider, cb_images,

@@ -21,7 +21,7 @@ from packaging import version as ver_pckg
 
 import tenacity
 
-from cloudbridge.cloud.interfaces.exceptions import \
+from cloudbridge.cloud.interfaces.exceptions import CloudBridgeBaseException,\
     DuplicateResourceException, InvalidLabelException, \
     ProviderConnectionException, WaitStateException
 
@@ -553,8 +553,70 @@ class AzureClient(object):
         self.marketplace_agreement_client.marketplace_agreements.create(
                                         publisher_id, offer_id, plan_id, agr)
 
-    def list_gallery_refs(self):
+    def list_basic_marketplace_images(self):
         return [self.get_image(urn) for urn in gallery_image_references]
+
+    def list_marketplace_images(self, publisher=None, offer=None, sku=None):
+        if publisher:
+            if offer:
+                if sku:
+                    az_imgs = self.compute_client.virtual_machine_images.list(
+                        self.region_name, publisher, offer, sku)
+                    return [img.id for img in az_imgs]
+                else:
+                    skus = [sku.name for sku in
+                            self.compute_client.virtual_machine_images.
+                            list_skus(self.region_name, publisher, offer)]
+                    az_imgs = []
+                    for s in skus:
+                        az_imgs.extend(self.compute_client.
+                                       virtual_machine_images.list(
+                                           self.region_name, publisher,
+                                           offer, s))
+                    return [img.id for img in az_imgs]
+            else:
+                if sku:
+                    msg = 'An SKU cannot be specified without ' \
+                          'both a publisher and an offer. Please specify ' \
+                          'both a publisher and an offer for the given SKU.'
+                    raise CloudBridgeBaseException(msg)
+                offers = [offer.name for offer in
+                          self.compute_client.virtual_machine_images.
+                          list_offers(self.region_name, publisher)]
+                az_imgs = []
+                for of in offers:
+                    skus = [sku.name for sku in
+                            self.compute_client.virtual_machine_images.
+                            list_skus(self.region_name, publisher, of)]
+                    for s in skus:
+                        az_imgs.extend(self.compute_client.
+                                       virtual_machine_images.list(
+                                           self.region_name, publisher, of, s))
+                return [img.id for img in az_imgs]
+
+        else:
+            if offer or sku:
+                raise CloudBridgeBaseException('An offer cannot be specified '
+                                               'with no publisher. Please '
+                                               'specify a publisher for the '
+                                               'given offer.')
+            pubs = [pub.name for pub in
+                    self.compute_client.virtual_machine_images.list_publishers(
+                        self.region_name)]
+            az_imgs = []
+            for pub in pubs:
+                offers = [offer.name for offer in
+                          self.compute_client.virtual_machine_images.
+                              list_offers(self.region_name, pub)]
+                for of in offers:
+                    skus = [sku.name for sku in
+                            self.compute_client.virtual_machine_images.
+                                list_skus(self.region_name, pub, of)]
+                    for s in skus:
+                        az_imgs.extend(self.compute_client.
+                            virtual_machine_images.list(
+                            self.region_name, pub, of, s))
+            return [img.id for img in az_imgs]
 
     def get_image(self, image_id):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
