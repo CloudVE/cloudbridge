@@ -63,7 +63,7 @@ def generate_urn(image_id):
     """
     This function takes an azure marketplace image ID and outputs a
     corresponding URN
-    :param gallery_image: a GalleryImageReference object
+    :param image_id: str
     :return: URN as string
     """
     url_params = parse_url([MARKETPLACE_ID], image_id)

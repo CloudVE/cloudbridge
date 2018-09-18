@@ -595,6 +595,9 @@ class AzureClient(object):
                 return [img.id for img in az_imgs]
 
         else:
+            # CPU times: user 1min 40s, sys: 5.94 s, total: 1min 46s
+            # Wall time: 10min 16s
+            # 9/18/2018 time to get the entire image list
             if offer or sku:
                 raise CloudBridgeBaseException('An offer cannot be specified '
                                                'with no publisher. Please '
@@ -607,15 +610,15 @@ class AzureClient(object):
             for pub in pubs:
                 offers = [offer.name for offer in
                           self.compute_client.virtual_machine_images.
-                              list_offers(self.region_name, pub)]
+                          list_offers(self.region_name, pub)]
                 for of in offers:
                     skus = [sku.name for sku in
                             self.compute_client.virtual_machine_images.
-                                list_skus(self.region_name, pub, of)]
+                            list_skus(self.region_name, pub, of)]
                     for s in skus:
                         az_imgs.extend(self.compute_client.
-                            virtual_machine_images.list(
-                            self.region_name, pub, of, s))
+                                       virtual_machine_images.list(
+                                            self.region_name, pub, of, s))
             return [img.id for img in az_imgs]
 
     def get_image(self, image_id):
@@ -644,8 +647,16 @@ class AzureClient(object):
                     max_ind = versions.index(max(versions))
                     version = imgs[max_ind].name
 
+            # A marketplace ID
+            else:
+                publisher = url_params['publisherName']
+                offer = url_params['offerName']
+                sku = url_params['skuName']
+                version = url_params['versionName']
+
             return self.compute_client.virtual_machine_images.get(
                 self.region_name, publisher, offer, sku, version)
+
         else:
             name = url_params.get(IMAGE_NAME)
             res_group = url_params.get(RES_GROUP_NAME, self.resource_group)

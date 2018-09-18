@@ -567,21 +567,22 @@ class AzureInstanceService(BaseInstanceService):
         if not temp_key_pair:
             params['tags'].update(Key_Pair=key_pair.id)
 
-        image_ref = storage_profile.get('image_reference')
-        if image_ref:
-            sku = image_ref.get('sku')
-            if sku:
-                publisher = image_ref.get("publisher")
-                offer = image_ref.get("offer")
+        if image.is_marketplace_image:
+            plan = image._image.as_dict().get('plan')
+            if plan:
+
+                plan_name = plan.get("name")
+                plan_product = plan.get("product")
+                plan_publisher = plan.get("publisher")
                 agreement = self.provider.azure_client. \
-                    get_marketplace_agreement(publisher, offer, sku)
-                # TODO: Give link to terms to user before accepting
+                    get_marketplace_agreement(plan_publisher,
+                                              plan_product,
+                                              plan_name)
+                # Implicitely accepting any terms in the plan
                 if agreement:
                     self.provider.azure_client.accept_marketplace_agreement(
-                        publisher, offer, sku, agreement)
-                    params.update(plan={"name": sku,
-                                        "publisher": publisher,
-                                        "product": offer})
+                        plan_publisher, plan_product, plan_name, agreement)
+                    params.update(plan=plan)
 
         try:
             vm = self.provider.azure_client.create_vm(instance_name, params)
@@ -634,13 +635,13 @@ class AzureInstanceService(BaseInstanceService):
     def _create_storage_profile(self, image, launch_config, instance_name,
                                 zone_id):
 
-        if image.is_gallery_image:
-            reference = image._image.as_dict()
+        if image.is_marketplace_image:
+            urn = image.name.split(':')
             image_ref = {
-                'publisher': reference['publisher'],
-                'offer': reference['offer'],
-                'sku': reference['sku'],
-                'version': reference['version']
+                'publisher': urn[0],
+                'offer': urn[1],
+                'sku': urn[2],
+                'version': urn[3]
             }
         else:
             image_ref = {
