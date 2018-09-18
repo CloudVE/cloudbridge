@@ -44,7 +44,7 @@ Azure - Labeled Resources
 | Instance                         | Virtual Machine        | ID    | Name                   | tag:Label                          |
 +----------------------------------+------------------------+-------+------------------------+------------------------------------+
 | MachineImage (Private)           | Image                  | ID    | Name                   | tag:Label                          |
-| MachineImage (Gallery Reference) | Gallery Reference      | URN   | URN                    | URN                                |
+| MachineImage (Marketplace Image) | VirtualMachineImage    | ID    | URN                    | URN                                |
 +----------------------------------+------------------------+-------+------------------------+------------------------------------+
 | Network                          | Virtual Network        | ID    | Name                   | tag:Label                          |
 +----------------------------------+------------------------+-------+------------------------+------------------------------------+
@@ -97,18 +97,53 @@ web portal.
    web portal.
 
 Two labeled resources are exceptions to the general trends presented above,
-namely public images (i.e. Azure Marketplace Gallery References) and subnets.
+namely public images (i.e. Azure Marketplace Images) and subnets.
 
-Gallery Images are public images from the Azure Marketplace, and cannot be
-found on a user's dashboard. A Gallery Image Reference is passed by URN, and
-does not need to be linked to a user. While all Gallery Image References cannot
-yet be listed in CloudBridge, a pre-set list of popular images is built into
-CloudBridge. For more on listing images through the Azure CLI, see the
-`Microsoft Documentation here. <https://docs.microsoft
-.com/en-us/azure/virtual-machines/linux/
-cli-ps-findimage#list-popular-images.>`_ Given that these resources are not
-owned by the user, they can only be referenced by URN. All CloudBridge
-properties map to the URN and none of them can be set or changed.
+These public images can be found in the Azure Marketplace, and cannot be
+found on a user's dashboard. A Marketplace Image can be passed either by URN,
+or by public ID, and does not need to be linked to a user. While all
+Marketplace images will not be be listed by the find or list methods at the
+moment, a pre-set list of popular images is built into CloudBridge for that
+purpose. However, one can choose to list all Marketplace Images using the
+`list_marketplace_images` function in the azure client. Specifically,
+this can be done as follows:
+
+.. code-block:: python
+
+    # List all images
+    # Note that in September 2018, around 10 minutes of wall time were required
+    # to fetch the entire list
+    provider.azure_client.list_marketplace_images()
+    # List all images published by Canonical
+    provider.azure_client.list_marketplace_images(publisher='Canonical')
+    # List all Ubuntu images
+    provider.azure_client.list_marketplace_images(publisher='Canonical',
+                                                  offer='UbuntuServer')
+    # List all Ubuntu 16.04 images
+    provider.azure_client.list_marketplace_images(publisher='Canonical',
+                                                  offer='UbuntuServer',
+                                                  sku='16.04.0-LTS')
+    # The ID of the listed object can then be used to retrieve an instance
+    img = provider.compute.images.get
+            ('/Subscriptions/{subscriptionID}/Providers/Microsoft.Compute/\
+            Locations/{regionName}/Publishers/Canonical/ArtifactTypes/VMImage\
+            /Offers/UbuntuServer/Skus/16.04.0-LTS/Versions/16.04.201808140')
+    # The URN can also be used instead if it is already known
+    # When the latest version is desired, it can be retrieved with the
+    # keyword 'latest' in the URN without specifying a version
+    img = provider.compute.images.get(
+          'Canonical:UbuntuServer:16.04.0-LTS:latest')
+
+
+Given that these resources are not owned by the user, they can only be
+referenced and all setters will silently pass. CloudBridge properties `name`
+and `label` will map to the URN, while the `ID` will map to the public `ID`.
+It is also important to note that some of these resources are paid and
+required a plan to use, while others are free but likewise require accepting
+certain terms before being used. These plans and terms are passed and
+accepted silently by CloudBridge in order to keep the code cloud-independent.
+We therefore encourage using the `marketplace website<https://azuremarketplace.microsoft.com/en-us>`_
+to view image and plan details before using them in CloudBridge.
 
 Additionally, Subnets are a particular resource in Azure because they are
 not simply found in the Resource Group like most resources, but are rather
@@ -206,7 +241,7 @@ with no need for an Internet gateway. However, in order to keep resources
 consistent across providers, the CloudBridge Gateway resource exists
 regardless of provider. For Azure, the gateway object created through
 CloudBridge will not appear on the dashboard, but will rather be a cached
-CloudBridge-level wrapper object.
+CloudBridge-level wrapper object.\
 For a succinct comparison between AWS Gateways and Azure, see `this answer
 <https://social.msdn.microsoft.com/Forums/en-US/
 814ccee0-9fbb-4c04-8135-49d0aaea5f38/
@@ -218,3 +253,64 @@ resources by the fact that they do not take a `name` parameter at creation.
 These rules can be found within each Firewall (i.e. Security Group) in the
 Azure web portal, and will have an automatically generated `name` of the form
 'cb-rule-[int]'.
+
+
+AWS - Labeled Resources
+-------------------------
++------------------------+-------------------+----------------+----------------+----------+
+| Labeled Resource       | AWS Resource Type | CB ID          | CB Name        | CB Label |
++------------------------+-------------------+----------------+----------------+----------+
+| Instance               | Instance          | Instance ID    | Instance ID    | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| MachineImage (Private) | AMI               | AMI ID         | AMI Name       | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| Network                | VPC               | VPC ID         | VPC ID         | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| Subnet                 | Subnet            | Subnet ID      | Subnet ID      | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| Router                 | Route Table       | Route Table ID | Route Table ID | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| Volume                 | Volume            | Volume ID      | Volume ID      | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| Snapshot               | Snapshot          | Snapshot ID    | Snapshot ID    | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| VMFirewall             | Security Group    | Group ID       | Group Name     | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+
+The resources listed above are labeled. They thus have both the `name` and
+`label` properties in CloudBridge. These resources require a mandatory `label`
+parameter at creation. For all labeled resources, the `label` property in AWS
+maps to the tag with `key:Name`. However, unlike in Azure where all resources
+have names, only some AWS resources have an unchangeable name by which to
+identify them. Thus, for most AWS resources, the `name` property maps to the
+ID, in order to preserve the concept of names being a unique identifier,
+even if they are not easily readable in this context. For resources that do
+support naming in AWS, the `name` will be generated from the `label` given at
+creation, consisting of up to 55 characters from the label, followed by a UUID.
+The label property can subsequently be changed, but the name property will
+be set at creation and remain unchanged. Finally, labeled resources support
+a `label` parameter for the `find` method in their corresponding services.
+The below screenshots will help map these properties to AWS objects in the
+web portal.
+
+.. figure:: captures/aws-instance-dash.png
+   :scale: 50 %
+   :alt: name, ID, and label properties for AWS EC2 Instances
+
+   The CloudBridge `name` and `ID` properties map to the unchangeable
+   resource ID in AWS when the resource does not allow for an unchangeable
+   name. The `label` property maps to the tag with key 'Name' for all
+   resources in AWS. By default, this label will appear in the first
+   column.
+
+.. figure:: captures/az-ami-dash.png
+   :scale: 50 %
+   :alt: name, ID, and label properties for AWS EC2 AMIs
+
+   When an AWS resource allows for an unchangeable name, the CloudBridge
+   `ID` property maps to the Resource ID, while the `Name` property maps to
+   the Resource Name. The `label` property maps to the tag with key 'Name'
+   for all resources in AWS. By default, this label will appear in the first
+   column.
+
+
