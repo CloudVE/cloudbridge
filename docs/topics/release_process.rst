@@ -1,21 +1,21 @@
 Release Process
 ~~~~~~~~~~~~~~~
 
-1. Increment version number in ``cloudbridge/__init__.py`` as per
-   `semver rules <https://semver.org/>_.
+1. Make sure `all tests pass <https://travis-ci.org/CloudVE/cloudbridge>`_.
 
-2. Freeze all library dependencies in ``setup.py``. The version numbers can be
-   a range with the upper limit being the latest known working version, and the
-   lowest being the last known working version.
+2. Increment version number in ``cloudbridge/__init__.py`` as per
+   `semver rules <https://semver.org/>`_.
+
+3. Freeze all library dependencies in ``setup.py`` and commit.
+   The version numbers can be a range with the upper limit being the latest
+   known working version, and the lowest being the last known working version.
 
    In general, our strategy is to make provider sdk libraries fixed within
    relatively known compatibility ranges, so that we reduce the chances of
-   breakage. If someone uses cloudbridge, presumably, they do not use the sdks
+   breakage. If someone uses CloudBridge, presumably, they do not use the SDKs
    directly. For all other libraries, especially, general purpose libraries
-   (e.g. six), our strategy is to make compatibility as broad and unrestricted
-   as possible.
-
-3. Run all ``tox`` tests.
+   (e.g. ``six``), our strategy is to make compatibility as broad and
+   unrestricted as possible.
 
 4. Add release notes to ``CHANGELOG.rst``. Also add last commit hash to
    changelog. List of commits can be obtained using
