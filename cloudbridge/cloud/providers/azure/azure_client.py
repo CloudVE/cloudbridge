@@ -414,7 +414,6 @@ class AzureClient(object):
                                                     marker=marker)
         return (results.items, results.next_marker)
 
-
     def create_container(self, container_name):
         try:
             self.blob_service.create_container(container_name,

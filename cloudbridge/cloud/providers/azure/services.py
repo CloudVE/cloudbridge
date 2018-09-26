@@ -1042,6 +1042,11 @@ class AzureSubnetService(BaseSubnetService):
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
         self.provider.azure_client.delete_subnet(subnet_id)
+        network = subnet._network
+        az_network = network._network
+        az_network.tags.pop(subnet.tag_name)
+        self._provider.azure_client.update_network_tags(
+            az_network.id, az_network)
 
 
 class AzureRouterService(BaseRouterService):
