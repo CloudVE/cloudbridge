@@ -39,7 +39,7 @@ if you don't have those resources under your account, take a look at the
 
 .. code-block:: python
 
-    kp = provider.security.key_pairs.find(name='cloudbridge_intro')[0]
+    kp = provider.security.key_pairs.find(name='cloudbridge-intro')[0]
     fw = provider.security.vm_firewalls.list()[0]
 
 Launch an instance
@@ -50,7 +50,7 @@ Once we have all the desired pieces, we'll use them to launch an instance:
 
     inst = provider.compute.instances.create(
         name='cloudbridge-vpc', image=img, vm_type=vm_type,
-        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
+        subnet=subnet, zone=zone, key_pair=kp, vm_firewalls=[fw])
 
 Private networking
 ~~~~~~~~~~~~~~~~~~
@@ -73,7 +73,7 @@ that subnet.
 
     inst = provider.compute.instances.create(
         name='cloudbridge-vpc', image=img, vm_type=vm_type,
-        subnet=sn, key_pair=kp, vm_firewalls=[fw])
+        subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
 
 For more information on how to create and setup a private network, take a look
 at `Networking <./networking.html>`_.
@@ -95,7 +95,8 @@ refer to :class:`.LaunchConfig`.
     lc.add_volume_device(source=img, size=11, is_root=True)
     inst = provider.compute.instances.create(
         name='cloudbridge-bdm', image=img,  vm_type=vm_type,
-        launch_config=lc, key_pair=kp, vm_firewalls=[fw])
+        launch_config=lc, key_pair=kp, vm_firewalls=[fw],
+        subnet=subnet, zone=zone)
 
 where ``img`` is the :class:`.Image` object to use for the root volume.
 

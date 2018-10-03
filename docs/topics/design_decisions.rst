@@ -15,7 +15,7 @@ Require zone parameter when creating a default subnet
   time. Another factor influencing the decision was the example of creating a
   volume followed by creating an instance with presumably the two needing to be
   in the same zone. By requiring the zone across the board, it is less likely to
-  lead to a miss match. (Related to 63_.)
+  lead to a mismatch. (Related to 63_.)
 
 Resource identification, naming, and labeling
 ---------------------------------------------

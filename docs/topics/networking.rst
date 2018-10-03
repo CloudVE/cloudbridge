@@ -51,9 +51,9 @@ several common scenarios.
      receive incoming traffic from Tier 2, but must not be able to make
      outgoing traffic outside of its subnet.
 
-    At present, CloudBridge does not provide support for this scenario,
-    primarily because OpenStack's FwaaS (Firewall-as-a-Service) is not widely
-    available.
+   At present, CloudBridge does not provide support for this scenario,
+   primarily because OpenStack's FwaaS (Firewall-as-a-Service) is not widely
+   available.
 
 1. Allowing internet access from a launched VM
 ----------------------------------------------
@@ -90,7 +90,7 @@ The additional step that's required here is to assign a floating IP to the VM:
         name='my-network', cidr_block='10.0.0.0/16')
     sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28', zone=zone)
 
-    vm = provider.compute.instances.create('my-inst', subnet=sn, ...)
+    vm = provider.compute.instances.create('my-inst', subnet=sn, zone=zone, ...)
 
     router = provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)

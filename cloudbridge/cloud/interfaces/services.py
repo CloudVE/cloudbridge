@@ -96,7 +96,7 @@ class ComputeService(CloudService):
 
             # launch a new instance
             image = provider.compute.images.find(name='Ubuntu 16.04')[0]
-            size = provider.compute.vm_types.find(name='m1.small')
+            size = provider.compute.vm_types.find(name='m1.small')[0]
             instance = provider.compute.instances.create('Hello', image, size)
             print(instance.id, instance.label)
 
