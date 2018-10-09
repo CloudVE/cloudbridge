@@ -54,8 +54,8 @@ class AzureCloudProvider(BaseCloudProvider):
                                str(self.resource_group)))[-6:]))
 
         self.vm_default_user_name = self._get_config_value(
-            'azure_vm_default_user_name', get_env(
-                'AZURE_VM_DEFAULT_USER_NAME', 'cbuser'))
+            'azure_vm_default_username', get_env(
+                'AZURE_VM_DEFAULT_USERNAME', 'cbuser'))
 
         self.public_key_storage_table_name = self._get_config_value(
             'azure_public_key_storage_table_name', get_env(
