@@ -210,14 +210,14 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, firewalls,
                                      limit=limit, marker=marker)
 
-    def create(self, label, description, network_id):
+    @cb_helpers.deprecated_alias(network='network_id')
+    def create(self, label, network, description=None):
         OpenStackVMFirewall.assert_valid_resource_label(label)
-        name = OpenStackVMFirewall._generate_name_from_label(label, 'cb-fw')
         log.debug("Creating OpenStack VM Firewall with the params: "
                   "[label: %s network id: %s description: %s]", label,
-                  network_id, description)
+                  network, description)
         sg = self.provider.os_conn.network.create_security_group(
-            name=name, description=description or name)
+            name=label, description=description or label)
         if sg:
             return OpenStackVMFirewall(self.provider, sg)
         return None

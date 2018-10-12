@@ -30,6 +30,7 @@ from cloudbridge.cloud.interfaces.exceptions \
     import DuplicateResourceException, InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import VMFirewall
@@ -134,12 +135,14 @@ class AWSVMFirewallService(BaseVMFirewallService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, label, network_id, description=None):
+    @cb_helpers.deprecated_alias(network='network_id')
+    def create(self, label, network=None, description=None):
         log.debug("Creating Firewall Service with the parameters "
-                  "[label: %s id: %s description: %s]", label, network_id,
+                  "[label: %s id: %s description: %s]", label, network,
                   description)
         AWSVMFirewall.assert_valid_resource_label(label)
         name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
+        network_id = network.id if isinstance(network, Network) else network
         obj = self.svc.create('create_security_group', GroupName=name,
                               Description=description or name,
                               VpcId=network_id)

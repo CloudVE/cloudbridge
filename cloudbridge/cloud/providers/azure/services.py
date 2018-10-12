@@ -66,7 +66,8 @@ class AzureVMFirewallService(BaseVMFirewallService):
                for fw in self.provider.azure_client.list_vm_firewall()]
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
-    def create(self, label, description=None, network_id=None):
+    @cb_helpers.deprecated_alias(network='network_id')
+    def create(self, label, network=None, description=None):
         AzureVMFirewall.assert_valid_resource_label(label)
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         parameters = {"location": self.provider.region_name,
