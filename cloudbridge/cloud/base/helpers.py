@@ -4,14 +4,17 @@ import os
 import re
 import sys
 import traceback
-import warnings
 from contextlib import contextmanager
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from deprecation import deprecated
+
 import six
+
+import cloudbridge
 
 
 def generate_key_pair():
@@ -152,6 +155,10 @@ def rename_kwargs(func_name, kwargs, aliases):
             if new in kwargs:
                 raise TypeError('{} received both {} and {}'.format(
                     func_name, alias, new))
-            warnings.warn('{} is deprecated; use {}'.format(alias, new),
-                          DeprecationWarning)
+                # Manually invoke the deprecated decorator with an empty lambda
+                # to signal deprecation
+            deprecated(deprecated_in='1.1',
+                       current_version=cloudbridge.__version__,
+                       details='{} is deprecated, use {} instead'.format(
+                           alias, new))(lambda: None)()
             kwargs[new] = kwargs.pop(alias)
