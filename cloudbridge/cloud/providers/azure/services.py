@@ -1043,6 +1043,9 @@ class AzureSubnetService(BaseSubnetService):
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
         self.provider.azure_client.delete_subnet(subnet_id)
+        # Although Subnet doesn't support labels, we use the parent Network's
+        # tags to track the subnet's labels, thus that network-level tag must
+        # be deleted with the subnet
         network = subnet._network
         az_network = network._network
         az_network.tags.pop(subnet.tag_name)
