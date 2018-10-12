@@ -858,15 +858,13 @@ class OpenStackSubnetService(BaseSubnetService):
                   "[Label: %s Network: %s Cinder Block: %s Zone: -ignored-]",
                   label, network, cidr_block)
         OpenStackSubnet.assert_valid_resource_label(label)
-        name = OpenStackSubnet._generate_name_from_label(label, 'cb-subnet')
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
-        subnet_info = {'name': name, 'network_id': network_id,
+        subnet_info = {'name': label, 'network_id': network_id,
                        'cidr': cidr_block, 'ip_version': 4}
         subnet = (self.provider.neutron.create_subnet({'subnet': subnet_info})
                   .get('subnet'))
         cb_subnet = OpenStackSubnet(self.provider, subnet)
-        cb_subnet.label = label
         return cb_subnet
 
     def get_or_create_default(self, zone):
