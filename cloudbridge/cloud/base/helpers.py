@@ -155,8 +155,8 @@ def rename_kwargs(func_name, kwargs, aliases):
             if new in kwargs:
                 raise TypeError('{} received both {} and {}'.format(
                     func_name, alias, new))
-                # Manually invoke the deprecated decorator with an empty lambda
-                # to signal deprecation
+            # Manually invoke the deprecated decorator with an empty lambda
+            # to signal deprecation
             deprecated(deprecated_in='1.1',
                        current_version=cloudbridge.__version__,
                        details='{} is deprecated, use {} instead'.format(

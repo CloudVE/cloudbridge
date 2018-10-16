@@ -135,7 +135,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    @cb_helpers.deprecated_alias(network='network_id')
+    @cb_helpers.deprecated_alias(network_id='network')
     def create(self, label, network=None, description=None):
         log.debug("Creating Firewall Service with the parameters "
                   "[label: %s id: %s description: %s]", label, network,
