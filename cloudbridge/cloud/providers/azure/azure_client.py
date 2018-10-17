@@ -408,8 +408,11 @@ class AzureClient(object):
         return self.network_management_client.security_rules. \
             delete(self.resource_group, vm_firewall, name).result()
 
-    def list_containers(self, prefix=None):
-        return self.blob_service.list_containers(prefix=prefix)
+    def list_containers(self, prefix=None, limit=None, marker=None):
+        results = self.blob_service.list_containers(prefix=prefix,
+                                                    num_results=limit,
+                                                    marker=marker)
+        return (results.items, results.next_marker)
 
     def create_container(self, container_name):
         try:

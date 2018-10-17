@@ -453,12 +453,10 @@ class OpenStackInstance(BaseInstance):
         """
         log.debug("Creating OpenStack Image with the label %s", label)
         self.assert_valid_resource_label(label)
-        name = self._generate_name_from_label(label, 'cb-img')
 
-        image_id = self._os_instance.create_image(name)
+        image_id = self._os_instance.create_image(label)
         img = OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
-        img.label = label
         return img
 
     def _get_fip(self, floating_ip):
@@ -785,13 +783,12 @@ class OpenStackSnapshot(BaseSnapshot):
         Create a new Volume from this Snapshot.
         """
         vol_label = "from-snap-{0}".format(self.id or self.label)
-        name = self._generate_name_from_label(vol_label, 'cb-vol')
+        self.assert_valid_resource_label(vol_label)
         size = size if size else self._snapshot.size
         os_vol = self._provider.cinder.volumes.create(
-            size, name=name, availability_zone=placement,
+            size, name=vol_label, availability_zone=placement,
             snapshot_id=self._snapshot.id)
         cb_vol = OpenStackVolume(self._provider, os_vol)
-        cb_vol.label = vol_label
         return cb_vol
 
 

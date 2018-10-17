@@ -66,7 +66,8 @@ class AzureVMFirewallService(BaseVMFirewallService):
                for fw in self.provider.azure_client.list_vm_firewall()]
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
-    def create(self, label, description=None, network_id=None):
+    @cb_helpers.deprecated_alias(network_id='network')
+    def create(self, label, network=None, description=None):
         AzureVMFirewall.assert_valid_resource_label(label)
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         parameters = {"location": self.provider.region_name,
@@ -227,10 +228,15 @@ class AzureBucketService(BaseBucketService):
         """
         List all containers.
         """
-        buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in self.provider.azure_client.list_containers()]
-        return ClientPagedResultList(self.provider, buckets,
-                                     limit=limit, marker=marker)
+        buckets, resume_marker = self.provider.azure_client.list_containers(
+            limit=limit or self.provider.config.default_result_limit,
+            marker=marker)
+        results = [AzureBucket(self.provider, bucket)
+                   for bucket in buckets]
+        return ServerPagedResultList(is_truncated=resume_marker,
+                                     marker=resume_marker,
+                                     supports_total=False,
+                                     data=results)
 
     def create(self, name, location=None):
         """
@@ -1037,6 +1043,14 @@ class AzureSubnetService(BaseSubnetService):
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
         self.provider.azure_client.delete_subnet(subnet_id)
+        # Although Subnet doesn't support labels, we use the parent Network's
+        # tags to track the subnet's labels, thus that network-level tag must
+        # be deleted with the subnet
+        network = subnet._network
+        az_network = network._network
+        az_network.tags.pop(subnet.tag_name)
+        self._provider.azure_client.update_network_tags(
+            az_network.id, az_network)
 
 
 class AzureRouterService(BaseRouterService):
