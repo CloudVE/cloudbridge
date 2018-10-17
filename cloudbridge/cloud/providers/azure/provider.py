@@ -81,7 +81,9 @@ class AzureCloudProvider(BaseCloudProvider):
         else:
             return default
 
-    @deprecated(deprecated_in='1.1', current_version=cloudbridge.__version__,
+    @deprecated(deprecated_in='1.1',
+                removed_in='2.0',
+                current_version=cloudbridge.__version__,
                 details='AZURE_VM_DEFAULT_USER_NAME was deprecated in favor '
                         'of AZURE_VM_DEFAULT_USERNAME')
     def __wrap_deprecated_username(self, username):

@@ -158,6 +158,7 @@ def rename_kwargs(func_name, kwargs, aliases):
             # Manually invoke the deprecated decorator with an empty lambda
             # to signal deprecation
             deprecated(deprecated_in='1.1',
+                       removed_in='2.0',
                        current_version=cloudbridge.__version__,
                        details='{} is deprecated, use {} instead'.format(
                            alias, new))(lambda: None)()
