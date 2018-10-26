@@ -2,6 +2,7 @@
 import logging as log
 
 import boto3
+
 try:
     # These are installed only for the case of a dev instance
     import responses

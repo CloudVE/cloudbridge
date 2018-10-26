@@ -1124,7 +1124,7 @@ class AzureSubnet(BaseSubnet):
     def label(self):
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels
-        network = self._network
+        network = self.network
         az_network = network._network
         return az_network.tags.get(self.tag_name, None)
 
@@ -1132,7 +1132,7 @@ class AzureSubnet(BaseSubnet):
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        network = self._network
+        network = self.network
         az_network = network._network
         kwargs = {self.tag_name: value or ""}
         az_network.tags.update(**kwargs)
@@ -1153,7 +1153,7 @@ class AzureSubnet(BaseSubnet):
     def zone(self):
         # pylint:disable=protected-access
         region = self._provider.compute.regions.get(
-            self._network._network.location)
+            self.network._network.location)
         return region.zones[0]
 
     @property
@@ -1163,10 +1163,6 @@ class AzureSubnet(BaseSubnet):
     @property
     def network_id(self):
         return self._provider.azure_client.get_network_id_for_subnet(self.id)
-
-    @property
-    def _network(self):
-        return self._provider.networking.networks.get(self.network_id)
 
     def delete(self):
         self._provider.azure_client.delete_subnet(self.id)
