@@ -1046,7 +1046,7 @@ class AzureSubnetService(BaseSubnetService):
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels, thus that network-level tag must
         # be deleted with the subnet
-        network = subnet._network
+        network = subnet.network
         az_network = network._network
         az_network.tags.pop(subnet.tag_name)
         self._provider.azure_client.update_network_tags(
