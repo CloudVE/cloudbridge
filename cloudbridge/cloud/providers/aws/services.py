@@ -774,25 +774,34 @@ class AWSSubnetService(BaseSubnetService):
         return subnet
 
     def get_or_create_default(self, zone):
-        zone_name = zone.name if isinstance(
-            zone, AWSPlacementZone) else zone
-        snl = self.svc.find('availabilityZone', zone_name)
-        # Find first available default subnet by sorted order
-        # of availability zone. Prefer zone us-east-1a over 1e,
-        # because newer zones tend to have less compatibility
-        # with different instance types (e.g. c5.large not available
-        # on us-east-1e as of 14 Dec. 2017).
-        # pylint:disable=protected-access
-        snl.sort(key=lambda sn: sn._subnet.availability_zone)
+        if zone:
+            zone_name = zone.name if isinstance(
+                zone, AWSPlacementZone) else zone
+            snl = self.svc.find('availabilityZone', zone_name)
+
+        else:
+            snl = self.svc.list()
+            # Find first available default subnet by sorted order
+            # of availability zone. Prefer zone us-east-1a over 1e,
+            # because newer zones tend to have less compatibility
+            # with different instance types (e.g. c5.large not available
+            # on us-east-1e as of 14 Dec. 2017).
+            # pylint:disable=protected-access
+            snl.sort(key=lambda sn: sn._subnet.availability_zone)
+
         for sn in snl:
             # pylint:disable=protected-access
             if sn._subnet.default_for_az:
                 return sn
 
-        # Refresh the list for the default label
-        snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL)
+        # If no provider-default subnet has been found, look for
+        # cloudbridge-default by label. We suffix labels by availability zone,
+        # thus we add the wildcard for the regular expression to find the
+        # subnet
+        snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")
 
         if len(snl) > 0:
+            snl.sort(key=lambda sn: sn._subnet.availability_zone)
             return snl[0]
 
         """
@@ -807,7 +816,7 @@ class AWSSubnetService(BaseSubnetService):
         if len(default_nets) > 0:
             default_net = default_nets[0]
             for sn in default_net.subnets:
-                if zone and zone == sn.zone.name:
+                if zone and zone_name == sn.zone.name:
                     return sn
             if len(default_net.subnets) == 0:
                 pass  # No subnets exist within the default net so continue
@@ -851,7 +860,7 @@ class AWSSubnetService(BaseSubnetService):
             # Create a route table entry between the SN and the inet gateway
             # See note above about why this is commented
             # default_router.attach_subnet(sn)
-            if zone and zone == z.name:
+            if zone and zone_name == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
         if not default_sn:
