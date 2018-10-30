@@ -8,7 +8,7 @@ from cloudbridge.cloud.interfaces.provider import CloudProvider
 from cloudbridge.cloud.providers.aws import AWSCloudProvider
 from cloudbridge.cloud.providers.aws.provider import MockAWSCloudProvider
 
-from test import helpers
+from cloudbridge.test import helpers
 
 
 class CloudFactoryTestCase(unittest.TestCase):

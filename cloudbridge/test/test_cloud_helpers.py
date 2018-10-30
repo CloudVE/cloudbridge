@@ -6,7 +6,7 @@ from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 
-from test.helpers import ProviderTestBase
+from cloudbridge.test.helpers import ProviderTestBase
 
 
 class DummyResult(object):

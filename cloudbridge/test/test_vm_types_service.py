@@ -1,11 +1,11 @@
 import six
 
-from test import helpers
-from test.helpers import ProviderTestBase
-from test.helpers import standard_interface_tests as sit
+from cloudbridge.test import helpers
+from cloudbridge.test.helpers import ProviderTestBase
+from cloudbridge.test.helpers import standard_interface_tests as sit
 
 
-class CloudVMTypeServiceTestCase(ProviderTestBase):
+class CloudVMTypesServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
 

@@ -6,9 +6,9 @@ from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMFirewallRule
 
-from test import helpers
-from test.helpers import ProviderTestBase
-from test.helpers import standard_interface_tests as sit
+from cloudbridge.test import helpers
+from cloudbridge.test.helpers import ProviderTestBase
+from cloudbridge.test.helpers import standard_interface_tests as sit
 
 
 class CloudSecurityServiceTestCase(ProviderTestBase):

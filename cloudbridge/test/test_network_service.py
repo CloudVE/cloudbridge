@@ -5,10 +5,10 @@ from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import SubnetState
 
-import test.helpers as helpers
-from test.helpers import ProviderTestBase
-from test.helpers import get_provider_test_data
-from test.helpers import standard_interface_tests as sit
+import cloudbridge.test.helpers as helpers
+from cloudbridge.test.helpers import ProviderTestBase
+from cloudbridge.test.helpers import get_provider_test_data
+from cloudbridge.test.helpers import standard_interface_tests as sit
 
 
 class CloudNetworkServiceTestCase(ProviderTestBase):

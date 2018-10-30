@@ -10,9 +10,9 @@ from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import VMType
 
-from test import helpers
-from test.helpers import ProviderTestBase
-from test.helpers import standard_interface_tests as sit
+from cloudbridge.test import helpers
+from cloudbridge.test.helpers import ProviderTestBase
+from cloudbridge.test.helpers import standard_interface_tests as sit
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
