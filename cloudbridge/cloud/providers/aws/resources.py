@@ -1155,7 +1155,7 @@ class AWSFloatingIP(BaseFloatingIP):
 
     @property
     def in_use(self):
-        return True if self._ip.instance_id else False
+        return True if self._ip.association_id else False
 
     def delete(self):
         self._ip.release()
