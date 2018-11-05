@@ -86,8 +86,8 @@ class BaseCloudResource(CloudResource):
             raise InvalidLabelException(
                 u"Invalid label: %s. Label must be at least 3 characters long"
                 " and at most 63 characters. It must consist of lowercase"
-                " letters, numbers, or dashes. The label must not start or"
-                " end with a dash." % name)
+                " letters, numbers, or dashes. The label must start with a "
+                "letter and not end with a dash." % name)
 
     @staticmethod
     def assert_valid_resource_name(name):
