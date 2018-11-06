@@ -1,0 +1,728 @@
+Test suite: results/object_life_cycle.res
+Total time: 31.2022 s
+Function: create_empty_disk at line 507
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   507                                               @profile
+   508                                               def create_empty_disk(self, disk_name, params):
+   509         1       7886.0   7886.0      0.0          return self.compute_client.disks.create_or_update(
+   510         1         15.0     15.0      0.0              self.resource_group,
+   511         1          1.0      1.0      0.0              disk_name,
+   512         1   31194332.0 31194332.0    100.0              params
+   513                                                   ).result()
+
+Test suite: results/object_life_cycle.res
+Total time: 30.591 s
+Function: delete_disk at line 535
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   535                                               @profile
+   536                                               def delete_disk(self, disk_id):
+   537         1          3.0      3.0      0.0          url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
+   538         1         27.0     27.0      0.0                                               disk_id)
+   539         1          1.0      1.0      0.0          disk_name = url_params.get(VOLUME_NAME)
+   540         1   30590981.0 30590981.0    100.0          self.compute_client.disks.delete(self.resource_group, disk_name).wait()
+
+Test suite: results/block_store.res
+Total time: 154.785 s
+Function: create_empty_disk at line 507
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   507                                               @profile
+   508                                               def create_empty_disk(self, disk_name, params):
+   509         5      22114.0   4422.8      0.0          return self.compute_client.disks.create_or_update(
+   510         5         42.0      8.4      0.0              self.resource_group,
+   511         5          4.0      0.8      0.0              disk_name,
+   512         5  154763184.0 30952636.8    100.0              params
+   513                                                   ).result()
+
+Test suite: results/block_store.res
+Total time: 61.8265 s
+Function: create_snapshot_disk at line 515
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   515                                               @profile
+   516                                               def create_snapshot_disk(self, disk_name, params):
+   517         2        937.0    468.5      0.0          return self.compute_client.disks.create_or_update(
+   518         2         16.0      8.0      0.0              self.resource_group,
+   519         2          0.0      0.0      0.0              disk_name,
+   520         2   61825555.0 30912777.5    100.0              params
+   521                                                   ).result()
+
+Test suite: results/block_store.res
+Total time: 275.18 s
+Function: delete_disk at line 535
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   535                                               @profile
+   536                                               def delete_disk(self, disk_id):
+   537         9         33.0      3.7      0.0          url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
+   538         9        272.0     30.2      0.0                                               disk_id)
+   539         9         11.0      1.2      0.0          disk_name = url_params.get(VOLUME_NAME)
+   540         9  275180033.0 30575559.2    100.0          self.compute_client.disks.delete(self.resource_group, disk_name).wait()
+
+Test suite: results/block_store.res
+Total time: 93.2656 s
+Function: create_snapshot at line 567
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   567                                               @profile
+   568                                               def create_snapshot(self, snapshot_name, params):
+   569         3       1486.0    495.3      0.0          return self.compute_client.snapshots.create_or_update(
+   570         3         25.0      8.3      0.0              self.resource_group,
+   571         3          1.0      0.3      0.0              snapshot_name,
+   572         3   93264095.0 31088031.7    100.0              params
+   573                                                   ).result()
+
+Test suite: results/block_store.res
+Total time: 91.916 s
+Function: delete_snapshot at line 575
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   575                                               @profile
+   576                                               def delete_snapshot(self, snapshot_id):
+   577         3         11.0      3.7      0.0          url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
+   578         3         99.0     33.0      0.0                                               snapshot_id)
+   579         3          6.0      2.0      0.0          snapshot_name = url_params.get(SNAPSHOT_NAME)
+   580         3       1506.0    502.0      0.0          self.compute_client.snapshots.delete(self.resource_group,
+   581         3   91914390.0 30638130.0    100.0                                               snapshot_name).wait()
+
+Test suite: results/block_store.res
+Total time: 81.5978 s
+Function: delete_vm at line 816
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   816                                               @profile
+   817                                               def delete_vm(self, vm_id):
+   818         2          6.0      3.0      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   819         2         56.0     28.0      0.0                                               vm_id)
+   820         2          3.0      1.5      0.0          vm_name = url_params.get(VM_NAME)
+   821         2        930.0    465.0      0.0          return self.compute_client.virtual_machines.delete(
+   822         2   81596835.0 40798417.5    100.0              self.resource_group, vm_name).wait()
+
+Test suite: results/block_store.res
+Total time: 252.683 s
+Function: create_vm at line 835
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   835                                               @profile
+   836                                               def create_vm(self, vm_name, params):
+   837         2      15216.0   7608.0      0.0          return self.compute_client.virtual_machines. \
+   838         2         16.0      8.0      0.0              create_or_update(self.resource_group,
+   839         2  252667585.0 126333792.5    100.0                               vm_name, params).result()
+
+Test suite: results/block_store.res
+Total time: 215.106 s
+Function: deallocate_vm at line 850
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   850                                               @profile
+   851                                               def deallocate_vm(self, vm_id):
+   852         2          6.0      3.0      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   853         2         59.0     29.5      0.0                                               vm_id)
+   854         2          2.0      1.0      0.0          vm_name = url_params.get(VM_NAME)
+   855         2       1006.0    503.0      0.0          self.compute_client. \
+   856         2         33.0     16.5      0.0              virtual_machines.deallocate(self.resource_group,
+   857         2  215104764.0 107552382.0    100.0                                          vm_name).wait()
+
+Test suite: results/block_store.res
+Total time: 21.1995 s
+Function: delete_nic at line 885
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   885                                               @profile
+   886                                               def delete_nic(self, nic_id):
+   887         2          5.0      2.5      0.0          nic_params = azure_helpers.\
+   888         2         53.0     26.5      0.0              parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+   889         2          3.0      1.5      0.0          nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+   890         2       1409.0    704.5      0.0          self.network_management_client. \
+   891         2         16.0      8.0      0.0              network_interfaces.delete(self.resource_group,
+   892         2   21198019.0 10599009.5    100.0                                        nic_name).wait()
+
+Test suite: results/block_store.res
+Total time: 62.265 s
+Function: create_nic at line 916
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   916                                               @profile
+   917                                               def create_nic(self, nic_name, params):
+   918         2       1463.0    731.5      0.0          return self.network_management_client. \
+   919                                                       network_interfaces.create_or_update(
+   920         2         16.0      8.0      0.0                  self.resource_group,
+   921         2          2.0      1.0      0.0                  nic_name,
+   922         2   62263484.0 31131742.0    100.0                  params
+   923                                                       ).result()
+
+Test suite: results/compute.res
+Total time: 22.4962 s
+Function: create_vm_firewall at line 387
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   387                                               @profile
+   388                                               def create_vm_firewall(self, name, parameters):
+   389         2       1602.0    801.0      0.0          return self.network_management_client.network_security_groups. \
+   390         2         23.0     11.5      0.0              create_or_update(self.resource_group, name,
+   391         2   22494593.0 11247296.5    100.0                               parameters).result()
+
+Test suite: results/compute.res
+Total time: 21.5193 s
+Function: delete_vm_firewall at line 411
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   411                                               @profile
+   412                                               def delete_vm_firewall(self, fw_id):
+   413         2          8.0      4.0      0.0          url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
+   414         2         72.0     36.0      0.0                                               fw_id)
+   415         2          2.0      1.0      0.0          name = url_params.get(VM_FIREWALL_NAME)
+   416         2       2120.0   1060.0      0.0          self.network_management_client \
+   417         2   21517148.0 10758574.0    100.0              .network_security_groups.delete(self.resource_group, name).wait()
+
+Test suite: results/compute.res
+Total time: 154.991 s
+Function: create_vm_firewall_rule at line 419
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   419                                               @profile
+   420                                               def create_vm_firewall_rule(self, fw_id,
+   421                                                                           rule_name, parameters):
+   422        14         35.0      2.5      0.0          url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
+   423        14        396.0     28.3      0.0                                               fw_id)
+   424        14         22.0      1.6      0.0          vm_firewall_name = url_params.get(VM_FIREWALL_NAME)
+   425        14      10489.0    749.2      0.0          return self.network_management_client.security_rules. \
+   426        14        128.0      9.1      0.0              create_or_update(self.resource_group, vm_firewall_name,
+   427        14  154979521.0 11069965.8    100.0                               rule_name, parameters).result()
+
+Test suite: results/compute.res
+Total time: 30.9193 s
+Function: create_empty_disk at line 507
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   507                                               @profile
+   508                                               def create_empty_disk(self, disk_name, params):
+   509         1       7639.0   7639.0      0.0          return self.compute_client.disks.create_or_update(
+   510         1         18.0     18.0      0.0              self.resource_group,
+   511         1          0.0      0.0      0.0              disk_name,
+   512         1   30911676.0 30911676.0    100.0              params
+   513                                                   ).result()
+
+Test suite: results/compute.res
+Total time: 30.8045 s
+Function: create_snapshot_disk at line 515
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   515                                               @profile
+   516                                               def create_snapshot_disk(self, disk_name, params):
+   517         1        405.0    405.0      0.0          return self.compute_client.disks.create_or_update(
+   518         1          7.0      7.0      0.0              self.resource_group,
+   519         1          0.0      0.0      0.0              disk_name,
+   520         1   30804040.0 30804040.0    100.0              params
+   521                                                   ).result()
+
+Test suite: results/compute.res
+Total time: 214.353 s
+Function: delete_disk at line 535
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   535                                               @profile
+   536                                               def delete_disk(self, disk_id):
+   537         8         25.0      3.1      0.0          url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
+   538         8        257.0     32.1      0.0                                               disk_id)
+   539         8         12.0      1.5      0.0          disk_name = url_params.get(VOLUME_NAME)
+   540         8  214352959.0 26794119.9    100.0          self.compute_client.disks.delete(self.resource_group, disk_name).wait()
+
+Test suite: results/compute.res
+Total time: 31.0976 s
+Function: create_snapshot at line 567
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   567                                               @profile
+   568                                               def create_snapshot(self, snapshot_name, params):
+   569         1        451.0    451.0      0.0          return self.compute_client.snapshots.create_or_update(
+   570         1          9.0      9.0      0.0              self.resource_group,
+   571         1          1.0      1.0      0.0              snapshot_name,
+   572         1   31097107.0 31097107.0    100.0              params
+   573                                                   ).result()
+
+Test suite: results/compute.res
+Total time: 30.6236 s
+Function: delete_snapshot at line 575
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   575                                               @profile
+   576                                               def delete_snapshot(self, snapshot_id):
+   577         1          4.0      4.0      0.0          url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
+   578         1         29.0     29.0      0.0                                               snapshot_id)
+   579         1          1.0      1.0      0.0          snapshot_name = url_params.get(SNAPSHOT_NAME)
+   580         1        457.0    457.0      0.0          self.compute_client.snapshots.delete(self.resource_group,
+   581         1   30623148.0 30623148.0    100.0                                               snapshot_name).wait()
+
+Test suite: results/compute.res
+Total time: 31.0639 s
+Function: update_network_tags at line 686
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   686                                               @profile
+   687                                               def update_network_tags(self, network_id, tags):
+   688         1         24.0     24.0      0.0          url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+   689         1          1.0      1.0      0.0          network_name = url_params.get(NETWORK_NAME)
+   690         1        683.0    683.0      0.0          return self.network_management_client.virtual_networks. \
+   691         1          7.0      7.0      0.0              create_or_update(self.resource_group,
+   692         1   31063174.0 31063174.0    100.0                               network_name, tags).result()
+
+Test suite: results/compute.res
+Total time: 30.4549 s
+Function: restart_vm at line 808
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   808                                               @profile
+   809                                               def restart_vm(self, vm_id):
+   810         1          2.0      2.0      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   811         1         23.0     23.0      0.0                                               vm_id)
+   812         1          1.0      1.0      0.0          vm_name = url_params.get(VM_NAME)
+   813         1        412.0    412.0      0.0          return self.compute_client.virtual_machines.restart(
+   814         1   30454435.0 30454435.0    100.0              self.resource_group, vm_name).wait()
+
+Test suite: results/compute.res
+Total time: 133.21 s
+Function: delete_vm at line 816
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   816                                               @profile
+   817                                               def delete_vm(self, vm_id):
+   818         4         10.0      2.5      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   819         4        216.0     54.0      0.0                                               vm_id)
+   820         4          8.0      2.0      0.0          vm_name = url_params.get(VM_NAME)
+   821         4       2221.0    555.2      0.0          return self.compute_client.virtual_machines.delete(
+   822         4  133207787.0 33301946.8    100.0              self.resource_group, vm_name).wait()
+
+Test suite: results/compute.res
+Total time: 74.9466 s
+Function: get_vm at line 824
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   824                                               @profile
+   825                                               def get_vm(self, vm_id):
+   826        22         79.0      3.6      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   827        22        799.0     36.3      0.0                                               vm_id)
+   828        22         41.0      1.9      0.0          vm_name = url_params.get(VM_NAME)
+   829        22      12404.0    563.8      0.0          return self.compute_client.virtual_machines.get(
+   830        22        226.0     10.3      0.0              self.resource_group,
+   831        22         15.0      0.7      0.0              vm_name,
+   832        22   74933044.0 3406047.5    100.0              expand='instanceView'
+   833                                                   )
+
+Test suite: results/compute.res
+Total time: 515.531 s
+Function: create_vm at line 835
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   835                                               @profile
+   836                                               def create_vm(self, vm_name, params):
+   837         4      23151.0   5787.8      0.0          return self.compute_client.virtual_machines. \
+   838         4         39.0      9.8      0.0              create_or_update(self.resource_group,
+   839         4  515507537.0 128876884.2    100.0                               vm_name, params).result()
+
+Test suite: results/compute.res
+Total time: 284.987 s
+Function: deallocate_vm at line 850
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   850                                               @profile
+   851                                               def deallocate_vm(self, vm_id):
+   852         4         12.0      3.0      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   853         4        117.0     29.2      0.0                                               vm_id)
+   854         4          7.0      1.8      0.0          vm_name = url_params.get(VM_NAME)
+   855         4       1979.0    494.8      0.0          self.compute_client. \
+   856         4         37.0      9.2      0.0              virtual_machines.deallocate(self.resource_group,
+   857         4  284985322.0 71246330.5    100.0                                          vm_name).wait()
+
+Test suite: results/compute.res
+Total time: 93.3852 s
+Function: update_vm_tags at line 876
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   876                                               @profile
+   877                                               def update_vm_tags(self, vm_id, tags):
+   878         3          8.0      2.7      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   879         3         77.0     25.7      0.0                                               vm_id)
+   880         3          4.0      1.3      0.0          vm_name = url_params.get(VM_NAME)
+   881         3       1314.0    438.0      0.0          self.compute_client.virtual_machines. \
+   882         3         30.0     10.0      0.0              create_or_update(self.resource_group,
+   883         3   93383730.0 31127910.0    100.0                               vm_name, tags).result()
+
+Test suite: results/compute.res
+Total time: 42.7808 s
+Function: delete_nic at line 885
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   885                                               @profile
+   886                                               def delete_nic(self, nic_id):
+   887         4          8.0      2.0      0.0          nic_params = azure_helpers.\
+   888         4         97.0     24.2      0.0              parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+   889         4          5.0      1.2      0.0          nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+   890         4       2754.0    688.5      0.0          self.network_management_client. \
+   891         4         30.0      7.5      0.0              network_interfaces.delete(self.resource_group,
+   892         4   42777872.0 10694468.0    100.0                                        nic_name).wait()
+
+Test suite: results/compute.res
+Total time: 115.781 s
+Function: update_nic at line 902
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   902                                               @profile
+   903                                               def update_nic(self, nic_id, params):
+   904         4          8.0      2.0      0.0          nic_params = azure_helpers.\
+   905         4        100.0     25.0      0.0              parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+   906         4          5.0      1.2      0.0          nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+   907         4       3058.0    764.5      0.0          async_nic_creation = self.network_management_client. \
+   908                                                       network_interfaces.create_or_update(
+   909         4         39.0      9.8      0.0                  self.resource_group,
+   910         4          2.0      0.5      0.0                  nic_name,
+   911         4    1249938.0 312484.5      1.1                  params
+   912                                                       )
+   913         4  114528003.0 28632000.8     98.9          nic_info = async_nic_creation.result()
+   914         4          8.0      2.0      0.0          return nic_info
+
+Test suite: results/compute.res
+Total time: 125.141 s
+Function: create_nic at line 916
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   916                                               @profile
+   917                                               def create_nic(self, nic_name, params):
+   918         4       3231.0    807.8      0.0          return self.network_management_client. \
+   919                                                       network_interfaces.create_or_update(
+   920         4         44.0     11.0      0.0                  self.resource_group,
+   921         4          3.0      0.8      0.0                  nic_name,
+   922         4  125137817.0 31284454.2    100.0                  params
+   923                                                       ).result()
+
+Test suite: results/image.res
+Total time: 61.3306 s
+Function: delete_disk at line 535
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   535                                               @profile
+   536                                               def delete_disk(self, disk_id):
+   537         2          6.0      3.0      0.0          url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
+   538         2         61.0     30.5      0.0                                               disk_id)
+   539         2          3.0      1.5      0.0          disk_name = url_params.get(VOLUME_NAME)
+   540         2   61330574.0 30665287.0    100.0          self.compute_client.disks.delete(self.resource_group, disk_name).wait()
+
+Test suite: results/image.res
+Total time: 31.1668 s
+Function: create_image at line 602
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   602                                               @profile
+   603                                               def create_image(self, name, params):
+   604         1        512.0    512.0      0.0          return self.compute_client.images. \
+   605         1          9.0      9.0      0.0              create_or_update(self.resource_group, name,
+   606         1   31166320.0 31166320.0    100.0                               params).result()
+
+Test suite: results/image.res
+Total time: 30.729 s
+Function: delete_image at line 608
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   608                                               @profile
+   609                                               def delete_image(self, image_id):
+   610         1          3.0      3.0      0.0          url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
+   611         1         28.0     28.0      0.0                                               image_id)
+   612         1         28.0     28.0      0.0          if not self.is_gallery_image(image_id):
+   613         1          1.0      1.0      0.0              name = url_params.get(IMAGE_NAME)
+   614         1   30728980.0 30728980.0    100.0              self.compute_client.images.delete(self.resource_group, name).wait()
+
+Test suite: results/image.res
+Total time: 92.9118 s
+Function: update_image_tags at line 639
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   639                                               @profile
+   640                                               def update_image_tags(self, image_id, tags):
+   641         3          7.0      2.3      0.0          url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
+   642         3         80.0     26.7      0.0                                               image_id)
+   643         3         83.0     27.7      0.0          if self.is_gallery_image(image_id):
+   644                                                       return True
+   645                                                   else:
+   646         3          3.0      1.0      0.0              name = url_params.get(IMAGE_NAME)
+   647         3       1395.0    465.0      0.0              return self.compute_client.images. \
+   648         3         23.0      7.7      0.0                  create_or_update(self.resource_group, name,
+   649                                                                            {
+   650         3          2.0      0.7      0.0                                       'tags': tags,
+   651         3   92910234.0 30970078.0    100.0                                       'location': self.region_name
+   652                                                                            }).result()
+
+Test suite: results/image.res
+Total time: 81.5368 s
+Function: delete_vm at line 816
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   816                                               @profile
+   817                                               def delete_vm(self, vm_id):
+   818         2          6.0      3.0      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   819         2         57.0     28.5      0.0                                               vm_id)
+   820         2          2.0      1.0      0.0          vm_name = url_params.get(VM_NAME)
+   821         2        929.0    464.5      0.0          return self.compute_client.virtual_machines.delete(
+   822         2   81535764.0 40767882.0    100.0              self.resource_group, vm_name).wait()
+
+Test suite: results/image.res
+Total time: 220.739 s
+Function: create_vm at line 835
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   835                                               @profile
+   836                                               def create_vm(self, vm_name, params):
+   837         2       7168.0   3584.0      0.0          return self.compute_client.virtual_machines. \
+   838         2         16.0      8.0      0.0              create_or_update(self.resource_group,
+   839         2  220731539.0 110365769.5    100.0                               vm_name, params).result()
+
+Test suite: results/image.res
+Total time: 135.517 s
+Function: deallocate_vm at line 850
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   850                                               @profile
+   851                                               def deallocate_vm(self, vm_id):
+   852         3          7.0      2.3      0.0          url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+   853         3         73.0     24.3      0.0                                               vm_id)
+   854         3          4.0      1.3      0.0          vm_name = url_params.get(VM_NAME)
+   855         3       1297.0    432.3      0.0          self.compute_client. \
+   856         3         21.0      7.0      0.0              virtual_machines.deallocate(self.resource_group,
+   857         3  135515592.0 45171864.0    100.0                                          vm_name).wait()
+
+Test suite: results/image.res
+Total time: 21.3373 s
+Function: delete_nic at line 885
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   885                                               @profile
+   886                                               def delete_nic(self, nic_id):
+   887         2          6.0      3.0      0.0          nic_params = azure_helpers.\
+   888         2         50.0     25.0      0.0              parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
+   889         2          2.0      1.0      0.0          nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+   890         2       1434.0    717.0      0.0          self.network_management_client. \
+   891         2         16.0      8.0      0.0              network_interfaces.delete(self.resource_group,
+   892         2   21335790.0 10667895.0    100.0                                        nic_name).wait()
+
+Test suite: results/image.res
+Total time: 61.8844 s
+Function: create_nic at line 916
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   916                                               @profile
+   917                                               def create_nic(self, nic_name, params):
+   918         2       1446.0    723.0      0.0          return self.network_management_client. \
+   919                                                       network_interfaces.create_or_update(
+   920         2         41.0     20.5      0.0                  self.resource_group,
+   921         2          2.0      1.0      0.0                  nic_name,
+   922         2   61882952.0 30941476.0    100.0                  params
+   923                                                       ).result()
+
+Test suite: results/security.res
+Total time: 68.5755 s
+Function: create_vm_firewall at line 387
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   387                                               @profile
+   388                                               def create_vm_firewall(self, name, parameters):
+   389         6       4447.0    741.2      0.0          return self.network_management_client.network_security_groups. \
+   390         6         51.0      8.5      0.0              create_or_update(self.resource_group, name,
+   391         6   68570982.0 11428497.0    100.0                               parameters).result()
+
+Test suite: results/security.res
+Total time: 72.8747 s
+Function: update_vm_firewall_tags at line 393
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   393                                               @profile
+   394                                               def update_vm_firewall_tags(self, fw_id, tags):
+   395         3          8.0      2.7      0.0          url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
+   396         3         73.0     24.3      0.0                                               fw_id)
+   397         3          3.0      1.0      0.0          name = url_params.get(VM_FIREWALL_NAME)
+   398         3       2084.0    694.7      0.0          return self.network_management_client.network_security_groups. \
+   399         3         23.0      7.7      0.0              create_or_update(self.resource_group, name,
+   400         3          2.0      0.7      0.0                               {'tags': tags,
+   401         3   72872468.0 24290822.7    100.0                                'location': self.region_name}).result()
+
+Test suite: results/security.res
+Total time: 64.2852 s
+Function: delete_vm_firewall at line 411
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   411                                               @profile
+   412                                               def delete_vm_firewall(self, fw_id):
+   413         6         16.0      2.7      0.0          url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
+   414         6        154.0     25.7      0.0                                               fw_id)
+   415         6          6.0      1.0      0.0          name = url_params.get(VM_FIREWALL_NAME)
+   416         6       4320.0    720.0      0.0          self.network_management_client \
+   417         6   64280695.0 10713449.2    100.0              .network_security_groups.delete(self.resource_group, name).wait()
+
+Test suite: results/security.res
+Total time: 528.549 s
+Function: create_vm_firewall_rule at line 419
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   419                                               @profile
+   420                                               def create_vm_firewall_rule(self, fw_id,
+   421                                                                           rule_name, parameters):
+   422        47        123.0      2.6      0.0          url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
+   423        47       1298.0     27.6      0.0                                               fw_id)
+   424        47         71.0      1.5      0.0          vm_firewall_name = url_params.get(VM_FIREWALL_NAME)
+   425        47      35143.0    747.7      0.0          return self.network_management_client.security_rules. \
+   426        47        457.0      9.7      0.0              create_or_update(self.resource_group, vm_firewall_name,
+   427        47  528511698.0 11244929.7    100.0                               rule_name, parameters).result()
+
+Test suite: results/security.res
+Total time: 32.4044 s
+Function: delete_vm_firewall_rule at line 429
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   429                                               @profile
+   430                                               def delete_vm_firewall_rule(self, fw_rule_id, vm_firewall):
+   431         3          8.0      2.7      0.0          url_params = azure_helpers.parse_url(VM_FIREWALL_RULE_RESOURCE_ID,
+   432         3         92.0     30.7      0.0                                               fw_rule_id)
+   433         3          5.0      1.7      0.0          name = url_params.get(VM_FIREWALL_RULE_NAME)
+   434         3       2354.0    784.7      0.0          return self.network_management_client.security_rules. \
+   435         3   32401986.0 10800662.0    100.0              delete(self.resource_group, vm_firewall, name).result()
+
+Test suite: results/network.res
+Total time: 43.0886 s
+Function: create_network at line 672
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   672                                               @profile
+   673                                               def create_network(self, name, params):
+   674         3      23255.0   7751.7      0.1          return self.network_management_client.virtual_networks. \
+   675         3         27.0      9.0      0.0              create_or_update(self.resource_group,
+   676         3          1.0      0.3      0.0                               name,
+   677         3   43065283.0 14355094.3     99.9                               parameters=params).result()
+
+Test suite: results/network.res
+Total time: 31.9886 s
+Function: delete_network at line 679
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   679                                               @profile
+   680                                               def delete_network(self, network_id):
+   681         3        100.0     33.3      0.0          url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+   682         3          5.0      1.7      0.0          network_name = url_params.get(NETWORK_NAME)
+   683         3       2606.0    868.7      0.0          return self.network_management_client.virtual_networks. \
+   684         3   31985926.0 10661975.3    100.0              delete(self.resource_group, network_name).wait()
+
+Test suite: results/network.res
+Total time: 278.504 s
+Function: update_network_tags at line 686
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   686                                               @profile
+   687                                               def update_network_tags(self, network_id, tags):
+   688         9        267.0     29.7      0.0          url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
+   689         9         13.0      1.4      0.0          network_name = url_params.get(NETWORK_NAME)
+   690         9       7020.0    780.0      0.0          return self.network_management_client.virtual_networks. \
+   691         9         77.0      8.6      0.0              create_or_update(self.resource_group,
+   692         9  278496853.0 30944094.8    100.0                               network_name, tags).result()
+
+Test suite: results/network.res
+Total time: 32.2194 s
+Function: delete_subnet at line 741
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   741                                               @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+   742                                                               retry=tenacity.retry_if_exception(__if_subnet_in_use),
+   743                                                               wait=tenacity.wait_fixed(5),
+   744                                                               reraise=True)
+   745                                               @profile
+   746                                               def delete_subnet(self, subnet_id):
+   747         3          7.0      2.3      0.0          url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID,
+   748         3         83.0     27.7      0.0                                               subnet_id)
+   749         3          3.0      1.0      0.0          network_name = url_params.get(NETWORK_NAME)
+   750         3          3.0      1.0      0.0          subnet_name = url_params.get(SUBNET_NAME)
+   751                                           
+   752         3          1.0      0.3      0.0          try:
+   753         3       2586.0    862.0      0.0              result_delete = self.network_management_client \
+   754                                                           .subnets.delete(
+   755         3         34.0     11.3      0.0                      self.resource_group,
+   756         3          2.0      0.7      0.0                      network_name,
+   757         3    1488381.0 496127.0      4.6                      subnet_name
+   758                                                           )
+   759         3   30728309.0 10242769.7     95.4              result_delete.wait()
+   760                                                   except CloudError as cloud_error:
+   761                                                       log.exception(cloud_error.message)
+   762                                                       raise cloud_error
+
+Test suite: results/network.res
+Total time: 41.8774 s
+Function: delete_floating_ip at line 779
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   779                                               @profile
+   780                                               def delete_floating_ip(self, public_ip_id):
+   781         2          6.0      3.0      0.0          url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
+   782         2         58.0     29.0      0.0                                               public_ip_id)
+   783         2          2.0      1.0      0.0          public_ip_name = url_params.get(PUBLIC_IP_NAME)
+   784         2       1594.0    797.0      0.0          self.network_management_client. \
+   785         2         17.0      8.5      0.0              public_ip_addresses.delete(self.resource_group,
+   786         2   41875687.0 20937843.5    100.0                                         public_ip_name).wait()
+
+Test suite: results/network.res
+Total time: 93.1682 s
+Function: update_route_table_tags at line 1031
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+  1031                                               @profile
+  1032                                               def update_route_table_tags(self, route_table_name, tags):
+  1033         3       2496.0    832.0      0.0          self.network_management_client.route_tables. \
+  1034         3         28.0      9.3      0.0              create_or_update(self.resource_group,
+  1035         3   93165711.0 31055237.0    100.0                               route_table_name, tags).result()
+

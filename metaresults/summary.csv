@@ -1,0 +1,51 @@
+Test File,CB functon,Total Time (in s),Azure Operation,Time per hit
+object_life_cycle,"create_empty_disk",31.2022,"return self.compute_client.disks.create_or_update(self.resource_group,disk_name,params",31.194332
+object_life_cycle,"delete_disk",30.591,"self.compute_client.disks.delete(self.resource_group, disk_name).wait()",30.590981
+block_store,"create_empty_disk",154.785,"return self.compute_client.disks.create_or_update(self.resource_group,disk_name,params",30.9526368
+block_store,"create_snapshot_disk",61.8265,"return self.compute_client.disks.create_or_update(self.resource_group,disk_name,params",30.9127775
+block_store,"delete_disk",275.18,"self.compute_client.disks.delete(self.resource_group, disk_name).wait()",30.5755592
+block_store,"create_snapshot",93.2656,"return self.compute_client.snapshots.create_or_update(self.resource_group,snapshot_name,params",31.0880317
+block_store,"delete_snapshot",91.916,"self.compute_client.snapshots.delete(self.resource_group,snapshot_name).wait()",30.63813
+block_store,"delete_vm",81.5978,"return self.compute_client.virtual_machines.delete(self.resource_group, vm_name).wait()",40.7984175
+block_store,"create_vm",252.683,"return self.compute_client.virtual_machines.create_or_update(self.resource_group,vm_name, params).result()",126.3337925
+block_store,"deallocate_vm",215.106,"self.compute_client.virtual_machines.deallocate(self.resource_group,vm_name).wait()",107.552382
+block_store,"delete_nic",21.1995,"self.network_management_client.network_interfaces.delete(self.resource_group,nic_name).wait()",10.5990095
+block_store,"create_nic",62.265,"return self.network_management_client.network_interfaces.create_or_update(self.resource_group,nic_name,params",31.131742
+compute,"create_vm_firewall",22.4962,"return self.network_management_client.network_security_groups.create_or_update(self.resource_group, name,parameters).result()",11.2472965
+compute,"delete_vm_firewall",21.5193,"self.network_management_client.network_security_groups.delete(self.resource_group, name).wait()",10.758574
+compute,"create_vm_firewall_rule",154.991,"return self.network_management_client.security_rules.create_or_update(self.resource_group, vm_firewall_name,rule_name, parameters).result()",11.0699658
+compute,"create_empty_disk",30.9193,"return self.compute_client.disks.create_or_update(self.resource_group,disk_name,params",30.911676
+compute,"create_snapshot_disk",30.8045,"return self.compute_client.disks.create_or_update(self.resource_group,disk_name,params",30.80404
+compute,"delete_disk",214.353,"self.compute_client.disks.delete(self.resource_group, disk_name).wait()",26.7941199
+compute,"create_snapshot",31.0976,"return self.compute_client.snapshots.create_or_update(self.resource_group,snapshot_name,params",31.097107
+compute,"delete_snapshot",30.6236,"self.compute_client.snapshots.delete(self.resource_group,snapshot_name).wait()",30.623148
+compute,"update_network_tags",31.0639,"return self.network_management_client.virtual_networks.create_or_update(self.resource_group,network_name, tags).result()",31.063174
+compute,"restart_vm",30.4549,"return self.compute_client.virtual_machines.restart(self.resource_group, vm_name).wait()",30.454435
+compute,"delete_vm",133.21,"return self.compute_client.virtual_machines.delete(self.resource_group, vm_name).wait()",33.3019468
+compute,"get_vm",74.9466,"return self.compute_client.virtual_machines.get(self.resource_group,vm_name,expand='instanceView'",3.4060475
+compute,"create_vm",515.531,"return self.compute_client.virtual_machines.create_or_update(self.resource_group,vm_name, params).result()",128.8768842
+compute,"deallocate_vm",284.987,"self.compute_client.virtual_machines.deallocate(self.resource_group,vm_name).wait()",71.2463305
+compute,"update_vm_tags",93.3852,"self.compute_client.virtual_machines.create_or_update(self.resource_group,vm_name, tags).result()",31.12791
+compute,"delete_nic",42.7808,"self.network_management_client.network_interfaces.delete(self.resource_group,nic_name).wait()",10.694468
+compute,"update_nic",115.781,"nic_info = async_nic_creation.result()",28.6320008
+compute,"create_nic",125.141,"return self.network_management_client.network_interfaces.create_or_update(self.resource_group,nic_name,params",31.2844542
+image,"delete_disk",61.3306,"self.compute_client.disks.delete(self.resource_group, disk_name).wait()",30.665287
+image,"create_image",31.1668,"return self.compute_client.images.create_or_update(self.resource_group, name,params).result()",31.16632
+image,"delete_image",30.729,"self.compute_client.images.delete(self.resource_group, name).wait()",30.72898
+image,"update_image_tags",92.9118,"return self.compute_client.images.create_or_update(self.resource_group, name,{'tags': tags,'location': self.region_name",30.970078
+image,"delete_vm",81.5368,"return self.compute_client.virtual_machines.delete(self.resource_group, vm_name).wait()",40.767882
+image,"create_vm",220.739,"return self.compute_client.virtual_machines.create_or_update(self.resource_group,vm_name, params).result()",110.3657695
+image,"deallocate_vm",135.517,"self.compute_client.virtual_machines.deallocate(self.resource_group,vm_name).wait()",45.171864
+image,"delete_nic",21.3373,"self.network_management_client.network_interfaces.delete(self.resource_group,nic_name).wait()",10.667895
+image,"create_nic",61.8844,"return self.network_management_client.network_interfaces.create_or_update(self.resource_group,nic_name,params",30.941476
+security,"create_vm_firewall",68.5755,"return self.network_management_client.network_security_groups.create_or_update(self.resource_group, name,parameters).result()",11.428497
+security,"update_vm_firewall_tags",72.8747,"return self.network_management_client.network_security_groups.create_or_update(self.resource_group, name,{'tags': tags,'location': self.region_name}).result()",24.2908227
+security,"delete_vm_firewall",64.2852,"self.network_management_client.network_security_groups.delete(self.resource_group, name).wait()",10.7134492
+security,"create_vm_firewall_rule",528.549,"return self.network_management_client.security_rules.create_or_update(self.resource_group, vm_firewall_name,rule_name, parameters).result()",11.2449297
+security,"delete_vm_firewall_rule",32.4044,"return self.network_management_client.security_rules.delete(self.resource_group, vm_firewall, name).result()",10.800662
+network,"create_network",43.0886,"return self.network_management_client.virtual_networks.create_or_update(self.resource_group,name,parameters=params).result()",14.355094300000001
+network,"delete_network",31.9886,"return self.network_management_client.virtual_networks.delete(self.resource_group, network_name).wait()",10.6619753
+network,"update_network_tags",278.504,"return self.network_management_client.virtual_networks.create_or_update(self.resource_group,network_name, tags).result()",30.944094800000002
+network,"delete_subnet",32.2194,"result_delete.wait()",10.242769699999998
+network,"delete_floating_ip",41.8774,"self.network_management_client.public_ip_addresses.delete(self.resource_group,public_ip_name).wait()",20.9378435
+network,"update_route_table_tags",93.1682,"self.network_management_client.route_tables.create_or_update(self.resource_group,route_table_name, tags).result()",31.055237
