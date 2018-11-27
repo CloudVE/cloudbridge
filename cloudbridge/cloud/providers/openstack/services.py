@@ -876,18 +876,28 @@ class OpenStackSubnetService(BaseSubnetService):
             sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)
             if sn:
                 return sn[0]
-            # No default; create one
-            net = self.provider.networking.networks.create(
-                label=OpenStackNetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block='10.0.0.0/16')
+            # No default subnet look for default network
+            networks = self.provider.networking.networks.find(
+                label=OpenStackNetwork.CB_DEFAULT_NETWORK_LABEL)
+            if networks:
+                net = networks[0]
+            else:
+                net = self.provider.networking.networks.create(
+                    label=OpenStackNetwork.CB_DEFAULT_NETWORK_LABEL,
+                    cidr_block='10.0.0.0/16')
             sn = net.create_subnet(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
                 cidr_block='10.0.0.0/24')
-            router = self.provider.networking.routers.create(
-                network=net, label=OpenStackRouter.CB_DEFAULT_ROUTER_LABEL)
+            routers = self.provider.networking.routers.find(
+                label=OpenStackRouter.CB_DEFAULT_ROUTER_LABEL)
+            if routers:
+                router = routers[0]
+            else:
+                router = self.provider.networking.routers.create(
+                    network=net, label=OpenStackRouter.CB_DEFAULT_ROUTER_LABEL)
             router.attach_subnet(sn)
-            gteway = net.gateways.get_or_create_inet_gateway()
-            router.attach_gateway(gteway)
+            gateway = net.gateways.get_or_create_inet_gateway()
+            router.attach_gateway(gateway)
             return sn
         except NeutronClientException:
             return None
