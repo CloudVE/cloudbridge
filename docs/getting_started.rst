@@ -103,7 +103,7 @@ on disk as a read-only file.
 .. code-block:: python
 
     import os
-    kp = provider.security.key_pairs.create('cloudbridge_intro')
+    kp = provider.security.key_pairs.create('cloudbridge-intro')
     with open('cloudbridge_intro.pem', 'w') as f:
         f.write(kp.material)
     os.chmod('cloudbridge_intro.pem', 0o400)
@@ -148,12 +148,13 @@ also add the network interface as a launch argument.
 .. code-block:: python
 
     img = provider.compute.images.get(image_id)
+    zone = provider.compute.regions.get(provider.region_name).zones[0]
     vm_type = sorted([t for t in provider.compute.vm_types
                       if t.vcpus >= 2 and t.ram >= 4],
                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
         image=img, vm_type=vm_type, label='cloudbridge-intro',
-        subnet=sn, key_pair=kp, vm_firewalls=[fw])
+        subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
@@ -205,7 +206,7 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
 
     # Key Pair
     kp = provider.security.key_pairs.get('keypair ID')
-    kp_list = provider.security.key_pairs.find(name='cloudbridge_intro')
+    kp_list = provider.security.key_pairs.find(name='cloudbridge-intro')
     kp = kp_list[0]
 
     # Floating IPs

@@ -1,3 +1,9 @@
+1.0.2 - September 25, 2018 (sha 621aeed1a8d7c5ad270649f8ee960e9682e57dae)
+-------
+* Added AWS instance types caching for better performance
+* Added ``router.subnets`` property
+* Ensure the default network for CloudBridge on AWS has subnets
+
 1.0.1 - September 7, 2018. (sha 3130492008c5e0e115b8dfec880d32a4ac90b761)
 -------
 * Fixed minor bug when retrieving buckets with only limited access.

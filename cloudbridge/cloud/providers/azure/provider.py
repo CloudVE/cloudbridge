@@ -1,10 +1,13 @@
 import logging
 import uuid
 
+from deprecation import deprecated
+
 from msrestazure.azure_exceptions import CloudError
 
 import tenacity
 
+import cloudbridge
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
@@ -54,8 +57,9 @@ class AzureCloudProvider(BaseCloudProvider):
                                str(self.resource_group)))[-6:]))
 
         self.vm_default_user_name = self._get_config_value(
-            'azure_vm_default_user_name', get_env(
-                'AZURE_VM_DEFAULT_USER_NAME', 'cbuser'))
+                'azure_vm_default_username', get_env(
+                    'AZURE_VM_DEFAULT_USERNAME', None)) \
+            or self.__get_deprecated_username('cbuser')
 
         self.public_key_storage_table_name = self._get_config_value(
             'azure_public_key_storage_table_name', get_env(
@@ -67,6 +71,23 @@ class AzureCloudProvider(BaseCloudProvider):
         self._storage = AzureStorageService(self)
         self._compute = AzureComputeService(self)
         self._networking = AzureNetworkingService(self)
+
+    def __get_deprecated_username(self, default):
+        username = self._get_config_value(
+            'azure_vm_default_user_name', get_env(
+                'AZURE_VM_DEFAULT_USER_NAME', None))
+        if username:
+            return self.__wrap_deprecated_username(username)
+        else:
+            return default
+
+    @deprecated(deprecated_in='1.1',
+                removed_in='2.0',
+                current_version=cloudbridge.__version__,
+                details='AZURE_VM_DEFAULT_USER_NAME was deprecated in favor '
+                        'of AZURE_VM_DEFAULT_USERNAME')
+    def __wrap_deprecated_username(self, username):
+        return username
 
     @property
     def compute(self):

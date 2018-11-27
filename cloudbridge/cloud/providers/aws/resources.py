@@ -952,7 +952,7 @@ class AWSRegion(BaseRegion):
             conn = self._provider.ec2_conn
         else:
             # pylint:disable=protected-access
-            conn = self._provider._conect_ec2_region(region_name=self.id)
+            conn = self._provider._connect_ec2_region(region_name=self.id)
 
         zones = (conn.meta.client.describe_availability_zones()
                  .get('AvailabilityZones', []))
@@ -1155,7 +1155,7 @@ class AWSFloatingIP(BaseFloatingIP):
 
     @property
     def in_use(self):
-        return True if self._ip.instance_id else False
+        return True if self._ip.association_id else False
 
     def delete(self):
         self._ip.release()

@@ -1,4 +1,5 @@
 import fnmatch
+import functools
 import os
 import re
 import sys
@@ -9,7 +10,11 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from deprecation import deprecated
+
 import six
+
+import cloudbridge
 
 
 def generate_key_pair():
@@ -129,3 +134,32 @@ def get_env(varname, default_value=None):
             value, six.text_type):
         return six.u(value)
     return value
+
+
+# Alias deprication decorator, following:
+# https://stackoverflow.com/questions/49802412/
+# how-to-implement-deprecation-in-python-with-argument-alias
+def deprecated_alias(**aliases):
+    def deco(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            rename_kwargs(f.__name__, kwargs, aliases)
+            return f(*args, **kwargs)
+        return wrapper
+    return deco
+
+
+def rename_kwargs(func_name, kwargs, aliases):
+    for alias, new in aliases.items():
+        if alias in kwargs:
+            if new in kwargs:
+                raise TypeError('{} received both {} and {}'.format(
+                    func_name, alias, new))
+            # Manually invoke the deprecated decorator with an empty lambda
+            # to signal deprecation
+            deprecated(deprecated_in='1.1',
+                       removed_in='2.0',
+                       current_version=cloudbridge.__version__,
+                       details='{} is deprecated, use {} instead'.format(
+                           alias, new))(lambda: None)()
+            kwargs[new] = kwargs.pop(alias)

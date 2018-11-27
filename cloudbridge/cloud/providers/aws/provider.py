@@ -2,6 +2,7 @@
 import logging as log
 
 import boto3
+
 try:
     # These are installed only for the case of a dev instance
     import responses
@@ -105,9 +106,9 @@ class AWSCloudProvider(BaseCloudProvider):
         """
         Get a boto ec2 connection object.
         """
-        return self._conect_ec2_region(region_name=self.region_name)
+        return self._connect_ec2_region(region_name=self.region_name)
 
-    def _conect_ec2_region(self, region_name=None):
+    def _connect_ec2_region(self, region_name=None):
         '''Get an EC2 resource object'''
         return self.session.resource(
             'ec2', region_name=region_name, **self.ec2_cfg)

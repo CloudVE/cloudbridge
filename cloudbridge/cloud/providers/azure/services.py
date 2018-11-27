@@ -48,6 +48,83 @@ class AzureSecurityService(BaseSecurityService):
         return self._vm_firewalls
 
 
+class AzureVMFirewallService(BaseVMFirewallService):
+    def __init__(self, provider):
+        super(AzureVMFirewallService, self).__init__(provider)
+
+    def get(self, fw_id):
+        try:
+            fws = self.provider.azure_client.get_vm_firewall(fw_id)
+            return AzureVMFirewall(self.provider, fws)
+        except (CloudError, InvalidValueException) as cloud_error:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloud_error)
+            return None
+
+    def list(self, limit=None, marker=None):
+        fws = [AzureVMFirewall(self.provider, fw)
+               for fw in self.provider.azure_client.list_vm_firewall()]
+        return ClientPagedResultList(self.provider, fws, limit, marker)
+
+    @cb_helpers.deprecated_alias(network_id='network')
+    def create(self, label, network=None, description=None):
+        AzureVMFirewall.assert_valid_resource_label(label)
+        name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
+        parameters = {"location": self.provider.region_name,
+                      "tags": {'Label': label}}
+
+        if description:
+            parameters['tags'].update(Description=description)
+
+        fw = self.provider.azure_client.create_vm_firewall(name,
+                                                           parameters)
+
+        # Add default rules to negate azure default rules.
+        # See: https://github.com/CloudVE/cloudbridge/issues/106
+        # pylint:disable=protected-access
+        for rule in fw.default_security_rules:
+            rule_name = "cb-override-" + rule.name
+            # Transpose rules to priority 4001 onwards, because
+            # only 0-4096 are allowed for custom rules
+            rule.priority = rule.priority - 61440
+            rule.access = "Deny"
+            self.provider.azure_client.create_vm_firewall_rule(
+                fw.id, rule_name, rule)
+
+        # Add a new custom rule allowing all outbound traffic to the internet
+        parameters = {"priority": 3000,
+                      "protocol": "*",
+                      "source_port_range": "*",
+                      "source_address_prefix": "*",
+                      "destination_port_range": "*",
+                      "destination_address_prefix": "Internet",
+                      "access": "Allow",
+                      "direction": "Outbound"}
+        result = self.provider.azure_client.create_vm_firewall_rule(
+            fw.id, "cb-default-internet-outbound", parameters)
+        fw.security_rules.append(result)
+
+        cb_fw = AzureVMFirewall(self.provider, fw)
+        return cb_fw
+
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
+    def delete(self, group_id):
+        self.provider.azure_client.delete_vm_firewall(group_id)
+
+
 class AzureKeyPairService(BaseKeyPairService):
     PARTITION_KEY = '00000000-0000-0000-0000-000000000000'
 
@@ -116,82 +193,6 @@ class AzureKeyPairService(BaseKeyPairService):
         key_pair = self.get(name)
         key_pair.material = private_key
         return key_pair
-
-
-class AzureVMFirewallService(BaseVMFirewallService):
-    def __init__(self, provider):
-        super(AzureVMFirewallService, self).__init__(provider)
-
-    def get(self, fw_id):
-        try:
-            fws = self.provider.azure_client.get_vm_firewall(fw_id)
-            return AzureVMFirewall(self.provider, fws)
-        except (CloudError, InvalidValueException) as cloud_error:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloud_error)
-            return None
-
-    def list(self, limit=None, marker=None):
-        fws = [AzureVMFirewall(self.provider, fw)
-               for fw in self.provider.azure_client.list_vm_firewall()]
-        return ClientPagedResultList(self.provider, fws, limit, marker)
-
-    def create(self, label, description=None, network_id=None):
-        AzureVMFirewall.assert_valid_resource_label(label)
-        name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
-        parameters = {"location": self.provider.region_name,
-                      "tags": {'Label': label}}
-
-        if description:
-            parameters['tags'].update(Description=description)
-
-        fw = self.provider.azure_client.create_vm_firewall(name,
-                                                           parameters)
-
-        # Add default rules to negate azure default rules.
-        # See: https://github.com/CloudVE/cloudbridge/issues/106
-        # pylint:disable=protected-access
-        for rule in fw.default_security_rules:
-            rule_name = "cb-override-" + rule.name
-            # Transpose rules to priority 4001 onwards, because
-            # only 0-4096 are allowed for custom rules
-            rule.priority = rule.priority - 61440
-            rule.access = "Deny"
-            self.provider.azure_client.create_vm_firewall_rule(
-                fw.id, rule_name, rule)
-
-        # Add a new custom rule allowing all outbound traffic to the internet
-        parameters = {"priority": 3000,
-                      "protocol": "*",
-                      "source_port_range": "*",
-                      "source_address_prefix": "*",
-                      "destination_port_range": "*",
-                      "destination_address_prefix": "Internet",
-                      "access": "Allow",
-                      "direction": "Outbound"}
-        result = self.provider.azure_client.create_vm_firewall_rule(
-            fw.id, "cb-default-internet-outbound", parameters)
-        fw.security_rules.append(result)
-
-        cb_fw = AzureVMFirewall(self.provider, fw)
-        return cb_fw
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['label']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
-    def delete(self, group_id):
-        self.provider.azure_client.delete_vm_firewall(group_id)
 
 
 class AzureStorageService(BaseStorageService):
@@ -1016,6 +1017,14 @@ class AzureSubnetService(BaseSubnetService):
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
         self.provider.azure_client.delete_subnet(subnet_id)
+        # Although Subnet doesn't support labels, we use the parent Network's
+        # tags to track the subnet's labels, thus that network-level tag must
+        # be deleted with the subnet
+        network = subnet.network
+        az_network = network._network
+        az_network.tags.pop(subnet.tag_name)
+        self._provider.azure_client.update_network_tags(
+            az_network.id, az_network)
 
 
 class AzureRouterService(BaseRouterService):

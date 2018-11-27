@@ -96,7 +96,7 @@ class ComputeService(CloudService):
 
             # launch a new instance
             image = provider.compute.images.find(name='Ubuntu 16.04')[0]
-            size = provider.compute.vm_types.find(name='m1.small')
+            size = provider.compute.vm_types.find(name='m1.small')[0]
             instance = provider.compute.instances.create('Hello', image, size)
             print(instance.id, instance.label)
 
@@ -730,7 +730,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, network_id, cidr_block, zone):
+    def create(self, label, network, cidr_block, zone):
         """
         Create a new subnet within the supplied network.
 
@@ -1119,15 +1119,15 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, network_id, description=None):
+    def create(self, label, network, description=None):
         """
         Create a new VMFirewall.
 
         :type label: str
         :param label: The label for the new VM firewall.
 
-        :type  network_id: ``str``
-        :param network_id: Network ID under which to create the VM firewall.
+        :type  network: ``str``
+        :param network: Network ID under which to create the VM firewall.
 
         :type description: str
         :param description: The description of the new VM firewall.

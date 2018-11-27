@@ -120,7 +120,8 @@ class CloudProviderFactory(object):
         cloud provider.
 
         :type name: str
-        :param name: Cloud provider name: one of ``aws``, ``openstack``.
+        :param name: Cloud provider name: one of ``aws``, ``openstack``,
+        ``azure``.
 
         :type config: an object with required fields
         :param config: This can be a Bunch or any other object whose fields can

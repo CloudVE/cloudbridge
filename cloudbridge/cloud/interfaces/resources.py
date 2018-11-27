@@ -731,7 +731,7 @@ class LaunchConfig(object):
         lc.add_block_device(...)
 
         inst = provider.compute.instances.create(
-            'MyVM', image, vm_type, subnet, launch_config=lc)
+            'MyVM', image, vm_type, subnet, zone, launch_config=lc)
     """
 
     @abstractmethod
