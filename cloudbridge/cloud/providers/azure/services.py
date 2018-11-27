@@ -495,7 +495,7 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, label, image, vm_type, subnet=None, zone=None,
+    def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
 
@@ -792,7 +792,7 @@ class AzureInstanceService(BaseInstanceService):
 
     def find(self, **kwargs):
         obj_list = self
-        filters = ['name', 'label']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
@@ -990,12 +990,12 @@ class AzureSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, label, network, cidr_block, **kwargs):
+    def create(self, label, network, cidr_block, zone):
         """
         Create subnet
         """
-        # Although Subnet doesn't support labels, we use the parent Network's
-        # tags to track the subnet's labels
+        # Although Subnet doesn't support tags in Azure, we use the parent
+        # Network's tags to track its subnets' labels
         AzureSubnet.assert_valid_resource_label(label)
         subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
 
