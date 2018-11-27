@@ -48,6 +48,76 @@ class AzureSecurityService(BaseSecurityService):
         return self._vm_firewalls
 
 
+class AzureKeyPairService(BaseKeyPairService):
+    PARTITION_KEY = '00000000-0000-0000-0000-000000000000'
+
+    def __init__(self, provider):
+        super(AzureKeyPairService, self).__init__(provider)
+
+    def get(self, key_pair_id):
+        try:
+            key_pair = self.provider.azure_client.\
+                get_public_key(key_pair_id)
+
+            if key_pair:
+                return AzureKeyPair(self.provider, key_pair)
+            return None
+        except AzureException as error:
+            log.debug("KeyPair %s was not found.", key_pair_id)
+            log.debug(error)
+            return None
+
+    def list(self, limit=None, marker=None):
+        key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
+            AzureKeyPairService.PARTITION_KEY, marker=marker,
+            limit=limit or self.provider.config.default_result_limit)
+        results = [AzureKeyPair(self.provider, key_pair)
+                   for key_pair in key_pairs]
+        return ServerPagedResultList(is_truncated=resume_marker,
+                                     marker=resume_marker,
+                                     supports_total=False,
+                                     data=results)
+
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
+    def create(self, name, public_key_material=None):
+        AzureKeyPair.assert_valid_resource_name(name)
+
+        key_pair = self.get(name)
+
+        if key_pair:
+            raise DuplicateResourceException(
+                'Keypair already exists with name {0}'.format(name))
+
+        private_key = None
+        if not public_key_material:
+            public_key_material, private_key = cb_helpers.generate_key_pair()
+
+        entity = {
+            'PartitionKey': AzureKeyPairService.PARTITION_KEY,
+            'RowKey': str(uuid.uuid4()),
+            'Name': name,
+            'Key': public_key_material
+        }
+
+        self.provider.azure_client.create_public_key(entity)
+        key_pair = self.get(name)
+        key_pair.material = private_key
+        return key_pair
+
+
 class AzureVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
         super(AzureVMFirewallService, self).__init__(provider)
@@ -122,75 +192,6 @@ class AzureVMFirewallService(BaseVMFirewallService):
 
     def delete(self, group_id):
         self.provider.azure_client.delete_vm_firewall(group_id)
-
-
-class AzureKeyPairService(BaseKeyPairService):
-    PARTITION_KEY = '00000000-0000-0000-0000-000000000000'
-
-    def __init__(self, provider):
-        super(AzureKeyPairService, self).__init__(provider)
-
-    def get(self, key_pair_id):
-        try:
-            key_pair = self.provider.azure_client.\
-                get_public_key(key_pair_id)
-
-            if key_pair:
-                return AzureKeyPair(self.provider, key_pair)
-            return None
-        except AzureException as error:
-            log.exception(error)
-            return None
-
-    def list(self, limit=None, marker=None):
-        key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
-            AzureKeyPairService.PARTITION_KEY, marker=marker,
-            limit=limit or self.provider.config.default_result_limit)
-        results = [AzureKeyPair(self.provider, key_pair)
-                   for key_pair in key_pairs]
-        return ServerPagedResultList(is_truncated=resume_marker,
-                                     marker=resume_marker,
-                                     supports_total=False,
-                                     data=results)
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
-    def create(self, name, public_key_material=None):
-        AzureKeyPair.assert_valid_resource_name(name)
-
-        key_pair = self.get(name)
-
-        if key_pair:
-            raise DuplicateResourceException(
-                'Keypair already exists with name {0}'.format(name))
-
-        private_key = None
-        if not public_key_material:
-            public_key_material, private_key = cb_helpers.generate_key_pair()
-
-        entity = {
-            'PartitionKey': AzureKeyPairService.PARTITION_KEY,
-            'RowKey': str(uuid.uuid4()),
-            'Name': name,
-            'Key': public_key_material
-        }
-
-        self.provider.azure_client.create_public_key(entity)
-        key_pair = self.get(name)
-        key_pair.material = private_key
-        return key_pair
 
 
 class AzureBucketService(BaseBucketService):

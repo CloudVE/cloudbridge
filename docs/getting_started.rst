@@ -212,7 +212,8 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
     fip = gateway.floating_ips.get('FloatingIP ID')
     # Find using public IP address
     fip_list = gateway.floating_ips.find(public_ip='IP address')
-    # Find using name or tag
+    # Find using name (the behavior of the `name` property can be 
+    # cloud-dependent). More details can be found `here <topics/resource_types_and_mapping.html>`
     fip_list = net.gateways.floating_ips.find(name='my-fip')
     fip = fip_list[0]
 
