@@ -43,46 +43,6 @@ class BaseCloudService(CloudService):
         return self._provider
 
 
-class BaseComputeService(ComputeService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseComputeService, self).__init__(provider)
-
-
-class BaseVolumeService(
-        BasePageableObjectMixin, VolumeService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseVolumeService, self).__init__(provider)
-
-
-class BaseSnapshotService(
-        BasePageableObjectMixin, SnapshotService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseSnapshotService, self).__init__(provider)
-
-
-class BaseStorageService(StorageService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseStorageService, self).__init__(provider)
-
-
-class BaseImageService(
-        BasePageableObjectMixin, ImageService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseImageService, self).__init__(provider)
-
-
-class BaseBucketService(
-        BasePageableObjectMixin, BucketService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseBucketService, self).__init__(provider)
-
-
 class BaseSecurityService(SecurityService, BaseCloudService):
 
     def __init__(self, provider):
@@ -121,6 +81,53 @@ class BaseVMFirewallService(
         super(BaseVMFirewallService, self).__init__(provider)
 
 
+class BaseStorageService(StorageService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseStorageService, self).__init__(provider)
+
+
+class BaseVolumeService(
+        BasePageableObjectMixin, VolumeService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseVolumeService, self).__init__(provider)
+
+
+class BaseSnapshotService(
+        BasePageableObjectMixin, SnapshotService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseSnapshotService, self).__init__(provider)
+
+
+class BaseBucketService(
+        BasePageableObjectMixin, BucketService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseBucketService, self).__init__(provider)
+
+
+class BaseComputeService(ComputeService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseComputeService, self).__init__(provider)
+
+
+class BaseImageService(
+        BasePageableObjectMixin, ImageService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseImageService, self).__init__(provider)
+
+
+class BaseInstanceService(
+        BasePageableObjectMixin, InstanceService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseInstanceService, self).__init__(provider)
+
+
 class BaseVMTypeService(
         BasePageableObjectMixin, VMTypeService, BaseCloudService):
 
@@ -136,13 +143,6 @@ class BaseVMTypeService(
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
-
-
-class BaseInstanceService(
-        BasePageableObjectMixin, InstanceService, BaseCloudService):
-
-    def __init__(self, provider):
-        super(BaseInstanceService, self).__init__(provider)
 
 
 class BaseRegionService(

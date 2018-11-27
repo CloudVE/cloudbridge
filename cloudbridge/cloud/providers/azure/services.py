@@ -216,7 +216,6 @@ class AzureStorageService(BaseStorageService):
         return self._bucket_svc
 
 
-
 class AzureVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(AzureVolumeService, self).__init__(provider)
