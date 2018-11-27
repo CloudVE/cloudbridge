@@ -4,6 +4,10 @@ Base implementation for services available through a provider
 import logging
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.resources import BaseNetwork
+from cloudbridge.cloud.base.resources import BaseRouter
+from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
@@ -177,6 +181,18 @@ class BaseNetworkService(
             log.info("Deleting network %s", network_id)
             network.delete()
 
+    def get_or_create_default(self):
+        networks = self.provider.networking.networks.find(
+            label=BaseNetwork.CB_DEFAULT_NETWORK_LABEL)
+
+        if networks:
+            return networks[0]
+        else:
+            log.info("Creating a CloudBridge-default network labeled %s",
+                     BaseNetwork.CB_DEFAULT_NETWORK_LABEL)
+            return self.provider.networking.networks.create(
+                BaseNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
+
 
 class BaseSubnetService(
         BasePageableObjectMixin, SubnetService, BaseCloudService):
@@ -189,6 +205,20 @@ class BaseSubnetService(
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
+
+    def get_or_create_default(self, zone):
+        default_cidr = '10.0.0.0/24'
+
+        # Look for a CB-default subnet
+        matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)
+        if matches:
+            return matches[0]
+
+        # No provider-default Subnet exists, try to create it (net + subnets)
+        network = self.provider.networking.networks.get_or_create_default()
+        subnet = self.create(BaseSubnet.CB_DEFAULT_SUBNET_LABEL, network,
+                             default_cidr)
+        return subnet
 
 
 class BaseRouterService(
@@ -207,3 +237,14 @@ class BaseRouterService(
             if router:
                 log.info("Router %s successful deleted.", router)
                 router.delete()
+
+    def get_or_create_default(self, network):
+        net_id = network.id if isinstance(network, Network) else network
+        routers = self.provider.networking.routers.find(
+            label=BaseRouter.CB_DEFAULT_ROUTER_LABEL)
+        for router in routers:
+            if router.network_id == net_id:
+                return router
+        else:
+            return self.provider.networking.routers.create(
+                network=net_id, label=BaseRouter.CB_DEFAULT_ROUTER_LABEL)

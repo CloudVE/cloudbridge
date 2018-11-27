@@ -876,25 +876,14 @@ class OpenStackSubnetService(BaseSubnetService):
             sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)
             if sn:
                 return sn[0]
-            # No default subnet look for default network
-            networks = self.provider.networking.networks.find(
-                label=OpenStackNetwork.CB_DEFAULT_NETWORK_LABEL)
-            if networks:
-                net = networks[0]
-            else:
-                net = self.provider.networking.networks.create(
-                    label=OpenStackNetwork.CB_DEFAULT_NETWORK_LABEL,
-                    cidr_block='10.0.0.0/16')
-            sn = net.create_subnet(
+            # No default subnet look for default network, then create subnet
+            net = self.provider.networking.networks.get_or_create_default()
+            sn = self.provider.networking.subnets.create(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
-                cidr_block='10.0.0.0/24')
-            routers = self.provider.networking.routers.find(
-                label=OpenStackRouter.CB_DEFAULT_ROUTER_LABEL)
-            if routers:
-                router = routers[0]
-            else:
-                router = self.provider.networking.routers.create(
-                    network=net, label=OpenStackRouter.CB_DEFAULT_ROUTER_LABEL)
+                cidr_block='10.0.0.0/24',
+                network=net)
+            router = self.provider.networking.routers.get_or_create_default(
+                net)
             router.attach_subnet(sn)
             gateway = net.gateways.get_or_create_inet_gateway()
             router.attach_gateway(gateway)

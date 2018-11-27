@@ -1014,28 +1014,6 @@ class AzureSubnetService(BaseSubnetService):
         subnet.label = label
         return subnet
 
-    def get_or_create_default(self, zone):
-        default_cidr = '10.0.1.0/24'
-
-        # No provider-default Subnet exists, look for a library-default one
-        matches = self.find(label=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)
-        if matches:
-            return matches[0]
-
-        # No provider-default Subnet exists, try to create it (net + subnets)
-        networks = self.provider.networking.networks.find(
-            label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
-
-        if networks:
-            network = networks[0]
-        else:
-            network = self.provider.networking.networks.create(
-                AzureNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
-
-        subnet = self.create(AzureSubnet.CB_DEFAULT_SUBNET_LABEL, network,
-                             default_cidr)
-        return subnet
-
     def delete(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
         self.provider.azure_client.delete_subnet(subnet_id)

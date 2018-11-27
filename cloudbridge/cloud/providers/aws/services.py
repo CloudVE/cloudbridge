@@ -718,6 +718,23 @@ class AWSNetworkService(BaseNetworkService):
             cb_net.label = label
         return cb_net
 
+    def get_or_create_default(self):
+        for net in self.provider.networking.networks:
+            if net._vpc.is_default:
+                return net
+        # No provider-default, try CB-default instead
+        default_nets = self.provider.networking.networks.find(
+            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+        if default_nets:
+            return default_nets[0]
+
+        else:
+            log.info("Creating a CloudBridge-default network labeled %s",
+                     AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+            return self.provider.networking.networks.create(
+                label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
+                cidr_block='10.0.0.0/16')
+
 
 class AWSSubnetService(BaseSubnetService):
 
@@ -807,23 +824,7 @@ class AWSSubnetService(BaseSubnetService):
         # Internet connectivity.
 
         # Check if a default net already exists
-        default_nets = self.provider.networking.networks.find(
-            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
-        if len(default_nets) > 0:
-            default_net = default_nets[0]
-            for sn in default_net.subnets:
-                if zone and zone_name == sn.zone.name:
-                    return sn
-            if len(default_net.subnets) == 0:
-                pass  # No subnets exist within the default net so continue
-            else:
-                return default_net.subnets[0]  # Pick a (first) subnet
-        else:
-            log.info("Creating a CloudBridge-default network labeled %s",
-                     AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
-            default_net = self.provider.networking.networks.create(
-                label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block='10.0.0.0/16')
+        default_net = self.provider.networking.networks.get_or_create_default()
 
         # Get/create an internet gateway for the default network and a
         # corresponding router if it does not already exist.
