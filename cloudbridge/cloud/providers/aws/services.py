@@ -728,9 +728,11 @@ class AWSNetworkService(BaseNetworkService):
         return cb_net
 
     def get_or_create_default(self):
-        for net in self.provider.networking.networks:
-            if net._vpc.is_default:
-                return net
+        # # Look for provided default network
+        # for net in self.provider.networking.networks:
+        #     if net._vpc.is_default:
+        #         return net
+
         # No provider-default, try CB-default instead
         default_nets = self.provider.networking.networks.find(
             label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
@@ -797,25 +799,26 @@ class AWSSubnetService(BaseSubnetService):
         return subnet
 
     def get_or_create_default(self, zone):
-        if zone:
-            zone_name = zone.name if isinstance(
-                zone, AWSPlacementZone) else zone
-            snl = self.svc.find('availabilityZone', zone_name)
+        zone_name = zone.name if isinstance(zone, AWSPlacementZone) else zone
 
-        else:
-            snl = self.svc.list()
-            # Find first available default subnet by sorted order
-            # of availability zone. Prefer zone us-east-1a over 1e,
-            # because newer zones tend to have less compatibility
-            # with different instance types (e.g. c5.large not available
-            # on us-east-1e as of 14 Dec. 2017).
-            # pylint:disable=protected-access
-            snl.sort(key=lambda sn: sn._subnet.availability_zone)
-
-        for sn in snl:
-            # pylint:disable=protected-access
-            if sn._subnet.default_for_az:
-                return sn
+        # # Look for provider default subnet in current zone
+        # if zone_name:
+        #     snl = self.svc.find('availabilityZone', zone_name)
+        #
+        # else:
+        #     snl = self.svc.list()
+        #     # Find first available default subnet by sorted order
+        #     # of availability zone. Prefer zone us-east-1a over 1e,
+        #     # because newer zones tend to have less compatibility
+        #     # with different instance types (e.g. c5.large not available
+        #     # on us-east-1e as of 14 Dec. 2017).
+        #     # pylint:disable=protected-access
+        #     snl.sort(key=lambda sn: sn._subnet.availability_zone)
+        #
+        # for sn in snl:
+        #     # pylint:disable=protected-access
+        #     if sn._subnet.default_for_az:
+        #         return sn
 
         # If no provider-default subnet has been found, look for
         # cloudbridge-default by label. We suffix labels by availability zone,
@@ -823,16 +826,20 @@ class AWSSubnetService(BaseSubnetService):
         # subnet
         snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")
 
-        if len(snl) > 0:
+        if snl:
             snl.sort(key=lambda sn: sn._subnet.availability_zone)
-            return snl[0]
+            if not zone_name:
+                return snl[0]
+            for subnet in snl:
+                if subnet.zone.name == zone_name:
+                    return subnet
 
         # No default Subnet exists, try to create a CloudBridge-specific
         # subnet. This involves creating the network, subnets, internet
         # gateway, and connecting it all together so that the network has
         # Internet connectivity.
 
-        # Check if a default net already exists
+        # Check if a default net already exists and get it or create on
         default_net = self.provider.networking.networks.get_or_create_default()
 
         # Get/create an internet gateway for the default network and a
@@ -857,7 +864,7 @@ class AWSSubnetService(BaseSubnetService):
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
-        for i, z in enumerate(region.zones):
+        for i, z in reversed(list(enumerate(region.zones))):
             sn_label = "{0}-{1}".format(AWSSubnet.CB_DEFAULT_SUBNET_LABEL,
                                         z.id[-1])
             log.info("Creating default CloudBridge subnet %s", sn_label)
@@ -869,6 +876,7 @@ class AWSSubnetService(BaseSubnetService):
             if zone and zone_name == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
+        # The list was originally reversed to have the last subnet be in zone a
         if not default_sn:
             default_sn = sn
         return default_sn
