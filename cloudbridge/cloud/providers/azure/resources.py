@@ -40,7 +40,7 @@ class AzureVMFirewall(BaseVMFirewall):
 
     @property
     def network_id(self):
-        return None
+        return self._vm_firewall.tags.get('network_id', None)
 
     @property
     def resource_id(self):

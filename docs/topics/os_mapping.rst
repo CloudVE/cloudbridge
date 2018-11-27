@@ -30,6 +30,12 @@ identifier even though not easily readable in this context. Finally, labeled res
 support a `label` parameter for the `find` method in their corresponding services.
 The below screenshots will help map these properties to OpenStack objects in the
 web portal.
+Additionally, although OpenStack Security Groups are not associated with a
+specific network, such an association is done in CloudBridge, due to its
+necessity in AWS. As such, the VMFirewall creation method requires a
+`network` parameter and the association is accomplished in OpenStack through
+the description, by appending the following string to the user-provided description
+(if any) at creation: "[CB-AUTO-associated-network-id: associated_net_id]"
 
 .. figure:: captures/os-instance-dash.png
    :scale: 50 %

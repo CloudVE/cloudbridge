@@ -30,6 +30,11 @@ remain unchanged, as it is part of the ID. Finally, labeled resources support
 a `label` parameter for the `find` method in their corresponding services.
 The below screenshots will help map these properties to Azure objects in the
 web portal.
+Additionally, although Azure Security Groups are not associated with a
+specific network, such an association is done in CloudBridge, due to its
+necessity in AWS. As such, the VMFirewall creation method requires a
+`network` parameter and the association is accomplished in OpenStack through
+a tag with the key `network_id`.
 
 .. figure:: captures/az-label-dash.png
    :scale: 50 %

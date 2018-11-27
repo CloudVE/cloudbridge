@@ -37,6 +37,7 @@ from cloudbridge.cloud.interfaces.exceptions \
     import DuplicateResourceException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Subnet
@@ -216,6 +217,12 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         log.debug("Creating OpenStack VM Firewall with the params: "
                   "[label: %s network id: %s description: %s]", label,
                   network, description)
+        net = network.id if isinstance(network, Network) else network
+        if not description:
+            description = ""
+        else:
+            description += "   "
+        description += "[CB-AUTO-associated-network-id: {}]".format(net)
         sg = self.provider.os_conn.network.create_security_group(
             name=label, description=description or label)
         if sg:

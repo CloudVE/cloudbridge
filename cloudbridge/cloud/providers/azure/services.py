@@ -67,11 +67,13 @@ class AzureVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    def create(self, label, network=None, description=None):
+    def create(self, label, network, description=None):
         AzureVMFirewall.assert_valid_resource_label(label)
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
+        net = network.id if isinstance(network, Network) else network
         parameters = {"location": self.provider.region_name,
-                      "tags": {'Label': label}}
+                      "tags": {'Label': label,
+                               'network_id': net}}
 
         if description:
             parameters['tags'].update(Description=description)
@@ -256,7 +258,7 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, label, size, zone=None, description=None,
+    def create(self, label, size, zone, description=None,
                snapshot=None):
         """
         Creates a new volume.

@@ -66,14 +66,19 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         def create_fw(label):
             return self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
         def cleanup_fw(fw):
             if fw:
                 fw.delete()
 
+        def network_id_test(fw):
+            # Checking that the network ID is returned correctly
+            self.assertEqual(fw.network_id, net.id)
+
         sit.check_crud(self, self.provider.security.vm_firewalls,
-                       VMFirewall, "cb-crudfw", create_fw, cleanup_fw)
+                       VMFirewall, "cb-crudfw", create_fw, cleanup_fw,
+                       extra_test_func=network_id_test)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_properties(self):

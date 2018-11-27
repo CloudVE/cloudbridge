@@ -1215,7 +1215,12 @@ class OpenStackVMFirewall(BaseVMFirewall):
 
         :return: Always return ``None``.
         """
-        return None
+        # Best way would be to use regex, but using this hacky way to avoid
+        # importing the re package
+        desc = self.description
+        net_id = desc.split("[CB-AUTO-associated-network-id: ")[-1]\
+                     .split(']')[0]
+        return net_id
 
     @property
     def name(self):
