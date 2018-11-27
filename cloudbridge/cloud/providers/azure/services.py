@@ -194,54 +194,6 @@ class AzureVMFirewallService(BaseVMFirewallService):
         self.provider.azure_client.delete_vm_firewall(group_id)
 
 
-class AzureBucketService(BaseBucketService):
-    def __init__(self, provider):
-        super(AzureBucketService, self).__init__(provider)
-
-    def get(self, bucket_id):
-        """
-        Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist.
-        """
-        try:
-            bucket = self.provider.azure_client.get_container(bucket_id)
-            return AzureBucket(self.provider, bucket)
-        except AzureException as error:
-            log.exception(error)
-            return None
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
-    def list(self, limit=None, marker=None):
-        """
-        List all containers.
-        """
-        buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in self.provider.azure_client.list_containers()]
-        return ClientPagedResultList(self.provider, buckets,
-                                     limit=limit, marker=marker)
-
-    def create(self, name, location=None):
-        """
-        Create a new bucket.
-        """
-        AzureBucket.assert_valid_resource_name(name)
-        bucket = self.provider.azure_client.create_container(name)
-        return AzureBucket(self.provider, bucket)
-
-
 class AzureStorageService(BaseStorageService):
     def __init__(self, provider):
         super(AzureStorageService, self).__init__(provider)
@@ -262,6 +214,7 @@ class AzureStorageService(BaseStorageService):
     @property
     def buckets(self):
         return self._bucket_svc
+
 
 
 class AzureVolumeService(BaseVolumeService):
@@ -421,6 +374,54 @@ class AzureSnapshotService(BaseSnapshotService):
         return AzureSnapshot(self.provider, azure_snap)
 
 
+class AzureBucketService(BaseBucketService):
+    def __init__(self, provider):
+        super(AzureBucketService, self).__init__(provider)
+
+    def get(self, bucket_id):
+        """
+        Returns a bucket given its ID. Returns ``None`` if the bucket
+        does not exist.
+        """
+        try:
+            bucket = self.provider.azure_client.get_container(bucket_id)
+            return AzureBucket(self.provider, bucket)
+        except AzureException as error:
+            log.exception(error)
+            return None
+
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
+    def list(self, limit=None, marker=None):
+        """
+        List all containers.
+        """
+        buckets = [AzureBucket(self.provider, bucket)
+                   for bucket in self.provider.azure_client.list_containers()]
+        return ClientPagedResultList(self.provider, buckets,
+                                     limit=limit, marker=marker)
+
+    def create(self, name, location=None):
+        """
+        Create a new bucket.
+        """
+        AzureBucket.assert_valid_resource_name(name)
+        bucket = self.provider.azure_client.create_container(name)
+        return AzureBucket(self.provider, bucket)
+
+
 class AzureComputeService(BaseComputeService):
     def __init__(self, provider):
         super(AzureComputeService, self).__init__(provider)
@@ -444,6 +445,49 @@ class AzureComputeService(BaseComputeService):
     @property
     def regions(self):
         return self._region_svc
+
+
+class AzureImageService(BaseImageService):
+    def __init__(self, provider):
+        super(AzureImageService, self).__init__(provider)
+
+    def get(self, image_id):
+        """
+        Returns an Image given its id
+        """
+        try:
+            image = self.provider.azure_client.get_image(image_id)
+            return AzureMachineImage(self.provider, image)
+        except (CloudError, InvalidValueException) as cloud_error:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloud_error)
+            return None
+
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
+    def list(self, filter_by_owner=True, limit=None, marker=None):
+        """
+        List all images.
+        """
+        azure_images = self.provider.azure_client.list_images()
+        azure_gallery_refs = self.provider.azure_client.list_gallery_refs() \
+            if not filter_by_owner else []
+        cb_images = [AzureMachineImage(self.provider, img)
+                     for img in azure_images + azure_gallery_refs]
+        return ClientPagedResultList(self.provider, cb_images,
+                                     limit=limit, marker=marker)
 
 
 class AzureInstanceService(BaseInstanceService):
@@ -760,49 +804,6 @@ class AzureInstanceService(BaseInstanceService):
                                      matches if matches else [])
 
 
-class AzureImageService(BaseImageService):
-    def __init__(self, provider):
-        super(AzureImageService, self).__init__(provider)
-
-    def get(self, image_id):
-        """
-        Returns an Image given its id
-        """
-        try:
-            image = self.provider.azure_client.get_image(image_id)
-            return AzureMachineImage(self.provider, image)
-        except (CloudError, InvalidValueException) as cloud_error:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloud_error)
-            return None
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['label']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
-    def list(self, filter_by_owner=True, limit=None, marker=None):
-        """
-        List all images.
-        """
-        azure_images = self.provider.azure_client.list_images()
-        azure_gallery_refs = self.provider.azure_client.list_gallery_refs() \
-            if not filter_by_owner else []
-        cb_images = [AzureMachineImage(self.provider, img)
-                     for img in azure_images + azure_gallery_refs]
-        return ClientPagedResultList(self.provider, cb_images,
-                                     limit=limit, marker=marker)
-
-
 class AzureVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
@@ -821,6 +822,29 @@ class AzureVMTypeService(BaseVMTypeService):
                     for vm_type in self.instance_data]
         return ClientPagedResultList(self.provider, vm_types,
                                      limit=limit, marker=marker)
+
+
+class AzureRegionService(BaseRegionService):
+    def __init__(self, provider):
+        super(AzureRegionService, self).__init__(provider)
+
+    def get(self, region_id):
+        region = None
+        for azureRegion in self.provider.azure_client.list_locations():
+            if azureRegion.name == region_id:
+                region = AzureRegion(self.provider, azureRegion)
+                break
+        return region
+
+    def list(self, limit=None, marker=None):
+        regions = [AzureRegion(self.provider, region)
+                   for region in self.provider.azure_client.list_locations()]
+        return ClientPagedResultList(self.provider, regions,
+                                     limit=limit, marker=marker)
+
+    @property
+    def current(self):
+        return self.get(self.provider.region_name)
 
 
 class AzureNetworkingService(BaseNetworkingService):
@@ -901,29 +925,6 @@ class AzureNetworkService(BaseNetworkService):
         Delete an existing network.
         """
         self.provider.azure_client.delete_network(network_id)
-
-
-class AzureRegionService(BaseRegionService):
-    def __init__(self, provider):
-        super(AzureRegionService, self).__init__(provider)
-
-    def get(self, region_id):
-        region = None
-        for azureRegion in self.provider.azure_client.list_locations():
-            if azureRegion.name == region_id:
-                region = AzureRegion(self.provider, azureRegion)
-                break
-        return region
-
-    def list(self, limit=None, marker=None):
-        regions = [AzureRegion(self.provider, region)
-                   for region in self.provider.azure_client.list_locations()]
-        return ClientPagedResultList(self.provider, regions,
-                                     limit=limit, marker=marker)
-
-    @property
-    def current(self):
-        return self.get(self.provider.region_name)
 
 
 class AzureSubnetService(BaseSubnetService):

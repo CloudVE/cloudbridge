@@ -371,6 +371,32 @@ class AWSBucketService(BaseBucketService):
                     raise
 
 
+class AWSComputeService(BaseComputeService):
+
+    def __init__(self, provider):
+        super(AWSComputeService, self).__init__(provider)
+        self._vm_type_svc = AWSVMTypeService(self.provider)
+        self._instance_svc = AWSInstanceService(self.provider)
+        self._region_svc = AWSRegionService(self.provider)
+        self._images_svc = AWSImageService(self.provider)
+
+    @property
+    def images(self):
+        return self._images_svc
+
+    @property
+    def vm_types(self):
+        return self._vm_type_svc
+
+    @property
+    def instances(self):
+        return self._instance_svc
+
+    @property
+    def regions(self):
+        return self._region_svc
+
+
 class AWSImageService(BaseImageService):
 
     def __init__(self, provider):
@@ -411,32 +437,6 @@ class AWSImageService(BaseImageService):
         return self.svc.list(Owners=['self'] if filter_by_owner else
                              ['amazon', 'self'],
                              limit=limit, marker=marker)
-
-
-class AWSComputeService(BaseComputeService):
-
-    def __init__(self, provider):
-        super(AWSComputeService, self).__init__(provider)
-        self._vm_type_svc = AWSVMTypeService(self.provider)
-        self._instance_svc = AWSInstanceService(self.provider)
-        self._region_svc = AWSRegionService(self.provider)
-        self._images_svc = AWSImageService(self.provider)
-
-    @property
-    def images(self):
-        return self._images_svc
-
-    @property
-    def vm_types(self):
-        return self._vm_type_svc
-
-    @property
-    def instances(self):
-        return self._instance_svc
-
-    @property
-    def regions(self):
-        return self._region_svc
 
 
 class AWSInstanceService(BaseInstanceService):
