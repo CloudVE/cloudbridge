@@ -515,7 +515,7 @@ class OpenStackImageService(BaseImageService):
             return None
 
     def find(self, **kwargs):
-        filters = ['name', 'label']
+        filters = ['label']
         obj_list = self
         return cb_helpers.generic_find(filters, kwargs, obj_list)
 

@@ -414,7 +414,6 @@ class AWSImageService(BaseImageService):
 
     def find(self, **kwargs):
         # Filter by name or label
-        name = kwargs.get('name', None)
         label = kwargs.get('label', None)
         # Popped here, not used in the generic find
         owner = kwargs.pop('owners', None)
@@ -423,16 +422,23 @@ class AWSImageService(BaseImageService):
             extra_args.update(Owners=owner)
 
         obj_list = []
-        if name:
-            log.debug("Searching for AWS Image Service %s", name)
-            obj_list.extend(self.svc.find(filter_name='name',
-                                          filter_value=name, **extra_args))
+
+        # The original list is made by combining both searches by "tag:Name"
+        # and "AMI name" to allow for searches of public images
         if label:
+            log.debug("Searching for AWS Image Service %s", label)
+            obj_list.extend(self.svc.find(filter_name='name',
+                                          filter_value=label, **extra_args))
             obj_list.extend(self.svc.find(filter_name='tag:Name',
                                           filter_value=label, **extra_args))
-        if not name and not label:
+
+        if not label:
             obj_list = self
 
+        # Add name filter for the generic find method, to allow searching
+        # through AMI names for a match (public images will likely have an
+        # AMI name and no tag:Name)
+        kwargs.update({'name': label})
         filters = ['label', 'name']
         return cb_helpers.generic_find(filters, kwargs, obj_list)
 

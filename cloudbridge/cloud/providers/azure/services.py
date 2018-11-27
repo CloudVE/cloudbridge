@@ -258,8 +258,7 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, label, size, zone, description=None,
-               snapshot=None):
+    def create(self, label, size, zone, description=None, snapshot=None):
         """
         Creates a new volume.
         """
@@ -326,7 +325,7 @@ class AzureSnapshotService(BaseSnapshotService):
 
     def find(self, **kwargs):
         obj_list = self
-        filters = ['name', 'label']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
