@@ -220,9 +220,8 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         net = network.id if isinstance(network, Network) else network
         if not description:
             description = ""
-        else:
-            description += "   "
-        description += "[CB-AUTO-associated-network-id: {}]".format(net)
+        description += "[{}{}]".format(OpenStackVMFirewall._network_id_tag,
+                                       net)
         sg = self.provider.os_conn.network.create_security_group(
             name=label, description=description or label)
         if sg:

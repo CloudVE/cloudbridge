@@ -217,7 +217,7 @@ class BaseSubnetService(
         # No provider-default Subnet exists, try to create it (net + subnets)
         network = self.provider.networking.networks.get_or_create_default()
         subnet = self.create(BaseSubnet.CB_DEFAULT_SUBNET_LABEL, network,
-                             default_cidr)
+                             default_cidr, zone)
         return subnet
 
 
