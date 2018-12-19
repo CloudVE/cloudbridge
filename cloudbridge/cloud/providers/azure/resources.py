@@ -1317,10 +1317,10 @@ class AzureInstance(BaseInstance):
         """
         self._provider.azure_client.deallocate_vm(self.id)
         self._provider.azure_client.delete_vm(self.id)
-        for public_ip_id in self._public_ip_ids:
-            self._provider.azure_client.delete_floating_ip(public_ip_id)
         for nic_id in self._nic_ids:
             self._provider.azure_client.delete_nic(nic_id)
+        for public_ip_id in self._public_ip_ids:
+            self._provider.azure_client.delete_floating_ip(public_ip_id)
         for data_disk in self._vm.storage_profile.data_disks:
             if data_disk.managed_disk:
                 if self._vm.tags.get('delete_on_terminate',
