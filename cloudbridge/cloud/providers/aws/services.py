@@ -136,7 +136,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
         return self.svc.list(limit=limit, marker=marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    def create(self, label, network=None, description=None):
+    def create(self, label, network, description=None):
         log.debug("Creating Firewall Service with the parameters "
                   "[label: %s id: %s description: %s]", label, network,
                   description)
@@ -374,48 +374,6 @@ class AWSBucketService(BaseBucketService):
                     raise
 
 
-class AWSImageService(BaseImageService):
-
-    def __init__(self, provider):
-        super(AWSImageService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSMachineImage,
-                                  boto_collection_name='images')
-
-    def get(self, image_id):
-        log.debug("Getting AWS Image Service with the id: %s", image_id)
-        return self.svc.get(image_id)
-
-    def find(self, **kwargs):
-        # Filter by name or label
-        name = kwargs.get('name', None)
-        label = kwargs.get('label', None)
-        # Popped here, not used in the generic find
-        owner = kwargs.pop('owners', None)
-        extra_args = {}
-        if owner:
-            extra_args.update(Owners=owner)
-
-        obj_list = []
-        if name:
-            log.debug("Searching for AWS Image Service %s", name)
-            obj_list.extend(self.svc.find(filter_name='name',
-                                          filter_value=name, **extra_args))
-        if label:
-            obj_list.extend(self.svc.find(filter_name='tag:Name',
-                                          filter_value=label, **extra_args))
-        if not name and not label:
-            obj_list = self
-
-        filters = ['label', 'name']
-        return cb_helpers.generic_find(filters, kwargs, obj_list)
-
-    def list(self, filter_by_owner=True, limit=None, marker=None):
-        return self.svc.list(Owners=['self'] if filter_by_owner else
-                             ['amazon', 'self'],
-                             limit=limit, marker=marker)
-
-
 class AWSComputeService(BaseComputeService):
 
     def __init__(self, provider):
@@ -440,6 +398,54 @@ class AWSComputeService(BaseComputeService):
     @property
     def regions(self):
         return self._region_svc
+
+
+class AWSImageService(BaseImageService):
+
+    def __init__(self, provider):
+        super(AWSImageService, self).__init__(provider)
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSMachineImage,
+                                  boto_collection_name='images')
+
+    def get(self, image_id):
+        log.debug("Getting AWS Image Service with the id: %s", image_id)
+        return self.svc.get(image_id)
+
+    def find(self, **kwargs):
+        # Filter by name or label
+        label = kwargs.get('label', None)
+        # Popped here, not used in the generic find
+        owner = kwargs.pop('owners', None)
+        extra_args = {}
+        if owner:
+            extra_args.update(Owners=owner)
+
+        obj_list = []
+
+        # The original list is made by combining both searches by "tag:Name"
+        # and "AMI name" to allow for searches of public images
+        if label:
+            log.debug("Searching for AWS Image Service %s", label)
+            obj_list.extend(self.svc.find(filter_name='name',
+                                          filter_value=label, **extra_args))
+            obj_list.extend(self.svc.find(filter_name='tag:Name',
+                                          filter_value=label, **extra_args))
+
+        if not label:
+            obj_list = self
+
+        # Add name filter for the generic find method, to allow searching
+        # through AMI names for a match (public images will likely have an
+        # AMI name and no tag:Name)
+        kwargs.update({'name': label})
+        filters = ['label', 'name']
+        return cb_helpers.generic_find(filters, kwargs, obj_list)
+
+    def list(self, filter_by_owner=True, limit=None, marker=None):
+        return self.svc.list(Owners=['self'] if filter_by_owner else
+                             ['amazon', 'self'],
+                             limit=limit, marker=marker)
 
 
 class AWSInstanceService(BaseInstanceService):
@@ -724,6 +730,25 @@ class AWSNetworkService(BaseNetworkService):
             cb_net.label = label
         return cb_net
 
+    def get_or_create_default(self):
+        # # Look for provided default network
+        # for net in self.provider.networking.networks:
+        #     if net._vpc.is_default:
+        #         return net
+
+        # No provider-default, try CB-default instead
+        default_nets = self.provider.networking.networks.find(
+            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+        if default_nets:
+            return default_nets[0]
+
+        else:
+            log.info("Creating a CloudBridge-default network labeled %s",
+                     AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+            return self.provider.networking.networks.create(
+                label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
+                cidr_block='10.0.0.0/16')
+
 
 class AWSSubnetService(BaseSubnetService):
 
@@ -777,51 +802,48 @@ class AWSSubnetService(BaseSubnetService):
         return subnet
 
     def get_or_create_default(self, zone):
-        zone_name = zone.name if isinstance(
-            zone, AWSPlacementZone) else zone
-        snl = self.svc.find('availabilityZone', zone_name)
-        # Find first available default subnet by sorted order
-        # of availability zone. Prefer zone us-east-1a over 1e,
-        # because newer zones tend to have less compatibility
-        # with different instance types (e.g. c5.large not available
-        # on us-east-1e as of 14 Dec. 2017).
-        # pylint:disable=protected-access
-        snl.sort(key=lambda sn: sn._subnet.availability_zone)
-        for sn in snl:
-            # pylint:disable=protected-access
-            if sn._subnet.default_for_az:
-                return sn
+        zone_name = zone.name if isinstance(zone, AWSPlacementZone) else zone
 
-        # Refresh the list for the default label
-        snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL)
+        # # Look for provider default subnet in current zone
+        # if zone_name:
+        #     snl = self.svc.find('availabilityZone', zone_name)
+        #
+        # else:
+        #     snl = self.svc.list()
+        #     # Find first available default subnet by sorted order
+        #     # of availability zone. Prefer zone us-east-1a over 1e,
+        #     # because newer zones tend to have less compatibility
+        #     # with different instance types (e.g. c5.large not available
+        #     # on us-east-1e as of 14 Dec. 2017).
+        #     # pylint:disable=protected-access
+        #     snl.sort(key=lambda sn: sn._subnet.availability_zone)
+        #
+        # for sn in snl:
+        #     # pylint:disable=protected-access
+        #     if sn._subnet.default_for_az:
+        #         return sn
 
-        if len(snl) > 0:
-            return snl[0]
+        # If no provider-default subnet has been found, look for
+        # cloudbridge-default by label. We suffix labels by availability zone,
+        # thus we add the wildcard for the regular expression to find the
+        # subnet
+        snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")
 
-        """
-        No provider-default Subnet exists, try to create a CloudBridge-specific
-        network. This involves creating the network, subnets, internet gateway,
-        and connecting it all together so that the network has Internet
-        connectivity.
-        """
-        # Check if a default net already exists
-        default_nets = self.provider.networking.networks.find(
-            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
-        if len(default_nets) > 0:
-            default_net = default_nets[0]
-            for sn in default_net.subnets:
-                if zone and zone == sn.zone.name:
-                    return sn
-            if len(default_net.subnets) == 0:
-                pass  # No subnets exist within the default net so continue
-            else:
-                return default_net.subnets[0]  # Pick a (first) subnet
-        else:
-            log.info("Creating a CloudBridge-default network labeled %s",
-                     AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
-            default_net = self.provider.networking.networks.create(
-                label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block='10.0.0.0/16')
+        if snl:
+            snl.sort(key=lambda sn: sn._subnet.availability_zone)
+            if not zone_name:
+                return snl[0]
+            for subnet in snl:
+                if subnet.zone.name == zone_name:
+                    return subnet
+
+        # No default Subnet exists, try to create a CloudBridge-specific
+        # subnet. This involves creating the network, subnets, internet
+        # gateway, and connecting it all together so that the network has
+        # Internet connectivity.
+
+        # Check if a default net already exists and get it or create on
+        default_net = self.provider.networking.networks.get_or_create_default()
 
         # Get/create an internet gateway for the default network and a
         # corresponding router if it does not already exist.
@@ -845,7 +867,7 @@ class AWSSubnetService(BaseSubnetService):
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
-        for i, z in enumerate(region.zones):
+        for i, z in reversed(list(enumerate(region.zones))):
             sn_label = "{0}-{1}".format(AWSSubnet.CB_DEFAULT_SUBNET_LABEL,
                                         z.id[-1])
             log.info("Creating default CloudBridge subnet %s", sn_label)
@@ -854,9 +876,10 @@ class AWSSubnetService(BaseSubnetService):
             # Create a route table entry between the SN and the inet gateway
             # See note above about why this is commented
             # default_router.attach_subnet(sn)
-            if zone and zone == z.name:
+            if zone and zone_name == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
+        # The list was originally reversed to have the last subnet be in zone a
         if not default_sn:
             default_sn = sn
         return default_sn

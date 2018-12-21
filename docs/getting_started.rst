@@ -197,6 +197,10 @@ unique, multiple resources of the same type could use the same label, thus the
 `find` method always returns a list, while the `get` method returns a single
 object. While the methods are similar across resources, they are explicitly
 listed in order to help map each resource with the service that handles it.
+Note that labeled resources allow to find by label, while unlabeled
+resources find by name or their special properties (eg: public_ip for
+floating IPs). For more detailed information on the types of resources and
+their provider mappings, see :doc:`topics/resource_types_and_mappings`.
 
 .. code-block:: python
 
@@ -205,50 +209,44 @@ listed in order to help map each resource with the service that handles it.
     kp_list = provider.security.key_pairs.find(name='cloudbridge-intro')
     kp = kp_list[0]
 
+    # Floating IPs
+    fip = gateway.floating_ips.get('FloatingIP ID')
+    # Find using public IP address
+    fip_list = gateway.floating_ips.find(public_ip='IP address')
+    # Find using name (the behavior of the `name` property can be 
+    # cloud-dependent). More details can be found `here <topics/resource_types_and_mapping.html>`
+    fip_list = net.gateways.floating_ips.find(name='my-fip')
+    fip = fip_list[0]
+
     # Network
     net = provider.networking.networks.get('network ID')
-    net_list = provider.networking.networks.find(name='my-network')
     net_list = provider.networking.networks.find(label='my-network')
     net = net_list[0]
 
     # Subnet
     sn = provider.networking.subnets.get('subnet ID')
     # Unknown network
-    sn_list = provider.networking.subnets.find(name='my-subnet')
     sn_list = provider.networking.subnets.find(label='my-subnet')
     # Known network
-    sn_list = provider.networking.subnets.find(network=net.id, name='my-subnet')
     sn_list = provider.networking.subnets.find(network=net.id,
                                                label='my-subnet')
     sn = sn_list(0)
 
     # Router
     router = provider.networking.routers.get('router ID')
-    router_list = provider.networking.routers.find(name='my-router')
     router_list = provider.networking.routers.find(label='my-router')
     router = router_list[0]
 
     # Gateway
     gateway = net.gateways.get_or_create_inet_gateway()
 
-    # Floating IPs
-    fip = gateway.floating_ips.get('FloatingIP ID')
-    # Find using public IP address
-    fip_list = gateway.floating_ips.find(public_ip='IP address')
-    # Find using name or tag
-    fip_list = net.gateways.floating_ips.find(name='my-fip')
-    fip_list = net.gateways.floating_ips.find(label='my-fip')
-    fip = fip_list[0]
-
     # Firewall
     fw = provider.security.vm_firewalls.get('firewall ID')
-    fw_list = provider.security.vm_firewalls.find(name='cloudbridge-intro')
     fw_list = provider.security.vm_firewalls.find(label='cloudbridge-intro')
     fw = fw_list[0]
 
     # Instance
     inst = provider.compute.instances.get('instance ID')
-    inst_list = provider.compute.instances.list(name='cloudbridge-intro')
     inst_list = provider.compute.instances.list(label='cloudbridge-intro')
     inst = inst_list[0]
 

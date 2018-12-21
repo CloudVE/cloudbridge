@@ -37,6 +37,7 @@ from cloudbridge.cloud.interfaces.exceptions \
     import DuplicateResourceException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Subnet
@@ -216,6 +217,11 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         log.debug("Creating OpenStack VM Firewall with the params: "
                   "[label: %s network id: %s description: %s]", label,
                   network, description)
+        net = network.id if isinstance(network, Network) else network
+        if not description:
+            description = ""
+        description += "[{}{}]".format(OpenStackVMFirewall._network_id_tag,
+                                       net)
         sg = self.provider.os_conn.network.create_security_group(
             name=label, description=description or label)
         if sg:
@@ -242,61 +248,6 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         if firewall:
             firewall.delete()
         return True
-
-
-class OpenStackImageService(BaseImageService):
-
-    def __init__(self, provider):
-        super(OpenStackImageService, self).__init__(provider)
-
-    def get(self, image_id):
-        """
-        Returns an Image given its id
-        """
-        log.debug("Getting OpenStack Image with the id: %s", image_id)
-        try:
-            return OpenStackMachineImage(
-                self.provider, self.provider.os_conn.image.get_image(image_id))
-        except (NotFoundException, ResourceNotFound):
-            log.debug("Image %s not found", image_id)
-            return None
-
-    def find(self, **kwargs):
-        filters = ['name', 'label']
-        obj_list = self
-        return cb_helpers.generic_find(filters, kwargs, obj_list)
-
-    def list(self, filter_by_owner=True, limit=None, marker=None):
-        """
-        List all images.
-        """
-        project_id = None
-        if filter_by_owner:
-            project_id = self.provider.os_conn.session.get_project_id()
-        os_images = self.provider.os_conn.image.images(
-            owner=project_id,
-            limit=oshelpers.os_result_limit(self.provider, limit),
-            marker=marker)
-
-        cb_images = [
-            OpenStackMachineImage(self.provider, img)
-            for img in os_images]
-        return oshelpers.to_server_paged_list(self.provider, cb_images, limit)
-
-
-class OpenStackVMTypeService(BaseVMTypeService):
-
-    def __init__(self, provider):
-        super(OpenStackVMTypeService, self).__init__(provider)
-
-    def list(self, limit=None, marker=None):
-        cb_itypes = [
-            OpenStackVMType(self.provider, obj)
-            for obj in self.provider.nova.flavors.list(
-                limit=oshelpers.os_result_limit(self.provider, limit),
-                marker=marker)]
-
-        return oshelpers.to_server_paged_list(self.provider, cb_itypes, limit)
 
 
 class OpenStackStorageService(BaseStorageService):
@@ -519,44 +470,6 @@ class OpenStackBucketService(BaseBucketService):
             return self.get(name)
 
 
-class OpenStackRegionService(BaseRegionService):
-
-    def __init__(self, provider):
-        super(OpenStackRegionService, self).__init__(provider)
-
-    def get(self, region_id):
-        log.debug("Getting OpenStack Region with the id: %s", region_id)
-        region = (r for r in self if r.id == region_id)
-        return next(region, None)
-
-    def list(self, limit=None, marker=None):
-        # pylint:disable=protected-access
-        if self.provider._keystone_version == 3:
-            os_regions = [OpenStackRegion(self.provider, region)
-                          for region in self.provider.keystone.regions.list()]
-            return ClientPagedResultList(self.provider, os_regions,
-                                         limit=limit, marker=marker)
-        else:
-            # Keystone v3 onwards supports directly listing regions
-            # but for v2, this convoluted method is necessary.
-            regions = (
-                endpoint.get('region') or endpoint.get('region_id')
-                for svc in self.provider.keystone.service_catalog.get_data()
-                for endpoint in svc.get('endpoints', [])
-            )
-            regions = set(region for region in regions if region)
-            os_regions = [OpenStackRegion(self.provider, region)
-                          for region in regions]
-
-            return ClientPagedResultList(self.provider, os_regions,
-                                         limit=limit, marker=marker)
-
-    @property
-    def current(self):
-        nova_region = self.provider.nova.client.region_name
-        return self.get(nova_region) if nova_region else None
-
-
 class OpenStackComputeService(BaseComputeService):
 
     def __init__(self, provider):
@@ -583,6 +496,46 @@ class OpenStackComputeService(BaseComputeService):
         return self._region_svc
 
 
+class OpenStackImageService(BaseImageService):
+
+    def __init__(self, provider):
+        super(OpenStackImageService, self).__init__(provider)
+
+    def get(self, image_id):
+        """
+        Returns an Image given its id
+        """
+        log.debug("Getting OpenStack Image with the id: %s", image_id)
+        try:
+            return OpenStackMachineImage(
+                self.provider, self.provider.os_conn.image.get_image(image_id))
+        except (NotFoundException, ResourceNotFound):
+            log.debug("Image %s not found", image_id)
+            return None
+
+    def find(self, **kwargs):
+        filters = ['label']
+        obj_list = self
+        return cb_helpers.generic_find(filters, kwargs, obj_list)
+
+    def list(self, filter_by_owner=True, limit=None, marker=None):
+        """
+        List all images.
+        """
+        project_id = None
+        if filter_by_owner:
+            project_id = self.provider.os_conn.session.get_project_id()
+        os_images = self.provider.os_conn.image.images(
+            owner=project_id,
+            limit=oshelpers.os_result_limit(self.provider, limit),
+            marker=marker)
+
+        cb_images = [
+            OpenStackMachineImage(self.provider, img)
+            for img in os_images]
+        return oshelpers.to_server_paged_list(self.provider, cb_images, limit)
+
+
 class OpenStackInstanceService(BaseInstanceService):
 
     def __init__(self, provider):
@@ -590,8 +543,7 @@ class OpenStackInstanceService(BaseInstanceService):
 
     def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None,
-               **kwargs):
+               launch_config=None, **kwargs):
         """Create a new virtual machine instance."""
         OpenStackInstance.assert_valid_resource_label(label)
 
@@ -765,6 +717,59 @@ class OpenStackInstanceService(BaseInstanceService):
             return None
 
 
+class OpenStackVMTypeService(BaseVMTypeService):
+
+    def __init__(self, provider):
+        super(OpenStackVMTypeService, self).__init__(provider)
+
+    def list(self, limit=None, marker=None):
+        cb_itypes = [
+            OpenStackVMType(self.provider, obj)
+            for obj in self.provider.nova.flavors.list(
+                limit=oshelpers.os_result_limit(self.provider, limit),
+                marker=marker)]
+
+        return oshelpers.to_server_paged_list(self.provider, cb_itypes, limit)
+
+
+class OpenStackRegionService(BaseRegionService):
+
+    def __init__(self, provider):
+        super(OpenStackRegionService, self).__init__(provider)
+
+    def get(self, region_id):
+        log.debug("Getting OpenStack Region with the id: %s", region_id)
+        region = (r for r in self if r.id == region_id)
+        return next(region, None)
+
+    def list(self, limit=None, marker=None):
+        # pylint:disable=protected-access
+        if self.provider._keystone_version == 3:
+            os_regions = [OpenStackRegion(self.provider, region)
+                          for region in self.provider.keystone.regions.list()]
+            return ClientPagedResultList(self.provider, os_regions,
+                                         limit=limit, marker=marker)
+        else:
+            # Keystone v3 onwards supports directly listing regions
+            # but for v2, this convoluted method is necessary.
+            regions = (
+                endpoint.get('region') or endpoint.get('region_id')
+                for svc in self.provider.keystone.service_catalog.get_data()
+                for endpoint in svc.get('endpoints', [])
+            )
+            regions = set(region for region in regions if region)
+            os_regions = [OpenStackRegion(self.provider, region)
+                          for region in regions]
+
+            return ClientPagedResultList(self.provider, os_regions,
+                                         limit=limit, marker=marker)
+
+    @property
+    def current(self):
+        nova_region = self.provider.nova.client.region_name
+        return self.get(nova_region) if nova_region else None
+
+
 class OpenStackNetworkingService(BaseNetworkingService):
 
     def __init__(self, provider):
@@ -875,18 +880,17 @@ class OpenStackSubnetService(BaseSubnetService):
             sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)
             if sn:
                 return sn[0]
-            # No default; create one
-            net = self.provider.networking.networks.create(
-                label=OpenStackNetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block='10.0.0.0/16')
-            sn = net.create_subnet(
+            # No default subnet look for default network, then create subnet
+            net = self.provider.networking.networks.get_or_create_default()
+            sn = self.provider.networking.subnets.create(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
-                cidr_block='10.0.0.0/24')
-            router = self.provider.networking.routers.create(
-                network=net, label=OpenStackRouter.CB_DEFAULT_ROUTER_LABEL)
+                cidr_block='10.0.0.0/24',
+                network=net)
+            router = self.provider.networking.routers.get_or_create_default(
+                net)
             router.attach_subnet(sn)
-            gteway = net.gateways.get_or_create_inet_gateway()
-            router.attach_gateway(gteway)
+            gateway = net.gateways.get_or_create_inet_gateway()
+            router.attach_gateway(gateway)
             return sn
         except NeutronClientException:
             return None

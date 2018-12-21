@@ -1203,6 +1203,7 @@ class OpenStackKeyPair(BaseKeyPair):
 
 
 class OpenStackVMFirewall(BaseVMFirewall):
+    _network_id_tag = "CB-AUTO-associated-network-id: "
 
     def __init__(self, provider, vm_firewall):
         super(OpenStackVMFirewall, self).__init__(provider, vm_firewall)
@@ -1215,7 +1216,26 @@ class OpenStackVMFirewall(BaseVMFirewall):
 
         :return: Always return ``None``.
         """
-        return None
+        # Best way would be to use regex, but using this hacky way to avoid
+        # importing the re package
+        net_id = self._description\
+                     .split(" [{}".format(self._network_id_tag))[-1]\
+                     .split(']')[0]
+        return net_id
+
+    @property
+    def _description(self):
+        return self._vm_firewall.description or ""
+
+    @property
+    def description(self):
+        desc_fragment = " [{}{}]".format(self._network_id_tag,
+                                         self.network_id)
+        desc = self._description
+        if desc:
+            return desc.replace(desc_fragment, "")
+        else:
+            return None
 
     @property
     def name(self):
