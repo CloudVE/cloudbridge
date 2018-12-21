@@ -136,7 +136,7 @@ a private network.
     from cloudbridge.cloud.interfaces.resources import TrafficDirection
     fw = provider.security.vm_firewalls.create(
         label='cloudbridge-intro', description='A VM firewall used by
-        CloudBridge', network_id=net.id)
+        CloudBridge', network=net.id)
     fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
 Launch an instance
