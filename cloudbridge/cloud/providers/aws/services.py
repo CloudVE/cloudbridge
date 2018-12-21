@@ -619,13 +619,16 @@ class AWSVMTypeService(BaseVMTypeService):
         https://github.com/powdahound/ec2instances.info (in particular, this
         file: https://raw.githubusercontent.com/powdahound/ec2instances.info/
         master/www/instances.json).
-
-        TODO: Needs a caching function with timeout
         """
         r = requests.get(self.provider.config.get(
             "aws_instance_info_url",
             self.provider.AWS_INSTANCE_DATA_DEFAULT_URL))
-        return r.json()
+        # Some instances are only available in certain regions. Use pricing
+        # info to determine and filter out instance types that are not
+        # available in the current region
+        vm_types_list = r.json()
+        return [vm_type for vm_type in vm_types_list
+                if vm_type.get('pricing', {}).get(self.provider.region_name)]
 
     def list(self, limit=None, marker=None):
         vm_types = [AWSVMType(self.provider, vm_type)
