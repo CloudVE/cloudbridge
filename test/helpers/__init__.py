@@ -6,11 +6,12 @@ import unittest
 import uuid
 from contextlib import contextmanager
 
+import six
+
+from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
-
-from six import reraise
 
 
 def parse_bool(val):
@@ -47,7 +48,7 @@ def cleanup_action(cleanup_func):
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
             traceback.print_exc()
-        reraise(ex_class, ex_val, ex_traceback)
+        six.reraise(ex_class, ex_val, ex_traceback)
     try:
         cleanup_func()
     except Exception as e:
@@ -80,15 +81,15 @@ def skipIfNoService(services):
 TEST_DATA_CONFIG = {
     "AWSCloudProvider": {
         # Match the ami value with entry in custom_amis.json for use with moto
-        "image": os.environ.get('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
-        "vm_type": os.environ.get('CB_VM_TYPE_AWS', 't2.nano'),
-        "placement": os.environ.get('CB_PLACEMENT_AWS', 'us-east-1a'),
+        "image": get_env('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
+        "vm_type": get_env('CB_VM_TYPE_AWS', 't2.nano'),
+        "placement": get_env('CB_PLACEMENT_AWS', 'us-east-1a'),
     },
     'OpenStackCloudProvider': {
         'image': os.environ.get('CB_IMAGE_OS',
-                                '842b949c-ea76-48df-998d-8a41f2626243'),
+                                'c66bdfa1-62b1-43be-8964-e9ce208ac6a5'),
         "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
-        "placement": os.environ.get('CB_PLACEMENT_OS', 'zone-r1'),
+        "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
     },
     'GCECloudProvider': {
         'image': ('https://www.googleapis.com/compute/v1/'
@@ -99,14 +100,12 @@ TEST_DATA_CONFIG = {
     },
     "AzureCloudProvider": {
         "placement":
-            os.environ.get('CB_PLACEMENT_AZURE', 'eastus'),
+            get_env('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
-            os.environ.get('CB_IMAGE_AZURE',
-                           '/subscriptions/7904d702-e01c-4826-8519-f5a25c866a9'
-                           '6/resourceGroups/cloudbridge/providers/Microsoft.C'
-                           'ompute/images/cb-test-image'),
+            get_env('CB_IMAGE_AZURE',
+                    'Canonical:UbuntuServer:16.04.0-LTS:latest'),
         "vm_type":
-            os.environ.get('CB_VM_TYPE_AZURE', 'Basic_A2'),
+            get_env('CB_VM_TYPE_AZURE', 'Basic_A2'),
     }
 }
 
@@ -123,16 +122,12 @@ def get_provider_test_data(provider, key):
     return None
 
 
-def create_test_network(provider, name):
+def get_or_create_default_subnet(provider):
     """
-    Create a network with one subnet, returning the network and subnet objects.
+    Return the default subnet to be used for tests
     """
-    net = provider.networking.networks.create(name=name,
-                                              cidr_block='10.0.0.0/16')
-    cidr_block = (net.cidr_block).split('/')[0] or '10.0.0.1'
-    sn = net.create_subnet(cidr_block='{0}/28'.format(cidr_block), name=name,
-                           zone=get_provider_test_data(provider, 'placement'))
-    return net, sn
+    return provider.networking.subnets.get_or_create_default(
+        zone=get_provider_test_data(provider, 'placement'))
 
 
 def delete_test_network(network):
@@ -145,34 +140,31 @@ def delete_test_network(network):
                 pass
 
 
-def get_test_gateway(provider, name):
+def get_test_gateway(provider):
     """
     Get an internet gateway for testing.
 
     This includes creating a network for the gateway, which is also returned.
     """
-    net_name = 'cb-testgwnet-{0}'.format(get_uuid())
-    net = provider.networking.networks.create(
-        name=net_name, cidr_block='10.0.0.0/16')
-    return net, net.gateways.get_or_create_inet_gateway(name)
+    sn = get_or_create_default_subnet(provider)
+    net = sn.network
+    return net.gateways.get_or_create_inet_gateway()
 
 
-def delete_test_gateway(network, gateway):
+def delete_test_gateway(gateway):
     """
     Delete the supplied network and gateway.
     """
-    with cleanup_action(lambda: network.delete()):
-        with cleanup_action(lambda: gateway.delete()):
-            pass
+    with cleanup_action(lambda: gateway.delete()):
+        pass
 
 
 def create_test_instance(
-        provider, instance_name, subnet, launch_config=None,
+        provider, instance_label, subnet, launch_config=None,
         key_pair=None, vm_firewalls=None, user_data=None):
 
     instance = provider.compute.instances.create(
-        instance_name,
-        get_provider_test_data(provider, 'image'),
+        instance_label, get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'vm_type'),
         subnet=subnet,
         zone=get_provider_test_data(provider, 'placement'),
@@ -184,12 +176,12 @@ def create_test_instance(
     return instance
 
 
-def get_test_instance(provider, name, key_pair=None, vm_firewalls=None,
+def get_test_instance(provider, label, key_pair=None, vm_firewalls=None,
                       subnet=None, user_data=None):
     launch_config = None
     instance = create_test_instance(
         provider,
-        name,
+        label,
         subnet=subnet,
         key_pair=key_pair,
         vm_firewalls=vm_firewalls,
@@ -210,8 +202,8 @@ def delete_test_instance(instance):
                           terminal_states=[InstanceState.ERROR])
 
 
-def cleanup_test_resources(instance=None, network=None, vm_firewall=None,
-                           key_pair=None):
+def cleanup_test_resources(instance=None, vm_firewall=None,
+                           key_pair=None, network=None):
     """Clean up any combination of supplied resources."""
     with cleanup_action(lambda: delete_test_network(network)
                         if network else None):
@@ -222,7 +214,7 @@ def cleanup_test_resources(instance=None, network=None, vm_firewall=None,
 
 
 def get_uuid():
-    return str(uuid.uuid4())
+    return str(uuid.uuid4())[:6]
 
 
 class ProviderTestBase(unittest.TestCase):
@@ -245,7 +237,7 @@ class ProviderTestBase(unittest.TestCase):
             return 1
 
     def create_provider_instance(self):
-        provider_name = os.environ.get("CB_TEST_PROVIDER", "aws")
+        provider_name = get_env("CB_TEST_PROVIDER", "aws")
         use_mock_drivers = parse_bool(
             os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
         factory = CloudProviderFactory()
@@ -253,7 +245,7 @@ class ProviderTestBase(unittest.TestCase):
                                                     get_mock=use_mock_drivers)
         config = {'default_wait_interval':
                   self.get_provider_wait_interval(provider_class),
-                  'default_result_limit': 1}
+                  'default_result_limit': 5}
         return provider_class(config)
 
     @property

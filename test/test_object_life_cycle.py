@@ -1,8 +1,8 @@
-from test import helpers
-from test.helpers import ProviderTestBase
-
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
+
+from test import helpers
+from test.helpers import ProviderTestBase
 
 
 class CloudObjectLifeCycleTestCase(ProviderTestBase):
@@ -14,10 +14,9 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
         """
         Test object life cycle methods by using a volume.
         """
-        name = "cb-objlifecycle-{0}".format(helpers.get_uuid())
+        label = "cb-objlifecycle-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
-            name,
-            1,
+            label, 1,
             helpers.get_provider_test_data(self.provider, "placement"))
 
         # Waiting for an invalid timeout should raise an exception

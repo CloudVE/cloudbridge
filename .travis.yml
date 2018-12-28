@@ -35,59 +35,63 @@ matrix:
     env: TOX_ENV=pypy-gce
   - python: pypy-5.3.1
     env: TOX_ENV=pypy-openstack
+env:
+  global:
+    - PYTHONUNBUFFERED=True
 before_install:
-- openssl aes-256-cbc -K $encrypted_b3fcf6d0737c_key -iv $encrypted_b3fcf6d0737c_iv
-  -in credentials.tar.gz.enc -out credentials.tar.gz -d
-- |
-  case "$TRAVIS_EVENT_TYPE" in
-    push|pull_request)
-       # Check whether we need to run a test for this provider
-       DOCS_REGEX='(\.rst$)|(^(docs))/'
-       FILES_IN_CHANGESET="`git diff --name-only $TRAVIS_COMMIT_RANGE`"
-       echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX" || {
-          echo "Only docs were updated. Stopping build process."
-          exit
-       }
-       echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX|(^(cloudbridge/cloud/providers))" || {
-          echo "Only docs and providers were updated. Checking whether this provider was changed."
-          # Extract env and provider from $TOXENV into $PYENV and $PROVIDER respectively
-          IFS=- read PYENV PROVIDER <<< "$TOX_ENV"
-          echo "$FILES_IN_CHANGESET" | grep -qE "^(cloudbridge/cloud/providers/$PROVIDER)" && {
-             echo "This provider was affected by this changeset. Running tests."
-          } || {
-             echo "This provider was not affected by this changeset. Stopping build process."
-             exit
-          }
-       }
-       ;;
-    *)
-       echo "Build triggered through API or CRON job. Running regardless of changes"
-       ;;
-  esac
+	- openssl aes-256-cbc -K $encrypted_b3fcf6d0737c_key -iv $encrypted_b3fcf6d0737c_iv
+  		-in credentials.tar.gz.enc -out credentials.tar.gz -d
+    - |
+      case "$TRAVIS_EVENT_TYPE" in
+        push|pull_request)
+           # Check whether we need to run a test for this provider
+           DOCS_REGEX='(\.rst$)|(^(docs))/'
+           FILES_IN_CHANGESET="`git diff --name-only $TRAVIS_COMMIT_RANGE`"
+           echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX" || {
+              echo "Only docs were updated. Stopping build process."
+              exit
+           }
+           echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX|(^(cloudbridge/cloud/providers))" || {
+              echo "Only docs and providers were updated. Checking whether this provider was changed."
+              # Extract env and provider from $TOXENV into $PYENV and $PROVIDER respectively
+              IFS=- read PYENV PROVIDER <<< "$TOX_ENV"
+              echo "$FILES_IN_CHANGESET" | grep -qE "^(cloudbridge/cloud/providers/$PROVIDER)" && {
+                 echo "This provider was affected by this changeset. Running tests."
+              } || {
+                 echo "This provider was not affected by this changeset. Stopping build process."
+                 exit
+              }
+           }
+           ;;
+        *)
+           echo "Build triggered through API or CRON job. Running regardless of changes"
+           ;;
+      esac
 install:
-- pip install -U setuptools
-- pip install tox
-- pip install coveralls
-- pip install codecov
+    - pip install -U pip
+    - pip install -U setuptools
+    - pip install tox
+    - pip install coveralls
+    - pip install codecov
 script:
-- tox -e $TOX_ENV
+    - tox -r -e $TOX_ENV
 after_script:
-- |
-  case "$TRAVIS_EVENT_TYPE" in
-    push|pull_request)
-       # Don't run coverage if tests or cloudbridge interface was not affected
-       DOCS_REGEX='(\.rst$)|(^(docs))/'
-       FILES_IN_CHANGESET="`git diff --name-only $TRAVIS_COMMIT_RANGE`"
-       echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX|(^(cloudbridge/cloud/providers))" && {
-          coveralls &
-          codecov &
-          wait
-       } || {
-          echo "Only docs and providers were updated. Not running coverage."
-       }
-       ;;
-    *)
-       echo "Build triggered through API or CRON job. Running regardless of changes"
-       coveralls & codecov & wait
-       ;;
-  esac
+    - |
+      case "$TRAVIS_EVENT_TYPE" in
+        push|pull_request)
+           # Don't run coverage if tests or cloudbridge interface was not affected
+           DOCS_REGEX='(\.rst$)|(^(docs))/'
+           FILES_IN_CHANGESET="`git diff --name-only $TRAVIS_COMMIT_RANGE`"
+           echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX|(^(cloudbridge/cloud/providers))" && {
+              coveralls &
+              codecov &
+              wait
+           } || {
+              echo "Only docs and providers were updated. Not running coverage."
+           }
+           ;;
+        *)
+           echo "Build triggered through API or CRON job. Running regardless of changes"
+           coveralls & codecov & wait
+           ;;
+      esac

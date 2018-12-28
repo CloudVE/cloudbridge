@@ -14,23 +14,24 @@ and 4 GB RAM.
 
 .. code-block:: python
 
-    img = provider.compute.images.get('ami-f4cc1de2')  # Ubuntu 16.04 on AWS
+    img = provider.compute.images.get('ami-759bc50a')  # Ubuntu 16.04 on AWS
     vm_type = sorted([t for t in provider.compute.vm_types
                       if t.vcpus >= 2 and t.ram >= 4],
                       key=lambda x: x.vcpus*x.ram)[0]
 
 In addition, CloudBridge instances must be launched into a private subnet.
 While it is possible to create complex network configurations as shown in the
-`Private networking`_ section, if you don't particularly care where the
-instance is launched, CloudBridge provides a convenience function to quickly
-obtain a default subnet for use.
+`Private networking`_ section, if you don't particularly care in which subnet
+the instance is launched, CloudBridge provides a convenience function to
+quickly obtain a default subnet for use. We just need to supply a zone to use.
 
 .. code-block:: python
 
-    subnet = provider.networking.subnets.get_or_create_default()
+    zone = provider.compute.regions.get(provider.region_name).zones[0]
+    subnet = provider.networking.subnets.get_or_create_default(zone)
 
 When launching an instance, you can also specify several optional arguments
-such as the firewall (a.k.a security group), a key pair, or instance user data.
+such as the firewall (aka security group), a key pair, or instance user data.
 To allow you to connect to the launched instances, we will also supply those
 parameters (note that we're making an assumption here these resources exist;
 if you don't have those resources under your account, take a look at the
@@ -38,7 +39,7 @@ if you don't have those resources under your account, take a look at the
 
 .. code-block:: python
 
-    kp = provider.security.key_pairs.find(name='cloudbridge_intro')[0]
+    kp = provider.security.key_pairs.find(name='cloudbridge-intro')[0]
     fw = provider.security.vm_firewalls.list()[0]
 
 Launch an instance
@@ -49,7 +50,7 @@ Once we have all the desired pieces, we'll use them to launch an instance:
 
     inst = provider.compute.instances.create(
         name='cloudbridge-vpc', image=img, vm_type=vm_type,
-        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
+        subnet=subnet, zone=zone, key_pair=kp, vm_firewalls=[fw])
 
 Private networking
 ~~~~~~~~~~~~~~~~~~
@@ -67,12 +68,12 @@ that subnet.
     # make sure subnet has internet access
     router = self.provider.networking.routers.create(network=net, name='my-router')
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway()
     router.attach_gateway(gateway)
 
     inst = provider.compute.instances.create(
         name='cloudbridge-vpc', image=img, vm_type=vm_type,
-        subnet=sn, key_pair=kp, vm_firewalls=[fw])
+        subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
 
 For more information on how to create and setup a private network, take a look
 at `Networking <./networking.html>`_.
@@ -94,7 +95,8 @@ refer to :class:`.LaunchConfig`.
     lc.add_volume_device(source=img, size=11, is_root=True)
     inst = provider.compute.instances.create(
         name='cloudbridge-bdm', image=img,  vm_type=vm_type,
-        launch_config=lc, key_pair=kp, vm_firewalls=[fw])
+        launch_config=lc, key_pair=kp, vm_firewalls=[fw],
+        subnet=subnet, zone=zone)
 
 where ``img`` is the :class:`.Image` object to use for the root volume.
 

@@ -23,9 +23,9 @@ ProviderConnectionException
 .. autoclass:: cloudbridge.cloud.interfaces.exceptions.ProviderConnectionException
     :members:
 
-InvalidNameException
+InvalidLabelException
 -----------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.exceptions.InvalidNameException
+.. autoclass:: cloudbridge.cloud.interfaces.exceptions.InvalidLabelException
     :members:
 
 InvalidValueException

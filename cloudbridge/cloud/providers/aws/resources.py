@@ -56,7 +56,7 @@ class AWSMachineImage(BaseMachineImage):
         'pending': MachineImageState.PENDING,
         'transient': MachineImageState.PENDING,
         'available': MachineImageState.AVAILABLE,
-        'deregistered': MachineImageState.ERROR,
+        'deregistered': MachineImageState.PENDING,
         'failed': MachineImageState.ERROR,
         'error': MachineImageState.ERROR,
         'invalid': MachineImageState.ERROR
@@ -78,8 +78,23 @@ class AWSMachineImage(BaseMachineImage):
     def name(self):
         try:
             return self._ec2_image.name
-        except AttributeError:
-            return None
+        except (AttributeError, ClientError) as e:
+            log.warn("Cannot get name for image {0}: {1}".format(self.id, e))
+
+    @property
+    # pylint:disable=arguments-differ
+    def label(self):
+        """
+        .. note:: an instance must have a (case sensitive) tag ``Name``
+        """
+        return find_tag_value(self._ec2_image.tags, 'Name')
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._ec2_image.create_tags(Tags=[{'Key': 'Name',
+                                           'Value': value or ""}])
 
     @property
     def description(self):
@@ -141,7 +156,7 @@ class AWSPlacementZone(BasePlacementZone):
 
     @property
     def name(self):
-        return self._aws_zone
+        return self.id
 
     @property
     def region_name(self):
@@ -160,7 +175,7 @@ class AWSVMType(BaseVMType):
 
     @property
     def name(self):
-        return self._inst_dict['instance_type']
+        return self.id
 
     @property
     def family(self):
@@ -168,7 +183,10 @@ class AWSVMType(BaseVMType):
 
     @property
     def vcpus(self):
-        return self._inst_dict.get('vCPU')
+        vcpus = self._inst_dict.get('vCPU')
+        if vcpus == 'N/A':
+            return None
+        return vcpus
 
     @property
     def ram(self):
@@ -216,24 +234,30 @@ class AWSInstance(BaseInstance):
     def __init__(self, provider, ec2_instance):
         super(AWSInstance, self).__init__(provider)
         self._ec2_instance = ec2_instance
+        self._unknown_state = False
 
     @property
     def id(self):
         return self._ec2_instance.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
+        return self.id
+
+    @property
+    # pylint:disable=arguments-differ
+    def label(self):
         """
         .. note:: an instance must have a (case sensitive) tag ``Name``
         """
         return find_tag_value(self._ec2_instance.tags, 'Name')
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._ec2_instance.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._ec2_instance.create_tags(Tags=[{'Key': 'Name',
+                                              'Value': value or ""}])
 
     @property
     def public_ips(self):
@@ -269,6 +293,10 @@ class AWSInstance(BaseInstance):
         return self._ec2_instance.placement.get('AvailabilityZone')
 
     @property
+    def subnet_id(self):
+        return self._ec2_instance.subnet_id
+
+    @property
     def vm_firewalls(self):
         return [
             self._provider.security.vm_firewalls.get(fw_id)
@@ -283,17 +311,20 @@ class AWSInstance(BaseInstance):
         ]))
 
     @property
-    def key_pair_name(self):
+    def key_pair_id(self):
         return self._ec2_instance.key_name
 
-    def create_image(self, name):
-        self.assert_valid_resource_name(name)
+    def create_image(self, label):
+        self.assert_valid_resource_label(label)
+        name = self._generate_name_from_label(label, 'cb-img')
 
         image = AWSMachineImage(self._provider,
                                 self._ec2_instance.create_image(Name=name))
         # Wait for the image to exist
         self._provider.ec2_conn.meta.client.get_waiter('image_exists').wait(
             ImageIds=[image.id])
+        # Add image label
+        image.label = label
         # Return the image
         image.refresh()
         return image
@@ -338,6 +369,8 @@ class AWSInstance(BaseInstance):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return InstanceState.UNKNOWN
         try:
             return AWSInstance.INSTANCE_STATE_MAP.get(
                 self._ec2_instance.state['Name'], InstanceState.UNKNOWN)
@@ -348,10 +381,11 @@ class AWSInstance(BaseInstance):
     def refresh(self):
         try:
             self._ec2_instance.reload()
+            self._unknown_state = False
         except ClientError:
             # The instance no longer exists and cannot be refreshed.
             # set the state to unknown
-            self._ec2_instance.state = {'Name': InstanceState.UNKNOWN}
+            self._unknown_state = True
 
     # pylint:disable=unused-argument
     def _wait_till_exists(self, timeout=None, interval=None):
@@ -375,21 +409,29 @@ class AWSVolume(BaseVolume):
     def __init__(self, provider, volume):
         super(AWSVolume, self).__init__(provider)
         self._volume = volume
+        self._unknown_state = False
 
     @property
     def id(self):
         return self._volume.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
-        return find_tag_value(self._volume.tags, 'Name')
+        return self.id
 
-    @name.setter
+    @property
     # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+    def label(self):
+        try:
+            return find_tag_value(self._volume.tags, 'Name')
+        except ClientError as e:
+            log.warn("Cannot get label for volume {0}: {1}".format(self.id, e))
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     @property
     def description(self):
@@ -397,7 +439,8 @@ class AWSVolume(BaseVolume):
 
     @description.setter
     def description(self, value):
-        self._volume.create_tags(Tags=[{'Key': 'Description', 'Value': value}])
+        self._volume.create_tags(Tags=[{'Key': 'Description',
+                                        'Value': value or ""}])
 
     @property
     def size(self):
@@ -442,12 +485,16 @@ class AWSVolume(BaseVolume):
                 Device=a.device,
                 Force=force)
 
-    def create_snapshot(self, name, description=None):
+    def create_snapshot(self, label, description=None):
+        self.assert_valid_resource_label(label)
         snap = AWSSnapshot(
             self._provider,
             self._volume.create_snapshot(
-                Description=description))
-        snap.name = name
+                TagSpecifications=[{'ResourceType': 'snapshot',
+                                    'Tags': [{'Key': 'Name',
+                                              'Value': label}]}],
+                Description=description or ""))
+        snap.wait_till_ready()
         return snap
 
     def delete(self):
@@ -455,6 +502,8 @@ class AWSVolume(BaseVolume):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return VolumeState.UNKNOWN
         try:
             return AWSVolume.VOLUME_STATE_MAP.get(
                 self._volume.state, VolumeState.UNKNOWN)
@@ -465,10 +514,11 @@ class AWSVolume(BaseVolume):
     def refresh(self):
         try:
             self._volume.reload()
+            self._unknown_state = False
         except ClientError:
             # The volume no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._volume.state = VolumeState.UNKNOWN
+            self._unknown_state = True
 
 
 class AWSSnapshot(BaseSnapshot):
@@ -485,21 +535,30 @@ class AWSSnapshot(BaseSnapshot):
     def __init__(self, provider, snapshot):
         super(AWSSnapshot, self).__init__(provider)
         self._snapshot = snapshot
+        self._unknown_state = False
 
     @property
     def id(self):
         return self._snapshot.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
-        return find_tag_value(self._snapshot.tags, 'Name')
+        return self.id
 
-    @name.setter
+    @property
     # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._snapshot.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+    def label(self):
+        try:
+            return find_tag_value(self._snapshot.tags, 'Name')
+        except ClientError as e:
+            log.warn("Cannot get label for snap {0}: {1}".format(self.id, e))
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._snapshot.create_tags(Tags=[{'Key': 'Name',
+                                          'Value': value or ""}])
 
     @property
     def description(self):
@@ -508,7 +567,7 @@ class AWSSnapshot(BaseSnapshot):
     @description.setter
     def description(self, value):
         self._snapshot.create_tags(Tags=[{
-            'Key': 'Description', 'Value': value}])
+            'Key': 'Description', 'Value': value or ""}])
 
     @property
     def size(self):
@@ -524,6 +583,8 @@ class AWSSnapshot(BaseSnapshot):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return SnapshotState.UNKNOWN
         try:
             return AWSSnapshot.SNAPSHOT_STATE_MAP.get(
                 self._snapshot.state, SnapshotState.UNKNOWN)
@@ -534,22 +595,23 @@ class AWSSnapshot(BaseSnapshot):
     def refresh(self):
         try:
             self._snapshot.reload()
+            self._unknown_state = False
         except ClientError:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._snapshot.state = SnapshotState.UNKNOWN
+            self._unknown_state = True
 
     def delete(self):
         self._snapshot.delete()
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
+        label = "from-snap-{0}".format(self.label or self.id)
         cb_vol = self._provider.storage.volumes.create(
-            name=self.name,
+            label=label,
             size=size,
             zone=placement,
             snapshot=self.id)
         cb_vol.wait_till_ready()
-        cb_vol.name = "from_snap_{0}".format(self.name or self.id)
         return cb_vol
 
 
@@ -567,7 +629,24 @@ class AWSVMFirewall(BaseVMFirewall):
 
     @property
     def name(self):
+        """
+        Return the name of this VM firewall.
+        """
         return self._vm_firewall.group_name
+
+    @property
+    def label(self):
+        try:
+            return find_tag_value(self._vm_firewall.tags, 'Name')
+        except ClientError:
+            return None
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
+                                             'Value': value or ""}])
 
     @property
     def network_id(self):
@@ -760,7 +839,10 @@ class AWSBucketObject(BaseBucketObject):
 
     @property
     def size(self):
-        return self._obj.size
+        try:
+            return self._obj.content_length
+        except AttributeError:  # we're dealing with s3.ObjectSummary
+            return self._obj.size
 
     @property
     def last_modified(self):
@@ -778,11 +860,14 @@ class AWSBucketObject(BaseBucketObject):
     def delete(self):
         self._obj.delete()
 
-    def generate_url(self, expires_in=0):
+    def generate_url(self, expires_in):
         return self._provider.s3_conn.meta.client.generate_presigned_url(
             'get_object',
             Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
             ExpiresIn=expires_in)
+
+    def refresh(self):
+        self._obj.load()
 
 
 class AWSBucket(BaseBucket):
@@ -798,7 +883,7 @@ class AWSBucket(BaseBucket):
 
     @property
     def name(self):
-        return self._bucket.name
+        return self.id
 
     @property
     def objects(self):
@@ -830,9 +915,7 @@ class AWSBucketContainer(BaseBucketContainer):
         else:
             # pylint:disable=protected-access
             boto_objs = self.bucket._bucket.objects.all()
-        objects = [AWSBucketObject(self._provider, obj)
-                   for obj in boto_objs]
-
+        objects = [AWSBucketObject(self._provider, obj) for obj in boto_objs]
         return ClientPagedResultList(self._provider, objects,
                                      limit=limit, marker=marker)
 
@@ -869,7 +952,7 @@ class AWSRegion(BaseRegion):
             conn = self._provider.ec2_conn
         else:
             # pylint:disable=protected-access
-            conn = self._provider._conect_ec2_region(region_name=self.id)
+            conn = self._provider._connect_ec2_region(region_name=self.id)
 
         zones = (conn.meta.client.describe_availability_zones()
                  .get('AvailabilityZones', []))
@@ -891,6 +974,7 @@ class AWSNetwork(BaseNetwork):
         super(AWSNetwork, self).__init__(provider)
         self._vpc = network
         self._gtw_container = AWSGatewayContainer(provider, self)
+        self._unknown_state = False
 
     @property
     def id(self):
@@ -898,13 +982,17 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return find_tag_value(self._vpc.tags, 'Name')
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     @property
     def external(self):
@@ -916,6 +1004,8 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return NetworkState.UNKNOWN
         try:
             return AWSNetwork._NETWORK_STATE_MAP.get(
                 self._vpc.state, NetworkState.UNKNOWN)
@@ -937,10 +1027,11 @@ class AWSNetwork(BaseNetwork):
     def refresh(self):
         try:
             self._vpc.reload()
+            self._unknown_state = False
         except ClientError:
             # The network no longer exists and cannot be refreshed.
             # set the status to unknown
-            self._vpc.state = NetworkState.UNKNOWN
+            self._unknown_state = True
 
     def wait_till_ready(self, timeout=None, interval=None):
         self._provider.ec2_conn.meta.client.get_waiter('vpc_available').wait(
@@ -963,6 +1054,7 @@ class AWSSubnet(BaseSubnet):
     def __init__(self, provider, subnet):
         super(AWSSubnet, self).__init__(provider)
         self._subnet = subnet
+        self._unknown_state = False
 
     @property
     def id(self):
@@ -970,13 +1062,17 @@ class AWSSubnet(BaseSubnet):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return find_tag_value(self._subnet.tags, 'Name')
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
 
     @property
     def cidr_block(self):
@@ -996,6 +1092,8 @@ class AWSSubnet(BaseSubnet):
 
     @property
     def state(self):
+        if self._unknown_state:
+            return SubnetState.UNKNOWN
         try:
             return self._SUBNET_STATE_MAP.get(
                 self._subnet.state, SubnetState.UNKNOWN)
@@ -1004,13 +1102,12 @@ class AWSSubnet(BaseSubnet):
             return SubnetState.UNKNOWN
 
     def refresh(self):
-        subnet = self._provider.networking.subnets.get(self.id)
-        if subnet:
-            # pylint:disable=protected-access
-            self._subnet = subnet._subnet
-        else:
+        try:
+            self._subnet.reload()
+            self._unknown_state = False
+        except ClientError:
             # subnet no longer exists
-            self._subnet.state = SubnetState.UNKNOWN
+            self._unknown_state = True
 
 
 class AWSFloatingIPContainer(BaseFloatingIPContainer):
@@ -1058,7 +1155,7 @@ class AWSFloatingIP(BaseFloatingIP):
 
     @property
     def in_use(self):
-        return True if self._ip.instance_id else False
+        return True if self._ip.association_id else False
 
     def delete(self):
         self._ip.release()
@@ -1079,13 +1176,18 @@ class AWSRouter(BaseRouter):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return find_tag_value(self._route_table.tags, 'Name')
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._route_table.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._route_table.create_tags(Tags=[{'Key': 'Name',
+                                             'Value': value or ""}])
 
     def refresh(self):
         try:
@@ -1119,6 +1221,11 @@ class AWSRouter(BaseRouter):
             a.delete()
         self.refresh()
 
+    @property
+    def subnets(self):
+        return [AWSSubnet(self._provider, rta.subnet)
+                for rta in self._route_table.associations if rta.subnet]
+
     def attach_gateway(self, gateway):
         gw_id = (gateway.id if isinstance(gateway, AWSInternetGateway)
                  else gateway)
@@ -1142,15 +1249,12 @@ class AWSGatewayContainer(BaseGatewayContainer):
                                   cb_resource=AWSInternetGateway,
                                   boto_collection_name='internet_gateways')
 
-    def get_or_create_inet_gateway(self, name=None):
-        log.debug("Get or create inet gateway %s on net %s", name,
+    def get_or_create_inet_gateway(self):
+        log.debug("Get or create inet gateway on net %s",
                   self._network)
-        if name:
-            AWSInternetGateway.assert_valid_resource_name(name)
-
         network_id = self._network.id if isinstance(
             self._network, AWSNetwork) else self._network
-        # Don't filter by name because it may conflict with at least the
+        # Don't filter by label because it may conflict with at least the
         # default VPC that most accounts have but that network is typically
         # without a name.
         gtw = self.svc.find(filter_name='attachment.vpc-id',
@@ -1159,8 +1263,10 @@ class AWSGatewayContainer(BaseGatewayContainer):
             return gtw[0]  # There can be only one gtw attached to a VPC
         # Gateway does not exist so create one and attach to the supplied net
         cb_gateway = self.svc.create('create_internet_gateway')
-        if name:
-            cb_gateway.name = name
+        cb_gateway._gateway.create_tags(
+            Tags=[{'Key': 'Name',
+                   'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                   }])
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 
@@ -1195,12 +1301,6 @@ class AWSInternetGateway(BaseInternetGateway):
     def name(self):
         return find_tag_value(self._gateway.tags, 'Name')
 
-    @name.setter
-    # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._gateway.create_tags(Tags=[{'Key': 'Name', 'Value': value}])
-
     def refresh(self):
         try:
             self._gateway.reload()
@@ -1221,9 +1321,12 @@ class AWSInternetGateway(BaseInternetGateway):
         return None
 
     def delete(self):
-        if self.network_id:
-            self._gateway.detach_from_vpc(VpcId=self.network_id)
-        self._gateway.delete()
+        try:
+            if self.network_id:
+                self._gateway.detach_from_vpc(VpcId=self.network_id)
+            self._gateway.delete()
+        except ClientError as e:
+            log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
 
     @property
     def floating_ips(self):

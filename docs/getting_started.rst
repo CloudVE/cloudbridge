@@ -33,7 +33,7 @@ AWS:
     config = {'aws_access_key': 'AKIAJW2XCYO4AF55XFEQ',
               'aws_secret_key': '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'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
-    image_id = 'ami-2d39803a'  # Ubuntu 14.04 (HVM)
+    image_id = 'ami-aa2ea6d0'  # Ubuntu 16.04 (HVM)
 
 OpenStack (with Keystone authentication v2):
 
@@ -64,7 +64,7 @@ OpenStack (with Keystone authentication v3):
               'os_user_domain_name': 'domain name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
-    image_id = '97755049-ee4f-4515-b92f-ca00991ee99a'  # Ubuntu 14.04 @ Jetstream
+    image_id = 'acb53109-941f-4593-9bf8-4a53cb9e0739'  # Ubuntu 16.04 @ Jetstream
 
 Azure:
 
@@ -77,7 +77,7 @@ Azure:
               'azure_secret': 'REPLACE WITH ACTUAL VALUE',
               'azure_tenant': ' REPLACE WITH ACTUAL VALUE'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
-    image_id = 'ami-2d39803a'  # Ubuntu 14.04 (HVM)
+    image_id = 'Canonical:UbuntuServer:16.04.0-LTS:latest'  # Ubuntu 16.04
 
 
 List some resources
@@ -86,7 +86,7 @@ Once you have a reference to a provider, explore the cloud platform:
 
 .. code-block:: python
 
-    provider.security.security_groups.list()
+    provider.security.firewalls.list()
     provider.compute.vm_types.list()
     provider.storage.snapshots.list()
     provider.storage.buckets.list()
@@ -102,11 +102,11 @@ on disk as a read-only file.
 
 .. code-block:: python
 
-    kp = provider.security.key_pairs.create('cloudbridge_intro')
+    import os
+    kp = provider.security.key_pairs.create('cloudbridge-intro')
     with open('cloudbridge_intro.pem', 'w') as f:
         f.write(kp.material)
-    import os
-    os.chmod('cloudbridge_intro.pem', 0400)
+    os.chmod('cloudbridge_intro.pem', 0o400)
 
 Create a network
 ----------------
@@ -116,26 +116,27 @@ attaching an internet gateway to the subnet via a router.
 
 .. code-block:: python
 
-    net = self.provider.networking.networks.create(
-        name='my-network', cidr_block='10.0.0.0/16')
-    sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
-    router = self.provider.networking.routers.create(network=net, name='my-router')
+    net = provider.networking.networks.create(cidr_block='10.0.0.0/16',
+                                              label='my-network')
+    sn = net.create_subnet(cidr_block='10.0.0.0/28', label='my-subnet')
+    router = provider.networking.routers.create(network=net, label='my-router')
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway(name)
+    gateway = net.gateways.get_or_create_inet_gateway()
     router.attach_gateway(gateway)
 
 
 Create a VM firewall
------------------------
+--------------------
 Next, we need to create a VM firewall (also commonly known as a security group)
 and add a rule to allow ssh access. A VM firewall needs to be associated with
 a private network.
 
 .. code-block:: python
 
-    net = provider.networking.networks.get('desired network ID')
+    from cloudbridge.cloud.interfaces.resources import TrafficDirection
     fw = provider.security.vm_firewalls.create(
-        'cloudbridge-intro', 'A VM firewall used by CloudBridge', net.id)
+        label='cloudbridge-intro', description='A VM firewall used by
+        CloudBridge', network_id=net.id)
     fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
 Launch an instance
@@ -147,12 +148,13 @@ also add the network interface as a launch argument.
 .. code-block:: python
 
     img = provider.compute.images.get(image_id)
+    zone = provider.compute.regions.get(provider.region_name).zones[0]
     vm_type = sorted([t for t in provider.compute.vm_types
                       if t.vcpus >= 2 and t.ram >= 4],
                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
-        name='cloudbridge-intro', image=img, vm_type=vm_type,
-        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
+        image=img, vm_type=vm_type, label='cloudbridge-intro',
+        subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
@@ -172,11 +174,13 @@ Assign a public IP address
 --------------------------
 To access the instance, let's assign a public IP address to the instance. For
 this step, we'll first need to allocate a floating IP address for our account
-and then associate it with the instance.
+and then associate it with the instance. Note that floating IPs are associated
+with an Internet Gateway so we allocate the IP under the gateway we dealt with
+earlier.
 
 .. code-block:: python
 
-    fip = provider.networking.floating_ips.create()
+    fip = gateway.floating_ips.create()
     inst.add_floating_ip(fip)
     inst.refresh()
     inst.public_ips
@@ -185,14 +189,76 @@ and then associate it with the instance.
 From the command prompt, you can now ssh into the instance
 ``ssh -i cloudbridge_intro.pem ubuntu@54.166.125.219``.
 
+Get a resource
+--------------
+When a resource already exists, a reference to it can be retrieved using either
+its ID, name, or label. It is important to note that while IDs and names are
+unique, multiple resources of the same type could use the same label, thus the
+`find` method always returns a list, while the `get` method returns a single
+object. While the methods are similar across resources, they are explicitly
+listed in order to help map each resource with the service that handles it.
+Note that labeled resources allow to find by label, while unlabeled
+resources find by name or their special properties (eg: public_ip for
+floating IPs). For more detailed information on the types of resources and
+their provider mappings, see :doc:`topics/resource_types_and_mappings`.
+
+.. code-block:: python
+
+    # Key Pair
+    kp = provider.security.key_pairs.get('keypair ID')
+    kp_list = provider.security.key_pairs.find(name='cloudbridge-intro')
+    kp = kp_list[0]
+
+    # Floating IPs
+    fip = gateway.floating_ips.get('FloatingIP ID')
+    # Find using public IP address
+    fip_list = gateway.floating_ips.find(public_ip='IP address')
+    # Find using name (the behavior of the `name` property can be 
+    # cloud-dependent). More details can be found `here <topics/resource_types_and_mapping.html>`
+    fip_list = net.gateways.floating_ips.find(name='my-fip')
+    fip = fip_list[0]
+
+    # Network
+    net = provider.networking.networks.get('network ID')
+    net_list = provider.networking.networks.find(label='my-network')
+    net = net_list[0]
+
+    # Subnet
+    sn = provider.networking.subnets.get('subnet ID')
+    # Unknown network
+    sn_list = provider.networking.subnets.find(label='my-subnet')
+    # Known network
+    sn_list = provider.networking.subnets.find(network=net.id,
+                                               label='my-subnet')
+    sn = sn_list(0)
+
+    # Router
+    router = provider.networking.routers.get('router ID')
+    router_list = provider.networking.routers.find(label='my-router')
+    router = router_list[0]
+
+    # Gateway
+    gateway = net.gateways.get_or_create_inet_gateway()
+
+    # Firewall
+    fw = provider.security.vm_firewalls.get('firewall ID')
+    fw_list = provider.security.vm_firewalls.find(label='cloudbridge-intro')
+    fw = fw_list[0]
+
+    # Instance
+    inst = provider.compute.instances.get('instance ID')
+    inst_list = provider.compute.instances.list(label='cloudbridge-intro')
+    inst = inst_list[0]
+
+
 Cleanup
 -------
 To wrap things up, let's clean up all the resources we have created
 
 .. code-block:: python
 
-    inst.terminate()
     from cloudbridge.cloud.interfaces import InstanceState
+    inst.delete()
     inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                    terminal_states=[InstanceState.ERROR])  # Blocking call
     fip.delete()
@@ -200,7 +266,7 @@ To wrap things up, let's clean up all the resources we have created
     kp.delete()
     os.remove('cloudbridge_intro.pem')
     router.detach_gateway(gateway)
-    router.detach_subnet(subnet)
+    router.detach_subnet(sn)
     gateway.delete()
     router.delete()
     sn.delete()

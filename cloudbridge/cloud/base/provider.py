@@ -8,6 +8,8 @@ try:
 except ImportError:  # Python 2
     from ConfigParser import SafeConfigParser as ConfigParser
 
+import six
+
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 from cloudbridge.cloud.interfaces.resources import Configuration
@@ -148,12 +150,17 @@ class BaseCloudProvider(CloudProvider):
 
         :return: a configuration value for the supplied ``key``
         """
-        log.info("Getting config key: %s with default: %s", key, default_value)
+        log.debug("Getting config key %s, with supplied default value: %s",
+                  key, default_value)
+        value = default_value
         if isinstance(self.config, dict) and self.config.get(key):
-            return self.config.get(key, default_value)
+            value = self.config.get(key, default_value)
         elif hasattr(self.config, key) and getattr(self.config, key):
-            return getattr(self.config, key)
+            value = getattr(self.config, key)
         elif (self._config_parser.has_option(self.PROVIDER_ID, key) and
               self._config_parser.get(self.PROVIDER_ID, key)):
-            return self._config_parser.get(self.PROVIDER_ID, key)
-        return default_value
+            value = self._config_parser.get(self.PROVIDER_ID, key)
+        if isinstance(value, six.string_types) and not isinstance(
+                value, six.text_type):
+            return six.u(value)
+        return value

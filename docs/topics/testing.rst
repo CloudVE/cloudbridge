@@ -48,10 +48,12 @@ against a specific infrastructure, say aws, use a command like this:
 Specific test cases
 ~~~~~~~~~~~~~~~~~~~~
 You can run a specific test case, as follows:
-``tox -- -s test.test_cloud_factory.CloudFactoryTestCase``
+``tox -- test/test_image_service.py:CloudImageServiceTestCase.test_create_and_list_imag``
 
 It can also be restricted to a particular environment as follows:
-``tox -e "py27-aws" -- -s test.test_cloud_factory.CloudFactoryTestCase``
+``tox -e "py27-aws" -- test/test_cloud_factory.py:CloudFactoryTestCase``
+
+See nosetest documentation for other parameters that can be passed in.
 
 Using unittest directly
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,9 +76,9 @@ You can toggle the use of mock providers by setting an environment variable:
 ``CB_USE_MOCK_PROVIDERS`` to ``Yes`` or ``No``.
 
 
-.. _design goals: https://github.com/gvlproject/cloudbridge/
+.. _design goals: https://github.com/CloudVE/cloudbridge/
    blob/master/README.rst
 .. _tox: https://tox.readthedocs.org/en/latest/
-.. _ProviderList: https://github.com/gvlproject/cloudbridge/blob/master/
+.. _ProviderList: https://github.com/CloudVE/cloudbridge/blob/master/
    cloudbridge/cloud/factory.py#L15
 .. _moto: https://github.com/spulec/moto

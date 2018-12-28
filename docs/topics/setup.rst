@@ -8,6 +8,12 @@ be provided in one of following ways:
 2. A dictionary
 3. Configuration file
 
+Procuring access credentials
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For Azure, Create service principle credentials from the following link : 
+https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal#check-azure-subscription-permissions
+
+
 Providing access credentials through environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The following environment variables must be set, depending on the provider in use.
@@ -35,12 +41,24 @@ OS_REGION_NAME       OS_AUTH_TOKEN
 
 **Azure**
 
+Note that managing resources in Azure requires a Resource Group. If a
+Resource Group is not provided as part of the configuration, cloudbridge will
+attempt to create a Resource Group using the given credentials. This
+operation will happen with the client initialization, and requires a
+"contributor" or "owner" role.
+Similarly, a Storage Account is required when managing some resources, such
+as KeyPairs and Buckets. If a Storage Account name is not provided as part
+of the configuration, cloudbridge will attempt to create the Storage Account
+when initializing the relevant services. This operation similarly requires a
+"contributor" or "owner" role.
+For more information on roles, see: https://docs.microsoft.com/en-us/azure/role-based-access-control/overview
+
 ======================  ==================
 Mandatory variables     Optional Variables
 ======================  ==================
 AZURE_SUBSCRIPTION_ID   AZURE_REGION_NAME
 AZURE_CLIENT_ID         AZURE_RESOURCE_GROUP
-AZURE_SECRET            AZURE_STORAGE_ACCOUNT_NAME
+AZURE_SECRET            AZURE_STORAGE_ACCOUNT
 AZURE_TENANT            AZURE_VM_DEFAULT_USER_NAME
                         AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME
 ======================  ==================
@@ -76,9 +94,6 @@ will override environment values.
               'azure_tenant': '<your_tenant>',
               'azure_resource_group': '<your resource group>'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
-
-For Azure, Create service principle credentials from the following link : 
-https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal#check-azure-subscription-permissions
 
 Some optional configuration values can only be provided through the config
 dictionary. These are listed below for each provider.
@@ -149,20 +164,22 @@ In addition to the provider specific configuration variables above, there are
 some general configuration environment variables that apply to CloudBridge as
 a whole
 
-======================  ==================
-Variable		            Description
-======================  ==================
-CB_DEBUG                Setting ``CB_DEBUG=True`` will cause detailed debug
-                        output to be printed for each provider (including HTTP
-                        traces).
-CB_USE_MOCK_PROVIDERS   Setting this to ``True`` will cause the CloudBridge test
-                        suite to use mock drivers when available.
-CB_TEST_PROVIDER        Set this value to a valid :class:`.ProviderList` value
-                        such as ``aws``, to limit tests to that provider only.
-CB_DEFAULT_SUBNET_NAME  Name to be used for a subnet that will be considered
-                        the 'default' by the library. This default will be used
-                        only in cases there is no subnet marked as the default by the provider.
-CB_DEFAULT_NETWORK_NAME Name to be used for a network that will be considered
-                        the 'default' by the library. This default will be used
-                        only in cases there is no network marked as the default by the provider.
-======================= ==================
+======================== ======================================================
+Variable		                            Description
+======================== ======================================================
+CB_DEBUG                 Setting ``CB_DEBUG=True`` will cause detailed debug
+                         output to be printed for each provider (including HTTP
+                         traces).
+CB_USE_MOCK_PROVIDERS    Setting this to ``True`` will cause the CloudBridge
+                         test suite to use mock drivers when available.
+CB_TEST_PROVIDER         Set this value to a valid :class:`.ProviderList` value
+                         such as ``aws``, to limit tests to that provider only.
+CB_DEFAULT_SUBNET_LABEL  Name to be used for a subnet that will be considered
+                         the 'default' by the library. This default will be
+                         used only in cases there is no subnet marked as the
+                         default by the provider.
+CB_DEFAULT_NETWORK_LABEL Name to be used for a network that will be considered
+                         the 'default' by the library. This default will be
+                         used only in cases there is no network marked as the
+                         default by the provider.
+======================== ======================================================

@@ -1,3 +1,7 @@
+import fnmatch
+import functools
+import os
+import re
 import sys
 import traceback
 from contextlib import contextmanager
@@ -6,7 +10,11 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from six import reraise
+from deprecation import deprecated
+
+import six
+
+import cloudbridge
 
 
 def generate_key_pair():
@@ -38,9 +46,17 @@ def filter_by(prop_name, kwargs, objs):
     """
     prop_val = kwargs.pop(prop_name, None)
     if prop_val:
-        match = (o for o in objs if getattr(o, prop_name) == prop_val)
-        return match
-    return objs
+        if isinstance(prop_val, six.string_types):
+            regex = fnmatch.translate(prop_val)
+            results = [o for o in objs
+                       if getattr(o, prop_name)
+                       and re.search(regex, getattr(o, prop_name))]
+        else:
+            results = [o for o in objs
+                       if getattr(o, prop_name) == prop_val]
+        return results
+    else:
+        return objs
 
 
 def generic_find(filter_names, kwargs, objs):
@@ -87,9 +103,63 @@ def cleanup_action(cleanup_func):
         except Exception as e:
             print("Error during exception cleanup: {0}".format(e))
             traceback.print_exc()
-        reraise(ex_class, ex_val, ex_traceback)
+        six.reraise(ex_class, ex_val, ex_traceback)
     try:
         cleanup_func()
     except Exception as e:
         print("Error during cleanup: {0}".format(e))
         traceback.print_exc()
+
+
+def get_env(varname, default_value=None):
+    """
+    Return the value of the environment variable or default_value.
+
+    This is a helper method that wraps ``os.environ.get`` to ensure type
+    compatibility across py2 and py3. For py2, any value obtained from an
+    environment variable, ensure ``unicode`` type and ``str`` for py3. The
+    casting is done only for string variables.
+
+    :type varname: ``str``
+    :param varname: Name of the environment variable for which to check.
+
+    :param default_value: Return this value is the env var is not found.
+                          Defaults to ``None``.
+
+    :return: Value of the supplied environment if found; value of
+             ``default_value`` otherwise.
+    """
+    value = os.environ.get(varname, default_value)
+    if isinstance(value, six.string_types) and not isinstance(
+            value, six.text_type):
+        return six.u(value)
+    return value
+
+
+# Alias deprication decorator, following:
+# https://stackoverflow.com/questions/49802412/
+# how-to-implement-deprecation-in-python-with-argument-alias
+def deprecated_alias(**aliases):
+    def deco(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            rename_kwargs(f.__name__, kwargs, aliases)
+            return f(*args, **kwargs)
+        return wrapper
+    return deco
+
+
+def rename_kwargs(func_name, kwargs, aliases):
+    for alias, new in aliases.items():
+        if alias in kwargs:
+            if new in kwargs:
+                raise TypeError('{} received both {} and {}'.format(
+                    func_name, alias, new))
+            # Manually invoke the deprecated decorator with an empty lambda
+            # to signal deprecation
+            deprecated(deprecated_in='1.1',
+                       removed_in='2.0',
+                       current_version=cloudbridge.__version__,
+                       details='{} is deprecated, use {} instead'.format(
+                           alias, new))(lambda: None)()
+            kwargs[new] = kwargs.pop(alias)

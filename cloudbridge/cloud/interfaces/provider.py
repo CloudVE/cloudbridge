@@ -33,9 +33,9 @@ class CloudProvider(object):
         """
         Returns the config object associated with this provider. This object
         is a subclass of :class:`dict` and will contain the properties
-        provided at initialization time. In addition, it also contains extra
-        provider-wide properties such as the default result limit for list()
-        queries.
+        provided at initialization time, grouped under `cloud_properties` and
+        `credentials` keys. In addition, it also contains extra provider-wide
+        properties such as the default result limit for `list()` queries.
 
         Example:
 
@@ -43,7 +43,7 @@ class CloudProvider(object):
 
             config = { 'aws_access_key' : '<my_key>' }
             provider = factory.create_provider(ProviderList.AWS, config)
-            print(provider.config.get('aws_access_key'))
+            print(provider.config['credentials'].get('aws_access_key'))
             print(provider.config.default_result_limit))
             # change provider result limit
             provider.config.default_result_limit = 100
@@ -146,8 +146,8 @@ class CloudProvider(object):
         .. code-block:: python
 
             networks = provider.networking.networks.list()
-            network = provider.networking.networks.create(
-                           name="DevNet", cidr_block='10.0.0.0/16')
+            subnets = provider.networking.subnets.list()
+            routers = provider.networking.routers.list()
 
         :rtype: :class:`.NetworkingService`
         :return:  a NetworkingService object

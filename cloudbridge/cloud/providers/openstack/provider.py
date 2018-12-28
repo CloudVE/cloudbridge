@@ -1,11 +1,8 @@
 """Provider implementation based on OpenStack Python clients for OpenStack."""
 
 import inspect
-import os
 
 from cinderclient import client as cinder_client
-
-from cloudbridge.cloud.base import BaseCloudProvider
 
 from keystoneauth1 import session
 
@@ -17,9 +14,11 @@ from novaclient import client as nova_client
 from novaclient import shell as nova_shell
 
 from openstack import connection
-from openstack import profile
 
 from swiftclient import client as swift_client
+
+from cloudbridge.cloud.base import BaseCloudProvider
+from cloudbridge.cloud.base.helpers import get_env
 
 from .services import OpenStackComputeService
 from .services import OpenStackNetworkingService
@@ -37,21 +36,22 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         # Initialize cloud connection fields
         self.username = self._get_config_value(
-            'os_username', os.environ.get('OS_USERNAME', None))
+            'os_username', get_env('OS_USERNAME', None))
         self.password = self._get_config_value(
-            'os_password', os.environ.get('OS_PASSWORD', None))
+            'os_password', get_env('OS_PASSWORD', None))
         self.project_name = self._get_config_value(
-            'os_project_name', os.environ.get('OS_PROJECT_NAME', None) or
-            os.environ.get('OS_TENANT_NAME', None))
+            'os_project_name', get_env('OS_PROJECT_NAME', None)
+            or get_env('OS_TENANT_NAME', None))
         self.auth_url = self._get_config_value(
-            'os_auth_url', os.environ.get('OS_AUTH_URL', None))
+            'os_auth_url', get_env('OS_AUTH_URL', None))
         self.region_name = self._get_config_value(
-            'os_region_name', os.environ.get('OS_REGION_NAME', None))
+            'os_region_name', get_env('OS_REGION_NAME', None))
         self.project_domain_name = self._get_config_value(
             'os_project_domain_name',
-            os.environ.get('OS_PROJECT_DOMAIN_NAME', None))
+            get_env('OS_PROJECT_DOMAIN_NAME', None))
         self.user_domain_name = self._get_config_value(
-            'os_user_domain_name', os.environ.get('OS_USER_DOMAIN_NAME', None))
+            'os_user_domain_name',
+            get_env('OS_USER_DOMAIN_NAME', None))
 
         # Service connections, lazily initialized
         self._nova = None
@@ -125,11 +125,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
         return self._cached_keystone_session
 
     def _connect_openstack(self):
-        prof = profile.Profile()
-        prof.set_region(profile.Profile.ALL, self.region_name)
-
         return connection.Connection(
-            profile=prof,
+            region_name=self.region_name,
             user_agent='cloudbridge',
             auth_url=self.auth_url,
             project_name=self.project_name,
@@ -195,10 +192,10 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         api_version = self._get_config_value(
             'os_compute_api_version',
-            os.environ.get('OS_COMPUTE_API_VERSION', 2))
+            get_env('OS_COMPUTE_API_VERSION', 2))
         service_name = self._get_config_value(
             'nova_service_name',
-            os.environ.get('NOVA_SERVICE_NAME', None))
+            get_env('NOVA_SERVICE_NAME', None))
 
         if self.config.debug_mode:
             nova_shell.OpenStackComputeShell().setup_debugging(True)
@@ -236,7 +233,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         """Get an OpenStack Cinder (block storage) client object."""
         api_version = self._get_config_value(
             'os_volume_api_version',
-            os.environ.get('OS_VOLUME_API_VERSION', 2))
+            get_env('OS_VOLUME_API_VERSION', 2))
 
         return cinder_client.Client(api_version,
                                     auth_url=self.auth_url,
@@ -305,9 +302,9 @@ class OpenStackCloudProvider(BaseCloudProvider):
         clean_options = self._clean_options(options,
                                             swift_client.Connection.__init__)
         storage_url = self._get_config_value(
-            'os_storage_url', os.environ.get('OS_STORAGE_URL', None))
+            'os_storage_url', get_env('OS_STORAGE_URL', None))
         auth_token = self._get_config_value(
-            'os_auth_token', os.environ.get('OS_AUTH_TOKEN', None))
+            'os_auth_token', get_env('OS_AUTH_TOKEN', None))
         if storage_url and auth_token:
             clean_options['preauthurl'] = storage_url
             clean_options['preauthtoken'] = auth_token

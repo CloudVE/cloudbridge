@@ -1,8 +1,12 @@
 import itertools
-from test.helpers import ProviderTestBase
 
+import six
+
+from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
+
+from test.helpers import ProviderTestBase
 
 
 class DummyResult(object):
@@ -74,3 +78,27 @@ class CloudHelpersTestCase(ProviderTestBase):
                         " lists should return True for server paging.")
         with self.assertRaises(NotImplementedError):
             results.data
+
+    def test_type_validation(self):
+        """
+        Make sure internal type checking implementation properly sets types.
+        """
+        self.provider.config['text_type_check'] = 'test-text'
+        config_value = self.provider._get_config_value('text_type_check', None)
+        self.assertIsInstance(config_value, six.string_types)
+
+        env_value = self.provider._get_config_value(
+            'some_config_value', get_env('MOTO_AMIS_PATH'))
+        self.assertIsInstance(env_value, six.string_types)
+
+        none_value = self.provider._get_config_value(
+            'some_config_value', get_env('MISSING_ENV', None))
+        self.assertIsNone(none_value)
+
+        bool_value = self.provider._get_config_value(
+            'some_config_value', get_env('MISSING_ENV', True))
+        self.assertIsInstance(bool_value, bool)
+
+        int_value = self.provider._get_config_value(
+            'default_result_limit', None)
+        self.assertIsInstance(int_value, int)

@@ -5,6 +5,26 @@ import inspect
 import ipaddress
 import logging
 import os
+try:
+    from urllib.parse import urlparse
+    from urllib.parse import urljoin
+except ImportError:  # python 2
+    from urlparse import urlparse
+    from urlparse import urljoin
+
+from keystoneclient.v3.regions import Region
+
+from neutronclient.common.exceptions import PortNotFoundClient
+
+import novaclient.exceptions as novaex
+
+from openstack.exceptions import HttpException
+from openstack.exceptions import NotFoundException
+from openstack.exceptions import ResourceNotFound
+
+import swiftclient
+from swiftclient.service import SwiftService, SwiftUploadObject
+from swiftclient.utils import generate_temp_url
 
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
@@ -42,19 +62,6 @@ from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
-from keystoneclient.v3.regions import Region
-
-from neutronclient.common.exceptions import PortNotFoundClient
-
-import novaclient.exceptions as novaex
-
-from openstack.exceptions import HttpException
-from openstack.exceptions import ResourceNotFound
-
-import swiftclient
-from swiftclient.service import SwiftService, SwiftUploadObject
-
-
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
 
@@ -69,8 +76,8 @@ class OpenStackMachineImage(BaseMachineImage):
         'saving': MachineImageState.PENDING,
         'active': MachineImageState.AVAILABLE,
         'killed': MachineImageState.ERROR,
-        'deleted': MachineImageState.ERROR,
-        'pending_delete': MachineImageState.ERROR,
+        'deleted': MachineImageState.UNKNOWN,
+        'pending_delete': MachineImageState.PENDING,
         'deactivated': MachineImageState.ERROR
     }
 
@@ -92,9 +99,26 @@ class OpenStackMachineImage(BaseMachineImage):
     @property
     def name(self):
         """
-        Get the image name.
+        Get the image identifier.
+        """
+        return self._os_image.id
+
+    @property
+    def label(self):
+        """
+        Get the image label.
         """
         return self._os_image.name
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        """
+        Set the image label.
+        """
+        self.assert_valid_resource_label(value)
+        self._provider.os_conn.image.update_image(
+            self._os_image, name=value or "")
 
     @property
     def description(self):
@@ -211,7 +235,7 @@ class OpenStackVMType(BaseVMType):
 
     @property
     def ram(self):
-        return self._os_flavor.ram
+        return int(self._os_flavor.ram) / 1024
 
     @property
     def size_root_disk(self):
@@ -273,23 +297,30 @@ class OpenStackInstance(BaseInstance):
         return self._os_instance.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
         """
-        Get the instance name.
+        Get the instance identifier.
+        """
+        return self.id
+
+    @property
+    # pylint:disable=arguments-differ
+    def label(self):
+        """
+        Get the instance label.
         """
         return self._os_instance.name
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the instance name.
+        Set the instance label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
 
         self._os_instance.name = value
-        self._os_instance.update(name=value)
+        self._os_instance.update(name=value or "cb-inst")
 
     @property
     def public_ips(self):
@@ -367,6 +398,35 @@ class OpenStackInstance(BaseInstance):
         return getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None)
 
     @property
+    def subnet_id(self):
+        """
+        Extract (one) subnet id associated with this instance.
+
+        In OpenStack, instances are associated with ports instead of
+        subnets so we need to dig through several connections to retrieve
+        the subnet_id. Further, there can potentially be several ports each
+        connected to different subnets. This implementation retrieves one
+        subnet, the one corresponding to port associated with the first
+        private IP associated with the instance.
+        """
+        # MAC address can be used to identify a port so extract the MAC
+        # address corresponding to the (first) private IP associated with the
+        # instance.
+        for net in self._os_instance.to_dict().get('addresses').keys():
+            for iface in self._os_instance.to_dict().get('addresses')[net]:
+                if iface.get('OS-EXT-IPS:type') == 'fixed':
+                    port = iface.get('OS-EXT-IPS-MAC:mac_addr')
+                    addr = iface.get('addr')
+                    break
+        # Now get a handle to a port with the given MAC address and get the
+        # subnet to which the private IP is connected as the desired id.
+        for prt in self._provider.neutron.list_ports().get('ports'):
+            if prt.get('mac_address') == port:
+                for ip in prt.get('fixed_ips'):
+                    if ip.get('ip_address') == addr:
+                        return ip.get('subnet_id')
+
+    @property
     def vm_firewalls(self):
         return [
             self._provider.security.vm_firewalls.get(group.id)
@@ -381,22 +441,23 @@ class OpenStackInstance(BaseInstance):
         return [fw.id for fw in self.vm_firewalls]
 
     @property
-    def key_pair_name(self):
+    def key_pair_id(self):
         """
-        Get the name of the key pair associated with this instance.
+        Get the id of the key pair associated with this instance.
         """
         return self._os_instance.key_name
 
-    def create_image(self, name):
+    def create_image(self, label):
         """
         Create a new image based on this instance.
         """
-        log.debug("Creating OpenStack Image with the name %s", name)
-        self.assert_valid_resource_name(name)
+        log.debug("Creating OpenStack Image with the label %s", label)
+        self.assert_valid_resource_label(label)
 
-        image_id = self._os_instance.create_image(name)
-        return OpenStackMachineImage(
+        image_id = self._os_instance.create_image(label)
+        img = OpenStackMachineImage(
             self._provider, self._provider.compute.images.get(image_id))
+        return img
 
     def _get_fip(self, floating_ip):
         """Get a floating IP object based on the supplied ID."""
@@ -411,7 +472,8 @@ class OpenStackInstance(BaseInstance):
         log.debug("Adding floating IP adress: %s", floating_ip)
         fip = (floating_ip if isinstance(floating_ip, OpenStackFloatingIP)
                else self._get_fip(floating_ip))
-        self._os_instance.add_floating_ip(fip.public_ip)
+        self._provider.os_conn.compute.add_floating_ip_to_server(
+            self.id, fip.public_ip)
 
     def remove_floating_ip(self, floating_ip):
         """
@@ -420,7 +482,8 @@ class OpenStackInstance(BaseInstance):
         log.debug("Removing floating IP adress: %s", floating_ip)
         fip = (floating_ip if isinstance(floating_ip, OpenStackFloatingIP)
                else self._get_fip(floating_ip))
-        self._os_instance.remove_floating_ip(fip.public_ip)
+        self._provider.os_conn.compute.remove_floating_ip_from_server(
+            self.id, fip.public_ip)
 
     def add_vm_firewall(self, firewall):
         """
@@ -470,8 +533,7 @@ class OpenStackRegion(BaseRegion):
 
     @property
     def name(self):
-        return (self._os_region.id if type(self._os_region) == Region else
-                self._os_region)
+        return self.id
 
     @property
     def zones(self):
@@ -519,22 +581,26 @@ class OpenStackVolume(BaseVolume):
         return self._volume.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
+        return self.id
+
+    @property
+    # pylint:disable=arguments-differ
+    def label(self):
         """
-        Get the volume name.
+        Get the volume label.
         """
         return self._volume.name
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the volume name.
+        Set the volume label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._volume.name = value
-        self._volume.update(name=value)
+        self._volume.update(name=value or "")
 
     @property
     def description(self):
@@ -590,14 +656,14 @@ class OpenStackVolume(BaseVolume):
         """
         self._volume.detach()
 
-    def create_snapshot(self, name, description=None):
+    def create_snapshot(self, label, description=None):
         """
         Create a snapshot of this Volume.
         """
         log.debug("Creating snapchat of volume: %s with the "
-                  "description: %s", name, description)
+                  "description: %s", label, description)
         return self._provider.storage.snapshots.create(
-            name, self, description=description)
+            label, self, description=description)
 
     def delete(self):
         """
@@ -645,22 +711,26 @@ class OpenStackSnapshot(BaseSnapshot):
         return self._snapshot.id
 
     @property
-    # pylint:disable=arguments-differ
     def name(self):
+        return self.id
+
+    @property
+    # pylint:disable=arguments-differ
+    def label(self):
         """
-        Get the snapshot name.
+        Get the snapshot label.
         """
         return self._snapshot.name
 
-    @name.setter
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
+    def label(self, value):
         """
-        Set the snapshot name.
+        Set the snapshot label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._snapshot.name = value
-        self._snapshot.update(name=value)
+        self._snapshot.update(name=value or "")
 
     @property
     def description(self):
@@ -712,13 +782,13 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        vol_name = "from_snap_{0}".format(self.id or self.name)
+        vol_label = "from-snap-{0}".format(self.id or self.label)
+        self.assert_valid_resource_label(vol_label)
         size = size if size else self._snapshot.size
         os_vol = self._provider.cinder.volumes.create(
-            size, name=vol_name, availability_zone=placement,
+            size, name=vol_label, availability_zone=placement,
             snapshot_id=self._snapshot.id)
         cb_vol = OpenStackVolume(self._provider, os_vol)
-        cb_vol.name = vol_name
         return cb_vol
 
 
@@ -736,7 +806,7 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
         # all available networks and perform an assignment test to infer valid
         # floating ip nets.
         dummy_router = self._provider.networking.routers.create(
-            network=self._network, name='cb_conn_test_router')
+            label='cb-conn-test-router', network=self._network)
         with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
             try:
                 dummy_router.attach_gateway(external_net)
@@ -744,11 +814,8 @@ class OpenStackGatewayContainer(BaseGatewayContainer):
             except Exception:
                 return False
 
-    def get_or_create_inet_gateway(self, name=None):
+    def get_or_create_inet_gateway(self):
         """For OS, inet gtw is any net that has `external` property set."""
-        if name:
-            OpenStackInternetGateway.assert_valid_resource_name(name)
-
         external_nets = (n for n in self._provider.networking.networks
                          if n.external)
         for net in external_nets:
@@ -795,16 +862,20 @@ class OpenStackNetwork(BaseNetwork):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return self._network.get('name', None)
 
-    @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    @label.setter
+    def label(self, value):  # pylint:disable=arguments-differ
         """
-        Set the network name.
+        Set the network label.
         """
-        self.assert_valid_resource_name(value)
-        self._provider.neutron.update_network(self.id,
-                                              {'network': {'name': value}})
+        self.assert_valid_resource_label(value)
+        self._provider.neutron.update_network(
+            self.id, {'network': {'name': value or ""}})
         self.refresh()
 
     @property
@@ -872,16 +943,20 @@ class OpenStackSubnet(BaseSubnet):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return self._subnet.get('name', None)
 
-    @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    @label.setter
+    def label(self, value):  # pylint:disable=arguments-differ
         """
-        Set the subnet name.
+        Set the subnet label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_subnet(
-            self.id, {'subnet': {'name': value}})
+            self.id, {'subnet': {'name': value or ""}})
         self._subnet['name'] = value
 
     @property
@@ -930,7 +1005,8 @@ class OpenStackFloatingIPContainer(BaseFloatingIPContainer):
         try:
             return OpenStackFloatingIP(
                 self._provider, self._provider.os_conn.network.get_ip(fip_id))
-        except ResourceNotFound:
+        except (ResourceNotFound, NotFoundException):
+            log.debug("Floating IP %s not found.", fip_id)
             return None
 
     def list(self, limit=None, marker=None):
@@ -993,16 +1069,20 @@ class OpenStackRouter(BaseRouter):
 
     @property
     def name(self):
+        return self.id
+
+    @property
+    def label(self):
         return self._router.get('name', None)
 
-    @name.setter
-    def name(self, value):  # pylint:disable=arguments-differ
+    @label.setter
+    def label(self, value):  # pylint:disable=arguments-differ
         """
-        Set the router name.
+        Set the router label.
         """
-        self.assert_valid_resource_name(value)
+        self.assert_valid_resource_label(value)
         self._provider.neutron.update_router(
-            self.id, {'router': {'name': value}})
+            self.id, {'router': {'name': value or ""}})
         self.refresh()
 
     def refresh(self):
@@ -1040,6 +1120,19 @@ class OpenStackRouter(BaseRouter):
             return True
         return False
 
+    @property
+    def subnets(self):
+        # A router and a subnet are linked via a port, so traverse all ports
+        # to find a list of subnets associated with the current router.
+        subnets = []
+        for prt in self._provider.neutron.list_ports().get('ports'):
+            if prt.get('device_id') == self.id and \
+               prt.get('device_owner') == 'network:router_interface':
+                for fixed_ip in prt.get('fixed_ips'):
+                    subnets.append(self._provider.networking.subnets.get(
+                        fixed_ip.get('subnet_id')))
+        return subnets
+
     def attach_gateway(self, gateway):
         self._provider.neutron.add_gateway_router(
             self.id, {'network_id': gateway.id})
@@ -1074,14 +1167,6 @@ class OpenStackInternetGateway(BaseInternetGateway):
     @property
     def name(self):
         return self._gateway_net.get('name', None)
-
-    @name.setter
-    # pylint:disable=arguments-differ
-    def name(self, value):
-        self.assert_valid_resource_name(value)
-        self._provider.neutron.update_network(self.id,
-                                              {'network': {'name': value}})
-        self.refresh()
 
     @property
     def network_id(self):
@@ -1118,6 +1203,7 @@ class OpenStackKeyPair(BaseKeyPair):
 
 
 class OpenStackVMFirewall(BaseVMFirewall):
+    _network_id_tag = "CB-AUTO-associated-network-id: "
 
     def __init__(self, provider, vm_firewall):
         super(OpenStackVMFirewall, self).__init__(provider, vm_firewall)
@@ -1130,7 +1216,45 @@ class OpenStackVMFirewall(BaseVMFirewall):
 
         :return: Always return ``None``.
         """
-        return None
+        # Best way would be to use regex, but using this hacky way to avoid
+        # importing the re package
+        net_id = self._description\
+                     .split(" [{}".format(self._network_id_tag))[-1]\
+                     .split(']')[0]
+        return net_id
+
+    @property
+    def _description(self):
+        return self._vm_firewall.description or ""
+
+    @property
+    def description(self):
+        desc_fragment = " [{}{}]".format(self._network_id_tag,
+                                         self.network_id)
+        desc = self._description
+        if desc:
+            return desc.replace(desc_fragment, "")
+        else:
+            return None
+
+    @property
+    def name(self):
+        """
+        Return the name of this VM firewall.
+        """
+        return self.id
+
+    @property
+    def label(self):
+        return self._vm_firewall.name
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        self._provider.os_conn.network.update_security_group(
+            self.id, name=value or "")
+        self.refresh()
 
     @property
     def rules(self):
@@ -1191,7 +1315,7 @@ class OpenStackVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
         except HttpException as e:
             self.firewall.refresh()
             # 409=Conflict, raised for duplicate rule
-            if e.http_status == 409:
+            if e.status_code == 409:
                 existing = self.find(direction=direction, protocol=protocol,
                                      from_port=from_port, to_port=to_port,
                                      cidr=cidr, src_dest_fw_id=src_dest_fw_id)
@@ -1268,7 +1392,7 @@ class OpenStackBucketObject(BaseBucketObject):
     @property
     def name(self):
         """Get this object's name."""
-        return self._obj.get("name")
+        return self.id
 
     @property
     def size(self):
@@ -1311,7 +1435,7 @@ class OpenStackBucketObject(BaseBucketObject):
               ``swiftclient.service.get_conn`` factory method to
               ``self._provider._connect_swift``
 
-        .. seealso:: https://github.com/gvlproject/cloudbridge/issues/35#issuecomment-297629661 # noqa
+        .. seealso:: https://github.com/CloudVE/cloudbridge/issues/35#issuecomment-297629661 # noqa
         """
         upload_options = {}
         if 'segment_size' not in upload_options:
@@ -1353,18 +1477,19 @@ class OpenStackBucketObject(BaseBucketObject):
                 result = result and del_res['success']
         return result
 
-    def generate_url(self, expires_in=0):
-        """
-        Generates a URL to this object.
+    def generate_url(self, expires_in):
+        # Set a temp url key on the object (http://bit.ly/2NBiXGD)
+        temp_url_key = "cloudbridge-tmp-url-key"
+        self._provider.swift.post_account(
+            headers={"x-account-meta-temp-url-key": temp_url_key})
+        base_url = urlparse(self._provider.swift.get_service_auth()[0])
+        access_point = "{0}://{1}".format(base_url.scheme, base_url.netloc)
+        url_path = "/".join([base_url.path, self.cbcontainer.name, self.name])
+        return urljoin(access_point, generate_temp_url(url_path, expires_in,
+                                                       temp_url_key, 'GET'))
 
-        If the object is public, `expires_in` argument is not necessary, but if
-        the object is private, the life time of URL is set using `expires_in`
-        argument.
-
-        See here for implementation details:
-        http://stackoverflow.com/a/37057172
-        """
-        raise NotImplementedError("This functionality is not implemented yet.")
+    def refresh(self):
+        self._obj = self.cbcontainer.objects.get(self.id)._obj
 
 
 class OpenStackBucket(BaseBucket):
@@ -1380,7 +1505,7 @@ class OpenStackBucket(BaseBucket):
 
     @property
     def name(self):
-        return self._bucket.get("name")
+        return self.id
 
     @property
     def objects(self):
@@ -1398,18 +1523,18 @@ class OpenStackBucketContainer(BaseBucketContainer):
     def get(self, name):
         """
         Retrieve a given object from this bucket.
-
-        FIXME: If multiple objects match the name as their name prefix,
-        all will be returned by the provider but this method will only
-        return the first element.
         """
+        # Swift always returns a reference for the container first,
+        # followed by a list containing references to objects.
         _, object_list = self._provider.swift.get_container(
             self.bucket.name, prefix=name)
-        if object_list:
-            return OpenStackBucketObject(self._provider, self.bucket,
-                                         object_list[0])
-        else:
-            return None
+        # Loop through list of objects looking for an exact name vs. a prefix
+        for obj in object_list:
+            if obj.get('name') == name:
+                return OpenStackBucketObject(self._provider,
+                                             self.bucket,
+                                             obj)
+        return None
 
     def list(self, limit=None, marker=None, prefix=None):
         """

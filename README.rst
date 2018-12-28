@@ -1,18 +1,10 @@
-CloudBridge aims to provide a simple layer of abstraction over
-different cloud providers, reducing or eliminating the need to write
-conditional code for each cloud.
+CloudBridge provides a simple layer of abstraction over different
+Infrastructure-as-a-Service cloud providers, reducing or eliminating the need
+to write conditional code for each cloud.
 
-.. image:: https://landscape.io/github/gvlproject/cloudbridge/master/landscape.svg?style=flat
-   :target: https://landscape.io/github/gvlproject/cloudbridge/master
-   :alt: Landscape Code Health
-
-.. image:: https://coveralls.io/repos/gvlproject/cloudbridge/badge.svg?branch=master&service=github
-   :target: https://coveralls.io/github/gvlproject/cloudbridge?branch=master
+.. image:: https://coveralls.io/repos/CloudVE/cloudbridge/badge.svg?branch=master&service=github
+   :target: https://coveralls.io/github/CloudVE/cloudbridge?branch=master
    :alt: Code Coverage
-
-.. image:: https://codeclimate.com/github/gvlproject/cloudbridge/badges/gpa.svg
-   :target: https://codeclimate.com/github/gvlproject/cloudbridge
-   :alt: Code Climate
 
 .. image:: https://img.shields.io/pypi/v/cloudbridge.svg
    :target: https://pypi.python.org/pypi/cloudbridge/
@@ -22,52 +14,52 @@ conditional code for each cloud.
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
-.. image:: https://badge.waffle.io/gvlproject/cloudbridge.png?label=in%20progress&title=In%20Progress 
-   :target: https://waffle.io/gvlproject/cloudbridge?utm_source=badge
+.. image:: https://badge.waffle.io/CloudVE/cloudbridge.png?label=in%20progress&title=In%20Progress 
+   :target: https://waffle.io/CloudVE/cloudbridge?utm_source=badge
    :alt: 'Waffle.io - Issues in progress'
 
-.. |aws-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/1
-              :target: https://travis-ci.org/gvlproject/cloudbridge
-.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/4
-              :target: https://travis-ci.org/gvlproject/cloudbridge
-.. |aws-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/7
-              :target: https://travis-ci.org/gvlproject/cloudbridge
+.. |aws-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1
+              :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
+              :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |aws-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
+              :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/3
-             :target: https://travis-ci.org/gvlproject/cloudbridge
-.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/6
-             :target: https://travis-ci.org/gvlproject/cloudbridge
-.. |os-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/9
-             :target: https://travis-ci.org/gvlproject/cloudbridge
+.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
+             :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
+             :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |os-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/9
+             :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |azure-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/2
-                :target: https://travis-ci.org/gvlproject/cloudbridge/branches
-.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/5
-                :target: https://travis-ci.org/gvlproject/cloudbridge/branches
-.. |azure-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/master/8
-                :target: https://travis-ci.org/gvlproject/cloudbridge/branches
+.. |azure-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2
+                :target: https://travis-ci.org/CloudVE/cloudbridge/branches
+.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
+                :target: https://travis-ci.org/CloudVE/cloudbridge/branches
+.. |azure-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
+                :target: https://travis-ci.org/CloudVE/cloudbridge/branches
 
-.. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/gce/3
-              :target: https://travis-ci.org/gvlproject/cloudbridge/branches
-.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/gce/6
-              :target: https://travis-ci.org/gvlproject/cloudbridge/branches
-.. |gce-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/gvlproject/cloudbridge/branches/gce/9
-              :target: https://travis-ci.org/gvlproject/cloudbridge/branches
+.. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/3
+              :target: https://travis-ci.org/CloudVE/cloudbridge/branches
+.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/6
+              :target: https://travis-ci.org/CloudVE/cloudbridge/branches
+.. |gce-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/9
+              :target: https://travis-ci.org/CloudVE/cloudbridge/branches
 
 
-Build Status
-~~~~~~~~~~~~
+Build Status Tests
+~~~~~~~~~~~~~~~~~~
 
 +--------------------------+--------------+--------------+--------------+
 | **Provider/Environment** | py27         | py36         | pypy         |
 +--------------------------+--------------+--------------+--------------+
-| **aws**                  | |aws-py27|   | |aws-py36|   | |aws-pypy|   |
+| **AWS**                  | |aws-py27|   | |aws-py36|   | |aws-pypy|   |
 +--------------------------+--------------+--------------+--------------+
-| **openstack**            | |os-py27|    | |os-py36|    | |os-pypy|    |
+| **OpenStack**            | |os-py27|    | |os-py36|    | |os-pypy|    |
 +--------------------------+--------------+--------------+--------------+
-| **azure (beta)**         | |azure-py27| | |azure-py36| | |azure-py36| |
+| **Azure**                | |azure-py27| | |azure-py36| | |azure-py36| |
 +--------------------------+--------------+--------------+--------------+
-| **gce (alpha)**          | |gce-py27|   | |gce-py36|   | |gce-pypy|   |
+| **GCE (alpha)**          | |gce-py27|   | |gce-py36|   | |gce-pypy|   |
 +--------------------------+--------------+--------------+--------------+
 
 Installation
@@ -95,6 +87,9 @@ exploring the API:
 
   provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
   print(provider.security.key_pairs.list())
+
+The exact same command (as well as any other CloudBridge method) will run with
+any of the supported providers: ``ProviderList.[AWS | AZURE | OPENSTACK]``!
 
 
 Citation
@@ -154,7 +149,7 @@ Community contributions for any part of the project are welcome. If you have
 a completely new idea or would like to bounce your idea before moving forward
 with the implementation, feel free to create an issue to start a discussion.
 
-Contributions should come in the form or a pull request. We strive for 100% test
+Contributions should come in the form of a pull request. We strive for 100% test
 coverage so code will only be accepted if it comes with appropriate tests and it
 does not break existing functionality. Further, the code needs to be well
 documented and all methods have docstrings. We are largely adhering to the

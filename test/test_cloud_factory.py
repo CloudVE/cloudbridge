@@ -1,5 +1,4 @@
 import unittest
-from test import helpers
 
 from cloudbridge.cloud import factory
 from cloudbridge.cloud import interfaces
@@ -8,6 +7,8 @@ from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.provider import CloudProvider
 from cloudbridge.cloud.providers.aws import AWSCloudProvider
 from cloudbridge.cloud.providers.aws.provider import MockAWSCloudProvider
+
+from test import helpers
 
 
 class CloudFactoryTestCase(unittest.TestCase):
