@@ -379,7 +379,7 @@ class AzureBucketService(BaseBucketService):
     def __init__(self, provider):
         super(AzureBucketService, self).__init__(provider)
 
-    def get(self, bucket_id):
+    def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.

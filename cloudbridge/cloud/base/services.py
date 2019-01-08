@@ -106,6 +106,37 @@ class BaseBucketService(
 
     def __init__(self, provider):
         super(BaseBucketService, self).__init__(provider)
+        self._service_event_name = "provider.storage.buckets"
+        self._init_get()
+
+    @property
+    def service_event_name(self):
+        return self._service_event_name
+
+    def _get_pre_log(self, bucket_id):
+        log.debug("Getting {} bucket with the id: {}".format(
+            self.provider.name, bucket_id))
+
+    def _get_post_log(self, result, bucket_id):
+        log.debug("Returned bucket object: {}".format(result))
+
+    def _init_get(self):
+        event_name = ".".join((self.service_event_name, "get"))
+        self.provider.events.subscribe(event_name, 20000,
+                                       self._get_pre_log)
+        self.provider.events.subscribe(event_name, 20500,
+                                       self._get,
+                                       self._get_post_log)
+
+    def get(self, bucket_id):
+        """
+        Returns a bucket given its ID. Returns ``None`` if the bucket
+        does not exist.
+        """
+        args = locals()
+        args.pop('self')
+        event_name = ".".join((self.service_event_name, "get"))
+        return self.provider.events.emit(event_name, args)
 
 
 class BaseComputeService(ComputeService, BaseCloudService):

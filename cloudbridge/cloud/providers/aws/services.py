@@ -299,12 +299,11 @@ class AWSBucketService(BaseBucketService):
                                  cb_resource=AWSBucket,
                                  boto_collection_name='buckets')
 
-    def get(self, bucket_id):
+    def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        log.debug("Getting AWS Bucket Service with the id: %s", bucket_id)
         try:
             # Make a call to make sure the bucket exists. There's an edge case
             # where a 403 response can occur when the bucket exists but the

@@ -411,12 +411,11 @@ class OpenStackBucketService(BaseBucketService):
     def __init__(self, provider):
         super(OpenStackBucketService, self).__init__(provider)
 
-    def get(self, bucket_id):
+    def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        log.debug("Getting OpenStack bucket with the id: %s", bucket_id)
         _, container_list = self.provider.swift.get_account(
             prefix=bucket_id)
         if container_list:
