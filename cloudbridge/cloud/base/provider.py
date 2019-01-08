@@ -11,7 +11,9 @@ except ImportError:  # Python 2
 import six
 
 from cloudbridge.cloud.interfaces import CloudProvider
+from cloudbridge.cloud.interfaces.exceptions import NoHandlerException
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
+from cloudbridge.cloud.interfaces.provider import HandlerType
 from cloudbridge.cloud.interfaces.resources import Configuration
 
 log = logging.getLogger(__name__)
@@ -78,13 +80,83 @@ class BaseConfiguration(Configuration):
         """
         return self.get('cb_debug', os.environ.get('CB_DEBUG', False))
 
+class EventDispatcher(object):
+    def __init__(self):
+        self.__events = {}
+
+    def subscribe(self, event_name, priority, callback, result_callback=None):
+        """
+        Subscribe a handler by event name to the dispatcher.
+
+        :type event_name: str
+        :param event_name: The name of the event to which you are subscribing
+        the callback function.
+        :type priority: int
+        :param priority: The priority that this handler should be given.
+        When the event is emitted, all handlers will be run in order of
+        priority.
+        :type callback: function
+        :param callback: The callback function that should be called with
+        the parameters given at when the even is emitted.
+        :type result_callback: function
+        :param result_callback: The callback function that should be called
+        after the first callback function, using the return value of that
+        previous function as an argument. This function should accept a
+        `callback_result` parameter in addition to the parameters of the event.
+        :return:  The last return value that is not None from the callback
+        functions. i.e. It will return the `callback` function return value,
+        unless the `result_callback` function has a return value.
+        """
+        if result_callback:
+            handler = EventHandler(HandlerType.INTERCEPTION, callback, result_callback)
+        else:
+            handler = EventHandler(HandlerType.SUBSCRIPTION, callback)
+        if not self.__events.get(event_name):
+            self.__events[event_name] = list()
+        self.__events[event_name].append((priority, handler))
+
+    def emit(self, event_name, args):
+
+        def priority_sort(handler_list):
+            handler_list.sort(key=lambda x: x[0])
+            return handler_list
+
+        if not self.__events.get(event_name):
+            message = "Event '{}' has no subscribed handlers.".\
+                format(event_name)
+            raise NoHandlerException(message)
+
+        result = None
+        for (priority, handler) in priority_sort(self.__events[event_name]):
+            new_result = handler.invoke(args)
+            if new_result:
+                result = new_result
+        return result
+
+
+class EventHandler(object):
+    def __init__(self, handler_type, callback, result_callback=None):
+        self.handler_type = handler_type
+        self.callback = callback
+        self.result_callback = result_callback
+
+    def invoke(self, args):
+        if self.handler_type == HandlerType.SUBSCRIPTION:
+            return self.callback(**args)
+        if self.handler_type == HandlerType.INTERCEPTION:
+            result = self.callback(**args)
+            new_result = self.result_callback(result=result, **args)
+            if new_result:
+                result = new_result
+            return result
+
 
 class BaseCloudProvider(CloudProvider):
-
     def __init__(self, config):
         self._config = BaseConfiguration(config)
         self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
+        self._events = EventDispatcher()
 
     @property
     def config(self):
@@ -93,6 +165,10 @@ class BaseCloudProvider(CloudProvider):
     @property
     def name(self):
         return str(self.__class__.__name__)
+
+    @property
+    def events(self):
+        return self._events
 
     def authenticate(self):
         """
