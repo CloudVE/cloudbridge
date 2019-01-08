@@ -327,13 +327,6 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches),
-                                     limit=None, marker=None)
-
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 

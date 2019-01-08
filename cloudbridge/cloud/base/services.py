@@ -108,6 +108,7 @@ class BaseBucketService(
         super(BaseBucketService, self).__init__(provider)
         self._service_event_name = "provider.storage.buckets"
         self._init_get()
+        self._init_find()
 
     @property
     def service_event_name(self):
@@ -137,6 +138,44 @@ class BaseBucketService(
         args.pop('self')
         event_name = ".".join((self.service_event_name, "get"))
         return self.provider.events.emit(event_name, args)
+
+    def _find_pre_log(self, **kwargs):
+        log.debug("Finding {} buckets with the the following arguments: {}"
+                  .format(self.provider.name, kwargs))
+
+    def _find_post_log(self, result, **kwargs):
+        log.debug("Returned bucket objects: {}".format(result))
+
+    def _init_find(self):
+        event_name = ".".join((self.service_event_name, "find"))
+        self.provider.events.subscribe(event_name, 20000,
+                                       self._find_pre_log)
+        self.provider.events.subscribe(event_name, 20500,
+                                       self._find,
+                                       self._find_post_log)
+
+    # Generic find will be used for providers where we have not implemented
+    # provider-specific querying for find method
+    def _find(self, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
+    def find(self, **kwargs):
+        """
+        Returns a list of buckets filtered by the given keyword arguments.
+        """
+        event_name = ".".join((self.service_event_name, "find"))
+        return self.provider.events.emit(event_name, kwargs)
 
 
 class BaseComputeService(ComputeService, BaseCloudService):

@@ -426,18 +426,14 @@ class OpenStackBucketService(BaseBucketService):
             log.debug("Bucket %s was not found.", bucket_id)
             return None
 
-    def find(self, **kwargs):
+    def _find(self, **kwargs):
         name = kwargs.pop('name', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
             raise TypeError("Unrecognised parameters for search: %s."
                             " Supported attributes: %s" % (kwargs, 'name'))
-
-        log.debug("Searching for the OpenStack Bucket with the name: %s", name)
-        _, container_list = self.provider.swift.get_account(
-            limit=oshelpers.os_result_limit(self.provider),
-            marker=None)
+        _, container_list = self.provider.swift.get_account()
         cb_buckets = [OpenStackBucket(self.provider, c)
                       for c in container_list
                       if name in c.get("name")]
