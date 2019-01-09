@@ -327,7 +327,7 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    def list(self, limit=None, marker=None):
+    def _list(self, limit, marker):
         return self.svc.list(limit=limit, marker=marker)
 
     def create(self, name, location=None):

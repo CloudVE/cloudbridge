@@ -391,10 +391,7 @@ class AzureBucketService(BaseBucketService):
             log.exception(error)
             return None
 
-    def list(self, limit=None, marker=None):
-        """
-        List all containers.
-        """
+    def _list(self, limit, marker):
         buckets = [AzureBucket(self.provider, bucket)
                    for bucket in self.provider.azure_client.list_containers()]
         return ClientPagedResultList(self.provider, buckets,

@@ -439,10 +439,7 @@ class OpenStackBucketService(BaseBucketService):
                       if name in c.get("name")]
         return oshelpers.to_server_paged_list(self.provider, cb_buckets)
 
-    def list(self, limit=None, marker=None):
-        """
-        List all containers.
-        """
+    def _list(self, limit, marker):
         _, container_list = self.provider.swift.get_account(
             limit=oshelpers.os_result_limit(self.provider, limit),
             marker=marker)

@@ -109,6 +109,7 @@ class BaseBucketService(
         self._service_event_name = "provider.storage.buckets"
         self._init_get()
         self._init_find()
+        self._init_list()
 
     @property
     def service_event_name(self):
@@ -140,7 +141,7 @@ class BaseBucketService(
         return self.provider.events.emit(event_name, args)
 
     def _find_pre_log(self, **kwargs):
-        log.debug("Finding {} buckets with the the following arguments: {}"
+        log.debug("Finding {} buckets with the following arguments: {}"
                   .format(self.provider.name, kwargs))
 
     def _find_post_log(self, result, **kwargs):
@@ -176,6 +177,34 @@ class BaseBucketService(
         """
         event_name = ".".join((self.service_event_name, "find"))
         return self.provider.events.emit(event_name, kwargs)
+
+    def _list_pre_log(self, limit, marker):
+        message = "Listing {} buckets".format(self.provider.name)
+        if limit:
+            message += " with limit: {}".format(limit)
+        if marker:
+            message += " with marker: {}".format(marker)
+        log.debug(message)
+
+    def _list_post_log(self, result, limit, marker):
+        log.debug("Returned bucket objects: {}".format(result))
+
+    def _init_list(self):
+        event_name = ".".join((self.service_event_name, "list"))
+        self.provider.events.subscribe(event_name, 20000,
+                                       self._list_pre_log)
+        self.provider.events.subscribe(event_name, 20500,
+                                       self._list,
+                                       self._list_post_log)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all buckets.
+        """
+        args = locals()
+        args.pop('self')
+        event_name = ".".join((self.service_event_name, "list"))
+        return self.provider.events.emit(event_name, args)
 
 
 class BaseComputeService(ComputeService, BaseCloudService):
