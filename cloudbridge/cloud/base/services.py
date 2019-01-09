@@ -135,10 +135,8 @@ class BaseBucketService(
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        args = locals()
-        args.pop('self')
         event_name = ".".join((self.service_event_name, "get"))
-        return self.provider.events.emit(event_name, args)
+        return self.provider.events.emit(event_name, bucket_id=bucket_id)
 
     def _find_pre_log(self, **kwargs):
         log.debug("Finding {} buckets with the following arguments: {}"
@@ -176,7 +174,7 @@ class BaseBucketService(
         Returns a list of buckets filtered by the given keyword arguments.
         """
         event_name = ".".join((self.service_event_name, "find"))
-        return self.provider.events.emit(event_name, kwargs)
+        return self.provider.events.emit(event_name, **kwargs)
 
     def _list_pre_log(self, limit, marker):
         message = "Listing {} buckets".format(self.provider.name)
@@ -201,10 +199,9 @@ class BaseBucketService(
         """
         List all buckets.
         """
-        args = locals()
-        args.pop('self')
         event_name = ".".join((self.service_event_name, "list"))
-        return self.provider.events.emit(event_name, args)
+        return self.provider.events.emit(event_name, limit=limit,
+                                         marker=marker)
 
 
 class BaseComputeService(ComputeService, BaseCloudService):

@@ -115,7 +115,7 @@ class EventDispatcher(object):
             self.__events[event_name] = list()
         self.__events[event_name].append((priority, handler))
 
-    def emit(self, event_name, args):
+    def emit(self, event_name, **kwargs):
 
         def priority_sort(handler_list):
             handler_list.sort(key=lambda x: x[0])
@@ -128,7 +128,7 @@ class EventDispatcher(object):
 
         result = None
         for (priority, handler) in priority_sort(self.__events[event_name]):
-            new_result = handler.invoke(args)
+            new_result = handler.invoke(kwargs)
             if new_result:
                 result = new_result
         return result
