@@ -4,6 +4,7 @@ Base implementation for services available through a provider
 import logging
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSubnet
@@ -110,6 +111,7 @@ class BaseBucketService(
         self._init_get()
         self._init_find()
         self._init_list()
+        self._init_create()
 
     @property
     def service_event_name(self):
@@ -202,6 +204,34 @@ class BaseBucketService(
         event_name = ".".join((self.service_event_name, "list"))
         return self.provider.events.emit(event_name, limit=limit,
                                          marker=marker)
+
+    def _create_pre_log(self, name, location):
+        message = "Creating {} bucket with name {}".format(
+            self.provider.name, name)
+        if location:
+            message += " in location: {}".format(location)
+        log.debug(message)
+
+    def _create_post_log(self, result, name, location):
+        log.debug("Returned bucket object: {}".format(result))
+
+    def _init_create(self):
+        event_name = ".".join((self.service_event_name, "create"))
+        self.provider.events.subscribe(event_name, 20000,
+                                       self._create_pre_log)
+        self.provider.events.subscribe(event_name, 20500,
+                                       self._create,
+                                       self._create_post_log)
+
+    def create(self, name, location=None):
+        """
+        Create a new bucket.
+        """
+        event_name = ".".join((self.service_event_name, "create"))
+        BaseBucket.assert_valid_resource_name(name)
+        location = location or self.provider.region_name
+        return self.provider.events.emit(event_name, name=name,
+                                         location=location)
 
 
 class BaseComputeService(ComputeService, BaseCloudService):

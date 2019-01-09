@@ -447,12 +447,7 @@ class OpenStackBucketService(BaseBucketService):
                       for c in container_list]
         return oshelpers.to_server_paged_list(self.provider, cb_buckets, limit)
 
-    def create(self, name, location=None):
-        """
-        Create a new bucket.
-        """
-        log.debug("Creating a new OpenStack Bucket with the name: %s", name)
-        OpenStackBucket.assert_valid_resource_name(name)
+    def _create(self, name, location):
         try:
             self.provider.swift.head_container(name)
             raise DuplicateResourceException(

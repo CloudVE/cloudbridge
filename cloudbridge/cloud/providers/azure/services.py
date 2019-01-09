@@ -397,11 +397,10 @@ class AzureBucketService(BaseBucketService):
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
-    def create(self, name, location=None):
+    def _create(self, name, location=None):
         """
         Create a new bucket.
         """
-        AzureBucket.assert_valid_resource_name(name)
         bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
 

@@ -330,11 +330,7 @@ class AWSBucketService(BaseBucketService):
     def _list(self, limit, marker):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, name, location=None):
-        log.debug("Creating AWS Bucket with the params "
-                  "[name: %s, location: %s]", name, location)
-        AWSBucket.assert_valid_resource_name(name)
-        loc_constraint = location or self.provider.region_name
+    def _create(self, name, location):
         # Due to an API issue in S3, specifying us-east-1 as a
         # LocationConstraint results in an InvalidLocationConstraint.
         # Therefore, it must be special-cased and omitted altogether.
@@ -342,7 +338,7 @@ class AWSBucketService(BaseBucketService):
         # In addition, us-east-1 also behaves differently when it comes
         # to raising duplicate resource exceptions, so perform a manual
         # check
-        if loc_constraint == 'us-east-1':
+        if location == 'us-east-1':
             try:
                 # check whether bucket already exists
                 self.provider.s3_conn.meta.client.head_bucket(Bucket=name)
@@ -356,7 +352,7 @@ class AWSBucketService(BaseBucketService):
             try:
                 return self.svc.create('create_bucket', Bucket=name,
                                        CreateBucketConfiguration={
-                                           'LocationConstraint': loc_constraint
+                                           'LocationConstraint': location
                                         })
             except ClientError as e:
                 if e.response['Error']['Code'] == "BucketAlreadyOwnedByYou":
