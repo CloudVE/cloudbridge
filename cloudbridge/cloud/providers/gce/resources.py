@@ -10,6 +10,8 @@ import math
 import time
 import uuid
 
+import googleapiclient
+
 import cloudbridge as cb
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
@@ -47,8 +49,6 @@ from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 from cloudbridge.cloud.providers.gce import helpers
-
-import googleapiclient
 
 # Older versions of Python do not have a built-in set data-structure.
 try:

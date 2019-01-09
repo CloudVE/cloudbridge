@@ -303,6 +303,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                   " complete successfully: %s" % e)
                     # TODO: Check instance attachments and make sure they
                     # correspond to requested mappings
+
     @helpers.skipIfNoService(['compute.instances', 'networking.networks',
                               'security.vm_firewalls'])
     def test_instance_methods(self):

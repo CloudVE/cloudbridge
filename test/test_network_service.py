@@ -1,3 +1,4 @@
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -10,7 +11,6 @@ from test.helpers import ProviderTestBase
 from test.helpers import get_provider_test_data
 from test.helpers import standard_interface_tests as sit
 
-from cloudbridge.cloud.base.resources import BaseNetwork
 
 class CloudNetworkServiceTestCase(ProviderTestBase):
 

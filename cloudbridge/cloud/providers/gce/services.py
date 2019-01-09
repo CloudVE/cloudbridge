@@ -3,6 +3,10 @@ import time
 import uuid
 from collections import namedtuple
 
+import googleapiclient
+
+from retrying import retry
+
 import cloudbridge as cb
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -27,10 +31,6 @@ from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
-
-import googleapiclient
-
-from retrying import retry
 
 from .resources import GCEFirewallsDelegate
 from .resources import GCEInstance

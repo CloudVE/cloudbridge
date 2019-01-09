@@ -9,15 +9,15 @@ import re
 import time
 from string import Template
 
-import cloudbridge as cb
-from cloudbridge.cloud.base import BaseCloudProvider
-from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
-
 import googleapiclient
 from googleapiclient import discovery
 
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
+
+import cloudbridge as cb
+from cloudbridge.cloud.base import BaseCloudProvider
+from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 
 from .services import GCEComputeService
 from .services import GCENetworkingService
