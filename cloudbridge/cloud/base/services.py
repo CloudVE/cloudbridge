@@ -113,9 +113,8 @@ class BaseBucketService(
         self._init_list()
         self._init_create()
 
-    @property
-    def service_event_name(self):
-        return self._service_event_name
+    def get_event_name(self, func_name):
+        return ".".join((self._service_event_name, func_name))
 
     def _get_pre_log(self, bucket_id):
         log.debug("Getting {} bucket with the id: {}".format(
@@ -125,7 +124,7 @@ class BaseBucketService(
         log.debug("Returned bucket object: {}".format(result))
 
     def _init_get(self):
-        event_name = ".".join((self.service_event_name, "get"))
+        event_name = self.get_event_name("get")
         self.provider.events.subscribe(event_name, 20000,
                                        self._get_pre_log)
         self.provider.events.subscribe(event_name, 20500,
@@ -137,7 +136,7 @@ class BaseBucketService(
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        event_name = ".".join((self.service_event_name, "get"))
+        event_name = self.get_event_name("get")
         return self.provider.events.emit(event_name, bucket_id=bucket_id)
 
     def _find_pre_log(self, **kwargs):
@@ -148,7 +147,7 @@ class BaseBucketService(
         log.debug("Returned bucket objects: {}".format(result))
 
     def _init_find(self):
-        event_name = ".".join((self.service_event_name, "find"))
+        event_name = self.get_event_name("find")
         self.provider.events.subscribe(event_name, 20000,
                                        self._find_pre_log)
         self.provider.events.subscribe(event_name, 20500,
@@ -175,7 +174,7 @@ class BaseBucketService(
         """
         Returns a list of buckets filtered by the given keyword arguments.
         """
-        event_name = ".".join((self.service_event_name, "find"))
+        event_name = self.get_event_name("find")
         return self.provider.events.emit(event_name, **kwargs)
 
     def _list_pre_log(self, limit, marker):
@@ -190,7 +189,7 @@ class BaseBucketService(
         log.debug("Returned bucket objects: {}".format(result))
 
     def _init_list(self):
-        event_name = ".".join((self.service_event_name, "list"))
+        event_name = self.get_event_name("list")
         self.provider.events.subscribe(event_name, 20000,
                                        self._list_pre_log)
         self.provider.events.subscribe(event_name, 20500,
@@ -201,7 +200,7 @@ class BaseBucketService(
         """
         List all buckets.
         """
-        event_name = ".".join((self.service_event_name, "list"))
+        event_name = self.get_event_name("list")
         return self.provider.events.emit(event_name, limit=limit,
                                          marker=marker)
 
@@ -216,7 +215,7 @@ class BaseBucketService(
         log.debug("Returned bucket object: {}".format(result))
 
     def _init_create(self):
-        event_name = ".".join((self.service_event_name, "create"))
+        event_name = self.get_event_name("create")
         self.provider.events.subscribe(event_name, 20000,
                                        self._create_pre_log)
         self.provider.events.subscribe(event_name, 20500,
@@ -227,7 +226,7 @@ class BaseBucketService(
         """
         Create a new bucket.
         """
-        event_name = ".".join((self.service_event_name, "create"))
+        event_name = self.get_event_name("create")
         BaseBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
         return self.provider.events.emit(event_name, name=name,
