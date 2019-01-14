@@ -1,11 +1,11 @@
 Working with the CloudBridge Event System
 =========================================
 In order to provide more comprehensive logging and standardize CloudBridge
-function, we have adopted an Event Dispatcher middleware layer. In short,
+functions, we have adopted a middleware layer to handle event calls. In short,
 each event has a corresponding list of dispatchers called in priority order.
 For the time being, only a listening subscription model is implemented, thus
 each event has a series of subscribed methods accepting the same parameters,
-that get run in priority order along the main function call.
+that get run in priority order along with the main function call.
 This Event System allows both developers and users to easily add
 intermediary functions by event name, without having to modify the
 pre-existing code, thus improving the library's flexibility.
@@ -20,16 +20,16 @@ invoke the next handler in the linked list of handlers.
 Handler Types
 -------------
 Each Event Handler has a type, which determines how it's invoked. There are
-currently two supported types: `SUBSCRIPTION, and RESULT_SUBSCRIPTION.
-Handlers of SUBSCRIPTION type are simple listeners, who intercept the main
+currently two supported types: `SUBSCRIPTION`, and `RESULT_SUBSCRIPTION`.
+Handlers of `SUBSCRIPTION` type are simple listeners, who intercept the main
 function arguments but do not modify them. They are independent of any
 previous or future handler, and have no return value. Their associated
 callback function expects the exact same parameters as the main function.
-Handlers of RESULT_SUBSCRIPTION type are similar to SUBSCRIPTION handlers,
+Handlers of `RESULT_SUBSCRIPTION` type are similar to `SUBSCRIPTION` handlers,
 but have access to the last non-null return value from any previous handler.
 They are similarly listeners, intercepting arguments without modifying them
 and do not return any value. Their associated callback will however be
-called with an additional keyword parameter named 'callback_result' holding
+called with an additional keyword parameter named `callback_result` holding
 the last non-null return value from any previous handler. The callback
 function thus needs to accept such a parameter.
 
@@ -84,13 +84,14 @@ getter.
     event_name = "service.get"
 
     provider.events.subscribe(event_name, priority=20000, callback=_pre_log)
-    provider.events.subscribe(event_name, priority=30000, callback=_post_log)
+    provider.events.subscribe(event_name, priority=30000, callback=_post_log,
+                              result_callback=True)
 
     # Public get function
     def get(object_id):
-        provider.events.interceptable_call(event_name, priority=25000,
-                                           callback=_get,
-                                           object_id=object_id)
+        return provider.events.interceptable_call(event_name, priority=25000,
+                                                  callback=_get,
+                                                  object_id=object_id)
 
 In the above example, calling the public `get` function will be the
 equivalent of calling the below function:
