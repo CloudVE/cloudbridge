@@ -108,28 +108,25 @@ class BaseBucketService(
     def __init__(self, provider):
         super(BaseBucketService, self).__init__(provider)
         self._service_event_name = "provider.storage.buckets"
-        self._init_get()
-        self._init_find()
-        self._init_list()
-        self._init_create()
 
     def get_event_name(self, func_name):
         return ".".join((self._service_event_name, func_name))
 
-    def _get_pre_log(self, bucket_id):
-        log.debug("Getting {} bucket with the id: {}".format(
-            self.provider.name, bucket_id))
-
-    def _get_post_log(self, result, bucket_id):
-        log.debug("Returned bucket object: {}".format(result))
-
     def _init_get(self):
         event_name = self.get_event_name("get")
+
+        def _get_pre_log(bucket_id):
+            log.debug("Getting {} bucket with the id: {}".format(
+                self.provider.name, bucket_id))
+
+        def _get_post_log(callback_result, bucket_id):
+            log.debug("Returned bucket object: {}".format(callback_result))
+
         self.provider.events.subscribe(event_name, 20000,
-                                       self._get_pre_log)
-        self.provider.events.subscribe(event_name, 20500,
-                                       self._get,
-                                       self._get_post_log)
+                                       _get_pre_log)
+        self.provider.events.subscribe(event_name, 21000,
+                                       _get_post_log,
+                                       result_callback=True)
 
     def get(self, bucket_id):
         """
@@ -137,22 +134,28 @@ class BaseBucketService(
         does not exist.
         """
         event_name = self.get_event_name("get")
-        return self.provider.events.emit(event_name, bucket_id=bucket_id)
-
-    def _find_pre_log(self, **kwargs):
-        log.debug("Finding {} buckets with the following arguments: {}"
-                  .format(self.provider.name, kwargs))
-
-    def _find_post_log(self, result, **kwargs):
-        log.debug("Returned bucket objects: {}".format(result))
+        if not self.provider.events.get_handlers(event_name):
+            self._init_get()
+        return self.provider.events.interceptable_call(event_name,
+                                                       priority=20500,
+                                                       callback=self._get,
+                                                       bucket_id=bucket_id)
 
     def _init_find(self):
         event_name = self.get_event_name("find")
+
+        def _find_pre_log(**kwargs):
+            log.debug("Finding {} buckets with the following arguments: {}"
+                      .format(self.provider.name, kwargs))
+
+        def _find_post_log(callback_result, **kwargs):
+            log.debug("Returned bucket objects: {}".format(callback_result))
+
         self.provider.events.subscribe(event_name, 20000,
-                                       self._find_pre_log)
-        self.provider.events.subscribe(event_name, 20500,
-                                       self._find,
-                                       self._find_post_log)
+                                       _find_pre_log)
+        self.provider.events.subscribe(event_name, 21000,
+                                       _find_post_log,
+                                       result_callback=True)
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
@@ -175,62 +178,79 @@ class BaseBucketService(
         Returns a list of buckets filtered by the given keyword arguments.
         """
         event_name = self.get_event_name("find")
-        return self.provider.events.emit(event_name, **kwargs)
-
-    def _list_pre_log(self, limit, marker):
-        message = "Listing {} buckets".format(self.provider.name)
-        if limit:
-            message += " with limit: {}".format(limit)
-        if marker:
-            message += " with marker: {}".format(marker)
-        log.debug(message)
-
-    def _list_post_log(self, result, limit, marker):
-        log.debug("Returned bucket objects: {}".format(result))
+        if not self.provider.events.get_handlers(event_name):
+            self._init_find()
+        return self.provider.events.interceptable_call(event_name,
+                                                       priority=20500,
+                                                       callback=self._find,
+                                                       **kwargs)
 
     def _init_list(self):
         event_name = self.get_event_name("list")
+
+        def _list_pre_log(limit, marker):
+            message = "Listing {} buckets".format(self.provider.name)
+            if limit:
+                message += " with limit: {}".format(limit)
+            if marker:
+                message += " with marker: {}".format(marker)
+            log.debug(message)
+
+        def _list_post_log(callback_result, limit, marker):
+            log.debug("Returned bucket objects: {}".format(callback_result))
+
         self.provider.events.subscribe(event_name, 20000,
-                                       self._list_pre_log)
-        self.provider.events.subscribe(event_name, 20500,
-                                       self._list,
-                                       self._list_post_log)
+                                       _list_pre_log)
+        self.provider.events.subscribe(event_name, 21000,
+                                       _list_post_log,
+                                       result_callback=True)
 
     def list(self, limit=None, marker=None):
         """
         List all buckets.
         """
         event_name = self.get_event_name("list")
-        return self.provider.events.emit(event_name, limit=limit,
-                                         marker=marker)
-
-    def _create_pre_log(self, name, location):
-        message = "Creating {} bucket with name {}".format(
-            self.provider.name, name)
-        if location:
-            message += " in location: {}".format(location)
-        log.debug(message)
-
-    def _create_post_log(self, result, name, location):
-        log.debug("Returned bucket object: {}".format(result))
+        if not self.provider.events.get_handlers(event_name):
+            self._init_list()
+        return self.provider.events.interceptable_call(event_name,
+                                                       priority=20500,
+                                                       callback=self._list,
+                                                       limit=limit,
+                                                       marker=marker)
 
     def _init_create(self):
         event_name = self.get_event_name("create")
+
+        def _create_pre_log(name, location):
+            message = "Creating {} bucket with name '{}'".format(
+                self.provider.name, name)
+            if location:
+                message += " in location: {}".format(location)
+            log.debug(message)
+
+        def _create_post_log(callback_result, name, location):
+            log.debug("Returned bucket object: {}".format(callback_result))
+
         self.provider.events.subscribe(event_name, 20000,
-                                       self._create_pre_log)
-        self.provider.events.subscribe(event_name, 20500,
-                                       self._create,
-                                       self._create_post_log)
+                                       _create_pre_log)
+        self.provider.events.subscribe(event_name, 21000,
+                                       _create_post_log,
+                                       result_callback=True)
 
     def create(self, name, location=None):
         """
         Create a new bucket.
         """
         event_name = self.get_event_name("create")
+        if not self.provider.events.get_handlers(event_name):
+            self._init_create()
         BaseBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
-        return self.provider.events.emit(event_name, name=name,
-                                         location=location)
+        return self.provider.events.interceptable_call(event_name,
+                                                       priority=20500,
+                                                       callback=self._create,
+                                                       name=name,
+                                                       location=location)
 
 
 class BaseComputeService(ComputeService, BaseCloudService):

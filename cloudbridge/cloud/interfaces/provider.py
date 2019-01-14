@@ -253,4 +253,4 @@ class HandlerType(Enum):
     Handler Types.
     """
     SUBSCRIPTION = 'subscription'
-    INTERCEPTION = 'interception'
+    RESULT_SUBSCRIPTION = 'result_subscription'

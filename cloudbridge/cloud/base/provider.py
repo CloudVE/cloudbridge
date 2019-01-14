@@ -80,11 +80,15 @@ class BaseConfiguration(Configuration):
         """
         return self.get('cb_debug', os.environ.get('CB_DEBUG', False))
 
+
 class EventDispatcher(object):
     def __init__(self):
         self.__events = {}
 
-    def subscribe(self, event_name, priority, callback, result_callback=None):
+    def get_handlers(self, event_name):
+        return self.__events.get(event_name)
+
+    def subscribe(self, event_name, priority, callback, result_callback=False):
         """
         Subscribe a handler by event name to the dispatcher.
 
@@ -98,24 +102,32 @@ class EventDispatcher(object):
         :type callback: function
         :param callback: The callback function that should be called with
         the parameters given at when the even is emitted.
-        :type result_callback: function
-        :param result_callback: The callback function that should be called
-        after the first callback function, using the return value of that
-        previous function as an argument. This function should accept a
-        `callback_result` parameter in addition to the parameters of the event.
-        :return:  The last return value that is not None from the callback
-        functions. i.e. It will return the `callback` function return value,
-        unless the `result_callback` function has a return value.
+        :type result_callback: bool
+        :param result_callback: Whether the callback function should be using
+        the last return value from previous functions as an argument. This
+        function should accept a `callback_result` parameter in addition to
+        the parameters of the event.
         """
         if result_callback:
-            handler = EventHandler(HandlerType.INTERCEPTION, callback, result_callback)
+            handler = EventHandler(HandlerType.RESULT_SUBSCRIPTION, callback)
         else:
             handler = EventHandler(HandlerType.SUBSCRIPTION, callback)
         if not self.__events.get(event_name):
             self.__events[event_name] = list()
         self.__events[event_name].append((priority, handler))
 
-    def emit(self, event_name, **kwargs):
+    def interceptable_call(self, event_name, priority, callback, **kwargs):
+        handler = EventHandler(HandlerType.SUBSCRIPTION, callback)
+        if not self.__events.get(event_name):
+            self.__events[event_name] = list()
+        self.__events[event_name].append((priority, handler))
+        try:
+            ret_obj = self._emit(event_name, **kwargs)
+        finally:
+            self.__events[event_name].remove((priority, handler))
+        return ret_obj
+
+    def _emit(self, event_name, **kwargs):
 
         def priority_sort(handler_list):
             handler_list.sort(key=lambda x: x[0])
@@ -128,9 +140,15 @@ class EventDispatcher(object):
 
         result = None
         for (priority, handler) in priority_sort(self.__events[event_name]):
-            new_result = handler.invoke(kwargs)
-            if new_result:
-                result = new_result
+            if handler.handler_type == HandlerType.RESULT_SUBSCRIPTION:
+                kwargs['callback_result'] = result
+                new_result = handler.invoke(kwargs)
+                if new_result:
+                    result = new_result
+            else:
+                new_result = handler.invoke(kwargs)
+                if new_result:
+                    result = new_result
         return result
 
 
@@ -139,16 +157,13 @@ class EventHandler(object):
         self.handler_type = handler_type
         self.callback = callback
         self.result_callback = result_callback
+        self._next_handler = None
 
     def invoke(self, args):
-        if self.handler_type == HandlerType.SUBSCRIPTION:
+        if self.handler_type in [HandlerType.SUBSCRIPTION,
+                                 HandlerType.RESULT_SUBSCRIPTION]:
             return self.callback(**args)
-        if self.handler_type == HandlerType.INTERCEPTION:
-            result = self.callback(**args)
-            new_result = self.result_callback(result=result, **args)
-            if new_result:
-                result = new_result
-            return result
+
 
 
 class BaseCloudProvider(CloudProvider):
