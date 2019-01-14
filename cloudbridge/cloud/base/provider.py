@@ -138,18 +138,15 @@ class EventDispatcher(object):
                 format(event_name)
             raise NoHandlerException(message)
 
-        result = None
+        prev_handler = None
+        first_handler = None
         for (priority, handler) in priority_sort(self.__events[event_name]):
-            if handler.handler_type == HandlerType.RESULT_SUBSCRIPTION:
-                kwargs['callback_result'] = result
-                new_result = handler.invoke(kwargs)
-                if new_result:
-                    result = new_result
-            else:
-                new_result = handler.invoke(kwargs)
-                if new_result:
-                    result = new_result
-        return result
+            if not first_handler:
+                first_handler = handler
+            if prev_handler:
+                prev_handler.next_handler = handler
+            prev_handler = handler
+        return first_handler.invoke(kwargs)
 
 
 class EventHandler(object):
@@ -159,11 +156,31 @@ class EventHandler(object):
         self.result_callback = result_callback
         self._next_handler = None
 
+    @property
+    def next_handler(self):
+        return self._next_handler
+
+    @next_handler.setter
+    def next_handler(self, new_handler):
+        self._next_handler = new_handler
+
     def invoke(self, args):
         if self.handler_type in [HandlerType.SUBSCRIPTION,
                                  HandlerType.RESULT_SUBSCRIPTION]:
-            return self.callback(**args)
+            result = self.callback(**args)
 
+        next = self.next_handler
+        if next:
+            if next.handler_type == HandlerType.RESULT_SUBSCRIPTION:
+                args['callback_result'] = result
+                new_result = next.invoke(args)
+                if new_result:
+                    result = new_result
+            elif next.handler_type == HandlerType.SUBSCRIPTION:
+                new_result = next.invoke(args)
+                if new_result:
+                    result = new_result
+        return result
 
 
 class BaseCloudProvider(CloudProvider):
