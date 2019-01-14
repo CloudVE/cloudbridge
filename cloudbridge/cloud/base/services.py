@@ -122,9 +122,8 @@ class BaseBucketService(
         def _get_post_log(callback_result, bucket_id):
             log.debug("Returned bucket object: {}".format(callback_result))
 
-        self.provider.events.subscribe(event_name, 20000,
-                                       _get_pre_log)
-        self.provider.events.subscribe(event_name, 21000,
+        self.provider.events.subscribe(event_name, 20000, _get_pre_log)
+        self.provider.events.subscribe(event_name, 30000,
                                        _get_post_log,
                                        result_callback=True)
         self.provider.events.mark_initialized(event_name)
@@ -138,7 +137,7 @@ class BaseBucketService(
         if not self.provider.events.check_initialized(event_name):
             self._init_get()
         return self.provider.events.interceptable_call(event_name,
-                                                       priority=20500,
+                                                       priority=25000,
                                                        callback=self._get,
                                                        bucket_id=bucket_id)
 
@@ -154,7 +153,7 @@ class BaseBucketService(
 
         self.provider.events.subscribe(event_name, 20000,
                                        _find_pre_log)
-        self.provider.events.subscribe(event_name, 21000,
+        self.provider.events.subscribe(event_name, 30000,
                                        _find_post_log,
                                        result_callback=True)
         self.provider.events.mark_initialized(event_name)
@@ -183,7 +182,7 @@ class BaseBucketService(
         if not self.provider.events.check_initialized(event_name):
             self._init_find()
         return self.provider.events.interceptable_call(event_name,
-                                                       priority=20500,
+                                                       priority=25000,
                                                        callback=self._find,
                                                        **kwargs)
 
@@ -203,7 +202,7 @@ class BaseBucketService(
 
         self.provider.events.subscribe(event_name, 20000,
                                        _list_pre_log)
-        self.provider.events.subscribe(event_name, 21000,
+        self.provider.events.subscribe(event_name, 30000,
                                        _list_post_log,
                                        result_callback=True)
         self.provider.events.mark_initialized(event_name)
@@ -216,7 +215,7 @@ class BaseBucketService(
         if not self.provider.events.check_initialized(event_name):
             self._init_list()
         return self.provider.events.interceptable_call(event_name,
-                                                       priority=20500,
+                                                       priority=25000,
                                                        callback=self._list,
                                                        limit=limit,
                                                        marker=marker)
@@ -236,7 +235,7 @@ class BaseBucketService(
 
         self.provider.events.subscribe(event_name, 20000,
                                        _create_pre_log)
-        self.provider.events.subscribe(event_name, 21000,
+        self.provider.events.subscribe(event_name, 30000,
                                        _create_post_log,
                                        result_callback=True)
         self.provider.events.mark_initialized(event_name)
@@ -251,7 +250,7 @@ class BaseBucketService(
         BaseBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
         return self.provider.events.interceptable_call(event_name,
-                                                       priority=20500,
+                                                       priority=25000,
                                                        callback=self._create,
                                                        name=name,
                                                        location=location)

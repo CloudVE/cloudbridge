@@ -166,10 +166,9 @@ class EventDispatcher(object):
 
 
 class EventHandler(object):
-    def __init__(self, handler_type, callback, result_callback=None):
+    def __init__(self, handler_type, callback):
         self.handler_type = handler_type
         self.callback = callback
-        self.result_callback = result_callback
         self._next_handler = None
 
     @property
@@ -198,6 +197,8 @@ class EventHandler(object):
                 new_result = next.invoke(args)
                 if new_result:
                     result = new_result
+
+        self.next_handler = None
         return result
 
 
