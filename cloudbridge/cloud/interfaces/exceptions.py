@@ -94,7 +94,7 @@ class DuplicateResourceException(CloudBridgeBaseException):
     pass
 
 
-class NoHandlerException(CloudBridgeBaseException):
+class HandlerException(CloudBridgeBaseException):
     """
     Marker interface for object wait exceptions.
     Thrown when a timeout or errors occurs waiting for an object does not reach

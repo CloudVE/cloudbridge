@@ -11,7 +11,7 @@ except ImportError:  # Python 2
 import six
 
 from cloudbridge.cloud.interfaces import CloudProvider
-from cloudbridge.cloud.interfaces.exceptions import NoHandlerException
+from cloudbridge.cloud.interfaces.exceptions import HandlerException
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 from cloudbridge.cloud.interfaces.provider import HandlerType
 from cloudbridge.cloud.interfaces.resources import Configuration
@@ -84,9 +84,16 @@ class BaseConfiguration(Configuration):
 class EventDispatcher(object):
     def __init__(self):
         self.__events = {}
+        self.__initialized = {}
 
     def get_handlers(self, event_name):
         return self.__events.get(event_name)
+
+    def check_initialized(self, event_name):
+        return self.__initialized.get(event_name) or False
+
+    def mark_initialized(self, event_name):
+        self.__initialized[event_name] = True
 
     def subscribe(self, event_name, priority, callback, result_callback=False):
         """
@@ -131,12 +138,21 @@ class EventDispatcher(object):
 
         def priority_sort(handler_list):
             handler_list.sort(key=lambda x: x[0])
+            # Make sure all priorities are unique
+            prev_prio = None
+            for (priority, handler) in handler_list:
+                if priority == prev_prio:
+                    message = "Event '{}' has multiple subscribed handlers " \
+                              "at priority '{}'. Each priority must only " \
+                              "have a single corresponding handler."\
+                        .format(event_name, priority)
+                    raise HandlerException(message)
             return handler_list
 
         if not self.__events.get(event_name):
             message = "Event '{}' has no subscribed handlers.".\
                 format(event_name)
-            raise NoHandlerException(message)
+            raise HandlerException(message)
 
         prev_handler = None
         first_handler = None
