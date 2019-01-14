@@ -50,11 +50,11 @@ Below are the default priorities used across events:
 +------------------------+----------+
 | Handler                | Priority |
 +------------------------+----------+
-| Pre-Logger             | 20000    |
+| Pre-Logger             | 2000     |
 +------------------------+----------+
-| Main Function Call     | 25000    |
+| Main Function Call     | 2500     |
 +------------------------+----------+
-| Post-Logger            | 30000    |
+| Post-Logger            | 3000     |
 +------------------------+----------+
 
 The Pre- and Post- loggers represent universal loggers respectively keeping
@@ -66,41 +66,153 @@ Example
 -------
 
 Below is an example of the way in which the Event System works for a simple
-getter.
+getter, from the CloudBridge developer perspective as well as the final user
+perspective.
 
 .. code-block:: python
 
-    def _get(object_id):
-        # get the object
-        return obj
+    ## Provider Specific code
+    class MyFirstProviderService(BaseService):
 
-    def _pre_log(object_id):
-        print("I am calling 'get' with object_id: {}".format(object_id))
+        def __init__(self, provider):
+            super(MyFirstProviderService, self).__init__(provider)
 
-    def _post_log(callback_result, object_id):
-        print("Returned object {} for a 'get' request with object_id: {}"
-        .format(callback_result, object_id))
+        def _get(self, obj_id):
+            # do the getting
+            resource = ...
+            return MyFirstProviderResource(resource)
 
-    event_name = "service.get"
+    class MySecondProviderService(BaseService):
 
-    provider.events.subscribe(event_name, priority=20000, callback=_pre_log)
-    provider.events.subscribe(event_name, priority=30000, callback=_post_log,
-                              result_callback=True)
+        def __init__(self, provider):
+            super(MySecondProviderService, self).__init__(provider)
 
-    # Public get function
-    def get(object_id):
-        return provider.events.interceptable_call(event_name, priority=25000,
-                                                  callback=_get,
-                                                  object_id=object_id)
+        def _get(self, obj_id):
+            # do the getting
+            resource = ...
+            return MySecondProviderResource(resource)
 
-In the above example, calling the public `get` function will be the
-equivalent of calling the below function:
+    ## Base code
+    class BaseService(ProviderService):
+        def __init__(self, provider):
+            super(Service, self).__init__(provider)
+            self._service_event_name = "provider.service"
+
+        def _init_get(self):
+
+            def _get_pre_log(obj_id):
+                log.debug("Getting {} object with the id: {}".format(
+                    self.provider.name, bucket_id))
+
+            def _get_post_log(callback_result, obj_id):
+                log.debug("Returned object: {}".format(callback_result))
+
+            self.subscribe_event("get", 2000, _get_pre_log)
+            self.subscribe_event("get", 3000, _get_post_log,
+                                 result_callback=True)
+
+            self.mark_initialized("get")
+
+        # Public get function
+        def get(self, obj_id):
+            """
+            Returns an object given its ID. Returns ``None`` if the object
+            does not exist.
+            """
+            if not self.check_initialized("get"):
+                self._init_get()
+            return self.call_event("get", priority=2500,
+                                   main_call=self._get,
+                                   obj_id=obj_id)
+
+Thus, adding a new provider only requires adding the Service class with a
+protected class accepting the same parameters, and the logging and public
+method signature will remain the same, as the code will not be re-written
+for each provider.
+Additionally, if a developer needs to add additional logging for a
+particular service, beyond the default logging for all services, they can do
+so in the event initialisation function, and it will be applied to all
+providers. For example:
 
 .. code-block:: python
 
-    def get(object_id):
-        _pre_log(object_id)
-        result = _get(object_id)
-        _post_log(callback_result=result, object_id)
-        return result
+    ## Base code
+    class BaseService(ProviderService):
+        def __init__(self, provider):
+            super(Service, self).__init__(provider)
+            self._service_event_name = "provider.service"
+
+        def _init_get(self):
+
+            def _get_pre_log(obj_id):
+                log.debug("Getting {} object with the id: {}".format(
+                    self.provider.name, bucket_id))
+
+            def _get_post_log(callback_result, obj_id):
+                log.debug("Returned object: {}".format(callback_result))
+
+            def _special_none_log(callback_result, obj_id):
+                if not callback_result:
+                    log.debug("There is no object with id '{}'".format(obj_id))
+
+            self.subscribe_event("get", 2000, _get_pre_log)
+            self.subscribe_event("get", 3000, _get_post_log,
+                                 result_callback=True)
+            self.subscribe_event("get", 2750, _special_none_log,
+                                 result_callback=True)
+
+            self.mark_initialized("get")
+
+       # Public get function
+        def get(self, obj_id):
+            """
+            Returns an object given its ID. Returns ``None`` if the object
+            does not exist.
+            """
+            if not self.check_initialized("get"):
+                self._init_get()
+            return self.call_event("get", priority=2500,
+                                   main_call=self._get,
+                                   obj_id=obj_id)
+
+
+From a user's perspective, the Event System is invisible unless the user
+wishes to extend the chain of handlers with their own code. Continuing with
+the service example from above:
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    provider = CloudProviderFactory().create_provider(ProviderList.FIRST, {})
+    id = 'thisIsAnID'
+    obj = provider.service.get(id)
+
+However, if they wish to add their own logging interface, for example, they
+can do so without modifying CloudBridge code:
+
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    provider = CloudProviderFactory().create_provider(ProviderList.FIRST, {})
+
+    ## I don't want to setup a logger, just want to print some messages for
+    ## debugging
+    def print_id(obj_id):
+        print(obj_id)
+
+    provider.service.subscribe_event("get", priority=2250, callback=print_id)
+
+    id1 = 'thisIsAnID'
+    id2 = 'thisIsAnID2'
+
+    ## The subscribed print function will get called every time the get
+    ## method is invoked
+    obj1 = provider.service.get(id1)
+    ## thisIsAnID
+    obj2 = provider.service.get(id2)
+    ## thisIsAnID2
+
 

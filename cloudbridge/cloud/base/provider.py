@@ -123,7 +123,7 @@ class EventDispatcher(object):
             self.__events[event_name] = list()
         self.__events[event_name].append((priority, handler))
 
-    def interceptable_call(self, event_name, priority, callback, **kwargs):
+    def call(self, event_name, priority, callback, **kwargs):
         handler = EventHandler(HandlerType.SUBSCRIPTION, callback)
         if not self.__events.get(event_name):
             self.__events[event_name] = list()
