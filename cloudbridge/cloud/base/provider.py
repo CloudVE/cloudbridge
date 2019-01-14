@@ -193,6 +193,8 @@ class EventHandler(object):
                 if new_result:
                     result = new_result
             elif next.handler_type == HandlerType.SUBSCRIPTION:
+                if args.get('callback_result'):
+                    args.pop('callback_result')
                 new_result = next.invoke(args)
                 if new_result:
                     result = new_result
