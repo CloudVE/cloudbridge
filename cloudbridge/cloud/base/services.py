@@ -144,16 +144,6 @@ class BaseBucketService(
         self.subscribe("get", 3000, _get_post_log, result_callback=True)
         self.mark_initialized("get")
 
-    def get(self, bucket_id):
-        """
-        Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist.
-        """
-        if not self.check_initialized("get"):
-            self._init_get()
-        return self.call("get", priority=2500, callback=self._get,
-                         bucket_id=bucket_id)
-
     def _init_find(self):
         def _find_pre_log(**kwargs):
             log.debug("Finding {} buckets with the following arguments: {}"
@@ -166,6 +156,50 @@ class BaseBucketService(
         self.subscribe("find", 3000, _find_post_log,
                        result_callback=True)
         self.mark_initialized("find")
+
+    def _init_list(self):
+            def _list_pre_log(limit, marker):
+                message = "Listing {} buckets".format(self.provider.name)
+                if limit:
+                    message += " with limit: {}".format(limit)
+                if marker:
+                    message += " with marker: {}".format(marker)
+                log.debug(message)
+
+            def _list_post_log(callback_result, limit, marker):
+                log.debug(
+                    "Returned bucket objects: {}".format(callback_result))
+
+            self.subscribe("list", 2000, _list_pre_log)
+            self.subscribe("list", 3000, _list_post_log,
+                           result_callback=True)
+            self.mark_initialized("list")
+
+    def _init_create(self):
+        def _create_pre_log(name, location):
+            message = "Creating {} bucket with name '{}'".format(
+                self.provider.name, name)
+            if location:
+                message += " in location: {}".format(location)
+            log.debug(message)
+
+        def _create_post_log(callback_result, name, location):
+            log.debug("Returned bucket object: {}".format(callback_result))
+
+        self.subscribe("create", 2000, _create_pre_log)
+        self.subscribe("create", 3000, _create_post_log,
+                       result_callback=True)
+        self.mark_initialized("create")
+
+    def get(self, bucket_id):
+        """
+        Returns a bucket given its ID. Returns ``None`` if the bucket
+        does not exist.
+        """
+        if not self.check_initialized("get"):
+            self._init_get()
+        return self.call("get", priority=2500, callback=self._get,
+                         bucket_id=bucket_id)
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
@@ -192,24 +226,6 @@ class BaseBucketService(
         return self.call("find", priority=2500, callback=self._find,
                          **kwargs)
 
-    def _init_list(self):
-
-        def _list_pre_log(limit, marker):
-            message = "Listing {} buckets".format(self.provider.name)
-            if limit:
-                message += " with limit: {}".format(limit)
-            if marker:
-                message += " with marker: {}".format(marker)
-            log.debug(message)
-
-        def _list_post_log(callback_result, limit, marker):
-            log.debug("Returned bucket objects: {}".format(callback_result))
-
-        self.subscribe("list", 2000, _list_pre_log)
-        self.subscribe("list", 3000, _list_post_log,
-                       result_callback=True)
-        self.mark_initialized("list")
-
     def list(self, limit=None, marker=None):
         """
         List all buckets.
@@ -218,23 +234,6 @@ class BaseBucketService(
             self._init_list()
         return self.call("list", priority=2500, callback=self._list,
                          limit=limit, marker=marker)
-
-    def _init_create(self):
-
-        def _create_pre_log(name, location):
-            message = "Creating {} bucket with name '{}'".format(
-                self.provider.name, name)
-            if location:
-                message += " in location: {}".format(location)
-            log.debug(message)
-
-        def _create_post_log(callback_result, name, location):
-            log.debug("Returned bucket object: {}".format(callback_result))
-
-        self.subscribe("create", 2000, _create_pre_log)
-        self.subscribe("create", 3000, _create_post_log,
-                       result_callback=True)
-        self.mark_initialized("create")
 
     def create(self, name, location=None):
         """
