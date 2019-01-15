@@ -11,6 +11,7 @@ from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketService
+from cloudbridge.cloud.interfaces.services import BucketObjectService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
 from cloudbridge.cloud.interfaces.services import ImageService
@@ -245,6 +246,14 @@ class BaseBucketService(
         location = location or self.provider.region_name
         return self.call("create", priority=2500, callback=self._create,
                          name=name, location=location)
+
+
+class BaseBucketObjectService(
+        BasePageableObjectMixin, BucketObjectService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseBucketObjectService, self).__init__(provider)
+        self._service_event_name = "provider.storage.bucket_objects"
 
 
 class BaseComputeService(ComputeService, BaseCloudService):
