@@ -47,8 +47,8 @@ class BaseCloudService(CloudService):
     def _generate_event_name(self, func_name):
         return ".".join((self.service_name, func_name))
 
-    def subscribe_event(self, func_name, priority, callback,
-                        result_callback=False):
+    def subscribe(self, func_name, priority, callback,
+                  result_callback=False):
         event_name = self._generate_event_name(func_name)
         self.provider.events.subscribe(event_name, priority, callback,
                                        result_callback)
@@ -61,7 +61,7 @@ class BaseCloudService(CloudService):
         event_name = self._generate_event_name(func_name)
         self.provider.events.mark_initialized(event_name)
 
-    def call_event(self, func_name, priority, callback, **kwargs):
+    def call(self, func_name, priority, callback, **kwargs):
         event_name = self._generate_event_name(func_name)
         return self.provider.events.call(event_name, priority, callback,
                                          **kwargs)
@@ -140,8 +140,8 @@ class BaseBucketService(
         def _get_post_log(callback_result, bucket_id):
             log.debug("Returned bucket object: {}".format(callback_result))
 
-        self.subscribe_event("get", 2000, _get_pre_log)
-        self.subscribe_event("get", 3000, _get_post_log, result_callback=True)
+        self.subscribe("get", 2000, _get_pre_log)
+        self.subscribe("get", 3000, _get_post_log, result_callback=True)
         self.mark_initialized("get")
 
     def get(self, bucket_id):
@@ -151,8 +151,8 @@ class BaseBucketService(
         """
         if not self.check_initialized("get"):
             self._init_get()
-        return self.call_event("get", priority=2500, callback=self._get,
-                               bucket_id=bucket_id)
+        return self.call("get", priority=2500, callback=self._get,
+                         bucket_id=bucket_id)
 
     def _init_find(self):
         def _find_pre_log(**kwargs):
@@ -162,9 +162,9 @@ class BaseBucketService(
         def _find_post_log(callback_result, **kwargs):
             log.debug("Returned bucket objects: {}".format(callback_result))
 
-        self.subscribe_event("find", 2000, _find_pre_log)
-        self.subscribe_event("find", 3000, _find_post_log,
-                             result_callback=True)
+        self.subscribe("find", 2000, _find_pre_log)
+        self.subscribe("find", 3000, _find_post_log,
+                       result_callback=True)
         self.mark_initialized("find")
 
     # Generic find will be used for providers where we have not implemented
@@ -189,8 +189,8 @@ class BaseBucketService(
         """
         if not self.check_initialized("find"):
             self._init_find()
-        return self.call_event("find", priority=2500, callback=self._find,
-                               **kwargs)
+        return self.call("find", priority=2500, callback=self._find,
+                         **kwargs)
 
     def _init_list(self):
 
@@ -205,9 +205,9 @@ class BaseBucketService(
         def _list_post_log(callback_result, limit, marker):
             log.debug("Returned bucket objects: {}".format(callback_result))
 
-        self.subscribe_event("list", 2000, _list_pre_log)
-        self.subscribe_event("list", 3000, _list_post_log,
-                             result_callback=True)
+        self.subscribe("list", 2000, _list_pre_log)
+        self.subscribe("list", 3000, _list_post_log,
+                       result_callback=True)
         self.mark_initialized("list")
 
     def list(self, limit=None, marker=None):
@@ -216,8 +216,8 @@ class BaseBucketService(
         """
         if not self.check_initialized("list"):
             self._init_list()
-        return self.call_event("list", priority=2500, callback=self._list,
-                               limit=limit, marker=marker)
+        return self.call("list", priority=2500, callback=self._list,
+                         limit=limit, marker=marker)
 
     def _init_create(self):
 
@@ -231,9 +231,9 @@ class BaseBucketService(
         def _create_post_log(callback_result, name, location):
             log.debug("Returned bucket object: {}".format(callback_result))
 
-        self.subscribe_event("create", 2000, _create_pre_log)
-        self.subscribe_event("create", 3000, _create_post_log,
-                             result_callback=True)
+        self.subscribe("create", 2000, _create_pre_log)
+        self.subscribe("create", 3000, _create_post_log,
+                       result_callback=True)
         self.mark_initialized("create")
 
     def create(self, name, location=None):
@@ -244,8 +244,8 @@ class BaseBucketService(
             self._init_create()
         BaseBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
-        return self.call_event("create", priority=2500, callback=self._create,
-                               name=name, location=location)
+        return self.call("create", priority=2500, callback=self._create,
+                         name=name, location=location)
 
 
 class BaseComputeService(ComputeService, BaseCloudService):

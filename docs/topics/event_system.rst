@@ -62,12 +62,51 @@ track of the event called and its parameters before the call, and the returned
 value after the call. The main function call represents the core function,
 which is not subscribed permanently, but rather called directly with the event.
 
-Example
--------
+User Example
+------------
+From a user's perspective, the Event System is invisible unless the user
+wishes to extend the chain of handlers with their own code:
 
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    provider = CloudProviderFactory().create_provider(ProviderList.FIRST, {})
+    id = 'thisIsAnID'
+    obj = provider.storage.buckets.get(id)
+
+However, if they wish to add their own logging interface, for example, they
+can do so without modifying CloudBridge code:
+
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    provider = CloudProviderFactory().create_provider(ProviderList.AZURE, {})
+
+    ## I don't want to setup a logger, just want to print some messages for
+    ## debugging
+    def print_id(obj_id):
+        print("I am getting this id: " + obj_id)
+
+    provider.storage.buckets.subscribe("get", priority=1500, callback=print_id)
+
+    id1 = 'thisIsAnID'
+    id2 = 'thisIsAnID2'
+
+    ## The subscribed print function will get called every time the get
+    ## method is invoked
+    obj1 = provider.storage.buckets.get(id1)
+    ## I am getting this id: thisIsAnID
+    obj2 = provider.storage.buckets.get(id2)
+    ## I am getting this id: thisIsAnID2
+
+
+Developer Example
+-----------------
 Below is an example of the way in which the Event System works for a simple
-getter, from the CloudBridge developer perspective as well as the final user
-perspective.
+getter, from the CloudBridge developer perspective.
 
 .. code-block:: python
 
@@ -96,7 +135,8 @@ perspective.
     class BaseService(ProviderService):
         def __init__(self, provider):
             super(Service, self).__init__(provider)
-            self._service_event_name = "provider.service"
+            # Example: provider.storage.buckets for buckets
+            self._service_event_name = "provider.service.servicename"
 
         def _init_get(self):
 
@@ -107,8 +147,8 @@ perspective.
             def _get_post_log(callback_result, obj_id):
                 log.debug("Returned object: {}".format(callback_result))
 
-            self.subscribe_event("get", 2000, _get_pre_log)
-            self.subscribe_event("get", 3000, _get_post_log,
+            self.subscribe("get", 2000, _get_pre_log)
+            self.subscribe("get", 3000, _get_post_log,
                                  result_callback=True)
 
             self.mark_initialized("get")
@@ -121,7 +161,7 @@ perspective.
             """
             if not self.check_initialized("get"):
                 self._init_get()
-            return self.call_event("get", priority=2500,
+            return self.call("get", priority=2500,
                                    main_call=self._get,
                                    obj_id=obj_id)
 
@@ -155,10 +195,10 @@ providers. For example:
                 if not callback_result:
                     log.debug("There is no object with id '{}'".format(obj_id))
 
-            self.subscribe_event("get", 2000, _get_pre_log)
-            self.subscribe_event("get", 3000, _get_post_log,
+            self.subscribe("get", 2000, _get_pre_log)
+            self.subscribe("get", 3000, _get_post_log,
                                  result_callback=True)
-            self.subscribe_event("get", 2750, _special_none_log,
+            self.subscribe("get", 2750, _special_none_log,
                                  result_callback=True)
 
             self.mark_initialized("get")
@@ -171,48 +211,9 @@ providers. For example:
             """
             if not self.check_initialized("get"):
                 self._init_get()
-            return self.call_event("get", priority=2500,
+            return self.call("get", priority=2500,
                                    main_call=self._get,
                                    obj_id=obj_id)
 
-
-From a user's perspective, the Event System is invisible unless the user
-wishes to extend the chain of handlers with their own code. Continuing with
-the service example from above:
-
-.. code-block:: python
-
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
-
-    provider = CloudProviderFactory().create_provider(ProviderList.FIRST, {})
-    id = 'thisIsAnID'
-    obj = provider.service.get(id)
-
-However, if they wish to add their own logging interface, for example, they
-can do so without modifying CloudBridge code:
-
-
-.. code-block:: python
-
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
-
-    provider = CloudProviderFactory().create_provider(ProviderList.FIRST, {})
-
-    ## I don't want to setup a logger, just want to print some messages for
-    ## debugging
-    def print_id(obj_id):
-        print(obj_id)
-
-    provider.service.subscribe_event("get", priority=2250, callback=print_id)
-
-    id1 = 'thisIsAnID'
-    id2 = 'thisIsAnID2'
-
-    ## The subscribed print function will get called every time the get
-    ## method is invoked
-    obj1 = provider.service.get(id1)
-    ## thisIsAnID
-    obj2 = provider.service.get(id2)
-    ## thisIsAnID2
 
 
