@@ -92,7 +92,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             self.assertEqual(label, fw.description)
 
@@ -106,7 +106,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         fw = None
         with helpers.cleanup_action(lambda: fw.delete()):
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             def create_fw_rule(label):
                 return fw.rules.create(
@@ -133,7 +133,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             rule = fw.rules.create(
                 direction=TrafficDirection.INBOUND, protocol='tcp',
@@ -157,7 +157,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             rule = fw.rules.create(
                 direction=TrafficDirection.INBOUND, protocol='tcp',
@@ -180,7 +180,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
             rule = fw.rules.create(
                 direction=TrafficDirection.INBOUND, src_dest_fw=fw,
                 protocol='tcp', from_port=1, to_port=65535)

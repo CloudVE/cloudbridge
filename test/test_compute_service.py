@@ -83,7 +83,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             net = subnet.network
             kp = self.provider.security.key_pairs.create(name=label)
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
             test_instance = helpers.get_test_instance(self.provider,
                                                       label, key_pair=kp,
                                                       vm_firewalls=[fw],
@@ -326,7 +326,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             # Check adding a VM firewall to a running instance
             test_inst.add_vm_firewall(fw)
