@@ -199,7 +199,7 @@ class GCECloudProvider(BaseCloudProvider):
 
         # Disable warnings about file_cache not being available when using
         # oauth2client >= 4.0.0.
-        logging.getLogger('googleapicliet.discovery_cache').setLevel(
+        logging.getLogger('googleapiclient.discovery_cache').setLevel(
                 logging.ERROR)
 
         # Initialize cloud connection fields

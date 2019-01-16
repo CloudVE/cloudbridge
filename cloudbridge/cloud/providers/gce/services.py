@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import time
 import uuid
 from collections import namedtuple
@@ -8,7 +9,6 @@ import googleapiclient
 from retrying import retry
 
 import cloudbridge as cb
-from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
@@ -47,6 +47,8 @@ from .resources import GCEVMFirewall
 from .resources import GCEVMType
 from .resources import GCEVolume
 from .resources import GCSBucket
+
+log = logging.getLogger(__name__)
 
 
 class GCESecurityService(BaseSecurityService):
@@ -258,10 +260,11 @@ class GCEVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, vm_firewalls,
                                      limit=limit, marker=marker)
 
-    def create(self, name, description, network_id=None):
-        GCEVMFirewall.assert_valid_resource_name(name)
-        network = self.provider.networking.networks.get(network_id)
-        fw = GCEVMFirewall(self._delegate, name, network, description)
+    def create(self, label, description, network=None):
+        GCEVMFirewall.assert_valid_resource_label(label)
+        network = (network if isinstance(network, GCENetwork)
+                   else self.provider.networking.networks.get(network))
+        fw = GCEVMFirewall(self._delegate, label, network, description)
         # This rule exists implicitly. Add it explicitly so that the firewall
         # is not empty and the rule is shown by list/get/find methods.
         fw.rules.create_with_priority(
@@ -712,7 +715,7 @@ class GCENetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def _create(self, name, cidr_block, create_subnetworks):
+    def _create(self, label, cidr_block, create_subnetworks):
         """
         Possible values for 'create_subnetworks' are:
 
@@ -729,10 +732,10 @@ class GCENetworkService(BaseNetworkService):
                            'in each region with explicit CIDR blocks',
                            GCENetwork.DEFAULT_IPV4RANGE)
             cidr_block = None
-        networks = self.list(filter='name eq %s' % name)
-        if len(networks) > 0:
-            return networks[0]
-        body = {'name': name}
+        name = GCENetwork._generate_name_from_label(label, 'cbnet')
+        body = {'name': name,
+                'labels': {'name': label}
+                }
         if cidr_block:
             body['IPv4Range'] = cidr_block
         else:
@@ -753,13 +756,13 @@ class GCENetworkService(BaseNetworkService):
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
 
-    def create(self, name, cidr_block):
+    def create(self, label, cidr_block):
         """
         Creates an auto mode VPC network with default subnets. It is possible
         to add additional subnets later.
         """
-        GCENetwork.assert_valid_resource_name(name)
-        return self._create(name, cidr_block, False)
+        GCENetwork.assert_valid_resource_label(label)
+        return self._create(label, cidr_block, False)
 
     def get_or_create_default(self):
         return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, None, True)
@@ -803,9 +806,11 @@ class GCERouterService(BaseRouterService):
                                      response.get('nextPageToken'),
                                      False, data=routers)
 
-    def create(self, name, network):
-        name = name if name else 'router-{0}'.format(uuid.uuid4())
-        GCERouter.assert_valid_resource_name(name)
+    def create(self, label, network):
+        log.debug("Creating GCE Router Service with params "
+                  "[label: %s network: %s]", label, network)
+        GCERouter.assert_valid_resource_label(label)
+        name = GCERouter._generate_name_from_label(label, 'cb-router')
 
         if not isinstance(network, GCENetwork):
             network = self.provider.networking.networks.get(network)
@@ -818,7 +823,8 @@ class GCERouterService(BaseRouterService):
                             .insert(project=self.provider.project_name,
                                     region=region_name,
                                     body={'name': name,
-                                          'network': network_url})
+                                          'network': network_url,
+                                          'description': label})
                             .execute())
             if 'error' in response:
                 return None
@@ -866,6 +872,8 @@ class GCESubnetService(BaseSubnetService):
         """
         filter = None
         if network is not None:
+            network = (network if isinstance(network, GCENetwork)
+                       else self.provider.networking.networks.get(network))
             filter = 'network eq %s' % network.resource_url
         region_names = []
         if zone:
@@ -887,36 +895,37 @@ class GCESubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, network, cidr_block, name=None, zone=None):
+    def create(self, label, network, cidr_block, zone):
         """
-        GCE subnets are regional. The region is inferred from the zone if a
-        zone is provided; otherwise, the default region, as set in the
+        GCE subnets are regional. The region is inferred from the zone;
+        otherwise, the default region, as set in the
         provider, is used.
 
         If a subnet with overlapping IP range exists already, we return that
         instead of creating a new subnet. In this case, other parameters, i.e.
         the name and the zone, are ignored.
         """
-        if not name:
-            name = 'subnet-{0}'.format(uuid.uuid4())
-        GCESubnet.assert_valid_resource_name(name)
+        GCESubnet.assert_valid_resource_label(label)
+        name = GCESubnet._generate_name_from_label(label, 'cbsubnet')
         region_name = self._zone_to_region_name(zone)
-        for subnet in self.iter(network=network):
-            if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
-                if subnet.region_name != region_name:
-                    cb.log.error('Failed to create subnetwork in region %s: '
-                                 'the given IP range %s overlaps with a '
-                                 'subnetwork in a different region %s',
-                                 region_name, cidr_block, subnet.region_name)
-                    return None
-                return subnet
-            if subnet.name == name and subnet.region_name == region_name:
-                return subnet
+#         for subnet in self.iter(network=network):
+#            if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
+#                 if subnet.region_name != region_name:
+#                     cb.log.error('Failed to create subnetwork in region %s: '
+#                                  'the given IP range %s overlaps with a '
+#                                  'subnetwork in a different region %s',
+#                                  region_name, cidr_block, subnet.region_name)
+#                     return None
+#                 return subnet
+#             if subnet.label == label and subnet.region_name == region_name:
+#                 return subnet
 
         body = {'ipCidrRange': cidr_block,
                 'name': name,
                 'network': network.resource_url,
-                'region': region_name}
+                'region': region_name,
+                'labels': {'cblabel': label.replace(' ', '_').lower()}
+                }
         try:
             response = (self.provider
                             .gce_compute
@@ -1011,11 +1020,11 @@ class GCEVolumeService(BaseVolumeService):
         vol = self.provider.get_resource('disks', volume_id)
         return GCEVolume(self.provider, vol) if vol else None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, label, limit=None, marker=None):
         """
         Searches for a volume by a given list of attributes.
         """
-        filtr = 'name eq ' + name
+        filtr = 'label.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
                         .gce_compute
@@ -1063,7 +1072,7 @@ class GCEVolumeService(BaseVolumeService):
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
 
-    def create(self, name, size, zone, snapshot=None, description=None):
+    def create(self, label, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
 
@@ -1074,7 +1083,12 @@ class GCEVolumeService(BaseVolumeService):
         be a dash, lowercase letter, or digit, except the last character, which
         cannot be a dash.
         """
-        GCEVolume.assert_valid_resource_name(name)
+        log.debug("Creating GCE Volume with parameters "
+                  "[label: %s size: %s zone: %s snapshot: %s "
+                  "description: %s]", label, size, zone, snapshot,
+                  description)
+        GCEVolume.assert_valid_resource_label(label)
+        name = GCEVolume._generate_name_from_label(label, 'cb-vol')
         if not isinstance(zone, GCEPlacementZone):
             zone = GCEPlacementZone(
                 self.provider,
@@ -1088,6 +1102,7 @@ class GCEVolumeService(BaseVolumeService):
             'type': 'zones/{0}/diskTypes/{1}'.format(zone_name, 'pd-standard'),
             'sourceSnapshot': snapshot_id,
             'description': description,
+            'labels': {'cblabel': label.replace(' ', '_').lower()}
         }
         operation = (self.provider
                          .gce_compute
@@ -1156,15 +1171,17 @@ class GCESnapshotService(BaseSnapshotService):
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
-    def create(self, name, volume, description=None):
+    def create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
-        GCESnapshot.assert_valid_resource_name(name)
+        GCESnapshot.assert_valid_resource_label(label)
+        name = GCESnapshot._generate_name_from_label(label, 'cbsnap')
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
         snapshot_body = {
             "name": name,
-            "description": description
+            "description": description,
+            "labels": {"cblabel": label}
         }
         operation = (self.provider
                          .gce_compute

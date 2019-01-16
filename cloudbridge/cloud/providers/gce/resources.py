@@ -741,6 +741,35 @@ class GCEMachineImage(BaseMachineImage):
         return self._gce_image['name']
 
     @property
+    def label(self):
+        labels = self._gce_image.get('labels')
+        return labels.get('cblabel', '') if labels else ''
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        request_body = {
+            'labels': {'cblabel': value.replace(' ', '_').lower()},
+            'labelFingerprint': self._gce_image.get('labelFingerprint'),
+        }
+        try:
+            (self._provider
+                 .gce_compute
+                 .images()
+                 .setLabels(project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            image=self.name,
+                            body=request_body)
+                 .execute())
+        except Exception as e:
+            cb.log.warning('Exception while setting image label: %s. '
+                           'Check for invalid characters in label. '
+                           'Should conform to RFC1035.', e)
+            raise e
+        self.refresh()
+
+    @property
     def description(self):
         """
         Get the image description.
@@ -827,18 +856,34 @@ class GCEInstance(BaseInstance):
         """
         return self._gce_instance['name']
 
-    @name.setter
+    @property
+    def label(self):
+        labels = self._gce_instance.get('labels')
+        return labels.get('cblabel', '') if labels else ''
+
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
-        """
-        Set the instance name.
-        """
-        GCEInstance.assert_valid_resource_name(value)
-        # In GCE, the name of the instance is provided by the client when
-        # initially creating the resource. The name cannot be changed after
-        # the instance is created.
-        cb.log.warning("Setting instance name after it is created is not "
-                       "supported by this provider: %s", value)
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        request_body = {
+            'labels': {'cblabel': value.replace(' ', '_').lower()},
+            'labelFingerprint': self._gce_instance.get('labelFingerprint'),
+        }
+        try:
+            (self._provider
+                 .gce_compute
+                 .instances()
+                 .setLabels(project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            instance=self.name,
+                            body=request_body)
+                 .execute())
+        except Exception as e:
+            cb.log.warning('Exception while setting instance label: %s. '
+                           'Check for invalid characters in label. '
+                           'Should conform to RFC1035.', e)
+            raise e
+        self.refresh()
 
     @property
     def public_ips(self):
@@ -894,6 +939,14 @@ class GCEInstance(BaseInstance):
             return None
         parsed_uri = self._provider.parse_url(machine_type_uri)
         return GCEVMType(self._provider, parsed_uri.get_resource())
+
+    @property
+    def subnet_id(self):
+        """
+        Get the zone for this instance.
+        """
+        return (self._gce_instance.get('networkInterfaces', [{}])[0]
+                .get('subnetwork'))
 
     def reboot(self):
         """
@@ -1000,12 +1053,14 @@ class GCEInstance(BaseInstance):
         return sg_ids
 
     @property
-    def key_pair_name(self):
+    def key_pair_id(self):
         """
-        Get the name of the key pair associated with this instance.
+        Get the id of the key pair associated with this instance.
+        For GCE, since keys apply to all instances, return first
+        key in metadata.
         """
         try:
-            return next(self._provider.security.key_pairs)
+            return next(iter(self._provider.security.key_pairs))
         except StopIteration:
             return None
 
@@ -1019,11 +1074,12 @@ class GCEInstance(BaseInstance):
         self._inet_gateway = network.gateways.get_or_create_inet_gateway()
         return self._inet_gateway
 
-    def create_image(self, name):
+    def create_image(self, label):
         """
         Create a new image based on this instance.
         """
-        self.assert_valid_resource_name(name)
+        self.assert_valid_resource_label(label)
+        name = self._generate_name_from_label(label, 'cb-img')
         if 'disks' not in self._gce_instance:
             cb.log.error('Failed to create image: no disks found.')
             return
@@ -1031,7 +1087,8 @@ class GCEInstance(BaseInstance):
             if 'boot' in disk and disk['boot']:
                 image_body = {
                     'name': name,
-                    'sourceDisk': disk['source']
+                    'sourceDisk': disk['source'],
+                    'labels': {'cblabel': label.replace(' ', '_').lower()},
                 }
                 operation = (self._provider
                              .gce_compute
@@ -1303,6 +1360,53 @@ class GCENetwork(BaseNetwork):
         return self._network['name']
 
     @property
+    def label(self):
+        return self._network.get('description')
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        body = {'description': value}
+        response = (self._provider
+                    .gce_compute
+                    .networks()
+                    .patch(project=self._provider.project_name,
+                           network=self.name,
+                           body=body)
+                    .execute())
+        self._provider.wait_for_operation(response)
+        self._network['description'] = value
+
+#     @property
+#     def label(self):
+#         labels = self._network.get('labels')
+#         return labels.get('cblabel', '') if labels else ''
+#
+#     @label.setter
+#     # pylint:disable=arguments-differ
+#     def label(self, value):
+#         request_body = {
+#             'labels': {'cblabel': value.replace(' ', '_').lower()},
+#             'labelFingerprint': self._network.get('labelFingerprint'),
+#         }
+#         try:
+#             (self._provider
+#                  .gce_compute
+#                  .networks()
+#                  .setLabels(project=self._provider.project_name,
+#                             zone=self._provider.default_zone,
+#                             resource=self.name,
+#                             body=request_body)
+#                  .execute())
+#         except Exception as e:
+#             cb.log.warning('Exception while setting network label: %s. '
+#                            'Check for invalid characters in label. '
+#                            'Should conform to RFC1035.', e)
+#             raise e
+#         self.refresh()
+
+    @property
     def external(self):
         """
         All GCP networks can be connected to the Internet.
@@ -1346,9 +1450,9 @@ class GCENetwork(BaseNetwork):
             return False
         return True
 
-    def create_subnet(self, cidr_block, name=None, zone=None):
+    def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(
-            self, cidr_block, name, zone)
+            label, self, cidr_block, zone)
 
     def refresh(self):
         self._network = self._provider.get_resource('networks', self.id)
@@ -1521,6 +1625,32 @@ class GCERouter(BaseRouter):
         return self._router['name']
 
     @property
+    def label(self):
+        return self._router.get('description')
+
+    @label.setter
+    # pylint:disable=arguments-differ
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        request_body = {
+            'description': value.replace(' ', '_').lower()
+        }
+        try:
+            (self._provider
+                 .gce_compute
+                 .routers()
+                 .patch(project=self._provider.project_name,
+                        router=self.name,
+                        body=request_body)
+                 .execute())
+        except Exception as e:
+            cb.log.warning('Exception while setting router label: %s. '
+                           'Check for invalid characters in label. '
+                           'Should conform to RFC1035.', e)
+            raise e
+        self.refresh()
+
+    @property
     def region_name(self):
         parsed_url = self._provider.parse_url(self.id)
         return parsed_url.parameters['region']
@@ -1544,6 +1674,11 @@ class GCERouter(BaseRouter):
         parsed_url = self._provider.parse_url(self._router['network'])
         network = parsed_url.get_resource()
         return network['selfLink']
+
+    @property
+    def subnets(self):
+        network = self._provider.networking.networks.get(self.network_id)
+        return network.subnets
 
     def delete(self):
         response = (self._provider
@@ -1651,12 +1786,32 @@ class GCESubnet(BaseSubnet):
     def name(self):
         return self._subnet['name']
 
-    @name.setter
-    def name(self, value):
-        GCESubnet.assert_valid_resource_name(value)
-        if value == self.name:
-            return
-        cb.log.warning('Cannot change the name of a GCE subnetwork')
+    @property
+    def label(self):
+        return self._subnet.get('description')
+
+    @label.setter
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        request_body = {
+            'description': value.replace(' ', '_').lower(),
+            'fingerprint': self._subnet.get('fingerprint')
+        }
+        try:
+            (self._provider
+                 .gce_compute
+                 .subnetworks()
+                 .patch(project=self._provider.project_name,
+                        region=self.region_name,
+                        subnetwork=self.name,
+                        body=request_body)
+                 .execute())
+        except Exception as e:
+            cb.log.warning('Exception while setting subnet label: %s. '
+                           'Check for invalid characters in label. '
+                           'Should conform to RFC1035.', e)
+            raise e
+        self.refresh()
 
     @property
     def cidr_block(self):
@@ -1722,15 +1877,33 @@ class GCEVolume(BaseVolume):
         """
         return self._volume.get('name')
 
-    @name.setter
-    # pylint:disable=arguments-differ
-    def name(self, value):
-        GCEVolume.assert_valid_resource_name(value)
-        # In GCE, the name of the volume is provided by the client when
-        # initially creating the resource. The name cannot be changed after
-        # the volume is created.
-        cb.log.warning("Setting volume name after it is created is not "
-                       "supported by this provider.")
+    @property
+    def label(self):
+        labels = self._volume.get('labels')
+        return labels.get('cblabel', '') if labels else ''
+
+    @label.setter
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        request_body = {
+            'labels': {'cblabel': value.replace(' ', '_').lower()},
+            'labelFingerprint': self._volume.get('labelFingerprint'),
+        }
+        try:
+            (self._provider
+                 .gce_compute
+                 .disks()
+                 .setLabels(project=self._provider.project_name,
+                            zone=self._provider.default_zone,
+                            resource=self.name,
+                            body=request_body)
+                 .execute())
+        except Exception as e:
+            cb.log.warning('Exception while setting volume name: %s. '
+                           'Check for invalid characters in name. '
+                           'Should conform to RFC1035.', e)
+            raise e
+        self.refresh()
 
     @property
     def description(self):
@@ -1856,12 +2029,12 @@ class GCEVolume(BaseVolume):
                          deviceName=device_name)
              .execute())
 
-    def create_snapshot(self, name, description=None):
+    def create_snapshot(self, label, description=None):
         """
         Create a snapshot of this Volume.
         """
         return self._provider.storage.snapshots.create(
-            name, self, description)
+            label, self, description)
 
     def delete(self):
         """
@@ -1916,15 +2089,33 @@ class GCESnapshot(BaseSnapshot):
         """
         return self._snapshot.get('name')
 
-    @name.setter
+    @property
+    def label(self):
+        labels = self._snapshot.get('labels')
+        return labels.get('cblabel', '') if labels else ''
+
+    @label.setter
     # pylint:disable=arguments-differ
-    def name(self, value):
-        GCESnapshot.assert_valid_resource_name(value)
-        # In GCE, the name of the snapshot is provided by the client when
-        # initially creating the resource. The name cannot be changed after
-        # the snapshot is created.
-        cb.log.warning("Setting snapshot name after it is created is not "
-                       "supported by this provider.")
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        request_body = {
+            'labels': {'cblabel': value.replace(' ', '_').lower()},
+            'labelFingerprint': self._snapshot.get('labelFingerprint'),
+        }
+        try:
+            (self._provider
+                 .gce_compute
+                 .snapshots()
+                 .setLabels(project=self._provider.project_name,
+                            resource=self.name,
+                            body=request_body)
+                 .execute())
+        except Exception as e:
+            cb.log.warning('Exception while setting snapshot label: %s. '
+                           'Check for invalid characters in label. '
+                           'Should conform to RFC1035.', e)
+            raise e
+        self.refresh()
 
     @property
     def description(self):
@@ -2105,6 +2296,9 @@ class GCSObject(BaseBucketObject):
                                               self._provider.client_id,
                                               expiration,
                                               url_encoded_signature))
+
+    def refresh(self):
+        self._obj = self.bucket.objects.get(self.id)._obj
 
 
 class GCSBucketContainer(BaseBucketContainer):
