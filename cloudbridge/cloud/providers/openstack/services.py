@@ -506,9 +506,10 @@ class OpenStackBucketObjectService(BaseBucketObjectService):
 
     def find(self, bucket, **kwargs):
         _, obj_list = self.provider.swift.get_container(bucket.name)
+        cb_objs = [OpenStackBucketObject(self.provider, bucket, obj)
+                   for obj in obj_list]
         filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        self.set_bucket(None)
+        matches = cb_helpers.generic_find(filters, kwargs, cb_objs)
         return ClientPagedResultList(self.provider, list(matches))
 
     def create(self, bucket, object_name):

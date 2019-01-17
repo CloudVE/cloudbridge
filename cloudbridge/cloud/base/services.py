@@ -48,7 +48,7 @@ class BaseCloudService(CloudService):
         return self._provider
 
     def _generate_event_name(self, func_name):
-        return ".".join((self.service_name, func_name))
+        return ".".join((self._service_event_name, func_name))
 
     def subscribe(self, func_name, priority, callback,
                   result_callback=False):
