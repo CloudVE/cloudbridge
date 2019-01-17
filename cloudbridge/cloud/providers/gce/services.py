@@ -416,13 +416,13 @@ class GCEImageService(BaseImageService):
                 return public_image
         return None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, label, limit=None, marker=None):
         """
         Searches for an image by a given list of attributes
         """
-        filters = {'name': name}
+        filters = {'label': label}
         # Retrieve all available images by setting limit to sys.maxsize
-        images = [image for image in self if image.name == filters['name']]
+        images = [image for image in self if image.label == filters['label']]
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
 

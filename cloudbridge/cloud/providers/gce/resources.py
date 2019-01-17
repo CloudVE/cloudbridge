@@ -758,8 +758,7 @@ class GCEMachineImage(BaseMachineImage):
                  .gce_compute
                  .images()
                  .setLabels(project=self._provider.project_name,
-                            zone=self._provider.default_zone,
-                            image=self.name,
+                            resource=self.name,
                             body=request_body)
                  .execute())
         except Exception as e:
@@ -1640,6 +1639,7 @@ class GCERouter(BaseRouter):
                  .gce_compute
                  .routers()
                  .patch(project=self._provider.project_name,
+                        region=self.region_name,
                         router=self.name,
                         body=request_body)
                  .execute())
