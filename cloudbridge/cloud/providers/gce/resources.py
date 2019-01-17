@@ -74,18 +74,7 @@ class GCEKeyPair(BaseKeyPair):
         return self._kp_name
 
     def delete(self):
-        svc = self._provider.security.key_pairs
-
-        def _delete_key(gce_kp_generator):
-            kp_list = []
-            for gce_kp in gce_kp_generator:
-                if svc.gce_kp_to_id(gce_kp) == self.id:
-                    continue
-                else:
-                    kp_list.append(gce_kp)
-            return kp_list
-
-        svc.gce_metadata_save_op(_delete_key)
+        self._provider.security.key_pairs.delete(self.id)
 
     @property
     def material(self):
