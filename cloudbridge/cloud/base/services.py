@@ -8,6 +8,8 @@ from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.interfaces.exceptions import \
+    InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketService

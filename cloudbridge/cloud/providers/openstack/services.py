@@ -18,6 +18,7 @@ import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
+from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -47,6 +48,7 @@ from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
 from .resources import OpenStackBucket
+from .resources import OpenStackBucketObject
 from .resources import OpenStackInstance
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
@@ -455,6 +457,58 @@ class OpenStackBucketService(BaseBucketService):
         except SwiftClientException:
             self.provider.swift.put_container(name)
             return self.get(name)
+
+
+class OpenStackBucketObjectService(BaseBucketObjectService):
+
+    def __init__(self, provider):
+        super(OpenStackBucketObjectService, self).__init__(provider)
+
+    def get(self, bucket, name):
+        """
+        Retrieve a given object from this bucket.
+        """
+        # Swift always returns a reference for the container first,
+        # followed by a list containing references to objects.
+        _, object_list = self.provider.swift.get_container(
+            bucket.name, prefix=name)
+        # Loop through list of objects looking for an exact name vs. a prefix
+        for obj in object_list:
+            if obj.get('name') == name:
+                return OpenStackBucketObject(self.provider,
+                                             bucket,
+                                             obj)
+        return None
+
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+
+        :rtype: BucketObject
+        :return: List of all available BucketObjects within this bucket.
+        """
+        _, object_list = self.provider.swift.get_container(
+            bucket.name,
+            limit=oshelpers.os_result_limit(self.provider, limit),
+            marker=marker, prefix=prefix)
+        cb_objects = [OpenStackBucketObject(
+            self.provider, bucket, obj) for obj in object_list]
+
+        return oshelpers.to_server_paged_list(
+            self.provider,
+            cb_objects,
+            limit)
+
+    def find(self, bucket, **kwargs):
+        _, obj_list = self.provider.swift.get_container(bucket.name)
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        self.set_bucket(None)
+        return ClientPagedResultList(self.provider, list(matches))
+
+    def create(self, bucket, object_name):
+        self.provider.swift.put_object(bucket.name, object_name, None)
+        return self.get(object_name)
 
 
 class OpenStackComputeService(BaseComputeService):
