@@ -898,39 +898,6 @@ class AWSBucketContainer(BaseBucketContainer):
     def __init__(self, provider, bucket):
         super(AWSBucketContainer, self).__init__(provider, bucket)
 
-    def get(self, name):
-        try:
-            # pylint:disable=protected-access
-            obj = self.bucket._bucket.Object(name)
-            # load() throws an error if object does not exist
-            obj.load()
-            return AWSBucketObject(self._provider, obj)
-        except ClientError:
-            return None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        if prefix:
-            # pylint:disable=protected-access
-            boto_objs = self.bucket._bucket.objects.filter(Prefix=prefix)
-        else:
-            # pylint:disable=protected-access
-            boto_objs = self.bucket._bucket.objects.all()
-        objects = [AWSBucketObject(self._provider, obj) for obj in boto_objs]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches),
-                                     limit=None, marker=None)
-
-    def create(self, name):
-        # pylint:disable=protected-access
-        obj = self.bucket._bucket.Object(name)
-        return AWSBucketObject(self._provider, obj)
-
 
 class AWSRegion(BaseRegion):
 

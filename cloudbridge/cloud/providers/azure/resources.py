@@ -359,43 +359,6 @@ class AzureBucketContainer(BaseBucketContainer):
     def __init__(self, provider, bucket):
         super(AzureBucketContainer, self).__init__(provider, bucket)
 
-    def get(self, key):
-        """
-        Retrieve a given object from this bucket.
-        """
-        try:
-            obj = self._provider.azure_client.get_blob(self.bucket.name,
-                                                       key)
-            return AzureBucketObject(self._provider, self.bucket, obj)
-        except AzureException as azureEx:
-            log.exception(azureEx)
-            return None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-
-        :rtype: BucketObject
-        :return: List of all available BucketObjects within this bucket.
-        """
-        objects = [AzureBucketObject(self._provider, self.bucket, obj)
-                   for obj in
-                   self._provider.azure_client.list_blobs(
-                       self.bucket.name, prefix=prefix)]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
-
-    def create(self, name):
-        self._provider.azure_client.create_blob_from_text(
-            self.bucket.name, name, '')
-        return self.get(name)
-
 
 class AzureVolume(BaseVolume):
     VOLUME_STATE_MAP = {
