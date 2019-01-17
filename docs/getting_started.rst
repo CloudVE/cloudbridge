@@ -115,7 +115,7 @@ on disk as a read-only file.
 .. code-block:: python
 
     import os
-    kp = provider.security.key_pairs.create('cloudbridge-intro')
+    kp = provider.security.key_pairs.create('cb-keypair')
     with open('cloudbridge_intro.pem', 'wb') as f:
         f.write(kp.material)
     os.chmod('cloudbridge_intro.pem', 0o400)
@@ -149,7 +149,7 @@ a private network.
 
     from cloudbridge.cloud.interfaces.resources import TrafficDirection
     fw = provider.security.vm_firewalls.create(
-        label='cloudbridge-intro', description='A VM firewall used by
+        label='cb-firewall', description='A VM firewall used by
         CloudBridge', network=net)
     fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
@@ -166,7 +166,7 @@ also add the network interface as a launch argument.
                       if t.vcpus >= 2 and t.ram >= 4],
                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
-        image=img, vm_type=vm_type, label='cloudbridge-intro',
+        image=img, vm_type=vm_type, label='cb-instance',
         subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
@@ -193,9 +193,10 @@ earlier.
 
 .. code-block:: python
 
-    fip = gateway.floating_ips.create()
-    inst.add_floating_ip(fip)
-    inst.refresh()
+    if not inst.public_ips:
+        fip = gateway.floating_ips.create()
+        inst.add_floating_ip(fip)
+        inst.refresh()
     inst.public_ips
     # [u'54.166.125.219']
 
@@ -219,8 +220,7 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
 
     # Key Pair
     kp = provider.security.key_pairs.get('keypair ID')
-    kp_list = provider.security.key_pairs.find(name='cloudbridge-intro')
-    kp = kp_list[0]
+    kp = provider.security.key_pairs.find(name='cb-keypair')[0]
 
     # Floating IPs
     fip = gateway.floating_ips.get('FloatingIP ID')
@@ -228,8 +228,7 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
     fip_list = gateway.floating_ips.find(public_ip='IP address')
     # Find using name (the behavior of the `name` property can be 
     # cloud-dependent). More details can be found `here <topics/resource_types_and_mapping.html>`
-    fip_list = net.gateways.floating_ips.find(name='my-fip')
-    fip = fip_list[0]
+    fip_list = gateway.floating_ips.find(name='cb-fip')[0]
 
     # Network
     net = provider.networking.networks.get('network ID')
@@ -239,15 +238,15 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
     # Subnet
     sn = provider.networking.subnets.get('subnet ID')
     # Unknown network
-    sn_list = provider.networking.subnets.find(label='my-subnet')
+    sn_list = provider.networking.subnets.find(label='cb-subnet')
     # Known network
     sn_list = provider.networking.subnets.find(network=net.id,
-                                               label='my-subnet')
+                                               label='cb-subnet')
     sn = sn_list(0)
 
     # Router
     router = provider.networking.routers.get('router ID')
-    router_list = provider.networking.routers.find(label='my-router')
+    router_list = provider.networking.routers.find(label='cb-router')
     router = router_list[0]
 
     # Gateway
@@ -255,12 +254,12 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
 
     # Firewall
     fw = provider.security.vm_firewalls.get('firewall ID')
-    fw_list = provider.security.vm_firewalls.find(label='cloudbridge-intro')
+    fw_list = provider.security.vm_firewalls.find(label='cb-firewall')
     fw = fw_list[0]
 
     # Instance
     inst = provider.compute.instances.get('instance ID')
-    inst_list = provider.compute.instances.list(label='cloudbridge-intro')
+    inst_list = provider.compute.instances.list(label='cb-instance')
     inst = inst_list[0]
 
 

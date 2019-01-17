@@ -452,13 +452,13 @@ class GCEInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(GCEInstanceService, self).__init__(provider)
 
-    def create(self, name, image, vm_type, subnet, zone=None,
+    def create(self, label, image, vm_type, subnet, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         """
         Creates a new virtual machine instance.
         """
-        GCEInstance.assert_valid_resource_name(name)
+        GCEInstance.assert_valid_resource_name(label)
         zone_name = self.provider.default_zone
         if zone:
             if not isinstance(zone, GCEPlacementZone):
@@ -491,8 +491,8 @@ class GCEInstanceService(BaseInstanceService):
                     source_value = volume.id
                 elif isinstance(disk.source, GCEMachineImage):
                     source_field = 'initializeParams'
-                    # Explicitly set diskName; otherwise, instance name will be
-                    # used by default which may collide with existing disks.
+                    # Explicitly set diskName; otherwise, instance label will
+                    # be used by default which may collide with existing disks.
                     source_value = {
                         'sourceImage': disk.source.id,
                         'diskName': 'image-disk-{0}'.format(uuid.uuid4())}
@@ -527,7 +527,7 @@ class GCEInstanceService(BaseInstanceService):
             if boot_disk:
                 cb.log.warning('A boot image is given while the launch config '
                                'contains a boot disk, too. The launch config '
-                               'will be used')
+                               'will be used.')
             else:
                 if not isinstance(image, GCEMachineImage):
                     image = self.provider.compute.images.get(image)
@@ -541,13 +541,13 @@ class GCEInstanceService(BaseInstanceService):
                         'diskName': 'image-disk-{0}'.format(uuid.uuid4())}}
 
         if not boot_disk:
-            cb.log.warning('No boot disk is given')
+            cb.log.warning('No boot disk is given for instance %s.', label)
             return None
         # The boot disk must be the first disk attached to the instance.
         disks.insert(0, boot_disk)
 
         config = {
-            'name': name,
+            'name': GCEInstance._generate_name_from_label(label, 'cb-inst'),
             'machineType': vm_type.resource_url,
             'disks': disks,
             'networkInterfaces': [network_interface]
@@ -577,7 +577,9 @@ class GCEInstanceService(BaseInstanceService):
             return None
         instance_id = operation.get('targetLink')
         self.provider.wait_for_operation(operation, zone=zone_name)
-        return self.get(instance_id)
+        instance = self.get(instance_id)
+        instance.label = label
+        return instance
 
     def get(self, instance_id):
         """
@@ -590,13 +592,13 @@ class GCEInstanceService(BaseInstanceService):
         instance = self.provider.get_resource('instances', instance_id)
         return GCEInstance(self.provider, instance) if instance else None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, label, limit=None, marker=None):
         """
-        Searches for instances by instance name.
+        Searches for instances by instance label.
         :return: a list of Instance objects
         """
         instances = [instance for instance in self.list()
-                     if instance.name == name]
+                     if instance.label == label]
         if limit and len(instances) > limit:
             instances = instances[:limit]
         return instances
