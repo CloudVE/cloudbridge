@@ -261,6 +261,7 @@ class OpenStackStorageService(BaseStorageService):
         self._volume_svc = OpenStackVolumeService(self.provider)
         self._snapshot_svc = OpenStackSnapshotService(self.provider)
         self._bucket_svc = OpenStackBucketService(self.provider)
+        self._bucket_obj_svc = OpenStackBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -273,6 +274,10 @@ class OpenStackStorageService(BaseStorageService):
     @property
     def buckets(self):
         return self._bucket_svc
+
+    @property
+    def bucket_objects(self):
+        return self._bucket_obj_svc
 
 
 class OpenStackVolumeService(BaseVolumeService):

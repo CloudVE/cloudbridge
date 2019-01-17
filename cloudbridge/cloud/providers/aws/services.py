@@ -178,6 +178,7 @@ class AWSStorageService(BaseStorageService):
         self._volume_svc = AWSVolumeService(self.provider)
         self._snapshot_svc = AWSSnapshotService(self.provider)
         self._bucket_svc = AWSBucketService(self.provider)
+        self._bucket_obj_svc = AWSBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -190,6 +191,10 @@ class AWSStorageService(BaseStorageService):
     @property
     def buckets(self):
         return self._bucket_svc
+
+    @property
+    def bucket_objects(self):
+        return self._bucket_obj_svc
 
 
 class AWSVolumeService(BaseVolumeService):

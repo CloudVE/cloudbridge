@@ -205,6 +205,7 @@ class AzureStorageService(BaseStorageService):
         self._volume_svc = AzureVolumeService(self.provider)
         self._snapshot_svc = AzureSnapshotService(self.provider)
         self._bucket_svc = AzureBucketService(self.provider)
+        self._bucket_obj_svc = AzureBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -217,6 +218,10 @@ class AzureStorageService(BaseStorageService):
     @property
     def buckets(self):
         return self._bucket_svc
+
+    @property
+    def bucket_objects(self):
+        return self._bucket_obj_svc
 
 
 class AzureVolumeService(BaseVolumeService):
