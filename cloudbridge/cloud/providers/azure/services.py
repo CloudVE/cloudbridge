@@ -436,7 +436,9 @@ class AzureBucketObjectService(BaseBucketObjectService):
                                      limit=limit, marker=marker)
 
     def find(self, bucket, **kwargs):
-        obj_list = self
+        obj_list = [AzureBucketObject(self.provider, bucket, obj)
+                   for obj in
+                   self.provider.azure_client.list_blobs(bucket.name)]
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self.provider, list(matches))
