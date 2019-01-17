@@ -134,3 +134,30 @@ def gce_kp_to_id(gce_kp):
     md5 = hashlib.md5()
     md5.update(gce_kp.public_key)
     return md5.hexdigest()
+
+
+def modify_or_add_metadata_item(provider, key, value):
+    metadata = _get_common_metadata(provider)
+    entries = [item for item in metadata.get('items', [])
+               if item['key'] == key]
+    if entries:
+        entries[-1]['value'] = value
+    else:
+        entry = {'key': key, 'value': value}
+        if 'items' not in metadata:
+            metadata['items'] = [entry]
+        else:
+            metadata['items'].append(entry)
+    operation = gce_projects(provider).setCommonInstanceMetadata(
+        project=provider.project_name, body=metadata).execute()
+    provider.wait_for_operation(operation)
+
+
+def get_metadata_item_value(provider, key):
+    metadata = _get_common_metadata(provider)
+    entries = [item['value'] for item in metadata.get('items', [])
+               if item['key'] == key]
+    if entries:
+        return entries[-1]
+    else:
+        return None

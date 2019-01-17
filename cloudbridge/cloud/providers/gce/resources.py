@@ -1349,22 +1349,33 @@ class GCENetwork(BaseNetwork):
 
     @property
     def label(self):
-        return self._network.get('description')
+        tag_name = "_".join(["network", self.name, "label"])
+        return helpers.get_metadata_item_value(self._provider, tag_name)
+        ## TODO: Add removing metadata to delete function
 
     @label.setter
-    # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_label(value)
-        body = {'description': value}
-        response = (self._provider
-                    .gce_compute
-                    .networks()
-                    .patch(project=self._provider.project_name,
-                           network=self.name,
-                           body=body)
-                    .execute())
-        self._provider.wait_for_operation(response)
-        self._network['description'] = value
+        tag_name = "_".join(["network", self.name, "label"])
+        helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
+
+    # @property
+    # def label(self):
+    #     return self._network.get('description')
+
+    # @label.setter
+    # # pylint:disable=arguments-differ
+    # def label(self, value):
+    #     self.assert_valid_resource_label(value)
+    #     body = {'description': value}
+    #     response = (self._provider
+    #                 .gce_compute
+    #                 .networks()
+    #                 .patch(project=self._provider.project_name,
+    #                        network=self.name,
+    #                        body=body)
+    #                 .execute())
+    #     self._provider.wait_for_operation(response)
+    #     self._network['description'] = value
 
 #     @property
 #     def label(self):
