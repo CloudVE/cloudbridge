@@ -1024,7 +1024,7 @@ class GCEVolumeService(BaseVolumeService):
         """
         Searches for a volume by a given list of attributes.
         """
-        filtr = 'label.cblabel eq ' + label
+        filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
                         .gce_compute
@@ -1127,11 +1127,11 @@ class GCESnapshotService(BaseSnapshotService):
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
         return GCESnapshot(self.provider, snapshot) if snapshot else None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, label, limit=None, marker=None):
         """
         Searches for a snapshot by a given list of attributes.
         """
-        filtr = 'name eq ' + name
+        filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
                         .gce_compute
@@ -1195,7 +1195,7 @@ class GCESnapshotService(BaseSnapshotService):
             return None
         self.provider.wait_for_operation(operation,
                                          zone=self.provider.default_zone)
-        snapshots = self.provider.storage.snapshots.find(name=name)
+        snapshots = self.provider.storage.snapshots.find(label=label)
         if snapshots:
             return snapshots[0]
         else:
