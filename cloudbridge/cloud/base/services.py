@@ -256,6 +256,32 @@ class BaseBucketObjectService(
     def __init__(self, provider):
         super(BaseBucketObjectService, self).__init__(provider)
         self._service_event_name = "provider.storage.bucket_objects"
+        self._bucket = None
+
+    def set_bucket(self, bucket):
+        bucket = bucket if isinstance(bucket, BaseBucket) \
+                 else self.provider.storage.buckets.get(bucket)
+        self._bucket = bucket
+
+    def __iter__(self):
+        if not self._bucket:
+            message = "You must set a bucket before iterating through its " \
+                      "objects. We do not allow iterating through all " \
+                      "buckets at this time. In order to set a bucket, use: " \
+                      "`provider.storage.bucket_objects.set_bucket(my_bucket)`"
+            raise InvalidConfigurationException(message)
+        result_list = self.list(bucket=self._bucket)
+        if result_list.supports_server_paging:
+            for result in result_list:
+                yield result
+            while result_list.is_truncated:
+                result_list = self.list(bucket=self._bucket,
+                                        marker=result_list.marker)
+                for result in result_list:
+                    yield result
+        else:
+            for result in result_list.data:
+                yield result
 
 
 class BaseComputeService(ComputeService, BaseCloudService):
