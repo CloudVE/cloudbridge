@@ -11,6 +11,7 @@ import requests
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
+from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -40,6 +41,7 @@ from cloudbridge.cloud.interfaces.resources import Volume
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
 from .resources import AWSBucket
+from .resources import AWSBucketObject
 from .resources import AWSInstance
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
@@ -360,6 +362,42 @@ class AWSBucketService(BaseBucketService):
                         'Bucket already exists with name {0}'.format(name))
                 else:
                     raise
+
+
+class AWSBucketObjectService(BaseBucketObjectService):
+
+    def get(self, bucket, object_id):
+        try:
+            # pylint:disable=protected-access
+            obj = bucket._bucket.Object(object_id)
+            # load() throws an error if object does not exist
+            obj.load()
+            return AWSBucketObject(self.provider, obj)
+        except ClientError:
+            return None
+
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        if prefix:
+            # pylint:disable=protected-access
+            boto_objs = bucket._bucket.objects.filter(Prefix=prefix)
+        else:
+            # pylint:disable=protected-access
+            boto_objs = bucket._bucket.objects.all()
+        objects = [AWSBucketObject(self.provider, obj) for obj in boto_objs]
+        return ClientPagedResultList(self.provider, objects,
+                                     limit=limit, marker=marker)
+
+    def find(self, bucket, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    def create(self, bucket, name):
+        # pylint:disable=protected-access
+        obj = bucket._bucket.Object(name)
+        return AWSBucketObject(self.provider, obj)
 
 
 class AWSComputeService(BaseComputeService):
