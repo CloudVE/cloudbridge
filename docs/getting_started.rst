@@ -64,7 +64,7 @@ OpenStack (with Keystone authentication v3):
               'os_user_domain_name': 'domain name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
-    image_id = 'acb53109-941f-4593-9bf8-4a53cb9e0739'  # Ubuntu 16.04 @ Jetstream
+    image_id = '470d2fba-d20b-47b0-a89a-ab725cd09f8b'  # Ubuntu 18.04@Jetstream
 
 Azure:
 
@@ -79,6 +79,18 @@ Azure:
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
     image_id = 'Canonical:UbuntuServer:16.04.0-LTS:latest'  # Ubuntu 16.04
 
+Google Compute Cloud:
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    config = {'gce_project_name': 'project name',
+              'gce_service_creds_file': 'service_file.json',
+              'gce_default_zone': 'us-east1-b',  # Use desired value
+              'gce_region_name': 'us-east1'}  # Use desired value
+    provider = CloudProviderFactory().create_provider(ProviderList.GCE, config)
+    image_id = 'https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-1804-bionic-v20181222'
 
 List some resources
 -------------------
@@ -86,14 +98,14 @@ Once you have a reference to a provider, explore the cloud platform:
 
 .. code-block:: python
 
-    provider.security.firewalls.list()
+    provider.security.vm_firewalls.list()
     provider.compute.vm_types.list()
     provider.storage.snapshots.list()
     provider.storage.buckets.list()
 
 This will demonstrate the fact that the library was properly installed and your
-provider object is setup correctly but it is not very interesting. Therefore,
-let's create a new instance we can ssh into using a key pair.
+provider object is setup correctly. By itself, those commands are not very
+interesting so let's create a new instance we can ssh into using a key pair.
 
 Create a key pair
 -----------------
@@ -104,7 +116,7 @@ on disk as a read-only file.
 
     import os
     kp = provider.security.key_pairs.create('cloudbridge-intro')
-    with open('cloudbridge_intro.pem', 'w') as f:
+    with open('cloudbridge_intro.pem', 'wb') as f:
         f.write(kp.material)
     os.chmod('cloudbridge_intro.pem', 0o400)
 
@@ -117,9 +129,11 @@ attaching an internet gateway to the subnet via a router.
 .. code-block:: python
 
     net = provider.networking.networks.create(cidr_block='10.0.0.0/16',
-                                              label='my-network')
-    sn = net.create_subnet(cidr_block='10.0.0.0/28', label='my-subnet')
-    router = provider.networking.routers.create(network=net, label='my-router')
+                                              label='cb-network')
+    zone = provider.compute.regions.get(provider.region_name).zones[0]
+    sn = net.create_subnet(
+        cidr_block='10.0.0.0/28', label='cb-subnet', zone=zone)
+    router = provider.networking.routers.create(network=net, label='cb-router')
     router.attach_subnet(sn)
     gateway = net.gateways.get_or_create_inet_gateway()
     router.attach_gateway(gateway)
@@ -136,7 +150,7 @@ a private network.
     from cloudbridge.cloud.interfaces.resources import TrafficDirection
     fw = provider.security.vm_firewalls.create(
         label='cloudbridge-intro', description='A VM firewall used by
-        CloudBridge', network_id=net.id)
+        CloudBridge', network=net)
     fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
 Launch an instance
@@ -148,7 +162,6 @@ also add the network interface as a launch argument.
 .. code-block:: python
 
     img = provider.compute.images.get(image_id)
-    zone = provider.compute.regions.get(provider.region_name).zones[0]
     vm_type = sorted([t for t in provider.compute.vm_types
                       if t.vcpus >= 2 and t.ram >= 4],
                       key=lambda x: x.vcpus*x.ram)[0]

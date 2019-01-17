@@ -218,7 +218,7 @@ class GCEKeyPairService(BaseKeyPairService):
         private_key = None
         if not public_key_material:
             private_key, public_key_material = helpers.generate_key_pair()
-        parts = public_key_material.split(' ')
+        parts = public_key_material.split(b' ')
         if len(parts) == 2:
             public_key_material = parts[1]
         kp_info = GCEKeyPairService.GCEKeyInfo(
