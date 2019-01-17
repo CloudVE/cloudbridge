@@ -11,7 +11,7 @@ import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList, \
     ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService, \
-    BaseComputeService, \
+    BaseBucketObjectService, BaseComputeService, \
     BaseImageService, BaseInstanceService, BaseKeyPairService, \
     BaseNetworkService, BaseNetworkingService, BaseRegionService, \
     BaseRouterService, BaseSecurityService, BaseSnapshotService, \
@@ -22,7 +22,7 @@ from cloudbridge.cloud.interfaces.exceptions import \
 from cloudbridge.cloud.interfaces.resources import MachineImage, \
     Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
 
-from .resources import AzureBucket, \
+from .resources import AzureBucket, AzureBucketObject, \
     AzureInstance, AzureKeyPair, \
     AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
     AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \
@@ -403,6 +403,48 @@ class AzureBucketService(BaseBucketService):
         """
         bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
+
+
+class AzureBucketObjectService(BaseBucketObjectService):
+    def __init__(self, provider):
+        super(AzureBucketObjectService, self).__init__(provider)
+
+    def get(self, bucket, object_id):
+        """
+        Retrieve a given object from this bucket.
+        """
+        try:
+            obj = self.provider.azure_client.get_blob(bucket.name,
+                                                      object_id)
+            return AzureBucketObject(self.provider, bucket, obj)
+        except AzureException as azureEx:
+            log.exception(azureEx)
+            return None
+
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+
+        :rtype: BucketObject
+        :return: List of all available BucketObjects within this bucket.
+        """
+        objects = [AzureBucketObject(self.provider, bucket, obj)
+                   for obj in
+                   self.provider.azure_client.list_blobs(
+                       bucket.name, prefix=prefix)]
+        return ClientPagedResultList(self.provider, objects,
+                                     limit=limit, marker=marker)
+
+    def find(self, bucket, **kwargs):
+        obj_list = self
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self.provider, list(matches))
+
+    def create(self, bucket, name):
+        self.provider.azure_client.create_blob_from_text(
+            bucket.name, name, '')
+        return self.get(name)
 
 
 class AzureComputeService(BaseComputeService):
