@@ -113,7 +113,7 @@ class GCEKeyPairService(BaseKeyPairService):
             elems = key.split(" ")
             if elems and elems[0]:  # ignore blank lines
                 yield GCEKeyPairService.GCEKeyInfo(
-                        elems[0], elems[1].encode('ascii'), elems[2])
+                        elems[0], elems[1], elems[2])
 
     def update_kps_in_metadata(self, provider, callback):
         def _process_kps_from_metadata(metadata):
@@ -136,7 +136,7 @@ class GCEKeyPairService(BaseKeyPairService):
         ID for it
         """
         md5 = hashlib.md5()
-        md5.update(gce_kp.public_key)
+        md5.update(gce_kp.public_key.encode())
         return md5.hexdigest()
 
     def get(self, key_pair_id):
@@ -186,7 +186,7 @@ class GCEKeyPairService(BaseKeyPairService):
         private_key = None
         if not public_key_material:
             private_key, public_key_material = helpers.generate_key_pair()
-        parts = public_key_material.split(b' ')
+        parts = public_key_material.split(' ')
         if len(parts) == 2:
             public_key_material = parts[1]
         kp_info = GCEKeyPairService.GCEKeyInfo(

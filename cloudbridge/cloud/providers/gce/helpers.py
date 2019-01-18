@@ -3,7 +3,9 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from retrying import retry
+from googleapiclient.errors import HttpError
+
+import tenacity
 
 
 def gce_projects(provider):
@@ -22,7 +24,7 @@ def generate_key_pair():
     public_key = key_pair.public_key().public_bytes(
         crypt_serialization.Encoding.OpenSSH,
         crypt_serialization.PublicFormat.OpenSSH)
-    return private_key, public_key
+    return private_key.decode(), public_key.decode()
 
 
 def iter_all(resource, **kwargs):
@@ -45,6 +47,21 @@ def get_common_metadata(provider):
     return metadata["commonInstanceMetadata"]
 
 
+def __if_fingerprint_differs(e):
+    # return True if the CloudError exception is due to subnet being in use
+    if isinstance(e, HttpError):
+        expected_message = 'Supplied fingerprint does not match current ' \
+                           'metadata fingerprint.'
+        # str wrapper required for Python 2.7
+        if expected_message in str(e.content):
+            return True
+    return False
+
+
+@tenacity.retry(stop=tenacity.stop_after_attempt(10),
+                retry=tenacity.retry_if_exception(__if_fingerprint_differs),
+                wait=tenacity.wait_exponential(max=10),
+                reraise=True)
 def gce_metadata_save_op(provider, callback):
     """
     Carries out a metadata save operation. In GCE, a fingerprint based
@@ -65,8 +82,7 @@ def gce_metadata_save_op(provider, callback):
         provider.wait_for_operation(operation)
 
     # Retry a few times if the fingerprints conflict
-    retry_decorator = retry(stop_max_attempt_number=5)
-    retry_decorator(_save_common_metadata)(provider)
+    _save_common_metadata(provider)
 
 
 def modify_or_add_metadata_item(provider, key, value):
