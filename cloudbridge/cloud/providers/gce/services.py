@@ -463,7 +463,8 @@ class GCEInstanceService(BaseInstanceService):
             'name': GCEInstance._generate_name_from_label(label, 'cb-inst'),
             'machineType': vm_type.resource_url,
             'disks': disks,
-            'networkInterfaces': [network_interface]
+            'networkInterfaces': [network_interface],
+            'labels': {'cblabel': label.replace(' ', '_').lower()}
         }
 
         if vm_firewalls and isinstance(vm_firewalls, list):
@@ -490,9 +491,7 @@ class GCEInstanceService(BaseInstanceService):
             return None
         instance_id = operation.get('targetLink')
         self.provider.wait_for_operation(operation, zone=zone_name)
-        instance = self.get(instance_id)
-        instance.label = label
-        return instance
+        return self.get(instance_id)
 
     def get(self, instance_id):
         """
