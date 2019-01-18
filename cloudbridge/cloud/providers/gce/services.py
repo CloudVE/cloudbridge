@@ -1,9 +1,10 @@
+import hashlib
 import logging
 import time
 import uuid
+from collections import namedtuple
 
 import googleapiclient
-
 
 import cloudbridge as cb
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -68,8 +69,75 @@ class GCESecurityService(BaseSecurityService):
 
 class GCEKeyPairService(BaseKeyPairService):
 
+    GCEKeyInfo = namedtuple('GCEKeyInfo', 'format public_key email')
+
     def __init__(self, provider):
         super(GCEKeyPairService, self).__init__(provider)
+
+    def _iter_gce_key_pairs(self, provider):
+        """
+        Iterates through the project's metadata, yielding a GCEKeyInfo object
+        for each entry in commonInstanceMetaData/items
+        """
+        metadata = helpers.get_common_metadata(provider)
+        for kpinfo in self._iter_gce_ssh_keys(metadata):
+            yield kpinfo
+
+    def _get_or_add_sshkey_entry(self, metadata):
+        """
+        Get the ssh-keys entry from commonInstanceMetadata/items.
+        If an entry does not exist, adds a new empty entry
+        """
+        sshkey_entry = None
+        entries = [item for item in metadata.get('items', [])
+                   if item['key'] == 'ssh-keys']
+        if entries:
+            sshkey_entry = entries[0]
+        else:  # add a new entry
+            sshkey_entry = {'key': 'ssh-keys', 'value': ''}
+            if 'items' not in metadata:
+                metadata['items'] = [sshkey_entry]
+            else:
+                metadata['items'].append(sshkey_entry)
+        return sshkey_entry
+
+    def _iter_gce_ssh_keys(self, metadata):
+        """
+        Iterates through the ssh keys given a commonInstanceMetadata dict,
+        yielding a GCEKeyInfo object for each entry in
+        commonInstanceMetaData/items
+        """
+        sshkeys = self._get_or_add_sshkey_entry(metadata)["value"]
+        for key in sshkeys.split("\n"):
+            # elems should be "ssh-rsa <public_key> <email>"
+            elems = key.split(" ")
+            if elems and elems[0]:  # ignore blank lines
+                yield GCEKeyPairService.GCEKeyInfo(
+                        elems[0], elems[1].encode('ascii'), elems[2])
+
+    def update_kps_in_metadata(self, provider, callback):
+        def _process_kps_from_metadata(metadata):
+            # add a new entry if one doesn't exist
+            sshkey_entry = self._get_or_add_sshkey_entry(metadata)
+            gce_kp_list = callback(self._iter_gce_ssh_keys(metadata))
+
+            entry = ""
+            for gce_kp in gce_kp_list:
+                entry = entry + u"{0} {1} {2}\n".format(gce_kp.format,
+                                                        gce_kp.public_key,
+                                                        gce_kp.email)
+            sshkey_entry["value"] = entry.rstrip()
+
+        helpers.gce_metadata_save_op(provider, _process_kps_from_metadata)
+
+    def gce_kp_to_id(self, gce_kp):
+        """
+        Accept a GCEKeyInfo object and return a unique
+        ID for it
+        """
+        md5 = hashlib.md5()
+        md5.update(gce_kp.public_key)
+        return md5.hexdigest()
 
     def get(self, key_pair_id):
         """
@@ -83,8 +151,8 @@ class GCEKeyPairService(BaseKeyPairService):
 
     def list(self, limit=None, marker=None):
         key_pairs = []
-        for gce_kp in helpers._iter_gce_key_pairs(self.provider):
-            kp_id = helpers.gce_kp_to_id(gce_kp)
+        for gce_kp in self._iter_gce_key_pairs(self.provider):
+            kp_id = self.gce_kp_to_id(gce_kp)
             key_pairs.append(GCEKeyPair(self.provider, kp_id, gce_kp.email))
         return ClientPagedResultList(self.provider, key_pairs,
                                      limit=limit, marker=marker)
@@ -121,7 +189,7 @@ class GCEKeyPairService(BaseKeyPairService):
         parts = public_key_material.split(b' ')
         if len(parts) == 2:
             public_key_material = parts[1]
-        kp_info = helpers.GCEKeyInfo(
+        kp_info = GCEKeyPairService.GCEKeyInfo(
             '%s:ssh-rsa' % name, public_key_material, name)
 
         def _add_kp(gce_kp_generator):
@@ -132,8 +200,8 @@ class GCEKeyPairService(BaseKeyPairService):
                 kp_list.append(gce_kp)
             return kp_list
 
-        helpers.gce_metadata_save_op(self.provider, _add_kp)
-        return GCEKeyPair(self.provider, helpers.gce_kp_to_id(kp_info), name,
+        self.update_kps_in_metadata(self.provider, _add_kp)
+        return GCEKeyPair(self.provider, self.gce_kp_to_id(kp_info), name,
                           private_key)
 
     def delete(self, key_pair_id):
@@ -141,13 +209,13 @@ class GCEKeyPairService(BaseKeyPairService):
         def _delete_key(gce_kp_generator):
             kp_list = []
             for gce_kp in gce_kp_generator:
-                if helpers.gce_kp_to_id(gce_kp) == key_pair_id:
+                if self.gce_kp_to_id(gce_kp) == key_pair_id:
                     continue
                 else:
                     kp_list.append(gce_kp)
             return kp_list
 
-        helpers.gce_metadata_save_op(self.provider, _delete_key)
+        self.update_kps_in_metadata(self.provider, _delete_key)
 
 
 class GCEVMFirewallService(BaseVMFirewallService):

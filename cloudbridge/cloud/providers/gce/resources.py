@@ -1351,7 +1351,7 @@ class GCENetwork(BaseNetwork):
     def label(self):
         tag_name = "_".join(["network", self.name, "label"])
         return helpers.get_metadata_item_value(self._provider, tag_name)
-        ## TODO: Add removing metadata to delete function
+        # TODO: Add removing metadata to delete function
 
     @label.setter
     def label(self, value):
