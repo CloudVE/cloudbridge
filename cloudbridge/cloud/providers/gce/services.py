@@ -715,9 +715,7 @@ class GCENetworkService(BaseNetworkService):
                            GCENetwork.DEFAULT_IPV4RANGE)
             cidr_block = None
         name = GCENetwork._generate_name_from_label(label, 'cbnet')
-        body = {'name': name,
-                'labels': {'name': label}
-                }
+        body = {'name': name}
         if cidr_block:
             body['IPv4Range'] = cidr_block
         else:
@@ -732,8 +730,13 @@ class GCENetworkService(BaseNetworkService):
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response)
-            networks = self.list(filter='name eq %s' % name)
-            return None if len(networks) == 0 else networks[0]
+            gce_net = (self.provider
+                       .gce_compute
+                       .networks()
+                       .get(project=self.provider.project_name,
+                            network=name)
+                       .execute())
+            return gce_net
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
@@ -744,7 +747,10 @@ class GCENetworkService(BaseNetworkService):
         to add additional subnets later.
         """
         GCENetwork.assert_valid_resource_label(label)
-        return self._create(label, cidr_block, False)
+        gce_net = self._create(label, cidr_block, False)
+        cb_net = GCENetwork(self.provider, gce_net)
+        cb_net.label = label
+        return cb_net
 
     def get_or_create_default(self):
         return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, None, True)
