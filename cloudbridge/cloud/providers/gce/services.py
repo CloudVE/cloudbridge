@@ -7,6 +7,7 @@ from collections import namedtuple
 import googleapiclient
 
 import cloudbridge as cb
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
@@ -667,13 +668,15 @@ class GCENetworkService(BaseNetworkService):
         network = self.provider.get_resource('networks', network_id)
         return GCENetwork(self.provider, network) if network else None
 
-    def find(self, name, limit=None, marker=None):
+    def find(self, limit=None, marker=None, **kwargs):
         """
         GCE networks are global. There is at most one network with a given
         name.
         """
-        network = self.get(name)
-        return [network] if network else []
+        obj_list = self
+        filters = ['name', 'label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def get_by_name(self, network_name):
         if network_name is None:
