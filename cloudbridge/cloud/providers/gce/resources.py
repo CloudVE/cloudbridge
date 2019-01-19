@@ -1351,7 +1351,6 @@ class GCENetwork(BaseNetwork):
     def label(self):
         tag_name = "_".join(["network", self.name, "label"])
         return helpers.get_metadata_item_value(self._provider, tag_name)
-        # TODO: Add removing metadata to delete function
 
     @label.setter
     def label(self, value):
@@ -1434,20 +1433,7 @@ class GCENetwork(BaseNetwork):
         return list(self._provider.networking.subnets.iter(network=self))
 
     def delete(self):
-        try:
-            response = (self._provider
-                            .gce_compute
-                            .networks()
-                            .delete(project=self._provider.project_name,
-                                    network=self.name)
-                            .execute())
-            if 'error' in response:
-                return False
-            self._provider.wait_for_operation(response)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return False
-        return True
+        self._provider.networking.networks.delete(self)
 
     def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(

@@ -7,6 +7,8 @@ from googleapiclient.errors import HttpError
 
 import tenacity
 
+from cloudbridge.cloud.interfaces.exceptions import ProviderInternalException
+
 
 def gce_projects(provider):
     return provider.gce_compute.projects()
@@ -109,3 +111,29 @@ def get_metadata_item_value(provider, key):
         return entries[-1]
     else:
         return None
+
+
+def remove_metadata_item(provider, key):
+    def _remove_metadata_by_key(metadata):
+        items = metadata.get('items', [])
+        # No metadata to delete
+        if not items:
+            return False
+        else:
+            entries = [item for item in metadata.get('items', [])
+                       if item['key'] != key]
+
+            # Make sure only one entry is deleted
+            if len(entries) < len(items) - 1:
+                raise ProviderInternalException("Multiple metadata entries "
+                                                "found for the same key {}"
+                                                .format(key))
+            # If none is deleted indicate so by returning False
+            elif len(entries) == len(items):
+                return False
+
+            else:
+                metadata['items'] = entries
+
+    gce_metadata_save_op(provider, _remove_metadata_by_key)
+    return True

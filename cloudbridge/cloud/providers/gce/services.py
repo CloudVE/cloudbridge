@@ -679,12 +679,16 @@ class GCENetworkService(BaseNetworkService):
         return ClientPagedResultList(self._provider, list(matches))
 
     def get_by_name(self, network_name):
-        if network_name is None:
+        # Get already works with name
+        # TODO: Decide if we neet to keep this function altogether/add it
+        # everywhere?
+        if network_name:
+            return self.get(network_name)
+        else:
             return None
-        networks = self.list(filter='name eq %s' % network_name)
-        return None if len(networks) == 0 else networks[0]
 
     def list(self, limit=None, marker=None, filter=None):
+        # TODO: Decide whether we keep filter in 'list'
         networks = []
         try:
             response = (self.provider
@@ -757,6 +761,35 @@ class GCENetworkService(BaseNetworkService):
 
     def get_or_create_default(self):
         return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, None, True)
+
+    def delete(self, network):
+        # Accepts network object
+        if isinstance(network, GCENetwork):
+            name = network.name
+        # Accepts both name and ID
+        elif 'googleapis' in network:
+            name = network.split('/')[-1]
+        else:
+            name = network
+        try:
+            response = (self.provider
+                            .gce_compute
+                            .networks()
+                            .delete(project=self.provider.project_name,
+                                    network=name)
+                            .execute())
+            if 'error' in response:
+                return False
+            self.provider.wait_for_operation(response)
+            # Remove label
+            tag_name = "_".join(["network", name, "label"])
+            if not helpers.remove_metadata_item(self.provider, tag_name):
+                log.warning('No label was found associated with this network '
+                            '"{}" when deleted.'.format(network.name))
+        except googleapiclient.errors.HttpError as http_error:
+            log.warning('googleapiclient.errors.HttpError: %s', http_error)
+            return False
+        return True
 
 
 class GCERouterService(BaseRouterService):
