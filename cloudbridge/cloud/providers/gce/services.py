@@ -252,6 +252,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
         fw.rules.create_with_priority(
                 direction=TrafficDirection.OUTBOUND, protocol='tcp',
                 priority=65534, cidr='0.0.0.0/0')
+        fw.label = label
         return fw
 
     def find(self, name, limit=None, marker=None):
@@ -737,13 +738,7 @@ class GCENetworkService(BaseNetworkService):
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response)
-            gce_net = (self.provider
-                       .gce_compute
-                       .networks()
-                       .get(project=self.provider.project_name,
-                            network=name)
-                       .execute())
-            return gce_net
+            return self.get(name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
@@ -754,8 +749,7 @@ class GCENetworkService(BaseNetworkService):
         to add additional subnets later.
         """
         GCENetwork.assert_valid_resource_label(label)
-        gce_net = self._create(label, cidr_block, False)
-        cb_net = GCENetwork(self.provider, gce_net)
+        cb_net = self._create(label, cidr_block, False)
         cb_net.label = label
         return cb_net
 

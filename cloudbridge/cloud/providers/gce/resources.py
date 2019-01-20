@@ -470,6 +470,17 @@ class GCEVMFirewall(BaseVMFirewall):
         return self._vm_firewall
 
     @property
+    def label(self):
+        tag_name = "_".join(["firewall", self.name, "label"])
+        return helpers.get_metadata_item_value(self._provider, tag_name)
+        # TODO: Add removing metadata to delete function
+
+    @label.setter
+    def label(self, value):
+        tag_name = "_".join(["firewall", self.name, "label"])
+        helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
+
+    @property
     def description(self):
         """
         The description of the VM firewall is even explicitly given when the
