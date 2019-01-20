@@ -477,6 +477,7 @@ class GCEVMFirewall(BaseVMFirewall):
 
     @label.setter
     def label(self, value):
+        self.assert_valid_resource_label(value)
         tag_name = "_".join(["firewall", self.name, "label"])
         helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
 
@@ -1059,7 +1060,8 @@ class GCEInstance(BaseInstance):
         key in metadata.
         """
         try:
-            return next(iter(self._provider.security.key_pairs))
+            kp = next(iter(self._provider.security.key_pairs))
+            return kp.id if kp else None
         except StopIteration:
             return None
 
@@ -1365,6 +1367,7 @@ class GCENetwork(BaseNetwork):
 
     @label.setter
     def label(self, value):
+        self.assert_valid_resource_label(value)
         tag_name = "_".join(["network", self.name, "label"])
         helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
 
@@ -1785,30 +1788,14 @@ class GCESubnet(BaseSubnet):
 
     @property
     def label(self):
-        return self._subnet.get('description')
+        tag_name = "_".join(["subnet", self.name, "label"])
+        return helpers.get_metadata_item_value(self._provider, tag_name)
 
     @label.setter
     def label(self, value):
         self.assert_valid_resource_label(value)
-        request_body = {
-            'description': value.replace(' ', '_').lower(),
-            'fingerprint': self._subnet.get('fingerprint')
-        }
-        try:
-            (self._provider
-                 .gce_compute
-                 .subnetworks()
-                 .patch(project=self._provider.project_name,
-                        region=self.region_name,
-                        subnetwork=self.name,
-                        body=request_body)
-                 .execute())
-        except Exception as e:
-            cb.log.warning('Exception while setting subnet label: %s. '
-                           'Check for invalid characters in label. '
-                           'Should conform to RFC1035.', e)
-            raise e
-        self.refresh()
+        tag_name = "_".join(["subnet", self.name, "label"])
+        helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
 
     @property
     def cidr_block(self):
