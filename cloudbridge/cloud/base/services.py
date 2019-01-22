@@ -80,6 +80,20 @@ class BaseVMFirewallService(
     def __init__(self, provider):
         super(BaseVMFirewallService, self).__init__(provider)
 
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
 
 class BaseStorageService(StorageService, BaseCloudService):
 

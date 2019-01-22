@@ -1221,6 +1221,11 @@ class OpenStackVMFirewall(BaseVMFirewall):
         net_id = self._description\
                      .split(" [{}".format(self._network_id_tag))[-1]\
                      .split(']')[0]
+        # We generally mandate a network to be associated with a firewall,
+        # however because of some networking specificity in Nectar, we must
+        # allow None value as well, which will parse here as an empty string
+        if not net_id:
+            return None
         return net_id
 
     @property
