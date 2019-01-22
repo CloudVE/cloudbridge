@@ -41,7 +41,7 @@ REQS_AZURE = ['msrest>=0.5.4,<0.6',
               'azure-storage-blob==1.3.1',
               'azure-cosmosdb-table==1.0.4',
               'pysftp==0.2.9']
-REQS_GCP = ['google-api-python-client', 'oauth2client', 'retrying']
+REQS_GCP = ['google-api-python-client', 'oauth2client']
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0,<=0.17',
     'python-novaclient>=7.0.0,<=11.0',

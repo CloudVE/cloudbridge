@@ -470,6 +470,18 @@ class GCEVMFirewall(BaseVMFirewall):
         return self._vm_firewall
 
     @property
+    def label(self):
+        tag_name = "_".join(["firewall", self.name, "label"])
+        return helpers.get_metadata_item_value(self._provider, tag_name)
+        # TODO: Add removing metadata to delete function
+
+    @label.setter
+    def label(self, value):
+        self.assert_valid_resource_label(value)
+        tag_name = "_".join(["firewall", self.name, "label"])
+        helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
+
+    @property
     def description(self):
         """
         The description of the VM firewall is even explicitly given when the
@@ -797,10 +809,13 @@ class GCEMachineImage(BaseMachineImage):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        name = self.name
-        self._gce_image = self._provider.get_resource('images', self.id)
-        if not self._gce_image:
-            self._gce_image = {'name': name, 'status': 'UNKNOWN'}
+        image = self._provider.compute.images.get(self.id)
+        if image:
+            # pylint:disable=protected-access
+            self._gce_image = image._gce_image
+        else:
+            # image no longer exists
+            self._gce_image['status'] = MachineImageState.UNKNOWN
 
 
 class GCEInstance(BaseInstance):
@@ -1048,9 +1063,52 @@ class GCEInstance(BaseInstance):
         key in metadata.
         """
         try:
-            return next(iter(self._provider.security.key_pairs))
+            kp = next(iter(self._provider.security.key_pairs))
+            return kp.id if kp else None
         except StopIteration:
             return None
+
+    @key_pair_id.setter
+    # pylint:disable=arguments-differ
+    def key_pair_id(self, value):
+        self.assert_valid_resource_label(value)
+        key_pair = None
+        if not isinstance(value, GCEKeyPair):
+            key_pair = self._provider.security.key_pairs.get(value)
+        if key_pair:
+            key_pair_name = key_pair.name
+        kp = None
+        for kpi in self._provider.security.key_pairs._iter_gce_key_pairs(
+                self._provider):
+            if kpi.email == key_pair_name:
+                kp = kpi
+                break
+        if kp:
+            kp_items = [{
+                "key": "ssh-keys",
+                # FIXME: ssh username & key format are fixed here while they
+                # should correspond to the operating system, or be customizable
+                "value": "ubuntu:ssh-rsa {0} {1}".format(kp.public_key,
+                                                         kp.email)
+            }]
+            config = {
+                "items": kp_items,
+                "fingerprint": self._gce_instance['metadata']['fingerprint']
+            }
+            try:
+                (self._provider
+                    .gce_compute
+                    .instances()
+                    .setMetadata(project=self._provider.project_name,
+                                 zone=self._provider.default_zone,
+                                 instance=self.name,
+                                 body=config)
+                    .execute())
+            except Exception as e:
+                cb.log.warning('Exception while setting instance key pair: %s',
+                               e)
+                raise e
+            self.refresh()
 
     @property
     def inet_gateway(self):
@@ -1293,10 +1351,13 @@ class GCEInstance(BaseInstance):
         Refreshes the state of this instance by re-querying the cloud provider
         for its latest state.
         """
-        name = self.name
-        self._gce_instance = self._provider.get_resource('instances', self.id)
-        if not self._gce_instance:
-            self._gce_instance = {'name': name, 'status': 'UNKNOWN'}
+        inst = self._provider.compute.instances.get(self.id)
+        if inst:
+            # pylint:disable=protected-access
+            self._gce_instance = inst._gce_instance
+        else:
+            # instance no longer exists
+            self._gce_instance['status'] = InstanceState.UNKNOWN
 
     def add_vm_firewall(self, sg):
         tag = sg.name if isinstance(sg, GCEVMFirewall) else sg
@@ -1354,6 +1415,7 @@ class GCENetwork(BaseNetwork):
 
     @label.setter
     def label(self, value):
+        self.assert_valid_resource_label(value)
         tag_name = "_".join(["network", self.name, "label"])
         helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
 
@@ -1440,9 +1502,13 @@ class GCENetwork(BaseNetwork):
             label, self, cidr_block, zone)
 
     def refresh(self):
-        self._network = self._provider.get_resource('networks', self.id)
-        if not self._network:
-            self._network = {'status': 'UNKNOWN'}
+        net = self._provider.networking.networks.get(self.id)
+        if net:
+            # pylint:disable=protected-access
+            self._network = net._network
+        else:
+            # network no longer exists
+            self._network['status'] = NetworkState.UNKNOWN
 
     @property
     def gateways(self):
@@ -1456,7 +1522,8 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
 
     def get(self, floating_ip_id):
         fip = self._provider.get_resource('addresses', floating_ip_id)
-        return GCEFloatingIP(self._provider, fip) if fip else None
+        return (GCEFloatingIP(self._provider, self.gateway, fip)
+                if fip else None)
 
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
@@ -1469,7 +1536,7 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
                                   maxResults=max_result,
                                   pageToken=marker)
                             .execute())
-            ips = [GCEFloatingIP(self._provider, ip)
+            ips = [GCEFloatingIP(self._provider, self.gateway, ip)
                    for ip in response.get('items', [])]
             if len(ips) > max_result:
                 cb.log.warning('Expected at most %d results; got %d',
@@ -1504,8 +1571,9 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
 class GCEFloatingIP(BaseFloatingIP):
     _DEAD_INSTANCE = 'dead instance'
 
-    def __init__(self, provider, floating_ip):
+    def __init__(self, provider, gateway, floating_ip):
         super(GCEFloatingIP, self).__init__(provider)
+        self._gateway = gateway
         self._ip = floating_ip
         self._process_ip_users()
 
@@ -1561,11 +1629,10 @@ class GCEFloatingIP(BaseFloatingIP):
         self._provider.wait_for_operation(response, region=self.region_name)
 
     def refresh(self):
-        self._ip = self._provider.get_resource('addresses', self.id)
-        if not self._ip:
-            self._ip = {'status': 'UNKNOWN'}
-        else:
-            self._process_ip_users()
+        fip = self.gateway.floating_ips.get(self.id)
+        # pylint:disable=protected-access
+        self._ip = fip._ip
+        self._process_ip_users()
 
     def _process_ip_users(self):
         self._rule = None
@@ -1642,9 +1709,13 @@ class GCERouter(BaseRouter):
         return parsed_url.parameters['region']
 
     def refresh(self):
-        self._router = self._provider.get_resource('routers', self.id)
-        if not self._router:
-            self._router = {'status': 'UNKNOWN'}
+        router = self._provider.networking.routers.get(self.id)
+        if router:
+            # pylint:disable=protected-access
+            self._router = router._router
+        else:
+            # router no longer exists
+            self._router['status'] = RouterState.UNKNOWN
 
     @property
     def state(self):
@@ -1774,30 +1845,14 @@ class GCESubnet(BaseSubnet):
 
     @property
     def label(self):
-        return self._subnet.get('description')
+        tag_name = "_".join(["subnet", self.name, "label"])
+        return helpers.get_metadata_item_value(self._provider, tag_name)
 
     @label.setter
     def label(self, value):
         self.assert_valid_resource_label(value)
-        request_body = {
-            'description': value.replace(' ', '_').lower(),
-            'fingerprint': self._subnet.get('fingerprint')
-        }
-        try:
-            (self._provider
-                 .gce_compute
-                 .subnetworks()
-                 .patch(project=self._provider.project_name,
-                        region=self.region_name,
-                        subnetwork=self.name,
-                        body=request_body)
-                 .execute())
-        except Exception as e:
-            cb.log.warning('Exception while setting subnet label: %s. '
-                           'Check for invalid characters in label. '
-                           'Should conform to RFC1035.', e)
-            raise e
-        self.refresh()
+        tag_name = "_".join(["subnet", self.name, "label"])
+        helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
 
     @property
     def cidr_block(self):
@@ -1834,9 +1889,13 @@ class GCESubnet(BaseSubnet):
         return SubnetState.AVAILABLE
 
     def refresh(self):
-        self._subnet = self._provider.get_resource('subnetworks', self.id)
-        if not self._subnet:
-            self._subnet = {'status': 'UNKNOWN'}
+        subnet = self._provider.networking.subnets.get(self.id)
+        if subnet:
+            # pylint:disable=protected-access
+            self._subnet = subnet._subnet
+        else:
+            # subnet no longer exists
+            self._subnet['status'] = SubnetState.UNKNOWN
 
 
 class GCEVolume(BaseVolume):
@@ -2048,9 +2107,13 @@ class GCEVolume(BaseVolume):
         Refreshes the state of this volume by re-querying the cloud provider
         for its latest state.
         """
-        self._volume = self._provider.get_resource('disks', self.id)
-        if not self._volume:
-            self._volume = {'status': 'UNKNOWN'}
+        vol = self._provider.storage.volumes.get(self.id)
+        if vol:
+            # pylint:disable=protected-access
+            self._volume = vol._volume
+        else:
+            # volume no longer exists
+            self._volume['status'] = VolumeState.UNKNOWN
 
 
 class GCESnapshot(BaseSnapshot):
@@ -2153,9 +2216,13 @@ class GCESnapshot(BaseSnapshot):
         Refreshes the state of this snapshot by re-querying the cloud provider
         for its latest state.
         """
-        self._snapshot = self._provider.get_resource('snapshots', self.id)
-        if not self._snapshot:
-            self._snapshot = {'status': 'UNKNOWN'}
+        snap = self._provider.storage.snapshots.get(self.id)
+        if snap:
+            # pylint:disable=protected-access
+            self._snapshot = snap._snapshot
+        else:
+            # snapshot no longer exists
+            self._snapshot['status'] = SnapshotState.UNKNOWN
 
     def delete(self):
         """
@@ -2284,6 +2351,7 @@ class GCSObject(BaseBucketObject):
                                               url_encoded_signature))
 
     def refresh(self):
+        # pylint:disable=protected-access
         self._obj = self.bucket.objects.get(self.id)._obj
 
 

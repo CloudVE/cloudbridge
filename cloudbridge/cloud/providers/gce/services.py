@@ -252,6 +252,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
         fw.rules.create_with_priority(
                 direction=TrafficDirection.OUTBOUND, protocol='tcp',
                 priority=65534, cidr='0.0.0.0/0')
+        fw.label = label
         return fw
 
     def find(self, name, limit=None, marker=None):
@@ -532,8 +533,7 @@ class GCEInstanceService(BaseInstanceService):
             'name': GCEInstance._generate_name_from_label(label, 'cb-inst'),
             'machineType': vm_type.resource_url,
             'disks': disks,
-            'networkInterfaces': [network_interface],
-            'labels': {'cblabel': label.replace(' ', '_').lower()}
+            'networkInterfaces': [network_interface]
         }
 
         if vm_firewalls and isinstance(vm_firewalls, list):
@@ -560,7 +560,11 @@ class GCEInstanceService(BaseInstanceService):
             return None
         instance_id = operation.get('targetLink')
         self.provider.wait_for_operation(operation, zone=zone_name)
-        return self.get(instance_id)
+        cb_inst = self.get(instance_id)
+        cb_inst.label = label
+        if key_pair:
+            cb_inst.key_pair_id = key_pair
+        return cb_inst
 
     def get(self, instance_id):
         """
@@ -714,6 +718,7 @@ class GCENetworkService(BaseNetworkService):
         False: For creating a custom mode VPC network. Subnetworks should be
                created manually.
         """
+        GCENetwork.assert_valid_resource_label(label)
         if create_subnetworks is not None and cidr_block is not None:
             cb.log.warning('cidr_block is ignored in non-legacy networks. '
                            'Auto mode networks use the default CIDR of '
@@ -737,13 +742,7 @@ class GCENetworkService(BaseNetworkService):
             if 'error' in response:
                 return None
             self.provider.wait_for_operation(response)
-            gce_net = (self.provider
-                       .gce_compute
-                       .networks()
-                       .get(project=self.provider.project_name,
-                            network=name)
-                       .execute())
-            return gce_net
+            return self.get(name)
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
@@ -753,9 +752,7 @@ class GCENetworkService(BaseNetworkService):
         Creates an auto mode VPC network with default subnets. It is possible
         to add additional subnets later.
         """
-        GCENetwork.assert_valid_resource_label(label)
-        gce_net = self._create(label, cidr_block, False)
-        cb_net = GCENetwork(self.provider, gce_net)
+        cb_net = self._create(label, cidr_block, False)
         cb_net.label = label
         return cb_net
 
@@ -800,14 +797,11 @@ class GCERouterService(BaseRouterService):
     def get(self, router_id):
         return self._get_in_region(router_id)
 
-    def find(self, name, limit=None, marker=None):
-        routers = []
-        for region in self.provider.compute.regions.list():
-            router = self._get_in_region(name, region.name)
-            if router:
-                routers.append(router)
-        return ClientPagedResultList(self.provider, routers, limit=limit,
-                                     marker=marker)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['name', 'label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     def list(self, limit=None, marker=None):
         region = self.provider.region_name
@@ -947,8 +941,7 @@ class GCESubnetService(BaseSubnetService):
         body = {'ipCidrRange': cidr_block,
                 'name': name,
                 'network': network.resource_url,
-                'region': region_name,
-                'labels': {'cblabel': label.replace(' ', '_').lower()}
+                'region': region_name
                 }
         try:
             response = (self.provider
@@ -963,7 +956,9 @@ class GCESubnetService(BaseSubnetService):
                                response['error'])
                 return None
             self.provider.wait_for_operation(response, region=region_name)
-            return self.get(name)
+            cb_subnet = self.get(name)
+            cb_subnet.label = label
+            return cb_subnet
         except googleapiclient.errors.HttpError as http_error:
             cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
             return None
@@ -1126,7 +1121,6 @@ class GCEVolumeService(BaseVolumeService):
             'type': 'zones/{0}/diskTypes/{1}'.format(zone_name, 'pd-standard'),
             'sourceSnapshot': snapshot_id,
             'description': description,
-            'labels': {'cblabel': label.replace(' ', '_').lower()}
         }
         operation = (self.provider
                          .gce_compute
@@ -1136,7 +1130,9 @@ class GCEVolumeService(BaseVolumeService):
                              zone=zone_name,
                              body=disk_body)
                          .execute())
-        return self.get(operation.get('targetLink'))
+        cb_vol = self.get(operation.get('targetLink'))
+        cb_vol.label = label
+        return cb_vol
 
 
 class GCESnapshotService(BaseSnapshotService):
@@ -1204,8 +1200,7 @@ class GCESnapshotService(BaseSnapshotService):
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
         snapshot_body = {
             "name": name,
-            "description": description,
-            "labels": {"cblabel": label}
+            "description": description
         }
         operation = (self.provider
                          .gce_compute
@@ -1219,11 +1214,9 @@ class GCESnapshotService(BaseSnapshotService):
             return None
         self.provider.wait_for_operation(operation,
                                          zone=self.provider.default_zone)
-        snapshots = self.provider.storage.snapshots.find(label=label)
-        if snapshots:
-            return snapshots[0]
-        else:
-            return None
+        cb_snap = self.get(name)
+        cb_snap.label = label
+        return cb_snap
 
 
 class GCSBucketService(BaseBucketService):
