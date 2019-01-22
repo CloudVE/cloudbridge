@@ -562,6 +562,8 @@ class GCEInstanceService(BaseInstanceService):
         self.provider.wait_for_operation(operation, zone=zone_name)
         cb_inst = self.get(instance_id)
         cb_inst.label = label
+        if key_pair:
+            cb_inst.key_pair_id = key_pair
         return cb_inst
 
     def get(self, instance_id):

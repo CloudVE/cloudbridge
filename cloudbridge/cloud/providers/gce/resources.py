@@ -1065,6 +1065,48 @@ class GCEInstance(BaseInstance):
         except StopIteration:
             return None
 
+    @key_pair_id.setter
+    # pylint:disable=arguments-differ
+    def key_pair_id(self, value):
+        self.assert_valid_resource_label(value)
+        key_pair = None
+        if not isinstance(value, GCEKeyPair):
+            key_pair = self._provider.security.key_pairs.get(value)
+        if key_pair:
+            key_pair_name = key_pair.name
+        kp = None
+        for kpi in self._provider.security.key_pairs._iter_gce_key_pairs(
+                self._provider):
+            if kpi.email == key_pair_name:
+                kp = kpi
+                break
+        if kp:
+            kp_items = [{
+                "key": "ssh-keys",
+                # FIXME: ssh username & key format are fixed here while they
+                # should correspond to the operating system, or be customizable
+                "value": "ubuntu:ssh-rsa {0} {1}".format(kp.public_key,
+                                                         kp.email)
+            }]
+            config = {
+                "items": kp_items,
+                "fingerprint": self._gce_instance['metadata']['fingerprint']
+            }
+            try:
+                (self._provider
+                    .gce_compute
+                    .instances()
+                    .setMetadata(project=self._provider.project_name,
+                                 zone=self._provider.default_zone,
+                                 instance=self.name,
+                                 body=config)
+                    .execute())
+            except Exception as e:
+                cb.log.warning('Exception while setting instance key pair: %s',
+                               e)
+                raise e
+            self.refresh()
+
     @property
     def inet_gateway(self):
         if self._inet_gateway:
