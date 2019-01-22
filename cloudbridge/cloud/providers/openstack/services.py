@@ -218,9 +218,10 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                   "[label: %s network id: %s description: %s]", label,
                   network, description)
         net = network.id if isinstance(network, Network) else network
-        # We generally mandate a network to be associated with a firewall,
-        # however because of some networking specificity in Nectar, we must
-        # allow None value as well
+        # We generally simulate a network being associated with a firewall
+        # by storing the supplied value in the firewall description field that
+        # is not modifiable after creation; however, because of some networking
+        # specificity in Nectar, we must also allow an empty network id value.
         if not net:
             net = ""
         if not description:
@@ -228,7 +229,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         description += " [{}{}]".format(OpenStackVMFirewall._network_id_tag,
                                         net)
         sg = self.provider.os_conn.network.create_security_group(
-            name=label, description=description or label)
+            name=label, description=description)
         if sg:
             return OpenStackVMFirewall(self.provider, sg)
         return None

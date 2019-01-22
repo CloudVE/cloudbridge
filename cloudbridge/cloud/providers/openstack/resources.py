@@ -1203,7 +1203,7 @@ class OpenStackKeyPair(BaseKeyPair):
 
 
 class OpenStackVMFirewall(BaseVMFirewall):
-    _network_id_tag = "CB-AUTO-associated-network-id: "
+    _network_id_tag = "CB-auto-associated-network-id: "
 
     def __init__(self, provider, vm_firewall):
         super(OpenStackVMFirewall, self).__init__(provider, vm_firewall)
@@ -1212,18 +1212,21 @@ class OpenStackVMFirewall(BaseVMFirewall):
     @property
     def network_id(self):
         """
-        OpenStack does not associate a SG with a network so default to None.
+        OpenStack does not associate a fw with a network so extract from desc.
 
-        :return: Always return ``None``.
+        :return: The network ID supplied when this firewall was created or
+                 `None` if ID cannot be identified.
         """
         # Best way would be to use regex, but using this hacky way to avoid
         # importing the re package
+        # FIXME: This doesn't work as soon as the _description doesn't conform
+        # to this rigid string structure.
         net_id = self._description\
                      .split(" [{}".format(self._network_id_tag))[-1]\
                      .split(']')[0]
-        # We generally mandate a network to be associated with a firewall,
-        # however because of some networking specificity in Nectar, we must
-        # allow None value as well, which will parse here as an empty string
+        # We generally simulate a network being associated with a firewall;
+        # however, because of some networking specificity in Nectar, we must
+        # allow `None` return value as well in case an ID was not discovered.
         if not net_id:
             return None
         return net_id
