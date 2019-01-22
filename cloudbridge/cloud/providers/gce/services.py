@@ -1130,7 +1130,9 @@ class GCEVolumeService(BaseVolumeService):
                              zone=zone_name,
                              body=disk_body)
                          .execute())
-        return self.get(operation.get('targetLink'))
+        cb_vol = self.get(operation.get('targetLink'))
+        cb_vol.label = label
+        return cb_vol
 
 
 class GCESnapshotService(BaseSnapshotService):
