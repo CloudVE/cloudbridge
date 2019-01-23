@@ -1,12 +1,11 @@
 """Services implemented by the AWS provider."""
+import ipaddress
 import logging
 import string
 
 from botocore.exceptions import ClientError
 
 import cachetools
-
-import ipaddress
 
 import requests
 
