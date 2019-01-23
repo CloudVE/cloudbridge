@@ -724,7 +724,7 @@ class GCENetworkService(BaseNetworkService):
                            'Auto mode networks use the default CIDR of '
                            '%s. For custom networks, you should create subnets'
                            'in each region with explicit CIDR blocks',
-                           GCENetwork.DEFAULT_IPV4RANGE)
+                           GCENetwork.CB_DEFAULT_IPV4RANGE)
             cidr_block = None
         name = GCENetwork._generate_name_from_label(label, 'cbnet')
         body = {'name': name}
