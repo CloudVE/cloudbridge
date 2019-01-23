@@ -190,8 +190,6 @@ class BaseNetworkService(
                 if subnet.network_id == self.id]
 
     def delete(self, network_id):
-        if network_id is None:
-            return True
         network = self.get(network_id)
         if network:
             log.info("Deleting network %s", network_id)
