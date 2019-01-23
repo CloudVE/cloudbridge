@@ -460,7 +460,7 @@ class ResultList(list):
         """
         Indicate whether this ``ResultList`` supports server side paging.
 
-        If server side paging is not supported, the result will useclient side
+        If server side paging is not supported, the result will use client side
         paging and the data property provides direct access to all available
         data.
         """

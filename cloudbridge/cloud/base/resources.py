@@ -668,10 +668,6 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
         js['firewall'] = self.firewall.id
         return js
 
-    @property
-    def parent(self):
-        return self._parent
-
 
 class BasePlacementZone(BaseCloudResource, PlacementZone):
 

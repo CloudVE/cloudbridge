@@ -365,7 +365,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     fip = gateway.floating_ips.create()
                     self.assertFalse(
                         fip.in_use,
-                        "Newly created floating IP should not be in use.")
+                        "Newly created floating IP %s should not be in use." %
+                        fip.public_ip)
 
                     with helpers.cleanup_action(
                             lambda: test_inst.remove_floating_ip(fip)):
@@ -377,7 +378,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         fip.refresh()
                         self.assertTrue(
                             fip.in_use,
-                            "Attached floating IP address should be in use.")
+                            "Attached floating IP %s address should be in use."
+                            % fip.public_ip)
                     test_inst.refresh()
                     test_inst.reboot()
                     test_inst.wait_till_ready()

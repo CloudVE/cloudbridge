@@ -23,8 +23,7 @@ REQS_BASE = [
     'six>=1.11',
     'tenacity>=4.12.0,<=5.0',
     'cachetools>=2.1.0',
-    'deprecated>=1.2.3',
-    'oslo.i18n>=3.15.3'
+    'deprecated>=1.2.3'
 ]
 REQS_AWS = ['boto3<1.8.0']
 # Install azure>=3.0.0 package to find which of the azure libraries listed
@@ -57,9 +56,6 @@ REQS_DEV = ([
     'tox>=2.1.1',
     'nose',
     'moto>=1.3.2',
-    'docutils>=0.14',
-    'imagesize>=0.7.1',
-    'jinja2>=2.9.6',
     'sphinx>=1.3.1',
     'pydevd',
     'flake8>=3.3.0',
