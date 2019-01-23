@@ -66,8 +66,10 @@ internet gateway.
 
 When creating a network, we need to set an address pool. Any subsequent
 subnets you create must have a CIDR block that falls within the parent
-network's CIDR block. Below, we'll create a subnet starting from the beginning
-of the block and allow up to 16 IP addresses within a subnet (``/28``).
+network's CIDR block. CloudBridge also defines a default IPv4 network range in
+``BaseNetwork.CB_DEFAULT_IPV4RANGE``. Below, we'll create a subnet starting
+from the beginning of the block and allow up to 16 IP addresses within a
+subnet (``/28``).
 
 .. code-block:: python
 

@@ -1,5 +1,6 @@
 from cloudbridge.cloud.interfaces import MachineImageState
-from cloudbridge.cloud.interfaces.resources import Instance, MachineImage
+from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.interfaces.resources import MachineImage
 
 from test import helpers
 from test.helpers import ProviderTestBase

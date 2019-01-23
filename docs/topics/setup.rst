@@ -9,9 +9,43 @@ be provided in one of following ways:
 3. Configuration file
 
 Procuring access credentials
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-For Azure, Create service principle credentials from the following link : 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Microsoft Azure**
+
+For Microsoft Azure, create service principle credentials following
+instructions from the link below:
 https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal#check-azure-subscription-permissions
+
+**Google**
+
+For Google Compute Engine, create a service account following instructions
+from the link below:
+https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating_a_service_account
+
+Once created, grant the account appropriate permissions for your use through
+roles, and create a key, choosing JSON format, when prompted. These
+credentials can then be used with CloudBridge through the variables shown
+in the sections below.
+
+The JSON credentials file will have a similar form to the example shown
+below, and can either be passed through an absolute path to the file, or
+through a variable containing the JSON dictionary itself.
+
+
+.. code-block:: json
+
+    {
+      "type": "service_account",
+      "project_id": "my-project",
+      "private_key_id": "b12321312441245gerg245245g42c245g254t425",
+      "private_key": "-----BEGIN PRIVATE KEY-----\nMIICWgIBAAKBgE1EJDPKM/2wck/CZYCS7F2cXoHXDBhXYtdeV+h70Nk+ABs6scAV\nApYoobJAVpDeL+lutYAwtbscNz5K915DiNEkBf48LhfBWc5ea07OnClOGC9zASja\nif6ujIdhbITaNat9rdG939gQWqyaDW4wzYfvurhfmxICNgZA1YpWco1HAgMBAAEC\ngYAc+vLtLelEPNsTSWGS0Qiwr8bOwl75/kTHbM5iF5ak9NlLXT9wQTEgKwtC9VjC\nq2OjFXAkLaDsFlAuICYaCBCXn1nUqNoYhaSEQNwGnWIz376letXg/mX+BALSPMFR\nhE6mbdmaL4OV1X8j8uf2VcrLfVFCCZfhPu/TM5D6bVFYoQJBAJRHNKYU/csAB/NE\nzScJBv7PltOAoYpxbyFZb1rWcV9mAn34382b0YBXbp3Giqvifs/teudUbRpAzzLm\n5gr8tzECQQCFZh4tNIzeZZYUqkQxrxgqnnONey1hX7K+BlGyC6n2o26sE+I7cLij\n2kbuWoSFMAIdM2Hextv9k+ZrwUas4V33AkAfi9Korvib0sLeP7oB3wrM9W9aShiU\nMrP4/WUSh2MRb8uB74v123vD+VYAXTgtf3+JTzYBt1WK61TpuHQizEdRAkBjt8hL\nBoNfJBUicXz0nuyzvyql0jREG+NjhRnAvFNbGSR74Yk14bdEVMC9IFD7tr190pEQ\nlRqR3eNbHWmVhgpVAkBgveeM73R1tFXS6UosBtfDI1zut44Ce0RoADOIxjXqgjOi\nXSrevYvoKCl09yhLNAnKD+QvT/YbshW/jibYXwdj\n-----END PRIVATE KEY-----",
+      "client_email": "service-name@my-project.iam.gserviceaccount.com",
+      "client_id": "13451345134513451345",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/service-name%40my-project.iam.gserviceaccount.com"
+    }
 
 
 Providing access credentials through environment variables
@@ -39,7 +73,7 @@ OS_PROJECT_NAME      OS_STORAGE_URL
 OS_REGION_NAME       OS_AUTH_TOKEN
 ===================  ==================
 
-**Azure**
+**Microsoft Azure**
 
 Note that managing resources in Azure requires a Resource Group. If a
 Resource Group is not provided as part of the configuration, cloudbridge will
@@ -62,6 +96,19 @@ AZURE_SECRET            AZURE_STORAGE_ACCOUNT
 AZURE_TENANT            AZURE_VM_DEFAULT_USER_NAME
                         AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME
 ======================  ==================
+
+
+**Google**
+
+=======================  ==================
+Mandatory variables      Optional Variables
+=======================  ==================
+GCE_SERVICE_CREDS_FILE   GCE_PROJECT_NAME
+           or            GCE_DEFAULT_ZONE
+GCE_SERVICE_CREDS_DICT   GCE_REGION_NAME
+=======================  ==================
+
+
 
 Once the environment variables are set, you can create a connection as follows:
 
@@ -138,10 +185,11 @@ Providing access credentials in a file
 CloudBridge can also read credentials from a file on your local file system.
 The file should be placed in one of two locations: ``/etc/cloudbridge.ini`` or
 ``~/.cloudbridge``. Each set of credentials should be delineated with the
-provider ID (e.g., ``openstack``, ``aws``, ``azure``) with the necessary credentials
-being supplied in YAML format. Note that only one set of credentials per
-cloud provider type can be supplied (i.e., via this method, it is not possible
-to provide credentials for two different OpenStack clouds).
+provider ID (e.g., ``openstack``, ``aws``, ``azure``, ``gce``) with the
+necessary credentials being supplied in YAML format. Note that only one set
+of credentials per cloud provider type can be supplied (i.e., via this
+method, it is not possible to provide credentials for two different
+OpenStack clouds).
 
 .. code-block:: bash
 
@@ -164,22 +212,29 @@ In addition to the provider specific configuration variables above, there are
 some general configuration environment variables that apply to CloudBridge as
 a whole
 
-======================== ======================================================
-Variable		                            Description
-======================== ======================================================
-CB_DEBUG                 Setting ``CB_DEBUG=True`` will cause detailed debug
-                         output to be printed for each provider (including HTTP
-                         traces).
-CB_USE_MOCK_PROVIDERS    Setting this to ``True`` will cause the CloudBridge
-                         test suite to use mock drivers when available.
-CB_TEST_PROVIDER         Set this value to a valid :class:`.ProviderList` value
-                         such as ``aws``, to limit tests to that provider only.
-CB_DEFAULT_SUBNET_LABEL  Name to be used for a subnet that will be considered
-                         the 'default' by the library. This default will be
-                         used only in cases there is no subnet marked as the
-                         default by the provider.
-CB_DEFAULT_NETWORK_LABEL Name to be used for a network that will be considered
-                         the 'default' by the library. This default will be
-                         used only in cases there is no network marked as the
-                         default by the provider.
-======================== ======================================================
+=========================== ===================================================
+Variable                                    Description
+=========================== ===================================================
+CB_DEBUG                    Setting ``CB_DEBUG=True`` will cause detailed debug
+                            output to be printed for each provider (including
+                            HTTP traces).
+CB_USE_MOCK_PROVIDERS       Setting this to ``True`` will cause the CloudBridge
+                            test suite to use mock drivers when available.
+CB_TEST_PROVIDER            Set this value to a valid :class:`.ProviderList`
+                            value such as ``aws``, to limit tests to that
+                            provider only.
+CB_DEFAULT_SUBNET_LABEL     Name to be used for a subnet that will be
+                            considered the 'default' by the library. This
+                            default will be used only in cases there is no
+                            subnet marked as the default by the provider.
+CB_DEFAULT_NETWORK_LABEL    Name to be used for a network that will be
+                            considered the 'default' by the library. This
+                            default will be used only in cases there is no
+                            network marked as the default by the provider.
+CB_DEFAULT_IPV4RANGE        The default IPv4 range when creating networks if
+                            one is not provided. This value is also used in
+                            tests.
+CB_DEFAULT_SUBNET_IPV4RANGE The default subnet IPv4 range used by CloudBridge
+                            if one is not specified by the user. Tests do not
+                            respect this variable.
+=========================== ===================================================

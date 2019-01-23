@@ -64,7 +64,7 @@ OpenStack (with Keystone authentication v3):
               'os_user_domain_name': 'domain name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
-    image_id = 'acb53109-941f-4593-9bf8-4a53cb9e0739'  # Ubuntu 16.04 @ Jetstream
+    image_id = '470d2fba-d20b-47b0-a89a-ab725cd09f8b'  # Ubuntu 18.04@Jetstream
 
 Azure:
 
@@ -79,6 +79,18 @@ Azure:
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
     image_id = 'Canonical:UbuntuServer:16.04.0-LTS:latest'  # Ubuntu 16.04
 
+Google Compute Cloud:
+
+.. code-block:: python
+
+    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+
+    config = {'gce_project_name': 'project name',
+              'gce_service_creds_file': 'service_file.json',
+              'gce_default_zone': 'us-east1-b',  # Use desired value
+              'gce_region_name': 'us-east1'}  # Use desired value
+    provider = CloudProviderFactory().create_provider(ProviderList.GCE, config)
+    image_id = 'https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-1804-bionic-v20181222'
 
 List some resources
 -------------------
@@ -86,14 +98,14 @@ Once you have a reference to a provider, explore the cloud platform:
 
 .. code-block:: python
 
-    provider.security.firewalls.list()
+    provider.security.vm_firewalls.list()
     provider.compute.vm_types.list()
     provider.storage.snapshots.list()
     provider.storage.buckets.list()
 
 This will demonstrate the fact that the library was properly installed and your
-provider object is setup correctly but it is not very interesting. Therefore,
-let's create a new instance we can ssh into using a key pair.
+provider object is setup correctly. By itself, those commands are not very
+interesting so let's create a new instance we can ssh into using a key pair.
 
 Create a key pair
 -----------------
@@ -103,8 +115,8 @@ on disk as a read-only file.
 .. code-block:: python
 
     import os
-    kp = provider.security.key_pairs.create('cloudbridge-intro')
-    with open('cloudbridge_intro.pem', 'w') as f:
+    kp = provider.security.key_pairs.create('cb-keypair')
+    with open('cloudbridge_intro.pem', 'wb') as f:
         f.write(kp.material)
     os.chmod('cloudbridge_intro.pem', 0o400)
 
@@ -117,9 +129,11 @@ attaching an internet gateway to the subnet via a router.
 .. code-block:: python
 
     net = provider.networking.networks.create(cidr_block='10.0.0.0/16',
-                                              label='my-network')
-    sn = net.create_subnet(cidr_block='10.0.0.0/28', label='my-subnet')
-    router = provider.networking.routers.create(network=net, label='my-router')
+                                              label='cb-network')
+    zone = provider.compute.regions.get(provider.region_name).zones[0]
+    sn = net.create_subnet(
+        cidr_block='10.0.0.0/28', label='cb-subnet', zone=zone)
+    router = provider.networking.routers.create(network=net, label='cb-router')
     router.attach_subnet(sn)
     gateway = net.gateways.get_or_create_inet_gateway()
     router.attach_gateway(gateway)
@@ -135,8 +149,8 @@ a private network.
 
     from cloudbridge.cloud.interfaces.resources import TrafficDirection
     fw = provider.security.vm_firewalls.create(
-        label='cloudbridge-intro', description='A VM firewall used by
-        CloudBridge', network=net.id)
+        label='cb-firewall', description='A VM firewall used by
+        CloudBridge', network=net)
     fw.rules.create(TrafficDirection.INBOUND, 'tcp', 22, 22, '0.0.0.0/0')
 
 Launch an instance
@@ -148,12 +162,11 @@ also add the network interface as a launch argument.
 .. code-block:: python
 
     img = provider.compute.images.get(image_id)
-    zone = provider.compute.regions.get(provider.region_name).zones[0]
     vm_type = sorted([t for t in provider.compute.vm_types
                       if t.vcpus >= 2 and t.ram >= 4],
                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
-        image=img, vm_type=vm_type, label='cloudbridge-intro',
+        image=img, vm_type=vm_type, label='cb-instance',
         subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
@@ -180,9 +193,10 @@ earlier.
 
 .. code-block:: python
 
-    fip = gateway.floating_ips.create()
-    inst.add_floating_ip(fip)
-    inst.refresh()
+    if not inst.public_ips:
+        fip = gateway.floating_ips.create()
+        inst.add_floating_ip(fip)
+        inst.refresh()
     inst.public_ips
     # [u'54.166.125.219']
 
@@ -206,8 +220,7 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
 
     # Key Pair
     kp = provider.security.key_pairs.get('keypair ID')
-    kp_list = provider.security.key_pairs.find(name='cloudbridge-intro')
-    kp = kp_list[0]
+    kp = provider.security.key_pairs.find(name='cb-keypair')[0]
 
     # Floating IPs
     fip = gateway.floating_ips.get('FloatingIP ID')
@@ -215,8 +228,7 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
     fip_list = gateway.floating_ips.find(public_ip='IP address')
     # Find using name (the behavior of the `name` property can be 
     # cloud-dependent). More details can be found `here <topics/resource_types_and_mapping.html>`
-    fip_list = net.gateways.floating_ips.find(name='my-fip')
-    fip = fip_list[0]
+    fip_list = gateway.floating_ips.find(name='cb-fip')[0]
 
     # Network
     net = provider.networking.networks.get('network ID')
@@ -226,15 +238,15 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
     # Subnet
     sn = provider.networking.subnets.get('subnet ID')
     # Unknown network
-    sn_list = provider.networking.subnets.find(label='my-subnet')
+    sn_list = provider.networking.subnets.find(label='cb-subnet')
     # Known network
     sn_list = provider.networking.subnets.find(network=net.id,
-                                               label='my-subnet')
+                                               label='cb-subnet')
     sn = sn_list(0)
 
     # Router
     router = provider.networking.routers.get('router ID')
-    router_list = provider.networking.routers.find(label='my-router')
+    router_list = provider.networking.routers.find(label='cb-router')
     router = router_list[0]
 
     # Gateway
@@ -242,12 +254,12 @@ their provider mappings, see :doc:`topics/resource_types_and_mappings`.
 
     # Firewall
     fw = provider.security.vm_firewalls.get('firewall ID')
-    fw_list = provider.security.vm_firewalls.find(label='cloudbridge-intro')
+    fw_list = provider.security.vm_firewalls.find(label='cb-firewall')
     fw = fw_list[0]
 
     # Instance
     inst = provider.compute.instances.get('instance ID')
-    inst_list = provider.compute.instances.list(label='cloudbridge-intro')
+    inst_list = provider.compute.instances.list(label='cb-instance')
     inst = inst_list[0]
 
 

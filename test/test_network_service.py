@@ -1,3 +1,4 @@
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import NetworkState
@@ -20,7 +21,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_net(label):
             return self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
+                label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
 
         def cleanup_net(net):
             if net:
@@ -40,10 +41,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         label = 'cb-propnetwork-{0}'.format(helpers.get_uuid())
         subnet_label = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
-            label=label, cidr_block='10.0.0.0/16')
-        with helpers.cleanup_action(
-            lambda: net.delete()
-        ):
+            label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
+        with helpers.cleanup_action(lambda: net.delete()):
             net.wait_till_ready()
             self.assertEqual(
                 net.state, 'available',
@@ -52,9 +51,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             sit.check_repr(self, net)
 
             self.assertIn(
-                net.cidr_block, ['', '10.0.0.0/16'],
-                "Network CIDR %s does not contain the expected value."
-                % net.cidr_block)
+                net.cidr_block, ['', BaseNetwork.CB_DEFAULT_IPV4RANGE],
+                "Network CIDR %s does not contain the expected value %s."
+                % (net.cidr_block, BaseNetwork.CB_DEFAULT_IPV4RANGE))
 
             cidr = '10.0.20.0/24'
             sn = net.create_subnet(
@@ -89,7 +88,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
                 self.assertEqual(
                     cidr, sn.cidr_block,
-                    "Subnet's CIDR %s should match the specified one %s." % (
+                    "Should be exact cidr block that was requested")
+
+                self.assertTrue(
+                    BaseNetwork.cidr_blocks_overlap(cidr, sn.cidr_block),
+                    "Subnet's CIDR %s should overlap the specified one %s." % (
                         sn.cidr_block, cidr))
 
     def test_crud_subnet(self):
@@ -179,7 +182,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         gteway = None
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
             net = self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
+                label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             router = self.provider.networking.routers.create(label=label,
                                                              network=net)
             cidr = '10.0.15.0/24'
@@ -190,15 +193,16 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             # Check basic router properties
             sit.check_standard_behaviour(
                 self, self.provider.networking.routers, router)
-            self.assertEqual(
-                router.state, RouterState.DETACHED,
-                "Router {0} state {1} should be {2}.".format(
-                    router.id, router.state, RouterState.DETACHED))
+            if (self.provider.PROVIDER_ID != 'gce'):
+                self.assertEqual(
+                    router.state, RouterState.DETACHED,
+                    "Router {0} state {1} should be {2}.".format(
+                        router.id, router.state, RouterState.DETACHED))
 
-#             self.assertFalse(
-#                 router.network_id,
-#                 "Router {0} should not be assoc. with a network {1}".format(
-#                     router.id, router.network_id))
+                self.assertFalse(
+                    router.network_id,
+                    "Router {0} should not be assoc. with network {1}".format(
+                            router.id, router.network_id))
 
             self.assertTrue(
                 len(router.subnets) == 0,

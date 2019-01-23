@@ -80,6 +80,20 @@ class BaseVMFirewallService(
     def __init__(self, provider):
         super(BaseVMFirewallService, self).__init__(provider)
 
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
 
 class BaseStorageService(StorageService, BaseCloudService):
 
@@ -207,8 +221,6 @@ class BaseSubnetService(
         return ClientPagedResultList(self._provider, list(matches))
 
     def get_or_create_default(self, zone):
-        default_cidr = '10.0.0.0/24'
-
         # Look for a CB-default subnet
         matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)
         if matches:
@@ -217,7 +229,7 @@ class BaseSubnetService(
         # No provider-default Subnet exists, try to create it (net + subnets)
         network = self.provider.networking.networks.get_or_create_default()
         subnet = self.create(BaseSubnet.CB_DEFAULT_SUBNET_LABEL, network,
-                             default_cidr, zone)
+                             BaseSubnet.CB_DEFAULT_SUBNET_IPV4RANGE, zone)
         return subnet
 
 
