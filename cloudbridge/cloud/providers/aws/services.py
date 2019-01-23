@@ -6,6 +6,8 @@ from botocore.exceptions import ClientError
 
 import cachetools
 
+import ipaddress
+
 import requests
 
 import cloudbridge.cloud.base.helpers as cb_helpers
@@ -867,12 +869,23 @@ class AWSSubnetService(BaseSubnetService):
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
+
+        # Determine how many subnets we'll need for the default network and the
+        # number of available zones.
+        ip_net = ipaddress.ip_network(AWSNetwork.CB_DEFAULT_IPV4RANGE.decode())
+        for x in range(5):
+            if len(region.zones) <= len(list(ip_net.subnets(
+                    prefixlen_diff=x))):
+                prefixlen_diff = x
+                break
+        subnets = list(ip_net.subnets(prefixlen_diff=prefixlen_diff))
+
         for i, z in reversed(list(enumerate(region.zones))):
             sn_label = "{0}-{1}".format(AWSSubnet.CB_DEFAULT_SUBNET_LABEL,
                                         z.id[-1])
-            log.info("Creating default CloudBridge subnet %s", sn_label)
-            sn = self.create(
-                sn_label, default_net, '10.0.{0}.0/24'.format(i), z)
+            log.info("Creating a default CloudBridge subnet %s: %s" %
+                     (sn_label, str(subnets[i])))
+            sn = self.create(sn_label, default_net, str(subnets[i]), z)
             # Create a route table entry between the SN and the inet gateway
             # See note above about why this is commented
             # default_router.attach_subnet(sn)

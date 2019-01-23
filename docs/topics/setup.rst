@@ -212,24 +212,29 @@ In addition to the provider specific configuration variables above, there are
 some general configuration environment variables that apply to CloudBridge as
 a whole
 
-======================== ======================================================
-Variable		                            Description
-======================== ======================================================
-CB_DEBUG                 Setting ``CB_DEBUG=True`` will cause detailed debug
-                         output to be printed for each provider (including HTTP
-                         traces).
-CB_USE_MOCK_PROVIDERS    Setting this to ``True`` will cause the CloudBridge
-                         test suite to use mock drivers when available.
-CB_TEST_PROVIDER         Set this value to a valid :class:`.ProviderList` value
-                         such as ``aws``, to limit tests to that provider only.
-CB_DEFAULT_SUBNET_LABEL  Name to be used for a subnet that will be considered
-                         the 'default' by the library. This default will be
-                         used only in cases there is no subnet marked as the
-                         default by the provider.
-CB_DEFAULT_NETWORK_LABEL Name to be used for a network that will be considered
-                         the 'default' by the library. This default will be
-                         used only in cases there is no network marked as the
-                         default by the provider.
-CB_DEFAULT_IPV4RANGE     The default IPv4 range when creating networks if one
-                         is not provided. This value is also used in tests.
-======================== ======================================================
+=========================== ===================================================
+Variable                                    Description
+=========================== ===================================================
+CB_DEBUG                    Setting ``CB_DEBUG=True`` will cause detailed debug
+                            output to be printed for each provider (including
+                            HTTP traces).
+CB_USE_MOCK_PROVIDERS       Setting this to ``True`` will cause the CloudBridge
+                            test suite to use mock drivers when available.
+CB_TEST_PROVIDER            Set this value to a valid :class:`.ProviderList`
+                            value such as ``aws``, to limit tests to that
+                            provider only.
+CB_DEFAULT_SUBNET_LABEL     Name to be used for a subnet that will be
+                            considered the 'default' by the library. This
+                            default will be used only in cases there is no
+                            subnet marked as the default by the provider.
+CB_DEFAULT_NETWORK_LABEL    Name to be used for a network that will be
+                            considered the 'default' by the library. This
+                            default will be used only in cases there is no
+                            network marked as the default by the provider.
+CB_DEFAULT_IPV4RANGE        The default IPv4 range when creating networks if
+                            one is not provided. This value is also used in
+                            tests.
+CB_DEFAULT_SUBNET_IPV4RANGE The default subnet IPv4 range used by CloudBridge
+                            if one is not specified by the user. Tests do not
+                            respect this variable.
+=========================== ===================================================

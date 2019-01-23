@@ -816,6 +816,8 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
     CB_DEFAULT_SUBNET_LABEL = os.environ.get('CB_DEFAULT_SUBNET_LABEL',
                                              'cloudbridge-subnet')
+    CB_DEFAULT_SUBNET_IPV4RANGE = os.environ.get('CB_DEFAULT_SUBNET_IPV4RANGE',
+                                                 '10.0.0.0/24')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
