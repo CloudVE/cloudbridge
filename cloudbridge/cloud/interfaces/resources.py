@@ -2063,10 +2063,12 @@ class VMFirewallRuleContainer(PageableObjectMixin):
 
         .. code-block:: python
             from cloudbridge.cloud.interfaces.resources import TrafficDirection
+            from cloudbridge.cloud.interfaces.resources import BaseNetwork
 
             fw = provider.security.vm_firewalls.get('my_fw_id')
             fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
-                            from_port=80, to_port=80, cidr='10.0.0.0/16')
+                            from_port=80, to_port=80,
+                            cidr=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             fw.rules.create(TrafficDirection.INBOUND, src_dest_fw=fw)
             fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
 

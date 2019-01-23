@@ -747,7 +747,7 @@ class AWSNetworkService(BaseNetworkService):
                      AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
             return self.provider.networking.networks.create(
                 label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block='10.0.0.0/16')
+                cidr_block=AWSNetwork.CB_DEFAULT_IPV4RANGE)
 
 
 class AWSSubnetService(BaseSubnetService):

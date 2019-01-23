@@ -2,6 +2,7 @@ import ipaddress
 
 import six
 
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
@@ -317,7 +318,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 instance=test_inst, vm_firewall=fw, network=net)):
             net = self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
+                label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             cidr = '10.0.1.0/24'
             subnet = net.create_subnet(label=label, cidr_block=cidr,
                                        zone=helpers.get_provider_test_data(

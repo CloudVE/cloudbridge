@@ -39,7 +39,7 @@ class GCPResourceUrl(object):
         https://cloud.google.com/storage/docs/json_api/v1/.
 
         Example:
-            When requesting a subnetwork resource the output looks like:
+            When requesting a subnet resource, the output looks like:
 
             {'kind': 'compute#subnetwork',
              'id': '6662746501848591938',

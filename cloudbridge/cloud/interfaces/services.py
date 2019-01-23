@@ -643,7 +643,7 @@ class NetworkService(PageableObjectMixin, CloudService):
                            subnets you create fall within this initially
                            specified range. Note that the block size should be
                            between a /16 netmask (65,536 IP addresses) and /28
-                           netmask (16 IP addresses). e.g. 10.0.0.0/16
+                           netmask (16 IP addresses), e.g. 10.0.0.0/16.
 
         :rtype: ``object`` of :class:`.Network`
         :return:  A Network object

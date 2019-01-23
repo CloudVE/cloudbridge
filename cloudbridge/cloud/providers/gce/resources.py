@@ -1389,7 +1389,6 @@ class GCEInstance(BaseInstance):
 
 
 class GCENetwork(BaseNetwork):
-    DEFAULT_IPV4RANGE = '10.128.0.0/9'
 
     def __init__(self, provider, network):
         super(GCENetwork, self).__init__(provider)
@@ -1488,7 +1487,7 @@ class GCENetwork(BaseNetwork):
         if 'IPv4Range' in self._network:
             # This is a legacy network.
             return self._network['IPv4Range']
-        return GCENetwork.DEFAULT_IPV4RANGE
+        return GCENetwork.CB_DEFAULT_IPV4RANGE
 
     @property
     def subnets(self):

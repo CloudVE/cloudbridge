@@ -230,4 +230,6 @@ CB_DEFAULT_NETWORK_LABEL Name to be used for a network that will be considered
                          the 'default' by the library. This default will be
                          used only in cases there is no network marked as the
                          default by the provider.
+CB_DEFAULT_IPV4RANGE     The default IPv4 range when creating networks if one
+                         is not provided. This value is also used in tests.
 ======================== ======================================================

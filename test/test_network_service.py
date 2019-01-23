@@ -21,7 +21,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_net(label):
             return self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
+                label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
 
         def cleanup_net(net):
             if net:
@@ -41,7 +41,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         label = 'cb-propnetwork-{0}'.format(helpers.get_uuid())
         subnet_label = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
-            label=label, cidr_block='10.0.0.0/16')
+            label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
         with helpers.cleanup_action(lambda: net.delete()):
             net.wait_till_ready()
             self.assertEqual(
@@ -51,9 +51,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             sit.check_repr(self, net)
 
             self.assertIn(
-                net.cidr_block, ['', '10.0.0.0/16', '10.128.0.0/9'],
-                "Network CIDR %s does not contain the expected value."
-                % net.cidr_block)
+                net.cidr_block, ['', BaseNetwork.CB_DEFAULT_IPV4RANGE],
+                "Network CIDR %s does not contain the expected value %s."
+                % (net.cidr_block, BaseNetwork.CB_DEFAULT_IPV4RANGE))
 
             cidr = '10.0.20.0/24'
             sn = net.create_subnet(
@@ -182,7 +182,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         gteway = None
         with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
             net = self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
+                label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             router = self.provider.networking.routers.create(label=label,
                                                              network=net)
             cidr = '10.0.15.0/24'
