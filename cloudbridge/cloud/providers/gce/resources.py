@@ -1066,14 +1066,18 @@ class GCEInstance(BaseInstance):
     def key_pair_id(self):
         """
         Get the id of the key pair associated with this instance.
-        For GCE, since keys apply to all instances, return first
-        key in metadata.
+        Assume there is only 1 key pair
         """
-        try:
-            kp = next(iter(self._provider.security.key_pairs))
-            return kp.id if kp else None
-        except StopIteration:
-            return None
+        # Get instance again to avoid stale metadata
+        ins = self._provider.compute.instances.get(self.id)
+        meta = ins._gce_instance.get('metadata', {})
+        if meta:
+            items = meta.get("items", [])
+            for item in items:
+                if item.get("key") == "ssh-keys":
+                    # The key pair name/id is stored last, after the public key
+                    return item.get("value").split(" ")[-1]
+        return None
 
     @key_pair_id.setter
     # pylint:disable=arguments-differ
