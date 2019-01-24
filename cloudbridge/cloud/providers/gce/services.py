@@ -128,17 +128,10 @@ class GCEKeyPairService(BaseKeyPairService):
         return GCEKeyPair(self.provider, kp_info, private_key)
 
     def delete(self, key_pair_id):
-
-        def _delete_key(gce_kp_generator):
-            kp_list = []
-            for gce_kp in gce_kp_generator:
-                if self.gce_kp_to_id(gce_kp) == key_pair_id:
-                    continue
-                else:
-                    kp_list.append(gce_kp)
-            return kp_list
-
-        self.update_kps_in_metadata(self.provider, _delete_key)
+        kp = self.get(key_pair_id)
+        if kp:
+            metadata_key = GCEKeyPair.tag_format.format(kp.name)
+            helpers.remove_metadata_item(self.provider, metadata_key)
 
 
 class GCEVMFirewallService(BaseVMFirewallService):
