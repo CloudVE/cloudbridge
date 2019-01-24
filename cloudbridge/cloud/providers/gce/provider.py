@@ -348,9 +348,11 @@ class GCECloudProvider(BaseCloudProvider):
         try:
             return resource_url.get_resource()
         except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning(
-                "googleapiclient.errors.HttpError: {0}".format(http_error))
-            return None
+            if http_error.resp.status in [404]:
+                # 404 = not found
+                return None
+            else:
+                raise
 
     def authenticate(self):
         try:

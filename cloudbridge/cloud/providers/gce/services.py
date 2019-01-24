@@ -360,15 +360,11 @@ class GCEImageService(BaseImageService):
         if self._public_images is not None:
             return
         self._public_images = []
-        try:
-            for project in GCEImageService._PUBLIC_IMAGE_PROJECTS:
-                for image in helpers.iter_all(
-                        self.provider.gce_compute.images(), project=project):
-                    self._public_images.append(
-                        GCEMachineImage(self.provider, image))
-        except googleapiclient.errors.HttpError as http_error:
-                cb.log.warning("googleapiclient.errors.HttpError: {0}".format(
-                    http_error))
+        for project in GCEImageService._PUBLIC_IMAGE_PROJECTS:
+            for image in helpers.iter_all(
+                    self.provider.gce_compute.images(), project=project):
+                self._public_images.append(
+                    GCEMachineImage(self.provider, image))
 
     def get(self, image_id):
         """
@@ -401,14 +397,10 @@ class GCEImageService(BaseImageService):
         images = []
         if (self.provider.project_name not in
                 GCEImageService._PUBLIC_IMAGE_PROJECTS):
-            try:
-                for image in helpers.iter_all(
-                        self.provider.gce_compute.images(),
-                        project=self.provider.project_name):
-                    images.append(GCEMachineImage(self.provider, image))
-            except googleapiclient.errors.HttpError as http_error:
-                cb.log.warning(
-                    "googleapiclient.errors.HttpError: {0}".format(http_error))
+            for image in helpers.iter_all(
+                    self.provider.gce_compute.images(),
+                    project=self.provider.project_name):
+                images.append(GCEMachineImage(self.provider, image))
         images.extend(self._public_images)
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
@@ -529,19 +521,13 @@ class GCEInstanceService(BaseInstanceService):
             if len(vm_firewall_names) > 0:
                 config['tags'] = {}
                 config['tags']['items'] = vm_firewall_names
-        try:
-            operation = (self.provider
-                             .gce_compute.instances()
-                             .insert(project=self.provider.project_name,
-                                     zone=zone_name,
-                                     body=config)
-                             .execute())
-        except googleapiclient.errors.HttpError as http_error:
-            # If the operation request fails, the API will raise
-            # googleapiclient.errors.HttpError.
-            cb.log.warning(
-                "googleapiclient.errors.HttpError: {0}".format(http_error))
-            return None
+
+        operation = (self.provider
+                         .gce_compute.instances()
+                         .insert(project=self.provider.project_name,
+                                 zone=zone_name,
+                                 body=config)
+                         .execute())
         instance_id = operation.get('targetLink')
         self.provider.wait_for_operation(operation, zone=zone_name)
         cb_inst = self.get(instance_id)
@@ -678,17 +664,14 @@ class GCENetworkService(BaseNetworkService):
     def list(self, limit=None, marker=None, filter=None):
         # TODO: Decide whether we keep filter in 'list'
         networks = []
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .networks()
-                            .list(project=self.provider.project_name,
-                                  filter=filter)
-                            .execute())
-            for network in response.get('items', []):
-                networks.append(GCENetwork(self.provider, network))
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+        response = (self.provider
+                        .gce_compute
+                        .networks()
+                        .list(project=self.provider.project_name,
+                              filter=filter)
+                        .execute())
+        for network in response.get('items', []):
+            networks.append(GCENetwork(self.provider, network))
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
@@ -716,20 +699,14 @@ class GCENetworkService(BaseNetworkService):
             body['IPv4Range'] = cidr_block
         else:
             body['autoCreateSubnetworks'] = create_subnetworks
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .networks()
-                            .insert(project=self.provider.project_name,
-                                    body=body)
-                            .execute())
-            if 'error' in response:
-                return None
-            self.provider.wait_for_operation(response)
-            return self.get(name)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        response = (self.provider
+                        .gce_compute
+                        .networks()
+                        .insert(project=self.provider.project_name,
+                                body=body)
+                        .execute())
+        self.provider.wait_for_operation(response)
+        return self.get(name)
 
     def create(self, label, cidr_block):
         """
@@ -752,24 +729,18 @@ class GCENetworkService(BaseNetworkService):
             name = network.split('/')[-1]
         else:
             name = network
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .networks()
-                            .delete(project=self.provider.project_name,
-                                    network=name)
-                            .execute())
-            if 'error' in response:
-                return False
-            self.provider.wait_for_operation(response)
-            # Remove label
-            tag_name = "_".join(["network", name, "label"])
-            if not helpers.remove_metadata_item(self.provider, tag_name):
-                log.warning('No label was found associated with this network '
-                            '"{}" when deleted.'.format(network.name))
-        except googleapiclient.errors.HttpError as http_error:
-            log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return False
+        response = (self.provider
+                        .gce_compute
+                        .networks()
+                        .delete(project=self.provider.project_name,
+                                network=name)
+                        .execute())
+        self.provider.wait_for_operation(response)
+        # Remove label
+        tag_name = "_".join(["network", name, "label"])
+        if not helpers.remove_metadata_item(self.provider, tag_name):
+            log.warning('No label was found associated with this network '
+                        '"{}" when deleted.'.format(network.name))
         return True
 
 
@@ -818,23 +789,17 @@ class GCERouterService(BaseRouterService):
             network = self.provider.networking.networks.get(network)
         network_url = network.resource_url
         region_name = self.provider.region_name
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .routers()
-                            .insert(project=self.provider.project_name,
-                                    region=region_name,
-                                    body={'name': name,
-                                          'network': network_url,
-                                          'description': label})
-                            .execute())
-            if 'error' in response:
-                return None
-            self.provider.wait_for_operation(response, region=region_name)
-            return self._get_in_region(name, region_name)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        response = (self.provider
+                        .gce_compute
+                        .routers()
+                        .insert(project=self.provider.project_name,
+                                region=region_name,
+                                body={'name': name,
+                                      'network': network_url,
+                                      'description': label})
+                        .execute())
+        self.provider.wait_for_operation(response, region=region_name)
+        return self._get_in_region(name, region_name)
 
     def delete(self, router):
         region_name = self.provider.region_name
@@ -927,25 +892,17 @@ class GCESubnetService(BaseSubnetService):
                 'network': network.resource_url,
                 'region': region_name
                 }
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .subnetworks()
-                            .insert(project=self.provider.project_name,
-                                    region=region_name,
-                                    body=body)
-                            .execute())
-            if 'error' in response:
-                cb.log.warning('Error while creating a subnet: %s',
-                               response['error'])
-                return None
-            self.provider.wait_for_operation(response, region=region_name)
-            cb_subnet = self.get(name)
-            cb_subnet.label = label
-            return cb_subnet
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        response = (self.provider
+                        .gce_compute
+                        .subnetworks()
+                        .insert(project=self.provider.project_name,
+                                region=region_name,
+                                body=body)
+                        .execute())
+        self.provider.wait_for_operation(response, region=region_name)
+        cb_subnet = self.get(name)
+        cb_subnet.label = label
+        return cb_subnet
 
     def get_or_create_default(self, zone=None):
         """
@@ -965,18 +922,15 @@ class GCESubnetService(BaseSubnetService):
         return None
 
     def delete(self, subnet):
-        try:
-            response = (self.provider
-                            .gce_compute
-                            .subnetworks()
-                            .delete(project=self.provider.project_name,
-                                    region=subnet.region_name,
-                                    subnetwork=subnet.name)
-                            .execute())
-            self._provider.wait_for_operation(
-                response, region=subnet.region_name)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+        response = (self.provider
+                        .gce_compute
+                        .subnetworks()
+                        .delete(project=self.provider.project_name,
+                                region=subnet.region_name,
+                                subnetwork=subnet.name)
+                        .execute())
+        self._provider.wait_for_operation(
+            response, region=subnet.region_name)
 
     def _zone_to_region_name(self, zone):
         if zone:
@@ -1230,28 +1184,22 @@ class GCSBucketService(BaseBucketService):
         List all containers.
         """
         max_result = limit if limit is not None and limit < 500 else 500
-        try:
-            response = (self.provider
-                            .gcs_storage
-                            .buckets()
-                            .list(project=self.provider.project_name,
-                                  maxResults=max_result,
-                                  pageToken=marker)
-                            .execute())
-            if 'error' in response:
-                return ServerPagedResultList(False, None, False, data=[])
-            buckets = []
-            for bucket in response.get('items', []):
-                buckets.append(GCSBucket(self.provider, bucket))
-            if len(buckets) > max_result:
-                cb.log.warning('Expected at most %d results; got %d',
-                               max_result, len(buckets))
-            return ServerPagedResultList('nextPageToken' in response,
-                                         response.get('nextPageToken'),
-                                         False, data=buckets)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return ServerPagedResultList(False, None, False, data=[])
+        response = (self.provider
+                        .gcs_storage
+                        .buckets()
+                        .list(project=self.provider.project_name,
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        buckets = []
+        for bucket in response.get('items', []):
+            buckets.append(GCSBucket(self.provider, bucket))
+        if len(buckets) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(buckets))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=buckets)
 
     def create(self, name, location=None):
         """
@@ -1268,8 +1216,6 @@ class GCSBucketService(BaseBucketService):
                             .insert(project=self.provider.project_name,
                                     body=body)
                             .execute())
-            if 'error' in response:
-                return None
             # GCS has a rate limit of 1 operation per 2 seconds for bucket
             # creation/deletion: https://cloud.google.com/storage/quotas.
             # Throttle here to avoid future failures.

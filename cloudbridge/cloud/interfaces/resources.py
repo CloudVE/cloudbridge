@@ -1101,7 +1101,7 @@ class FloatingIPContainer(PageableObjectMixin):
         """
         Searches for a FloatingIP by a given list of attributes.
 
-        Supported attributes: label, public_ip
+        Supported attributes: name, public_ip
 
         Example:
 

@@ -305,9 +305,6 @@ class GCEFirewallsDelegate(object):
                             .execute())
             self._provider.wait_for_operation(response)
             # TODO: process the response and handle errors.
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return False
         finally:
             self._update_list_response()
         return True
@@ -405,17 +402,13 @@ class GCEFirewallsDelegate(object):
         Delete a given firewall.
         """
         project_name = self._provider.project_name
-        try:
-            response = (self._provider
-                            .gce_compute
-                            .firewalls()
-                            .delete(project=project_name,
-                                    firewall=firewall['name'])
-                            .execute())
-            self._provider.wait_for_operation(response)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return False
+        response = (self._provider
+                        .gce_compute
+                        .firewalls()
+                        .delete(project=project_name,
+                                firewall=firewall['name'])
+                        .execute())
+        self._provider.wait_for_operation(response)
         # TODO: process the response and handle errors.
         return True
 
@@ -1535,45 +1528,37 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
 
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
-        try:
-            response = (self._provider
-                            .gce_compute
-                            .addresses()
-                            .list(project=self._provider.project_name,
-                                  region=self._provider.region_name,
-                                  maxResults=max_result,
-                                  pageToken=marker)
-                            .execute())
-            ips = [GCEFloatingIP(self._provider, self.gateway, ip)
-                   for ip in response.get('items', [])]
-            if len(ips) > max_result:
-                cb.log.warning('Expected at most %d results; got %d',
-                               max_result, len(ips))
-            return ServerPagedResultList('nextPageToken' in response,
-                                         response.get('nextPageToken'),
-                                         False, data=ips)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        response = (self._provider
+                        .gce_compute
+                        .addresses()
+                        .list(project=self._provider.project_name,
+                              region=self._provider.region_name,
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        ips = [GCEFloatingIP(self._provider, self.gateway, ip)
+               for ip in response.get('items', [])]
+        if len(ips) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(ips))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=ips)
 
     def create(self):
         region_name = self._provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
-        try:
-            response = (self._provider
-                            .gce_compute
-                            .addresses()
-                            .insert(project=self._provider.project_name,
-                                    region=region_name,
-                                    body={'name': ip_name})
-                            .execute())
-            if 'error' in response:
-                return None
-            self._provider.wait_for_operation(response, region=region_name)
-            return self.get(ip_name)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
+        response = (self._provider
+                        .gce_compute
+                        .addresses()
+                        .insert(project=self._provider.project_name,
+                                region=region_name,
+                                body={'name': ip_name})
+                        .execute())
+        if 'error' in response:
             return None
+        self._provider.wait_for_operation(response, region=region_name)
+        return self.get(ip_name)
 
 
 class GCEFloatingIP(BaseFloatingIP):
@@ -2381,29 +2366,23 @@ class GCSBucketContainer(BaseBucketContainer):
         List all objects within this bucket.
         """
         max_result = limit if limit is not None and limit < 500 else 500
-        try:
-            response = (self._provider
-                            .gcs_storage
-                            .objects()
-                            .list(bucket=self.bucket.name,
-                                  prefix=prefix if prefix else '',
-                                  maxResults=max_result,
-                                  pageToken=marker)
-                            .execute())
-            if 'error' in response:
-                return ServerPagedResultList(False, None, False, data=[])
-            objects = []
-            for obj in response.get('items', []):
-                objects.append(GCSObject(self._provider, self.bucket, obj))
-            if len(objects) > max_result:
-                cb.log.warning('Expected at most %d results; got %d',
-                               max_result, len(objects))
-            return ServerPagedResultList('nextPageToken' in response,
-                                         response.get('nextPageToken'),
-                                         False, data=objects)
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return ServerPagedResultList(False, None, False, data=[])
+        response = (self._provider
+                        .gcs_storage
+                        .objects()
+                        .list(bucket=self.bucket.name,
+                              prefix=prefix if prefix else '',
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        objects = []
+        for obj in response.get('items', []):
+            objects.append(GCSObject(self._provider, self.bucket, obj))
+        if len(objects) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(objects))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=objects)
 
     def find(self, **kwargs):
         obj_list = self.list()
@@ -2463,20 +2442,14 @@ class GCSBucket(BaseBucket):
         return GCSObject(self._provider, self, response) if response else None
 
     def create_object_with_media_body(self, name, media_body):
-        try:
-            response = (self._provider
-                            .gcs_storage
-                            .objects()
-                            .insert(bucket=self.name,
-                                    body={'name': name},
-                                    media_body=media_body)
-                            .execute())
-            if 'error' in response:
-                return None
-            return response
-        except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+        response = (self._provider
+                        .gcs_storage
+                        .objects()
+                        .insert(bucket=self.name,
+                                body={'name': name},
+                                media_body=media_body)
+                        .execute())
+        return response
 
 
 class GCELaunchConfig(BaseLaunchConfig):

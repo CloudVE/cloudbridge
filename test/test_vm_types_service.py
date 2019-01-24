@@ -63,11 +63,9 @@ class CloudVMTypeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.vm_types'])
     def test_vm_types_standard(self):
-        """
-        Searching for an instance by name should return an
-        VMType object and searching for a non-existent
-        object should return an empty iterator
-        """
+        # Searching for an instance by name should return an
+        # VMType object and searching for a non-existent
+        # object should return an empty iterator
         vm_type_name = helpers.get_provider_test_data(
             self.provider,
             "vm_type")
