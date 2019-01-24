@@ -1,3 +1,6 @@
+import fnmatch
+import re
+
 # based on http://stackoverflow.com/a/39126754
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
@@ -101,6 +104,31 @@ def modify_or_add_metadata_item(provider, key, value):
                 metadata['items'].append(entry)
 
     gce_metadata_save_op(provider, _update_metadata_key)
+
+
+# This function will raise an HttpError with message containing
+# "Metadata has duplicate key" if it's not unique, unlike the previous
+# method which either adds or updates the value corresponding to that key
+def add_metadata_item(provider, key, value):
+    def _add_metadata_key(metadata):
+        entry = {'key': key, 'value': value}
+        entries = metadata.get('items', [])
+        entries.append(entry)
+        # Reassign explicitly in case the original get returned [] although
+        # if not it will be already updated
+        metadata['items'] = entries
+
+    gce_metadata_save_op(provider, _add_metadata_key)
+
+
+def find_all_metadata_items(provider, key_regex):
+    metadata = get_common_metadata(provider)
+    items = metadata.get('items', [])
+    if not items:
+        return []
+    regex = fnmatch.translate(key_regex)
+    return [item for item in items
+            if re.search(regex, item['key'])]
 
 
 def get_metadata_item_value(provider, key):
