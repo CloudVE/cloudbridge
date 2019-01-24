@@ -704,8 +704,6 @@ class GCENetworkService(BaseNetworkService):
                         .insert(project=self.provider.project_name,
                                 body=body)
                         .execute())
-        if 'error' in response:
-            return None
         self.provider.wait_for_operation(response)
         return self.get(name)
 
@@ -736,8 +734,6 @@ class GCENetworkService(BaseNetworkService):
                         .delete(project=self.provider.project_name,
                                 network=name)
                         .execute())
-        if 'error' in response:
-            return False
         self.provider.wait_for_operation(response)
         # Remove label
         tag_name = "_".join(["network", name, "label"])
@@ -801,8 +797,6 @@ class GCERouterService(BaseRouterService):
                                       'network': network_url,
                                       'description': label})
                         .execute())
-        if 'error' in response:
-            return None
         self.provider.wait_for_operation(response, region=region_name)
         return self._get_in_region(name, region_name)
 
@@ -904,10 +898,6 @@ class GCESubnetService(BaseSubnetService):
                                 region=region_name,
                                 body=body)
                         .execute())
-        if 'error' in response:
-            cb.log.warning('Error while creating a subnet: %s',
-                           response['error'])
-            return None
         self.provider.wait_for_operation(response, region=region_name)
         cb_subnet = self.get(name)
         cb_subnet.label = label
@@ -1200,8 +1190,6 @@ class GCSBucketService(BaseBucketService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'error' in response:
-            return ServerPagedResultList(False, None, False, data=[])
         buckets = []
         for bucket in response.get('items', []):
             buckets.append(GCSBucket(self.provider, bucket))
@@ -1227,8 +1215,6 @@ class GCSBucketService(BaseBucketService):
                             .insert(project=self.provider.project_name,
                                     body=body)
                             .execute())
-            if 'error' in response:
-                return None
             # GCS has a rate limit of 1 operation per 2 seconds for bucket
             # creation/deletion: https://cloud.google.com/storage/quotas.
             # Throttle here to avoid future failures.

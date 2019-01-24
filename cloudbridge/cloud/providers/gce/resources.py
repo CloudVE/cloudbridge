@@ -2374,8 +2374,6 @@ class GCSBucketContainer(BaseBucketContainer):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        if 'error' in response:
-            return ServerPagedResultList(False, None, False, data=[])
         objects = []
         for obj in response.get('items', []):
             objects.append(GCSObject(self._provider, self.bucket, obj))
@@ -2451,8 +2449,6 @@ class GCSBucket(BaseBucket):
                                 body={'name': name},
                                 media_body=media_body)
                         .execute())
-        if 'error' in response:
-            return None
         return response
 
 
