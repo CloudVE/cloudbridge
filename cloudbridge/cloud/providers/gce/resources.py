@@ -520,6 +520,16 @@ class GCEVMFirewall(BaseVMFirewall):
         js['rules'] = json_rules
         return js
 
+    def refresh(self):
+        fw = self._provider.security.vm_firewalls.get(self.id)
+        # restore all internal state
+        if fw:
+            # pylint:disable=protected-access
+            self._delegate = fw._delegate
+            self._description = fw._description
+            self._network = fw._network
+            self._rule_container = fw._rule_container
+
     @property
     def network(self):
         return self._network
@@ -1071,7 +1081,6 @@ class GCEInstance(BaseInstance):
     @key_pair_id.setter
     # pylint:disable=arguments-differ
     def key_pair_id(self, value):
-        self.assert_valid_resource_label(value)
         key_pair = None
         if not isinstance(value, GCEKeyPair):
             key_pair = self._provider.security.key_pairs.get(value)

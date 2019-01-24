@@ -255,20 +255,6 @@ class GCEVMFirewallService(BaseVMFirewallService):
         fw.label = label
         return fw
 
-    def find(self, name, limit=None, marker=None):
-        """
-        Finds a non-empty VM firewall. If a VM firewall with the given name
-        does not exist, or if it does not contain any rules, an empty list is
-        returned.
-        """
-        out = []
-        for tag, network_name in self._delegate.tag_networks:
-            if tag == name:
-                network = self.provider.networking.networks.get_by_name(
-                        network_name)
-                out.append(GCEVMFirewall(self._delegate, name, network))
-        return out
-
     def delete(self, group_id):
         return self._delegate.delete_tag_network_with_id(group_id)
 
@@ -724,7 +710,7 @@ class GCENetworkService(BaseNetworkService):
                            'Auto mode networks use the default CIDR of '
                            '%s. For custom networks, you should create subnets'
                            'in each region with explicit CIDR blocks',
-                           GCENetwork.DEFAULT_IPV4RANGE)
+                           GCENetwork.CB_DEFAULT_IPV4RANGE)
             cidr_block = None
         name = GCENetwork._generate_name_from_label(label, 'cbnet')
         body = {'name': name}
