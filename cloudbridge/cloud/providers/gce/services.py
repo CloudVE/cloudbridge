@@ -137,7 +137,7 @@ class GCEKeyPairService(BaseKeyPairService):
         ID for it
         """
         md5 = hashlib.md5()
-        md5.update(gce_kp.public_key.encode())
+        md5.update(" ".join([gce_kp.public_key, gce_kp.email]).encode())
         return md5.hexdigest()
 
     def get(self, key_pair_id):
@@ -181,6 +181,7 @@ class GCEKeyPairService(BaseKeyPairService):
         if self.find(name=name):
             raise DuplicateResourceException(
                 'A KeyPair with the same name %s exists', name)
+
         private_key = None
         if not public_key_material:
             private_key, public_key_material = helpers.generate_key_pair()
@@ -667,7 +668,7 @@ class GCENetworkService(BaseNetworkService):
 
     def get_by_name(self, network_name):
         # Get already works with name
-        # TODO: Decide if we neet to keep this function altogether/add it
+        # TODO: Decide if we need to keep this function altogether/add it
         # everywhere?
         if network_name:
             return self.get(network_name)
@@ -880,7 +881,7 @@ class GCESubnetService(BaseSubnetService):
         if zone:
             region_names.append(self._zone_to_region_name(zone))
         else:
-            for r in self.provider.compute.regions.list():
+            for r in self.provider.compute.regions:
                 region_names.append(r.name)
         subnets = []
         for region_name in region_names:
@@ -982,7 +983,7 @@ class GCESubnetService(BaseSubnetService):
             if not isinstance(zone, GCEPlacementZone):
                 zone = GCEPlacementZone(
                     self.provider,
-                    self.provider.get_resource('zones', zone, zone=zone))
+                    self.provider.get_resource('zones', zone))
             return zone.region_name
         return self.provider.region_name
 
