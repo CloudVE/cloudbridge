@@ -11,9 +11,7 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.volumes'])
     def test_object_life_cycle(self):
-        """
-        Test object life cycle methods by using a volume.
-        """
+        # Test object life cycle methods by using a volume.
         label = "cb-objlifecycle-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
             label, 1,

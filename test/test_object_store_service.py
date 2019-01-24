@@ -23,10 +23,6 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket(self):
-        """
-        Create a new bucket, check whether the expected values are set,
-        and delete it.
-        """
 
         def create_bucket(name):
             return self.provider.storage.buckets.create(name)
@@ -71,11 +67,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket_object_properties(self):
-        """
-        Create a new bucket, upload some contents into the bucket, and
-        check whether list properly detects the new content.
-        Delete everything afterwards.
-        """
+        # Create a new bucket, upload some contents into the bucket, and
+        # check whether list properly detects the new content.
+        # Delete everything afterwards.
         name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
 
@@ -198,11 +192,9 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
     @skip("Skip unless you want to test swift objects bigger than 5 Gig")
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_with_large_file(self):
-        """
-        Creates a 6 Gig file in the temp directory, then uploads it to
-        Swift. Once uploaded, then downloads to a new file in the temp
-        directory and compares the two files to see if they match.
-        """
+        # Creates a 6 Gig file in the temp directory, then uploads it to
+        # Swift. Once uploaded, then downloads to a new file in the temp
+        # directory and compares the two files to see if they match.
         temp_dir = tempfile.gettempdir()
         file_name = '6GigTest.tmp'
         six_gig_file = os.path.join(temp_dir, file_name)

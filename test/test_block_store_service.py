@@ -21,10 +21,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.volumes'])
     def test_crud_volume(self):
-        """
-        Create a new volume, check whether the expected values are set,
-        and delete it
-        """
         def create_vol(label):
             return self.provider.storage.volumes.create(
                 label, 1,
@@ -47,9 +43,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.volumes'])
     def test_attach_detach_volume(self):
-        """
-        Create a new volume, and attempt to attach it to an instance
-        """
         label = "cb-attachvol-{0}".format(helpers.get_uuid())
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -76,9 +69,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.volumes'])
     def test_volume_properties(self):
-        """
-        Test volume properties
-        """
         label = "cb-volprops-{0}".format(helpers.get_uuid())
         vol_desc = 'newvoldesc1'
         # Declare these variables and late binding will allow
@@ -137,11 +127,9 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.snapshots'])
     def test_crud_snapshot(self):
-        """
-        Create a new volume, create a snapshot of the volume, and check
-        whether list_snapshots properly detects the new snapshot.
-        Delete everything afterwards.
-        """
+        # Create a new volume, create a snapshot of the volume, and check
+        # whether list_snapshots properly detects the new snapshot.
+        # Delete everything afterwards.
         label = "cb-crudsnap-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
             label, 1,
@@ -181,9 +169,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.snapshots'])
     def test_snapshot_properties(self):
-        """
-        Test snapshot properties
-        """
         label = "cb-snapprop-{0}".format(helpers.get_uuid())
         test_vol = self.provider.storage.volumes.create(
             label, 1,

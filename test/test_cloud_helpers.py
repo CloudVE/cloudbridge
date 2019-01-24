@@ -80,9 +80,7 @@ class CloudHelpersTestCase(ProviderTestBase):
             results.data
 
     def test_type_validation(self):
-        """
-        Make sure internal type checking implementation properly sets types.
-        """
+        # Make sure internal type checking implementation properly sets types.
         self.provider.config['text_type_check'] = 'test-text'
         config_value = self.provider._get_config_value('text_type_check', None)
         self.assertIsInstance(config_value, six.string_types)
