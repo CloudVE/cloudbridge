@@ -9,6 +9,7 @@ import io
 import math
 import time
 import uuid
+from collections import namedtuple
 
 import googleapiclient
 
@@ -59,19 +60,22 @@ except NameError:
 
 class GCEKeyPair(BaseKeyPair):
 
-    def __init__(self, provider, kp_id, kp_name, private_key=None):
+    tag_format = "CB_{}_KEY_PAIR"
+    GCEKeyInfo = namedtuple('GCEKeyInfo', 'name public_key')
+
+    def __init__(self, provider, kp_info, private_key=None):
         super(GCEKeyPair, self).__init__(provider, None)
-        self._kp_id = kp_id
-        self._kp_name = kp_name
+        # "GCEKeyPair." needed to properly evaluate the named tuple
+        self._key_pair = eval("GCEKeyPair." + kp_info)
         self._private_key = private_key
 
     @property
     def id(self):
-        return self._kp_id
+        return self._key_pair.name
 
     @property
     def name(self):
-        return self._kp_name
+        return self._key_pair.name
 
     def delete(self):
         self._provider.security.key_pairs.delete(self.id)
