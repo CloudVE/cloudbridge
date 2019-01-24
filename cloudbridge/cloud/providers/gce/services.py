@@ -162,21 +162,18 @@ class GCEKeyPairService(BaseKeyPairService):
         """
         Searches for a key pair by a given list of attributes.
         """
-        kp_name = kwargs.get('name', None)
-        kp_id = kwargs.get('id', None)
-        for parameter in kwargs:
-            if parameter not in ('id', 'name'):
-                cb.log.error('Unrecognised parameters for search: %s. '
-                             'Supported attributes: id, name', parameter)
+        obj_list = self
+        filters = ['id', 'name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
-        out = []
-        for kp in self:
-            if kp_name is not None and kp.name != kp_name:
-                continue
-            if kp_id is not None and kp.id != kp_id:
-                continue
-            out.append(kp)
-        return out
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
 
     def create(self, name, public_key_material=None):
         GCEKeyPair.assert_valid_resource_name(name)
@@ -1278,5 +1275,9 @@ class GCSBucketService(BaseBucketService):
             time.sleep(2)
             return GCSBucket(self.provider, response)
         except googleapiclient.errors.HttpError as http_error:
-            cb.log.warning('googleapiclient.errors.HttpError: %s', http_error)
-            return None
+            # 409 = conflict
+            if http_error.resp.status in [409]:
+                raise DuplicateResourceException(
+                    'Bucket already exists with name {0}'.format(name))
+            else:
+                raise
