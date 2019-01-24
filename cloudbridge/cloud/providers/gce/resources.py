@@ -1085,10 +1085,10 @@ class GCEInstance(BaseInstance):
             kp = key_pair._key_pair
             kp_items = [{
                 "key": "ssh-keys",
-                # FIXME: ssh username & key format are fixed here while they
-                # should correspond to the operating system, or be customizable
-                "value": "ubuntu:{0} {1}".format(kp.public_key,
-                                                 kp.name)
+                # Format is not removed from public key portion
+                "value": "{}:{} {}".format(self._provider.vm_default_user_name,
+                                           kp.public_key,
+                                           kp.name)
             }]
             config = {
                 "items": kp_items,

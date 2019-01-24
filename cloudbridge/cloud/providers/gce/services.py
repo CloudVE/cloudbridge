@@ -117,6 +117,7 @@ class GCEKeyPairService(BaseKeyPairService):
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()
+        # TODO: Add support for other formats not assume ssh-rsa
         elif "ssh-rsa" not in public_key_material:
             public_key_material = "ssh-rsa {}".format(public_key_material)
         kp_info = str(GCEKeyPair.GCEKeyInfo(name, public_key_material))
