@@ -1082,20 +1082,13 @@ class GCEInstance(BaseInstance):
         if not isinstance(value, GCEKeyPair):
             key_pair = self._provider.security.key_pairs.get(value)
         if key_pair:
-            key_pair_name = key_pair.name
-        kp = None
-        for kpi in self._provider.security.key_pairs._iter_gce_key_pairs(
-                self._provider):
-            if kpi.email == key_pair_name:
-                kp = kpi
-                break
-        if kp:
+            kp = key_pair._key_pair
             kp_items = [{
                 "key": "ssh-keys",
                 # FIXME: ssh username & key format are fixed here while they
                 # should correspond to the operating system, or be customizable
-                "value": "ubuntu:ssh-rsa {0} {1}".format(kp.public_key,
-                                                         kp.email)
+                "value": "ubuntu:{0} {1}".format(kp.public_key,
+                                                 kp.name)
             }]
             config = {
                 "items": kp_items,
