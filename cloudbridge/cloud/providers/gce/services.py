@@ -347,7 +347,7 @@ class GCEInstanceService(BaseInstanceService):
             if not isinstance(zone, GCEPlacementZone):
                 zone = GCEPlacementZone(
                     self.provider,
-                    self.provider.get_resource('zones', zone, zone=zone))
+                    self.provider.get_resource('zones', zone))
             zone_name = zone.name
         if not isinstance(vm_type, GCEVMType):
             vm_type = self.provider.compute.vm_types.get(vm_type)
@@ -973,7 +973,7 @@ class GCEVolumeService(BaseVolumeService):
         if not isinstance(zone, GCEPlacementZone):
             zone = GCEPlacementZone(
                 self.provider,
-                self.provider.get_resource('zones', zone, zone=zone))
+                self.provider.get_resource('zones', zone))
         zone_name = zone.name
         snapshot_id = snapshot.id if isinstance(
             snapshot, GCESnapshot) and snapshot else snapshot
