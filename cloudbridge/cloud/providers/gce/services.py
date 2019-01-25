@@ -1120,9 +1120,6 @@ class GCSBucketService(BaseBucketService):
                                      False, data=buckets)
 
     def create(self, name, location=None):
-        """
-        Create a new bucket and returns it. Returns None if creation fails.
-        """
         GCSBucket.assert_valid_resource_name(name)
         body = {'name': name}
         if location:

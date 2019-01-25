@@ -2336,11 +2336,11 @@ class BucketObject(CloudResource):
     @abstractmethod
     def generate_url(self, expires_in):
         """
-        Generate a URL to this object.
+        Generate a signed URL to this object.
 
-        If the object is public, `expires_in` argument is not necessary, but if
-        the object is private, the lifetime of URL is set using `expires_in`
-        argument.
+        A signed URL associated with an object gives time-limited read access
+        to that specific object. Anyone in possession of the URL has the access
+        granted by the URL.
 
         :type expires_in: ``int``
         :param expires_in: Time to live of the generated URL in seconds.

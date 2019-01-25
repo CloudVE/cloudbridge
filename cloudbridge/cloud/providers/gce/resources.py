@@ -2301,6 +2301,8 @@ class GCSObject(BaseBucketObject):
         """
         Set the contents of this object to the given text.
         """
+        if type(data) is str:
+            data = data.encode()
         media_body = googleapiclient.http.MediaIoBaseUpload(
                 io.BytesIO(data), mimetype='plain/text')
         response = self._bucket.create_object_with_media_body(self.name,
@@ -2327,15 +2329,15 @@ class GCSObject(BaseBucketObject):
              .delete(bucket=self._obj['bucket'], object=self.name)
              .execute())
 
-    def generate_url(self, expires_in=0):
+    def generate_url(self, expires_in):
         """
         Generates a signed URL accessible to everyone.
         """
-        expiration = calendar.timegm(time.gmtime()) + 2 * 24 * 60 * 60
-        signature = self._provider.sign_blob(
-                'GET\n\n\n%d\n/%s/%s' %
-                (expiration, self._obj['bucket'], self.name))
-        encoded_signature = base64.b64encode(signature)
+        expiration = calendar.timegm(time.gmtime()) + expires_in
+        signed_signature = self._provider.sign_blob(
+            'GET\n\n\n%d\n/%s/%s' %
+            (expiration, self._obj['bucket'], self.name))
+        encoded_signature = base64.b64encode(signed_signature).decode("utf-8")
         url_encoded_signature = (encoded_signature.replace('+', '%2B')
                                                   .replace('/', '%2F'))
         return ('https://storage.googleapis.com/%s/%s?GoogleAccessId=%s'
@@ -2439,7 +2441,7 @@ class GCSBucket(BaseBucket):
         response = self.create_object_with_media_body(
             name,
             googleapiclient.http.MediaIoBaseUpload(
-                    io.BytesIO(''), mimetype='plain/text'))
+                    io.BytesIO(b''), mimetype='plain/text'))
         return GCSObject(self._provider, self, response) if response else None
 
     def create_object_with_media_body(self, name, media_body):

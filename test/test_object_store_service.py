@@ -189,7 +189,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 with open(test_file, 'rb') as f:
                     self.assertEqual(target_stream.getvalue(), f.read())
 
-    @skip("Skip unless you want to test swift objects bigger than 5 Gig")
+    @skip("Skip unless you want to test objects bigger than 5GB")
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_with_large_file(self):
         # Creates a 6 Gig file in the temp directory, then uploads it to
