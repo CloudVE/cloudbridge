@@ -1,4 +1,3 @@
-import fnmatch
 import re
 
 from googleapiclient.errors import HttpError
@@ -101,14 +100,13 @@ def add_metadata_item(provider, key, value):
     gce_metadata_save_op(provider, _add_metadata_key)
 
 
-def find_all_metadata_items(provider, key_regex):
+def find_matching_metadata_items(provider, key_regex):
     metadata = get_common_metadata(provider)
     items = metadata.get('items', [])
     if not items:
         return []
-    regex = fnmatch.translate(key_regex)
     return [item for item in items
-            if re.search(regex, item['key'])]
+            if re.search(key_regex, item['key'])]
 
 
 def get_metadata_item_value(provider, key):

@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 import uuid
@@ -82,10 +83,12 @@ class GCEKeyPairService(BaseKeyPairService):
             return None
 
     def list(self, limit=None, marker=None):
-        key_regex = GCEKeyPair.tag_format.replace("{}", "*")
         key_pairs = []
-        for item in helpers.find_all_metadata_items(self.provider, key_regex):
-            kp_info = item['value']
+        for item in helpers.find_matching_metadata_items(
+                self.provider, GCEKeyPair.KP_TAG_REGEX):
+            elems = item['value'].split(u"_")
+            if elems and elems[0]:  # ignore blank lines
+                kp_info = GCEKeyPair.GCEKeyInfo(elems[0], elems[1])
             key_pairs.append(GCEKeyPair(self.provider, kp_info))
         return ClientPagedResultList(self.provider, key_pairs,
                                      limit=limit, marker=marker)
@@ -110,29 +113,33 @@ class GCEKeyPairService(BaseKeyPairService):
     def create(self, name, public_key_material=None):
         GCEKeyPair.assert_valid_resource_name(name)
 
-        if self.find(name=name):
-            raise DuplicateResourceException(
-                'A KeyPair with the same name %s exists', name)
-
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()
         # TODO: Add support for other formats not assume ssh-rsa
         elif "ssh-rsa" not in public_key_material:
             public_key_material = "ssh-rsa {}".format(public_key_material)
-        kp_info = str(GCEKeyPair.GCEKeyInfo(name, public_key_material))
-
-        metadata_key = GCEKeyPair.tag_format.format(name)
-        helpers.add_metadata_item(self.provider,
-                                  metadata_key,
-                                  kp_info)
-        return GCEKeyPair(self.provider, kp_info, private_key)
+        kp_info = GCEKeyPair.GCEKeyInfo(name, public_key_material)
+        metadata_value = u"{0}_{1}\n".format(kp_info.name, kp_info.public_key)
+        try:
+            helpers.add_metadata_item(self.provider,
+                                      GCEKeyPair.KP_TAG_PREFIX + name,
+                                      metadata_value)
+            return GCEKeyPair(self.provider, kp_info, private_key)
+        except googleapiclient.errors.HttpError as err:
+            if err.resp.get('content-type', '').startswith('application/json'):
+                message = (json.loads(err.content).get('error', {})
+                           .get('errors', [{}])[0].get('message'))
+                if "duplicate keys" in message:
+                    raise DuplicateResourceException(
+                        'A KeyPair with name {0} already exists'.format(name))
+            raise
 
     def delete(self, key_pair_id):
         kp = self.get(key_pair_id)
         if kp:
-            metadata_key = GCEKeyPair.tag_format.format(kp.name)
-            helpers.remove_metadata_item(self.provider, metadata_key)
+            helpers.remove_metadata_item(
+                self.provider, GCEKeyPair.KP_TAG_PREFIX + kp.name)
 
 
 class GCEVMFirewallService(BaseVMFirewallService):

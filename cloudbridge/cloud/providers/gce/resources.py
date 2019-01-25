@@ -7,6 +7,7 @@ import hashlib
 import inspect
 import io
 import math
+import re
 import time
 import uuid
 from collections import namedtuple
@@ -60,13 +61,13 @@ except NameError:
 
 class GCEKeyPair(BaseKeyPair):
 
-    tag_format = "CB_{}_KEY_PAIR"
-    GCEKeyInfo = namedtuple('GCEKeyInfo', 'name public_key')
+    KP_TAG_PREFIX = "cb_key_pair_"
+    KP_TAG_REGEX = re.compile("^" + KP_TAG_PREFIX + ".*")
+    GCEKeyInfo = namedtuple('GCEKeyInfo', ['name', 'public_key'])
 
     def __init__(self, provider, kp_info, private_key=None):
         super(GCEKeyPair, self).__init__(provider, None)
-        # "GCEKeyPair." needed to properly evaluate the named tuple
-        self._key_pair = eval("GCEKeyPair." + kp_info)
+        self._key_pair = kp_info
         self._private_key = private_key
 
     @property
