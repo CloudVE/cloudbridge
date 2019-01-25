@@ -86,9 +86,8 @@ class GCEKeyPairService(BaseKeyPairService):
         key_pairs = []
         for item in helpers.find_matching_metadata_items(
                 self.provider, GCEKeyPair.KP_TAG_REGEX):
-            elems = item['value'].split(u"_")
-            if elems and elems[0]:  # ignore blank lines
-                kp_info = GCEKeyPair.GCEKeyInfo(elems[0], elems[1])
+            metadata_value = json.loads(item['value'])
+            kp_info = GCEKeyPair.GCEKeyInfo(**metadata_value)
             key_pairs.append(GCEKeyPair(self.provider, kp_info))
         return ClientPagedResultList(self.provider, key_pairs,
                                      limit=limit, marker=marker)
@@ -120,7 +119,7 @@ class GCEKeyPairService(BaseKeyPairService):
         elif "ssh-rsa" not in public_key_material:
             public_key_material = "ssh-rsa {}".format(public_key_material)
         kp_info = GCEKeyPair.GCEKeyInfo(name, public_key_material)
-        metadata_value = u"{0}_{1}\n".format(kp_info.name, kp_info.public_key)
+        metadata_value = json.dumps(kp_info._asdict())
         try:
             helpers.add_metadata_item(self.provider,
                                       GCEKeyPair.KP_TAG_PREFIX + name,
