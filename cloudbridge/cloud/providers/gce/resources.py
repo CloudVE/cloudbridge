@@ -2170,9 +2170,14 @@ class GCESnapshot(BaseSnapshot):
 
     @description.setter
     def description(self, value):
+        # Refresh to update fingerprint and current labels
+        self.refresh()
+        fingerprint = self._snapshot.get('labelFingerprint')
+        labels = self._snapshot.get('labels', {})
+        labels['description'] = value.replace(' ', '_').lower()
         request_body = {
-            'labels': {'description': value.replace(' ', '_').lower()},
-            'labelFingerprint': self._snapshot.get('labelFingerprint'),
+            'labels': labels,
+            'labelFingerprint': fingerprint,
         }
         try:
             (self._provider
