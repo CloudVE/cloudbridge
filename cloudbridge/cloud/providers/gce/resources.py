@@ -758,8 +758,12 @@ class GCEMachineImage(BaseMachineImage):
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
+        # Refresh to update fingerprint and current labels
+        self.refresh()
+        labels = self._gce_image.get('labels', {})
+        labels['cblabel'] = value
         request_body = {
-            'labels': {'cblabel': value.replace(' ', '_').lower()},
+            'labels': labels,
             'labelFingerprint': self._gce_image.get('labelFingerprint'),
         }
         try:
@@ -876,8 +880,12 @@ class GCEInstance(BaseInstance):
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
+        # Refresh to update fingerprint and current labels
+        self.refresh()
+        labels = self._gce_instance.get('labels', {})
+        labels['cblabel'] = value
         request_body = {
-            'labels': {'cblabel': value.replace(' ', '_').lower()},
+            'labels': labels,
             'labelFingerprint': self._gce_instance.get('labelFingerprint'),
         }
         try:
@@ -1925,8 +1933,12 @@ class GCEVolume(BaseVolume):
     @label.setter
     def label(self, value):
         self.assert_valid_resource_label(value)
+        # Refresh to update fingerprint and current labels
+        self.refresh()
+        labels = self._volume.get('labels', {})
+        labels['cblabel'] = value
         request_body = {
-            'labels': {'cblabel': value.replace(' ', '_').lower()},
+            'labels': labels,
             'labelFingerprint': self._volume.get('labelFingerprint'),
         }
         try:
@@ -1954,8 +1966,12 @@ class GCEVolume(BaseVolume):
 
     @description.setter
     def description(self, value):
+        # Refresh to update fingerprint and current labels
+        self.refresh()
+        labels = self._volume.get('labels', {})
+        labels['description'] = value.replace(' ', '_').lower()
         request_body = {
-            'labels': {'description': value.replace(' ', '_').lower()},
+            'labels': labels,
             'labelFingerprint': self._volume.get('labelFingerprint'),
         }
         try:
@@ -2142,8 +2158,12 @@ class GCESnapshot(BaseSnapshot):
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
+        # Refresh to update fingerprint and current labels
+        self.refresh()
+        labels = self._snapshot.get('labels', {})
+        labels['cblabel'] = value
         request_body = {
-            'labels': {'cblabel': value.replace(' ', '_').lower()},
+            'labels': labels,
             'labelFingerprint': self._snapshot.get('labelFingerprint'),
         }
         try:
@@ -2172,12 +2192,11 @@ class GCESnapshot(BaseSnapshot):
     def description(self, value):
         # Refresh to update fingerprint and current labels
         self.refresh()
-        fingerprint = self._snapshot.get('labelFingerprint')
         labels = self._snapshot.get('labels', {})
         labels['description'] = value.replace(' ', '_').lower()
         request_body = {
             'labels': labels,
-            'labelFingerprint': fingerprint,
+            'labelFingerprint': self._snapshot.get('labelFingerprint'),
         }
         try:
             (self._provider
