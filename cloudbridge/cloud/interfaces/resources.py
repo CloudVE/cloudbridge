@@ -950,7 +950,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, label, cidr_block, zone=None):
+    def create_subnet(self, label, cidr_block, zone):
         """
         Create a new network subnet and associate it with this Network.
 
