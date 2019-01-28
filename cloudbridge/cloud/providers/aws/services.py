@@ -870,7 +870,15 @@ class AWSSubnetService(BaseSubnetService):
         default_sn = None
 
         # Determine how many subnets we'll need for the default network and the
-        # number of available zones.
+        # number of available zones. We need to derive a non-overlapping
+        # network size for each subnet within the parent net so figure those
+        # subnets here. `<net>.subnets` method will do this but we need to give
+        # it a prefix. Determining that prefix depends on the size of the
+        # network and should be incorporate the number of zones. So iterate
+        # over potential number of subnets until enough can be created to
+        # accommodate the number of available zones. That is where the fixed
+        # number comes from in the for loop as that many iterations will yield
+        # more potential subnets than any region has zones.
         ip_net = ipaddress.ip_network(AWSNetwork.CB_DEFAULT_IPV4RANGE.decode())
         for x in range(5):
             if len(region.zones) <= len(list(ip_net.subnets(
