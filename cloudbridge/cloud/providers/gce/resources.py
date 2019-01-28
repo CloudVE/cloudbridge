@@ -1095,7 +1095,7 @@ class GCEInstance(BaseInstance):
     @key_pair_id.setter
     # pylint:disable=arguments-differ
     def key_pair_id(self, value):
-        key_pair = None
+        key_pair = value
         if not isinstance(value, GCEKeyPair):
             key_pair = self._provider.security.key_pairs.get(value)
         if key_pair:
