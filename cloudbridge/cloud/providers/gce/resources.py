@@ -1591,7 +1591,7 @@ class GCEFloatingIP(BaseFloatingIP):
 
     @property
     def public_ip(self):
-        return self._ip['address']
+        return self._ip.get('address')
 
     @property
     def private_ip(self):
@@ -1642,7 +1642,7 @@ class GCEFloatingIP(BaseFloatingIP):
             provider = self._provider
             if len(self._ip['users']) > 1:
                 cb.log.warning('Address "%s" in use by more than one resource',
-                               self._ip['address'])
+                               self._ip.get('address'))
             resource_parsed_url = provider.parse_url(self._ip['users'][0])
             resource = resource_parsed_url.get_resource()
             if resource['kind'] == 'compute#forwardingRule':
@@ -1656,10 +1656,10 @@ class GCEFloatingIP(BaseFloatingIP):
                         self._target_instance = GCEFloatingIP._DEAD_INSTANCE
                 else:
                     cb.log.warning('Address "%s" is forwarded to a %s',
-                                   self._ip['address'], target['kind'])
+                                   self._ip.get('address'), target['kind'])
             else:
                 cb.log.warning('Address "%s" in use by a %s',
-                               self._ip['address'], resource['kind'])
+                               self._ip.get('address'), resource['kind'])
 
 
 class GCERouter(BaseRouter):
