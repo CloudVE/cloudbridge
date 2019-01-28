@@ -208,15 +208,16 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     "Router {0} should not be assoc. with network {1}".format(
                             router.id, router.network_id))
 
-            self.assertTrue(
-                len(router.subnets) == 0,
-                "No subnet should be attached to router {1}".format(sn, router)
-            )
-            router.attach_subnet(sn)
-            self.assertTrue(
-                len(router.subnets) == 1,
-                "Subnet {0} not attached to router {1}".format(sn, router)
-            )
+                self.assertTrue(
+                    len(router.subnets) == 0,
+                    "No subnet should be attached to router {1}".format(
+                        sn, router)
+                )
+                router.attach_subnet(sn)
+                self.assertTrue(
+                    len(router.subnets) == 1,
+                    "Subnet {0} not attached to router {1}".format(sn, router)
+                )
             gteway = net.gateways.get_or_create_inet_gateway()
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
