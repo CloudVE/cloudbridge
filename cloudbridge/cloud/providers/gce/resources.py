@@ -767,13 +767,14 @@ class GCEMachineImage(BaseMachineImage):
             'labelFingerprint': self._gce_image.get('labelFingerprint'),
         }
         try:
-            (self._provider
-                 .gce_compute
-                 .images()
-                 .setLabels(project=self._provider.project_name,
-                            resource=self.name,
-                            body=request_body)
-                 .execute())
+            response = (self._provider
+                        .gce_compute
+                        .images()
+                        .setLabels(project=self._provider.project_name,
+                                   resource=self.name,
+                                   body=request_body)
+                        .execute())
+            self._provider.wait_for_operation(response)
         except Exception as e:
             cb.log.warning('Exception while setting image label: %s. '
                            'Check for invalid characters in label. '
@@ -889,14 +890,15 @@ class GCEInstance(BaseInstance):
             'labelFingerprint': self._gce_instance.get('labelFingerprint'),
         }
         try:
-            (self._provider
-                 .gce_compute
-                 .instances()
-                 .setLabels(project=self._provider.project_name,
-                            zone=self.zone_name,
-                            instance=self.name,
-                            body=request_body)
-                 .execute())
+            response = (self._provider
+                        .gce_compute
+                        .instances()
+                        .setLabels(project=self._provider.project_name,
+                                   zone=self.zone_name,
+                                   instance=self.name,
+                                   body=request_body)
+                        .execute())
+            self._provider.wait_for_operation(response, zone=self.zone_name)
         except Exception as e:
             cb.log.warning('Exception while setting instance label: %s. '
                            'Check for invalid characters in label. '
@@ -971,52 +973,48 @@ class GCEInstance(BaseInstance):
         """
         Reboot this instance.
         """
-        response = None
         if self.state == InstanceState.STOPPED:
-            response = (self._provider
-                            .gce_compute
-                            .instances()
-                            .start(project=self._provider.project_name,
-                                   zone=self.zone_name,
-                                   instance=self.name)
-                            .execute())
+            (self._provider
+             .gce_compute
+             .instances()
+             .start(project=self._provider.project_name,
+                    zone=self.zone_name,
+                    instance=self.name)
+             .execute())
         else:
-            response = (self._provider
-                            .gce_compute
-                            .instances()
-                            .reset(project=self._provider.project_name,
-                                   zone=self.zone_name,
-                                   instance=self.name)
-                            .execute())
-        self._provider.wait_for_operation(response, zone=self.zone_name)
+            (self._provider
+             .gce_compute
+             .instances()
+             .reset(project=self._provider.project_name,
+                    zone=self.zone_name,
+                    instance=self.name)
+             .execute())
 
     def delete(self):
         """
         Permanently terminate this instance.
         """
         name = self.name
-        response = (self._provider
-                        .gce_compute
-                        .instances()
-                        .delete(project=self._provider.project_name,
-                                zone=self.zone_name,
-                                instance=name)
-                        .execute())
-        self._provider.wait_for_operation(response, zone=self.zone_name)
+        (self._provider
+         .gce_compute
+         .instances()
+         .delete(project=self._provider.project_name,
+                 zone=self.zone_name,
+                 instance=name)
+         .execute())
         self._gce_instance = {'name': name, 'status': 'UNKNOWN'}
 
     def stop(self):
         """
         Stop this instance.
         """
-        response = (self._provider
-                        .gce_compute
-                        .instances()
-                        .stop(project=self._provider.project_name,
-                              zone=self.zone_name,
-                              instance=self.name)
-                        .execute())
-        self._provider.wait_for_operation(response, zone=self.zone_name)
+        (self._provider
+         .gce_compute
+         .instances()
+         .stop(project=self._provider.project_name,
+               zone=self.zone_name,
+               instance=self.name)
+         .execute())
 
     @property
     def image_id(self):
@@ -1108,14 +1106,16 @@ class GCEInstance(BaseInstance):
                 "fingerprint": self._gce_instance['metadata']['fingerprint']
             }
             try:
-                (self._provider
-                    .gce_compute
-                    .instances()
-                    .setMetadata(project=self._provider.project_name,
-                                 zone=self.zone_name,
-                                 instance=self.name,
-                                 body=config)
-                    .execute())
+                response = (self._provider
+                            .gce_compute
+                            .instances()
+                            .setMetadata(project=self._provider.project_name,
+                                         zone=self.zone_name,
+                                         instance=self.name,
+                                         body=config)
+                            .execute())
+                self._provider.wait_for_operation(response,
+                                                  zone=self.zone_name)
             except Exception as e:
                 cb.log.warning('Exception while setting instance key pair: %s',
                                e)
@@ -1162,7 +1162,7 @@ class GCEInstance(BaseInstance):
 
     def _get_existing_target_instance(self):
         """
-        Return the target instance corrsponding to this instance.
+        Return the target instance corresponding to this instance.
 
         If there is no target instance for this instance, return None.
         """
@@ -1558,16 +1558,13 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
     def create(self):
         region_name = self._provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
-        response = (self._provider
-                        .gce_compute
-                        .addresses()
-                        .insert(project=self._provider.project_name,
-                                region=region_name,
-                                body={'name': ip_name})
-                        .execute())
-        if 'error' in response:
-            return None
-        self._provider.wait_for_operation(response, region=region_name)
+        (self._provider
+         .gce_compute
+         .addresses()
+         .insert(project=self._provider.project_name,
+                 region=region_name,
+                 body={'name': ip_name})
+         .execute())
         return self.get(ip_name)
 
 
@@ -1691,14 +1688,16 @@ class GCERouter(BaseRouter):
             'description': value.replace(' ', '_').lower()
         }
         try:
-            (self._provider
-                 .gce_compute
-                 .routers()
-                 .patch(project=self._provider.project_name,
-                        region=self.region_name,
-                        router=self.name,
-                        body=request_body)
-                 .execute())
+            response = (self._provider
+                        .gce_compute
+                        .routers()
+                        .patch(project=self._provider.project_name,
+                               region=self.region_name,
+                               router=self.name,
+                               body=request_body)
+                        .execute())
+            self._provider.wait_for_operation(response,
+                                              region=self.region_name)
         except Exception as e:
             cb.log.warning('Exception while setting router label: %s. '
                            'Check for invalid characters in label. '
@@ -1741,14 +1740,13 @@ class GCERouter(BaseRouter):
         return network.subnets
 
     def delete(self):
-        response = (self._provider
-                        .gce_compute
-                        .routers()
-                        .delete(project=self._provider.project_name,
-                                region=self.region_name,
-                                router=self.name)
-                        .execute())
-        self._provider.wait_for_operation(response, region=self.region_name)
+        (self._provider
+         .gce_compute
+         .routers()
+         .delete(project=self._provider.project_name,
+                 region=self.region_name,
+                 router=self.name)
+         .execute())
 
     def attach_subnet(self, subnet):
         if not isinstance(subnet, GCESubnet):
@@ -1942,14 +1940,15 @@ class GCEVolume(BaseVolume):
             'labelFingerprint': self._volume.get('labelFingerprint'),
         }
         try:
-            (self._provider
-                 .gce_compute
-                 .disks()
-                 .setLabels(project=self._provider.project_name,
-                            zone=self.zone_id,
-                            resource=self.name,
-                            body=request_body)
-                 .execute())
+            response = (self._provider
+                        .gce_compute
+                        .disks()
+                        .setLabels(project=self._provider.project_name,
+                                   zone=self.zone_name,
+                                   resource=self.name,
+                                   body=request_body)
+                        .execute())
+            self._provider.wait_for_operation(response, zone=self.zone_name)
         except Exception as e:
             cb.log.warning('Exception while setting volume name: %s. '
                            'Check for invalid characters in name. '
@@ -1975,14 +1974,16 @@ class GCEVolume(BaseVolume):
             'labelFingerprint': self._volume.get('labelFingerprint'),
         }
         try:
-            (self._provider
-                 .gce_compute
-                 .disks()
-                 .setLabels(project=self._provider.project_name,
-                            zone=self.zone_name,
-                            resource=self.name,
-                            body=request_body)
-                 .execute())
+            response = (self._provider
+                        .gce_compute
+                        .disks()
+                        .setLabels(project=self._provider.project_name,
+                                   zone=self.zone_name,
+                                   resource=self.name,
+                                   body=request_body)
+                        .execute())
+            self._provider.wait_for_operation(response,
+                                              zone=self.zone_name)
         except Exception as e:
             cb.log.warning('Exception while setting volume description: %s. '
                            'Check for invalid characters in description. '
@@ -2100,15 +2101,13 @@ class GCEVolume(BaseVolume):
         """
         Delete this volume.
         """
-        response = (self._provider
-                    .gce_compute
-                    .disks()
-                    .delete(project=self._provider.project_name,
-                            zone=self.zone_name,
-                            disk=self.name)
-                    .execute())
-        self._provider.wait_for_operation(
-            response, zone=self.zone_name)
+        (self._provider
+         .gce_compute
+         .disks()
+         .delete(project=self._provider.project_name,
+                 zone=self.zone_name,
+                 disk=self.name)
+         .execute())
 
     @property
     def state(self):
@@ -2171,13 +2170,14 @@ class GCESnapshot(BaseSnapshot):
             'labelFingerprint': self._snapshot.get('labelFingerprint'),
         }
         try:
-            (self._provider
-                 .gce_compute
-                 .snapshots()
-                 .setLabels(project=self._provider.project_name,
-                            resource=self.name,
-                            body=request_body)
-                 .execute())
+            response = (self._provider
+                        .gce_compute
+                        .snapshots()
+                        .setLabels(project=self._provider.project_name,
+                                   resource=self.name,
+                                   body=request_body)
+                        .execute())
+            self._provider.wait_for_operation(response)
         except Exception as e:
             cb.log.warning('Exception while setting snapshot label: %s. '
                            'Check for invalid characters in label. '
@@ -2203,13 +2203,14 @@ class GCESnapshot(BaseSnapshot):
             'labelFingerprint': self._snapshot.get('labelFingerprint'),
         }
         try:
-            (self._provider
-                 .gce_compute
-                 .snapshots()
-                 .setLabels(project=self._provider.project_name,
-                            resource=self.name,
-                            body=request_body)
-                 .execute())
+            response = (self._provider
+                        .gce_compute
+                        .snapshots()
+                        .setLabels(project=self._provider.project_name,
+                                   resource=self.name,
+                                   body=request_body)
+                        .execute())
+            self._provider.wait_for_operation(response)
         except Exception as e:
             cb.log.warning('Exception while setting volume description: %s. '
                            'Check for invalid characters in description. '
@@ -2251,13 +2252,12 @@ class GCESnapshot(BaseSnapshot):
         """
         Delete this snapshot.
         """
-        response = (self._provider
-                    .gce_compute
-                    .snapshots()
-                    .delete(project=self._provider.project_name,
-                            snapshot=self.name)
-                    .execute())
-        self._provider.wait_for_operation(response)
+        (self._provider
+         .gce_compute
+         .snapshots()
+         .delete(project=self._provider.project_name,
+                 snapshot=self.name)
+         .execute())
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """

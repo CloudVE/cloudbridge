@@ -728,14 +728,13 @@ class GCERouterService(BaseRouterService):
     def delete(self, router):
         region_name = self.provider.region_name
         name = router.name if isinstance(router, GCERouter) else router
-        response = (self.provider
-                        .gce_compute
-                        .routers()
-                        .delete(project=self.provider.project_name,
-                                region=region_name,
-                                router=name)
-                        .execute())
-        self._provider.wait_for_operation(response, region=region_name)
+        (self.provider
+         .gce_compute
+         .routers()
+         .delete(project=self.provider.project_name,
+                 region=region_name,
+                 router=name)
+         .execute())
 
     def _get_in_region(self, router_id, region=None):
         region_name = self.provider.region_name
@@ -846,15 +845,13 @@ class GCESubnetService(BaseSubnetService):
         return None
 
     def delete(self, subnet):
-        response = (self.provider
-                        .gce_compute
-                        .subnetworks()
-                        .delete(project=self.provider.project_name,
-                                region=subnet.region_name,
-                                subnetwork=subnet.name)
-                        .execute())
-        self._provider.wait_for_operation(
-            response, region=subnet.region_name)
+        (self.provider
+         .gce_compute
+         .subnetworks()
+         .delete(project=self.provider.project_name,
+                 region=subnet.region_name,
+                 subnetwork=subnet.name)
+         .execute())
 
     def _zone_to_region_name(self, zone):
         if zone:
