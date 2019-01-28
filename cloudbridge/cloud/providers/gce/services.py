@@ -675,7 +675,9 @@ class GCERouterService(BaseRouterService):
         super(GCERouterService, self).__init__(provider)
 
     def get(self, router_id):
-        return self._get_in_region(router_id)
+        router = self.provider.get_resource(
+            'routers', router_id, region=self.provider.region_name)
+        return GCERouter(self.provider, router) if router else None
 
     def find(self, **kwargs):
         obj_list = self
@@ -720,11 +722,12 @@ class GCERouterService(BaseRouterService):
                         .insert(project=self.provider.project_name,
                                 region=region_name,
                                 body={'name': name,
-                                      'network': network_url,
-                                      'description': label})
+                                      'network': network_url})
                         .execute())
         self.provider.wait_for_operation(response, region=region_name)
-        return self._get_in_region(name, region_name)
+        cb_router = self.get(name)
+        cb_router.label = label
+        return cb_router
 
     def delete(self, router):
         region_name = self.provider.region_name
@@ -859,6 +862,11 @@ class GCESubnetService(BaseSubnetService):
                             subnetwork=subnet.name)
                     .execute())
         self.provider.wait_for_operation(response, region=subnet.region_name)
+        # Remove label
+        tag_name = "_".join(["subnet", subnet.name, "label"])
+        if not helpers.remove_metadata_item(self._provider, tag_name):
+            log.warning('No label was found associated with this subnet '
+                        '"{}" when deleted.'.format(subnet.name))
 
     def _zone_to_region_name(self, zone):
         if zone:

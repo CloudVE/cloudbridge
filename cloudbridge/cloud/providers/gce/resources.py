@@ -6,6 +6,7 @@ import calendar
 import hashlib
 import inspect
 import io
+import logging
 import math
 import re
 import time
@@ -57,6 +58,8 @@ try:
     set
 except NameError:
     from sets import Set as set
+
+log = logging.getLogger(__name__)
 
 
 class GCEKeyPair(BaseKeyPair):
@@ -509,6 +512,11 @@ class GCEVMFirewall(BaseVMFirewall):
         for rule in self._rule_container:
             rule.delete()
         self._rule_container.dummy_rule.force_delete()
+        # Remove label
+        tag_name = "_".join(["firewall", self.name, "label"])
+        if not helpers.remove_metadata_item(self._provider, tag_name):
+            log.warning('No label was found associated with this firewall '
+                        '"{}" when deleted.'.format(self.name))
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -1428,53 +1436,6 @@ class GCENetwork(BaseNetwork):
         tag_name = "_".join(["network", self.name, "label"])
         helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
 
-    # @property
-    # def label(self):
-    #     return self._network.get('description')
-
-    # @label.setter
-    # # pylint:disable=arguments-differ
-    # def label(self, value):
-    #     self.assert_valid_resource_label(value)
-    #     body = {'description': value}
-    #     response = (self._provider
-    #                 .gce_compute
-    #                 .networks()
-    #                 .patch(project=self._provider.project_name,
-    #                        network=self.name,
-    #                        body=body)
-    #                 .execute())
-    #     self._provider.wait_for_operation(response)
-    #     self._network['description'] = value
-
-#     @property
-#     def label(self):
-#         labels = self._network.get('labels')
-#         return labels.get('cblabel', '') if labels else ''
-#
-#     @label.setter
-#     # pylint:disable=arguments-differ
-#     def label(self, value):
-#         request_body = {
-#             'labels': {'cblabel': value.replace(' ', '_').lower()},
-#             'labelFingerprint': self._network.get('labelFingerprint'),
-#         }
-#         try:
-#             (self._provider
-#                  .gce_compute
-#                  .networks()
-#                  .setLabels(project=self._provider.project_name,
-#                             zone=self._provider.default_zone,
-#                             resource=self.name,
-#                             body=request_body)
-#                  .execute())
-#         except Exception as e:
-#             cb.log.warning('Exception while setting network label: %s. '
-#                            'Check for invalid characters in label. '
-#                            'Should conform to RFC1035.', e)
-#             raise e
-#         self.refresh()
-
     @property
     def external(self):
         """
@@ -1676,32 +1637,14 @@ class GCERouter(BaseRouter):
 
     @property
     def label(self):
-        return self._router.get('description')
+        tag_name = "_".join(["router", self.name, "label"])
+        return helpers.get_metadata_item_value(self._provider, tag_name)
 
     @label.setter
-    # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        request_body = {
-            'description': value.replace(' ', '_').lower()
-        }
-        try:
-            response = (self._provider
-                        .gce_compute
-                        .routers()
-                        .patch(project=self._provider.project_name,
-                               region=self.region_name,
-                               router=self.name,
-                               body=request_body)
-                        .execute())
-            self._provider.wait_for_operation(response,
-                                              region=self.region_name)
-        except Exception as e:
-            cb.log.warning('Exception while setting router label: %s. '
-                           'Check for invalid characters in label. '
-                           'Should conform to RFC1035.', e)
-            raise e
-        self.refresh()
+        tag_name = "_".join(["router", self.name, "label"])
+        helpers.modify_or_add_metadata_item(self._provider, tag_name, value)
 
     @property
     def region_name(self):
@@ -1738,13 +1681,19 @@ class GCERouter(BaseRouter):
         return network.subnets
 
     def delete(self):
-        (self._provider
-         .gce_compute
-         .routers()
-         .delete(project=self._provider.project_name,
-                 region=self.region_name,
-                 router=self.name)
-         .execute())
+        operation = (self._provider
+                     .gce_compute
+                     .routers()
+                     .delete(project=self._provider.project_name,
+                             region=self.region_name,
+                             router=self.name)
+                     .execute())
+        self._provider.wait_for_operation(operation, region=self.region_name)
+        # Remove label
+        tag_name = "_".join(["router", self.name, "label"])
+        if not helpers.remove_metadata_item(self._provider, tag_name):
+            log.warning('No label was found associated with this router '
+                        '"{}" when deleted.'.format(self.name))
 
     def attach_subnet(self, subnet):
         if not isinstance(subnet, GCESubnet):
