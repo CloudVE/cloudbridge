@@ -26,10 +26,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         def cleanup_net(net):
             if net:
                 net.delete()
-                net.refresh()
+                net.wait_for([NetworkState.UNKNOWN],
+                             terminal_states=[NetworkState.ERROR])
                 self.assertTrue(
                     net.state == NetworkState.UNKNOWN,
-                    "Network.state must be unknown when refreshing after "
+                    "Network.state must be unknown after "
                     "a delete but got %s"
                     % net.state)
 
@@ -42,7 +43,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         subnet_label = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
             label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
-        with helpers.cleanup_action(lambda: net.delete()):
+        with helpers.cleanup_action(lambda: helpers.cleanup_network(net)):
             net.wait_till_ready()
             self.assertEqual(
                 net.state, 'available',
@@ -60,7 +61,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 label=subnet_label, cidr_block=cidr,
                 zone=helpers.get_provider_test_data(self.provider,
                                                     'placement'))
-            with helpers.cleanup_action(lambda: sn.delete()):
+            with helpers.cleanup_action(lambda: helpers.cleanup_subnet(sn)):
                 self.assertTrue(
                     sn in net.subnets,
                     "Subnet ID %s should be listed in network subnets %s."
@@ -110,10 +111,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         def cleanup_subnet(subnet):
             if subnet:
                 subnet.delete()
-                subnet.refresh()
+                subnet.wait_for([SubnetState.UNKNOWN],
+                                terminal_states=[SubnetState.ERROR])
                 self.assertTrue(
                     subnet.state == SubnetState.UNKNOWN,
-                    "Subnet.state must be unknown when refreshing after "
+                    "Subnet.state must be unknown after "
                     "a delete but got %s"
                     % subnet.state)
 
@@ -133,7 +135,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 gw.floating_ips.delete(fip.id)
 
         with helpers.cleanup_action(
-                lambda: helpers.delete_test_gateway(gw)):
+                lambda: helpers.cleanup_gateway(gw)):
             sit.check_crud(self, gw.floating_ips, FloatingIP,
                            "cb-crudfip", create_fip, cleanup_fip,
                            skip_name_check=True)
@@ -144,7 +146,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             self.provider)
         fip = gw.floating_ips.create()
         with helpers.cleanup_action(
-                lambda: helpers.delete_test_gateway(gw)):
+                lambda: helpers.cleanup_gateway(gw)):
             with helpers.cleanup_action(lambda: fip.delete()):
                 fipl = list(gw.floating_ips)
                 self.assertIn(fip, fipl)
@@ -166,10 +168,12 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_router(self):
 
         def _cleanup(net, subnet, router, gateway):
-            with helpers.cleanup_action(lambda: net.delete()):
+            with helpers.cleanup_action(lambda: helpers.cleanup_network(net)):
                 with helpers.cleanup_action(lambda: router.delete()):
-                    with helpers.cleanup_action(lambda: subnet.delete()):
-                        with helpers.cleanup_action(lambda: gateway.delete()):
+                    with helpers.cleanup_action(
+                            lambda: helpers.cleanup_subnet(subnet)):
+                        with helpers.cleanup_action(
+                                lambda: helpers.cleanup_gateway(gateway)):
                             router.detach_subnet(subnet)
                             router.detach_gateway(gateway)
 
@@ -217,7 +221,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 
-        sit.check_delete(self, self.provider.networking.routers, router)
+            sit.check_delete(self, self.provider.networking.routers, router)
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_default_network(self):

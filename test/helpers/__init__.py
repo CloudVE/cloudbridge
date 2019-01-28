@@ -12,6 +12,9 @@ from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
+from cloudbridge.cloud.interfaces.resources import FloatingIpState
+from cloudbridge.cloud.interfaces.resources import NetworkState
+from cloudbridge.cloud.interfaces.resources import SubnetState
 
 
 def parse_bool(val):
@@ -130,14 +133,33 @@ def get_or_create_default_subnet(provider):
         zone=get_provider_test_data(provider, 'placement'))
 
 
-def delete_test_network(network):
+def cleanup_subnet(subnet):
+    if subnet:
+        subnet.delete()
+        subnet.wait_for([SubnetState.UNKNOWN],
+                        terminal_states=[SubnetState.ERROR])
+
+
+def cleanup_network(network):
     """
     Delete the supplied network, first deleting any contained subnets.
     """
-    with cleanup_action(lambda: network.delete()):
-        for sn in network.subnets:
-            with cleanup_action(lambda: sn.delete()):
-                pass
+    if network:
+        try:
+            for sn in network.subnets:
+                with cleanup_action(lambda: cleanup_subnet(sn)):
+                    pass
+        finally:
+            network.delete()
+            network.wait_for([NetworkState.UNKNOWN],
+                             terminal_states=[NetworkState.ERROR])
+
+
+def cleanup_fip(fip):
+    if fip:
+        fip.delete()
+        fip.wait_for([FloatingIpState.UNKNOWN],
+                     terminal_states=[FloatingIpState.ERROR])
 
 
 def get_test_gateway(provider):
@@ -151,7 +173,7 @@ def get_test_gateway(provider):
     return net.gateways.get_or_create_inet_gateway()
 
 
-def delete_test_gateway(gateway):
+def cleanup_gateway(gateway):
     """
     Delete the supplied network and gateway.
     """
@@ -195,7 +217,7 @@ def get_test_fixtures_folder():
     return os.path.join(os.path.dirname(__file__), '../fixtures/')
 
 
-def delete_test_instance(instance):
+def delete_instance(instance):
     if instance:
         instance.delete()
         instance.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
@@ -205,12 +227,12 @@ def delete_test_instance(instance):
 def cleanup_test_resources(instance=None, vm_firewall=None,
                            key_pair=None, network=None):
     """Clean up any combination of supplied resources."""
-    with cleanup_action(lambda: delete_test_network(network)
+    with cleanup_action(lambda: cleanup_network(network)
                         if network else None):
         with cleanup_action(lambda: key_pair.delete() if key_pair else None):
             with cleanup_action(lambda: vm_firewall.delete()
                                 if vm_firewall else None):
-                delete_test_instance(instance)
+                delete_instance(instance)
 
 
 def get_uuid():

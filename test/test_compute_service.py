@@ -288,15 +288,14 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 subnet = helpers.get_or_create_default_subnet(
                     self.provider)
 
-                inst = helpers.create_test_instance(
-                    self.provider,
-                    label,
-                    subnet=subnet,
-                    launch_config=lc)
-
-                with helpers.cleanup_action(lambda:
-                                            helpers.delete_test_instance(
-                                                inst)):
+                inst = None
+                with helpers.cleanup_action(
+                        lambda: helpers.delete_instance(inst)):
+                    inst = helpers.create_test_instance(
+                        self.provider,
+                        label,
+                        subnet=subnet,
+                        launch_config=lc)
                     try:
                         inst.wait_till_ready()
                     except WaitStateException as e:
@@ -361,7 +360,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 router.attach_gateway(gateway)
                 fip = None
 
-                with helpers.cleanup_action(lambda: fip.delete()):
+                with helpers.cleanup_action(lambda: helpers.cleanup_fip(fip)):
                     # check whether adding an elastic ip works
                     fip = gateway.floating_ips.create()
                     self.assertFalse(
