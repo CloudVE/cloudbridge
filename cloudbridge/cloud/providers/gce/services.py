@@ -151,13 +151,13 @@ class GCEVMFirewallService(BaseVMFirewallService):
         tag, network_name = self._delegate.get_tag_network_from_id(group_id)
         if tag is None:
             return None
-        network = self.provider.networking.networks.get_by_name(network_name)
+        network = self.provider.networking.networks.get(network_name)
         return GCEVMFirewall(self._delegate, tag, network)
 
     def list(self, limit=None, marker=None):
         vm_firewalls = []
         for tag, network_name in self._delegate.tag_networks:
-            network = self.provider.networking.networks.get_by_name(
+            network = self.provider.networking.networks.get(
                     network_name)
             vm_firewall = GCEVMFirewall(self._delegate, tag, network)
             vm_firewalls.append(vm_firewall)
@@ -191,7 +191,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
                 continue
             if tag not in tags:
                 continue
-            network = self.provider.networking.networks.get_by_name(net_name)
+            network = self.provider.networking.networks.get(net_name)
             vm_firewalls.append(
                 GCEVMFirewall(self._delegate, tag, network))
         return vm_firewalls
@@ -576,15 +576,6 @@ class GCENetworkService(BaseNetworkService):
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
-    def get_by_name(self, network_name):
-        # Get already works with name
-        # TODO: Decide if we need to keep this function altogether/add it
-        # everywhere?
-        if network_name:
-            return self.get(network_name)
-        else:
-            return None
-
     def list(self, limit=None, marker=None, filter=None):
         # TODO: Decide whether we keep filter in 'list'
         networks = []
@@ -642,7 +633,17 @@ class GCENetworkService(BaseNetworkService):
         return cb_net
 
     def get_or_create_default(self):
-        return self._create(GCEFirewallsDelegate.DEFAULT_NETWORK, None, True)
+        default_nets = self.provider.networking.networks.find(
+            label=GCENetwork.CB_DEFAULT_NETWORK_LABEL)
+        if default_nets:
+            return default_nets[0]
+        else:
+            log.info("Creating a CloudBridge-default network labeled %s",
+                     GCENetwork.CB_DEFAULT_NETWORK_LABEL)
+            return self._create(
+                label=GCENetwork.CB_DEFAULT_NETWORK_LABEL,
+                cidr_block=GCENetwork.CB_DEFAULT_IPV4RANGE,
+                create_subnetworks=False)
 
     def delete(self, network):
         # Accepts network object
@@ -827,31 +828,37 @@ class GCESubnetService(BaseSubnetService):
         cb_subnet.label = label
         return cb_subnet
 
-    def get_or_create_default(self, zone=None):
+    def get_or_create_default(self, zone):
         """
         Every GCP project comes with a default auto mode VPC network. An auto
         mode VPC network has exactly one subnetwork per region. This method
         returns the subnetwork of the default network that spans the given
         zone.
         """
-        network = self.provider.networking.networks.get_or_create_default()
-        subnets = list(self.iter(network=network, zone=zone))
-        if len(subnets) > 1:
-            cb.log.warning('The default network has more than one subnetwork '
-                           'in a region')
-        if len(subnets) > 0:
-            return subnets[0]
-        cb.log.warning('The default network has no subnetwork in a region')
-        return None
+        sn = self.find(label=GCESubnet.CB_DEFAULT_SUBNET_LABEL)
+        if sn:
+            return sn[0]
+        # No default subnet look for default network, then create subnet
+        net = self.provider.networking.networks.get_or_create_default()
+        sn = self.provider.networking.subnets.create(
+                label=GCESubnet.CB_DEFAULT_SUBNET_LABEL,
+                cidr_block=GCESubnet.CB_DEFAULT_SUBNET_IPV4RANGE,
+                network=net, zone=zone)
+        router = self.provider.networking.routers.get_or_create_default(net)
+        router.attach_subnet(sn)
+        gateway = net.gateways.get_or_create_inet_gateway()
+        router.attach_gateway(gateway)
+        return sn
 
     def delete(self, subnet):
-        (self.provider
-         .gce_compute
-         .subnetworks()
-         .delete(project=self.provider.project_name,
-                 region=subnet.region_name,
-                 subnetwork=subnet.name)
-         .execute())
+        response = (self.provider
+                    .gce_compute
+                    .subnetworks()
+                    .delete(project=self.provider.project_name,
+                            region=subnet.region_name,
+                            subnetwork=subnet.name)
+                    .execute())
+        self.provider.wait_for_operation(response, region=subnet.region_name)
 
     def _zone_to_region_name(self, zone):
         if zone:

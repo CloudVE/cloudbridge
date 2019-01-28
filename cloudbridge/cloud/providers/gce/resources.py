@@ -200,7 +200,6 @@ class GCERegion(BaseRegion):
 
 
 class GCEFirewallsDelegate(object):
-    DEFAULT_NETWORK = 'default'
     _NETWORK_URL_PREFIX = 'global/networks/'
 
     def __init__(self, provider):
@@ -237,7 +236,7 @@ class GCEFirewallsDelegate(object):
         Extract the network name of a firewall.
         """
         if 'network' not in firewall:
-            return GCEFirewallsDelegate.DEFAULT_NETWORK
+            return GCENetwork.CB_DEFAULT_NETWORK_LABEL
         url = self._provider.parse_url(firewall['network'])
         return url.parameters['network']
 
@@ -444,8 +443,8 @@ class GCEVMFirewall(BaseVMFirewall):
         self._delegate = delegate
         self._description = description
         if network is None:
-            self._network = delegate.provider.networking.networks.get_by_name(
-                    GCEFirewallsDelegate.DEFAULT_NETWORK)
+            self._network = (delegate.provider.networking.networks
+                             .get_or_create_default())
         else:
             self._network = network
         self._rule_container = GCEVMFirewallRuleContainer(self)
@@ -1002,7 +1001,6 @@ class GCEInstance(BaseInstance):
                  zone=self.zone_name,
                  instance=name)
          .execute())
-        self._gce_instance = {'name': name, 'status': 'UNKNOWN'}
 
     def stop(self):
         """
@@ -1629,7 +1627,7 @@ class GCEFloatingIP(BaseFloatingIP):
         self._provider.wait_for_operation(response, region=self.region_name)
 
     def refresh(self):
-        fip = self.gateway.floating_ips.get(self.id)
+        fip = self._gateway.floating_ips.get(self.id)
         # pylint:disable=protected-access
         self._ip = fip._ip
         self._process_ip_users()
