@@ -590,30 +590,16 @@ class GCENetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def _create(self, label, cidr_block, create_subnetworks):
+    def create(self, label, cidr_block):
         """
-        Possible values for 'create_subnetworks' are:
-
-        None: For creating a legacy (non-subnetted) network.
-        True: For creating an auto mode VPC network. This also creates a
-              subnetwork in every region.
-        False: For creating a custom mode VPC network. Subnetworks should be
-               created manually.
+        Creates an auto mode VPC network with default subnets. It is possible
+        to add additional subnets later.
         """
         GCENetwork.assert_valid_resource_label(label)
-        if create_subnetworks is not None and cidr_block is not None:
-            cb.log.warning('cidr_block is ignored in non-legacy networks. '
-                           'Auto mode networks use the default CIDR of '
-                           '%s. For custom networks, you should create subnets'
-                           'in each region with explicit CIDR blocks',
-                           GCENetwork.CB_DEFAULT_IPV4RANGE)
-            cidr_block = None
         name = GCENetwork._generate_name_from_label(label, 'cbnet')
         body = {'name': name}
-        if cidr_block:
-            body['IPv4Range'] = cidr_block
-        else:
-            body['autoCreateSubnetworks'] = create_subnetworks
+        # This results in a custom mode network
+        body['autoCreateSubnetworks'] = False
         response = (self.provider
                         .gce_compute
                         .networks()
@@ -621,14 +607,7 @@ class GCENetworkService(BaseNetworkService):
                                 body=body)
                         .execute())
         self.provider.wait_for_operation(response)
-        return self.get(name)
-
-    def create(self, label, cidr_block):
-        """
-        Creates an auto mode VPC network with default subnets. It is possible
-        to add additional subnets later.
-        """
-        cb_net = self._create(label, cidr_block, False)
+        cb_net = self.get(name)
         cb_net.label = label
         return cb_net
 
@@ -640,10 +619,9 @@ class GCENetworkService(BaseNetworkService):
         else:
             log.info("Creating a CloudBridge-default network labeled %s",
                      GCENetwork.CB_DEFAULT_NETWORK_LABEL)
-            return self._create(
+            return self.create(
                 label=GCENetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block=GCENetwork.CB_DEFAULT_IPV4RANGE,
-                create_subnetworks=False)
+                cidr_block=GCENetwork.CB_DEFAULT_IPV4RANGE)
 
     def delete(self, network):
         # Accepts network object
