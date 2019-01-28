@@ -893,7 +893,7 @@ class GCEInstance(BaseInstance):
                  .gce_compute
                  .instances()
                  .setLabels(project=self._provider.project_name,
-                            zone=self._provider.default_zone,
+                            zone=self.zone_name,
                             instance=self.name,
                             body=request_body)
                  .execute())
@@ -1112,7 +1112,7 @@ class GCEInstance(BaseInstance):
                     .gce_compute
                     .instances()
                     .setMetadata(project=self._provider.project_name,
-                                 zone=self._provider.default_zone,
+                                 zone=self.zone_name,
                                  instance=self.name,
                                  body=config)
                     .execute())
@@ -1946,7 +1946,7 @@ class GCEVolume(BaseVolume):
                  .gce_compute
                  .disks()
                  .setLabels(project=self._provider.project_name,
-                            zone=self._provider.default_zone,
+                            zone=self.zone_id,
                             resource=self.name,
                             body=request_body)
                  .execute())
@@ -1979,7 +1979,7 @@ class GCEVolume(BaseVolume):
                  .gce_compute
                  .disks()
                  .setLabels(project=self._provider.project_name,
-                            zone=self._provider.default_zone,
+                            zone=self.zone_name,
                             resource=self.name,
                             body=request_body)
                  .execute())
@@ -2001,6 +2001,10 @@ class GCEVolume(BaseVolume):
     @property
     def zone_id(self):
         return self._volume.get('zone')
+
+    @property
+    def zone_name(self):
+        return self._provider.parse_url(self.zone_id).parameters['zone']
 
     @property
     def source(self):
@@ -2080,7 +2084,7 @@ class GCEVolume(BaseVolume):
              .gce_compute
              .instances()
              .detachDisk(project=self._provider.project_name,
-                         zone=self._provider.default_zone,
+                         zone=self.zone_name,
                          instance=instance_data.get('name'),
                          deviceName=device_name)
              .execute())
@@ -2100,11 +2104,11 @@ class GCEVolume(BaseVolume):
                     .gce_compute
                     .disks()
                     .delete(project=self._provider.project_name,
-                            zone=self._provider.default_zone,
+                            zone=self.zone_name,
                             disk=self.name)
                     .execute())
         self._provider.wait_for_operation(
-            response, zone=self._provider.default_zone)
+            response, zone=self.zone_name)
 
     @property
     def state(self):
