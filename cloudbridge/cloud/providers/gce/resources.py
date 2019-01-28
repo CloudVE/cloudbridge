@@ -1517,13 +1517,14 @@ class GCEFloatingIPContainer(BaseFloatingIPContainer):
     def create(self):
         region_name = self._provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
-        (self._provider
-         .gce_compute
-         .addresses()
-         .insert(project=self._provider.project_name,
-                 region=region_name,
-                 body={'name': ip_name})
-         .execute())
+        response = (self._provider
+                    .gce_compute
+                    .addresses()
+                    .insert(project=self._provider.project_name,
+                            region=region_name,
+                            body={'name': ip_name})
+                    .execute())
+        self._provider.wait_for_operation(response, region=region_name)
         return self.get(ip_name)
 
 
