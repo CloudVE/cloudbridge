@@ -25,7 +25,7 @@ REQS_BASE = [
     'cachetools>=2.1.0',
     'deprecated>=1.2.3'
 ]
-REQS_AWS = ['boto3<1.8.0']
+REQS_AWS = ['boto3>=1.9.86']
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
