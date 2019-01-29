@@ -169,9 +169,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def _cleanup(net, subnet, router, gateway):
             with helpers.cleanup_action(lambda: helpers.cleanup_network(net)):
-                with helpers.cleanup_action(lambda: router.delete()):
-                    with helpers.cleanup_action(
-                            lambda: helpers.cleanup_subnet(subnet)):
+                with helpers.cleanup_action(
+                        lambda: helpers.cleanup_subnet(subnet)):
+                    with helpers.cleanup_action(lambda: router.delete()):
                         with helpers.cleanup_action(
                                 lambda: helpers.cleanup_gateway(gateway)):
                             router.detach_subnet(subnet)
@@ -222,7 +222,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 
-            sit.check_delete(self, self.provider.networking.routers, router)
+        sit.check_delete(self, self.provider.networking.routers, router)
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_default_network(self):
