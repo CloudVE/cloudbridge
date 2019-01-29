@@ -776,7 +776,7 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
     CB_DEFAULT_NETWORK_LABEL = os.environ.get('CB_DEFAULT_NETWORK_LABEL',
                                               'cloudbridge-net')
     CB_DEFAULT_IPV4RANGE = os.environ.get('CB_DEFAULT_IPV4RANGE',
-                                          '10.0.0.0/16')
+                                          u'10.0.0.0/16')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)

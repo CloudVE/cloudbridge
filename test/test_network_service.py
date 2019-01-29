@@ -203,10 +203,10 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     "Router {0} state {1} should be {2}.".format(
                         router.id, router.state, RouterState.DETACHED))
 
-                self.assertFalse(
-                    router.network_id,
-                    "Router {0} should not be assoc. with network {1}".format(
-                            router.id, router.network_id))
+                self.assertEqual(
+                    router.network_id, net.id,  "Router {0} should be assoc."
+                    " with network {1}, but is associated with {2}"
+                    .format(router.id, net.id, router.network_id))
 
                 self.assertTrue(
                     len(router.subnets) == 0,

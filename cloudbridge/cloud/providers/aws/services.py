@@ -415,33 +415,31 @@ class AWSImageService(BaseImageService):
 
     def find(self, **kwargs):
         # Filter by name or label
-        label = kwargs.get('label', None)
+        label = kwargs.pop('label', None)
         # Popped here, not used in the generic find
         owner = kwargs.pop('owners', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'label'))
+
         extra_args = {}
         if owner:
             extra_args.update(Owners=owner)
-
-        obj_list = []
 
         # The original list is made by combining both searches by "tag:Name"
         # and "AMI name" to allow for searches of public images
         if label:
             log.debug("Searching for AWS Image Service %s", label)
+            obj_list = []
             obj_list.extend(self.svc.find(filter_name='name',
                                           filter_value=label, **extra_args))
             obj_list.extend(self.svc.find(filter_name='tag:Name',
                                           filter_value=label, **extra_args))
-
-        if not label:
-            obj_list = self
-
-        # Add name filter for the generic find method, to allow searching
-        # through AMI names for a match (public images will likely have an
-        # AMI name and no tag:Name)
-        kwargs.update({'name': label})
-        filters = ['label', 'name']
-        return cb_helpers.generic_find(filters, kwargs, obj_list)
+            return obj_list
+        else:
+            return []
 
     def list(self, filter_by_owner=True, limit=None, marker=None):
         return self.svc.list(Owners=['self'] if filter_by_owner else
@@ -879,7 +877,7 @@ class AWSSubnetService(BaseSubnetService):
         # accommodate the number of available zones. That is where the fixed
         # number comes from in the for loop as that many iterations will yield
         # more potential subnets than any region has zones.
-        ip_net = ipaddress.ip_network(AWSNetwork.CB_DEFAULT_IPV4RANGE.decode())
+        ip_net = ipaddress.ip_network(AWSNetwork.CB_DEFAULT_IPV4RANGE)
         for x in range(5):
             if len(region.zones) <= len(list(ip_net.subnets(
                     prefixlen_diff=x))):
