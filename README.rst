@@ -22,45 +22,37 @@ to write conditional code for each cloud.
               :target: https://travis-ci.org/CloudVE/cloudbridge
 .. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
               :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |aws-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
-              :target: https://travis-ci.org/CloudVE/cloudbridge
 
 .. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
              :target: https://travis-ci.org/CloudVE/cloudbridge
 .. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
-             :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |os-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/9
              :target: https://travis-ci.org/CloudVE/cloudbridge
 
 .. |azure-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2
                 :target: https://travis-ci.org/CloudVE/cloudbridge/branches
 .. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
                 :target: https://travis-ci.org/CloudVE/cloudbridge/branches
-.. |azure-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
-                :target: https://travis-ci.org/CloudVE/cloudbridge/branches
 
 .. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/3
               :target: https://travis-ci.org/CloudVE/cloudbridge/branches
 .. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/6
-              :target: https://travis-ci.org/CloudVE/cloudbridge/branches
-.. |gce-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/9
               :target: https://travis-ci.org/CloudVE/cloudbridge/branches
 
 
 Build Status Tests
 ~~~~~~~~~~~~~~~~~~
 
-+--------------------------+--------------+--------------+--------------+
-| **Provider/Environment** | py27         | py36         | pypy         |
-+--------------------------+--------------+--------------+--------------+
-| **AWS**                  | |aws-py27|   | |aws-py36|   | |aws-pypy|   |
-+--------------------------+--------------+--------------+--------------+
-| **OpenStack**            | |os-py27|    | |os-py36|    | |os-pypy|    |
-+--------------------------+--------------+--------------+--------------+
-| **Azure**                | |azure-py27| | |azure-py36| | |azure-py36| |
-+--------------------------+--------------+--------------+--------------+
-| **GCE (alpha)**          | |gce-py27|   | |gce-py36|   | |gce-pypy|   |
-+--------------------------+--------------+--------------+--------------+
++--------------------------+--------------+--------------+
+| **Provider/Environment** | py27         | py36         |
++--------------------------+--------------+--------------+
+| **AWS**                  | |aws-py27|   | |aws-py36|   |
++--------------------------+--------------+--------------+
+| **OpenStack**            | |os-py27|    | |os-py36|    |
++--------------------------+--------------+--------------+
+| **Azure**                | |azure-py27| | |azure-py36| |
++--------------------------+--------------+--------------+
+| **GCE (alpha)**          | |gce-py27|   | |gce-py36|   |
++--------------------------+--------------+--------------+
 
 Installation
 ~~~~~~~~~~~~
