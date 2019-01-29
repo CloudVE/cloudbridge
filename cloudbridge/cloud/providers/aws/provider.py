@@ -3,11 +3,13 @@ import logging as log
 
 import boto3
 
-# These are installed only for the case of a dev instance
-from moto import mock_ec2
-from moto import mock_s3
-
-import responses
+try:
+    # These are installed only for the case of a dev instance
+    import responses
+    from moto import mock_ec2
+    from moto import mock_s3
+except ImportError:
+    log.debug('[aws provider] moto library not available!')
 
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.base.helpers import get_env
