@@ -395,10 +395,15 @@ class AzureBucketService(BaseBucketService):
         """
         List all containers.
         """
-        buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in self.provider.azure_client.list_containers()]
-        return ClientPagedResultList(self.provider, buckets,
-                                     limit=limit, marker=marker)
+        buckets, resume_marker = self.provider.azure_client.list_containers(
+            marker=marker,
+            limit=limit or self.provider.config.default_result_limit)
+        results = [AzureBucket(self.provider, bucket)
+                   for bucket in buckets]
+        return ServerPagedResultList(is_truncated=resume_marker,
+                                     marker=resume_marker,
+                                     supports_total=False,
+                                     data=results)
 
     def create(self, name, location=None):
         """
