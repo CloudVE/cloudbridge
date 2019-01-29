@@ -9,13 +9,16 @@ information on providing these credentials to CloudBridge, see
 
 **Microsoft Azure**
 
-For Microsoft Azure, the link below shows how to create service principle
-credentials:
+The page linked below from the Microsoft Documentation was used to create this
+section, and can be followed instead of this CloudBridge-specific documentation
+to procure Azure credentials for other purposes.
 https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal
 
-After having a Microsoft Azure account, in order to have API access,
-application credentials are needed. The following section will walk you
-through the process of creating and/or locating all required credentials.
+In order to follow the isntructions below, one needs a Microsoft Azure
+account and Subscription, as well as portal access.
+The following section will walk you through the process of creating an
+application, which is required for API access, as well as help you locate
+all required Azure credentials for CloudBridge.
 
 Azure credentials require a `Subscription ID` which can be procured through
 `Subscriptions` in the Azure portal.
