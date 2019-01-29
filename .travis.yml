@@ -27,14 +27,6 @@ matrix:
     env: TOX_ENV=py36-gce
   - python: 3.6
     env: TOX_ENV=py36-openstack
-  - python: pypy-5.4
-    env: TOX_ENV=pypy-aws
-  - python: pypy-5.4
-    env: TOX_ENV=pypy-azure
-  - python: pypy-5.4
-    env: TOX_ENV=pypy-gce
-  - python: pypy-5.4
-    env: TOX_ENV=pypy-openstack
 env:
   global:
     - PYTHONUNBUFFERED=True
