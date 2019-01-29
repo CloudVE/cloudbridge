@@ -223,6 +223,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             # TODO: add a check for routes after that's been implemented
 
         sit.check_delete(self, self.provider.networking.routers, router)
+        # Also make sure that linked resources were properly cleaned up
+        sit.check_delete(self, self.provider.networking.subnets, sn)
+        sit.check_delete(self, self.provider.networking.networks, net)
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_default_network(self):
