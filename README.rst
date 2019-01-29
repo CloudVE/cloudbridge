@@ -20,23 +20,23 @@ to write conditional code for each cloud.
 
 .. |aws-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1
               :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
+.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
               :target: https://travis-ci.org/CloudVE/cloudbridge
-
-.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
-             :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
-             :target: https://travis-ci.org/CloudVE/cloudbridge
 
 .. |azure-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2
                 :target: https://travis-ci.org/CloudVE/cloudbridge/branches
-.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
+.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
                 :target: https://travis-ci.org/CloudVE/cloudbridge/branches
 
-.. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/3
+.. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
               :target: https://travis-ci.org/CloudVE/cloudbridge/branches
-.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/6
+.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
               :target: https://travis-ci.org/CloudVE/cloudbridge/branches
+
+.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
+             :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
+             :target: https://travis-ci.org/CloudVE/cloudbridge
 
 
 Build Status Tests
