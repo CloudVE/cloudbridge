@@ -1,18 +1,25 @@
 Azure - Labeled Resources
 -------------------------
-===================================== ====================== ===== ====================== ==================================
-Labeled CloudBridge Resource          Azure Resource Type    CB ID CB Name                CB Label                           
-===================================== ====================== ===== ====================== ==================================
-AzureInstance                         Virtual Machine        ID    Name                   tag:Label
-AzureMachineImage (Private)           Image                  ID    Name                   tag:Label                          
-AzureMachineImage (Marketplace Image) VirtualMachineImage    ID    URN                    URN                                
-AzureNetwork                          Virtual Network        ID    Name                   tag:Label                          
-AzureSubnet                           Subnet                 ID    NetworkName/SubnetName Network:tag:SubnetLabel_SubnetName 
-AzureRouter                           Route Table            ID    Name                   tag:Label                          
-AzureVolume                           Disk                   ID    Name                   tag:Label                          
-AzureSnapshot                         Snapshot               ID    Name                   tag:Label                          
-AzureVMFirewall                       Network security group ID    Name                   tag:Label                          
-===================================== ====================== ===== ====================== ==================================
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
+| Labeled CloudBridge Resource          | Azure Resource Type    | CB ID | CB Name                | CB Label                           |
++=======================================+========================+=======+========================+====================================+
+| AzureInstance                         | Virtual Machine        | ID    | Name                   | tag:Label                          |
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
+| AzureMachineImage (Private)           | Image                  | ID    | Name                   | tag:Label                          |
+| AzureMachineImage (Marketplace Image) | VirtualMachineImage    | ID    | URN                    | URN                                |
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
+| AzureNetwork                          | Virtual Network        | ID    | Name                   | tag:Label                          |
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
+| AzureSubnet                           | Subnet                 | ID    | NetworkName/SubnetName | Network:tag:SubnetLabel_SubnetName |
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
+| AzureRouter                           | Route Table            | ID    | Name                   | tag:Label                          |
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
+| AzureVolume                           | Disk                   | ID    | Name                   | tag:Label                          |
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
+| AzureSnapshot                         | Snapshot               | ID    | Name                   | tag:Label                          |
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
+| AzureVMFirewall                       | Network security group | ID    | Name                   | tag:Label                          |
++---------------------------------------+------------------------+-------+------------------------+------------------------------------+
 
 The resources listed above are labeled, they thus have both the `name` and
 `label` properties in CloudBridge. These resources require a mandatory `label`
@@ -134,13 +141,15 @@ Azure web portal.
 
 Azure - Unlabeled Resources
 ---------------------------
-================== ====================================== ===== ======= ========
-Unlabeled Resource Azure Resource Type                    CB ID CB Name CB Label
-================== ====================================== ===== ======= ========
-AzureKeyPair       StorageAccount:Table                   Name  Name    -        
-AzureBucket        StorageAccount:BlobContainer           Name  Name    -        
-AzureBucketObject  StorageAccount:BlobContainer:BlockBlob Name  Name    -        
-================== ====================================== ===== ======= ========
++--------------------+----------------------------------------+-------+---------+----------+
+| Unlabeled Resource | Azure Resource Type                    | CB ID | CB Name | CB Label |
++====================+========================================+=======+=========+==========+
+| AzureKeyPair       | StorageAccount:Table                   | Name  | Name    | -        |
++--------------------+----------------------------------------+-------+---------+----------+
+| AzureBucket        | StorageAccount:BlobContainer           | Name  | Name    | -        |
++--------------------+----------------------------------------+-------+---------+----------+
+| AzureBucketObject  | StorageAccount:BlobContainer:BlockBlob | Name  | Name    | -        |
++--------------------+----------------------------------------+-------+---------+----------+
 
 The resources listed above are unlabeled. They thus only have the `name`
 property in CloudBridge. These resources require a mandatory `name`
@@ -165,13 +174,15 @@ corresponding services.
 
 Azure - Special Unlabeled Resources
 -----------------------------------
-==================== ====================== ================== ================== ========
-Unlabeled Resource   Azure Resource Type    CB ID              CB Name            CB Label
-==================== ====================== ================== ================== ========
-AzureFloatingIP      Public IP Address      ID                 [public_ip]        -
-AzureInternetGateway None                   cb-gateway-wrapper cb-gateway-wrapper -
-AzureVMFirewallRule  Network Security Rules ID                 name               -
-==================== ====================== ================== ================== ========
++-------------------------+------------------------+--------------------+--------------------+----------+
+| Unlabeled Resource      | Azure Resource Type    | CB ID              | CB Name            | CB Label |
++=========================+========================+====================+====================+==========+
+| AzureFloatingIP         | Public IP Address      | ID                 | [public_ip]        | -        |
++-------------------------+------------------------+--------------------+--------------------+----------+
+| AzureInternetGateway    | None                   | cb-gateway-wrapper | cb-gateway-wrapper | -        |
++-------------------------+------------------------+--------------------+--------------------+----------+
+| AzureVMFirewallRule     | Network Security Rules | ID                 | name               | -        |
++-------------------------+------------------------+--------------------+--------------------+----------+
 
 While these resources are similarly unlabeled, they do not follow the same
 general rules as the ones listed above. Firstly, they differ by the fact

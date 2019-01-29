@@ -43,18 +43,25 @@ and the below screenshot shows how the switch between the various services.
 
 AWS - Labeled Resources
 -----------------------
-================ ================= ============== ============== ========
-Labeled Resource AWS Resource Type CB ID          CB Name        CB Label
-================ ================= ============== ============== ========
-AWSInstance      Instance          Instance ID    Instance ID    tag:Name
-AWSMachineImage  AMI               AMI ID         AMI Name       tag:Name
-AWSNetwork       VPC               VPC ID         VPC ID         tag:Name
-AWSSubnet        Subnet            Subnet ID      Subnet ID      tag:Name
-AWSRouter        Route Table       Route Table ID Route Table ID tag:Name
-AWSVolume        Volume            Volume ID      Volume ID      tag:Name
-AWSSnapshot      Snapshot          Snapshot ID    Snapshot ID    tag:Name
-AWSVMFirewall    Security Group    Group ID       Group Name     tag:Name
-================ ================= ============== ============== ========
++------------------------+-------------------+----------------+----------------+----------+
+| Labeled Resource       | AWS Resource Type | CB ID          | CB Name        | CB Label |
++========================+===================+================+================+==========+
+| AWSInstance            | Instance          | Instance ID    | Instance ID    | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| AWSMachineImage        | AMI               | AMI ID         | AMI Name       | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| AWSNetwork             | VPC               | VPC ID         | VPC ID         | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| AWSSubnet              | Subnet            | Subnet ID      | Subnet ID      | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| AWSRouter              | Route Table       | Route Table ID | Route Table ID | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| AWSVolume              | Volume            | Volume ID      | Volume ID      | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| AWSSnapshot            | Snapshot          | Snapshot ID    | Snapshot ID    | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
+| AWSVMFirewall          | Security Group    | Group ID       | Group Name     | tag:Name |
++------------------------+-------------------+----------------+----------------+----------+
 
 The resources listed above are labeled, they thus have both the `name` and
 `label` properties in CloudBridge. These resources require a mandatory `label`
@@ -92,14 +99,16 @@ web portal.
 
 
 AWS - Unlabeled Resources
--------------------------
-================== ================= ===== ======= ========
-Unlabeled Resource AWS Resource Type CB ID CB Name CB Label
-================== ================= ===== ======= ========
-AWSKeyPair         Key Pair          Name  Name    -
-AWSBucket          Bucket            Name  Name    -
-AWSBucketObject    Bucket Object     Key   Key     -
-================== ================= ===== ======= ========
+---------------------------
++-----------------------+--------------------+-------+---------+----------+
+| Unlabeled Resource    | AWS Resource Type  | CB ID | CB Name | CB Label |
++=======================+====================+=======+=========+==========+
+| AWSKeyPair            | Key Pair           | Name  | Name    | -        |
++-----------------------+--------------------+-------+---------+----------+
+| AWSBucket             | Bucket             | Name  | Name    | -        |
++-----------------------+--------------------+-------+---------+----------+
+| AWSBucketObject       | Bucket Object      | Key   | Key     | -        |
++-----------------------+--------------------+-------+---------+----------+
 
 The resources listed above are unlabeled. They thus only have the `name`
 property in CloudBridge. These resources require a mandatory `name`
@@ -118,14 +127,16 @@ services.
 
 
 AWS - Special Unlabeled Resources
----------------------------------
-================== ====================== ===== ====================================================================== ========
-Unlabeled Resource AWS Resource Type      CB ID CB Name                                                                CB Label
-================== ====================== ===== ====================================================================== ========
-AWSFloatingIP      Elastic IP             ID    [public_ip]                                                            -
-AWSInternetGateway Internet Gateway       ID    tag:Name                                                               -
-AWSVMFirewallRule  Network Security Rules ID    Generated: [direction]-[protocol]-[from_port]-[to_port]-[cidr]-[fw_id] -
-================== ====================== ===== ====================================================================== ========
+-----------------------------------
++--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
+| Unlabeled Resource | AWS Resource Type      | CB ID | CB Name                                                                | CB Label |
++====================+========================+=======+========================================================================+==========+
+| AWSFloatingIP      | Elastic IP             | ID    | [public_ip]                                                            | -        |
++--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
+| AWSInternetGateway | Internet Gateway       | ID    | tag:Name                                                               | -        |
++--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
+| AWSVMFirewallRule  | Network Security Rules | ID    | Generated: [direction]-[protocol]-[from_port]-[to_port]-[cidr]-[fw_id] | -        |
++--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
 
 While these resources are similarly unlabeled, they do not follow the same
 general rules as the ones listed above. Firstly, they differ by the fact

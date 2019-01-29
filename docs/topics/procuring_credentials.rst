@@ -5,7 +5,7 @@ To initialize a connection to a cloud and get a provider object, you will
 need to provide the cloud's access credentials to CloudBridge. This page
 will walk you through the process of procuring credentials. For more
 information on providing these credentials to CloudBridge, see
-`Providing Access Credentials <setup.html>`.
+`Providing Access Credentials <setup.html>`_.
 
 **Microsoft Azure**
 
