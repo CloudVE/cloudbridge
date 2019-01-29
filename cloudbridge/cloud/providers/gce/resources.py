@@ -1449,7 +1449,7 @@ class GCENetwork(BaseNetwork):
         When a GCP network created by the CloudBridge API, we wait until the
         network is ready.
         """
-        if 'status' in self._network and self._network['status'] == 'UNKNOWN':
+        if self._network.get('status') == NetworkState.UNKNOWN:
             return NetworkState.UNKNOWN
         return NetworkState.AVAILABLE
 
@@ -1665,7 +1665,7 @@ class GCERouter(BaseRouter):
     def state(self):
         # If the router info is refreshed after it is deleted, its status will
         # be UNKNOWN.
-        if 'status' in self._router and self._router['status'] == 'UNKNOWN':
+        if self._router.get('status') == RouterState.UNKNOWN:
             return RouterState.UNKNOWN
         # GCE routers are always attached to a network.
         return RouterState.ATTACHED
@@ -1833,7 +1833,7 @@ class GCESubnet(BaseSubnet):
 
     @property
     def state(self):
-        if 'status' in self._subnet and self._subnet['status'] == 'UNKNOWN':
+        if self._subnet.get('status') == SubnetState.UNKNOWN:
             return SubnetState.UNKNOWN
         return SubnetState.AVAILABLE
 
