@@ -99,8 +99,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_subnet(self):
         # Late binding will make sure that create_subnet gets the
         # correct value
-        sn = helpers.get_or_create_default_subnet(self.provider)
-        net = sn.network
+        net = self.provider.networking.networks.create(
+                  label="cb-crudsubnet",
+                  cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
 
         def create_subnet(label):
             return self.provider.networking.subnets.create(
@@ -110,6 +111,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def cleanup_subnet(subnet):
             if subnet:
+                net = subnet.network
                 subnet.delete()
                 subnet.wait_for([SubnetState.UNKNOWN],
                                 terminal_states=[SubnetState.ERROR])
@@ -118,6 +120,14 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     "Subnet.state must be unknown after "
                     "a delete but got %s"
                     % subnet.state)
+                net.delete()
+                net.wait_for([NetworkState.UNKNOWN],
+                             terminal_states=[NetworkState.ERROR])
+                self.assertTrue(
+                    net.state == NetworkState.UNKNOWN,
+                    "Network.state must be unknown after "
+                    "a delete but got %s"
+                    % net.state)
 
         sit.check_crud(self, self.provider.networking.subnets, Subnet,
                        "cb-crudsubnet", create_subnet, cleanup_subnet)
