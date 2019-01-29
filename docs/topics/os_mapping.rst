@@ -1,24 +1,17 @@
 OpenStack - Labeled Resources
------------------------
-+------------------------+------------------------+-----------+----------------+----------+
-| Labeled Resource       | OS Resource Type       | CB ID     | CB Name        | CB Label |
-+------------------------+------------------------+-----------+----------------+----------+
-| OpenStackInstance      | Instance               | ID        | ID             | Name     |
-+------------------------+------------------------+-----------+----------------+----------+
-| OpenStackMachineImage  | Image                  | ID        | ID             | Name     |
-+------------------------+------------------------+-----------+----------------+----------+
-| OpenStackNetwork       | Network                | ID        | ID             | Name     |
-+------------------------+------------------------+-----------+----------------+----------+
-| OpenStackSubnet        | Subnet                 | ID        | ID             | Name     |
-+------------------------+------------------------+-----------+----------------+----------+
-| OpenStackRouter        | Router                 | ID        | ID             | Name     |
-+------------------------+------------------------+-----------+----------------+----------+
-| OpenStackVolume        | Volume                 | ID        | ID             | Name     |
-+------------------------+------------------------+-----------+----------------+----------+
-| OpenStackSnapshot      | Snapshot               | ID        | ID             | Name     |
-+------------------------+------------------------+-----------+----------------+----------+
-| OpenStackVMFirewall    | Security Group         | ID        | ID             | Name     |
-+------------------------+------------------------+-----------+----------------+----------+
+-----------------------------
+===================== ================ ===== ======= ========
+Labeled Resource      OS Resource Type CB ID CB Name CB Label
+===================== ================ ===== ======= ========
+OpenStackInstance     Instance         ID    ID      Name
+OpenStackMachineImage Image            ID    ID      Name
+OpenStackNetwork      Network          ID    ID      Name
+OpenStackSubnet       Subnet           ID    ID      Name
+OpenStackRouter       Router           ID    ID      Name
+OpenStackVolume       Volume           ID    ID      Name
+OpenStackSnapshot     Snapshot         ID    ID      Name
+OpenStackVMFirewall   Security Group   ID    ID      Name
+===================== ================ ===== ======= ========
 
 The resources listed above are labeled, they thus have both the `name` and
 `label` properties in CloudBridge. These resources require a mandatory `label`
@@ -38,7 +31,6 @@ the description, by appending the following string to the user-provided descript
 (if any) at creation: "[CB-AUTO-associated-network-id: associated_net_id]"
 
 .. figure:: captures/os-instance-dash.png
-   :scale: 50 %
    :alt: name, ID, and label properties for OS Instances
 
    The CloudBridge `name` and `ID` properties map to the unchangeable
@@ -48,16 +40,14 @@ the description, by appending the following string to the user-provided descript
 
 
 OpenStack - Unlabeled Resources
----------------------------
-+-----------------------+------------------------+-------+---------+----------+
-| Unlabeled Resource    | OS Resource Type       | CB ID | CB Name | CB Label |
-+-----------------------+------------------------+-------+---------+----------+
-| OpenStackKeyPair      | Key Pair               | Name  | Name    | -        |
-+-----------------------+------------------------+-------+---------+----------+
-| OpenStackBucket       | Object Store Container | Name  | Name    | -        |
-+-----------------------+------------------------+-------+---------+----------+
-| OpenStackBucketObject | Object                 | Name  | Name    | -        |
-+-----------------------+------------------------+-------+---------+----------+
+-------------------------------
+===================== ====================== ===== ======= ========
+Unlabeled Resource    OS Resource Type       CB ID CB Name CB Label
+===================== ====================== ===== ======= ========
+OpenStackKeyPair      Key Pair               Name  Name    -
+OpenStackBucket       Object Store Container Name  Name    -        
+OpenStackBucketObject Object                 Name  Name    -
+===================== ====================== ===== ======= ========
 
 The resources listed above are unlabeled. They thus only have the `name`
 property in CloudBridge. These resources require a mandatory `name`
@@ -69,7 +59,6 @@ support a `name` parameter for the `find` method in their corresponding
 services.
 
 .. figure:: captures/os-kp-dash.png
-   :scale: 50 %
    :alt: KeyPair details on OS dashboard
 
    KeyPairs and other unlabeled resources in OpenStack have `name` that is
@@ -78,16 +67,14 @@ services.
 
 
 OpenStack - Special Unlabeled Resources
------------------------------------
-+--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
-| Unlabeled Resource       | OS Resource Type       | CB ID | CB Name                                                                | CB Label |
-+--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
-| OpenStackFloatingIP      | Floating IP            | ID    | [public_ip]                                                            | -        |
-+--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
-| OpenStackInternetGateway | Network `public`       | ID    | 'public'                                                               | -        |
-+--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
-| OpenStackVMFirewallRule  | Security Group Rule    | ID    | Generated: [direction]-[protocol]-[from_port]-[to_port]-[cidr]-[fw_id] | -        |
-+--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
+---------------------------------------
+======================== =================== ===== ====================================================================== ========
+Unlabeled Resource       OS Resource Type    CB ID CB Name                                                                CB Label
+======================== =================== ===== ====================================================================== ========
+OpenStackFloatingIP      Floating IP         ID    [public_ip]                                                            -
+OpenStackInternetGateway Network `public`    ID    'public'                                                               -
+OpenStackVMFirewallRule  Security Group Rule ID    Generated: [direction]-[protocol]-[from_port]-[to_port]-[cidr]-[fw_id] -
+======================== =================== ===== ====================================================================== ========
 
 While these resources are similarly unlabeled, they do not follow the same
 general rules as the ones listed before. Firstly, they differ by the fact

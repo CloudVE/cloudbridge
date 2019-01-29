@@ -1,77 +1,53 @@
 Setup
 -----
 To initialize a connection to a cloud and get a provider object, you will
-need to provide the cloud's access credentials to CloudBridge. These may
-be provided in one of following ways:
+need to provide the cloud's access credentials to CloudBridge. For more
+details on how to create and find these credentials, see `Procuring Access
+Credentials <procuring_credentials.html>`. Once available, these may be
+provided in one of following ways:
 
 1. Environment variables
 2. A dictionary
 3. Configuration file
-
-Procuring access credentials
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-**Microsoft Azure**
-
-For Microsoft Azure, create service principle credentials following
-instructions from the link below:
-https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-create-service-principal-portal#check-azure-subscription-permissions
-
-**Google**
-
-For Google Compute Engine, create a service account following instructions
-from the link below:
-https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating_a_service_account
-
-Once created, grant the account appropriate permissions for your use through
-roles, and create a key, choosing JSON format, when prompted. These
-credentials can then be used with CloudBridge through the variables shown
-in the sections below.
-
-The JSON credentials file will have a similar form to the example shown
-below, and can either be passed through an absolute path to the file, or
-through a variable containing the JSON dictionary itself.
-
-
-.. code-block:: json
-
-    {
-      "type": "service_account",
-      "project_id": "my-project",
-      "private_key_id": "b12321312441245gerg245245g42c245g254t425",
-      "private_key": "-----BEGIN PRIVATE KEY-----\nMIICWgIBAAKBgE1EJDPKM/2wck/CZYCS7F2cXoHXDBhXYtdeV+h70Nk+ABs6scAV\nApYoobJAVpDeL+lutYAwtbscNz5K915DiNEkBf48LhfBWc5ea07OnClOGC9zASja\nif6ujIdhbITaNat9rdG939gQWqyaDW4wzYfvurhfmxICNgZA1YpWco1HAgMBAAEC\ngYAc+vLtLelEPNsTSWGS0Qiwr8bOwl75/kTHbM5iF5ak9NlLXT9wQTEgKwtC9VjC\nq2OjFXAkLaDsFlAuICYaCBCXn1nUqNoYhaSEQNwGnWIz376letXg/mX+BALSPMFR\nhE6mbdmaL4OV1X8j8uf2VcrLfVFCCZfhPu/TM5D6bVFYoQJBAJRHNKYU/csAB/NE\nzScJBv7PltOAoYpxbyFZb1rWcV9mAn34382b0YBXbp3Giqvifs/teudUbRpAzzLm\n5gr8tzECQQCFZh4tNIzeZZYUqkQxrxgqnnONey1hX7K+BlGyC6n2o26sE+I7cLij\n2kbuWoSFMAIdM2Hextv9k+ZrwUas4V33AkAfi9Korvib0sLeP7oB3wrM9W9aShiU\nMrP4/WUSh2MRb8uB74v123vD+VYAXTgtf3+JTzYBt1WK61TpuHQizEdRAkBjt8hL\nBoNfJBUicXz0nuyzvyql0jREG+NjhRnAvFNbGSR74Yk14bdEVMC9IFD7tr190pEQ\nlRqR3eNbHWmVhgpVAkBgveeM73R1tFXS6UosBtfDI1zut44Ce0RoADOIxjXqgjOi\nXSrevYvoKCl09yhLNAnKD+QvT/YbshW/jibYXwdj\n-----END PRIVATE KEY-----",
-      "client_email": "service-name@my-project.iam.gserviceaccount.com",
-      "client_id": "13451345134513451345",
-      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-      "token_uri": "https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/service-name%40my-project.iam.gserviceaccount.com"
-    }
 
 
 Providing access credentials through environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The following environment variables must be set, depending on the provider in use.
 
+
 **Amazon**
 
-===================  ==================
-Mandatory variables  Optional Variables
-===================  ==================
+===================
+Mandatory variables
+===================
 AWS_ACCESS_KEY
 AWS_SECRET_KEY
-===================  ==================
+===================
+
 
 **Openstack**
 
-===================  ==================
-Mandatory variables  Optional Variables
-===================  ==================
-OS_AUTH_URL			 NOVA_SERVICE_NAME
-OS_USERNAME			 OS_COMPUTE_API_VERSION
-OS_PASSWORD			 OS_VOLUME_API_VERSION
-OS_PROJECT_NAME      OS_STORAGE_URL
-OS_REGION_NAME       OS_AUTH_TOKEN
-===================  ==================
+===================
+Mandatory variables
+===================
+OS_AUTH_URL
+OS_USERNAME
+OS_PASSWORD
+OS_PROJECT_NAME
+OS_REGION_NAME
+===================
+
+=======================
+Optional Variables
+=======================
+NOVA_SERVICE_NAME
+OS_COMPUTE_API_VERSION
+OS_VOLUME_API_VERSION
+OS_STORAGE_URL
+OS_AUTH_TOKEN
+=======================
+
 
 **Microsoft Azure**
 
@@ -87,27 +63,43 @@ when initializing the relevant services. This operation similarly requires a
 "contributor" or "owner" role.
 For more information on roles, see: https://docs.microsoft.com/en-us/azure/role-based-access-control/overview
 
-======================  ==================
-Mandatory variables     Optional Variables
-======================  ==================
-AZURE_SUBSCRIPTION_ID   AZURE_REGION_NAME
-AZURE_CLIENT_ID         AZURE_RESOURCE_GROUP
-AZURE_SECRET            AZURE_STORAGE_ACCOUNT
-AZURE_TENANT            AZURE_VM_DEFAULT_USER_NAME
-                        AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME
-======================  ==================
+======================
+Mandatory variables
+======================
+AZURE_SUBSCRIPTION_ID
+AZURE_CLIENT_ID
+AZURE_SECRET
+AZURE_TENANT
+======================
+
+====================================
+Optional Variables
+====================================
+AZURE_REGION_NAME
+AZURE_RESOURCE_GROUP
+AZURE_STORAGE_ACCOUNT
+AZURE_VM_DEFAULT_USER_NAME
+AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME
+====================================
 
 
 **Google**
 
-=======================  ==================
-Mandatory variables      Optional Variables
-=======================  ==================
-GCE_SERVICE_CREDS_FILE   GCE_PROJECT_NAME
-           or            GCE_DEFAULT_ZONE
-GCE_SERVICE_CREDS_DICT   GCE_REGION_NAME
-=======================  ==================
+=======================
+Mandatory variables
+=======================
+GCE_SERVICE_CREDS_FILE
+or
+GCE_SERVICE_CREDS_DICT
+=======================
 
+==================
+Optional Variables
+==================
+GCE_PROJECT_NAME
+GCE_DEFAULT_ZONE
+GCE_REGION_NAME
+==================
 
 
 Once the environment variables are set, you can create a connection as follows:
@@ -144,6 +136,7 @@ will override environment values.
 
 Some optional configuration values can only be provided through the config
 dictionary. These are listed below for each provider.
+
 
 **CloudBridge**
 

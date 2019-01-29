@@ -35,7 +35,6 @@ and the below screenshot shows how the switch between the various services.
 +------------------------+-----+
 
 .. figure:: captures/aws-services-dash.png
-   :scale: 50 %
    :alt: EC2, VPC, and S3
 
    Resources in AWS are separated into three dashboards depending on the
@@ -44,25 +43,18 @@ and the below screenshot shows how the switch between the various services.
 
 AWS - Labeled Resources
 -----------------------
-+------------------------+-------------------+----------------+----------------+----------+
-| Labeled Resource       | AWS Resource Type | CB ID          | CB Name        | CB Label |
-+------------------------+-------------------+----------------+----------------+----------+
-| AWSInstance            | Instance          | Instance ID    | Instance ID    | tag:Name |
-+------------------------+-------------------+----------------+----------------+----------+
-| AWSMachineImage        | AMI               | AMI ID         | AMI Name       | tag:Name |
-+------------------------+-------------------+----------------+----------------+----------+
-| AWSNetwork             | VPC               | VPC ID         | VPC ID         | tag:Name |
-+------------------------+-------------------+----------------+----------------+----------+
-| AWSSubnet              | Subnet            | Subnet ID      | Subnet ID      | tag:Name |
-+------------------------+-------------------+----------------+----------------+----------+
-| AWSRouter              | Route Table       | Route Table ID | Route Table ID | tag:Name |
-+------------------------+-------------------+----------------+----------------+----------+
-| AWSVolume              | Volume            | Volume ID      | Volume ID      | tag:Name |
-+------------------------+-------------------+----------------+----------------+----------+
-| AWSSnapshot            | Snapshot          | Snapshot ID    | Snapshot ID    | tag:Name |
-+------------------------+-------------------+----------------+----------------+----------+
-| AWSVMFirewall          | Security Group    | Group ID       | Group Name     | tag:Name |
-+------------------------+-------------------+----------------+----------------+----------+
+================ ================= ============== ============== ========
+Labeled Resource AWS Resource Type CB ID          CB Name        CB Label
+================ ================= ============== ============== ========
+AWSInstance      Instance          Instance ID    Instance ID    tag:Name
+AWSMachineImage  AMI               AMI ID         AMI Name       tag:Name
+AWSNetwork       VPC               VPC ID         VPC ID         tag:Name
+AWSSubnet        Subnet            Subnet ID      Subnet ID      tag:Name
+AWSRouter        Route Table       Route Table ID Route Table ID tag:Name
+AWSVolume        Volume            Volume ID      Volume ID      tag:Name
+AWSSnapshot      Snapshot          Snapshot ID    Snapshot ID    tag:Name
+AWSVMFirewall    Security Group    Group ID       Group Name     tag:Name
+================ ================= ============== ============== ========
 
 The resources listed above are labeled, they thus have both the `name` and
 `label` properties in CloudBridge. These resources require a mandatory `label`
@@ -81,7 +73,6 @@ The below screenshots will help map these properties to AWS objects in the
 web portal.
 
 .. figure:: captures/aws-instance-dash.png
-   :scale: 50 %
    :alt: name, ID, and label properties for AWS EC2 Instances
 
    The CloudBridge `name` and `ID` properties map to the unchangeable
@@ -91,7 +82,6 @@ web portal.
    column.
 
 .. figure:: captures/az-ami-dash.png
-   :scale: 50 %
    :alt: name, ID, and label properties for AWS EC2 AMIs
 
    When an AWS resource allows for an unchangeable name, the CloudBridge
@@ -102,16 +92,14 @@ web portal.
 
 
 AWS - Unlabeled Resources
----------------------------
-+-----------------------+--------------------+-------+---------+----------+
-| Unlabeled Resource    | AWS Resource Type  | CB ID | CB Name | CB Label |
-+-----------------------+--------------------+-------+---------+----------+
-| AWSKeyPair            | Key Pair           | Name  | Name    | -        |
-+-----------------------+--------------------+-------+---------+----------+
-| AWSBucket             | Bucket             | Name  | Name    | -        |
-+-----------------------+--------------------+-------+---------+----------+
-| AWSBucketObject       | Bucket Object      | Key   | Key     | -        |
-+-----------------------+--------------------+-------+---------+----------+
+-------------------------
+================== ================= ===== ======= ========
+Unlabeled Resource AWS Resource Type CB ID CB Name CB Label
+================== ================= ===== ======= ========
+AWSKeyPair         Key Pair          Name  Name    -
+AWSBucket          Bucket            Name  Name    -
+AWSBucketObject    Bucket Object     Key   Key     -
+================== ================= ===== ======= ========
 
 The resources listed above are unlabeled. They thus only have the `name`
 property in CloudBridge. These resources require a mandatory `name`
@@ -123,7 +111,6 @@ support a `name` parameter for the `find` method in their corresponding
 services.
 
 .. figure:: captures/aws-bucket.png
-   :scale: 50 %
    :alt: list of buckets on AWS dashboard
 
    Buckets can be found in the Amazon S3 portal. BucketObjects are contained
@@ -131,16 +118,14 @@ services.
 
 
 AWS - Special Unlabeled Resources
------------------------------------
-+--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
-| Unlabeled Resource | AWS Resource Type      | CB ID | CB Name                                                                | CB Label |
-+--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
-| AWSFloatingIP      | Elastic IP             | ID    | [public_ip]                                                            | -        |
-+--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
-| AWSInternetGateway | Internet Gateway       | ID    | tag:Name                                                               | -        |
-+--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
-| AWSVMFirewallRule  | Network Security Rules | ID    | Generated: [direction]-[protocol]-[from_port]-[to_port]-[cidr]-[fw_id] | -        |
-+--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
+---------------------------------
+================== ====================== ===== ====================================================================== ========
+Unlabeled Resource AWS Resource Type      CB ID CB Name                                                                CB Label
+================== ====================== ===== ====================================================================== ========
+AWSFloatingIP      Elastic IP             ID    [public_ip]                                                            -
+AWSInternetGateway Internet Gateway       ID    tag:Name                                                               -
+AWSVMFirewallRule  Network Security Rules ID    Generated: [direction]-[protocol]-[from_port]-[to_port]-[cidr]-[fw_id] -
+================== ====================== ===== ====================================================================== ========
 
 While these resources are similarly unlabeled, they do not follow the same
 general rules as the ones listed above. Firstly, they differ by the fact
