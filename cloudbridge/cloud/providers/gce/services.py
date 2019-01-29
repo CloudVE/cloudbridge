@@ -220,7 +220,7 @@ class GCEVMTypeService(BaseVMTypeService):
         matched_inst_types = []
         for inst_type in self.instance_data:
             is_match = True
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs.items():
                 if key not in inst_type:
                     raise TypeError("The attribute key is not valid.")
                 if inst_type.get(key) != value:
