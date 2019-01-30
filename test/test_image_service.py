@@ -1,5 +1,6 @@
 from cloudbridge.cloud.interfaces import MachineImageState
-from cloudbridge.cloud.interfaces.resources import Instance, MachineImage
+from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.interfaces.resources import MachineImage
 
 from test import helpers
 from test.helpers import ProviderTestBase
@@ -13,11 +14,6 @@ class CloudImageServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['compute.images', 'networking.networks',
                               'compute.instances'])
     def test_create_and_list_image(self):
-        """
-        Create a new image and check whether that image can be listed.
-        This covers waiting till the image is ready, checking that the image
-        label is the expected one and whether list_images is functional.
-        """
         instance_label = "cb-crudimage-{0}".format(helpers.get_uuid())
         img_inst_label = "cb-crudimage-{0}".format(helpers.get_uuid())
 

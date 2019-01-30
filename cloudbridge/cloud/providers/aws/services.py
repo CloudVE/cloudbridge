@@ -1,4 +1,5 @@
 """Services implemented by the AWS provider."""
+import ipaddress
 import logging
 import string
 
@@ -445,33 +446,31 @@ class AWSImageService(BaseImageService):
 
     def find(self, **kwargs):
         # Filter by name or label
-        label = kwargs.get('label', None)
+        label = kwargs.pop('label', None)
         # Popped here, not used in the generic find
         owner = kwargs.pop('owners', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs, 'label'))
+
         extra_args = {}
         if owner:
             extra_args.update(Owners=owner)
-
-        obj_list = []
 
         # The original list is made by combining both searches by "tag:Name"
         # and "AMI name" to allow for searches of public images
         if label:
             log.debug("Searching for AWS Image Service %s", label)
+            obj_list = []
             obj_list.extend(self.svc.find(filter_name='name',
                                           filter_value=label, **extra_args))
             obj_list.extend(self.svc.find(filter_name='tag:Name',
                                           filter_value=label, **extra_args))
-
-        if not label:
-            obj_list = self
-
-        # Add name filter for the generic find method, to allow searching
-        # through AMI names for a match (public images will likely have an
-        # AMI name and no tag:Name)
-        kwargs.update({'name': label})
-        filters = ['label', 'name']
-        return cb_helpers.generic_find(filters, kwargs, obj_list)
+            return obj_list
+        else:
+            return []
 
     def list(self, filter_by_owner=True, limit=None, marker=None):
         return self.svc.list(Owners=['self'] if filter_by_owner else
@@ -778,7 +777,7 @@ class AWSNetworkService(BaseNetworkService):
                      AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
             return self.provider.networking.networks.create(
                 label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block='10.0.0.0/16')
+                cidr_block=AWSNetwork.CB_DEFAULT_IPV4RANGE)
 
 
 class AWSSubnetService(BaseSubnetService):
@@ -898,12 +897,31 @@ class AWSSubnetService(BaseSubnetService):
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
+
+        # Determine how many subnets we'll need for the default network and the
+        # number of available zones. We need to derive a non-overlapping
+        # network size for each subnet within the parent net so figure those
+        # subnets here. `<net>.subnets` method will do this but we need to give
+        # it a prefix. Determining that prefix depends on the size of the
+        # network and should be incorporate the number of zones. So iterate
+        # over potential number of subnets until enough can be created to
+        # accommodate the number of available zones. That is where the fixed
+        # number comes from in the for loop as that many iterations will yield
+        # more potential subnets than any region has zones.
+        ip_net = ipaddress.ip_network(AWSNetwork.CB_DEFAULT_IPV4RANGE)
+        for x in range(5):
+            if len(region.zones) <= len(list(ip_net.subnets(
+                    prefixlen_diff=x))):
+                prefixlen_diff = x
+                break
+        subnets = list(ip_net.subnets(prefixlen_diff=prefixlen_diff))
+
         for i, z in reversed(list(enumerate(region.zones))):
             sn_label = "{0}-{1}".format(AWSSubnet.CB_DEFAULT_SUBNET_LABEL,
                                         z.id[-1])
-            log.info("Creating default CloudBridge subnet %s", sn_label)
-            sn = self.create(
-                sn_label, default_net, '10.0.{0}.0/24'.format(i), z)
+            log.info("Creating a default CloudBridge subnet %s: %s" %
+                     (sn_label, str(subnets[i])))
+            sn = self.create(sn_label, default_net, str(subnets[i]), z)
             # Create a route table entry between the SN and the inet gateway
             # See note above about why this is commented
             # default_router.attach_subnet(sn)

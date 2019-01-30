@@ -35,7 +35,6 @@ and the below screenshot shows how the switch between the various services.
 +------------------------+-----+
 
 .. figure:: captures/aws-services-dash.png
-   :scale: 50 %
    :alt: EC2, VPC, and S3
 
    Resources in AWS are separated into three dashboards depending on the
@@ -46,7 +45,7 @@ AWS - Labeled Resources
 -----------------------
 +------------------------+-------------------+----------------+----------------+----------+
 | Labeled Resource       | AWS Resource Type | CB ID          | CB Name        | CB Label |
-+------------------------+-------------------+----------------+----------------+----------+
++========================+===================+================+================+==========+
 | AWSInstance            | Instance          | Instance ID    | Instance ID    | tag:Name |
 +------------------------+-------------------+----------------+----------------+----------+
 | AWSMachineImage        | AMI               | AMI ID         | AMI Name       | tag:Name |
@@ -81,7 +80,6 @@ The below screenshots will help map these properties to AWS objects in the
 web portal.
 
 .. figure:: captures/aws-instance-dash.png
-   :scale: 50 %
    :alt: name, ID, and label properties for AWS EC2 Instances
 
    The CloudBridge `name` and `ID` properties map to the unchangeable
@@ -91,7 +89,6 @@ web portal.
    column.
 
 .. figure:: captures/az-ami-dash.png
-   :scale: 50 %
    :alt: name, ID, and label properties for AWS EC2 AMIs
 
    When an AWS resource allows for an unchangeable name, the CloudBridge
@@ -105,7 +102,7 @@ AWS - Unlabeled Resources
 ---------------------------
 +-----------------------+--------------------+-------+---------+----------+
 | Unlabeled Resource    | AWS Resource Type  | CB ID | CB Name | CB Label |
-+-----------------------+--------------------+-------+---------+----------+
++=======================+====================+=======+=========+==========+
 | AWSKeyPair            | Key Pair           | Name  | Name    | -        |
 +-----------------------+--------------------+-------+---------+----------+
 | AWSBucket             | Bucket             | Name  | Name    | -        |
@@ -123,7 +120,6 @@ support a `name` parameter for the `find` method in their corresponding
 services.
 
 .. figure:: captures/aws-bucket.png
-   :scale: 50 %
    :alt: list of buckets on AWS dashboard
 
    Buckets can be found in the Amazon S3 portal. BucketObjects are contained
@@ -134,7 +130,7 @@ AWS - Special Unlabeled Resources
 -----------------------------------
 +--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
 | Unlabeled Resource | AWS Resource Type      | CB ID | CB Name                                                                | CB Label |
-+--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
++====================+========================+=======+========================================================================+==========+
 | AWSFloatingIP      | Elastic IP             | ID    | [public_ip]                                                            | -        |
 +--------------------+------------------------+-------+------------------------------------------------------------------------+----------+
 | AWSInternetGateway | Internet Gateway       | ID    | tag:Name                                                               | -        |

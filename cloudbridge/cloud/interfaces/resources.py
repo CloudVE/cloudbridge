@@ -460,7 +460,7 @@ class ResultList(list):
         """
         Indicate whether this ``ResultList`` supports server side paging.
 
-        If server side paging is not supported, the result will useclient side
+        If server side paging is not supported, the result will use client side
         paging and the data property provides direct access to all available
         data.
         """
@@ -950,7 +950,7 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_subnet(self, label, cidr_block, zone=None):
+    def create_subnet(self, label, cidr_block, zone):
         """
         Create a new network subnet and associate it with this Network.
 
@@ -1101,7 +1101,7 @@ class FloatingIPContainer(PageableObjectMixin):
         """
         Searches for a FloatingIP by a given list of attributes.
 
-        Supported attributes: label, public_ip
+        Supported attributes: name, public_ip
 
         Example:
 
@@ -2063,10 +2063,12 @@ class VMFirewallRuleContainer(PageableObjectMixin):
 
         .. code-block:: python
             from cloudbridge.cloud.interfaces.resources import TrafficDirection
+            from cloudbridge.cloud.interfaces.resources import BaseNetwork
 
             fw = provider.security.vm_firewalls.get('my_fw_id')
             fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
-                            from_port=80, to_port=80, cidr='10.0.0.0/16')
+                            from_port=80, to_port=80,
+                            cidr=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             fw.rules.create(TrafficDirection.INBOUND, src_dest_fw=fw)
             fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
 
@@ -2334,11 +2336,11 @@ class BucketObject(CloudResource):
     @abstractmethod
     def generate_url(self, expires_in):
         """
-        Generate a URL to this object.
+        Generate a signed URL to this object.
 
-        If the object is public, `expires_in` argument is not necessary, but if
-        the object is private, the lifetime of URL is set using `expires_in`
-        argument.
+        A signed URL associated with an object gives time-limited read access
+        to that specific object. Anyone in possession of the URL has the access
+        granted by the URL.
 
         :type expires_in: ``int``
         :param expires_in: Time to live of the generated URL in seconds.

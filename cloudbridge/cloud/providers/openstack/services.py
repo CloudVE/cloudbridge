@@ -220,29 +220,21 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                   "[label: %s network id: %s description: %s]", label,
                   network, description)
         net = network.id if isinstance(network, Network) else network
+        # We generally simulate a network being associated with a firewall
+        # by storing the supplied value in the firewall description field that
+        # is not modifiable after creation; however, because of some networking
+        # specificity in Nectar, we must also allow an empty network id value.
+        if not net:
+            net = ""
         if not description:
             description = ""
-        description += "[{}{}]".format(OpenStackVMFirewall._network_id_tag,
-                                       net)
+        description += " [{}{}]".format(OpenStackVMFirewall._network_id_tag,
+                                        net)
         sg = self.provider.os_conn.network.create_security_group(
-            name=label, description=description or label)
+            name=label, description=description)
         if sg:
             return OpenStackVMFirewall(self.provider, sg)
         return None
-
-    def find(self, **kwargs):
-        label = kwargs.pop('label', None)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
-
-        log.debug("Searching for %s", label)
-        sgs = [self.provider.os_conn.network.find_security_group(label)]
-        results = [OpenStackVMFirewall(self.provider, sg)
-                   for sg in sgs if sg]
-        return ClientPagedResultList(self.provider, results)
 
     def delete(self, group_id):
         log.debug("Deleting OpenStack Firewall with the id: %s", group_id)
@@ -931,7 +923,7 @@ class OpenStackSubnetService(BaseSubnetService):
             net = self.provider.networking.networks.get_or_create_default()
             sn = self.provider.networking.subnets.create(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
-                cidr_block='10.0.0.0/24',
+                cidr_block=OpenStackSubnet.CB_DEFAULT_SUBNET_IPV4RANGE,
                 network=net)
             router = self.provider.networking.routers.get_or_create_default(
                 net)

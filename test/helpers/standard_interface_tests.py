@@ -117,7 +117,7 @@ def check_get(test, service, obj):
 
 def check_get_non_existent(test, service):
     # check get
-    get_objs = service.get(str(uuid.uuid4()))
+    get_objs = service.get('tmp-' + str(uuid.uuid4()))
     test.assertIsNone(
         get_objs,
         "Get non-existent object for %s returned unexpected objects: %s"

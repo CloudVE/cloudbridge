@@ -2,7 +2,7 @@ Azure - Labeled Resources
 -------------------------
 +---------------------------------------+------------------------+-------+------------------------+------------------------------------+
 | Labeled CloudBridge Resource          | Azure Resource Type    | CB ID | CB Name                | CB Label                           |
-+---------------------------------------+------------------------+-------+------------------------+------------------------------------+
++=======================================+========================+=======+========================+====================================+
 | AzureInstance                         | Virtual Machine        | ID    | Name                   | tag:Label                          |
 +---------------------------------------+------------------------+-------+------------------------+------------------------------------+
 | AzureMachineImage (Private)           | Image                  | ID    | Name                   | tag:Label                          |
@@ -37,7 +37,6 @@ necessity in AWS. As such, the VMFirewall creation method requires a
 a tag with the key `network_id`.
 
 .. figure:: captures/az-label-dash.png
-   :scale: 50 %
    :alt: name and label properties in Azure portal
 
    The CloudBridge `name` property always maps to the unchangeable resource
@@ -47,7 +46,6 @@ a tag with the key `network_id`.
    pointed out in the screenshot above.
 
 .. figure:: captures/az-net-id.png
-   :scale: 50 %
    :alt: network id in Azure portal
 
    The CloudBridge `ID` property most often maps to the Resource ID in Azure,
@@ -55,7 +53,6 @@ a tag with the key `network_id`.
    screenshot shows where to find a resource's ID in Azure's web portal.
 
 .. figure:: captures/az-net-label.png
-   :scale: 50 %
    :alt: network label in Azure portal
 
    The CloudBridge `label` property most often maps to the tag with key
@@ -121,7 +118,6 @@ below screenshots will show how to find Subnets and their labels in the
 Azure web portal.
 
 .. figure:: captures/az-subnet-name.png
-   :scale: 50 %
    :alt: subnet name in Azure portal
 
    The CloudBridge `name` property for Subnets corresponds to the
@@ -133,7 +129,6 @@ Azure web portal.
    rather nested within a Network, in the Subnets tab as shown above.
 
 .. figure:: captures/az-subnet-label.png
-   :scale: 50 %
    :alt: subnet label in Azure portal
 
    The CloudBridge `label` property most often maps to the tag with key
@@ -148,7 +143,7 @@ Azure - Unlabeled Resources
 ---------------------------
 +--------------------+----------------------------------------+-------+---------+----------+
 | Unlabeled Resource | Azure Resource Type                    | CB ID | CB Name | CB Label |
-+--------------------+----------------------------------------+-------+---------+----------+
++====================+========================================+=======+=========+==========+
 | AzureKeyPair       | StorageAccount:Table                   | Name  | Name    | -        |
 +--------------------+----------------------------------------+-------+---------+----------+
 | AzureBucket        | StorageAccount:BlobContainer           | Name  | Name    | -        |
@@ -166,7 +161,6 @@ resources support a `name` parameter for the `find` method in their
 corresponding services.
 
 .. figure:: captures/az-storacc.png
-   :scale: 50 %
    :alt: storage account in Azure portal
 
    Bucket and Key Pair objects are different than other resources in Azure,
@@ -182,7 +176,7 @@ Azure - Special Unlabeled Resources
 -----------------------------------
 +-------------------------+------------------------+--------------------+--------------------+----------+
 | Unlabeled Resource      | Azure Resource Type    | CB ID              | CB Name            | CB Label |
-+-------------------------+------------------------+--------------------+--------------------+----------+
++=========================+========================+====================+====================+==========+
 | AzureFloatingIP         | Public IP Address      | ID                 | [public_ip]        | -        |
 +-------------------------+------------------------+--------------------+--------------------+----------+
 | AzureInternetGateway    | None                   | cb-gateway-wrapper | cb-gateway-wrapper | -        |

@@ -2,7 +2,7 @@ OpenStack - Labeled Resources
 -----------------------
 +------------------------+------------------------+-----------+----------------+----------+
 | Labeled Resource       | OS Resource Type       | CB ID     | CB Name        | CB Label |
-+------------------------+------------------------+-----------+----------------+----------+
++========================+========================+===========+================+==========+
 | OpenStackInstance      | Instance               | ID        | ID             | Name     |
 +------------------------+------------------------+-----------+----------------+----------+
 | OpenStackMachineImage  | Image                  | ID        | ID             | Name     |
@@ -38,7 +38,6 @@ the description, by appending the following string to the user-provided descript
 (if any) at creation: "[CB-AUTO-associated-network-id: associated_net_id]"
 
 .. figure:: captures/os-instance-dash.png
-   :scale: 50 %
    :alt: name, ID, and label properties for OS Instances
 
    The CloudBridge `name` and `ID` properties map to the unchangeable
@@ -51,7 +50,7 @@ OpenStack - Unlabeled Resources
 ---------------------------
 +-----------------------+------------------------+-------+---------+----------+
 | Unlabeled Resource    | OS Resource Type       | CB ID | CB Name | CB Label |
-+-----------------------+------------------------+-------+---------+----------+
++=======================+========================+=======+=========+==========+
 | OpenStackKeyPair      | Key Pair               | Name  | Name    | -        |
 +-----------------------+------------------------+-------+---------+----------+
 | OpenStackBucket       | Object Store Container | Name  | Name    | -        |
@@ -69,7 +68,6 @@ support a `name` parameter for the `find` method in their corresponding
 services.
 
 .. figure:: captures/os-kp-dash.png
-   :scale: 50 %
    :alt: KeyPair details on OS dashboard
 
    KeyPairs and other unlabeled resources in OpenStack have `name` that is
@@ -81,7 +79,7 @@ OpenStack - Special Unlabeled Resources
 -----------------------------------
 +--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
 | Unlabeled Resource       | OS Resource Type       | CB ID | CB Name                                                                | CB Label |
-+--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
++==========================+========================+=======+========================================================================+==========+
 | OpenStackFloatingIP      | Floating IP            | ID    | [public_ip]                                                            | -        |
 +--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
 | OpenStackInternetGateway | Network `public`       | ID    | 'public'                                                               | -        |

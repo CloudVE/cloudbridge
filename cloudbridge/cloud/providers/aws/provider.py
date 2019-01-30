@@ -5,11 +5,12 @@ import boto3
 
 try:
     # These are installed only for the case of a dev instance
-    import responses
     from moto import mock_ec2
     from moto import mock_s3
+
+    import responses
 except ImportError:
-    log.debug('[aws provider] moto library not available!')
+    log.debug("Development library moto is not installed.")
 
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.base.helpers import get_env
@@ -155,6 +156,27 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
     "linux_virtualization_types": [
         "HVM"
     ],
+    "pricing": {
+        "us-east-1": {
+            "linux": {
+                "ondemand": "0.0058",
+                "reserved": {
+                    "yrTerm1Convertible.allUpfront": "0.003881",
+                    "yrTerm1Convertible.noUpfront": "0.0041",
+                    "yrTerm1Convertible.partialUpfront": "0.003941",
+                    "yrTerm1Standard.allUpfront": "0.003311",
+                    "yrTerm1Standard.noUpfront": "0.0036",
+                    "yrTerm1Standard.partialUpfront": "0.003412",
+                    "yrTerm3Convertible.allUpfront": "0.002626",
+                    "yrTerm3Convertible.noUpfront": "0.0029",
+                    "yrTerm3Convertible.partialUpfront": "0.002632",
+                    "yrTerm3Standard.allUpfront": "0.002169",
+                    "yrTerm3Standard.noUpfront": "0.0025",
+                    "yrTerm3Standard.partialUpfront": "0.002342"
+                }
+            }
+        }
+    },
     "ebs_optimized": false,
     "storage": null,
     "max_bandwidth": 0,

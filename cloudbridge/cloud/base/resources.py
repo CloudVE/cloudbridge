@@ -265,12 +265,16 @@ class BasePageableObjectMixin(PageableObjectMixin):
     """
 
     def __iter__(self):
-        result_list = self.list()
+        for result in self.iter():
+            yield result
+
+    def iter(self, **kwargs):
+        result_list = self.list(**kwargs)
         if result_list.supports_server_paging:
             for result in result_list:
                 yield result
             while result_list.is_truncated:
-                result_list = self.list(marker=result_list.marker)
+                result_list = self.list(marker=result_list.marker, **kwargs)
                 for result in result_list:
                     yield result
         else:
@@ -785,9 +789,24 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_LABEL = os.environ.get('CB_DEFAULT_NETWORK_LABEL',
                                               'cloudbridge-net')
+    CB_DEFAULT_IPV4RANGE = os.environ.get('CB_DEFAULT_IPV4RANGE',
+                                          u'10.0.0.0/16')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
+
+    @staticmethod
+    def cidr_blocks_overlap(block1, block2):
+        common_length = min(int(block1.split('/')[1]),
+                            int(block2.split('/')[1]))
+
+        p1 = [format(int(b), '08b') for b in block1.split('/')[0].split('.')]
+        prefix1 = ''.join(p1)[:common_length]
+
+        p2 = [format(int(b), '08b') for b in block2.split('/')[0].split('.')]
+        prefix2 = ''.join(p2)[:common_length]
+
+        return prefix1 == prefix2
 
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
@@ -796,7 +815,7 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
-    def create_subnet(self, label, cidr_block, zone=None):
+    def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(
             label=label, network=self, cidr_block=cidr_block, zone=zone)
 
@@ -811,6 +830,8 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
     CB_DEFAULT_SUBNET_LABEL = os.environ.get('CB_DEFAULT_SUBNET_LABEL',
                                              'cloudbridge-subnet')
+    CB_DEFAULT_SUBNET_IPV4RANGE = os.environ.get('CB_DEFAULT_SUBNET_IPV4RANGE',
+                                                 '10.0.0.0/24')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)

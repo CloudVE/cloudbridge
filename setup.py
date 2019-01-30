@@ -25,7 +25,7 @@ REQS_BASE = [
     'cachetools>=2.1.0',
     'deprecated>=1.2.3'
 ]
-REQS_AWS = ['boto3<1.8.0']
+REQS_AWS = ['boto3>=1.9.86']
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
@@ -40,6 +40,7 @@ REQS_AZURE = ['msrest>=0.5.4,<0.6',
               'azure-storage-blob==1.3.1',
               'azure-cosmosdb-table==1.0.4',
               'pysftp==0.2.9']
+REQS_GCP = ['google-api-python-client', 'oauth2client']
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0,<=0.17',
     'python-novaclient>=7.0.0,<=11.0',
@@ -49,7 +50,7 @@ REQS_OPENSTACK = [
     'python-neutronclient>=6.0.0,<=6.9',
     'python-keystoneclient>=3.13.0,<=3.17'
 ]
-REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
+REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_GCP + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
@@ -92,7 +93,6 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy'],
+        'Programming Language :: Python :: Implementation :: CPython'],
     test_suite="test"
 )

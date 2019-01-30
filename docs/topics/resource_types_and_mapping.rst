@@ -34,7 +34,7 @@ whether they support a `label` property.
 
 +-------------------+---------------------+
 | Labeled Resources | Unlabeled Resources | 
-+-------------------+---------------------+
++===================+=====================+
 | Instance          | Key Pair            |
 +-------------------+---------------------+
 | MachineImage      | Bucket              |
@@ -60,6 +60,6 @@ properties to provider objects, as well as some useful dashboard navigation.
 These sections will thus present summary tables delineating the different types of
 CloudBridge resources, as well as present some design decisions made to
 preserve consistency across providers:
--`Detailed Azure Mappings <azure_mapping.html>`
--`Detailed AWS Mappings <aws_mapping.html>`
--`Detailed OpenStack Mappings <os_mapping.html>`
+-`Detailed Azure Mappings <azure_mapping.html>`_
+-`Detailed AWS Mappings <aws_mapping.html>`_
+-`Detailed OpenStack Mappings <os_mapping.html>`_

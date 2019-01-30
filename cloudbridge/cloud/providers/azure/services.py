@@ -109,20 +109,6 @@ class AzureVMFirewallService(BaseVMFirewallService):
         cb_fw = AzureVMFirewall(self.provider, fw)
         return cb_fw
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['label']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
     def delete(self, group_id):
         self.provider.azure_client.delete_vm_firewall(group_id)
 
