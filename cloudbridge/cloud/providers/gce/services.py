@@ -874,7 +874,7 @@ class GCESubnetService(BaseSubnetService):
         Given a GCE zone, return parent region.
 
         Supplied `zone` param can be a `str` or `GCEPlacementZone`.
-        
+
         If ``return_name_only`` is set, return the region name as a string;
         otherwise, return a GCERegion object.
         """
