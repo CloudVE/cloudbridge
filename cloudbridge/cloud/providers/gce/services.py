@@ -1,3 +1,4 @@
+import ipaddress
 import json
 import logging
 import time
@@ -749,7 +750,7 @@ class GCESubnetService(BaseSubnetService):
             filter = 'network eq %s' % network.resource_url
         region_names = []
         if zone:
-            region_names.append(self._zone_to_region_name(zone))
+            region_names.append(self._zone_to_region(zone))
         else:
             for r in self.provider.compute.regions:
                 region_names.append(r.name)
@@ -779,7 +780,7 @@ class GCESubnetService(BaseSubnetService):
         """
         GCESubnet.assert_valid_resource_label(label)
         name = GCESubnet._generate_name_from_label(label, 'cbsubnet')
-        region_name = self._zone_to_region_name(zone)
+        region_name = self._zone_to_region(zone)
 #         for subnet in self.iter(network=network):
 #            if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
 #                 if subnet.region_name != region_name:
@@ -811,20 +812,42 @@ class GCESubnetService(BaseSubnetService):
 
     def get_or_create_default(self, zone):
         """
-        Every GCP project comes with a default auto mode VPC network. An auto
-        mode VPC network has exactly one subnetwork per region. This method
-        returns the subnetwork of the default network that spans the given
-        zone.
+        Return an existing or create a new subnet for the supplied zone.
+
+        In GCP, subnets are a regional resource so a single subnet can services
+        an entire region. The supplied zone parameter is used to derive the
+        parent region under which the default subnet then exists.
         """
-        sn = self.find(label=GCESubnet.CB_DEFAULT_SUBNET_LABEL)
-        if sn:
-            return sn[0]
-        # No default subnet look for default network, then create subnet
+        # In case the supplied zone param is `None`, resort to the default one
+        region = self._zone_to_region(zone or self.provider.default_zone,
+                                      return_name_only=False)
+        # Check if a default subnet already exists for the given region/zone
+        for sn in self.find(label=GCESubnet.CB_DEFAULT_SUBNET_LABEL):
+            if sn.region == region.id:
+                return sn
+        # No default subnet in the supplied zone. Look for a default network,
+        # then create a subnet whose address space does not overlap with any
+        # other existing subnets. If there are existing subnets, this process
+        # largely assumes the subnet address spaces are contiguous when it
+        # does the calculations (e.g., 10.0.0.0/24, 10.0.1.0/24).
+        cidr_block = GCESubnet.CB_DEFAULT_SUBNET_IPV4RANGE
         net = self.provider.networking.networks.get_or_create_default()
+        if net.subnets:
+            max_sn = net.subnets[0]
+            # Find the maximum address subnet address space within the network
+            for esn in net.subnets:
+                if (ipaddress.ip_network(esn.cidr_block) >
+                        ipaddress.ip_network(max_sn.cidr_block)):
+                    max_sn = esn
+            max_sn_ipa = ipaddress.ip_network(max_sn.cidr_block)
+            # Find the next available subnet after the max one, based on the
+            # max subnet size
+            next_sn_address = (
+                next(max_sn_ipa.hosts()) + max_sn_ipa.num_addresses - 1)
+            cidr_block = "{}/{}".format(next_sn_address, max_sn_ipa.prefixlen)
         sn = self.provider.networking.subnets.create(
                 label=GCESubnet.CB_DEFAULT_SUBNET_LABEL,
-                cidr_block=GCESubnet.CB_DEFAULT_SUBNET_IPV4RANGE,
-                network=net, zone=zone)
+                cidr_block=cidr_block, network=net, zone=zone)
         router = self.provider.networking.routers.get_or_create_default(net)
         router.attach_subnet(sn)
         gateway = net.gateways.get_or_create_inet_gateway()
@@ -846,14 +869,24 @@ class GCESubnetService(BaseSubnetService):
             log.warning('No label was found associated with this subnet '
                         '"{}" when deleted.'.format(subnet.name))
 
-    def _zone_to_region_name(self, zone):
+    def _zone_to_region(self, zone, return_name_only=True):
+        """
+        Given a GCE zone, return parent region.
+
+        Supplied `zone` param can be a `str` or `GCEPlacementZone`.
+        
+        If ``return_name_only`` is set, return the region name as a string;
+        otherwise, return a GCERegion object.
+        """
+        region_name = self.provider.region_name
         if zone:
-            if not isinstance(zone, GCEPlacementZone):
-                zone = GCEPlacementZone(
-                    self.provider,
-                    self.provider.get_resource('zones', zone))
-            return zone.region_name
-        return self.provider.region_name
+            if isinstance(zone, GCEPlacementZone):
+                region_name = zone.region_name
+            else:
+                region_name = zone[:-2]
+        if return_name_only:
+            return region_name
+        return self.provider.compute.regions.get(region_name)
 
 
 class GCPStorageService(BaseStorageService):
