@@ -1029,6 +1029,7 @@ class GCEVolumeService(BaseVolumeService):
             'type': 'zones/{0}/diskTypes/{1}'.format(zone_name, 'pd-standard'),
             'sourceSnapshot': snapshot_id,
             'description': description,
+            'labels': {'cblabel': label}
         }
         operation = (self.provider
                          .gce_compute
@@ -1039,7 +1040,6 @@ class GCEVolumeService(BaseVolumeService):
                              body=disk_body)
                          .execute())
         cb_vol = self.get(operation.get('targetLink'))
-        cb_vol.label = label
         return cb_vol
 
 
@@ -1108,7 +1108,8 @@ class GCESnapshotService(BaseSnapshotService):
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
         snapshot_body = {
             "name": name,
-            "description": description
+            "description": description,
+            "labels": {'cblabel': label}
         }
         operation = (self.provider
                          .gce_compute
@@ -1123,7 +1124,6 @@ class GCESnapshotService(BaseSnapshotService):
         self.provider.wait_for_operation(operation,
                                          zone=self.provider.default_zone)
         cb_snap = self.get(name)
-        cb_snap.label = label
         return cb_snap
 
 
