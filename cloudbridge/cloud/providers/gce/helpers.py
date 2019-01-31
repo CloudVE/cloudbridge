@@ -143,3 +143,39 @@ def remove_metadata_item(provider, key):
 
     gce_metadata_save_op(provider, _remove_metadata_by_key)
     return True
+
+
+def __if_label_fingerprint_differs(e):
+    # return True if the CloudError exception is due to subnet being in use
+    if isinstance(e, HttpError):
+        expected_message = 'Labels fingerprint either invalid or ' \
+                           'resource labels have changed'
+        # str wrapper required for Python 2.7
+        if expected_message in str(e.content):
+            return True
+    return False
+
+
+@tenacity.retry(stop=tenacity.stop_after_attempt(10),
+                retry=tenacity.retry_if_exception(
+                    __if_label_fingerprint_differs),
+                wait=tenacity.wait_exponential(max=10),
+                reraise=True)
+def change_label(resource, key, value, res_att, request):
+    resource.assert_valid_resource_label(value)
+    labels = getattr(resource, res_att).get("labels", {})
+    print(labels)
+    labels[key] = value
+    request_body = {
+        "labels": labels,
+        "labelFingerprint":
+            getattr(resource, res_att).get('labelFingerprint'),
+    }
+    try:
+        request.body = str(request_body)
+        request.body_size = len(str(request_body))
+        response = request.execute()
+        resource._provider.wait_for_operation(response,
+                                              zone=resource.zone_name)
+    finally:
+        resource.refresh()
