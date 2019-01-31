@@ -1100,15 +1100,17 @@ class GCEInstance(BaseInstance):
             key_pair = self._provider.security.key_pairs.get(value)
         if key_pair:
             kp = key_pair._key_pair
-            kp_items = [{
+            kp_entry = {
                 "key": "ssh-keys",
                 # Format is not removed from public key portion
                 "value": "{}:{} {}".format(self._provider.vm_default_user_name,
                                            kp.public_key,
                                            kp.name)
-            }]
+            }
+            items = self._gce_instance['metadata'].get('items', [])
+            items.append(kp_entry)
             config = {
-                "items": kp_items,
+                "items": items,
                 "fingerprint": self._gce_instance['metadata']['fingerprint']
             }
             try:

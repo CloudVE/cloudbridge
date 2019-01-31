@@ -447,6 +447,10 @@ class GCEInstanceService(BaseInstanceService):
                 config['tags'] = {}
                 config['tags']['items'] = vm_firewall_names
 
+        if user_data:
+            entry = {'key': 'startup-script', 'value': user_data}
+            config['metadata'] = {'items': [entry]}
+
         operation = (self.provider
                          .gce_compute.instances()
                          .insert(project=self.provider.project_name,
