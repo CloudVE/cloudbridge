@@ -1092,44 +1092,6 @@ class GCEInstance(BaseInstance):
                     return item.get("value").split(" ")[-1]
         return None
 
-    @key_pair_id.setter
-    # pylint:disable=arguments-differ
-    def key_pair_id(self, value):
-        key_pair = value
-        if not isinstance(value, GCEKeyPair):
-            key_pair = self._provider.security.key_pairs.get(value)
-        if key_pair:
-            kp = key_pair._key_pair
-            kp_entry = {
-                "key": "ssh-keys",
-                # Format is not removed from public key portion
-                "value": "{}:{} {}".format(self._provider.vm_default_user_name,
-                                           kp.public_key,
-                                           kp.name)
-            }
-            items = self._gce_instance['metadata'].get('items', [])
-            items.append(kp_entry)
-            config = {
-                "items": items,
-                "fingerprint": self._gce_instance['metadata']['fingerprint']
-            }
-            try:
-                response = (self._provider
-                            .gce_compute
-                            .instances()
-                            .setMetadata(project=self._provider.project_name,
-                                         zone=self.zone_name,
-                                         instance=self.name,
-                                         body=config)
-                            .execute())
-                self._provider.wait_for_operation(response,
-                                                  zone=self.zone_name)
-            except Exception as e:
-                cb.log.warning('Exception while setting instance key pair: %s',
-                               e)
-                raise e
-            self.refresh()
-
     @property
     def inet_gateway(self):
         if self._inet_gateway:

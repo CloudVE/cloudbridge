@@ -451,6 +451,28 @@ class GCEInstanceService(BaseInstanceService):
             entry = {'key': 'startup-script', 'value': user_data}
             config['metadata'] = {'items': [entry]}
 
+        if key_pair:
+            if not isinstance(key_pair, GCEKeyPair):
+                key_pair = self._provider.security.key_pairs.get(key_pair)
+            if key_pair:
+                kp = key_pair._key_pair
+                kp_entry = {
+                    "key": "ssh-keys",
+                    # Format is not removed from public key portion
+                    "value": "{}:{} {}".format(
+                        self.provider.vm_default_user_name,
+                        kp.public_key,
+                        kp.name)
+                    }
+                meta = config.get('metadata', {})
+                if meta:
+                    items = meta.get('items', [])
+                    items.append(kp_entry)
+                else:
+                    config['metadata'] = {'items': [kp_entry]}
+
+        config['labels'] = {'cblabel': label}
+
         operation = (self.provider
                          .gce_compute.instances()
                          .insert(project=self.provider.project_name,
@@ -460,9 +482,6 @@ class GCEInstanceService(BaseInstanceService):
         instance_id = operation.get('targetLink')
         self.provider.wait_for_operation(operation, zone=zone_name)
         cb_inst = self.get(instance_id)
-        cb_inst.label = label
-        if key_pair:
-            cb_inst.key_pair_id = key_pair
         return cb_inst
 
     def get(self, instance_id):
