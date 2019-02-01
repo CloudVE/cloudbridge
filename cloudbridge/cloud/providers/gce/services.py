@@ -379,7 +379,8 @@ class GCEInstanceService(BaseInstanceService):
                     # be used by default which may collide with existing disks.
                     source_value = {
                         'sourceImage': disk.source.id,
-                        'diskName': 'image-disk-{0}'.format(uuid.uuid4())}
+                        'diskName': 'image-disk-{0}'.format(uuid.uuid4()),
+                        'diskSizeGb': disk.size if disk.size else 20}
                 elif isinstance(disk.source, GCEVolume):
                     source_field = 'source'
                     source_value = disk.source.id
