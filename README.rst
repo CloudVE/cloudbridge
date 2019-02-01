@@ -51,7 +51,7 @@ Build Status Tests
 +--------------------------+--------------+--------------+
 | **Azure**                | |azure-py27| | |azure-py36| |
 +--------------------------+--------------+--------------+
-| **GCE (alpha)**          | |gce-py27|   | |gce-py36|   |
+| **GCE**                  | |gce-py27|   | |gce-py36|   |
 +--------------------------+--------------+--------------+
 
 Installation
@@ -81,7 +81,7 @@ exploring the API:
   print(provider.security.key_pairs.list())
 
 The exact same command (as well as any other CloudBridge method) will run with
-any of the supported providers: ``ProviderList.[AWS | AZURE | OPENSTACK]``!
+any of the supported providers: ``ProviderList.[AWS | AZURE | GCE | OPENSTACK]``!
 
 
 Citation

@@ -473,7 +473,6 @@ class GCEVMFirewall(BaseVMFirewall):
     def label(self):
         tag_name = "_".join(["firewall", self.name, "label"])
         return helpers.get_metadata_item_value(self._provider, tag_name)
-        # TODO: Add removing metadata to delete function
 
     @label.setter
     def label(self, value):
@@ -764,30 +763,14 @@ class GCEMachineImage(BaseMachineImage):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_label(value)
-        # Refresh to update fingerprint and current labels
-        self.refresh()
-        labels = self._gce_image.get('labels', {})
-        labels['cblabel'] = value
-        request_body = {
-            'labels': labels,
-            'labelFingerprint': self._gce_image.get('labelFingerprint'),
-        }
-        try:
-            response = (self._provider
-                        .gce_compute
-                        .images()
-                        .setLabels(project=self._provider.project_name,
-                                   resource=self.name,
-                                   body=request_body)
-                        .execute())
-            self._provider.wait_for_operation(response)
-        except Exception as e:
-            cb.log.warning('Exception while setting image label: %s. '
-                           'Check for invalid characters in label. '
-                           'Should conform to RFC1035.', e)
-            raise e
-        self.refresh()
+        req = (self._provider
+                   .gce_compute
+                   .images()
+                   .setLabels(project=self._provider.project_name,
+                              resource=self.name,
+                              body={}))
+
+        helpers.change_label(self, 'cblabel', value, '_gce_image', req)
 
     @property
     def description(self):
@@ -887,31 +870,15 @@ class GCEInstance(BaseInstance):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_label(value)
-        # Refresh to update fingerprint and current labels
-        self.refresh()
-        labels = self._gce_instance.get('labels', {})
-        labels['cblabel'] = value
-        request_body = {
-            'labels': labels,
-            'labelFingerprint': self._gce_instance.get('labelFingerprint'),
-        }
-        try:
-            response = (self._provider
-                        .gce_compute
-                        .instances()
-                        .setLabels(project=self._provider.project_name,
-                                   zone=self.zone_name,
-                                   instance=self.name,
-                                   body=request_body)
-                        .execute())
-            self._provider.wait_for_operation(response, zone=self.zone_name)
-        except Exception as e:
-            cb.log.warning('Exception while setting instance label: %s. '
-                           'Check for invalid characters in label. '
-                           'Should conform to RFC1035.', e)
-            raise e
-        self.refresh()
+        req = (self._provider
+                   .gce_compute
+                   .instances()
+                   .setLabels(project=self._provider.project_name,
+                              zone=self.zone_name,
+                              instance=self.name,
+                              body={}))
+
+        helpers.change_label(self, 'cblabel', value, '_gce_instance', req)
 
     @property
     def public_ips(self):
@@ -1091,42 +1058,6 @@ class GCEInstance(BaseInstance):
                     # The key pair name/id is stored last, after the public key
                     return item.get("value").split(" ")[-1]
         return None
-
-    @key_pair_id.setter
-    # pylint:disable=arguments-differ
-    def key_pair_id(self, value):
-        key_pair = value
-        if not isinstance(value, GCEKeyPair):
-            key_pair = self._provider.security.key_pairs.get(value)
-        if key_pair:
-            kp = key_pair._key_pair
-            kp_items = [{
-                "key": "ssh-keys",
-                # Format is not removed from public key portion
-                "value": "{}:{} {}".format(self._provider.vm_default_user_name,
-                                           kp.public_key,
-                                           kp.name)
-            }]
-            config = {
-                "items": kp_items,
-                "fingerprint": self._gce_instance['metadata']['fingerprint']
-            }
-            try:
-                response = (self._provider
-                            .gce_compute
-                            .instances()
-                            .setMetadata(project=self._provider.project_name,
-                                         zone=self.zone_name,
-                                         instance=self.name,
-                                         body=config)
-                            .execute())
-                self._provider.wait_for_operation(response,
-                                                  zone=self.zone_name)
-            except Exception as e:
-                cb.log.warning('Exception while setting instance key pair: %s',
-                               e)
-                raise e
-            self.refresh()
 
     @property
     def inet_gateway(self):
@@ -1878,31 +1809,15 @@ class GCEVolume(BaseVolume):
 
     @label.setter
     def label(self, value):
-        self.assert_valid_resource_label(value)
-        # Refresh to update fingerprint and current labels
-        self.refresh()
-        labels = self._volume.get('labels', {})
-        labels['cblabel'] = value
-        request_body = {
-            'labels': labels,
-            'labelFingerprint': self._volume.get('labelFingerprint'),
-        }
-        try:
-            response = (self._provider
-                        .gce_compute
-                        .disks()
-                        .setLabels(project=self._provider.project_name,
-                                   zone=self.zone_name,
-                                   resource=self.name,
-                                   body=request_body)
-                        .execute())
-            self._provider.wait_for_operation(response, zone=self.zone_name)
-        except Exception as e:
-            cb.log.warning('Exception while setting volume name: %s. '
-                           'Check for invalid characters in name. '
-                           'Should conform to RFC1035.', e)
-            raise e
-        self.refresh()
+        req = (self._provider
+                   .gce_compute
+                   .disks()
+                   .setLabels(project=self._provider.project_name,
+                              zone=self.zone_name,
+                              resource=self.name,
+                              body={}))
+
+        helpers.change_label(self, 'cblabel', value, '_volume', req)
 
     @property
     def description(self):
@@ -1913,31 +1828,15 @@ class GCEVolume(BaseVolume):
 
     @description.setter
     def description(self, value):
-        # Refresh to update fingerprint and current labels
-        self.refresh()
-        labels = self._volume.get('labels', {})
-        labels['description'] = value.replace(' ', '_').lower()
-        request_body = {
-            'labels': labels,
-            'labelFingerprint': self._volume.get('labelFingerprint'),
-        }
-        try:
-            response = (self._provider
-                        .gce_compute
-                        .disks()
-                        .setLabels(project=self._provider.project_name,
-                                   zone=self.zone_name,
-                                   resource=self.name,
-                                   body=request_body)
-                        .execute())
-            self._provider.wait_for_operation(response,
-                                              zone=self.zone_name)
-        except Exception as e:
-            cb.log.warning('Exception while setting volume description: %s. '
-                           'Check for invalid characters in description. '
-                           'Should confirm to RFC1035.', e)
-            raise e
-        self.refresh()
+        req = (self._provider
+               .gce_compute
+               .disks()
+               .setLabels(project=self._provider.project_name,
+                          zone=self.zone_name,
+                          resource=self.name,
+                          body={}))
+
+        helpers.change_label(self, 'description', value, '_volume', req)
 
     @property
     def size(self):
@@ -2108,30 +2007,14 @@ class GCESnapshot(BaseSnapshot):
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
-        self.assert_valid_resource_label(value)
-        # Refresh to update fingerprint and current labels
-        self.refresh()
-        labels = self._snapshot.get('labels', {})
-        labels['cblabel'] = value
-        request_body = {
-            'labels': labels,
-            'labelFingerprint': self._snapshot.get('labelFingerprint'),
-        }
-        try:
-            response = (self._provider
-                        .gce_compute
-                        .snapshots()
-                        .setLabels(project=self._provider.project_name,
-                                   resource=self.name,
-                                   body=request_body)
-                        .execute())
-            self._provider.wait_for_operation(response)
-        except Exception as e:
-            cb.log.warning('Exception while setting snapshot label: %s. '
-                           'Check for invalid characters in label. '
-                           'Should conform to RFC1035.', e)
-            raise e
-        self.refresh()
+        req = (self._provider
+                   .gce_compute
+                   .snapshots()
+                   .setLabels(project=self._provider.project_name,
+                              resource=self.name,
+                              body={}))
+
+        helpers.change_label(self, 'cblabel', value, '_snapshot', req)
 
     @property
     def description(self):
@@ -2142,29 +2025,14 @@ class GCESnapshot(BaseSnapshot):
 
     @description.setter
     def description(self, value):
-        # Refresh to update fingerprint and current labels
-        self.refresh()
-        labels = self._snapshot.get('labels', {})
-        labels['description'] = value.replace(' ', '_').lower()
-        request_body = {
-            'labels': labels,
-            'labelFingerprint': self._snapshot.get('labelFingerprint'),
-        }
-        try:
-            response = (self._provider
-                        .gce_compute
-                        .snapshots()
-                        .setLabels(project=self._provider.project_name,
-                                   resource=self.name,
-                                   body=request_body)
-                        .execute())
-            self._provider.wait_for_operation(response)
-        except Exception as e:
-            cb.log.warning('Exception while setting volume description: %s. '
-                           'Check for invalid characters in description. '
-                           'Should confirm to RFC1035.', e)
-            raise e
-        self.refresh()
+        req = (self._provider
+               .gce_compute
+               .snapshots()
+               .setLabels(project=self._provider.project_name,
+                          resource=self.name,
+                          body={}))
+
+        helpers.change_label(self, 'description', value, '_snapshot', req)
 
     @property
     def size(self):
