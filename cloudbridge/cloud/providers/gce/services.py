@@ -448,7 +448,7 @@ class GCEInstanceService(BaseInstanceService):
                 config['tags']['items'] = vm_firewall_names
 
         if user_data:
-            entry = {'key': 'startup-script', 'value': user_data}
+            entry = {'key': 'user-data', 'value': user_data}
             config['metadata'] = {'items': [entry]}
 
         if key_pair:
