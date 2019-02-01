@@ -254,3 +254,4 @@ class HandlerType(Enum):
     """
     SUBSCRIPTION = 'subscription'
     RESULT_SUBSCRIPTION = 'result_subscription'
+    INTERCEPTION = 'intercept'
