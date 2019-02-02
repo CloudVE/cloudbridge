@@ -7,7 +7,10 @@ will walk you through the process of procuring credentials. For more
 information on providing these credentials to CloudBridge, see
 `Providing Access Credentials <setup.html>`_.
 
-**Microsoft Azure**
+.. _azure-creds:
+
+Microsoft Azure
+~~~~~~~~~~~~~~~
 
 The page linked below from the Microsoft Documentation was used to create this
 section, and can be followed instead of this CloudBridge-specific documentation
@@ -131,8 +134,10 @@ specific roles can also be assigned for more limited access.
    Adding a role assignment to the application will give it appropriate
    permissions to manage resources
 
+.. _google-creds:
 
-**Google**
+Google Compute Engine
+~~~~~~~~~~~~~~~~~~~~~
 
 For Google Compute Engine, create a service account following instructions
 from the link below:
