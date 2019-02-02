@@ -13,7 +13,6 @@ from msrestazure.azure_exceptions import CloudError
 
 import pysftp
 
-import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
     BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
     BaseFloatingIPContainer, BaseGatewayContainer, BaseInstance, \

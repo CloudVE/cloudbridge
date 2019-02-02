@@ -10,8 +10,8 @@ from msrestazure.azure_exceptions import CloudError
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList, \
     ServerPagedResultList
-from cloudbridge.cloud.base.services import BaseBucketService, \
-    BaseBucketObjectService, BaseComputeService, \
+from cloudbridge.cloud.base.services import BaseBucketObjectService, \
+    BaseBucketService, BaseComputeService, \
     BaseImageService, BaseInstanceService, BaseKeyPairService, \
     BaseNetworkService, BaseNetworkingService, BaseRegionService, \
     BaseRouterService, BaseSecurityService, BaseSnapshotService, \
@@ -428,8 +428,8 @@ class AzureBucketObjectService(BaseBucketObjectService):
 
     def find(self, bucket, **kwargs):
         obj_list = [AzureBucketObject(self.provider, bucket, obj)
-                   for obj in
-                   self.provider.azure_client.list_blobs(bucket.name)]
+                    for obj in
+                    self.provider.azure_client.list_blobs(bucket.name)]
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self.provider, list(matches))
