@@ -18,10 +18,10 @@ class CloudProvider(object):
 
         :type config: :class:`dict`
         :param config: A dictionary object containing provider initialization
-                       values. Alternatively, this can be a Bunch or any other
-                       object whose fields can be accessed as members. See
-                       specific provider implementation for the required
-                       fields.
+                       values. Alternatively, this can be an iterable of
+                       key/value pairs (as tuples or other iterables of length
+                       two). See specific provider implementation for the
+                       required fields.
 
         :rtype: :class:`.CloudProvider`
         :return:  a concrete provider instance
