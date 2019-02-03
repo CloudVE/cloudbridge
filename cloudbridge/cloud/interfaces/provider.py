@@ -2,7 +2,6 @@
 Specification for a provider interface
 """
 from abc import ABCMeta, abstractmethod, abstractproperty
-from enum import Enum
 
 
 class CloudProvider(object):
@@ -246,11 +245,3 @@ class DeploymentProvider(object):
         Deploys on given target, where target is an Instance or Container
         """
         pass
-
-
-class HandlerType(Enum):
-    """
-    Handler Types.
-    """
-    SUBSCRIPTION = 'subscription'
-    INTERCEPTION = 'intercept'
