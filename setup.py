@@ -19,7 +19,6 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
             break
 
 REQS_BASE = [
-    'bunch>=1.0.1',
     'six>=1.11',
     'tenacity>=4.12.0,<=5.0',
     'cachetools>=2.1.0',
