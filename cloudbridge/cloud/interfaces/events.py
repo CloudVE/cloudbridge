@@ -6,12 +6,12 @@ class EventDispatcher(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def subscribe(self, event_name, priority, callback):
+    def observe(self, event_name, priority, callback):
         """
-        Register a callback to be invoked when a given event occurs. Listen
-        will allow you to observe events as they occur, but not modify the
+        Register a callback to be invoked when a given event occurs. `observe`
+        will allow you to listen to events as they occur, but not modify the
         event chain or its parameters. If you need to modify an event, use
-        the intercept method. `listen` is a simplified case of `intercept`,
+        the `intercept` method. `observe` is a simplified case of `intercept`,
         and receives a simpler list of parameters in its callback.
 
         :type event_name: str
@@ -34,8 +34,8 @@ class EventDispatcher(object):
         """
         Register a callback to be invoked when a given event occurs. Intercept
         will allow you to both observe events and modify the event chain and
-        its parameters. If you only want to observe an event, use the listen
-        method. Intercept and listen only differ in what parameters the
+        its parameters. If you only want to observe an event, use the `observe`
+        method. Intercept and `observe` only differ in what parameters the
         callback receives, with intercept receiving additional parameters to
         allow controlling the event chain.
 

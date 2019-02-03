@@ -30,7 +30,7 @@ class SimpleEventDispatcher(EventDispatcher):
     def mark_initialized(self, event_name):
         self.__initialized[event_name] = True
 
-    def subscribe(self, event_name, priority, callback):
+    def observe(self, event_name, priority, callback):
         handler = EventHandler(HandlerType.SUBSCRIPTION, callback, priority)
         if not self.__events.get(event_name):
             self.__events[event_name] = list()

@@ -50,9 +50,9 @@ class BaseCloudService(CloudService):
     def _generate_event_name(self, func_name):
         return ".".join((self._service_event_name, func_name))
 
-    def subscribe(self, func_name, priority, callback):
+    def observe(self, func_name, priority, callback):
         event_name = self._generate_event_name(func_name)
-        self.provider.events.subscribe(event_name, priority, callback)
+        self.provider.events.observe(event_name, priority, callback)
 
     def check_initialized(self, func_name):
         event_name = self._generate_event_name(func_name)
@@ -155,8 +155,8 @@ class BaseBucketService(
         def _get_post_log(callback_result, bucket_id):
             log.debug("Returned bucket object: {}".format(callback_result))
 
-        self.subscribe("get", 2000, _get_pre_log)
-        self.subscribe("get", 3000, _get_post_log)
+        self.observe("get", 2000, _get_pre_log)
+        self.observe("get", 3000, _get_post_log)
         self.mark_initialized("get")
 
     def _init_find(self):
@@ -167,8 +167,8 @@ class BaseBucketService(
         def _find_post_log(callback_result, **kwargs):
             log.debug("Returned bucket objects: {}".format(callback_result))
 
-        self.subscribe("find", 2000, _find_pre_log)
-        self.subscribe("find", 3000, _find_post_log)
+        self.observe("find", 2000, _find_pre_log)
+        self.observe("find", 3000, _find_post_log)
         self.mark_initialized("find")
 
     def _init_list(self):
@@ -184,8 +184,8 @@ class BaseBucketService(
                 log.debug(
                     "Returned bucket objects: {}".format(callback_result))
 
-            self.subscribe("list", 2000, _list_pre_log)
-            self.subscribe("list", 3000, _list_post_log)
+            self.observe("list", 2000, _list_pre_log)
+            self.observe("list", 3000, _list_post_log)
             self.mark_initialized("list")
 
     def _init_create(self):
@@ -199,8 +199,8 @@ class BaseBucketService(
         def _create_post_log(callback_result, name, location):
             log.debug("Returned bucket object: {}".format(callback_result))
 
-        self.subscribe("create", 2000, _create_pre_log)
-        self.subscribe("create", 3000, _create_post_log)
+        self.observe("create", 2000, _create_pre_log)
+        self.observe("create", 3000, _create_post_log)
         self.mark_initialized("create")
 
     def get(self, bucket_id):
