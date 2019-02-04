@@ -55,21 +55,14 @@ class EventDispatcher(object):
         pass
 
     @abstractmethod
-    def call(self, event_name, priority, callback, **kwargs):
+    def emit(self, sender, event_name, **kwargs):
         """
         Raises an event while registering a given callback
 
         :type event_name: str
-        :param event_name: The name of the event to which you are subscribing
-            the callback function. Accepts wildcard parameters.
+        :param event_name: The name of the event which is being raised.
 
-        :type priority: int
-        :param priority: The priority that this handler should be given.
-            When the event is emitted, all handlers will be run in order of
-            priority.
-
-        :type callback: function
-        :param callback: The callback function that should be called with
-            the parameters given at when the even is emitted.
+        :type sender: object
+        :param sender: The object which is raising the event
         """
         pass

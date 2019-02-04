@@ -1,169 +1,137 @@
+import bisect
+import collections
 import fnmatch
+import logging
 import re
-from copy import deepcopy
-from enum import Enum
 
 from ..interfaces.events import EventDispatcher
 from ..interfaces.exceptions import HandlerException
 
+log = logging.getLogger(__name__)
 
-class HandlerType(Enum):
-    """
-    Handler Types.
-    """
-    SUBSCRIPTION = 'subscription'
-    INTERCEPTION = 'intercept'
+
+class InterceptingEventHandler(object):
+
+    def __init__(self, event_name, priority, callback):
+        self.dispatcher = None
+        self.event_name = event_name
+        self.priority = priority
+        self.callback = callback
+
+    def __lt__(self, other):
+        # This is required for the bisect module to insert
+        # event handlers sorted by priority
+        return self.priority < other.priority
+
+    def get_next_handler(self, full_event_name):
+        handler_list = self.dispatcher.handler_cache.get(full_event_name, [])
+        # find position of this handler
+        pos = bisect.bisect_left(handler_list, self)
+        assert handler_list[pos] == self
+        if pos < len(handler_list)-1:
+            return handler_list[pos+1]
+        else:
+            return None
+
+    def invoke(self, **kwargs):
+        kwargs.pop('next_handler', None)
+        next_handler = self.get_next_handler(kwargs.get('event_name', None))
+        # callback is responsible for invoking the next_handler and
+        # controlling the result value
+        return self.callback(next_handler=next_handler, **kwargs)
+
+
+class ObservingEventHandler(InterceptingEventHandler):
+
+    def __init__(self, event_name, priority, callback):
+        super(ObservingEventHandler, self).__init__(event_name, priority,
+                                                    callback)
+
+    def invoke(self, **kwargs):
+        # Notify listener. Ignore result from observable handler
+        kwargs.pop('next_handler', None)
+        self.callback(**kwargs)
+        # Kick off the handler chain
+        next_handler = self.get_next_handler(kwargs.get('event_name', None))
+        if next_handler:
+            return next_handler.invoke(**kwargs)
+        else:
+            return None
 
 
 class SimpleEventDispatcher(EventDispatcher):
 
     def __init__(self):
-        self.__events = {}
-        self.__initialized = {}
-
-    def get_handlers(self, event_name):
-        return self.__events.get(event_name)
-
-    def check_initialized(self, event_name):
-        return self.__initialized.get(event_name) or False
-
-    def mark_initialized(self, event_name):
-        self.__initialized[event_name] = True
-
-    def observe(self, event_name, priority, callback):
-        handler = EventHandler(HandlerType.SUBSCRIPTION, callback, priority)
-        if not self.__events.get(event_name):
-            self.__events[event_name] = list()
-        self.__events[event_name].append((priority, handler))
-
-    def intercept(self, event_name, priority, callback):
-        handler = EventHandler(HandlerType.INTERCEPTION, callback, priority)
-        if not self.__events.get(event_name):
-            self.__events[event_name] = list()
-        self.__events[event_name].append((priority, handler))
-
-    def call(self, event_name, priority, callback, **kwargs):
-        handler = EventHandler(HandlerType.SUBSCRIPTION, callback, priority)
-        if not self.__events.get(event_name):
-            self.__events[event_name] = list()
-        # Although handler object has priority property, keep it a pair to not
-        # access each handler when sorting
-        self.__events[event_name].append((priority, handler))
-        try:
-            ret_obj = self._emit(event_name, **kwargs)
-        finally:
-            self.__events[event_name].remove((priority, handler))
-        return ret_obj
-
-    def _emit(self, event_name, **kwargs):
-
-        def _match_and_sort(event_name):
-            new_list = []
-            for key in self.__events.keys():
-                if re.search(fnmatch.translate(key), event_name):
-                    new_list.extend(deepcopy(self.__events[key]))
-            new_list.sort(key=lambda x: x[0])
-            # Make sure all priorities are unique
-            priority_list = [x[0] for x in new_list]
-            if len(set(priority_list)) != len(priority_list):
-
-                guilty_prio = None
-                for prio in priority_list:
-                    if prio == guilty_prio:
-                        break
-                    guilty_prio = prio
-
-                # guilty_prio should never be none since we checked for
-                # duplicates before iterating
-                guilty_names = [x[1].callback.__name__
-                                for x in new_list
-                                if x[0] == guilty_prio]
-
-                message = "Event '{}' has multiple subscribed handlers " \
-                          "at priority '{}', with function names [{}]. " \
-                          "Each priority must only have a single " \
-                          "corresponding handler." \
-                    .format(event_name, priority, ", ".join(guilty_names))
-                raise HandlerException(message)
-
-            return new_list
-
-        if not self.__events.get(event_name):
-            message = "Event '{}' has no subscribed handlers.".\
-                format(event_name)
-            raise HandlerException(message)
-
-        prev_handler = None
-        first_handler = None
-        for (priority, handler) in _match_and_sort(event_name):
-            if not first_handler:
-                first_handler = handler
-            if prev_handler:
-                prev_handler.next_handler = handler
-            prev_handler = handler
-        return first_handler.invoke(**kwargs)
-
-
-class EventHandler(object):
-    def __init__(self, handler_type, callback, priority):
-        self.handler_type = handler_type
-        self.callback = callback
-        self._next_handler = None
-        self.priority = priority
+        # The dict key is event_name.
+        # The dict value is a list of handlers for the event, sorted by event
+        # priority
+        self.__events = collections.OrderedDict({})
+        self.__handler_cache = {}
 
     @property
-    def next_handler(self):
-        return self._next_handler
+    def handler_cache(self):
+        return self.__handler_cache
 
-    @next_handler.setter
-    def next_handler(self, new_handler):
-        self._next_handler = new_handler
+    def _create_handler_cache(self, event_name):
+        cache_list = []
+        # sort from most specific to least specific
+        for key in self.__events.keys():
+            if re.search(fnmatch.translate(key), event_name):
+                cache_list.extend(self.__events[key])
+        cache_list.sort(key=lambda h: h.priority)
 
-    def invoke(self, **kwargs):
-        if self.handler_type == HandlerType.SUBSCRIPTION:
-            result = self.callback(**kwargs)
+        # Make sure all priorities are unique
+        priority_list = [h.priority for h in cache_list]
+        if len(set(priority_list)) != len(priority_list):
+            guilty_prio = None
+            for prio in priority_list:
+                if prio == guilty_prio:
+                    break
+                guilty_prio = prio
 
-            next = self.next_handler
-            if next:
-                if next.handler_type == HandlerType.SUBSCRIPTION:
-                    if result or not kwargs.get('callback_result', None):
-                        kwargs['callback_result'] = result
-                    new_result = next.invoke(**kwargs)
-                elif next.handler_type == HandlerType.INTERCEPTION:
-                    new_result = next.invoke(**kwargs)
+            # guilty_prio should never be none since we checked for
+            # duplicates before iterating
+            guilty_names = [h.callback.__name__ for h in cache_list
+                            if h.priority == guilty_prio]
 
-                if new_result:
-                    result = new_result
+            message = "Event '{}' has multiple subscribed handlers " \
+                      "at priority '{}', with function names [{}]. " \
+                      "Each priority must only have a single " \
+                      "corresponding handler." \
+                .format(event_name, guilty_prio, ", ".join(guilty_names))
+            raise HandlerException(message)
+        return cache_list
 
-            self.next_handler = None
+    def _subscribe(self, event_handler):
+        """
+        subscribe an event handler to this dispatcher
+        """
+        event_handler.dispatcher = self
+        handler_list = self.__events.get(event_handler.event_name, [])
+        handler_list.append(event_handler)
+        self.__events[event_handler.event_name] = handler_list
 
-        elif self.handler_type == HandlerType.INTERCEPTION:
-            kwargs.pop('next_handler', None)
-            result = self.callback(next_handler=self.next_handler, **kwargs)
-            self.next_handler = None
+    def observe(self, event_name, priority, callback):
+        handler = ObservingEventHandler(event_name, priority, callback)
+        self._subscribe(handler)
 
-        return result
+    def intercept(self, event_name, priority, callback):
+        handler = InterceptingEventHandler(event_name, priority, callback)
+        self._subscribe(handler)
 
-    def skip(self, **kwargs):
-        if self.next_handler:
-            self.next_handler.invoke(**kwargs)
-            self.next_handler = None
+    def emit(self, sender, event_name, **kwargs):
+        handlers = self.handler_cache.get(event_name)
+        if handlers is None:
+            self.__handler_cache[event_name] = self._create_handler_cache(
+                event_name)
+            handlers = self.handler_cache.get(event_name)
 
-    def skip_to_name(self, function_name, **kwargs):
-        if self.callback.__name__ == function_name:
-            self.invoke(**kwargs)
-        elif self.next_handler:
-            self.next_handler.skip_to_name(function_name, **kwargs)
-            self.next_handler = None
-
-    def skip_to_priority(self, priority, **kwargs):
-        if self.priority == priority:
-            self.invoke(**kwargs)
-        elif self.next_handler:
-            self.next_handler.skip_to_priority(priority, **kwargs)
-            self.next_handler = None
-
-    def skip_rest(self):
-        if self.next_handler:
-            self.next_handler.skip_rest()
-            self.next_handler = None
+        if handlers:
+            # only kick off first handler in chain
+            return handlers[0].invoke(sender=sender, event_name=event_name,
+                                      **kwargs)
+        else:
+            message = "Event '{}' has no subscribed handlers.".\
+                format(event_name)
+            log.warning(message)
+            return None
