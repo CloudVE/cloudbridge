@@ -125,9 +125,9 @@ class CloudProviderFactory(object):
         ``azure``.
 
         :type config: :class:`dict`
-        :param config: A dictionary or an iterable of key/value pairs (as tuples
-                       or other iterables of length two). See specific provider
-                       implementation for the required fields.
+        :param config: A dictionary or an iterable of key/value pairs (as
+                       tuples or other iterables of length two). See specific
+                       provider implementation for the required fields.
 
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
