@@ -273,3 +273,30 @@ class EventSystemTestCase(unittest.TestCase):
             "Event handlers executed in unexpected order {0}".format(
                 callback_tracker[0]))
         self.assertEqual(result, "helloworld")
+
+    # make sure cache gets invalidated when subscribing after emit
+    def test_subscribe_after_emit(self):
+        callback_tracker = ['']
+
+        def my_callback1(**kwargs):
+            callback_tracker[0] += "event1_"
+            if kwargs.get('next_handler'):
+                return "hello" + kwargs.get('next_handler').invoke(**kwargs)
+            else:
+                return "hello"
+
+        def my_callback2(**kwargs):
+            callback_tracker[0] += "event2_"
+            return "some"
+
+        dispatcher = SimpleEventDispatcher()
+        dispatcher.intercept("event.hello.world", 1000, my_callback1)
+        dispatcher.emit(self, "event.hello.world")
+        dispatcher.intercept("event.hello.*", 1001, my_callback2)
+        result = dispatcher.emit(self, "event.hello.world")
+
+        self.assertEqual(
+            callback_tracker[0], "event1_event1_event2_",
+            "Event handlers executed in unexpected order {0}".format(
+                callback_tracker[0]))
+        self.assertEqual(result, "hellosome")

@@ -110,6 +110,8 @@ class SimpleEventDispatcher(EventDispatcher):
         handler_list = self.__events.get(event_handler.event_name, [])
         handler_list.append(event_handler)
         self.__events[event_handler.event_name] = handler_list
+        # invalidate cache
+        self.__handler_cache = {}
 
     def observe(self, event_name, priority, callback):
         handler = ObservingEventHandler(event_name, priority, callback)
