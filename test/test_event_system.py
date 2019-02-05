@@ -1,6 +1,7 @@
 import unittest
 
 from cloudbridge.cloud.base.events import SimpleEventDispatcher
+from cloudbridge.cloud.interfaces.events import EventHandler
 from cloudbridge.cloud.interfaces.exceptions import HandlerException
 
 
@@ -24,7 +25,8 @@ class EventSystemTestCase(unittest.TestCase):
             return "hello"
 
         dispatcher = SimpleEventDispatcher()
-        dispatcher.observe(EVENT_NAME, 1000, my_callback)
+        handler = dispatcher.observe(EVENT_NAME, 1000, my_callback)
+        self.assertIsInstance(handler, EventHandler)
         result = dispatcher.emit(self, EVENT_NAME)
         self.assertEqual(
             callback_tracker[0], "obs", "callback should have been invoked"
@@ -46,7 +48,8 @@ class EventSystemTestCase(unittest.TestCase):
             return "world"
 
         dispatcher = SimpleEventDispatcher()
-        dispatcher.intercept(EVENT_NAME, 1000, my_callback)
+        handler = dispatcher.intercept(EVENT_NAME, 1000, my_callback)
+        self.assertIsInstance(handler, EventHandler)
         result = dispatcher.emit(self, EVENT_NAME)
         self.assertEqual(
             callback_tracker[0], "intcpt", "callback should have been invoked"
@@ -300,3 +303,34 @@ class EventSystemTestCase(unittest.TestCase):
             "Event handlers executed in unexpected order {0}".format(
                 callback_tracker[0]))
         self.assertEqual(result, "hellosome")
+
+    def test_unubscribe(self):
+        callback_tracker = ['']
+
+        def my_callback1(**kwargs):
+            callback_tracker[0] += "event1_"
+            if kwargs.get('next_handler'):
+                return "hello" + kwargs.get('next_handler').invoke(**kwargs)
+            else:
+                return "hello"
+
+        def my_callback2(**kwargs):
+            callback_tracker[0] += "event2_"
+            return "some"
+
+        dispatcher = SimpleEventDispatcher()
+        hndlr1 = dispatcher.intercept("event.hello.world", 1000, my_callback1)
+        dispatcher.emit(self, "event.hello.world")
+        hndlr2 = dispatcher.intercept("event.hello.*", 1001, my_callback2)
+        hndlr1.unsubscribe()
+        result = dispatcher.emit(self, "event.hello.world")
+
+        self.assertEqual(
+            callback_tracker[0], "event1_event2_",
+            "Event handlers executed in unexpected order {0}".format(
+                callback_tracker[0]))
+        self.assertEqual(result, "some")
+
+        hndlr2.unsubscribe()
+        result = dispatcher.emit(self, "event.hello.world")
+        self.assertEqual(result, None)
