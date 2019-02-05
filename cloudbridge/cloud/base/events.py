@@ -5,15 +5,16 @@ import logging
 import re
 
 from ..interfaces.events import EventDispatcher
+from ..interfaces.events import EventHandler
 from ..interfaces.exceptions import HandlerException
 
 log = logging.getLogger(__name__)
 
 
-class InterceptingEventHandler(object):
+class InterceptingEventHandler(EventHandler):
 
     def __init__(self, event_name, priority, callback):
-        self.dispatcher = None
+        self.__dispatcher = None
         self.event_name = event_name
         self.priority = priority
         self.callback = callback
@@ -23,7 +24,7 @@ class InterceptingEventHandler(object):
         # event handlers sorted by priority
         return self.priority < other.priority
 
-    def get_next_handler(self, full_event_name):
+    def _get_next_handler(self, full_event_name):
         handler_list = self.dispatcher.handler_cache.get(full_event_name, [])
         # find position of this handler
         pos = bisect.bisect_left(handler_list, self)
@@ -33,12 +34,25 @@ class InterceptingEventHandler(object):
         else:
             return None
 
+    @property
+    def dispatcher(self):
+        return self.__dispatcher
+
+    @dispatcher.setter
+    # pylint:disable=arguments-differ
+    def dispatcher(self, value):
+        self.__dispatcher = value
+
     def invoke(self, **kwargs):
         kwargs.pop('next_handler', None)
-        next_handler = self.get_next_handler(kwargs.get('event_name', None))
+        next_handler = self._get_next_handler(kwargs.get('event_name', None))
         # callback is responsible for invoking the next_handler and
         # controlling the result value
         return self.callback(next_handler=next_handler, **kwargs)
+
+    def unsubscribe(self):
+        if self.dispatcher:
+            self.dispatcher.unsubscribe(self)
 
 
 class ObservingEventHandler(InterceptingEventHandler):
@@ -52,7 +66,7 @@ class ObservingEventHandler(InterceptingEventHandler):
         kwargs.pop('next_handler', None)
         self.callback(**kwargs)
         # Kick off the handler chain
-        next_handler = self.get_next_handler(kwargs.get('event_name', None))
+        next_handler = self._get_next_handler(kwargs.get('event_name', None))
         if next_handler:
             return next_handler.invoke(**kwargs)
         else:
@@ -102,10 +116,7 @@ class SimpleEventDispatcher(EventDispatcher):
             raise HandlerException(message)
         return cache_list
 
-    def _subscribe(self, event_handler):
-        """
-        subscribe an event handler to this dispatcher
-        """
+    def subscribe(self, event_handler):
         event_handler.dispatcher = self
         handler_list = self.__events.get(event_handler.event_name, [])
         handler_list.append(event_handler)
@@ -113,13 +124,22 @@ class SimpleEventDispatcher(EventDispatcher):
         # invalidate cache
         self.__handler_cache = {}
 
+    def unsubscribe(self, event_handler):
+        handler_list = self.__events.get(event_handler.event_name, [])
+        handler_list.remove(event_handler)
+        event_handler.dispatcher = None
+        # invalidate cache
+        self.__handler_cache = {}
+
     def observe(self, event_name, priority, callback):
         handler = ObservingEventHandler(event_name, priority, callback)
-        self._subscribe(handler)
+        self.subscribe(handler)
+        return handler
 
     def intercept(self, event_name, priority, callback):
         handler = InterceptingEventHandler(event_name, priority, callback)
-        self._subscribe(handler)
+        self.subscribe(handler)
+        return handler
 
     def emit(self, sender, event_name, **kwargs):
         handlers = self.handler_cache.get(event_name)

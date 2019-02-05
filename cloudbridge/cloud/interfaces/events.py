@@ -26,6 +26,12 @@ class EventDispatcher(object):
         :type callback: function
         :param callback: The callback function that should be called with
             the parameters given at when the even is emitted.
+
+        :rtype: :class:`.EventHandler`
+        :return:  An object of class EventHandler. The EventHandler will
+        already be subscribed to the dispatcher, and need not be manually
+        subscribed. The returned event handler can be used to unsubscribe
+        from future events when required.
         """
         pass
 
@@ -51,6 +57,12 @@ class EventDispatcher(object):
         :type callback: function
         :param callback: The callback function that should be called with
             the parameters given at when the even is emitted.
+
+        :rtype: :class:`.EventHandler`
+        :return:  An object of class EventHandler. The EventHandler will
+        already be subscribed to the dispatcher, and need not be manually
+        subscribed. The returned event handler can be used to unsubscribe
+        from future events when required.
         """
         pass
 
@@ -64,5 +76,55 @@ class EventDispatcher(object):
 
         :type sender: object
         :param sender: The object which is raising the event
+        """
+        pass
+
+    @abstractmethod
+    def subscribe(self, event_handler):
+        """
+        Register an event handler with this dispatcher. The observe and
+        intercept methods will construct an event handler and subscribe it for
+        you automatically, and therefore, there is usually no need to invoke
+        subscribe directly unless you have a special type of event handler.
+
+        :type event_handler: :class:`.EventHandler`
+        :param event_handler: An object of class EventHandler.
+        """
+        pass
+
+    @abstractmethod
+    def unsubscribe(self, event_handler):
+        """
+        Unregister an event handler from this dispatcher. The event handler
+        will no longer be notified on events.
+
+        :type event_handler: :class:`.EventHandler`
+        :param event_handler: An object of class EventHandler.
+        """
+        pass
+
+
+class EventHandler(object):
+
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def invoke(self, **kwargs):
+        """
+        Executes this event handler's callback
+        """
+        pass
+
+    @abstractmethod
+    def unsubscribe(self):
+        """
+        Unsubscribes from currently subscribed events.
+        """
+        pass
+
+    @abstractmethod
+    def dispatcher(self):
+        """
+        Get or sets the dispatcher currently associated with this event handler
         """
         pass
