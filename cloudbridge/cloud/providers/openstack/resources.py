@@ -1096,9 +1096,10 @@ class OpenStackRouter(BaseRouter):
 
     @property
     def network_id(self):
-        if self.state == RouterState.ATTACHED:
-            return self._router.get('external_gateway_info', {}).get(
-                'network_id', None)
+        ports = self._provider.neutron.list_ports(device_id=self.id)
+        if ports.get('ports'):
+            port = ports.get('ports')[0]
+            return port.get('network_id')
         return None
 
     def delete(self):
@@ -1122,15 +1123,15 @@ class OpenStackRouter(BaseRouter):
 
     @property
     def subnets(self):
-        # A router and a subnet are linked via a port, so traverse all ports
-        # to find a list of subnets associated with the current router.
+        # A router and a subnet are linked via a port, so traverse ports
+        # associated with the current router to find a list of subnets
+        # associated with it.
         subnets = []
-        for prt in self._provider.neutron.list_ports().get('ports'):
-            if prt.get('device_id') == self.id and \
-               prt.get('device_owner') == 'network:router_interface':
-                for fixed_ip in prt.get('fixed_ips'):
-                    subnets.append(self._provider.networking.subnets.get(
-                        fixed_ip.get('subnet_id')))
+        for prt in self._provider.neutron.list_ports(
+                device_id=self.id).get('ports'):
+            for fixed_ip in prt.get('fixed_ips'):
+                subnets.append(self._provider.networking.subnets.get(
+                    fixed_ip.get('subnet_id')))
         return subnets
 
     def attach_gateway(self, gateway):
