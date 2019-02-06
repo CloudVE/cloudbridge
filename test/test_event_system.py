@@ -101,7 +101,11 @@ class EventSystemTestCase(unittest.TestCase):
                              "my_callback_obs")
             callback_tracker[0] += "intcpt_"
             # invoke next handler
-            retval = kwargs.get('next_handler').invoke(**kwargs)
+            next_handler = kwargs.get('next_handler')
+            assert next_handler.priority == 1001
+            assert next_handler.event_pattern == EVENT_NAME
+            assert next_handler.callback == my_callback_obs
+            retval = next_handler.invoke(**kwargs)
             self.assertIsNone(retval, "Return values of observable handlers"
                               " should not be propagated.")
             return "world"
@@ -307,6 +311,7 @@ class EventSystemTestCase(unittest.TestCase):
         self.assertEqual(result, "hellosome")
 
     def test_unubscribe(self):
+        EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
 
         def my_callback1(**kwargs):
@@ -321,11 +326,23 @@ class EventSystemTestCase(unittest.TestCase):
             return "some"
 
         dispatcher = SimpleEventDispatcher()
-        hndlr1 = dispatcher.intercept("event.hello.world", 1000, my_callback1)
-        dispatcher.emit(self, "event.hello.world")
+        hndlr1 = dispatcher.intercept(EVENT_NAME, 1000, my_callback1)
+        dispatcher.emit(self, EVENT_NAME)
         hndlr2 = dispatcher.intercept("event.hello.*", 1001, my_callback2)
+        # Both handlers should be registered
+        self.assertListEqual(
+            [my_callback1, my_callback2],
+            [handler.callback for handler in
+             dispatcher.get_handlers_for_event(EVENT_NAME)])
         hndlr1.unsubscribe()
-        result = dispatcher.emit(self, "event.hello.world")
+
+        # Only my_callback2 should be registered after unsubscribe
+        self.assertListEqual(
+            [my_callback2],
+            [handler.callback for handler in
+             dispatcher.get_handlers_for_event(EVENT_NAME)])
+
+        result = dispatcher.emit(self, EVENT_NAME)
 
         self.assertEqual(
             callback_tracker[0], "event1_event2_",

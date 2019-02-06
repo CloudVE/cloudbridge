@@ -91,7 +91,13 @@ class SimpleEventDispatcher(EventDispatcher):
         self.__handler_cache = {}
 
     def get_handlers_for_event(self, event):
-        return self.__handler_cache.get(event, [])
+        handlers = self.__handler_cache.get(event)
+        if handlers is None:
+            self.__handler_cache[event] = self._create_handler_cache(
+                event)
+            return self.__handler_cache.get(event)
+        else:
+            return handlers
 
     def _create_handler_cache(self, event):
         cache_list = []
@@ -149,11 +155,7 @@ class SimpleEventDispatcher(EventDispatcher):
         return handler
 
     def emit(self, sender, event, **kwargs):
-        handlers = self.__handler_cache.get(event)
-        if handlers is None:
-            self.__handler_cache[event] = self._create_handler_cache(
-                event)
-            handlers = self.__handler_cache.get(event)
+        handlers = self.get_handlers_for_event(event)
 
         if handlers:
             # only kick off first handler in chain
