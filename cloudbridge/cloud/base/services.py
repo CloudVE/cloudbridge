@@ -41,30 +41,30 @@ class BaseCloudService(CloudService):
 
     def __init__(self, provider):
         self._provider = provider
-        self._service_event_name = "provider"
+        self._service_event_pattern = "provider"
 
     @property
     def provider(self):
         return self._provider
 
-    def _generate_event_name(self, func_name):
-        return ".".join((self._service_event_name, func_name))
+    def _generate_event_pattern(self, func_name):
+        return ".".join((self._service_event_pattern, func_name))
 
     def observe(self, func_name, priority, callback):
-        event_name = self._generate_event_name(func_name)
-        self.provider.events.observe(event_name, priority, callback)
+        event_pattern = self._generate_event_pattern(func_name)
+        self.provider.events.observe(event_pattern, priority, callback)
 
     def check_initialized(self, func_name):
-        event_name = self._generate_event_name(func_name)
-        return self.provider.events.check_initialized(event_name)
+        event_pattern = self._generate_event_pattern(func_name)
+        return self.provider.events.check_initialized(event_pattern)
 
     def mark_initialized(self, func_name):
-        event_name = self._generate_event_name(func_name)
-        self.provider.events.mark_initialized(event_name)
+        event_pattern = self._generate_event_pattern(func_name)
+        self.provider.events.mark_initialized(event_pattern)
 
     def call(self, func_name, priority, callback, **kwargs):
-        event_name = self._generate_event_name(func_name)
-        return self.provider.events.call(event_name, priority, callback,
+        event_pattern = self._generate_event_pattern(func_name)
+        return self.provider.events.call(event_pattern, priority, callback,
                                          **kwargs)
 
 
@@ -145,7 +145,7 @@ class BaseBucketService(
 
     def __init__(self, provider):
         super(BaseBucketService, self).__init__(provider)
-        self._service_event_name = "provider.storage.buckets"
+        self._service_event_pattern = "provider.storage.buckets"
 
     def _init_get(self):
         def _get_pre_log(bucket_id):
@@ -264,7 +264,7 @@ class BaseBucketObjectService(
 
     def __init__(self, provider):
         super(BaseBucketObjectService, self).__init__(provider)
-        self._service_event_name = "provider.storage.bucket_objects"
+        self._service_event_pattern = "provider.storage.bucket_objects"
         self._bucket = None
 
     def set_bucket(self, bucket):

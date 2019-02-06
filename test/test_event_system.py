@@ -20,12 +20,13 @@ class EventSystemTestCase(unittest.TestCase):
         def my_callback(**kwargs):
             self.assertDictEqual(kwargs,
                                  {'sender': self,
-                                  'event_name': EVENT_NAME})
+                                  'event': EVENT_NAME})
             callback_tracker[0] += 'obs'
             return "hello"
 
         dispatcher = SimpleEventDispatcher()
-        handler = dispatcher.observe(EVENT_NAME, 1000, my_callback)
+        handler = dispatcher.observe(event_pattern=EVENT_NAME, priority=1000,
+                                     callback=my_callback)
         self.assertIsInstance(handler, EventHandler)
         result = dispatcher.emit(self, EVENT_NAME)
         self.assertEqual(
@@ -42,13 +43,14 @@ class EventSystemTestCase(unittest.TestCase):
         def my_callback(**kwargs):
             self.assertDictEqual(kwargs,
                                  {'sender': self,
-                                  'event_name': EVENT_NAME,
+                                  'event': EVENT_NAME,
                                   'next_handler': None})
             callback_tracker[0] += "intcpt"
             return "world"
 
         dispatcher = SimpleEventDispatcher()
-        handler = dispatcher.intercept(EVENT_NAME, 1000, my_callback)
+        handler = dispatcher.intercept(event_pattern=EVENT_NAME, priority=1000,
+                                       callback=my_callback)
         self.assertIsInstance(handler, EventHandler)
         result = dispatcher.emit(self, EVENT_NAME)
         self.assertEqual(
@@ -65,14 +67,14 @@ class EventSystemTestCase(unittest.TestCase):
         def my_callback_obs(**kwargs):
             self.assertDictEqual(kwargs,
                                  {'sender': self,
-                                  'event_name': EVENT_NAME})
+                                  'event': EVENT_NAME})
             callback_tracker[0] += "obs_"
             return "hello"
 
         def my_callback_intcpt(**kwargs):
             self.assertDictEqual(kwargs,
                                  {'sender': self,
-                                  'event_name': EVENT_NAME,
+                                  'event': EVENT_NAME,
                                   'next_handler': None})
             callback_tracker[0] += "intcpt_"
             return "world"
@@ -107,7 +109,7 @@ class EventSystemTestCase(unittest.TestCase):
         def my_callback_obs(**kwargs):
             self.assertDictEqual(kwargs,
                                  {'sender': self,
-                                  'event_name': EVENT_NAME})
+                                  'event': EVENT_NAME})
             callback_tracker[0] += "obs_"
             return "hello"
 
@@ -139,7 +141,7 @@ class EventSystemTestCase(unittest.TestCase):
         def my_callback_intcpt2(**kwargs):
             self.assertDictEqual(kwargs,
                                  {'sender': self,
-                                  'event_name': EVENT_NAME,
+                                  'event': EVENT_NAME,
                                   'next_handler': None})
             callback_tracker[0] += "intcpt2_"
             return "world"
@@ -194,21 +196,21 @@ class EventSystemTestCase(unittest.TestCase):
 
         def my_callback1(**kwargs):
             self.assertDictEqual(kwargs, {'sender': self,
-                                          'event_name': EVENT_NAME})
+                                          'event': EVENT_NAME})
             callback_tracker[0] += "event1_"
             return "hello"
 
         def my_callback2(**kwargs):
             self.assertDictEqual(kwargs,
                                  {'sender': self,
-                                  'event_name': "event.hello.anotherworld"})
+                                  'event': "event.hello.anotherworld"})
             callback_tracker[0] += "event2_"
             return "another"
 
         def my_callback3(**kwargs):
             self.assertDictEqual(kwargs,
                                  {'sender': self,
-                                  'event_name': "event.hello.anotherworld",
+                                  'event': "event.hello.anotherworld",
                                   'next_handler': None})
             callback_tracker[0] += "event3_"
             return "world"

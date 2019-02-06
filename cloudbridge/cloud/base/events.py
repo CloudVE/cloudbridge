@@ -1,5 +1,4 @@
 import bisect
-import collections
 import fnmatch
 import logging
 import re
@@ -13,9 +12,9 @@ log = logging.getLogger(__name__)
 
 class InterceptingEventHandler(EventHandler):
 
-    def __init__(self, event_name, priority, callback):
+    def __init__(self, event_pattern, priority, callback):
         self.__dispatcher = None
-        self.event_name = event_name
+        self.event_pattern = event_pattern
         self.priority = priority
         self.callback = callback
 
@@ -24,8 +23,8 @@ class InterceptingEventHandler(EventHandler):
         # event handlers sorted by priority
         return self.priority < other.priority
 
-    def _get_next_handler(self, full_event_name):
-        handler_list = self.dispatcher.handler_cache.get(full_event_name, [])
+    def _get_next_handler(self, event):
+        handler_list = self.dispatcher.get_handlers_for_event(event)
         # find position of this handler
         pos = bisect.bisect_left(handler_list, self)
         assert handler_list[pos] == self
@@ -33,6 +32,15 @@ class InterceptingEventHandler(EventHandler):
             return handler_list[pos+1]
         else:
             return None
+
+    def event_pattern(self):
+        pass
+
+    def priority(self):
+        pass
+
+    def callback(self):
+        pass
 
     @property
     def dispatcher(self):
@@ -45,7 +53,7 @@ class InterceptingEventHandler(EventHandler):
 
     def invoke(self, **kwargs):
         kwargs.pop('next_handler', None)
-        next_handler = self._get_next_handler(kwargs.get('event_name', None))
+        next_handler = self._get_next_handler(kwargs.get('event', None))
         # callback is responsible for invoking the next_handler and
         # controlling the result value
         return self.callback(next_handler=next_handler, **kwargs)
@@ -57,8 +65,8 @@ class InterceptingEventHandler(EventHandler):
 
 class ObservingEventHandler(InterceptingEventHandler):
 
-    def __init__(self, event_name, priority, callback):
-        super(ObservingEventHandler, self).__init__(event_name, priority,
+    def __init__(self, event_pattern, priority, callback):
+        super(ObservingEventHandler, self).__init__(event_pattern, priority,
                                                     callback)
 
     def invoke(self, **kwargs):
@@ -66,7 +74,7 @@ class ObservingEventHandler(InterceptingEventHandler):
         kwargs.pop('next_handler', None)
         self.callback(**kwargs)
         # Kick off the handler chain
-        next_handler = self._get_next_handler(kwargs.get('event_name', None))
+        next_handler = self._get_next_handler(kwargs.get('event', None))
         if next_handler:
             return next_handler.invoke(**kwargs)
         else:
@@ -76,21 +84,20 @@ class ObservingEventHandler(InterceptingEventHandler):
 class SimpleEventDispatcher(EventDispatcher):
 
     def __init__(self):
-        # The dict key is event_name.
-        # The dict value is a list of handlers for the event, sorted by event
-        # priority
-        self.__events = collections.OrderedDict({})
+        # The dict key is event_pattern.
+        # The dict value is a list of handlers for the event pattern, sorted
+        # by event priority
+        self.__events = {}
         self.__handler_cache = {}
 
-    @property
-    def handler_cache(self):
-        return self.__handler_cache
+    def get_handlers_for_event(self, event):
+        return self.__handler_cache.get(event, [])
 
-    def _create_handler_cache(self, event_name):
+    def _create_handler_cache(self, event):
         cache_list = []
-        # sort from most specific to least specific
+        # Find all patterns matching event
         for key in self.__events.keys():
-            if re.search(fnmatch.translate(key), event_name):
+            if re.search(fnmatch.translate(key), event):
                 cache_list.extend(self.__events[key])
         cache_list.sort(key=lambda h: h.priority)
 
@@ -112,48 +119,48 @@ class SimpleEventDispatcher(EventDispatcher):
                       "at priority '{}', with function names [{}]. " \
                       "Each priority must only have a single " \
                       "corresponding handler." \
-                .format(event_name, guilty_prio, ", ".join(guilty_names))
+                .format(event, guilty_prio, ", ".join(guilty_names))
             raise HandlerException(message)
         return cache_list
 
     def subscribe(self, event_handler):
         event_handler.dispatcher = self
-        handler_list = self.__events.get(event_handler.event_name, [])
+        handler_list = self.__events.get(event_handler.event_pattern, [])
         handler_list.append(event_handler)
-        self.__events[event_handler.event_name] = handler_list
+        self.__events[event_handler.event_pattern] = handler_list
         # invalidate cache
         self.__handler_cache = {}
 
     def unsubscribe(self, event_handler):
-        handler_list = self.__events.get(event_handler.event_name, [])
+        handler_list = self.__events.get(event_handler.event_pattern, [])
         handler_list.remove(event_handler)
         event_handler.dispatcher = None
         # invalidate cache
         self.__handler_cache = {}
 
-    def observe(self, event_name, priority, callback):
-        handler = ObservingEventHandler(event_name, priority, callback)
+    def observe(self, event_pattern, priority, callback):
+        handler = ObservingEventHandler(event_pattern, priority, callback)
         self.subscribe(handler)
         return handler
 
-    def intercept(self, event_name, priority, callback):
-        handler = InterceptingEventHandler(event_name, priority, callback)
+    def intercept(self, event_pattern, priority, callback):
+        handler = InterceptingEventHandler(event_pattern, priority, callback)
         self.subscribe(handler)
         return handler
 
-    def emit(self, sender, event_name, **kwargs):
-        handlers = self.handler_cache.get(event_name)
+    def emit(self, sender, event, **kwargs):
+        handlers = self.__handler_cache.get(event)
         if handlers is None:
-            self.__handler_cache[event_name] = self._create_handler_cache(
-                event_name)
-            handlers = self.handler_cache.get(event_name)
+            self.__handler_cache[event] = self._create_handler_cache(
+                event)
+            handlers = self.__handler_cache.get(event)
 
         if handlers:
             # only kick off first handler in chain
-            return handlers[0].invoke(sender=sender, event_name=event_name,
+            return handlers[0].invoke(sender=sender, event=event,
                                       **kwargs)
         else:
             message = "Event '{}' has no subscribed handlers.".\
-                format(event_name)
+                format(event)
             log.warning(message)
             return None
