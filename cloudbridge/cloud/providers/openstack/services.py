@@ -905,11 +905,11 @@ class OpenStackRouterService(BaseRouterService):
 
     def get(self, router_id):
         log.debug("Getting OpenStack Router with the id: %s", router_id)
-        router = (r for r in self if r.id == router_id)
-        return next(router, None)
+        router = self.provider.os_conn.get_router(router_id)
+        return OpenStackRouter(self.provider, router) if router else None
 
     def list(self, limit=None, marker=None):
-        routers = self.provider.neutron.list_routers().get('routers')
+        routers = self.provider.os_conn.list_routers()
         os_routers = [OpenStackRouter(self.provider, r) for r in routers]
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
@@ -921,16 +921,8 @@ class OpenStackRouterService(BaseRouterService):
         return ClientPagedResultList(self._provider, list(matches))
 
     def create(self, label, network):
-        """
-        ``network`` is not used by OpenStack.
-
-        However, the API seems to indicate it is a (required) param?!
-        https://developer.openstack.org/api-ref/networking/v2/
-            ?expanded=delete-router-detail,create-router-detail#create-router
-        """
+        """Parameter ``network`` is not used by OpenStack."""
         log.debug("Creating OpenStack Router with the label: %s", label)
         OpenStackRouter.assert_valid_resource_label(label)
-
-        body = {'router': {'name': label}} if label else None
-        router = self.provider.neutron.create_router(body)
-        return OpenStackRouter(self.provider, router.get('router'))
+        router = self.provider.os_conn.create_router(name=label)
+        return OpenStackRouter(self.provider, router)

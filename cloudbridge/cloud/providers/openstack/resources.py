@@ -922,8 +922,8 @@ class OpenStackNetwork(BaseNetwork):
             # pylint:disable=protected-access
             self._network = network._network
         else:
-            # subnet no longer exists
-            self._network.state = NetworkState.UNKNOWN
+            # Network no longer exists
+            self._network = {}
 
     @property
     def gateways(self):
@@ -1065,7 +1065,7 @@ class OpenStackRouter(BaseRouter):
 
     @property
     def id(self):
-        return self._router.get('id', None)
+        return getattr(self._router, 'id', None)
 
     @property
     def name(self):
@@ -1073,7 +1073,7 @@ class OpenStackRouter(BaseRouter):
 
     @property
     def label(self):
-        return self._router.get('name', None)
+        return self._router.name
 
     @label.setter
     def label(self, value):  # pylint:disable=arguments-differ
@@ -1081,43 +1081,39 @@ class OpenStackRouter(BaseRouter):
         Set the router label.
         """
         self.assert_valid_resource_label(value)
-        self._provider.neutron.update_router(
-            self.id, {'router': {'name': value or ""}})
-        self.refresh()
+        self._router = self._provider.os_conn.update_router(self.id, value)
 
     def refresh(self):
-        self._router = self._provider.neutron.show_router(self.id)['router']
+        self._router = self._provider.os_conn.get_router(self.id)
 
     @property
     def state(self):
-        if self._router.get('external_gateway_info'):
+        if self._router.external_gateway_info:
             return RouterState.ATTACHED
         return RouterState.DETACHED
 
     @property
     def network_id(self):
-        ports = self._provider.neutron.list_ports(device_id=self.id)
-        if ports.get('ports'):
-            port = ports.get('ports')[0]
-            return port.get('network_id')
+        ports = self._provider.os_conn.list_ports(
+            filters={'device_id': self.id})
+        if ports:
+            return ports[0].network_id
         return None
 
     def delete(self):
-        self._provider.neutron.delete_router(self.id)
+        self._provider.os_conn.delete_router(self.id)
 
     def attach_subnet(self, subnet):
-        router_interface = {'subnet_id': subnet.id}
-        ret = self._provider.neutron.add_interface_router(
-            self.id, router_interface)
+        ret = self._provider.os_conn.add_router_interface(
+            self._router.toDict(), subnet.id)
         if subnet.id in ret.get('subnet_ids', ""):
             return True
         return False
 
     def detach_subnet(self, subnet):
-        router_interface = {'subnet_id': subnet.id}
-        ret = self._provider.neutron.remove_interface_router(
-            self.id, router_interface)
-        if subnet.id in ret.get('subnet_ids', ""):
+        ret = self._provider.os_conn.remove_router_interface(
+            self._router.toDict(), subnet.id)
+        if not ret or subnet.id not in ret.get('subnet_ids', ""):
             return True
         return False
 
@@ -1127,20 +1123,21 @@ class OpenStackRouter(BaseRouter):
         # associated with the current router to find a list of subnets
         # associated with it.
         subnets = []
-        for prt in self._provider.neutron.list_ports(
-                device_id=self.id).get('ports'):
-            for fixed_ip in prt.get('fixed_ips'):
+        for port in self._provider.os_conn.list_ports(
+                filters={'device_id': self.id}):
+            for fixed_ip in port.fixed_ips:
                 subnets.append(self._provider.networking.subnets.get(
                     fixed_ip.get('subnet_id')))
         return subnets
 
     def attach_gateway(self, gateway):
-        self._provider.neutron.add_gateway_router(
-            self.id, {'network_id': gateway.id})
+        self._provider.os_conn.update_router(
+            self.id, ext_gateway_net_id=gateway.id)
 
     def detach_gateway(self, gateway):
-        self._provider.neutron.remove_gateway_router(
-            self.id).get('router', self._router)
+        # TODO: OpenStack SDK Connection object doesn't appear to have a method
+        # for detaching/clearing the external gateway.
+        self._provider.neutron.remove_gateway_router(self.id)
 
 
 class OpenStackInternetGateway(BaseInternetGateway):
