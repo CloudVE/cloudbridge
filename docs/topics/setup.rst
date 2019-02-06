@@ -37,12 +37,14 @@ will override environment values.
               'azure_resource_group': '<your resource group>'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
 
+
     ## For GCE
     config = {'gce_service_creds_file': '<service_creds_file_name>.json'}
     # Alternatively, we can supply a dictionary with the credentials values
     # shown on the access credentials procurement page.
     config = {'gce_service_creds_dict': credentials_dictionary}
     provider = CloudProviderFactory().create_provider(ProviderList.GCE, config)
+
 
     ## For OpenStack
     config = {'os_username': '<your username>',
@@ -154,13 +156,13 @@ above.
 AWS
 ~~~
 
-+---------------------+
-| Mandatory variables |
-+=====================+
-| AWS_ACCESS_KEY      |
-+---------------------+
-| AWS_SECRET_KEY      |
-+---------------------+
++---------------------+------------+
+| Variable            | Required?  |
++=====================+============+
+| AWS_ACCESS_KEY      | ✔          |
++---------------------+------------+
+| AWS_SECRET_KEY      | ✔          |
++---------------------+------------+
 
 Azure
 ~~~~~
@@ -180,83 +182,71 @@ when initializing the relevant services. This operation similarly requires a
 For more information on roles, see
 https://docs.microsoft.com/en-us/azure/role-based-access-control/overview.
 
-+-----------------------+
-| Mandatory variables   |
-+=======================+
-| AZURE_CLIENT_ID       |
-+-----------------------+
-| AZURE_SECRET          |
-+-----------------------+
-| AZURE_SUBSCRIPTION_ID |
-+-----------------------+
-| AZURE_TENANT          |
-+-----------------------+
-
-+-------------------------------------+
-| Optional Variables                  |
-+=====================================+
-| AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME |
-+-------------------------------------+
-| AZURE_REGION_NAME                   |
-+-------------------------------------+
-| AZURE_RESOURCE_GROUP                |
-+-------------------------------------+
-| AZURE_STORAGE_ACCOUNT               |
-+-------------------------------------+
-| AZURE_VM_DEFAULT_USER_NAME          |
-+-------------------------------------+
++-------------------------------------+-----------+
+| Variable                            | Required? |
++=====================================+===========+
+| AZURE_CLIENT_ID                     | ✔         |
++-------------------------------------+-----------+
+| AZURE_SECRET                        | ✔         |
++-------------------------------------+-----------+
+| AZURE_SUBSCRIPTION_ID               | ✔         |
++-------------------------------------+-----------+
+| AZURE_TENANT                        | ✔         |
++-------------------------------------+-----------+
+| AZURE_PUBLIC_KEY_STORAGE_TABLE_NAME |           |
++-------------------------------------+-----------+
+| AZURE_REGION_NAME                   |           |
++-------------------------------------+-----------+
+| AZURE_RESOURCE_GROUP                |           |
++-------------------------------------+-----------+
+| AZURE_STORAGE_ACCOUNT               |           |
++-------------------------------------+-----------+
+| AZURE_VM_DEFAULT_USER_NAME          |           |
++-------------------------------------+-----------+
 
 GCE
 ~~~
 
-+------------------------+
-| Mandatory variables    |
-+========================+
-| GCE_SERVICE_CREDS_DICT |
-| or                     |
-| GCE_SERVICE_CREDS_FILE |
-+------------------------+
-
-+--------------------+
-| Optional Variables |
-+====================+
-| GCE_DEFAULT_ZONE   |
-+--------------------+
-| GCE_PROJECT_NAME   |
-+--------------------+
-| GCE_REGION_NAME    |
-+--------------------+
++------------------------+-----------+
+| Variable               | Required? |
++========================+===========+
+| GCE_SERVICE_CREDS_DICT | ✔         |
+| or                     |           |
+| GCE_SERVICE_CREDS_FILE |           |
++------------------------+-----------+
+| GCE_DEFAULT_ZONE       |           |
++------------------------+-----------+
+| GCE_PROJECT_NAME       |           |
++------------------------+-----------+
+| GCE_REGION_NAME        |           |
++------------------------+-----------+
 
 OpenStack
 ~~~~~~~~~
 
-+---------------------+
-| Mandatory variables |
-+=====================+
-| OS_AUTH_URL         |
-+---------------------+
-| OS_USERNAME         |
-+---------------------+
-| OS_PASSWORD         |
-+---------------------+
-| OS_PROJECT_NAME     |
-+---------------------+
-| OS_REGION_NAME      |
-+---------------------+
-
-+------------------------+
-| Optional Variables     |
-+========================+
-| NOVA_SERVICE_NAME      |
-+------------------------+
-| OS_AUTH_TOKEN          |
-+------------------------+
-| OS_COMPUTE_API_VERSION |
-+------------------------+
-| OS_VOLUME_API_VERSION  |
-+------------------------+
-| OS_STORAGE_URL         |
-+------------------------+
++------------------------+-----------+
+| Variable               | Required? |
++========================+===========+
+| OS_AUTH_URL            | ✔         |
++------------------------+-----------+
+| OS_USERNAME            | ✔         |
++------------------------+-----------+
+| OS_PASSWORD            | ✔         |
++------------------------+-----------+
+| OS_PROJECT_NAME        | ✔         |
++------------------------+-----------+
+| OS_REGION_NAME         | ✔         |
++------------------------+-----------+
+| NOVA_SERVICE_NAME      |           |
++------------------------+-----------+
+| OS_AUTH_TOKEN          |           |
++------------------------+-----------+
+| OS_COMPUTE_API_VERSION |           |
++------------------------+-----------+
+| OS_VOLUME_API_VERSION  |           |
++------------------------+-----------+
+| OS_STORAGE_URL         |           |
++------------------------+-----------+
 
 Once the environment variables are set, you can create a connection as follows,
 replacing ``ProviderList.AWS`` with the desired provider (AZURE, GCE, or
