@@ -279,7 +279,7 @@ class GCEImageService(BaseImageService):
         self._public_images = None
 
     _PUBLIC_IMAGE_PROJECTS = ['centos-cloud', 'coreos-cloud', 'debian-cloud',
-                              'opensuse-cloud', 'ubuntu-os-cloud']
+                              'opensuse-cloud', 'ubuntu-os-cloud', 'cos-cloud']
 
     def _retrieve_public_images(self):
         if self._public_images is not None:
