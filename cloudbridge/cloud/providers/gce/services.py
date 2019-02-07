@@ -765,30 +765,27 @@ class GCESubnetService(BaseSubnetService):
 
     def list(self, network=None, zone=None, limit=None, marker=None):
         """
-        If the zone is not given, we list all subnetworks, in all regions.
+        If the zone is not given, we list all subnets in the default region.
         """
         filter = None
         if network is not None:
             network = (network if isinstance(network, GCENetwork)
                        else self.provider.networking.networks.get(network))
             filter = 'network eq %s' % network.resource_url
-        region_names = []
         if zone:
-            region_names.append(self._zone_to_region(zone))
+            region_name = self._zone_to_region(zone)
         else:
-            for r in self.provider.compute.regions:
-                region_names.append(r.name)
+            region_name = self.provider.region_name
         subnets = []
-        for region_name in region_names:
-            response = (self.provider
-                            .gce_compute
-                            .subnetworks()
-                            .list(project=self.provider.project_name,
-                                  region=region_name,
-                                  filter=filter)
-                            .execute())
-            for subnet in response.get('items', []):
-                subnets.append(GCESubnet(self.provider, subnet))
+        response = (self.provider
+                        .gce_compute
+                        .subnetworks()
+                        .list(project=self.provider.project_name,
+                              region=region_name,
+                              filter=filter)
+                        .execute())
+        for subnet in response.get('items', []):
+            subnets.append(GCESubnet(self.provider, subnet))
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
