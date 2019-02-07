@@ -167,7 +167,7 @@ def change_label(resource, key, value, res_att, request):
     # The returned value from above command yields a unicode dict key, which
     # cannot be be simply cast into a str for py2 so pop the key and re-add it
     labels.pop(key, None)
-    labels[key] = value
+    labels[key] = str(value)
     request_body = {
         "labels": labels,
         "labelFingerprint":
