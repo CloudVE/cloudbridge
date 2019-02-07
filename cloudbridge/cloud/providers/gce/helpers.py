@@ -165,9 +165,13 @@ def change_label(resource, key, value, res_att, request):
     resource.assert_valid_resource_label(value)
     labels = getattr(resource, res_att).get("labels", {})
     # The returned value from above command yields a unicode dict key, which
-    # cannot be be simply cast into a str for py2 so pop the key and re-add it
-    labels.pop(key, None)
+    # cannot be simply cast into a str for py2 so pop the key and re-add it
+    # The casting needs to be done for all labels, as to support both
+    # description and label setting
     labels[key] = str(value)
+    for k in labels.keys():
+        labels[str(k)] = str(labels.pop(k))
+
     request_body = {
         "labels": labels,
         "labelFingerprint":
