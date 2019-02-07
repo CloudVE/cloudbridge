@@ -164,12 +164,14 @@ def __if_label_fingerprint_differs(e):
 def change_label(resource, key, value, res_att, request):
     resource.assert_valid_resource_label(value)
     labels = getattr(resource, res_att).get("labels", {})
-    print(labels)
+    # The returned value from above command yields a unicode dict key, which
+    # cannot be be simply cast into a str for py2 so pop the key and re-add it
+    labels.pop(key, None)
     labels[key] = value
     request_body = {
         "labels": labels,
         "labelFingerprint":
-            getattr(resource, res_att).get('labelFingerprint'),
+            str(getattr(resource, res_att).get('labelFingerprint')),
     }
     try:
         request.body = str(request_body)
