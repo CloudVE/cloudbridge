@@ -175,7 +175,7 @@ def change_label(resource, key, value, res_att, request):
         request.body = str(request_body)
         request.body_size = len(str(request_body))
         response = request.execute()
-        resource._provider.wait_for_operation(response,
-                                              zone=resource.zone_name)
+        resource._provider.wait_for_operation(
+            response, zone=getattr(resource, 'zone_name', None))
     finally:
         resource.refresh()
