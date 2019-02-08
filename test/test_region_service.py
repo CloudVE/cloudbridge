@@ -12,6 +12,17 @@ class CloudRegionServiceTestCase(ProviderTestBase):
     _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['compute.regions'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(
+            self.provider.compute.regions._service_event_pattern,
+            "provider.compute.regions",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("regions",
+                                     "provider.compute.regions",
+                                     self.provider.compute.regions.
+                                     _service_event_pattern))
+
+    @helpers.skipIfNoService(['compute.regions'])
     def test_get_and_list_regions(self):
         regions = list(self.provider.compute.regions)
         sit.check_standard_behaviour(

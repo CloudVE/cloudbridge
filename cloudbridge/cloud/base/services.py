@@ -55,18 +55,32 @@ class BaseCloudService(CloudService):
     def emit(self, sender, event, *args, **kwargs):
         return self._provider.events.emit(sender, event, *args, **kwargs)
 
+    def _generate_event_pattern(self, func_name):
+        return ".".join((self._service_event_pattern, func_name))
+
+    def observe(self, func_name, priority, callback):
+        event_pattern = self._generate_event_pattern(func_name)
+        self.provider.events.observe(event_pattern, priority, callback)
+
+    def call(self, func_name, priority, callback, **kwargs):
+        event_pattern = self._generate_event_pattern(func_name)
+        return self.provider.events.call(event_pattern, priority, callback,
+                                         **kwargs)
+
 
 class BaseSecurityService(SecurityService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseSecurityService, self).__init__(provider)
+        self._service_event_pattern += ".security"
 
 
 class BaseKeyPairService(
-        BasePageableObjectMixin, KeyPairService, BaseCloudService):
+        BasePageableObjectMixin, KeyPairService, BaseSecurityService):
 
     def __init__(self, provider):
         super(BaseKeyPairService, self).__init__(provider)
+        self._service_event_pattern += ".key_pairs"
 
     def delete(self, key_pair_id):
         """
@@ -88,10 +102,11 @@ class BaseKeyPairService(
 
 
 class BaseVMFirewallService(
-        BasePageableObjectMixin, VMFirewallService, BaseCloudService):
+        BasePageableObjectMixin, VMFirewallService, BaseSecurityService):
 
     def __init__(self, provider):
         super(BaseVMFirewallService, self).__init__(provider)
+        self._service_event_pattern += ".vm_firewalls"
 
     def find(self, **kwargs):
         obj_list = self
@@ -112,27 +127,31 @@ class BaseStorageService(StorageService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseStorageService, self).__init__(provider)
+        self._service_event_pattern += ".storage"
 
 
 class BaseVolumeService(
-        BasePageableObjectMixin, VolumeService, BaseCloudService):
+        BasePageableObjectMixin, VolumeService, BaseStorageService):
 
     def __init__(self, provider):
         super(BaseVolumeService, self).__init__(provider)
+        self._service_event_pattern += ".volumes"
 
 
 class BaseSnapshotService(
-        BasePageableObjectMixin, SnapshotService, BaseCloudService):
+        BasePageableObjectMixin, SnapshotService, BaseStorageService):
 
     def __init__(self, provider):
         super(BaseSnapshotService, self).__init__(provider)
+        self._service_event_pattern += ".snapshots"
 
 
 class BaseBucketService(
-        BasePageableObjectMixin, BucketService, BaseCloudService):
+        BasePageableObjectMixin, BucketService, BaseStorageService):
 
     def __init__(self, provider):
         super(BaseBucketService, self).__init__(provider)
+        self._service_event_pattern += ".buckets"
 
     @observe(event_pattern="provider.storage.buckets.get", priority=2000)
     def _pre_log_get(self, event_args, bucket_id):
@@ -215,15 +234,17 @@ class BaseBucketService(
         """
         Create a new bucket.
         """
+        BaseBucket.assert_valid_resource_name(name)
         return self.emit(self, "provider.storage.buckets.create",
                          name, location=location)
 
 
 class BaseBucketObjectService(
-        BasePageableObjectMixin, BucketObjectService, BaseCloudService):
+        BasePageableObjectMixin, BucketObjectService, BaseStorageService):
 
     def __init__(self, provider):
         super(BaseBucketObjectService, self).__init__(provider)
+        self._service_event_pattern += ".bucket_objects"
         self._bucket = None
 
     def set_bucket(self, bucket):
@@ -256,27 +277,31 @@ class BaseComputeService(ComputeService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseComputeService, self).__init__(provider)
+        self._service_event_pattern += ".compute"
 
 
 class BaseImageService(
-        BasePageableObjectMixin, ImageService, BaseCloudService):
+        BasePageableObjectMixin, ImageService, BaseComputeService):
 
     def __init__(self, provider):
         super(BaseImageService, self).__init__(provider)
+        self._service_event_pattern += ".images"
 
 
 class BaseInstanceService(
-        BasePageableObjectMixin, InstanceService, BaseCloudService):
+        BasePageableObjectMixin, InstanceService, BaseComputeService):
 
     def __init__(self, provider):
         super(BaseInstanceService, self).__init__(provider)
+        self._service_event_pattern += ".instances"
 
 
 class BaseVMTypeService(
-        BasePageableObjectMixin, VMTypeService, BaseCloudService):
+        BasePageableObjectMixin, VMTypeService, BaseComputeService):
 
     def __init__(self, provider):
         super(BaseVMTypeService, self).__init__(provider)
+        self._service_event_pattern += ".vm_types"
 
     def get(self, vm_type_id):
         vm_type = (t for t in self if t.id == vm_type_id)
@@ -290,10 +315,11 @@ class BaseVMTypeService(
 
 
 class BaseRegionService(
-        BasePageableObjectMixin, RegionService, BaseCloudService):
+        BasePageableObjectMixin, RegionService, BaseComputeService):
 
     def __init__(self, provider):
         super(BaseRegionService, self).__init__(provider)
+        self._service_event_pattern += ".regions"
 
     def find(self, **kwargs):
         obj_list = self
@@ -306,13 +332,15 @@ class BaseNetworkingService(NetworkingService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseNetworkingService, self).__init__(provider)
+        self._service_event_pattern += ".networking"
 
 
 class BaseNetworkService(
-        BasePageableObjectMixin, NetworkService, BaseCloudService):
+        BasePageableObjectMixin, NetworkService, BaseNetworkingService):
 
     def __init__(self, provider):
         super(BaseNetworkService, self).__init__(provider)
+        self._service_event_pattern += ".networks"
 
     @property
     def subnets(self):
@@ -339,10 +367,11 @@ class BaseNetworkService(
 
 
 class BaseSubnetService(
-        BasePageableObjectMixin, SubnetService, BaseCloudService):
+        BasePageableObjectMixin, SubnetService, BaseNetworkingService):
 
     def __init__(self, provider):
         super(BaseSubnetService, self).__init__(provider)
+        self._service_event_pattern += ".subnets"
 
     def find(self, **kwargs):
         obj_list = self
@@ -364,10 +393,11 @@ class BaseSubnetService(
 
 
 class BaseRouterService(
-        BasePageableObjectMixin, RouterService, BaseCloudService):
+        BasePageableObjectMixin, RouterService, BaseNetworkingService):
 
     def __init__(self, provider):
         super(BaseRouterService, self).__init__(provider)
+        self._service_event_pattern += ".routers"
 
     def delete(self, router):
         if isinstance(router, Router):
