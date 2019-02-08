@@ -45,19 +45,25 @@ class MiddlewareSystemTestCase(unittest.TestCase):
                 self.invocation_order = ""
 
             @observe(event_pattern="some.event.*", priority=1000)
-            def my_callback_obs(self, **kwargs):
+            def my_callback_obs(self, *args, **kwargs):
                 self.invocation_order += "observe"
+                assert 'first_pos_arg' in args
+                assert kwargs.get('a_keyword_arg') == "something"
 
             @intercept(event_pattern="some.event.*", priority=900)
-            def my_callback_intcpt(self, **kwargs):
+            def my_callback_intcpt(self, event_args, *args, **kwargs):
                 self.invocation_order += "intercept_"
-                return kwargs.get('next_handler').invoke(**kwargs)
+                assert 'first_pos_arg' in args
+                assert kwargs.get('a_keyword_arg') == "something"
+                next_handler = event_args.get('next_handler')
+                return next_handler.invoke(event_args, *args, **kwargs)
 
         dispatcher = SimpleEventDispatcher()
         manager = SimpleMiddlewareManager(dispatcher)
         middleware = DummyMiddleWare()
         manager.add(middleware)
-        dispatcher.emit(self, EVENT_NAME)
+        dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
+                        a_keyword_arg='something')
 
         self.assertEqual(middleware.invocation_order, "intercept_observe")
         self.assertListEqual(
@@ -75,22 +81,24 @@ class MiddlewareSystemTestCase(unittest.TestCase):
         class DummyMiddleWare1(BaseMiddleware):
 
             @observe(event_pattern="some.really.*", priority=1000)
-            def my_callback_obs1(self, **kwargs):
+            def my_callback_obs1(self, *args, **kwargs):
                 pass
 
             @intercept(event_pattern="some.*", priority=900)
-            def my_callback_intcpt2(self, **kwargs):
-                return kwargs.get('next_handler').invoke(**kwargs)
+            def my_callback_intcpt2(self, event_args, *args, **kwargs):
+                next_handler = event_args.get('next_handler')
+                return next_handler.invoke(event_args, *args, **kwargs)
 
         class DummyMiddleWare2(BaseMiddleware):
 
             @observe(event_pattern="some.really.*", priority=1050)
-            def my_callback_obs3(self, **kwargs):
+            def my_callback_obs3(self, *args, **kwargs):
                 pass
 
             @intercept(event_pattern="*", priority=950)
-            def my_callback_intcpt4(self, **kwargs):
-                return kwargs.get('next_handler').invoke(**kwargs)
+            def my_callback_intcpt4(self, event_args, *args, **kwargs):
+                next_handler = event_args.get('next_handler')
+                return next_handler.invoke(event_args, *args, **kwargs)
 
         dispatcher = SimpleEventDispatcher()
         manager = SimpleMiddlewareManager(dispatcher)
@@ -131,18 +139,18 @@ class MiddlewareSystemTestCase(unittest.TestCase):
         class SomeDummyClass(object):
 
             @observe(event_pattern="another.really.*", priority=1000)
-            def not_a_match(self, **kwargs):
+            def not_a_match(self, *args, **kwargs):
                 pass
 
             @intercept(event_pattern="another.*", priority=900)
-            def my_callback_intcpt2(self, **kwargs):
+            def my_callback_intcpt2(self, *args, **kwargs):
                 pass
 
-            def not_an_event_handler(self, **kwargs):
+            def not_an_event_handler(self, *args, **kwargs):
                 pass
 
             @observe(event_pattern="another.interesting.*", priority=1000)
-            def my_callback_obs1(self, **kwargs):
+            def my_callback_obs1(self, *args, **kwargs):
                 pass
 
         dispatcher = SimpleEventDispatcher()

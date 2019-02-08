@@ -4,6 +4,7 @@ Base implementation for services available through a provider
 import logging
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.middleware import observe
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
@@ -147,17 +148,14 @@ class BaseBucketService(
         super(BaseBucketService, self).__init__(provider)
         self._service_event_pattern = "provider.storage.buckets"
 
-    def _init_get(self):
-        def _get_pre_log(bucket_id):
-            log.debug("Getting {} bucket with the id: {}".format(
-                self.provider.name, bucket_id))
+    @observe(event_pattern="provider.storage.buckets.get", priority=2000)
+    def _get_pre_log(self, bucket_id):
+        log.debug("Getting {} bucket with the id: {}".format(
+            self.provider.name, bucket_id))
 
-        def _get_post_log(callback_result, bucket_id):
-            log.debug("Returned bucket object: {}".format(callback_result))
-
-        self.observe("get", 2000, _get_pre_log)
-        self.observe("get", 3000, _get_post_log)
-        self.mark_initialized("get")
+    @observe(event_pattern="provider.storage.buckets.get", priority=3000)
+    def _get_post_log(self, callback_result, bucket_id):
+        log.debug("Returned bucket object: {}".format(callback_result))
 
     def _init_find(self):
         def _find_pre_log(**kwargs):

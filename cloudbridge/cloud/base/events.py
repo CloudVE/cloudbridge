@@ -51,12 +51,12 @@ class InterceptingEventHandler(EventHandler):
     def dispatcher(self, value):
         self.__dispatcher = value
 
-    def invoke(self, **kwargs):
-        kwargs.pop('next_handler', None)
-        next_handler = self._get_next_handler(kwargs.get('event', None))
+    def invoke(self, event_args, *args, **kwargs):
+        next_handler = self._get_next_handler(event_args.get('event'))
+        event_args['next_handler'] = next_handler
         # callback is responsible for invoking the next_handler and
         # controlling the result value
-        return self.callback(next_handler=next_handler, **kwargs)
+        return self.callback(event_args, *args, **kwargs)
 
     def unsubscribe(self):
         if self.dispatcher:
@@ -69,14 +69,15 @@ class ObservingEventHandler(InterceptingEventHandler):
         super(ObservingEventHandler, self).__init__(event_pattern, priority,
                                                     callback)
 
-    def invoke(self, **kwargs):
+    def invoke(self, event_args, *args, **kwargs):
+        # Observers shouldn't pass a next_handler
+        event_args.pop('next_handler', None)
+        next_handler = self._get_next_handler(event_args.get('event'))
         # Notify listener. Ignore result from observable handler
-        kwargs.pop('next_handler', None)
-        self.callback(**kwargs)
-        # Kick off the handler chain
-        next_handler = self._get_next_handler(kwargs.get('event', None))
+        self.callback(event_args, *args, **kwargs)
+        # Kick off the remaining handler chain
         if next_handler:
-            return next_handler.invoke(**kwargs)
+            return next_handler.invoke(event_args, *args, **kwargs)
         else:
             return None
 
@@ -154,13 +155,13 @@ class SimpleEventDispatcher(EventDispatcher):
         self.subscribe(handler)
         return handler
 
-    def emit(self, sender, event, **kwargs):
+    def emit(self, sender, event, *args, **kwargs):
         handlers = self.get_handlers_for_event(event)
 
         if handlers:
             # only kick off first handler in chain
-            return handlers[0].invoke(sender=sender, event=event,
-                                      **kwargs)
+            event_args = {'event': event, 'sender': sender}
+            return handlers[0].invoke(event_args, *args, **kwargs)
         else:
             message = "Event '{}' has no subscribed handlers.".\
                 format(event)

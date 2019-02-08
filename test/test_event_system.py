@@ -17,10 +17,12 @@ class EventSystemTestCase(unittest.TestCase):
         EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
 
-        def my_callback(**kwargs):
-            self.assertDictEqual(kwargs,
+        def my_callback(event_args, *args, **kwargs):
+            self.assertDictEqual(event_args,
                                  {'sender': self,
                                   'event': EVENT_NAME})
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
             callback_tracker[0] += 'obs'
             return "hello"
 
@@ -28,7 +30,8 @@ class EventSystemTestCase(unittest.TestCase):
         handler = dispatcher.observe(event_pattern=EVENT_NAME, priority=1000,
                                      callback=my_callback)
         self.assertIsInstance(handler, EventHandler)
-        result = dispatcher.emit(self, EVENT_NAME)
+        result = dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
+                                 a_keyword_arg='another_thing')
         self.assertEqual(
             callback_tracker[0], "obs", "callback should have been invoked"
             "once and contain value `obs` but tracker value is {0}".format(
@@ -40,11 +43,13 @@ class EventSystemTestCase(unittest.TestCase):
         EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
 
-        def my_callback(**kwargs):
-            self.assertDictEqual(kwargs,
+        def my_callback(event_args, *args, **kwargs):
+            self.assertDictEqual(event_args,
                                  {'sender': self,
                                   'event': EVENT_NAME,
                                   'next_handler': None})
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
             callback_tracker[0] += "intcpt"
             return "world"
 
@@ -52,7 +57,8 @@ class EventSystemTestCase(unittest.TestCase):
         handler = dispatcher.intercept(event_pattern=EVENT_NAME, priority=1000,
                                        callback=my_callback)
         self.assertIsInstance(handler, EventHandler)
-        result = dispatcher.emit(self, EVENT_NAME)
+        result = dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
+                                 a_keyword_arg='another_thing')
         self.assertEqual(
             callback_tracker[0], "intcpt", "callback should have been invoked"
             "once and contain value `intcpt` but tracker value is {0}".format(
@@ -64,25 +70,30 @@ class EventSystemTestCase(unittest.TestCase):
         EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
 
-        def my_callback_obs(**kwargs):
-            self.assertDictEqual(kwargs,
+        def my_callback_obs(event_args, *args, **kwargs):
+            self.assertDictEqual(event_args,
                                  {'sender': self,
                                   'event': EVENT_NAME})
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
             callback_tracker[0] += "obs_"
             return "hello"
 
-        def my_callback_intcpt(**kwargs):
-            self.assertDictEqual(kwargs,
+        def my_callback_intcpt(event_args, *args, **kwargs):
+            self.assertDictEqual(event_args,
                                  {'sender': self,
                                   'event': EVENT_NAME,
                                   'next_handler': None})
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
             callback_tracker[0] += "intcpt_"
             return "world"
 
         dispatcher = SimpleEventDispatcher()
         dispatcher.observe(EVENT_NAME, 1000, my_callback_obs)
         dispatcher.intercept(EVENT_NAME, 1001, my_callback_intcpt)
-        result = dispatcher.emit(self, EVENT_NAME)
+        result = dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
+                                 a_keyword_arg='another_thing')
         self.assertEqual(
             callback_tracker[0], "obs_intcpt_", "callback was not invoked in "
             "expected order. Should have been obs_intcpt_ but is {0}".format(
@@ -94,24 +105,28 @@ class EventSystemTestCase(unittest.TestCase):
         EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
 
-        def my_callback_intcpt(**kwargs):
-            self.assertEqual(kwargs.get('sender'), self)
-            self.assertEqual(kwargs.get('next_handler').priority, 1001)
-            self.assertEqual(kwargs.get('next_handler').callback.__name__,
+        def my_callback_intcpt(event_args, *args, **kwargs):
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
+            self.assertEqual(event_args.get('sender'), self)
+            self.assertEqual(event_args.get('next_handler').priority, 1001)
+            self.assertEqual(event_args.get('next_handler').callback.__name__,
                              "my_callback_obs")
             callback_tracker[0] += "intcpt_"
             # invoke next handler
-            next_handler = kwargs.get('next_handler')
+            next_handler = event_args.get('next_handler')
             assert next_handler.priority == 1001
             assert next_handler.event_pattern == EVENT_NAME
             assert next_handler.callback == my_callback_obs
-            retval = next_handler.invoke(**kwargs)
+            retval = next_handler.invoke(event_args, *args, **kwargs)
             self.assertIsNone(retval, "Return values of observable handlers"
                               " should not be propagated.")
             return "world"
 
-        def my_callback_obs(**kwargs):
-            self.assertDictEqual(kwargs,
+        def my_callback_obs(event_args, *args, **kwargs):
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
+            self.assertDictEqual(event_args,
                                  {'sender': self,
                                   'event': EVENT_NAME})
             callback_tracker[0] += "obs_"
@@ -121,7 +136,8 @@ class EventSystemTestCase(unittest.TestCase):
         # register priorities out of order to test that too
         dispatcher.observe(EVENT_NAME, 1001, my_callback_obs)
         dispatcher.intercept(EVENT_NAME, 1000, my_callback_intcpt)
-        result = dispatcher.emit(self, EVENT_NAME)
+        result = dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
+                                 a_keyword_arg='another_thing')
         self.assertEqual(
             callback_tracker[0], "intcpt_obs_", "callback was not invoked in "
             "expected order. Should have been intcpt_obs_ but is {0}".format(
@@ -133,17 +149,18 @@ class EventSystemTestCase(unittest.TestCase):
         EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
 
-        def my_callback_intcpt1(**kwargs):
-            self.assertEqual(kwargs.get('sender'), self)
-            self.assertEqual(kwargs.get('next_handler').priority, 2020)
-            self.assertEqual(kwargs.get('next_handler').callback.__name__,
+        def my_callback_intcpt1(event_args, *args, **kwargs):
+            self.assertEqual(event_args.get('sender'), self)
+            next_handler = event_args.get('next_handler')
+            self.assertEqual(next_handler.priority, 2020)
+            self.assertEqual(next_handler.callback.__name__,
                              "my_callback_intcpt2")
             callback_tracker[0] += "intcpt1_"
             # invoke next handler but ignore return value
-            return "hello" + kwargs.get('next_handler').invoke(**kwargs)
+            return "hello" + next_handler.invoke(event_args, *args, **kwargs)
 
-        def my_callback_intcpt2(**kwargs):
-            self.assertDictEqual(kwargs,
+        def my_callback_intcpt2(event_args, *args, **kwargs):
+            self.assertDictEqual(event_args,
                                  {'sender': self,
                                   'event': EVENT_NAME,
                                   'next_handler': None})
@@ -163,7 +180,7 @@ class EventSystemTestCase(unittest.TestCase):
 
     def test_subscribe_event_duplicate_priority(self):
 
-        def my_callback(**kwargs):
+        def my_callback(event_args, *args, **kwargs):
             pass
 
         dispatcher = SimpleEventDispatcher()
@@ -174,7 +191,7 @@ class EventSystemTestCase(unittest.TestCase):
 
     def test_subscribe_event_duplicate_wildcard_priority(self):
 
-        def my_callback(**kwargs):
+        def my_callback(event_args, *args, **kwargs):
             pass
 
         dispatcher = SimpleEventDispatcher()
@@ -185,7 +202,7 @@ class EventSystemTestCase(unittest.TestCase):
 
     def test_subscribe_event_duplicate_wildcard_priority_allowed(self):
         # duplicate priorities for different wildcard namespaces allowed
-        def my_callback(**kwargs):
+        def my_callback(event_args, *args, **kwargs):
             pass
 
         dispatcher = SimpleEventDispatcher()
@@ -198,21 +215,21 @@ class EventSystemTestCase(unittest.TestCase):
         EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
 
-        def my_callback1(**kwargs):
-            self.assertDictEqual(kwargs, {'sender': self,
-                                          'event': EVENT_NAME})
+        def my_callback1(event_args, *args, **kwargs):
+            self.assertDictEqual(event_args, {'sender': self,
+                                              'event': EVENT_NAME})
             callback_tracker[0] += "event1_"
             return "hello"
 
-        def my_callback2(**kwargs):
-            self.assertDictEqual(kwargs,
+        def my_callback2(event_args, *args, **kwargs):
+            self.assertDictEqual(event_args,
                                  {'sender': self,
                                   'event': "event.hello.anotherworld"})
             callback_tracker[0] += "event2_"
             return "another"
 
-        def my_callback3(**kwargs):
-            self.assertDictEqual(kwargs,
+        def my_callback3(event_args, *args, **kwargs):
+            self.assertDictEqual(event_args,
                                  {'sender': self,
                                   'event': "event.hello.anotherworld",
                                   'next_handler': None})
@@ -243,19 +260,22 @@ class EventSystemTestCase(unittest.TestCase):
     def test_subscribe_wildcard(self):
         callback_tracker = ['']
 
-        def my_callback1(**kwargs):
+        def my_callback1(event_args, *args, **kwargs):
             callback_tracker[0] += "event1_"
-            return "hello" + kwargs.get('next_handler').invoke(**kwargs)
+            next_handler = event_args.get('next_handler')
+            return "hello" + next_handler.invoke(event_args, *args, **kwargs)
 
-        def my_callback2(**kwargs):
+        def my_callback2(event_args, *args, **kwargs):
             callback_tracker[0] += "event2_"
-            return "some" + kwargs.get('next_handler').invoke(**kwargs)
+            next_handler = event_args.get('next_handler')
+            return "some" + next_handler.invoke(event_args, *args, **kwargs)
 
-        def my_callback3(**kwargs):
+        def my_callback3(event_args, *args, **kwargs):
             callback_tracker[0] += "event3_"
-            return "other" + kwargs.get('next_handler').invoke(**kwargs)
+            next_handler = event_args.get('next_handler')
+            return "other" + next_handler.invoke(event_args, *args, **kwargs)
 
-        def my_callback4(**kwargs):
+        def my_callback4(*args, **kwargs):
             callback_tracker[0] += "event4_"
             return "world"
 
@@ -287,14 +307,16 @@ class EventSystemTestCase(unittest.TestCase):
     def test_subscribe_after_emit(self):
         callback_tracker = ['']
 
-        def my_callback1(**kwargs):
+        def my_callback1(event_args, *args, **kwargs):
             callback_tracker[0] += "event1_"
-            if kwargs.get('next_handler'):
-                return "hello" + kwargs.get('next_handler').invoke(**kwargs)
+            next_handler = event_args.get('next_handler')
+            if next_handler:
+                return "hello" + next_handler.invoke(
+                    event_args, *args, **kwargs)
             else:
                 return "hello"
 
-        def my_callback2(**kwargs):
+        def my_callback2(*args, **kwargs):
             callback_tracker[0] += "event2_"
             return "some"
 
@@ -314,14 +336,16 @@ class EventSystemTestCase(unittest.TestCase):
         EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
 
-        def my_callback1(**kwargs):
+        def my_callback1(event_args, *args, **kwargs):
             callback_tracker[0] += "event1_"
-            if kwargs.get('next_handler'):
-                return "hello" + kwargs.get('next_handler').invoke(**kwargs)
+            next_handler = event_args.get('next_handler')
+            if next_handler:
+                return "hello" + next_handler.invoke(
+                    event_args, *args, **kwargs)
             else:
                 return "hello"
 
-        def my_callback2(**kwargs):
+        def my_callback2(*args, **kwargs):
             callback_tracker[0] += "event2_"
             return "some"
 

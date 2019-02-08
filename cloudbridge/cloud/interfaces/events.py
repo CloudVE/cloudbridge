@@ -26,14 +26,24 @@ class EventDispatcher(object):
             priority.
 
         :type callback: function
-        :param callback: The callback function that should be called with
-            the parameters given at when the even is emitted.
+        :param callback: The callback function that should be invoked. The
+            callback must have a signature of the form:
+            `def callback(event_args, *args, **kwargs)`
+            Where the first positional argument is always event_args, which
+            is a dict value containing information about the event.
+            `event_args` includes the following keys:
+            'event': The name of the event
+            'sender': The object which raised the event
+            The event_args dict can also be used to convey additional info to
+            downstream event handlers.
+            The rest of the arguments to the callback can be any combination
+            of positional or keyword arguments as desired.
 
         :rtype: :class:`.EventHandler`
         :return:  An object of class EventHandler. The EventHandler will
-        already be subscribed to the dispatcher, and need not be manually
-        subscribed. The returned event handler can be used to unsubscribe
-        from future events when required.
+            already be subscribed to the dispatcher, and need not be manually
+            subscribed. The returned event handler can be used to unsubscribe
+            from future events when required.
         """
         pass
 
@@ -58,27 +68,47 @@ class EventDispatcher(object):
             priority.
 
         :type callback: function
-        :param callback: The callback function that should be called with
-            the parameters given at when the even is emitted.
+        :param callback: The callback function that should be invoked. The
+            callback must have a signature of the form:
+            `def callback(event_args, *args, **kwargs)`
+            Where the first positional argument is always event_args, which
+            is a dict value containing information about the event.
+            `event_args` includes the following keys:
+            'event': The name of the event
+            'sender': The object which raised the event
+            'event_handler': The next event handler in the chain
+                             (only for intercepting handlers)
+            The event_args dict can also be used to convey additional info to
+            downstream event handlers.
+            The rest of the arguments to the callback can be any combination
+            of positional or keyword arguments as desired.
 
         :rtype: :class:`.EventHandler`
         :return:  An object of class EventHandler. The EventHandler will
-        already be subscribed to the dispatcher, and need not be manually
-        subscribed. The returned event handler can be used to unsubscribe
-        from future events when required.
+            already be subscribed to the dispatcher, and need not be manually
+            subscribed. The returned event handler can be used to unsubscribe
+            from future events when required.
         """
         pass
 
     @abstractmethod
-    def emit(self, sender, event, **kwargs):
+    def emit(self, sender, event, *args, **kwargs):
         """
-        Raises an event while registering a given callback
+        Raises an event, which will trigger all handlers that are registered
+        for this event. The return value of the emit function is the return
+        value of the highest priority handler (i.e. the first handler in the
+        event chain). The first event handlers is responsible for calling the
+        next handler in the event chain, and so on, propagating arguments
+        and return values as desired.
 
         :type event: str
         :param event: The name of the event which is being raised.
 
         :type sender: object
         :param sender: The object which is raising the event
+
+        All additional positional and keyword arguments are passed through
+        to the callback functions for the event as is. Refer to the c
         """
         pass
 
@@ -153,16 +183,39 @@ class EventHandler(object):
     def callback(self):
         """
         The callback that will be triggered when this event handler is invoked.
-        The callback signature must accept **kwargs and pass them through.
-        In general, the callback will always receive the event that
-        triggered this handler as an argument.
+        The callback signature must accept *args and **kwargs and pass them
+        through.
+        The callback must have a signature of the form:
+        `def callback(event_args, *args, **kwargs)`
+        where the first positional argument is always event_args, which
+        is a dict value containing information about the event.
+        `event_args` includes the following keys:
+        'event': The name of the event
+        'sender': The object which raised the event
+        'event_handler': The next event handler in the chain
+                         (only for intercepting handlers)
+        The event_args dict can also be used to convey additional info to
+        downstream event handlers.
+        The rest of the arguments to the callback can be any combination
+        of positional or keyword arguments as desired.
         """
         pass
 
     @abstractmethod
-    def invoke(self, **kwargs):
+    def invoke(self, event_args, *args, **kwargs):
         """
         Executes this event handler's callback
+
+        :type event_args: dict
+        :param event_args: The first positional argument is always event_args,
+           which is a dict value containing information about the event.
+           `event_args` includes the following keys:
+           'event': The name of the event
+           'sender': The object which raised the event
+           'event_handler': The next event handler in the chain
+                            (only for intercepting handlers)
+           The event_args dict can also be used to convey additional info to
+           downstream event handlers.
         """
         pass
 
