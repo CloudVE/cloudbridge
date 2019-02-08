@@ -428,6 +428,14 @@ class AzureBucketService(BaseBucketService):
         bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
 
+    @execute(event_pattern="azure.storage.buckets.delete",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        """
+        Delete this bucket.
+        """
+        self.provider.azure_client.delete_container(bucket_id)
+
 
 class AzureBucketObjectService(BaseBucketObjectService):
     def __init__(self, provider):

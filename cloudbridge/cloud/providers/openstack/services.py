@@ -466,6 +466,11 @@ class OpenStackBucketService(BaseBucketService):
             self.provider.swift.put_container(name)
             return self.get(name)
 
+    @execute(event_pattern="openstack.storage.buckets.delete",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        self.provider.swift.delete_container(bucket_id)
+
 
 class OpenStackBucketObjectService(BaseBucketObjectService):
 

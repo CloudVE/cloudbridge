@@ -888,9 +888,6 @@ class AWSBucket(BaseBucket):
     def objects(self):
         return self._object_container
 
-    def delete(self, delete_contents=False):
-        self._bucket.delete()
-
 
 class AWSBucketContainer(BaseBucketContainer):
 

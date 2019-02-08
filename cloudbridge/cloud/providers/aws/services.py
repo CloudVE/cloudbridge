@@ -379,6 +379,13 @@ class AWSBucketService(BaseBucketService):
                 else:
                     raise
 
+    @execute(event_pattern="aws.storage.buckets.delete",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        bucket = self._get(bucket_id)
+        if bucket:
+            bucket._bucket.delete()
+
 
 class AWSBucketObjectService(BaseBucketObjectService):
 

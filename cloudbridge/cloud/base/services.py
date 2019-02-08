@@ -195,12 +195,21 @@ class BaseBucketService(
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
+
+        :type bucket_id: str
+        :param bucket_id: The id of the desired bucket.
+
+        :rtype: ``Bucket``
+        :return:  ``None`` is returned if the bucket does not exist, and
+                  the bucket's provider-specific CloudBridge object is
+                  returned if the bucket is found.
         """
         return self.emit_function(self, "get", bucket_id)
 
     def find(self, **kwargs):
         """
         Returns a list of buckets filtered by the given keyword arguments.
+        Accepted search arguments are: 'name'
         """
         return self.emit_function(self, "find", **kwargs)
 
@@ -213,9 +222,25 @@ class BaseBucketService(
     def create(self, name, location=None):
         """
         Create a new bucket.
+
+        :type name: str
+        :param name: The name of the bucket to be created. Note that names
+                     must be unique, and are unchangeable.
+
+        :rtype: ``Bucket``
+        :return:  The created bucket's provider-specific CloudBridge object.
         """
         BaseBucket.assert_valid_resource_name(name)
         return self.emit_function(self, "create", name, location=location)
+
+    def delete(self, bucket_id):
+        """
+        Delete an existing bucket.
+
+        :type bucket_id: str
+        :param bucket_id: The ID of the bucket to be deleted.
+        """
+        return self.emit_function(self, "delete", bucket_id)
 
 
 class BaseBucketObjectService(

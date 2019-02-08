@@ -1202,3 +1202,19 @@ class GCSBucketService(BaseBucketService):
                     'Bucket already exists with name {0}'.format(name))
             else:
                 raise
+
+    @execute(event_pattern="gce.storage.buckets.delete",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        """
+        Delete this bucket.
+        """
+        (self._provider
+             .gcs_storage
+             .buckets()
+             .delete(bucket=bucket_id)
+             .execute())
+        # GCS has a rate limit of 1 operation per 2 seconds for bucket
+        # creation/deletion: https://cloud.google.com/storage/quotas. Throttle
+        # here to avoid future failures.
+        time.sleep(2)

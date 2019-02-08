@@ -2265,20 +2265,6 @@ class GCSBucket(BaseBucket):
     def objects(self):
         return self._object_container
 
-    def delete(self, delete_contents=False):
-        """
-        Delete this bucket.
-        """
-        (self._provider
-             .gcs_storage
-             .buckets()
-             .delete(bucket=self.name)
-             .execute())
-        # GCS has a rate limit of 1 operation per 2 seconds for bucket
-        # creation/deletion: https://cloud.google.com/storage/quotas.  Throttle
-        # here to avoid future failures.
-        time.sleep(2)
-
     def create_object(self, name):
         """
         Create an empty plain text object.
