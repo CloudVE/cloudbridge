@@ -38,11 +38,20 @@ from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 
-from .resources import AzureBucket, AzureBucketObject, \
-    AzureInstance, AzureKeyPair, \
-    AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
-    AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \
-    AzureVMFirewall, AzureVMType, AzureVolume
+from .resources import AzureBucket
+from .resources import AzureBucketObject
+from .resources import AzureInstance
+from .resources import AzureKeyPair
+from .resources import AzureLaunchConfig
+from .resources import AzureMachineImage
+from .resources import AzureNetwork
+from .resources import AzureRegion
+from .resources import AzureRouter
+from .resources import AzureSnapshot
+from .resources import AzureSubnet
+from .resources import AzureVMFirewall
+from .resources import AzureVMType
+from .resources import AzureVolume
 
 log = logging.getLogger(__name__)
 

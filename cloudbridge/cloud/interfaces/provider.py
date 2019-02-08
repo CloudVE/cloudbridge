@@ -1,7 +1,9 @@
 """
 Specification for a provider interface
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 
 
 class CloudProvider(object):
