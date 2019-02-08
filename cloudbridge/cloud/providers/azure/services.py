@@ -478,7 +478,7 @@ class AzureBucketObjectService(BaseBucketObjectService):
     def create(self, bucket, name):
         self.provider.azure_client.create_blob_from_text(
             bucket.name, name, '')
-        return self.get(name)
+        return self.get(bucket, name)
 
 
 class AzureComputeService(BaseComputeService):

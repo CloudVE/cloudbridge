@@ -522,7 +522,7 @@ class OpenStackBucketObjectService(BaseBucketObjectService):
 
     def create(self, bucket, object_name):
         self.provider.swift.put_object(bucket.name, object_name, None)
-        return self.get(object_name)
+        return self.get(bucket, object_name)
 
 
 class OpenStackComputeService(BaseComputeService):
