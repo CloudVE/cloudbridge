@@ -396,7 +396,7 @@ class AzureBucketService(BaseBucketService):
     def __init__(self, provider):
         super(AzureBucketService, self).__init__(provider)
 
-    @implement(event_pattern="azure.storage.buckets.get",
+    @implement(event_pattern="provider.storage.buckets.get",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
@@ -410,7 +410,7 @@ class AzureBucketService(BaseBucketService):
             log.exception(error)
             return None
 
-    @implement(event_pattern="azure.storage.buckets.list",
+    @implement(event_pattern="provider.storage.buckets.list",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit, marker):
         buckets = [AzureBucket(self.provider, bucket)
@@ -418,7 +418,7 @@ class AzureBucketService(BaseBucketService):
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
-    @implement(event_pattern="azure.storage.buckets.create",
+    @implement(event_pattern="provider.storage.buckets.create",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location=None):
         """
@@ -428,7 +428,7 @@ class AzureBucketService(BaseBucketService):
         bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
 
-    @implement(event_pattern="azure.storage.buckets.delete",
+    @implement(event_pattern="provider.storage.buckets.delete",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _delete(self, bucket_id):
         """

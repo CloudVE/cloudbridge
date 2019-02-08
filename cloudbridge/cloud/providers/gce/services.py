@@ -1131,7 +1131,7 @@ class GCSBucketService(BaseBucketService):
     def __init__(self, provider):
         super(GCSBucketService, self).__init__(provider)
 
-    @implement(event_pattern="gce.storage.buckets.get",
+    @implement(event_pattern="provider.storage.buckets.get",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
@@ -1142,7 +1142,7 @@ class GCSBucketService(BaseBucketService):
         bucket = self.provider.get_resource('buckets', bucket_id)
         return GCSBucket(self.provider, bucket) if bucket else None
 
-    @implement(event_pattern="gce.storage.buckets.find",
+    @implement(event_pattern="provider.storage.buckets.find",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _find(self, name, limit=None, marker=None):
         """
@@ -1152,7 +1152,7 @@ class GCSBucketService(BaseBucketService):
         return ClientPagedResultList(self.provider, buckets, limit=limit,
                                      marker=marker)
 
-    @implement(event_pattern="gce.storage.buckets.list",
+    @implement(event_pattern="provider.storage.buckets.list",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit=None, marker=None):
         """
@@ -1176,7 +1176,7 @@ class GCSBucketService(BaseBucketService):
                                      response.get('nextPageToken'),
                                      False, data=buckets)
 
-    @implement(event_pattern="gce.storage.buckets.create",
+    @implement(event_pattern="provider.storage.buckets.create",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location=None):
         GCSBucket.assert_valid_resource_name(name)
@@ -1203,7 +1203,7 @@ class GCSBucketService(BaseBucketService):
             else:
                 raise
 
-    @implement(event_pattern="gce.storage.buckets.delete",
+    @implement(event_pattern="provider.storage.buckets.delete",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _delete(self, bucket_id):
         """
