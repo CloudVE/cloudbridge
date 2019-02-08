@@ -6,6 +6,7 @@ Introductions to all the key parts of CloudBridge you'll need to know:
    :maxdepth: 1
 
     How to install CloudBridge <install.rst>
+    Procuring access credentials <procuring_credentials.rst>
     Connection and authentication setup <setup.rst>
     Launching instances <launch.rst>
     Networking <networking.rst>

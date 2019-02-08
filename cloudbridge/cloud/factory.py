@@ -124,10 +124,10 @@ class CloudProviderFactory(object):
         :param name: Cloud provider name: one of ``aws``, ``openstack``,
         ``azure``.
 
-        :type config: an object with required fields
-        :param config: This can be a Bunch or any other object whose fields can
-                       be accessed using dot notation. See specific provider
-                       implementation for the required fields.
+        :type config: :class:`dict`
+        :param config: A dictionary or an iterable of key/value pairs (as
+                       tuples or other iterables of length two). See specific
+                       provider implementation for the required fields.
 
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
