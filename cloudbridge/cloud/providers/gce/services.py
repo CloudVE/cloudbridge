@@ -923,6 +923,7 @@ class GCPStorageService(BaseStorageService):
         self._volume_svc = GCEVolumeService(self.provider)
         self._snapshot_svc = GCESnapshotService(self.provider)
         self._bucket_svc = GCSBucketService(self.provider)
+        self._bucket_obj_svc = GCSBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -935,6 +936,10 @@ class GCPStorageService(BaseStorageService):
     @property
     def buckets(self):
         return self._bucket_svc
+
+    @property
+    def bucket_objects(self):
+        return self._bucket_obj_svc
 
 
 class GCEVolumeService(BaseVolumeService):
