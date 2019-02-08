@@ -43,7 +43,7 @@ class BaseCloudService(CloudService):
     STANDARD_EVENT_PRIORITY = 2500
 
     def __init__(self, provider):
-        self._service_event_pattern = provider.PROVIDER_ID
+        self._service_event_pattern = "provider"
         self._provider = provider
         # discover and register all middleware
         provider.middleware.add(self)
@@ -202,20 +202,21 @@ class BaseBucketService(
                   the bucket's provider-specific CloudBridge object is
                   returned if the bucket is found.
         """
-        return self.dispatch_function(self, "get", bucket_id)
+        return self.dispatch(self, "provider.storage.buckets.get", bucket_id)
 
     def find(self, **kwargs):
         """
         Returns a list of buckets filtered by the given keyword arguments.
         Accepted search arguments are: 'name'
         """
-        return self.dispatch_function(self, "find", **kwargs)
+        return self.dispatch(self, "provider.storage.buckets.find", **kwargs)
 
     def list(self, limit=None, marker=None):
         """
         List all buckets.
         """
-        return self.dispatch_function(self, "list", limit=limit, marker=marker)
+        return self.dispatch(self, "provider.storage.buckets.list",
+                             limit=limit, marker=marker)
 
     def create(self, name, location=None):
         """
@@ -229,7 +230,8 @@ class BaseBucketService(
         :return:  The created bucket's provider-specific CloudBridge object.
         """
         BaseBucket.assert_valid_resource_name(name)
-        return self.dispatch_function(self, "create", name, location=location)
+        return self.dispatch(self, "provider.storage.buckets.create",
+                             name, location=location)
 
     def delete(self, bucket_id):
         """
@@ -238,7 +240,8 @@ class BaseBucketService(
         :type bucket_id: str
         :param bucket_id: The ID of the bucket to be deleted.
         """
-        return self.dispatch_function(self, "delete", bucket_id)
+        return self.dispatch(self, "provider.storage.buckets.delete",
+                             bucket_id)
 
 
 class BaseBucketObjectService(
