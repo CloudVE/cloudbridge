@@ -21,13 +21,6 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.volumes', 'storage.volumes'])
     def test_storage_services_event_pattern(self):
-        self.assertEqual(self.provider.storage._service_event_pattern,
-                         "provider.storage",
-                         "Event pattern for {} service should be '{}', "
-                         "but found '{}'.".format("storage",
-                                                  "provider.storage",
-                                                  self.provider.storage.
-                                                  _service_event_pattern))
         self.assertEqual(
             self.provider.storage.volumes._service_event_pattern,
             "provider.storage.volumes",

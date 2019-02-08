@@ -17,13 +17,6 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_storage_services_event_pattern(self):
-        self.assertEqual(self.provider.security._service_event_pattern,
-                         "provider.security",
-                         "Event pattern for {} service should be '{}', "
-                         "but found '{}'.".format("security",
-                                                  "provider.security",
-                                                  self.provider.security.
-                                                  _service_event_pattern))
         self.assertEqual(
             self.provider.security.key_pairs.
             _service_event_pattern,
