@@ -130,7 +130,7 @@ class ExecutingEventHandler(InterceptingEventHandler):
         if next_handler:
             event_args['result'] = result
             next_handler.invoke(event_args, *args, **kwargs)
-            result = event_args.pop['result']
+            event_args.pop['result']
         return result
 
 
