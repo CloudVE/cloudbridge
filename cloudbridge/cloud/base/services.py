@@ -52,7 +52,7 @@ class BaseCloudService(CloudService):
     def provider(self):
         return self._provider
 
-    def emit(self, sender, event, *args, **kwargs):
+    def dispatch(self, sender, event, *args, **kwargs):
         return self._provider.events.dispatch(sender, event, *args, **kwargs)
 
     def _generate_event_pattern(self, func_name):
