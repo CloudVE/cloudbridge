@@ -13,17 +13,39 @@ from msrestazure.azure_exceptions import CloudError
 
 import pysftp
 
-from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
-    BaseFloatingIPContainer, BaseGatewayContainer, BaseInstance, \
-    BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, \
-    BaseMachineImage, BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, \
-    BaseSnapshot, BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, \
-    BaseVMFirewallRuleContainer, BaseVMType, BaseVolume, ClientPagedResultList
-from cloudbridge.cloud.interfaces import InstanceState, VolumeState
-from cloudbridge.cloud.interfaces.resources import Instance, \
-    MachineImageState, NetworkState, RouterState, \
-    SnapshotState, SubnetState, TrafficDirection
+from cloudbridge.cloud.base.resources import BaseAttachmentInfo
+from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketContainer
+from cloudbridge.cloud.base.resources import BaseBucketObject
+from cloudbridge.cloud.base.resources import BaseFloatingIP
+from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
+from cloudbridge.cloud.base.resources import BaseGatewayContainer
+from cloudbridge.cloud.base.resources import BaseInstance
+from cloudbridge.cloud.base.resources import BaseInternetGateway
+from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BaseLaunchConfig
+from cloudbridge.cloud.base.resources import BaseMachineImage
+from cloudbridge.cloud.base.resources import BaseNetwork
+from cloudbridge.cloud.base.resources import BasePlacementZone
+from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseRouter
+from cloudbridge.cloud.base.resources import BaseSnapshot
+from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
+from cloudbridge.cloud.base.resources import BaseVMType
+from cloudbridge.cloud.base.resources import BaseVolume
+from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces import InstanceState
+from cloudbridge.cloud.interfaces import VolumeState
+from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import NetworkState
+from cloudbridge.cloud.interfaces.resources import RouterState
+from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 
 from . import helpers as azure_helpers
 

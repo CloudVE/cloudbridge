@@ -1,7 +1,9 @@
 """
 Specifications for data objects exposed through a ``provider`` or ``service``.
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 from enum import Enum
 
 

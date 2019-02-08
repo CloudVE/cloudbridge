@@ -10,6 +10,39 @@ from ..interfaces.exceptions import HandlerException
 log = logging.getLogger(__name__)
 
 
+def intercept(event_pattern, priority):
+    def deco(f):
+        # Mark function as having an event_handler so we can discover it
+        # The callback cannot be set to f as it is not bound yet and will be
+        # set during auto discovery
+        f.__event_handler = InterceptingEventHandler(
+            event_pattern, priority, None)
+        return f
+    return deco
+
+
+def observe(event_pattern, priority):
+    def deco(f):
+        # Mark function as having an event_handler so we can discover it
+        # The callback cannot be set to f as it is not bound yet and will be
+        # set during auto discovery
+        f.__event_handler = ObservingEventHandler(
+            event_pattern, priority, None)
+        return f
+    return deco
+
+
+def execute(event_pattern, priority):
+    def deco(f):
+        # Mark function as having an event_handler so we can discover it
+        # The callback cannot be set to f as it is not bound yet and will be
+        # set during auto discovery
+        f.__event_handler = ExecutingEventHandler(
+            event_pattern, priority, None)
+        return f
+    return deco
+
+
 class InterceptingEventHandler(EventHandler):
 
     def __init__(self, event_pattern, priority, callback):
@@ -56,7 +89,10 @@ class InterceptingEventHandler(EventHandler):
         event_args['next_handler'] = next_handler
         # callback is responsible for invoking the next_handler and
         # controlling the result value
-        return self.callback(event_args, *args, **kwargs)
+        result = self.callback(event_args, *args, **kwargs)
+        # Remove handler specific callback info
+        event_args.pop('next_handler', None)
+        return result
 
     def unsubscribe(self):
         if self.dispatcher:
@@ -80,6 +116,22 @@ class ObservingEventHandler(InterceptingEventHandler):
             return next_handler.invoke(event_args, *args, **kwargs)
         else:
             return None
+
+
+class ExecutingEventHandler(InterceptingEventHandler):
+
+    def __init__(self, event_pattern, priority, callback):
+        super(ExecutingEventHandler, self).__init__(event_pattern, priority,
+                                                    callback)
+
+    def invoke(self, event_args, *args, **kwargs):
+        result = self.callback(*args, **kwargs)
+        next_handler = event_args.get('next_handler')
+        if next_handler:
+            event_args['result'] = result
+            next_handler.invoke(event_args, *args, **kwargs)
+            event_args.pop['result']
+        return result
 
 
 class SimpleEventDispatcher(EventDispatcher):
@@ -152,6 +204,11 @@ class SimpleEventDispatcher(EventDispatcher):
 
     def intercept(self, event_pattern, priority, callback):
         handler = InterceptingEventHandler(event_pattern, priority, callback)
+        self.subscribe(handler)
+        return handler
+
+    def execute(self, event_pattern, priority, callback):
+        handler = ExecutingEventHandler(event_pattern, priority, callback)
         self.subscribe(handler)
         return handler
 

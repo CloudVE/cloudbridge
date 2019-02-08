@@ -4,6 +4,7 @@ Base implementation for services available through a provider
 import logging
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.events import execute
 from cloudbridge.cloud.base.middleware import observe
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseNetwork
@@ -40,25 +41,34 @@ log = logging.getLogger(__name__)
 
 class BaseCloudService(CloudService):
 
+    STANDARD_EVENT_PRIORITY = 2500
+
     def __init__(self, provider):
         self._provider = provider
-        self._service_event_pattern = "provider"
+        # discover and register all middleware
+        provider.middleware.add(self)
 
     @property
     def provider(self):
         return self._provider
 
+    def emit(self, sender, event, *args, **kwargs):
+        return self._provider.events.emit(sender, event, *args, **kwargs)
+
     def _generate_event_pattern(self, func_name):
         return ".".join((self._service_event_pattern, func_name))
 
-    def observe(self, func_name, priority, callback):
+    def observe_function(self, func_name, priority, callback):
         event_pattern = self._generate_event_pattern(func_name)
         self.provider.events.observe(event_pattern, priority, callback)
 
-    def call(self, func_name, priority, callback, **kwargs):
+    def intercept_function(self, func_name, priority, callback):
         event_pattern = self._generate_event_pattern(func_name)
-        return self.provider.events.call(event_pattern, priority, callback,
-                                         **kwargs)
+        self.provider.events.intercept(event_pattern, priority, callback)
+
+    def execute_function(self, func_name, priority, callback):
+        event_pattern = self._generate_event_pattern(func_name)
+        self.provider.events.execute(event_pattern, priority, callback)
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):
@@ -147,68 +157,48 @@ class BaseBucketService(
         self._service_event_pattern += ".buckets"
 
     @observe(event_pattern="provider.storage.buckets.get", priority=2000)
-    def _get_pre_log(self, bucket_id):
+    def _pre_log_get(self, event_args, bucket_id):
         log.debug("Getting {} bucket with the id: {}".format(
             self.provider.name, bucket_id))
 
     @observe(event_pattern="provider.storage.buckets.get", priority=3000)
-    def _get_post_log(self, callback_result, bucket_id):
+    def _post_log_get(self, event_args, bucket_id):
+        log.debug("Returned bucket obj: {}".format(event_args.get('result')))
+
+    @observe(event_pattern="provider.storage.buckets.find", priority=2000)
+    def _pre_log_find(self, *args, **kwargs):
+        log.debug("Finding {} buckets with the following arguments: {}"
+                  .format(self.provider.name, kwargs))
+
+    @observe(event_pattern="provider.storage.buckets.find", priority=3000)
+    def _post_log_find(self, event_args, *args, **kwargs):
+        log.debug("Returned bucket obj: {}".format(event_args.get('result')))
+
+    def _list_pre_log(self, limit, marker):
+        message = "Listing {} buckets".format(self.provider.name)
+        if limit:
+            message += " with limit: {}".format(limit)
+        if marker:
+            message += " with marker: {}".format(marker)
+        log.debug(message)
+
+    def _list_post_log(self, callback_result, limit, marker):
+        log.debug("Returned bucket objects: {}".format(callback_result))
+
+    def _create_pre_log(self, name, location):
+        message = "Creating {} bucket with name '{}'".format(
+            self.provider.name, name)
+        if location:
+            message += " in location: {}".format(location)
+        log.debug(message)
+
+    def _create_post_log(self, callback_result, name, location):
         log.debug("Returned bucket object: {}".format(callback_result))
-
-    def _init_find(self):
-        def _find_pre_log(**kwargs):
-            log.debug("Finding {} buckets with the following arguments: {}"
-                      .format(self.provider.name, kwargs))
-
-        def _find_post_log(callback_result, **kwargs):
-            log.debug("Returned bucket objects: {}".format(callback_result))
-
-        self.observe("find", 2000, _find_pre_log)
-        self.observe("find", 3000, _find_post_log)
-        self.mark_initialized("find")
-
-    def _init_list(self):
-            def _list_pre_log(limit, marker):
-                message = "Listing {} buckets".format(self.provider.name)
-                if limit:
-                    message += " with limit: {}".format(limit)
-                if marker:
-                    message += " with marker: {}".format(marker)
-                log.debug(message)
-
-            def _list_post_log(callback_result, limit, marker):
-                log.debug(
-                    "Returned bucket objects: {}".format(callback_result))
-
-            self.observe("list", 2000, _list_pre_log)
-            self.observe("list", 3000, _list_post_log)
-            self.mark_initialized("list")
-
-    def _init_create(self):
-        def _create_pre_log(name, location):
-            message = "Creating {} bucket with name '{}'".format(
-                self.provider.name, name)
-            if location:
-                message += " in location: {}".format(location)
-            log.debug(message)
-
-        def _create_post_log(callback_result, name, location):
-            log.debug("Returned bucket object: {}".format(callback_result))
-
-        self.observe("create", 2000, _create_pre_log)
-        self.observe("create", 3000, _create_post_log)
-        self.mark_initialized("create")
-
-    def get(self, bucket_id):
-        """
-        Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist.
-        """
-        return self.call("get", priority=2500, callback=self._get,
-                         bucket_id=bucket_id)
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
+    @execute(event_pattern="provider.storage.buckets.find",
+             priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def _find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -223,18 +213,24 @@ class BaseBucketService(
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
+    def get(self, bucket_id):
+        """
+        Returns a bucket given its ID. Returns ``None`` if the bucket
+        does not exist.
+        """
+        return self.emit(self, "provider.storage.buckets.get", bucket_id)
+
     def find(self, **kwargs):
         """
         Returns a list of buckets filtered by the given keyword arguments.
         """
-        return self.call("find", priority=2500, callback=self._find,
-                         **kwargs)
+        return self.emit(self, "provider.storage.buckets.find", **kwargs)
 
     def list(self, limit=None, marker=None):
         """
         List all buckets.
         """
-        return self.call("list", priority=2500, callback=self._list,
+        return self.emit(self, "provider.storage.buckets.list",
                          limit=limit, marker=marker)
 
     def create(self, name, location=None):
@@ -242,9 +238,8 @@ class BaseBucketService(
         Create a new bucket.
         """
         BaseBucket.assert_valid_resource_name(name)
-        location = location or self.provider.region_name
-        return self.call("create", priority=2500, callback=self._create,
-                         name=name, location=location)
+        return self.emit(self, "provider.storage.buckets.create",
+                         name, location=location)
 
 
 class BaseBucketObjectService(

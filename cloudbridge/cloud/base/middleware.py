@@ -4,35 +4,13 @@ import sys
 
 import six
 
-from ..base.events import InterceptingEventHandler
-from ..base.events import ObservingEventHandler
+from ..base.events import intercept
+from ..base.events import observe
 from ..interfaces.exceptions import CloudBridgeBaseException
 from ..interfaces.middleware import Middleware
 from ..interfaces.middleware import MiddlewareManager
 
 log = logging.getLogger(__name__)
-
-
-def intercept(event_pattern, priority):
-    def deco(f):
-        # Mark function as having an event_handler so we can discover it
-        # The callback cannot be set to f as it is not bound yet and will be
-        # set during auto discovery
-        f.__event_handler = InterceptingEventHandler(
-            event_pattern, priority, None)
-        return f
-    return deco
-
-
-def observe(event_pattern, priority):
-    def deco(f):
-        # Mark function as having an event_handler so we can discover it
-        # The callback cannot be set to f as it is not bound yet and will be
-        # set during auto discovery
-        f.__event_handler = ObservingEventHandler(
-            event_pattern, priority, None)
-        return f
-    return deco
 
 
 class SimpleMiddlewareManager(MiddlewareManager):

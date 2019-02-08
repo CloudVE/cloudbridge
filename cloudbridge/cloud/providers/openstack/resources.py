@@ -23,7 +23,8 @@ from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
 
 import swiftclient
-from swiftclient.service import SwiftService, SwiftUploadObject
+from swiftclient.service import SwiftService
+from swiftclient.service import SwiftUploadObject
 from swiftclient.utils import generate_temp_url
 
 import cloudbridge.cloud.base.helpers as cb_helpers
