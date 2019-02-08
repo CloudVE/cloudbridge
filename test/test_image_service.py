@@ -11,6 +11,16 @@ class CloudImageServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
 
+    @helpers.skipIfNoService(['compute.images'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(self.provider.compute.images._service_event_pattern,
+                         "provider.compute.images",
+                         "Event pattern for {} service should be '{}', "
+                         "but found '{}'.".format("images",
+                                                  "provider.compute.images",
+                                                  self.provider.compute.images.
+                                                  _service_event_pattern))
+
     @helpers.skipIfNoService(['compute.images', 'networking.networks',
                               'compute.instances'])
     def test_create_and_list_image(self):

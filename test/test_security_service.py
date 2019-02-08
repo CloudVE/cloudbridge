@@ -15,6 +15,33 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
 
+    @helpers.skipIfNoService(['security.vm_firewalls'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(self.provider.security._service_event_pattern,
+                         "provider.security",
+                         "Event pattern for {} service should be '{}', "
+                         "but found '{}'.".format("security",
+                                                  "provider.security",
+                                                  self.provider.security.
+                                                  _service_event_pattern))
+        self.assertEqual(self.provider.security.key_pairs.
+                         _service_event_pattern,
+                         "provider.security.key_pairs",
+                         "Event pattern for {} service should be '{}', "
+                         "but found '{}'.".format("key_pairs",
+                                                  "provider.security.key_pairs",
+                                                  self.provider.security.
+                                                  key_pairs.
+                                                  _service_event_pattern))
+        self.assertEqual(
+            self.provider.security.vm_firewalls._service_event_pattern,
+            "provider.security.vm_firewalls",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("vm_firewalls",
+                                     "provider.security.vm_firewalls",
+                                     self.provider.security.vm_firewalls.
+                                     _service_event_pattern))    
+
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_crud_key_pair_service(self):
 
