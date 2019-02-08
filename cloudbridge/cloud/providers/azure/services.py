@@ -8,19 +8,35 @@ from azure.mgmt.compute.models import DiskCreateOption
 from msrestazure.azure_exceptions import CloudError
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.resources import ClientPagedResultList, \
-    ServerPagedResultList
-from cloudbridge.cloud.base.services import BaseBucketObjectService, \
-    BaseBucketService, BaseComputeService, \
-    BaseImageService, BaseInstanceService, BaseKeyPairService, \
-    BaseNetworkService, BaseNetworkingService, BaseRegionService, \
-    BaseRouterService, BaseSecurityService, BaseSnapshotService, \
-    BaseStorageService, BaseSubnetService, BaseVMFirewallService, \
-    BaseVMTypeService, BaseVolumeService
-from cloudbridge.cloud.interfaces.exceptions import \
-    DuplicateResourceException, InvalidValueException
-from cloudbridge.cloud.interfaces.resources import MachineImage, \
-    Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
+from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.cloud.base.services import BaseBucketObjectService
+from cloudbridge.cloud.base.services import BaseBucketService
+from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseImageService
+from cloudbridge.cloud.base.services import BaseInstanceService
+from cloudbridge.cloud.base.services import BaseKeyPairService
+from cloudbridge.cloud.base.services import BaseNetworkService
+from cloudbridge.cloud.base.services import BaseNetworkingService
+from cloudbridge.cloud.base.services import BaseRegionService
+from cloudbridge.cloud.base.services import BaseRouterService
+from cloudbridge.cloud.base.services import BaseSecurityService
+from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseStorageService
+from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallService
+from cloudbridge.cloud.base.services import BaseVMTypeService
+from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
+from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import Network
+from cloudbridge.cloud.interfaces.resources import PlacementZone
+from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import VMFirewall
+from cloudbridge.cloud.interfaces.resources import VMType
+from cloudbridge.cloud.interfaces.resources import Volume
 
 from .resources import AzureBucket, AzureBucketObject, \
     AzureInstance, AzureKeyPair, \
