@@ -8,6 +8,7 @@ from azure.mgmt.compute.models import DiskCreateOption
 from msrestazure.azure_exceptions import CloudError
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.events import execute
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
@@ -395,6 +396,8 @@ class AzureBucketService(BaseBucketService):
     def __init__(self, provider):
         super(AzureBucketService, self).__init__(provider)
 
+    @execute(event_pattern="azure.storage.buckets.get",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
@@ -407,12 +410,16 @@ class AzureBucketService(BaseBucketService):
             log.exception(error)
             return None
 
+    @execute(event_pattern="azure.storage.buckets.list",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit, marker):
         buckets = [AzureBucket(self.provider, bucket)
                    for bucket in self.provider.azure_client.list_containers()]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
+    @execute(event_pattern="azure.storage.buckets.create",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location=None):
         """
         Create a new bucket.

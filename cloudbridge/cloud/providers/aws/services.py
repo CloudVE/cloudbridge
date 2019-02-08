@@ -309,7 +309,7 @@ class AWSBucketService(BaseBucketService):
                                  cb_resource=AWSBucket,
                                  boto_collection_name='buckets')
 
-    @execute(event_pattern="provider.storage.buckets.get",
+    @execute(event_pattern="aws.storage.buckets.get",
              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
@@ -339,12 +339,12 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    @execute(event_pattern="provider.storage.buckets.list",
+    @execute(event_pattern="aws.storage.buckets.list",
              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit, marker):
         return self.svc.list(limit=limit, marker=marker)
 
-    @execute(event_pattern="provider.storage.buckets.create",
+    @execute(event_pattern="aws.storage.buckets.create",
              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location):
         AWSBucket.assert_valid_resource_name(name)
