@@ -252,6 +252,7 @@ class BaseBucketObjectService(
         self._service_event_pattern += ".storage.bucket_objects"
         self._bucket = None
 
+    # Default bucket needs to be set in order for the service to be iterable
     def set_bucket(self, bucket):
         bucket = bucket if isinstance(bucket, BaseBucket) \
                  else self.provider.storage.buckets.get(bucket)

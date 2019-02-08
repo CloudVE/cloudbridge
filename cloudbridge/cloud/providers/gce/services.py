@@ -1,3 +1,4 @@
+import io
 import ipaddress
 import json
 import logging
@@ -12,6 +13,7 @@ from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
+from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -47,6 +49,7 @@ from .resources import GCEVMFirewall
 from .resources import GCEVMType
 from .resources import GCEVolume
 from .resources import GCSBucket
+from .resources import GCSObject
 
 log = logging.getLogger(__name__)
 
@@ -1209,12 +1212,88 @@ class GCSBucketService(BaseBucketService):
         """
         Delete this bucket.
         """
+        # GCE uses name rather than URL to identify resources
+        name = (self._provider._storage_resources
+                    .parse_url(bucket_id)
+                    .parameters.get("bucket"))
         (self._provider
              .gcs_storage
              .buckets()
-             .delete(bucket=bucket_id)
+             .delete(bucket=name)
              .execute())
         # GCS has a rate limit of 1 operation per 2 seconds for bucket
         # creation/deletion: https://cloud.google.com/storage/quotas. Throttle
         # here to avoid future failures.
         time.sleep(2)
+
+
+class GCSBucketObjectService(BaseBucketObjectService):
+
+    def __init__(self, provider, bucket):
+        super(GCSBucketObjectService, self).__init__(provider)
+
+    def get(self, bucket, name):
+        """
+        Retrieve a given object from this bucket.
+        """
+        obj = self.provider.get_resource('objects', name,
+                                         bucket=bucket.name)
+        return GCSObject(self.provider, bucket, obj) if obj else None
+
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+        """
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gcs_storage
+                        .objects()
+                        .list(bucket=bucket.name,
+                              prefix=prefix if prefix else '',
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        objects = []
+        for obj in response.get('items', []):
+            objects.append(GCSObject(self.provider, bucket, obj))
+        if len(objects) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(objects))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=objects)
+
+    def find(self, bucket, **kwargs):
+        master_list = []
+        obj_list = self.list(bucket=bucket, limit=500)
+        if obj_list.supports_server_paging:
+            master_list.extend(obj_list)
+            while obj_list.is_truncated:
+                obj_list = self.list(marker=obj_list.marker,
+                                     **kwargs)
+                master_list.extend(obj_list)
+        else:
+            master_list.extend(obj_list.data)
+
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=None, marker=None)
+
+    def create(self, bucket, name):
+        def _create_object_with_media_body(name, media_body):
+            response = (self.provider
+                        .gcs_storage
+                        .objects()
+                        .insert(bucket=bucket.name,
+                                body={'name': name},
+                                media_body=media_body)
+                        .execute())
+            return response
+
+        response = _create_object_with_media_body(
+            name,
+            googleapiclient.http.MediaIoBaseUpload(
+                io.BytesIO(b''), mimetype='plain/text'))
+        return GCSObject(self._provider, self,
+                         response) if response else None
