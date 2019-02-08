@@ -4,7 +4,7 @@ Base implementation for services available through a provider
 import logging
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.events import execute
+from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
@@ -53,7 +53,7 @@ class BaseCloudService(CloudService):
         return self._provider
 
     def emit(self, sender, event, *args, **kwargs):
-        return self._provider.events.emit(sender, event, *args, **kwargs)
+        return self._provider.events.dispatch(sender, event, *args, **kwargs)
 
     def _generate_event_pattern(self, func_name):
         return ".".join((self._service_event_pattern, func_name))
@@ -66,11 +66,11 @@ class BaseCloudService(CloudService):
         event_pattern = self._generate_event_pattern(func_name)
         self.provider.events.intercept(event_pattern, priority, callback)
 
-    def execute_function(self, func_name, priority, callback):
+    def implement_function(self, func_name, priority, callback):
         event_pattern = self._generate_event_pattern(func_name)
-        self.provider.events.execute(event_pattern, priority, callback)
+        self.provider.events.implement(event_pattern, priority, callback)
 
-    def emit_function(self, sender, func_name, *args, **kwargs):
+    def dispatch_function(self, sender, func_name, *args, **kwargs):
         """
         Emits the event corresponding to the given function name for the
         current service
@@ -84,8 +84,8 @@ class BaseCloudService(CloudService):
         :return:  The return value resulting from the handler chain invocations
         """
         full_event_name = self._generate_event_pattern(func_name)
-        return self._provider.events.emit(sender, full_event_name,
-                                          *args, **kwargs)
+        return self._provider.events.dispatch(sender, full_event_name,
+                                              *args, **kwargs)
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):
@@ -173,8 +173,8 @@ class BaseBucketService(
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
-    @execute(event_pattern="*.storage.buckets.find",
-             priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="*.storage.buckets.find",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def _find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -202,20 +202,20 @@ class BaseBucketService(
                   the bucket's provider-specific CloudBridge object is
                   returned if the bucket is found.
         """
-        return self.emit_function(self, "get", bucket_id)
+        return self.dispatch_function(self, "get", bucket_id)
 
     def find(self, **kwargs):
         """
         Returns a list of buckets filtered by the given keyword arguments.
         Accepted search arguments are: 'name'
         """
-        return self.emit_function(self, "find", **kwargs)
+        return self.dispatch_function(self, "find", **kwargs)
 
     def list(self, limit=None, marker=None):
         """
         List all buckets.
         """
-        return self.emit_function(self, "list", limit=limit, marker=marker)
+        return self.dispatch_function(self, "list", limit=limit, marker=marker)
 
     def create(self, name, location=None):
         """
@@ -229,7 +229,7 @@ class BaseBucketService(
         :return:  The created bucket's provider-specific CloudBridge object.
         """
         BaseBucket.assert_valid_resource_name(name)
-        return self.emit_function(self, "create", name, location=location)
+        return self.dispatch_function(self, "create", name, location=location)
 
     def delete(self, bucket_id):
         """
@@ -238,7 +238,7 @@ class BaseBucketService(
         :type bucket_id: str
         :param bucket_id: The ID of the bucket to be deleted.
         """
-        return self.emit_function(self, "delete", bucket_id)
+        return self.dispatch_function(self, "delete", bucket_id)
 
 
 class BaseBucketObjectService(

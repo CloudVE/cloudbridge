@@ -62,8 +62,8 @@ class MiddlewareSystemTestCase(unittest.TestCase):
         manager = SimpleMiddlewareManager(dispatcher)
         middleware = DummyMiddleWare()
         manager.add(middleware)
-        dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
-                        a_keyword_arg='something')
+        dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
+                            a_keyword_arg='something')
 
         self.assertEqual(middleware.invocation_order, "intercept_observe")
         self.assertListEqual(
@@ -106,7 +106,7 @@ class MiddlewareSystemTestCase(unittest.TestCase):
         middleware2 = DummyMiddleWare2()
         manager.add(middleware1)
         manager.add(middleware2)
-        dispatcher.emit(self, EVENT_NAME)
+        dispatcher.dispatch(self, EVENT_NAME)
 
         # Callbacks in both middleware classes should be registered
         self.assertListEqual(
@@ -157,7 +157,7 @@ class MiddlewareSystemTestCase(unittest.TestCase):
         manager = SimpleMiddlewareManager(dispatcher)
         some_obj = SomeDummyClass()
         middleware = manager.add(some_obj)
-        dispatcher.emit(self, EVENT_NAME)
+        dispatcher.dispatch(self, EVENT_NAME)
 
         # Middleware should be discovered even if class containing interceptors
         # doesn't inherit from Middleware

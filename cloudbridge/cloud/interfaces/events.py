@@ -93,7 +93,7 @@ class EventDispatcher(object):
         pass
 
     @abstractmethod
-    def emit(self, sender, event, *args, **kwargs):
+    def dispatch(self, sender, event, *args, **kwargs):
         """
         Raises an event, which will trigger all handlers that are registered
         for this event. The return value of the emit function is the return

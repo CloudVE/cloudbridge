@@ -10,7 +10,7 @@ import cachetools
 import requests
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.events import execute
+from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
@@ -309,8 +309,8 @@ class AWSBucketService(BaseBucketService):
                                  cb_resource=AWSBucket,
                                  boto_collection_name='buckets')
 
-    @execute(event_pattern="aws.storage.buckets.get",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="aws.storage.buckets.get",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
@@ -339,13 +339,13 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    @execute(event_pattern="aws.storage.buckets.list",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="aws.storage.buckets.list",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit, marker):
         return self.svc.list(limit=limit, marker=marker)
 
-    @execute(event_pattern="aws.storage.buckets.create",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="aws.storage.buckets.create",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location):
         AWSBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
@@ -379,8 +379,8 @@ class AWSBucketService(BaseBucketService):
                 else:
                     raise
 
-    @execute(event_pattern="aws.storage.buckets.delete",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="aws.storage.buckets.delete",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _delete(self, bucket_id):
         bucket = self._get(bucket_id)
         if bucket:

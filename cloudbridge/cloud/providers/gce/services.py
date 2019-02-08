@@ -8,7 +8,7 @@ import googleapiclient
 
 import cloudbridge as cb
 from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.base.events import execute
+from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketService
@@ -1131,8 +1131,8 @@ class GCSBucketService(BaseBucketService):
     def __init__(self, provider):
         super(GCSBucketService, self).__init__(provider)
 
-    @execute(event_pattern="gce.storage.buckets.get",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="gce.storage.buckets.get",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
@@ -1142,8 +1142,8 @@ class GCSBucketService(BaseBucketService):
         bucket = self.provider.get_resource('buckets', bucket_id)
         return GCSBucket(self.provider, bucket) if bucket else None
 
-    @execute(event_pattern="gce.storage.buckets.find",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="gce.storage.buckets.find",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _find(self, name, limit=None, marker=None):
         """
         Searches in bucket names for a substring.
@@ -1152,8 +1152,8 @@ class GCSBucketService(BaseBucketService):
         return ClientPagedResultList(self.provider, buckets, limit=limit,
                                      marker=marker)
 
-    @execute(event_pattern="gce.storage.buckets.list",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="gce.storage.buckets.list",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit=None, marker=None):
         """
         List all containers.
@@ -1176,8 +1176,8 @@ class GCSBucketService(BaseBucketService):
                                      response.get('nextPageToken'),
                                      False, data=buckets)
 
-    @execute(event_pattern="gce.storage.buckets.create",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="gce.storage.buckets.create",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location=None):
         GCSBucket.assert_valid_resource_name(name)
         body = {'name': name}
@@ -1203,8 +1203,8 @@ class GCSBucketService(BaseBucketService):
             else:
                 raise
 
-    @execute(event_pattern="gce.storage.buckets.delete",
-             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="gce.storage.buckets.delete",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _delete(self, bucket_id):
         """
         Delete this bucket.

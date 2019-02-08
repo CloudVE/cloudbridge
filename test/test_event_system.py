@@ -9,7 +9,7 @@ class EventSystemTestCase(unittest.TestCase):
 
     def test_emit_event_no_handlers(self):
         dispatcher = SimpleEventDispatcher()
-        result = dispatcher.emit(self, "event.hello.world")
+        result = dispatcher.dispatch(self, "event.hello.world")
         self.assertIsNone(result, "Result should be none as there are no"
                           "registered handlers")
 
@@ -30,8 +30,8 @@ class EventSystemTestCase(unittest.TestCase):
         handler = dispatcher.observe(event_pattern=EVENT_NAME, priority=1000,
                                      callback=my_callback)
         self.assertIsInstance(handler, EventHandler)
-        result = dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
-                                 a_keyword_arg='another_thing')
+        result = dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
+                                     a_keyword_arg='another_thing')
         self.assertEqual(
             callback_tracker[0], "obs", "callback should have been invoked"
             "once and contain value `obs` but tracker value is {0}".format(
@@ -57,8 +57,8 @@ class EventSystemTestCase(unittest.TestCase):
         handler = dispatcher.intercept(event_pattern=EVENT_NAME, priority=1000,
                                        callback=my_callback)
         self.assertIsInstance(handler, EventHandler)
-        result = dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
-                                 a_keyword_arg='another_thing')
+        result = dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
+                                     a_keyword_arg='another_thing')
         self.assertEqual(
             callback_tracker[0], "intcpt", "callback should have been invoked"
             "once and contain value `intcpt` but tracker value is {0}".format(
@@ -92,8 +92,8 @@ class EventSystemTestCase(unittest.TestCase):
         dispatcher = SimpleEventDispatcher()
         dispatcher.observe(EVENT_NAME, 1000, my_callback_obs)
         dispatcher.intercept(EVENT_NAME, 1001, my_callback_intcpt)
-        result = dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
-                                 a_keyword_arg='another_thing')
+        result = dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
+                                     a_keyword_arg='another_thing')
         self.assertEqual(
             callback_tracker[0], "obs_intcpt_", "callback was not invoked in "
             "expected order. Should have been obs_intcpt_ but is {0}".format(
@@ -136,8 +136,8 @@ class EventSystemTestCase(unittest.TestCase):
         # register priorities out of order to test that too
         dispatcher.observe(EVENT_NAME, 1001, my_callback_obs)
         dispatcher.intercept(EVENT_NAME, 1000, my_callback_intcpt)
-        result = dispatcher.emit(self, EVENT_NAME, 'first_pos_arg',
-                                 a_keyword_arg='another_thing')
+        result = dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
+                                     a_keyword_arg='another_thing')
         self.assertEqual(
             callback_tracker[0], "intcpt_obs_", "callback was not invoked in "
             "expected order. Should have been intcpt_obs_ but is {0}".format(
@@ -170,7 +170,7 @@ class EventSystemTestCase(unittest.TestCase):
         dispatcher = SimpleEventDispatcher()
         dispatcher.intercept(EVENT_NAME, 2000, my_callback_intcpt1)
         dispatcher.intercept(EVENT_NAME, 2020, my_callback_intcpt2)
-        result = dispatcher.emit(self, EVENT_NAME)
+        result = dispatcher.dispatch(self, EVENT_NAME)
         self.assertEqual(
             callback_tracker[0], "intcpt1_intcpt2_", "callback was not invoked"
             " in expected order. Should have been intcpt1_intcpt2_ but is"
@@ -187,7 +187,7 @@ class EventSystemTestCase(unittest.TestCase):
         dispatcher.intercept("event.hello.world", 1000, my_callback)
         dispatcher.intercept("event.hello.world", 1000, my_callback)
         with self.assertRaises(HandlerException):
-            dispatcher.emit(self, "event.hello.world")
+            dispatcher.dispatch(self, "event.hello.world")
 
     def test_subscribe_event_duplicate_wildcard_priority(self):
 
@@ -198,7 +198,7 @@ class EventSystemTestCase(unittest.TestCase):
         dispatcher.intercept("event.hello.world", 1000, my_callback)
         dispatcher.intercept("event.hello.*", 1000, my_callback)
         with self.assertRaises(HandlerException):
-            dispatcher.emit(self, "event.hello.world")
+            dispatcher.dispatch(self, "event.hello.world")
 
     def test_subscribe_event_duplicate_wildcard_priority_allowed(self):
         # duplicate priorities for different wildcard namespaces allowed
@@ -209,7 +209,7 @@ class EventSystemTestCase(unittest.TestCase):
         dispatcher.intercept("event.hello.world", 1000, my_callback)
         dispatcher.intercept("someevent.hello.*", 1000, my_callback)
         # emit should work fine in this case with no exceptions
-        dispatcher.emit(self, "event.hello.world")
+        dispatcher.dispatch(self, "event.hello.world")
 
     def test_subscribe_multiple_events(self):
         EVENT_NAME = "event.hello.world"
@@ -241,7 +241,7 @@ class EventSystemTestCase(unittest.TestCase):
         # register to a different event with the same priority
         dispatcher.observe("event.hello.anotherworld", 2000, my_callback2)
         dispatcher.intercept("event.hello.anotherworld", 2020, my_callback3)
-        result = dispatcher.emit(self, EVENT_NAME)
+        result = dispatcher.dispatch(self, EVENT_NAME)
         self.assertEqual(
             callback_tracker[0], "event1_", "only `event.hello.world` handlers"
             " should have been  triggered but received {0}".format(
@@ -249,7 +249,7 @@ class EventSystemTestCase(unittest.TestCase):
         self.assertEqual(result, None, "Result should be `helloworld` "
                          "as this is the expected return value from the chain")
 
-        result = dispatcher.emit(self, "event.hello.anotherworld")
+        result = dispatcher.dispatch(self, "event.hello.anotherworld")
         self.assertEqual(
             callback_tracker[0], "event1_event2_event3_", "only handlers for"
             "  event `event.hello.anotherworld` should have been  triggered"
@@ -288,7 +288,7 @@ class EventSystemTestCase(unittest.TestCase):
         dispatcher.intercept("event.*.world", 2020, my_callback4)
         dispatcher.intercept("someevent.hello.there", 2030, my_callback3)
         # emit a series of events
-        result = dispatcher.emit(self, "event.hello.there")
+        result = dispatcher.dispatch(self, "event.hello.there")
 
         self.assertEqual(
             callback_tracker[0], "event1_event2_event3_event4_",
@@ -296,7 +296,7 @@ class EventSystemTestCase(unittest.TestCase):
                 callback_tracker[0]))
         self.assertEqual(result, "hellosomeotherworld")
 
-        result = dispatcher.emit(self, "event.test.hello.world")
+        result = dispatcher.dispatch(self, "event.test.hello.world")
         self.assertEqual(
             callback_tracker[0], "event1_event2_event3_event4_event1_event4_",
             "Event handlers executed in unexpected order {0}".format(
@@ -322,9 +322,9 @@ class EventSystemTestCase(unittest.TestCase):
 
         dispatcher = SimpleEventDispatcher()
         dispatcher.intercept("event.hello.world", 1000, my_callback1)
-        dispatcher.emit(self, "event.hello.world")
+        dispatcher.dispatch(self, "event.hello.world")
         dispatcher.intercept("event.hello.*", 1001, my_callback2)
-        result = dispatcher.emit(self, "event.hello.world")
+        result = dispatcher.dispatch(self, "event.hello.world")
 
         self.assertEqual(
             callback_tracker[0], "event1_event1_event2_",
@@ -351,7 +351,7 @@ class EventSystemTestCase(unittest.TestCase):
 
         dispatcher = SimpleEventDispatcher()
         hndlr1 = dispatcher.intercept(EVENT_NAME, 1000, my_callback1)
-        dispatcher.emit(self, EVENT_NAME)
+        dispatcher.dispatch(self, EVENT_NAME)
         hndlr2 = dispatcher.intercept("event.hello.*", 1001, my_callback2)
         # Both handlers should be registered
         self.assertListEqual(
@@ -366,7 +366,7 @@ class EventSystemTestCase(unittest.TestCase):
             [handler.callback for handler in
              dispatcher.get_handlers_for_event(EVENT_NAME)])
 
-        result = dispatcher.emit(self, EVENT_NAME)
+        result = dispatcher.dispatch(self, EVENT_NAME)
 
         self.assertEqual(
             callback_tracker[0], "event1_event2_",
@@ -375,5 +375,5 @@ class EventSystemTestCase(unittest.TestCase):
         self.assertEqual(result, "some")
 
         hndlr2.unsubscribe()
-        result = dispatcher.emit(self, "event.hello.world")
+        result = dispatcher.dispatch(self, "event.hello.world")
         self.assertEqual(result, None)

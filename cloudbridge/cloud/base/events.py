@@ -32,7 +32,7 @@ def observe(event_pattern, priority):
     return deco
 
 
-def execute(event_pattern, priority):
+def implement(event_pattern, priority):
     def deco(f):
         # Mark function as having an event_handler so we can discover it
         # The callback cannot be set to f as it is not bound yet and will be
@@ -207,12 +207,12 @@ class SimpleEventDispatcher(EventDispatcher):
         self.subscribe(handler)
         return handler
 
-    def execute(self, event_pattern, priority, callback):
+    def implement(self, event_pattern, priority, callback):
         handler = ExecutingEventHandler(event_pattern, priority, callback)
         self.subscribe(handler)
         return handler
 
-    def emit(self, sender, event, *args, **kwargs):
+    def dispatch(self, sender, event, *args, **kwargs):
         handlers = self.get_handlers_for_event(event)
 
         if handlers:
