@@ -16,7 +16,6 @@ from collections import namedtuple
 import googleapiclient
 
 import cloudbridge as cb
-import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketContainer

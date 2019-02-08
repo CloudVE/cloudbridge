@@ -12,8 +12,8 @@ from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
-from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseBucketObjectService
+from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
