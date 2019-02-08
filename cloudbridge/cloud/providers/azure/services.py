@@ -392,6 +392,7 @@ class AzureBucketService(BaseBucketService):
         """
         Create a new bucket.
         """
+        AzureBucket.assert_valid_resource_name(name)
         bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
 

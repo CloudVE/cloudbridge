@@ -10,6 +10,7 @@ import cachetools
 import requests
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.events import execute
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
@@ -307,6 +308,8 @@ class AWSBucketService(BaseBucketService):
                                  cb_resource=AWSBucket,
                                  boto_collection_name='buckets')
 
+    @execute(event_pattern="provider.storage.buckets.get",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
@@ -335,10 +338,16 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
+    @execute(event_pattern="provider.storage.buckets.list",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit, marker):
         return self.svc.list(limit=limit, marker=marker)
 
+    @execute(event_pattern="provider.storage.buckets.create",
+             priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location):
+        AWSBucket.assert_valid_resource_name(name)
+        location = location or self.provider.region_name
         # Due to an API issue in S3, specifying us-east-1 as a
         # LocationConstraint results in an InvalidLocationConstraint.
         # Therefore, it must be special-cased and omitted altogether.
