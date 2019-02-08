@@ -58,14 +58,17 @@ class BaseCloudService(CloudService):
     def _generate_event_pattern(self, func_name):
         return ".".join((self._service_event_pattern, func_name))
 
-    def observe(self, func_name, priority, callback):
+    def observe_function(self, func_name, priority, callback):
         event_pattern = self._generate_event_pattern(func_name)
         self.provider.events.observe(event_pattern, priority, callback)
 
-    def call(self, func_name, priority, callback, **kwargs):
+    def intercept_function(self, func_name, priority, callback):
         event_pattern = self._generate_event_pattern(func_name)
-        return self.provider.events.call(event_pattern, priority, callback,
-                                         **kwargs)
+        self.provider.events.intercept(event_pattern, priority, callback)
+
+    def execute_function(self, func_name, priority, callback):
+        event_pattern = self._generate_event_pattern(func_name)
+        self.provider.events.execute(event_pattern, priority, callback)
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):
