@@ -414,7 +414,8 @@ class AzureBucketService(BaseBucketService):
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit, marker):
         buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in self.provider.azure_client.list_containers()]
+                   for bucket
+                   in self.provider.azure_client.list_containers()[0]]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
