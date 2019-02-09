@@ -389,6 +389,9 @@ class AWSBucketService(BaseBucketService):
 
 class AWSBucketObjectService(BaseBucketObjectService):
 
+    def __init__(self, provider):
+        super(AWSBucketObjectService, self).__init__(provider)
+
     def get(self, bucket, object_id):
         try:
             # pylint:disable=protected-access

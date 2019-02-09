@@ -1234,7 +1234,7 @@ class GCSBucketService(BaseBucketService):
 
 class GCSBucketObjectService(BaseBucketObjectService):
 
-    def __init__(self, provider, bucket):
+    def __init__(self, provider):
         super(GCSBucketObjectService, self).__init__(provider)
 
     def get(self, bucket, name):

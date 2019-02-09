@@ -38,6 +38,7 @@ class BaseMiddleware(Middleware):
 
     def __init__(self):
         self.event_handlers = []
+        self.events = None
 
     def install(self, event_manager):
         self.events = event_manager
