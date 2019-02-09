@@ -214,7 +214,7 @@ listed in order to help map each resource with the service that handles it.
 Note that labeled resources allow to find by label, while unlabeled
 resources find by name or their special properties (eg: public_ip for
 floating IPs). For more detailed information on the types of resources and
-their provider mappings, see :doc:`topics/resource_types_and_mappings`.
+their provider mappings, see :doc:`topics/resource_types_and_mapping`.
 
 .. code-block:: python
 

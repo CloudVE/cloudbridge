@@ -1,5 +1,8 @@
+Detailed OpenStack Type and Resource Mappings
+=============================================
+
 OpenStack - Labeled Resources
------------------------
+-----------------------------
 +------------------------+------------------------+-----------+----------------+----------+
 | Labeled Resource       | OS Resource Type       | CB ID     | CB Name        | CB Label |
 +========================+========================+===========+================+==========+
@@ -22,32 +25,32 @@ OpenStack - Labeled Resources
 
 The resources listed above are labeled, they thus have both the `name` and
 `label` properties in CloudBridge. These resources require a mandatory `label`
-parameter at creation. For all labeled resources, the `label` property in OpenStack
-maps to the Name attribute. However, unlike in Azure or AWS, no resource has
-an unchangeable name by which to identify it in our OpenStack implementation.
-The `name` property will therefore map to the ID, preserving its role as an unchangeable 
-identifier even though not easily readable in this context. Finally, labeled resources
-support a `label` parameter for the `find` method in their corresponding services.
-The below screenshots will help map these properties to OpenStack objects in the
-web portal.
-Additionally, although OpenStack Security Groups are not associated with a
-specific network, such an association is done in CloudBridge, due to its
-necessity in AWS. As such, the VMFirewall creation method requires a
-`network` parameter and the association is accomplished in OpenStack through
-the description, by appending the following string to the user-provided description
-(if any) at creation: "[CB-AUTO-associated-network-id: associated_net_id]"
+parameter at creation. For all labeled resources, the `label` property in
+OpenStack maps to the Name attribute. However, unlike in Azure or AWS, no
+resource has an unchangeable name by which to identify it in our OpenStack
+implementation. The `name` property will therefore map to the ID, preserving
+its role as an unchangeable identifier even though not easily readable in this
+context. Finally, labeled resources support a `label` parameter for the `find`
+method in their corresponding services. The below screenshots will help map
+these properties to OpenStack objects in the web portal. Additionally, although
+OpenStack Security Groups are not associated with a specific network, such an
+association is done in CloudBridge, due to its necessity in AWS. As such, the
+VMFirewall creation method requires a `network` parameter and the association
+is accomplished in OpenStack through the description, by appending the
+following string to the user-provided description (if any) at creation:
+"[CB-AUTO-associated-network-id: associated_net_id]"
 
 .. figure:: captures/os-instance-dash.png
    :alt: name, ID, and label properties for OS Instances
 
    The CloudBridge `name` and `ID` properties map to the unchangeable
    resource ID in OpenStack as resources do not allow for an unchangeable
-   name. The `label` property maps to the 'Name' for all resources in 
+   name. The `label` property maps to the 'Name' for all resources in
    OpenStack. By default, this label will appear in the first column.
 
 
 OpenStack - Unlabeled Resources
----------------------------
+-------------------------------
 +-----------------------+------------------------+-------+---------+----------+
 | Unlabeled Resource    | OS Resource Type       | CB ID | CB Name | CB Label |
 +=======================+========================+=======+=========+==========+
@@ -76,7 +79,7 @@ services.
 
 
 OpenStack - Special Unlabeled Resources
------------------------------------
+---------------------------------------
 +--------------------------+------------------------+-------+------------------------------------------------------------------------+----------+
 | Unlabeled Resource       | OS Resource Type       | CB ID | CB Name                                                                | CB Label |
 +==========================+========================+=======+========================================================================+==========+

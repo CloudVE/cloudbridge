@@ -1,5 +1,5 @@
 Working with object storage
-==========================
+===========================
 Object storage provides a simple way to store and retrieve large amounts of
 unstructured data over HTTP. Object Storage is also referred to as Blob (Binary
 Large OBject) Storage by Azure, and Simple Storage Service (S3) by Amazon.

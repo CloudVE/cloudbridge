@@ -699,7 +699,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         :param subnet_id: The ID of the subnet to retrieve.
 
         :rtype: ``object`` of :class:`.Subnet`
-        return: a Subnet object
+        :return: a Subnet object
         """
         pass
 
