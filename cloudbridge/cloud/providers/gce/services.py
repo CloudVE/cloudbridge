@@ -1,3 +1,4 @@
+import io
 import ipaddress
 import json
 import logging
@@ -8,8 +9,10 @@ import googleapiclient
 
 import cloudbridge as cb
 from cloudbridge.cloud.base import helpers as cb_helpers
+from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
@@ -46,6 +49,7 @@ from .resources import GCEVMFirewall
 from .resources import GCEVMType
 from .resources import GCEVolume
 from .resources import GCSBucket
+from .resources import GCSObject
 
 log = logging.getLogger(__name__)
 
@@ -919,6 +923,7 @@ class GCPStorageService(BaseStorageService):
         self._volume_svc = GCEVolumeService(self.provider)
         self._snapshot_svc = GCESnapshotService(self.provider)
         self._bucket_svc = GCSBucketService(self.provider)
+        self._bucket_obj_svc = GCSBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -931,6 +936,10 @@ class GCPStorageService(BaseStorageService):
     @property
     def buckets(self):
         return self._bucket_svc
+
+    @property
+    def bucket_objects(self):
+        return self._bucket_obj_svc
 
 
 class GCEVolumeService(BaseVolumeService):
@@ -1130,7 +1139,9 @@ class GCSBucketService(BaseBucketService):
     def __init__(self, provider):
         super(GCSBucketService, self).__init__(provider)
 
-    def get(self, bucket_id):
+    @implement(event_pattern="provider.storage.buckets.get",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist or if the user does not have permission to access the
@@ -1139,7 +1150,9 @@ class GCSBucketService(BaseBucketService):
         bucket = self.provider.get_resource('buckets', bucket_id)
         return GCSBucket(self.provider, bucket) if bucket else None
 
-    def find(self, name, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.buckets.find",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _find(self, name, limit=None, marker=None):
         """
         Searches in bucket names for a substring.
         """
@@ -1147,7 +1160,9 @@ class GCSBucketService(BaseBucketService):
         return ClientPagedResultList(self.provider, buckets, limit=limit,
                                      marker=marker)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.buckets.list",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all containers.
         """
@@ -1169,7 +1184,9 @@ class GCSBucketService(BaseBucketService):
                                      response.get('nextPageToken'),
                                      False, data=buckets)
 
-    def create(self, name, location=None):
+    @implement(event_pattern="provider.storage.buckets.create",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _create(self, name, location=None):
         GCSBucket.assert_valid_resource_name(name)
         body = {'name': name}
         if location:
@@ -1193,3 +1210,97 @@ class GCSBucketService(BaseBucketService):
                     'Bucket already exists with name {0}'.format(name))
             else:
                 raise
+
+    @implement(event_pattern="provider.storage.buckets.delete",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        """
+        Delete this bucket.
+        """
+        # GCE uses name rather than URL to identify resources
+        name = (self._provider._storage_resources
+                    .parse_url(bucket_id)
+                    .parameters.get("bucket"))
+        (self._provider
+             .gcs_storage
+             .buckets()
+             .delete(bucket=name)
+             .execute())
+        # GCS has a rate limit of 1 operation per 2 seconds for bucket
+        # creation/deletion: https://cloud.google.com/storage/quotas. Throttle
+        # here to avoid future failures.
+        time.sleep(2)
+
+
+class GCSBucketObjectService(BaseBucketObjectService):
+
+    def __init__(self, provider):
+        super(GCSBucketObjectService, self).__init__(provider)
+
+    def get(self, bucket, name):
+        """
+        Retrieve a given object from this bucket.
+        """
+        obj = self.provider.get_resource('objects', name,
+                                         bucket=bucket.name)
+        return GCSObject(self.provider, bucket, obj) if obj else None
+
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+        """
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gcs_storage
+                        .objects()
+                        .list(bucket=bucket.name,
+                              prefix=prefix if prefix else '',
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        objects = []
+        for obj in response.get('items', []):
+            objects.append(GCSObject(self.provider, bucket, obj))
+        if len(objects) > max_result:
+            cb.log.warning('Expected at most %d results; got %d',
+                           max_result, len(objects))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=objects)
+
+    def find(self, bucket, **kwargs):
+        master_list = []
+        obj_list = self.list(bucket=bucket, limit=500)
+        if obj_list.supports_server_paging:
+            master_list.extend(obj_list)
+            while obj_list.is_truncated:
+                obj_list = self.list(marker=obj_list.marker,
+                                     **kwargs)
+                master_list.extend(obj_list)
+        else:
+            master_list.extend(obj_list.data)
+
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=None, marker=None)
+
+    def _create_object_with_media_body(self, bucket, name, media_body):
+        response = (self.provider
+                    .gcs_storage
+                    .objects()
+                    .insert(bucket=bucket.name,
+                            body={'name': name},
+                            media_body=media_body)
+                    .execute())
+        return response
+
+    def create(self, bucket, name):
+        response = self._create_object_with_media_body(
+                            bucket,
+                            name,
+                            googleapiclient.http.MediaIoBaseUpload(
+                                io.BytesIO(b''), mimetype='plain/text'))
+        return GCSObject(self._provider,
+                         bucket,
+                         response) if response else None

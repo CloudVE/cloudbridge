@@ -15,6 +15,7 @@ from openstack.exceptions import ResourceNotFound
 from swiftclient import ClientException as SwiftClientException
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
@@ -410,6 +411,8 @@ class OpenStackBucketService(BaseBucketService):
     def __init__(self, provider):
         super(OpenStackBucketService, self).__init__(provider)
 
+    @implement(event_pattern="provider.storage.buckets.get",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
@@ -425,6 +428,8 @@ class OpenStackBucketService(BaseBucketService):
             log.debug("Bucket %s was not found.", bucket_id)
             return None
 
+    @implement(event_pattern="provider.storage.buckets.find",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _find(self, **kwargs):
         name = kwargs.pop('name', None)
 
@@ -438,6 +443,8 @@ class OpenStackBucketService(BaseBucketService):
                       if name in c.get("name")]
         return oshelpers.to_server_paged_list(self.provider, cb_buckets)
 
+    @implement(event_pattern="provider.storage.buckets.list",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit, marker):
         _, container_list = self.provider.swift.get_account(
             limit=oshelpers.os_result_limit(self.provider, limit),
@@ -446,6 +453,8 @@ class OpenStackBucketService(BaseBucketService):
                       for c in container_list]
         return oshelpers.to_server_paged_list(self.provider, cb_buckets, limit)
 
+    @implement(event_pattern="provider.storage.buckets.create",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location):
         OpenStackBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
@@ -456,6 +465,11 @@ class OpenStackBucketService(BaseBucketService):
         except SwiftClientException:
             self.provider.swift.put_container(name)
             return self.get(name)
+
+    @implement(event_pattern="provider.storage.buckets.delete",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        self.provider.swift.delete_container(bucket_id)
 
 
 class OpenStackBucketObjectService(BaseBucketObjectService):
@@ -508,7 +522,7 @@ class OpenStackBucketObjectService(BaseBucketObjectService):
 
     def create(self, bucket, object_name):
         self.provider.swift.put_object(bucket.name, object_name, None)
-        return self.get(object_name)
+        return self.get(bucket, object_name)
 
 
 class OpenStackComputeService(BaseComputeService):

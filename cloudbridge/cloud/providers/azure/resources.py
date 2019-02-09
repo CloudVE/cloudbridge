@@ -358,12 +358,6 @@ class AzureBucket(BaseBucket):
         """
         return self._bucket.name
 
-    def delete(self, delete_contents=True):
-        """
-        Delete this bucket.
-        """
-        self._provider.azure_client.delete_container(self.name)
-
     def exists(self, name):
         """
         Determine if an object with given name exists in this bucket.

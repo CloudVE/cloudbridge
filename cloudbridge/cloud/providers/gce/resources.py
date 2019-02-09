@@ -16,7 +16,6 @@ from collections import namedtuple
 import googleapiclient
 
 import cloudbridge as cb
-import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketContainer
@@ -2150,8 +2149,11 @@ class GCSObject(BaseBucketObject):
             data = data.encode()
         media_body = googleapiclient.http.MediaIoBaseUpload(
                 io.BytesIO(data), mimetype='plain/text')
-        response = self._bucket.create_object_with_media_body(self.name,
-                                                              media_body)
+        response = (self._provider
+                        .storage.bucket_objects
+                        ._create_object_with_media_body(self._bucket,
+                                                        self.name,
+                                                        media_body))
         if response:
             self._obj = response
 
@@ -2162,8 +2164,11 @@ class GCSObject(BaseBucketObject):
         with open(path, 'rb') as f:
             media_body = googleapiclient.http.MediaIoBaseUpload(
                     f, 'application/octet-stream')
-            response = self._bucket.create_object_with_media_body(self.name,
-                                                                  media_body)
+            response = (self._provider
+                        .storage.bucket_objects
+                        ._create_object_with_media_body(self._bucket,
+                                                        self.name,
+                                                        media_body))
             if response:
                 self._obj = response
 
@@ -2201,47 +2206,6 @@ class GCSBucketContainer(BaseBucketContainer):
     def __init__(self, provider, bucket):
         super(GCSBucketContainer, self).__init__(provider, bucket)
 
-    def get(self, name):
-        """
-        Retrieve a given object from this bucket.
-        """
-        obj = self._provider.get_resource('objects', name,
-                                          bucket=self.bucket.name)
-        return GCSObject(self._provider, self.bucket, obj) if obj else None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-        """
-        max_result = limit if limit is not None and limit < 500 else 500
-        response = (self._provider
-                        .gcs_storage
-                        .objects()
-                        .list(bucket=self.bucket.name,
-                              prefix=prefix if prefix else '',
-                              maxResults=max_result,
-                              pageToken=marker)
-                        .execute())
-        objects = []
-        for obj in response.get('items', []):
-            objects.append(GCSObject(self._provider, self.bucket, obj))
-        if len(objects) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(objects))
-        return ServerPagedResultList('nextPageToken' in response,
-                                     response.get('nextPageToken'),
-                                     False, data=objects)
-
-    def find(self, **kwargs):
-        obj_list = self.list()
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches),
-                                     limit=None, marker=None)
-
-    def create(self, name):
-        return self.bucket.create_object(name)
-
 
 class GCSBucket(BaseBucket):
 
@@ -2264,40 +2228,6 @@ class GCSBucket(BaseBucket):
     @property
     def objects(self):
         return self._object_container
-
-    def delete(self, delete_contents=False):
-        """
-        Delete this bucket.
-        """
-        (self._provider
-             .gcs_storage
-             .buckets()
-             .delete(bucket=self.name)
-             .execute())
-        # GCS has a rate limit of 1 operation per 2 seconds for bucket
-        # creation/deletion: https://cloud.google.com/storage/quotas.  Throttle
-        # here to avoid future failures.
-        time.sleep(2)
-
-    def create_object(self, name):
-        """
-        Create an empty plain text object.
-        """
-        response = self.create_object_with_media_body(
-            name,
-            googleapiclient.http.MediaIoBaseUpload(
-                    io.BytesIO(b''), mimetype='plain/text'))
-        return GCSObject(self._provider, self, response) if response else None
-
-    def create_object_with_media_body(self, name, media_body):
-        response = (self._provider
-                        .gcs_storage
-                        .objects()
-                        .insert(bucket=self.name,
-                                body={'name': name},
-                                media_body=media_body)
-                        .execute())
-        return response
 
 
 class GCELaunchConfig(BaseLaunchConfig):

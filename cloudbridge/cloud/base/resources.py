@@ -752,6 +752,14 @@ class BaseBucket(BaseCloudResource, Bucket):
                 # check from most to least likely mutables
                 self.name == other.name)
 
+    def delete(self):
+        """
+        Delete this bucket.
+        """
+        self._provider.storage.buckets.delete(self.id)
+
+    # TODO: Discuss creating `create_object` method, or change docs
+
 
 class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
 

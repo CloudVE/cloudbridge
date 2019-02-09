@@ -4,8 +4,7 @@ Base implementation for services available through a provider
 import logging
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.events import execute
-from cloudbridge.cloud.base.middleware import observe
+from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
@@ -44,6 +43,7 @@ class BaseCloudService(CloudService):
     STANDARD_EVENT_PRIORITY = 2500
 
     def __init__(self, provider):
+        self._service_event_pattern = "provider"
         self._provider = provider
         # discover and register all middleware
         provider.middleware.add(self)
@@ -52,8 +52,8 @@ class BaseCloudService(CloudService):
     def provider(self):
         return self._provider
 
-    def emit(self, sender, event, *args, **kwargs):
-        return self._provider.events.emit(sender, event, *args, **kwargs)
+    def dispatch(self, sender, event, *args, **kwargs):
+        return self._provider.events.dispatch(sender, event, *args, **kwargs)
 
     def _generate_event_pattern(self, func_name):
         return ".".join((self._service_event_pattern, func_name))
@@ -66,24 +66,40 @@ class BaseCloudService(CloudService):
         event_pattern = self._generate_event_pattern(func_name)
         self.provider.events.intercept(event_pattern, priority, callback)
 
-    def execute_function(self, func_name, priority, callback):
+    def implement_function(self, func_name, priority, callback):
         event_pattern = self._generate_event_pattern(func_name)
-        self.provider.events.execute(event_pattern, priority, callback)
+        self.provider.events.implement(event_pattern, priority, callback)
+
+    def dispatch_function(self, sender, func_name, *args, **kwargs):
+        """
+        Emits the event corresponding to the given function name for the
+        current service
+
+        :type sender: CloudService
+        :param sender: The CloudBridge Service object sending the emit signal
+        :type func_name: str
+        :param func_name: The name of the function to be emitted. e.g.: 'get'
+        :type args: CloudService
+
+        :return:  The return value resulting from the handler chain invocations
+        """
+        full_event_name = self._generate_event_pattern(func_name)
+        return self._provider.events.dispatch(sender, full_event_name,
+                                              *args, **kwargs)
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseSecurityService, self).__init__(provider)
-        self._service_event_pattern += ".security"
 
 
 class BaseKeyPairService(
-        BasePageableObjectMixin, KeyPairService, BaseSecurityService):
+        BasePageableObjectMixin, KeyPairService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseKeyPairService, self).__init__(provider)
-        self._service_event_pattern += ".key_pairs"
+        self._service_event_pattern += ".security.key_pairs"
 
     def delete(self, key_pair_id):
         """
@@ -105,11 +121,11 @@ class BaseKeyPairService(
 
 
 class BaseVMFirewallService(
-        BasePageableObjectMixin, VMFirewallService, BaseSecurityService):
+        BasePageableObjectMixin, VMFirewallService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseVMFirewallService, self).__init__(provider)
-        self._service_event_pattern += ".vm_firewalls"
+        self._service_event_pattern += ".security.vm_firewalls"
 
     def find(self, **kwargs):
         obj_list = self
@@ -130,75 +146,35 @@ class BaseStorageService(StorageService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseStorageService, self).__init__(provider)
-        self._service_event_pattern += ".storage"
 
 
 class BaseVolumeService(
-        BasePageableObjectMixin, VolumeService, BaseStorageService):
+        BasePageableObjectMixin, VolumeService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseVolumeService, self).__init__(provider)
-        self._service_event_pattern += ".volumes"
+        self._service_event_pattern += ".storage.volumes"
 
 
 class BaseSnapshotService(
-        BasePageableObjectMixin, SnapshotService, BaseStorageService):
+        BasePageableObjectMixin, SnapshotService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseSnapshotService, self).__init__(provider)
-        self._service_event_pattern += ".snapshots"
+        self._service_event_pattern += ".storage.snapshots"
 
 
 class BaseBucketService(
-        BasePageableObjectMixin, BucketService, BaseStorageService):
+        BasePageableObjectMixin, BucketService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseBucketService, self).__init__(provider)
-        self._service_event_pattern += ".buckets"
-
-    @observe(event_pattern="provider.storage.buckets.get", priority=2000)
-    def _pre_log_get(self, event_args, bucket_id):
-        log.debug("Getting {} bucket with the id: {}".format(
-            self.provider.name, bucket_id))
-
-    @observe(event_pattern="provider.storage.buckets.get", priority=3000)
-    def _post_log_get(self, event_args, bucket_id):
-        log.debug("Returned bucket obj: {}".format(event_args.get('result')))
-
-    @observe(event_pattern="provider.storage.buckets.find", priority=2000)
-    def _pre_log_find(self, *args, **kwargs):
-        log.debug("Finding {} buckets with the following arguments: {}"
-                  .format(self.provider.name, kwargs))
-
-    @observe(event_pattern="provider.storage.buckets.find", priority=3000)
-    def _post_log_find(self, event_args, *args, **kwargs):
-        log.debug("Returned bucket obj: {}".format(event_args.get('result')))
-
-    def _list_pre_log(self, limit, marker):
-        message = "Listing {} buckets".format(self.provider.name)
-        if limit:
-            message += " with limit: {}".format(limit)
-        if marker:
-            message += " with marker: {}".format(marker)
-        log.debug(message)
-
-    def _list_post_log(self, callback_result, limit, marker):
-        log.debug("Returned bucket objects: {}".format(callback_result))
-
-    def _create_pre_log(self, name, location):
-        message = "Creating {} bucket with name '{}'".format(
-            self.provider.name, name)
-        if location:
-            message += " in location: {}".format(location)
-        log.debug(message)
-
-    def _create_post_log(self, callback_result, name, location):
-        log.debug("Returned bucket object: {}".format(callback_result))
+        self._service_event_pattern += ".storage.buckets"
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
-    @execute(event_pattern="provider.storage.buckets.find",
-             priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @implement(event_pattern="*.storage.buckets.find",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def _find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -217,39 +193,66 @@ class BaseBucketService(
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
+
+        :type bucket_id: str
+        :param bucket_id: The id of the desired bucket.
+
+        :rtype: ``Bucket``
+        :return:  ``None`` is returned if the bucket does not exist, and
+                  the bucket's provider-specific CloudBridge object is
+                  returned if the bucket is found.
         """
-        return self.emit(self, "provider.storage.buckets.get", bucket_id)
+        return self.dispatch(self, "provider.storage.buckets.get", bucket_id)
 
     def find(self, **kwargs):
         """
         Returns a list of buckets filtered by the given keyword arguments.
+        Accepted search arguments are: 'name'
         """
-        return self.emit(self, "provider.storage.buckets.find", **kwargs)
+        return self.dispatch(self, "provider.storage.buckets.find", **kwargs)
 
     def list(self, limit=None, marker=None):
         """
         List all buckets.
         """
-        return self.emit(self, "provider.storage.buckets.list",
-                         limit=limit, marker=marker)
+        return self.dispatch(self, "provider.storage.buckets.list",
+                             limit=limit, marker=marker)
 
     def create(self, name, location=None):
         """
         Create a new bucket.
+
+        :type name: str
+        :param name: The name of the bucket to be created. Note that names
+                     must be unique, and are unchangeable.
+
+        :rtype: ``Bucket``
+        :return:  The created bucket's provider-specific CloudBridge object.
         """
         BaseBucket.assert_valid_resource_name(name)
-        return self.emit(self, "provider.storage.buckets.create",
-                         name, location=location)
+        return self.dispatch(self, "provider.storage.buckets.create",
+                             name, location=location)
+
+    def delete(self, bucket_id):
+        """
+        Delete an existing bucket.
+
+        :type bucket_id: str
+        :param bucket_id: The ID of the bucket to be deleted.
+        """
+        return self.dispatch(self, "provider.storage.buckets.delete",
+                             bucket_id)
 
 
 class BaseBucketObjectService(
-        BasePageableObjectMixin, BucketObjectService, BaseStorageService):
+        BasePageableObjectMixin, BucketObjectService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseBucketObjectService, self).__init__(provider)
-        self._service_event_pattern += ".bucket_objects"
+        self._service_event_pattern += ".storage.bucket_objects"
         self._bucket = None
 
+    # Default bucket needs to be set in order for the service to be iterable
     def set_bucket(self, bucket):
         bucket = bucket if isinstance(bucket, BaseBucket) \
                  else self.provider.storage.buckets.get(bucket)
@@ -280,31 +283,30 @@ class BaseComputeService(ComputeService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseComputeService, self).__init__(provider)
-        self._service_event_pattern += ".compute"
 
 
 class BaseImageService(
-        BasePageableObjectMixin, ImageService, BaseComputeService):
+        BasePageableObjectMixin, ImageService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseImageService, self).__init__(provider)
-        self._service_event_pattern += ".images"
+        self._service_event_pattern += ".compute.images"
 
 
 class BaseInstanceService(
-        BasePageableObjectMixin, InstanceService, BaseComputeService):
+        BasePageableObjectMixin, InstanceService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseInstanceService, self).__init__(provider)
-        self._service_event_pattern += ".instances"
+        self._service_event_pattern += ".compute.instances"
 
 
 class BaseVMTypeService(
-        BasePageableObjectMixin, VMTypeService, BaseComputeService):
+        BasePageableObjectMixin, VMTypeService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseVMTypeService, self).__init__(provider)
-        self._service_event_pattern += ".vm_types"
+        self._service_event_pattern += ".compute.vm_types"
 
     def get(self, vm_type_id):
         vm_type = (t for t in self if t.id == vm_type_id)
@@ -318,11 +320,11 @@ class BaseVMTypeService(
 
 
 class BaseRegionService(
-        BasePageableObjectMixin, RegionService, BaseComputeService):
+        BasePageableObjectMixin, RegionService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseRegionService, self).__init__(provider)
-        self._service_event_pattern += ".regions"
+        self._service_event_pattern += ".compute.regions"
 
     def find(self, **kwargs):
         obj_list = self
@@ -335,15 +337,14 @@ class BaseNetworkingService(NetworkingService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseNetworkingService, self).__init__(provider)
-        self._service_event_pattern += ".networking"
 
 
 class BaseNetworkService(
-        BasePageableObjectMixin, NetworkService, BaseNetworkingService):
+        BasePageableObjectMixin, NetworkService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseNetworkService, self).__init__(provider)
-        self._service_event_pattern += ".networks"
+        self._service_event_pattern += ".networking.networks"
 
     @property
     def subnets(self):
@@ -370,11 +371,11 @@ class BaseNetworkService(
 
 
 class BaseSubnetService(
-        BasePageableObjectMixin, SubnetService, BaseNetworkingService):
+        BasePageableObjectMixin, SubnetService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseSubnetService, self).__init__(provider)
-        self._service_event_pattern += ".subnets"
+        self._service_event_pattern += ".networking.subnets"
 
     def find(self, **kwargs):
         obj_list = self
@@ -396,11 +397,11 @@ class BaseSubnetService(
 
 
 class BaseRouterService(
-        BasePageableObjectMixin, RouterService, BaseNetworkingService):
+        BasePageableObjectMixin, RouterService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseRouterService, self).__init__(provider)
-        self._service_event_pattern += ".routers"
+        self._service_event_pattern += ".networking.routers"
 
     def delete(self, router):
         if isinstance(router, Router):

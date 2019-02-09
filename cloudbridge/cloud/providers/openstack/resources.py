@@ -1517,9 +1517,6 @@ class OpenStackBucket(BaseBucket):
     def objects(self):
         return self._object_container
 
-    def delete(self, delete_contents=False):
-        self._provider.swift.delete_container(self.name)
-
 
 class OpenStackBucketContainer(BaseBucketContainer):
 

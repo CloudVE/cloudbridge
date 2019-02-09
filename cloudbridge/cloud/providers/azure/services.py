@@ -8,6 +8,7 @@ from azure.mgmt.compute.models import DiskCreateOption
 from msrestazure.azure_exceptions import CloudError
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.events import implement
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
@@ -395,6 +396,8 @@ class AzureBucketService(BaseBucketService):
     def __init__(self, provider):
         super(AzureBucketService, self).__init__(provider)
 
+    @implement(event_pattern="provider.storage.buckets.get",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
@@ -407,12 +410,17 @@ class AzureBucketService(BaseBucketService):
             log.exception(error)
             return None
 
+    @implement(event_pattern="provider.storage.buckets.list",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit, marker):
         buckets = [AzureBucket(self.provider, bucket)
-                   for bucket in self.provider.azure_client.list_containers()]
+                   for bucket
+                   in self.provider.azure_client.list_containers()[0]]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
+    @implement(event_pattern="provider.storage.buckets.create",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, location=None):
         """
         Create a new bucket.
@@ -420,6 +428,14 @@ class AzureBucketService(BaseBucketService):
         AzureBucket.assert_valid_resource_name(name)
         bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
+
+    @implement(event_pattern="provider.storage.buckets.delete",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        """
+        Delete this bucket.
+        """
+        self.provider.azure_client.delete_container(bucket_id)
 
 
 class AzureBucketObjectService(BaseBucketObjectService):
@@ -463,7 +479,7 @@ class AzureBucketObjectService(BaseBucketObjectService):
     def create(self, bucket, name):
         self.provider.azure_client.create_blob_from_text(
             bucket.name, name, '')
-        return self.get(name)
+        return self.get(bucket, name)
 
 
 class AzureComputeService(BaseComputeService):

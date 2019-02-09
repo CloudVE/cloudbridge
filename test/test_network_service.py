@@ -20,13 +20,6 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                               'networking.networks',
                               'networking.routers'])
     def test_storage_services_event_pattern(self):
-        self.assertEqual(self.provider.networking._service_event_pattern,
-                         "provider.networking",
-                         "Event pattern for {} service should be '{}', "
-                         "but found '{}'.".format("networking",
-                                                  "provider.networking",
-                                                  self.provider.networking.
-                                                  _service_event_pattern))
         self.assertEqual(
             self.provider.networking.networks._service_event_pattern,
             "provider.networking.networks",

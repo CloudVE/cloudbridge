@@ -22,13 +22,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.instances'])
     def test_storage_services_event_pattern(self):
-        self.assertEqual(self.provider.compute._service_event_pattern,
-                         "provider.compute",
-                         "Event pattern for {} service should be '{}', "
-                         "but found '{}'.".format("compute",
-                                                  "provider.compute",
-                                                  self.provider.compute.
-                                                  _service_event_pattern))
         self.assertEqual(
             self.provider.compute.instances._service_event_pattern,
             "provider.compute.instances",

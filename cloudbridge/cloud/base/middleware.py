@@ -1,11 +1,12 @@
-import inspect
 import logging
 import sys
+from inspect import ismethod
 
 import six
 
 from ..base.events import intercept
 from ..base.events import observe
+from ..interfaces.events import EventHandler
 from ..interfaces.exceptions import CloudBridgeBaseException
 from ..interfaces.middleware import Middleware
 from ..interfaces.middleware import MiddlewareManager
@@ -37,6 +38,7 @@ class BaseMiddleware(Middleware):
 
     def __init__(self):
         self.event_handlers = []
+        self.events = None
 
     def install(self, event_manager):
         self.events = event_manager
@@ -53,12 +55,19 @@ class BaseMiddleware(Middleware):
 
     def discover_handlers(self, class_or_obj):
         discovered_handlers = []
-        for _, func in inspect.getmembers(class_or_obj, inspect.ismethod):
-            handler = getattr(func, "__event_handler", None)
-            if handler:
-                # Set the properly bound method as the callback
-                handler.callback = func
-                discovered_handlers.append(handler)
+        for key in dir(class_or_obj):
+            try:
+                func = getattr(class_or_obj, key)
+            # Properties can sometimes cause various exceptions (e.g. during
+            # auth failure testing)
+            except Exception:
+                continue
+            if ismethod(func):
+                handler = getattr(func, "__event_handler", None)
+                if handler and isinstance(handler, EventHandler):
+                    # Set the properly bound method as the callback
+                    handler.callback = func
+                    discovered_handlers.append(handler)
         return discovered_handlers
 
     def uninstall(self):
