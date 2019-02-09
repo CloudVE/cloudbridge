@@ -758,6 +758,8 @@ class BaseBucket(BaseCloudResource, Bucket):
         """
         self._provider.storage.buckets.delete(self.id)
 
+    # TODO: Discuss creating `create_object` method, or change docs
+
 
 class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
 

@@ -2149,8 +2149,11 @@ class GCSObject(BaseBucketObject):
             data = data.encode()
         media_body = googleapiclient.http.MediaIoBaseUpload(
                 io.BytesIO(data), mimetype='plain/text')
-        response = self._bucket.create_object_with_media_body(self.name,
-                                                              media_body)
+        response = (self._provider
+                        .storage.bucket_objects
+                        ._create_object_with_media_body(self._bucket,
+                                                        self.name,
+                                                        media_body))
         if response:
             self._obj = response
 
@@ -2161,8 +2164,11 @@ class GCSObject(BaseBucketObject):
         with open(path, 'rb') as f:
             media_body = googleapiclient.http.MediaIoBaseUpload(
                     f, 'application/octet-stream')
-            response = self._bucket.create_object_with_media_body(self.name,
-                                                                  media_body)
+            response = (self._provider
+                        .storage.bucket_objects
+                        ._create_object_with_media_body(self._bucket,
+                                                        self.name,
+                                                        media_body))
             if response:
                 self._obj = response
 

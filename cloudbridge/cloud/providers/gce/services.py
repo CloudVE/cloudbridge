@@ -1285,20 +1285,22 @@ class GCSBucketObjectService(BaseBucketObjectService):
         return ClientPagedResultList(self._provider, list(matches),
                                      limit=None, marker=None)
 
-    def create(self, bucket, name):
-        def _create_object_with_media_body(name, media_body):
-            response = (self.provider
-                        .gcs_storage
-                        .objects()
-                        .insert(bucket=bucket.name,
-                                body={'name': name},
-                                media_body=media_body)
-                        .execute())
-            return response
+    def _create_object_with_media_body(self, bucket, name, media_body):
+        response = (self.provider
+                    .gcs_storage
+                    .objects()
+                    .insert(bucket=bucket.name,
+                            body={'name': name},
+                            media_body=media_body)
+                    .execute())
+        return response
 
-        response = _create_object_with_media_body(
-            name,
-            googleapiclient.http.MediaIoBaseUpload(
-                io.BytesIO(b''), mimetype='plain/text'))
-        return GCSObject(self._provider, self,
+    def create(self, bucket, name):
+        response = self._create_object_with_media_body(
+                            bucket,
+                            name,
+                            googleapiclient.http.MediaIoBaseUpload(
+                                io.BytesIO(b''), mimetype='plain/text'))
+        return GCSObject(self._provider,
+                         bucket,
                          response) if response else None
