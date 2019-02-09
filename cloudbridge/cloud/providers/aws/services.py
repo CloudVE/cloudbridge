@@ -414,7 +414,8 @@ class AWSBucketObjectService(BaseBucketObjectService):
                                      limit=limit, marker=marker)
 
     def find(self, bucket, **kwargs):
-        obj_list = [AWSBucketObject(o) for o in bucket._bucket.objects.all()]
+        obj_list = [AWSBucketObject(self.provider, o)
+                    for o in bucket._bucket.objects.all()]
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self.provider, list(matches),
