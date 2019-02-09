@@ -1,6 +1,6 @@
+import inspect
 import logging
 import sys
-from inspect import ismethod
 
 import six
 
@@ -53,28 +53,40 @@ class BaseMiddleware(Middleware):
             self.events.subscribe(handler)
         self.event_handlers.extend(handlers)
 
-    def discover_handlers(self, class_or_obj):
-        discovered_handlers = []
-        for key in dir(class_or_obj):
-            try:
-                func = getattr(class_or_obj, key)
-            # Properties can sometimes cause various exceptions (e.g. during
-            # auth failure testing)
-            except Exception:
-                continue
-            if ismethod(func):
-                handler = getattr(func, "__event_handler", None)
-                if handler and isinstance(handler, EventHandler):
-                    # Set the properly bound method as the callback
-                    handler.callback = func
-                    discovered_handlers.append(handler)
-        return discovered_handlers
-
     def uninstall(self):
         for handler in self.event_handlers:
             handler.unsubscribe()
         self.event_handlers = []
         self.events = None
+
+    @staticmethod
+    def discover_handlers(class_or_obj):
+
+        # https://bugs.python.org/issue30533
+        # simulating a getmembers_static to be easily replaced with the
+        # function if they add it to inspect module
+        def getmembers_static(obj, predicate=None):
+            results = []
+            for key in dir(obj):
+                if not inspect.isdatadescriptor(getattr(obj.__class__,
+                                                        key,
+                                                        None)):
+                    try:
+                        value = getattr(obj, key)
+                    except AttributeError:
+                        continue
+                    if not predicate or predicate(value):
+                        results.append((key, value))
+            return results
+
+        discovered_handlers = []
+        for _, func in getmembers_static(class_or_obj, inspect.ismethod):
+            handler = getattr(func, "__event_handler", None)
+            if handler and isinstance(handler, EventHandler):
+                # Set the properly bound method as the callback
+                handler.callback = func
+                discovered_handlers.append(handler)
+        return discovered_handlers
 
 
 class AutoDiscoveredMiddleware(BaseMiddleware):
