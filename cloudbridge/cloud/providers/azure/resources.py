@@ -13,18 +13,39 @@ from msrestazure.azure_exceptions import CloudError
 
 import pysftp
 
-import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
-    BaseFloatingIPContainer, BaseGatewayContainer, BaseInstance, \
-    BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, \
-    BaseMachineImage, BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, \
-    BaseSnapshot, BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, \
-    BaseVMFirewallRuleContainer, BaseVMType, BaseVolume, ClientPagedResultList
-from cloudbridge.cloud.interfaces import InstanceState, VolumeState
-from cloudbridge.cloud.interfaces.resources import Instance, \
-    MachineImageState, NetworkState, RouterState, \
-    SnapshotState, SubnetState, TrafficDirection
+from cloudbridge.cloud.base.resources import BaseAttachmentInfo
+from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketContainer
+from cloudbridge.cloud.base.resources import BaseBucketObject
+from cloudbridge.cloud.base.resources import BaseFloatingIP
+from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
+from cloudbridge.cloud.base.resources import BaseGatewayContainer
+from cloudbridge.cloud.base.resources import BaseInstance
+from cloudbridge.cloud.base.resources import BaseInternetGateway
+from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BaseLaunchConfig
+from cloudbridge.cloud.base.resources import BaseMachineImage
+from cloudbridge.cloud.base.resources import BaseNetwork
+from cloudbridge.cloud.base.resources import BasePlacementZone
+from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseRouter
+from cloudbridge.cloud.base.resources import BaseSnapshot
+from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
+from cloudbridge.cloud.base.resources import BaseVMType
+from cloudbridge.cloud.base.resources import BaseVolume
+from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.interfaces import InstanceState
+from cloudbridge.cloud.interfaces import VolumeState
+from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import NetworkState
+from cloudbridge.cloud.interfaces.resources import RouterState
+from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 
 from . import helpers as azure_helpers
 
@@ -337,12 +358,6 @@ class AzureBucket(BaseBucket):
         """
         return self._bucket.name
 
-    def delete(self, delete_contents=True):
-        """
-        Delete this bucket.
-        """
-        self._provider.azure_client.delete_container(self.name)
-
     def exists(self, name):
         """
         Determine if an object with given name exists in this bucket.
@@ -358,43 +373,6 @@ class AzureBucketContainer(BaseBucketContainer):
 
     def __init__(self, provider, bucket):
         super(AzureBucketContainer, self).__init__(provider, bucket)
-
-    def get(self, key):
-        """
-        Retrieve a given object from this bucket.
-        """
-        try:
-            obj = self._provider.azure_client.get_blob(self.bucket.name,
-                                                       key)
-            return AzureBucketObject(self._provider, self.bucket, obj)
-        except AzureException as azureEx:
-            log.exception(azureEx)
-            return None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-
-        :rtype: BucketObject
-        :return: List of all available BucketObjects within this bucket.
-        """
-        objects = [AzureBucketObject(self._provider, self.bucket, obj)
-                   for obj in
-                   self._provider.azure_client.list_blobs(
-                       self.bucket.name, prefix=prefix)]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
-
-    def create(self, name):
-        self._provider.azure_client.create_blob_from_text(
-            self.bucket.name, name, '')
-        return self.get(name)
 
 
 class AzureVolume(BaseVolume):

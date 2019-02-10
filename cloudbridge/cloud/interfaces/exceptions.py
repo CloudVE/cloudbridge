@@ -92,3 +92,10 @@ class DuplicateResourceException(CloudBridgeBaseException):
     result in a DuplicateResourceException.
     """
     pass
+
+
+class HandlerException(CloudBridgeBaseException):
+    """
+    Marker interface for event handler exceptions.
+    """
+    pass

@@ -8,25 +8,51 @@ from azure.mgmt.compute.models import DiskCreateOption
 from msrestazure.azure_exceptions import CloudError
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.resources import ClientPagedResultList, \
-    ServerPagedResultList
-from cloudbridge.cloud.base.services import BaseBucketService, \
-    BaseComputeService, \
-    BaseImageService, BaseInstanceService, BaseKeyPairService, \
-    BaseNetworkService, BaseNetworkingService, BaseRegionService, \
-    BaseRouterService, BaseSecurityService, BaseSnapshotService, \
-    BaseStorageService, BaseSubnetService, BaseVMFirewallService, \
-    BaseVMTypeService, BaseVolumeService
-from cloudbridge.cloud.interfaces.exceptions import \
-    DuplicateResourceException, InvalidValueException
-from cloudbridge.cloud.interfaces.resources import MachineImage, \
-    Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
+from cloudbridge.cloud.base.middleware import implement
+from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.cloud.base.services import BaseBucketObjectService
+from cloudbridge.cloud.base.services import BaseBucketService
+from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseImageService
+from cloudbridge.cloud.base.services import BaseInstanceService
+from cloudbridge.cloud.base.services import BaseKeyPairService
+from cloudbridge.cloud.base.services import BaseNetworkService
+from cloudbridge.cloud.base.services import BaseNetworkingService
+from cloudbridge.cloud.base.services import BaseRegionService
+from cloudbridge.cloud.base.services import BaseRouterService
+from cloudbridge.cloud.base.services import BaseSecurityService
+from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseStorageService
+from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallService
+from cloudbridge.cloud.base.services import BaseVMTypeService
+from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
+from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import Network
+from cloudbridge.cloud.interfaces.resources import PlacementZone
+from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import VMFirewall
+from cloudbridge.cloud.interfaces.resources import VMType
+from cloudbridge.cloud.interfaces.resources import Volume
 
-from .resources import AzureBucket, \
-    AzureInstance, AzureKeyPair, \
-    AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
-    AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \
-    AzureVMFirewall, AzureVMType, AzureVolume
+from .resources import AzureBucket
+from .resources import AzureBucketObject
+from .resources import AzureInstance
+from .resources import AzureKeyPair
+from .resources import AzureLaunchConfig
+from .resources import AzureMachineImage
+from .resources import AzureNetwork
+from .resources import AzureRegion
+from .resources import AzureRouter
+from .resources import AzureSnapshot
+from .resources import AzureSubnet
+from .resources import AzureVMFirewall
+from .resources import AzureVMType
+from .resources import AzureVolume
 
 log = logging.getLogger(__name__)
 
@@ -191,6 +217,7 @@ class AzureStorageService(BaseStorageService):
         self._volume_svc = AzureVolumeService(self.provider)
         self._snapshot_svc = AzureSnapshotService(self.provider)
         self._bucket_svc = AzureBucketService(self.provider)
+        self._bucket_obj_svc = AzureBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -203,6 +230,10 @@ class AzureStorageService(BaseStorageService):
     @property
     def buckets(self):
         return self._bucket_svc
+
+    @property
+    def bucket_objects(self):
+        return self._bucket_obj_svc
 
 
 class AzureVolumeService(BaseVolumeService):
@@ -365,7 +396,9 @@ class AzureBucketService(BaseBucketService):
     def __init__(self, provider):
         super(AzureBucketService, self).__init__(provider)
 
-    def get(self, bucket_id):
+    @implement(event_pattern="provider.storage.buckets.get",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
@@ -377,41 +410,76 @@ class AzureBucketService(BaseBucketService):
             log.exception(error)
             return None
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+    @implement(event_pattern="provider.storage.buckets.list",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit, marker):
+        buckets = [AzureBucket(self.provider, bucket)
+                   for bucket
+                   in self.provider.azure_client.list_containers()[0]]
+        return ClientPagedResultList(self.provider, buckets,
+                                     limit=limit, marker=marker)
 
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
-    def list(self, limit=None, marker=None):
-        """
-        List all containers.
-        """
-        buckets, resume_marker = self.provider.azure_client.list_containers(
-            marker=marker,
-            limit=limit or self.provider.config.default_result_limit)
-        results = [AzureBucket(self.provider, bucket)
-                   for bucket in buckets]
-        return ServerPagedResultList(is_truncated=resume_marker,
-                                     marker=resume_marker,
-                                     supports_total=False,
-                                     data=results)
-
-    def create(self, name, location=None):
+    @implement(event_pattern="provider.storage.buckets.create",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _create(self, name, location=None):
         """
         Create a new bucket.
         """
         AzureBucket.assert_valid_resource_name(name)
         bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
+
+    @implement(event_pattern="provider.storage.buckets.delete",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        """
+        Delete this bucket.
+        """
+        self.provider.azure_client.delete_container(bucket_id)
+
+
+class AzureBucketObjectService(BaseBucketObjectService):
+    def __init__(self, provider):
+        super(AzureBucketObjectService, self).__init__(provider)
+
+    def get(self, bucket, object_id):
+        """
+        Retrieve a given object from this bucket.
+        """
+        try:
+            obj = self.provider.azure_client.get_blob(bucket.name,
+                                                      object_id)
+            return AzureBucketObject(self.provider, bucket, obj)
+        except AzureException as azureEx:
+            log.exception(azureEx)
+            return None
+
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+
+        :rtype: BucketObject
+        :return: List of all available BucketObjects within this bucket.
+        """
+        objects = [AzureBucketObject(self.provider, bucket, obj)
+                   for obj in
+                   self.provider.azure_client.list_blobs(
+                       bucket.name, prefix=prefix)]
+        return ClientPagedResultList(self.provider, objects,
+                                     limit=limit, marker=marker)
+
+    def find(self, bucket, **kwargs):
+        obj_list = [AzureBucketObject(self.provider, bucket, obj)
+                    for obj in
+                    self.provider.azure_client.list_blobs(bucket.name)]
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self.provider, list(matches))
+
+    def create(self, bucket, name):
+        self.provider.azure_client.create_blob_from_text(
+            bucket.name, name, '')
+        return self.get(bucket, name)
 
 
 class AzureComputeService(BaseComputeService):

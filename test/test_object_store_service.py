@@ -21,6 +21,25 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
 
+    @helpers.skipIfNoService(['storage.bucket_objects', 'storage.buckets'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(
+            self.provider.storage.buckets._service_event_pattern,
+            "provider.storage.buckets",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("buckets",
+                                     "provider.storage.buckets",
+                                     self.provider.storage.buckets.
+                                     _service_event_pattern))
+        self.assertEqual(
+            self.provider.storage.bucket_objects._service_event_pattern,
+            "provider.storage.bucket_objects",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("bucket_objects",
+                                     "provider.storage.bucket_objects",
+                                     self.provider.storage.bucket_objects.
+                                     _service_event_pattern))
+
     @helpers.skipIfNoService(['storage.buckets'])
     def test_crud_bucket(self):
 

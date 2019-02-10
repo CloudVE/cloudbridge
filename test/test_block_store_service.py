@@ -19,6 +19,25 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
 
+    @helpers.skipIfNoService(['storage.volumes', 'storage.volumes'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(
+            self.provider.storage.volumes._service_event_pattern,
+            "provider.storage.volumes",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("volumes",
+                                     "provider.storage.volumes",
+                                     self.provider.storage.volumes.
+                                     _service_event_pattern))
+        self.assertEqual(
+            self.provider.storage.snapshots._service_event_pattern,
+            "provider.storage.snapshots",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("snapshots",
+                                     "provider.storage.snapshots",
+                                     self.provider.storage.snapshots.
+                                     _service_event_pattern))
+
     @helpers.skipIfNoService(['storage.volumes'])
     def test_crud_volume(self):
         def create_vol(label):

@@ -10,7 +10,9 @@ import cachetools
 import requests
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
 from cloudbridge.cloud.base.services import BaseImageService
@@ -27,8 +29,9 @@ from cloudbridge.cloud.base.services import BaseSubnetService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.exceptions \
-    import DuplicateResourceException, InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import \
+    InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
@@ -41,6 +44,7 @@ from cloudbridge.cloud.interfaces.resources import Volume
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
 from .resources import AWSBucket
+from .resources import AWSBucketObject
 from .resources import AWSInstance
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
@@ -177,6 +181,7 @@ class AWSStorageService(BaseStorageService):
         self._volume_svc = AWSVolumeService(self.provider)
         self._snapshot_svc = AWSSnapshotService(self.provider)
         self._bucket_svc = AWSBucketService(self.provider)
+        self._bucket_obj_svc = AWSBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -189,6 +194,10 @@ class AWSStorageService(BaseStorageService):
     @property
     def buckets(self):
         return self._bucket_svc
+
+    @property
+    def bucket_objects(self):
+        return self._bucket_obj_svc
 
 
 class AWSVolumeService(BaseVolumeService):
@@ -300,12 +309,13 @@ class AWSBucketService(BaseBucketService):
                                  cb_resource=AWSBucket,
                                  boto_collection_name='buckets')
 
-    def get(self, bucket_id):
+    @implement(event_pattern="provider.storage.buckets.get",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        log.debug("Getting AWS Bucket Service with the id: %s", bucket_id)
         try:
             # Make a call to make sure the bucket exists. There's an edge case
             # where a 403 response can occur when the bucket exists but the
@@ -329,21 +339,16 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches),
-                                     limit=None, marker=None)
-
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.buckets.list",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit, marker):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, name, location=None):
-        log.debug("Creating AWS Bucket with the params "
-                  "[name: %s, location: %s]", name, location)
+    @implement(event_pattern="provider.storage.buckets.create",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _create(self, name, location):
         AWSBucket.assert_valid_resource_name(name)
-        loc_constraint = location or self.provider.region_name
+        location = location or self.provider.region_name
         # Due to an API issue in S3, specifying us-east-1 as a
         # LocationConstraint results in an InvalidLocationConstraint.
         # Therefore, it must be special-cased and omitted altogether.
@@ -351,7 +356,7 @@ class AWSBucketService(BaseBucketService):
         # In addition, us-east-1 also behaves differently when it comes
         # to raising duplicate resource exceptions, so perform a manual
         # check
-        if loc_constraint == 'us-east-1':
+        if location == 'us-east-1':
             try:
                 # check whether bucket already exists
                 self.provider.s3_conn.meta.client.head_bucket(Bucket=name)
@@ -365,7 +370,7 @@ class AWSBucketService(BaseBucketService):
             try:
                 return self.svc.create('create_bucket', Bucket=name,
                                        CreateBucketConfiguration={
-                                           'LocationConstraint': loc_constraint
+                                           'LocationConstraint': location
                                         })
             except ClientError as e:
                 if e.response['Error']['Code'] == "BucketAlreadyOwnedByYou":
@@ -373,6 +378,53 @@ class AWSBucketService(BaseBucketService):
                         'Bucket already exists with name {0}'.format(name))
                 else:
                     raise
+
+    @implement(event_pattern="provider.storage.buckets.delete",
+               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, bucket_id):
+        bucket = self._get(bucket_id)
+        if bucket:
+            bucket._bucket.delete()
+
+
+class AWSBucketObjectService(BaseBucketObjectService):
+
+    def __init__(self, provider):
+        super(AWSBucketObjectService, self).__init__(provider)
+
+    def get(self, bucket, object_id):
+        try:
+            # pylint:disable=protected-access
+            obj = bucket._bucket.Object(object_id)
+            # load() throws an error if object does not exist
+            obj.load()
+            return AWSBucketObject(self.provider, obj)
+        except ClientError:
+            return None
+
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        if prefix:
+            # pylint:disable=protected-access
+            boto_objs = bucket._bucket.objects.filter(Prefix=prefix)
+        else:
+            # pylint:disable=protected-access
+            boto_objs = bucket._bucket.objects.all()
+        objects = [AWSBucketObject(self.provider, obj) for obj in boto_objs]
+        return ClientPagedResultList(self.provider, objects,
+                                     limit=limit, marker=marker)
+
+    def find(self, bucket, **kwargs):
+        obj_list = [AWSBucketObject(self.provider, o)
+                    for o in bucket._bucket.objects.all()]
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    def create(self, bucket, name):
+        # pylint:disable=protected-access
+        obj = bucket._bucket.Object(name)
+        return AWSBucketObject(self.provider, obj)
 
 
 class AWSComputeService(BaseComputeService):

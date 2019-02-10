@@ -10,9 +10,11 @@ except ImportError:  # Python 2
 
 import six
 
-from cloudbridge.cloud.interfaces import CloudProvider
-from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
-from cloudbridge.cloud.interfaces.resources import Configuration
+from ..base.events import SimpleEventDispatcher
+from ..base.middleware import SimpleMiddlewareManager
+from ..interfaces import CloudProvider
+from ..interfaces.exceptions import ProviderConnectionException
+from ..interfaces.resources import Configuration
 
 log = logging.getLogger(__name__)
 
@@ -80,11 +82,12 @@ class BaseConfiguration(Configuration):
 
 
 class BaseCloudProvider(CloudProvider):
-
     def __init__(self, config):
         self._config = BaseConfiguration(config)
         self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
+        self._events = SimpleEventDispatcher()
+        self._middleware = SimpleMiddlewareManager(self._events)
 
     @property
     def config(self):
@@ -93,6 +96,14 @@ class BaseCloudProvider(CloudProvider):
     @property
     def name(self):
         return str(self.__class__.__name__)
+
+    @property
+    def events(self):
+        return self._events
+
+    @property
+    def middleware(self):
+        return self._middleware
 
     def authenticate(self):
         """

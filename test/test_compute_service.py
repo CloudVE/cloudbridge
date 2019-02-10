@@ -20,6 +20,17 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
 
+    @helpers.skipIfNoService(['compute.instances'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(
+            self.provider.compute.instances._service_event_pattern,
+            "provider.compute.instances",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("instances",
+                                     "provider.compute.instances",
+                                     self.provider.compute.instances.
+                                     _service_event_pattern))
+
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
         label = "cb-instcrud-{0}".format(helpers.get_uuid())

@@ -1,7 +1,9 @@
 """
 Specifications for services available through a provider
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 
@@ -941,6 +943,106 @@ class BucketService(PageableObjectMixin, CloudService):
 
         :return:  a Bucket object
         :rtype: ``object`` of :class:`.Bucket`
+        """
+        pass
+
+
+class BucketObjectService(PageableObjectMixin, CloudService):
+
+    """
+    The Bucket Object Service interface provides access to the underlying
+    object storage capabilities of this provider. This service is optional and
+    the :func:`CloudProvider.has_service()` method should be used to verify its
+    availability before using the service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, bucket, object_id):
+        """
+        Returns a bucket object given its ID and the ID of bucket containing
+        it. Returns ``None`` if the bucket object or bucket does not exist.
+        On some providers, such as AWS and OpenStack, the bucket id is the
+        same as its name.
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.storage.buckets.get('my_bucket_id')
+            buck_obj = provider.storage.bucket_objects.get('my_object_id',
+                                                           bucket)
+            print(buck_obj.id, buck_obj.name)
+
+        :rtype: :class:`.BucketObject`
+        :return:  a BucketObject instance
+        """
+        pass
+
+    @abstractmethod
+    def find(self, bucket, **kwargs):
+        """
+        Searches for a bucket object in a bucket by a given list of attributes.
+
+        Supported attributes: name
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.storage.buckets.get('my_bucket_id')
+            objs = provider.storage.bucket_objects.find(bucket,
+                                                        name='my_obj_name')
+            for buck_obj in objs:
+                print(buck_obj.id, buck_obj.name)
+
+        :rtype: :class:`.BucketObject`
+        :return:  a BucketObject instance
+        """
+        pass
+
+    @abstractmethod
+    def list(self, bucket, limit=None, marker=None):
+        """
+        List all bucket objects within a bucket.
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.storage.buckets.get('my_bucket_id')
+            objs = provider.storage.bucket_objects.list(bucket)
+            for buck_obj in objs:
+                print(buck_obj.id, buck_obj.name)
+
+        :rtype: :class:`.BucketObject`
+        :return:  a BucketObject instance
+        """
+        pass
+
+    @abstractmethod
+    def create(self, bucket, object_name):
+        """
+        Create a new bucket object within a bucket.
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.storage.buckets.get('my_bucket_id')
+            buck_obj = provider.storage.bucket_objects.create('my_name',
+                                                              bucket)
+            print(buck_obj.name)
+
+
+        :type object_name: str
+        :param object_name: The name of this bucket.
+
+        :type bucket: str
+        :param bucket: A bucket object.
+
+        :return:  a BucketObject instance
+        :rtype: ``object`` of :class:`.BucketObject`
         """
         pass
 

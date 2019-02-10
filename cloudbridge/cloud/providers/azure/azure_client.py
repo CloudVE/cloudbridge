@@ -19,9 +19,10 @@ from msrestazure.azure_exceptions import CloudError
 
 import tenacity
 
-from cloudbridge.cloud.interfaces.exceptions import \
-    DuplicateResourceException, InvalidLabelException, \
-    ProviderConnectionException, WaitStateException
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidLabelException
+from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
+from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
 from . import helpers as azure_helpers
 
