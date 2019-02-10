@@ -4,7 +4,7 @@ import sys
 
 import six
 
-from ..base.events import ExecutingEventHandler
+from ..base.events import ImplementingEventHandler
 from ..base.events import InterceptingEventHandler
 from ..base.events import ObservingEventHandler
 from ..interfaces.events import EventHandler
@@ -42,7 +42,7 @@ def implement(event_pattern, priority):
         # Mark function as having an event_handler so we can discover it
         # The callback cannot be set to f as it is not bound yet and will be
         # set during auto discovery
-        f.__event_handler = ExecutingEventHandler(
+        f.__event_handler = ImplementingEventHandler(
             event_pattern, priority, None)
         return f
     return deco

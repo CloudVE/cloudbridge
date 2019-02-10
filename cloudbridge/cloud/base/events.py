@@ -85,19 +85,21 @@ class ObservingEventHandler(InterceptingEventHandler):
             return None
 
 
-class ExecutingEventHandler(InterceptingEventHandler):
+class ImplementingEventHandler(InterceptingEventHandler):
 
     def __init__(self, event_pattern, priority, callback):
-        super(ExecutingEventHandler, self).__init__(event_pattern, priority,
-                                                    callback)
+        super(ImplementingEventHandler, self).__init__(event_pattern, priority,
+                                                       callback)
 
     def invoke(self, event_args, *args, **kwargs):
         result = self.callback(*args, **kwargs)
-        next_handler = event_args.get('next_handler')
+        next_handler = self._get_next_handler(event_args.get('event'))
         if next_handler:
+            event_args['next_handler'] = next_handler
             event_args['result'] = result
             next_handler.invoke(event_args, *args, **kwargs)
-            event_args.pop['result']
+            event_args.pop('result', None)
+            event_args.pop('next_handler', None)
         return result
 
 
@@ -175,7 +177,7 @@ class SimpleEventDispatcher(EventDispatcher):
         return handler
 
     def implement(self, event_pattern, priority, callback):
-        handler = ExecutingEventHandler(event_pattern, priority, callback)
+        handler = ImplementingEventHandler(event_pattern, priority, callback)
         self.subscribe(handler)
         return handler
 
