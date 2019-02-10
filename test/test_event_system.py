@@ -66,6 +66,29 @@ class EventSystemTestCase(unittest.TestCase):
         self.assertEqual(result, "world", "Result should be `world` as this"
                          " is an intercepting handler")
 
+    def test_emit_event_implementing_handler(self):
+        EVENT_NAME = "event.hello.world"
+        callback_tracker = ['']
+
+        def my_callback(*args, **kwargs):
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
+            callback_tracker[0] += "impl"
+            return "world"
+
+        dispatcher = SimpleEventDispatcher()
+        handler = dispatcher.implement(event_pattern=EVENT_NAME, priority=1000,
+                                       callback=my_callback)
+        self.assertIsInstance(handler, EventHandler)
+        result = dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
+                                     a_keyword_arg='another_thing')
+        self.assertEqual(
+            callback_tracker[0], "impl", "callback should have been invoked"
+            "once and contain value `intcpt` but tracker value is {0}".format(
+                callback_tracker[0]))
+        self.assertEqual(result, "world", "Result should be `world` as this"
+                         " is an implementing handler")
+
     def test_emit_event_observe_precedes_intercept(self):
         EVENT_NAME = "event.hello.world"
         callback_tracker = ['']
@@ -176,6 +199,72 @@ class EventSystemTestCase(unittest.TestCase):
             " in expected order. Should have been intcpt1_intcpt2_ but is"
             " {0}".format(callback_tracker[0]))
         self.assertEqual(result, "helloworld", "Result should be `helloworld` "
+                         "as this is the expected return value from the chain")
+
+    def test_emit_event_implement_follows_intercept(self):
+        EVENT_NAME = "event.hello.world"
+        callback_tracker = ['']
+
+        def my_callback_intcpt(event_args, *args, **kwargs):
+            self.assertEqual(event_args.get('sender'), self)
+            next_handler = event_args.get('next_handler')
+            self.assertEqual(next_handler.priority, 2020)
+            self.assertEqual(next_handler.callback.__name__,
+                             "my_callback_impl")
+            callback_tracker[0] += "intcpt_"
+            # invoke next handler but ignore return value
+            return "hello" + next_handler.invoke(event_args, *args, **kwargs)
+
+        def my_callback_impl(*args, **kwargs):
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
+            callback_tracker[0] += "impl_"
+            return "world"
+
+        dispatcher = SimpleEventDispatcher()
+        dispatcher.intercept(EVENT_NAME, 2000, my_callback_intcpt)
+        dispatcher.implement(EVENT_NAME, 2020, my_callback_impl)
+        result = dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
+                                     a_keyword_arg='another_thing')
+        self.assertEqual(
+            callback_tracker[0], "intcpt_impl_", "callback was not invoked"
+            " in expected order. Should have been intcpt_impl_ but is"
+            " {0}".format(callback_tracker[0]))
+        self.assertEqual(result, "helloworld", "Result should be `helloworld` "
+                         "as this is the expected return value from the chain")
+
+    def test_emit_event_implement_precedes_intercept(self):
+        EVENT_NAME = "event.hello.world"
+        callback_tracker = ['']
+
+        def my_callback_intcpt(event_args, *args, **kwargs):
+            # Impl result should be accessible to intercepts that follow
+            self.assertDictEqual(event_args,
+                                 {'sender': self,
+                                  'event': EVENT_NAME,
+                                  'result': 'world',
+                                  'next_handler': None})
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
+            callback_tracker[0] += "intcpt_"
+            return "hello"
+
+        def my_callback_impl(*args, **kwargs):
+            self.assertSequenceEqual(args, ['first_pos_arg'])
+            self.assertDictEqual(kwargs, {'a_keyword_arg': 'another_thing'})
+            callback_tracker[0] += "impl_"
+            return "world"
+
+        dispatcher = SimpleEventDispatcher()
+        dispatcher.implement(EVENT_NAME, 2000, my_callback_impl)
+        dispatcher.intercept(EVENT_NAME, 2020, my_callback_intcpt)
+        result = dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
+                                     a_keyword_arg='another_thing')
+        self.assertEqual(
+            callback_tracker[0], "impl_intcpt_", "callback was not invoked"
+            " in expected order. Should have been intcpt_intcpt_ but is"
+            " {0}".format(callback_tracker[0]))
+        self.assertEqual(result, "world", "Result should be `world` "
                          "as this is the expected return value from the chain")
 
     def test_subscribe_event_duplicate_priority(self):

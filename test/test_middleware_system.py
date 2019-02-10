@@ -3,6 +3,7 @@ import unittest
 from cloudbridge.cloud.base.events import SimpleEventDispatcher
 from cloudbridge.cloud.base.middleware import BaseMiddleware
 from cloudbridge.cloud.base.middleware import SimpleMiddlewareManager
+from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.middleware import intercept
 from cloudbridge.cloud.base.middleware import observe
 from cloudbridge.cloud.interfaces.middleware import Middleware
@@ -44,19 +45,27 @@ class MiddlewareSystemTestCase(unittest.TestCase):
             def __init__(self):
                 self.invocation_order = ""
 
-            @observe(event_pattern="some.event.*", priority=1000)
-            def my_callback_obs(self, *args, **kwargs):
-                self.invocation_order += "observe"
-                assert 'first_pos_arg' in args
-                assert kwargs.get('a_keyword_arg') == "something"
-
             @intercept(event_pattern="some.event.*", priority=900)
             def my_callback_intcpt(self, event_args, *args, **kwargs):
-                self.invocation_order += "intercept_"
+                self.invocation_order += "intcpt_"
                 assert 'first_pos_arg' in args
                 assert kwargs.get('a_keyword_arg') == "something"
                 next_handler = event_args.get('next_handler')
                 return next_handler.invoke(event_args, *args, **kwargs)
+
+            @implement(event_pattern="some.event.*", priority=950)
+            def my_callback_impl(self, *args, **kwargs):
+                self.invocation_order += "impl_"
+                assert 'first_pos_arg' in args
+                assert kwargs.get('a_keyword_arg') == "something"
+                return "hello"
+
+            @observe(event_pattern="some.event.*", priority=1000)
+            def my_callback_obs(self, event_args, *args, **kwargs):
+                self.invocation_order += "obs"
+                assert 'first_pos_arg' in args
+                assert event_args['result'] == "hello"
+                assert kwargs.get('a_keyword_arg') == "something"
 
         dispatcher = SimpleEventDispatcher()
         manager = SimpleMiddlewareManager(dispatcher)
@@ -65,9 +74,10 @@ class MiddlewareSystemTestCase(unittest.TestCase):
         dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
                             a_keyword_arg='something')
 
-        self.assertEqual(middleware.invocation_order, "intercept_observe")
+        self.assertEqual(middleware.invocation_order, "intcpt_impl_obs")
         self.assertListEqual(
-            [middleware.my_callback_intcpt, middleware.my_callback_obs],
+            [middleware.my_callback_intcpt, middleware.my_callback_impl,
+             middleware.my_callback_obs],
             [handler.callback for handler
              in dispatcher.get_handlers_for_event(EVENT_NAME)])
 
@@ -81,24 +91,32 @@ class MiddlewareSystemTestCase(unittest.TestCase):
         class DummyMiddleWare1(BaseMiddleware):
 
             @observe(event_pattern="some.really.*", priority=1000)
-            def my_callback_obs1(self, *args, **kwargs):
+            def my_obs1_3(self, *args, **kwargs):
                 pass
 
+            @implement(event_pattern="some.*", priority=970)
+            def my_impl1_2(self, *args, **kwargs):
+                return "hello"
+
             @intercept(event_pattern="some.*", priority=900)
-            def my_callback_intcpt2(self, event_args, *args, **kwargs):
+            def my_intcpt1_1(self, event_args, *args, **kwargs):
                 next_handler = event_args.get('next_handler')
                 return next_handler.invoke(event_args, *args, **kwargs)
 
         class DummyMiddleWare2(BaseMiddleware):
 
             @observe(event_pattern="some.really.*", priority=1050)
-            def my_callback_obs3(self, *args, **kwargs):
+            def my_obs2_3(self, *args, **kwargs):
                 pass
 
             @intercept(event_pattern="*", priority=950)
-            def my_callback_intcpt4(self, event_args, *args, **kwargs):
+            def my_intcpt2_2(self, event_args, *args, **kwargs):
                 next_handler = event_args.get('next_handler')
                 return next_handler.invoke(event_args, *args, **kwargs)
+
+            @implement(event_pattern="some.really.*", priority=920)
+            def my_impl2_1(self, *args, **kwargs):
+                pass
 
         dispatcher = SimpleEventDispatcher()
         manager = SimpleMiddlewareManager(dispatcher)
@@ -110,8 +128,9 @@ class MiddlewareSystemTestCase(unittest.TestCase):
 
         # Callbacks in both middleware classes should be registered
         self.assertListEqual(
-            [middleware1.my_callback_intcpt2, middleware2.my_callback_intcpt4,
-             middleware1.my_callback_obs1, middleware2.my_callback_obs3],
+            [middleware1.my_intcpt1_1, middleware2.my_impl2_1,
+             middleware2.my_intcpt2_2, middleware1.my_impl1_2,
+             middleware1.my_obs1_3, middleware2.my_obs2_3],
             [handler.callback for handler
              in dispatcher.get_handlers_for_event(EVENT_NAME)])
 
@@ -119,7 +138,8 @@ class MiddlewareSystemTestCase(unittest.TestCase):
 
         # Only middleware2 callbacks should be registered
         self.assertListEqual(
-            [middleware2.my_callback_intcpt4, middleware2.my_callback_obs3],
+            [middleware2.my_impl2_1, middleware2.my_intcpt2_2,
+             middleware2.my_obs2_3],
             [handler.callback for handler in
              dispatcher.get_handlers_for_event(EVENT_NAME)])
 
@@ -128,8 +148,9 @@ class MiddlewareSystemTestCase(unittest.TestCase):
 
         # should one again equal original list
         self.assertListEqual(
-            [middleware1.my_callback_intcpt2, middleware2.my_callback_intcpt4,
-             middleware1.my_callback_obs1, middleware2.my_callback_obs3],
+            [middleware1.my_intcpt1_1, middleware2.my_impl2_1,
+             middleware2.my_intcpt2_2, middleware1.my_impl1_2,
+             middleware1.my_obs1_3, middleware2.my_obs2_3],
             [handler.callback for handler
              in dispatcher.get_handlers_for_event(EVENT_NAME)])
 
@@ -153,6 +174,10 @@ class MiddlewareSystemTestCase(unittest.TestCase):
             def my_callback_obs1(self, *args, **kwargs):
                 pass
 
+            @implement(event_pattern="another.interesting.*", priority=1050)
+            def my_callback_impl(self, *args, **kwargs):
+                pass
+
         dispatcher = SimpleEventDispatcher()
         manager = SimpleMiddlewareManager(dispatcher)
         some_obj = SomeDummyClass()
@@ -162,7 +187,8 @@ class MiddlewareSystemTestCase(unittest.TestCase):
         # Middleware should be discovered even if class containing interceptors
         # doesn't inherit from Middleware
         self.assertListEqual(
-            [some_obj.my_callback_intcpt2, some_obj.my_callback_obs1],
+            [some_obj.my_callback_intcpt2, some_obj.my_callback_obs1,
+             some_obj.my_callback_impl],
             [handler.callback for handler
              in dispatcher.get_handlers_for_event(EVENT_NAME)])
 
