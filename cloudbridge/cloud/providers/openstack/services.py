@@ -15,7 +15,7 @@ from openstack.exceptions import ResourceNotFound
 from swiftclient import ClientException as SwiftClientException
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.events import implement
+from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService

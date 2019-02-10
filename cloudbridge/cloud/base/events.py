@@ -10,39 +10,6 @@ from ..interfaces.exceptions import HandlerException
 log = logging.getLogger(__name__)
 
 
-def intercept(event_pattern, priority):
-    def deco(f):
-        # Mark function as having an event_handler so we can discover it
-        # The callback cannot be set to f as it is not bound yet and will be
-        # set during auto discovery
-        f.__event_handler = InterceptingEventHandler(
-            event_pattern, priority, None)
-        return f
-    return deco
-
-
-def observe(event_pattern, priority):
-    def deco(f):
-        # Mark function as having an event_handler so we can discover it
-        # The callback cannot be set to f as it is not bound yet and will be
-        # set during auto discovery
-        f.__event_handler = ObservingEventHandler(
-            event_pattern, priority, None)
-        return f
-    return deco
-
-
-def implement(event_pattern, priority):
-    def deco(f):
-        # Mark function as having an event_handler so we can discover it
-        # The callback cannot be set to f as it is not bound yet and will be
-        # set during auto discovery
-        f.__event_handler = ExecutingEventHandler(
-            event_pattern, priority, None)
-        return f
-    return deco
-
-
 class InterceptingEventHandler(EventHandler):
 
     def __init__(self, event_pattern, priority, callback):
