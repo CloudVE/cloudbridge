@@ -141,14 +141,14 @@ class EventDebugLoggingMiddleware(BaseMiddleware):
     than for debugging, as it could log sensitive parameters such as
     access keys.
     """
-    @observe(event_pattern="*", priority=1100)
+    @observe(event_pattern="*", priority=100)
     def pre_log_event(self, event_args, *args, **kwargs):
-        log.debug("Event: {0} invoked with args: {1}, kwargs: {2}".format(
+        log.debug("Event: {0}, args: {1} kwargs: {2}".format(
             event_args.get("event"), args, kwargs))
 
-    @observe(event_pattern="*", priority=1150)
+    @observe(event_pattern="*", priority=4900)
     def post_log_event(self, event_args, *args, **kwargs):
-        log.debug("Event: {0} result: {1}".format(
+        log.debug("Event: {0}, result: {1}".format(
             event_args.get("event"), event_args.get("result")))
 
 

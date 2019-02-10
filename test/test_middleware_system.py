@@ -2,6 +2,7 @@ import unittest
 
 from cloudbridge.cloud.base.events import SimpleEventDispatcher
 from cloudbridge.cloud.base.middleware import BaseMiddleware
+from cloudbridge.cloud.base.middleware import EventDebugLoggingMiddleware
 from cloudbridge.cloud.base.middleware import ExceptionWrappingMiddleware
 from cloudbridge.cloud.base.middleware import SimpleMiddlewareManager
 from cloudbridge.cloud.base.middleware import implement
@@ -11,6 +12,8 @@ from cloudbridge.cloud.interfaces.exceptions import CloudBridgeBaseException
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.middleware import Middleware
+
+from .helpers import skipIfPython
 
 
 class MiddlewareSystemTestCase(unittest.TestCase):
@@ -248,3 +251,36 @@ class ExceptionWrappingMiddlewareTestCase(unittest.TestCase):
 
         with self.assertRaises(InvalidConfigurationException):
             dispatcher.dispatch(self, EVENT_NAME)
+
+
+class EventDebugLoggingMiddlewareTestCase(unittest.TestCase):
+
+    # Only python 3 has assertLogs support
+    @skipIfPython("<", 3, 0)
+    def test_messages_logged(self):
+        EVENT_NAME = "an.exceptional.event"
+
+        class SomeDummyClass(object):
+
+            @implement(event_pattern=EVENT_NAME, priority=2500)
+            def return_some_value(self, *args, **kwargs):
+                return "hello world"
+
+        dispatcher = SimpleEventDispatcher()
+        manager = SimpleMiddlewareManager(dispatcher)
+        middleware = EventDebugLoggingMiddleware()
+        manager.add(middleware)
+        some_obj = SomeDummyClass()
+        manager.add(some_obj)
+
+        with self.assertLogs('cloudbridge.cloud.base.middleware',
+                             level='DEBUG') as cm:
+            dispatcher.dispatch(self, EVENT_NAME,
+                                "named_param", keyword_param="hello")
+        self.assertTrue(
+            "named_param" in cm.output[0]
+            and "keyword_param" in cm.output[0] and "hello" in cm.output[0],
+            "Log output {0} not as expected".format(cm.output[0]))
+        self.assertTrue(
+            "hello world" in cm.output[1],
+            "Log output {0} does not contain result".format(cm.output[1]))
