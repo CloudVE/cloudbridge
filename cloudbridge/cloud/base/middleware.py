@@ -141,38 +141,28 @@ class EventDebugLoggingMiddleware(BaseMiddleware):
     than for debugging, as it could log sensitive parameters such as
     access keys.
     """
-    def setup(self):
-        self.add_observer(
-            event_pattern="*", priority=1100, callback=self.pre_log_event)
-        self.add_interceptor(
-            event_pattern="*", priority=1150, callback=self.post_log_event)
-
     @observe(event_pattern="*", priority=1100)
-    def pre_log_event(self, **kwargs):
-        log.debug("Event: {0} invoked with args: {1}".format(
-            kwargs.get("event"), kwargs))
+    def pre_log_event(self, event_args, *args, **kwargs):
+        log.debug("Event: {0} invoked with args: {1}, kwargs: {2}".format(
+            event_args.get("event"), args, kwargs))
 
-    @intercept(event_pattern="*", priority=1150)
-    def post_log_event(self, **kwargs):
-        next_handler = kwargs.pop("next_handler")
-        result = next_handler.invoke(**kwargs)
+    @observe(event_pattern="*", priority=1150)
+    def post_log_event(self, event_args, *args, **kwargs):
         log.debug("Event: {0} result: {1}".format(
-            kwargs.get("event"), result))
-        return result
+            event_args.get("event"), event_args.get("result")))
 
 
 class ExceptionWrappingMiddleware(BaseMiddleware):
     """
     Wraps all unhandled exceptions in cloudbridge exceptions.
     """
-    def setup(self):
-        self.add_interceptor(
-            event_pattern="*", priority=1050, callback=self.wrap_exception)
-
-    def wrap_exception(self, **kwargs):
-        next_handler = kwargs.pop("next_handler")
+    @intercept(event_pattern="*", priority=1050)
+    def wrap_exception(self, event_args, *args, **kwargs):
+        next_handler = event_args.pop("next_handler")
+        if not next_handler:
+            return
         try:
-            return next_handler.invoke(**kwargs)
+            return next_handler.invoke(event_args, *args, **kwargs)
         except Exception as e:
             if isinstance(e, CloudBridgeBaseException):
                 raise

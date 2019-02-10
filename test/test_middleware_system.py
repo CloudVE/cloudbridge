@@ -2,10 +2,14 @@ import unittest
 
 from cloudbridge.cloud.base.events import SimpleEventDispatcher
 from cloudbridge.cloud.base.middleware import BaseMiddleware
+from cloudbridge.cloud.base.middleware import ExceptionWrappingMiddleware
 from cloudbridge.cloud.base.middleware import SimpleMiddlewareManager
 from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.middleware import intercept
 from cloudbridge.cloud.base.middleware import observe
+from cloudbridge.cloud.interfaces.exceptions import CloudBridgeBaseException
+from cloudbridge.cloud.interfaces.exceptions import \
+    InvalidConfigurationException
 from cloudbridge.cloud.interfaces.middleware import Middleware
 
 
@@ -199,3 +203,48 @@ class MiddlewareSystemTestCase(unittest.TestCase):
             [],
             [handler.callback for handler in
              dispatcher.get_handlers_for_event(EVENT_NAME)])
+
+
+class ExceptionWrappingMiddlewareTestCase(unittest.TestCase):
+
+    def test_unknown_exception_is_wrapped(self):
+        EVENT_NAME = "an.exceptional.event"
+
+        class SomeDummyClass(object):
+
+            @implement(event_pattern=EVENT_NAME, priority=2500)
+            def raise_a_non_cloudbridge_exception(self, *args, **kwargs):
+                raise Exception("Some unhandled exception")
+
+        dispatcher = SimpleEventDispatcher()
+        manager = SimpleMiddlewareManager(dispatcher)
+        middleware = ExceptionWrappingMiddleware()
+        manager.add(middleware)
+
+        # no exception should be raised when there's no next handler
+        dispatcher.dispatch(self, EVENT_NAME)
+
+        some_obj = SomeDummyClass()
+        manager.add(some_obj)
+
+        with self.assertRaises(CloudBridgeBaseException):
+            dispatcher.dispatch(self, EVENT_NAME)
+
+    def test_cloudbridge_exception_is_passed_through(self):
+        EVENT_NAME = "an.exceptional.event"
+
+        class SomeDummyClass(object):
+
+            @implement(event_pattern=EVENT_NAME, priority=2500)
+            def raise_a_cloudbridge_exception(self, *args, **kwargs):
+                raise InvalidConfigurationException()
+
+        dispatcher = SimpleEventDispatcher()
+        manager = SimpleMiddlewareManager(dispatcher)
+        some_obj = SomeDummyClass()
+        manager.add(some_obj)
+        middleware = ExceptionWrappingMiddleware()
+        manager.add(middleware)
+
+        with self.assertRaises(InvalidConfigurationException):
+            dispatcher.dispatch(self, EVENT_NAME)
