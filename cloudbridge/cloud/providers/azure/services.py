@@ -935,7 +935,9 @@ class AzureVMTypeService(BaseVMTypeService):
         r = self.provider.azure_client.list_vm_types()
         return r
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.vm_types.list",
+               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         vm_types = [AzureVMType(self.provider, vm_type)
                     for vm_type in self.instance_data]
         return ClientPagedResultList(self.provider, vm_types,

@@ -233,11 +233,15 @@ class GCEVMTypeService(BaseVMTypeService):
                         .execute())
         return response['items']
 
-    def get(self, vm_type_id):
+    @implement(event_pattern="provider.compute.vm_types.get",
+               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, vm_type_id):
         vm_type = self.provider.get_resource('machineTypes', vm_type_id)
         return GCEVMType(self.provider, vm_type) if vm_type else None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.compute.vm_types.find",
+               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         matched_inst_types = []
         for inst_type in self.instance_data:
             is_match = True
@@ -252,7 +256,9 @@ class GCEVMTypeService(BaseVMTypeService):
                     GCEVMType(self.provider, inst_type))
         return matched_inst_types
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.vm_types.list",
+               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         inst_types = [GCEVMType(self.provider, inst_type)
                       for inst_type in self.instance_data]
         return ClientPagedResultList(self.provider, inst_types,

@@ -721,7 +721,9 @@ class AWSVMTypeService(BaseVMTypeService):
         return [vm_type for vm_type in vm_types_list
                 if vm_type.get('pricing', {}).get(self.provider.region_name)]
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.vm_types.list",
+               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         vm_types = [AWSVMType(self.provider, vm_type)
                     for vm_type in self.instance_data]
         return ClientPagedResultList(self.provider, vm_types,

@@ -816,7 +816,9 @@ class OpenStackVMTypeService(BaseVMTypeService):
     def __init__(self, provider):
         super(OpenStackVMTypeService, self).__init__(provider)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.vm_types.list",
+               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         cb_itypes = [
             OpenStackVMType(self.provider, obj)
             for obj in self.provider.nova.flavors.list(

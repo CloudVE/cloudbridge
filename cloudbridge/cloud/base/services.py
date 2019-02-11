@@ -597,15 +597,50 @@ class BaseVMTypeService(
         super(BaseVMTypeService, self).__init__(provider)
         self._service_event_pattern += ".compute.vm_types"
 
-    def get(self, vm_type_id):
+    @implement(event_pattern="provider.compute.vm_types.get",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def _get(self, vm_type_id):
         vm_type = (t for t in self if t.id == vm_type_id)
         return next(vm_type, None)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.compute.vm_types.find",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
+
+    def get(self, vm_type_id):
+        """
+        Returns a vm_type given its ID. Returns ``None`` if the vm_type
+        does not exist.
+
+        :type vm_type_id: str
+        :param vm_type_id: The id of the desired VM type.
+
+        :rtype: ``VMType``
+        :return:  ``None`` is returned if the VM type does not exist, and
+                  the VM type's provider-specific CloudBridge object is
+                  returned if the VM type is found.
+        """
+        return self.dispatch(self, "provider.compute.vm_types.get",
+                             vm_type_id)
+
+    def find(self, **kwargs):
+        """
+        Returns a list of VM types filtered by the given keyword arguments.
+        Accepted search arguments are: 'name'
+        """
+        return self.dispatch(self, "provider.compute.vm_types.find",
+                             **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all VM types.
+        """
+        return self.dispatch(self, "provider.compute.vm_types.list",
+                             limit=limit, marker=marker)
 
 
 class BaseRegionService(
