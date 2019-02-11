@@ -29,6 +29,7 @@ from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
@@ -176,9 +177,9 @@ class AzureKeyPairService(BaseKeyPairService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -259,9 +260,9 @@ class AzureVolumeService(BaseVolumeService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -347,9 +348,9 @@ class AzureSnapshotService(BaseSnapshotService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -530,9 +531,9 @@ class AzureImageService(BaseImageService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -856,9 +857,9 @@ class AzureInstanceService(BaseInstanceService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -956,9 +957,9 @@ class AzureNetworkService(BaseNetworkService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -1107,9 +1108,9 @@ class AzureRouterService(BaseRouterService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])

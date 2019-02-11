@@ -37,6 +37,7 @@ from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
     import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
@@ -162,8 +163,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'name'))
 
         keypairs = self.provider.nova.keypairs.findall(name=name)
         results = [OpenStackKeyPair(self.provider, kp)
@@ -295,8 +297,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for an OpenStack Volume with the label %s", label)
         search_opts = {'name': label}
@@ -363,8 +366,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         search_opts = {'name': label,  # TODO: Cinder is ignoring name
                        'limit': oshelpers.os_result_limit(self.provider),
@@ -435,8 +439,9 @@ class OpenStackBucketService(BaseBucketService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'name'))
         _, container_list = self.provider.swift.get_account()
         cb_buckets = [OpenStackBucket(self.provider, c)
                       for c in container_list
@@ -737,8 +742,9 @@ class OpenStackInstanceService(BaseInstanceService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         search_opts = {'name': label}
         cb_insts = [
@@ -868,8 +874,9 @@ class OpenStackNetworkService(BaseNetworkService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for OpenStack Network with label: %s", label)
         networks = [OpenStackNetwork(self.provider, network)

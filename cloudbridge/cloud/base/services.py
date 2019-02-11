@@ -11,6 +11,7 @@ from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketObjectService
@@ -134,9 +135,9 @@ class BaseVMFirewallService(
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -182,9 +183,9 @@ class BaseBucketService(
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])

@@ -11,6 +11,7 @@ import tenacity
 
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import LabeledCloudResource
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
@@ -100,7 +101,7 @@ def check_find_non_existent(test, service, obj):
         find_objs = service.find(label="random_imagined_obj_name", **args)
     else:
         find_objs = service.find(name="random_imagined_obj_name")
-    with test.assertRaises(TypeError):
+    with test.assertRaises(InvalidParamException):
         service.find(notaparameter="random_imagined_obj_name")
     test.assertTrue(
         len(find_objs) == 0,

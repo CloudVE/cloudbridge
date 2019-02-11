@@ -30,6 +30,7 @@ from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
@@ -107,9 +108,9 @@ class GCEKeyPairService(BaseKeyPairService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -227,7 +228,8 @@ class GCEVMTypeService(BaseVMTypeService):
             is_match = True
             for key, value in kwargs.items():
                 if key not in inst_type:
-                    raise TypeError("The attribute key is not valid.")
+                    raise InvalidParamException(
+                        "Unrecognised parameters for search: %s." % key)
                 if inst_type.get(key) != value:
                     is_match = False
                     break
