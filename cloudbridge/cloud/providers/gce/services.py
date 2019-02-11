@@ -320,13 +320,20 @@ class GCEImageService(BaseImageService):
                 return public_image
         return None
 
-    def find(self, label, limit=None, marker=None):
+    def find(self, limit=None, marker=None, **kwargs):
         """
         Searches for an image by a given list of attributes
         """
-        filters = {'label': label}
+        label = kwargs.pop('label', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
         # Retrieve all available images by setting limit to sys.maxsize
-        images = [image for image in self if image.label == filters['label']]
+        images = [image for image in self if image.label == label]
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
 
@@ -512,16 +519,23 @@ class GCEInstanceService(BaseInstanceService):
         instance = self.provider.get_resource('instances', instance_id)
         return GCEInstance(self.provider, instance) if instance else None
 
-    def find(self, label, limit=None, marker=None):
+    def find(self, limit=None, marker=None, **kwargs):
         """
         Searches for instances by instance label.
         :return: a list of Instance objects
         """
+        label = kwargs.pop('label', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
         instances = [instance for instance in self.list()
                      if instance.label == label]
-        if limit and len(instances) > limit:
-            instances = instances[:limit]
-        return instances
+        return ClientPagedResultList(self.provider, instances,
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         """
@@ -615,7 +629,8 @@ class GCENetworkService(BaseNetworkService):
         obj_list = self
         filters = ['name', 'label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None, filter=None):
         # TODO: Decide whether we keep filter in 'list'
@@ -698,11 +713,12 @@ class GCERouterService(BaseRouterService):
             'routers', router_id, region=self.provider.region_name)
         return GCERouter(self.provider, router) if router else None
 
-    def find(self, **kwargs):
+    def find(self, limit=None, marker=None, **kwargs):
         obj_list = self
         filters = ['name', 'label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=limit, marker=marker)
 
     def list(self, limit=None, marker=None):
         region = self.provider.region_name
@@ -966,10 +982,18 @@ class GCEVolumeService(BaseVolumeService):
         vol = self.provider.get_resource('disks', volume_id)
         return GCEVolume(self.provider, vol) if vol else None
 
-    def find(self, label, limit=None, marker=None):
+    def find(self, limit=None, marker=None, **kwargs):
         """
         Searches for a volume by a given list of attributes.
         """
+        label = kwargs.pop('label', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1074,10 +1098,18 @@ class GCESnapshotService(BaseSnapshotService):
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
         return GCESnapshot(self.provider, snapshot) if snapshot else None
 
-    def find(self, label, limit=None, marker=None):
+    def find(self, limit=None, marker=None, **kwargs):
         """
         Searches for a snapshot by a given list of attributes.
         """
+        label = kwargs.pop('label', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1280,22 +1312,11 @@ class GCSBucketObjectService(BaseBucketObjectService):
                                      response.get('nextPageToken'),
                                      False, data=objects)
 
-    def find(self, bucket, **kwargs):
-        master_list = []
-        obj_list = self.list(bucket=bucket, limit=500)
-        if obj_list.supports_server_paging:
-            master_list.extend(obj_list)
-            while obj_list.is_truncated:
-                obj_list = self.list(marker=obj_list.marker,
-                                     **kwargs)
-                master_list.extend(obj_list)
-        else:
-            master_list.extend(obj_list.data)
-
+    def find(self, bucket, limit=None, marker=None, **kwargs):
         filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        matches = cb_helpers.generic_find(filters, kwargs, bucket.objects)
         return ClientPagedResultList(self._provider, list(matches),
-                                     limit=None, marker=None)
+                                     limit=limit, marker=marker)
 
     def _create_object_with_media_body(self, bucket, name, media_body):
         response = (self.provider
