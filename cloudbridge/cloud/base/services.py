@@ -102,7 +102,29 @@ class BaseKeyPairService(
         super(BaseKeyPairService, self).__init__(provider)
         self._service_event_pattern += ".security.key_pairs"
 
+    def get(self, key_pair_id):
+        return self.dispatch(self, "provider.security.key_pairs.get",
+                             key_pair_id)
+
+    def list(self, limit=None, marker=None):
+        return self.dispatch(self, "provider.security.key_pairs.list",
+                             limit=limit, marker=marker)
+
+    def find(self, **kwargs):
+        return self.dispatch(self, "provider.security.key_pairs.find",
+                             **kwargs)
+
+    def create(self, name, public_key_material=None):
+        return self.dispatch(self, "provider.security.key_pairs.create",
+                             name, public_key_material=public_key_material)
+
     def delete(self, key_pair_id):
+        return self.dispatch(self, "provider.security.key_pairs.delete",
+                             key_pair_id)
+
+    @implement(event_pattern="provider.security.key_pairs.delete",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, key_pair_id):
         """
         Delete an existing key pair.
 
@@ -174,7 +196,7 @@ class BaseBucketService(
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
-    @implement(event_pattern="*.storage.buckets.find",
+    @implement(event_pattern="provider.storage.buckets.find",
                priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def _find(self, **kwargs):
         obj_list = self

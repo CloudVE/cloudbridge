@@ -146,7 +146,9 @@ class AzureKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(AzureKeyPairService, self).__init__(provider)
 
-    def get(self, key_pair_id):
+    @implement(event_pattern="provider.security.key_pairs.get",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _get(self, key_pair_id):
         try:
             key_pair = self.provider.azure_client.\
                 get_public_key(key_pair_id)
@@ -159,7 +161,9 @@ class AzureKeyPairService(BaseKeyPairService):
             log.debug(error)
             return None
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.security.key_pairs.list",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
             AzureKeyPairService.PARTITION_KEY, marker=marker,
             limit=limit or self.provider.config.default_result_limit)
@@ -170,7 +174,9 @@ class AzureKeyPairService(BaseKeyPairService):
                                      supports_total=False,
                                      data=results)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.security.key_pairs.find",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -184,7 +190,9 @@ class AzureKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, name, public_key_material=None):
+    @implement(event_pattern="provider.security.key_pairs.create",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _create(self, name, public_key_material=None):
         AzureKeyPair.assert_valid_resource_name(name)
 
         key_pair = self.get(name)

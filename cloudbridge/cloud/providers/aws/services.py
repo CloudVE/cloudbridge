@@ -89,14 +89,20 @@ class AWSKeyPairService(BaseKeyPairService):
                                   cb_resource=AWSKeyPair,
                                   boto_collection_name='key_pairs')
 
-    def get(self, key_pair_id):
+    @implement(event_pattern="provider.security.key_pairs.get",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _get(self, key_pair_id):
         log.debug("Getting Key Pair Service %s", key_pair_id)
         return self.svc.get(key_pair_id)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.security.key_pairs.list",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.security.key_pairs.find",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         name = kwargs.pop('name', None)
 
         # All kwargs should have been popped at this time.
@@ -108,7 +114,9 @@ class AWSKeyPairService(BaseKeyPairService):
         log.debug("Searching for Key Pair %s", name)
         return self.svc.find(filter_name='key-name', filter_value=name)
 
-    def create(self, name, public_key_material=None):
+    @implement(event_pattern="provider.security.key_pairs.create",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _create(self, name, public_key_material=None):
         log.debug("Creating Key Pair Service %s", name)
         AWSKeyPair.assert_valid_resource_name(name)
         private_key = None
