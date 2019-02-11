@@ -931,7 +931,9 @@ class AzureNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(AzureNetworkService, self).__init__(provider)
 
-    def get(self, network_id):
+    @implement(event_pattern="provider.networking.networks.get",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _get(self, network_id):
         try:
             network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
@@ -940,31 +942,17 @@ class AzureNetworkService(BaseNetworkService):
             log.exception(cloud_error)
             return None
 
-    def list(self, limit=None, marker=None):
-        """
-        List all networks.
-        """
+    @implement(event_pattern="provider.networking.networks.list",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         networks = [AzureNetwork(self.provider, network)
                     for network in self.provider.azure_client.list_networks()]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['label']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
-    def create(self, label, cidr_block):
-        AzureNetwork.assert_valid_resource_label(label)
+    @implement(event_pattern="provider.networking.networks.create",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, cidr_block):
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
@@ -980,10 +968,9 @@ class AzureNetworkService(BaseNetworkService):
         cb_network = AzureNetwork(self.provider, az_network)
         return cb_network
 
-    def delete(self, network_id):
-        """
-        Delete an existing network.
-        """
+    @implement(event_pattern="provider.networking.networks.delete",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, network_id):
         self.provider.azure_client.delete_network(network_id)
 
 

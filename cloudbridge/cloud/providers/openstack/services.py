@@ -6,6 +6,7 @@ import logging
 from cinderclient.exceptions import NotFound as CinderNotFound
 
 from neutronclient.common.exceptions import NeutronClientException
+from neutronclient.common.exceptions import PortNotFoundClient
 
 from novaclient.exceptions import NotFound as NovaNotFound
 
@@ -851,19 +852,24 @@ class OpenStackNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(OpenStackNetworkService, self).__init__(provider)
 
-    def get(self, network_id):
-        log.debug("Getting OpenStack Network with the id: %s", network_id)
+    @implement(event_pattern="provider.networking.networks.get",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _get(self, network_id):
         network = (n for n in self if n.id == network_id)
         return next(network, None)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.networks.list",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks()
                     .get('networks') if network]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.networking.networks.find",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -878,9 +884,9 @@ class OpenStackNetworkService(BaseNetworkService):
                     .get('networks') if network]
         return ClientPagedResultList(self.provider, networks)
 
-    def create(self, label, cidr_block):
-        log.debug("Creating OpenStack Network with the params: "
-                  "[label: %s Cinder Block: %s]", label, cidr_block)
+    @implement(event_pattern="provider.networking.networks.create",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, cidr_block):
         OpenStackNetwork.assert_valid_resource_label(label)
         net_info = {'name': label or ""}
         network = self.provider.neutron.create_network({'network': net_info})
@@ -888,6 +894,24 @@ class OpenStackNetworkService(BaseNetworkService):
         if label:
             cb_net.label = label
         return cb_net
+
+    @implement(event_pattern="provider.networking.networks.create",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, network_id):
+        network = self.get(network_id)
+        if not network.external and network_id in str(
+                self.provider.neutron.list_networks()):
+            # If there are ports associated with the network, it won't delete
+            ports = self.provider.neutron.list_ports(
+                network_id=network_id).get('ports', [])
+            for port in ports:
+                try:
+                    self.provider.neutron.delete_port(port.get('id'))
+                except PortNotFoundClient:
+                    # Ports could have already been deleted if instances
+                    # are terminated etc. so exceptions can be safely ignored
+                    pass
+            self.provider.neutron.delete_network(network_id)
 
 
 class OpenStackSubnetService(BaseSubnetService):

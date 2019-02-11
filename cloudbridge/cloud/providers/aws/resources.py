@@ -980,9 +980,6 @@ class AWSNetwork(BaseNetwork):
     def cidr_block(self):
         return self._vpc.cidr_block
 
-    def delete(self):
-        self._vpc.delete()
-
     @property
     def subnets(self):
         return [AWSSubnet(self._provider, s) for s in self._vpc.subnets.all()]

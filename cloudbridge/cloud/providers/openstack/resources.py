@@ -14,8 +14,6 @@ except ImportError:  # python 2
 
 from keystoneclient.v3.regions import Region
 
-from neutronclient.common.exceptions import PortNotFoundClient
-
 import novaclient.exceptions as novaex
 
 from openstack.exceptions import HttpException
@@ -893,21 +891,6 @@ class OpenStackNetwork(BaseNetwork):
     def cidr_block(self):
         # OpenStack does not define a CIDR block for networks
         return ''
-
-    def delete(self):
-        if not self.external and self.id in str(
-                self._provider.neutron.list_networks()):
-            # If there are ports associated with the network, it won't delete
-            ports = self._provider.neutron.list_ports(
-                network_id=self.id).get('ports', [])
-            for port in ports:
-                try:
-                    self._provider.neutron.delete_port(port.get('id'))
-                except PortNotFoundClient:
-                    # Ports could have already been deleted if instances
-                    # are terminated etc. so exceptions can be safely ignored
-                    pass
-            self._provider.neutron.delete_network(self.id)
 
     @property
     def subnets(self):

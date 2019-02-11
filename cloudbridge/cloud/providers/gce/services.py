@@ -591,11 +591,15 @@ class GCENetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(GCENetworkService, self).__init__(provider)
 
-    def get(self, network_id):
+    @implement(event_pattern="provider.networking.networks.get",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _get(self, network_id):
         network = self.provider.get_resource('networks', network_id)
         return GCENetwork(self.provider, network) if network else None
 
-    def find(self, limit=None, marker=None, **kwargs):
+    @implement(event_pattern="provider.networking.networks.find",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _find(self, limit=None, marker=None, **kwargs):
         """
         GCE networks are global. There is at most one network with a given
         name.
@@ -605,7 +609,9 @@ class GCENetworkService(BaseNetworkService):
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
-    def list(self, limit=None, marker=None, filter=None):
+    @implement(event_pattern="provider.networking.networks.list",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None, filter=None):
         # TODO: Decide whether we keep filter in 'list'
         networks = []
         response = (self.provider
@@ -619,7 +625,9 @@ class GCENetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def create(self, label, cidr_block):
+    @implement(event_pattern="provider.networking.networks.create",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, cidr_block):
         """
         Creates an auto mode VPC network with default subnets. It is possible
         to add additional subnets later.
@@ -652,15 +660,17 @@ class GCENetworkService(BaseNetworkService):
                 label=GCENetwork.CB_DEFAULT_NETWORK_LABEL,
                 cidr_block=GCENetwork.CB_DEFAULT_IPV4RANGE)
 
-    def delete(self, network):
+    @implement(event_pattern="provider.networking.networks.delete",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, network_id):
         # Accepts network object
-        if isinstance(network, GCENetwork):
-            name = network.name
+        if isinstance(network_id, GCENetwork):
+            name = network_id.name
         # Accepts both name and ID
-        elif 'googleapis' in network:
-            name = network.split('/')[-1]
+        elif 'googleapis' in network_id:
+            name = network_id.split('/')[-1]
         else:
-            name = network
+            name = network_id
         response = (self.provider
                         .gce_compute
                         .networks()
@@ -672,7 +682,7 @@ class GCENetworkService(BaseNetworkService):
         tag_name = "_".join(["network", name, "label"])
         if not helpers.remove_metadata_item(self.provider, tag_name):
             log.warning('No label was found associated with this network '
-                        '"{}" when deleted.'.format(network.name))
+                        '"{}" when deleted.'.format(network_id))
         return True
 
 
@@ -1218,10 +1228,10 @@ class GCSBucketService(BaseBucketService):
         Delete this bucket.
         """
         # GCE uses name rather than URL to identify resources
-        name = (self._provider._storage_resources
+        name = (self.provider._storage_resources
                     .parse_url(bucket_id)
                     .parameters.get("bucket"))
-        (self._provider
+        (self.provider
              .gcs_storage
              .buckets()
              .delete(bucket=name)

@@ -823,6 +823,9 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
+    def delete(self):
+        self._provider.networking.networks.delete(self.id)
+
     def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(
             label=label, network=self, cidr_block=cidr_block, zone=zone)

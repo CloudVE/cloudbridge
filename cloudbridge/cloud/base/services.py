@@ -351,12 +351,6 @@ class BaseNetworkService(
         return [subnet for subnet in self.provider.subnets
                 if subnet.network_id == self.id]
 
-    def delete(self, network_id):
-        network = self.get(network_id)
-        if network:
-            log.info("Deleting network %s", network_id)
-            network.delete()
-
     def get_or_create_default(self):
         networks = self.provider.networking.networks.find(
             label=BaseNetwork.CB_DEFAULT_NETWORK_LABEL)
@@ -368,6 +362,81 @@ class BaseNetworkService(
                      BaseNetwork.CB_DEFAULT_NETWORK_LABEL)
             return self.provider.networking.networks.create(
                 BaseNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
+
+    @implement(event_pattern="provider.networking.networks.find",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
+        obj_list = self
+        filters = ['label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
+    def get(self, network_id):
+        """
+        Returns a network given its ID. Returns ``None`` if the network
+        does not exist.
+
+        :type network_id: str
+        :param network_id: The id of the desired network.
+
+        :rtype: ``network``
+        :return:  ``None`` is returned if the network does not exist, and
+                  the network's provider-specific CloudBridge object is
+                  returned if the network is found.
+        """
+        return self.dispatch(self, "provider.networking.networks.get",
+                             network_id)
+
+    def find(self, **kwargs):
+        """
+        Returns a list of networks filtered by the given keyword arguments.
+        Accepted search arguments are: 'label'
+        """
+        return self.dispatch(self, "provider.networking.networks.find",
+                             **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all networks.
+        """
+        return self.dispatch(self, "provider.networking.networks.list",
+                             limit=limit, marker=marker)
+
+    def create(self, label, cidr_block):
+        """
+        Create a new network.
+
+        :type label: str
+        :param label: The label of the network to be created. Note that labels
+                      do not have to be unique and can be changed.
+        :type cidr_block: str
+        :param cidr_block: A string representing a 'Classless Inter-Domain
+                           Routing' notation
+
+        :rtype: ``Network``
+        :return:  The created network's provider-specific CloudBridge object.
+        """
+        BaseNetwork.assert_valid_resource_label(label)
+        return self.dispatch(self, "provider.networking.networks.create",
+                             label, cidr_block)
+
+    def delete(self, network_id):
+        """
+        Delete an existing network.
+
+        :type network_id: str
+        :param network_id: The ID of the network to be deleted.
+        """
+        return self.dispatch(self, "provider.networking.networks.delete",
+                             network_id)
 
 
 class BaseSubnetService(

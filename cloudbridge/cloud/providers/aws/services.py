@@ -750,15 +750,19 @@ class AWSNetworkService(BaseNetworkService):
                                   cb_resource=AWSNetwork,
                                   boto_collection_name='vpcs')
 
-    def get(self, network_id):
-        log.debug("Getting AWS Network Service with the id: %s",
-                  network_id)
+    @implement(event_pattern="provider.networking.networks.get",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _get(self, network_id):
         return self.svc.get(network_id)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.networks.list",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.networking.networks.find",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -769,9 +773,9 @@ class AWSNetworkService(BaseNetworkService):
         log.debug("Searching for AWS Network Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def create(self, label, cidr_block):
-        log.debug("Creating AWS Network Service with the params "
-                  "[label: %s block: %s]", label, cidr_block)
+    @implement(event_pattern="provider.networking.networks.create",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, cidr_block):
         AWSNetwork.assert_valid_resource_label(label)
 
         cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block)
@@ -780,6 +784,12 @@ class AWSNetworkService(BaseNetworkService):
         if label:
             cb_net.label = label
         return cb_net
+
+    @implement(event_pattern="provider.networking.networks.delete",
+               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, network_id):
+        net = self.get(network_id)
+        net._vpc.delete()
 
     def get_or_create_default(self):
         # # Look for provided default network
