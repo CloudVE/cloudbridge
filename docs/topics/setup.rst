@@ -41,7 +41,8 @@ will override environment values.
     ## For GCE
     config = {'gce_service_creds_file': '<service_creds_file_name>.json'}
     # Alternatively, we can supply a dictionary with the credentials values
-    # shown on the access credentials procurement page.
+    # shown on the access credentials procurement page:
+    # http://cloudbridge.cloudve.org/en/latest/topics/procuring_credentials.html#google-compute-engine-gce
     config = {'gce_service_creds_dict': credentials_dictionary}
     provider = CloudProviderFactory().create_provider(ProviderList.GCE, config)
 
