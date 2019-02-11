@@ -422,7 +422,7 @@ class AzureSnapshotService(BaseSnapshotService):
                                                                 params)
         return AzureSnapshot(self.provider, azure_snap)
 
-    @implement(event_pattern="provider.storage.volumes.delete",
+    @implement(event_pattern="provider.storage.snapshots.delete",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def _delete(self, snapshot):
         snap_id = (snapshot.id if isinstance(snapshot, AzureSnapshot)
