@@ -496,9 +496,6 @@ class AWSVolume(BaseVolume):
         snap.wait_till_ready()
         return snap
 
-    def delete(self):
-        self._volume.delete()
-
     @property
     def state(self):
         if self._unknown_state:

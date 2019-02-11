@@ -1937,18 +1937,6 @@ class GCEVolume(BaseVolume):
         return self._provider.storage.snapshots.create(
             label, self, description)
 
-    def delete(self):
-        """
-        Delete this volume.
-        """
-        (self._provider
-         .gce_compute
-         .disks()
-         .delete(project=self._provider.project_name,
-                 zone=self.zone_name,
-                 disk=self.name)
-         .execute())
-
     @property
     def state(self):
         if len(self._volume.get('users', [])) > 0:

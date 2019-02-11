@@ -259,10 +259,9 @@ class AzureVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(AzureVolumeService, self).__init__(provider)
 
-    def get(self, volume_id):
-        """
-        Returns a volume given its id.
-        """
+    @implement(event_pattern="provider.storage.volumes.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, volume_id):
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
@@ -271,7 +270,9 @@ class AzureVolumeService(BaseVolumeService):
             log.exception(cloud_error)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.volumes.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -285,20 +286,17 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def list(self, limit=None, marker=None):
-        """
-        List all volumes.
-        """
+    @implement(event_pattern="provider.storage.volumes.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         azure_vols = self.provider.azure_client.list_disks()
         cb_vols = [AzureVolume(self.provider, vol) for vol in azure_vols]
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, label, size, zone, description=None, snapshot=None):
-        """
-        Creates a new volume.
-        """
-        AzureVolume.assert_valid_resource_label(label)
+    @implement(event_pattern="provider.storage.volumes.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, size, zone, description=None, snapshot=None):
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         tags = {'Label': label}
 
@@ -341,6 +339,11 @@ class AzureVolumeService(BaseVolumeService):
         cb_vol = AzureVolume(self.provider, azure_vol)
 
         return cb_vol
+
+    @implement(event_pattern="provider.storage.volumes.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, volume_id):
+        self.provider.azure_client.delete_disk(volume_id)
 
 
 class AzureSnapshotService(BaseSnapshotService):

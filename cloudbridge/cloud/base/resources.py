@@ -462,6 +462,9 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
             timeout=timeout,
             interval=interval)
 
+    def delete(self):
+        self._provider.storage.volumes.delete(self.id)
+
 
 class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
 

@@ -973,17 +973,15 @@ class GCEVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(GCEVolumeService, self).__init__(provider)
 
-    def get(self, volume_id):
-        """
-        Returns a volume given its id.
-        """
+    @implement(event_pattern="provider.storage.volumes.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, volume_id):
         vol = self.provider.get_resource('disks', volume_id)
         return GCEVolume(self.provider, vol) if vol else None
 
-    def find(self, label, limit=None, marker=None):
-        """
-        Searches for a volume by a given list of attributes.
-        """
+    @implement(event_pattern="provider.storage.volumes.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, label, limit=None, marker=None):
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1004,14 +1002,9 @@ class GCEVolumeService(BaseVolumeService):
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
 
-    def list(self, limit=None, marker=None):
-        """
-        List all volumes.
-
-        limit: The maximum number of volumes to return. The returned
-               ResultList's is_truncated property can be used to determine
-               whether more records are available.
-        """
+    @implement(event_pattern="provider.storage.volumes.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         # For GCE API, Acceptable values are 0 to 500, inclusive.
         # (Default: 500).
         max_result = limit if limit is not None and limit < 500 else 500
@@ -1032,22 +1025,9 @@ class GCEVolumeService(BaseVolumeService):
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
 
-    def create(self, label, size, zone, snapshot=None, description=None):
-        """
-        Creates a new volume.
-
-        Argument `name` must be 1-63 characters long, and comply with RFC1035.
-        Specifically, the name must be 1-63 characters long and match the
-        regular expression [a-z]([-a-z0-9]*[a-z0-9])? which means the first
-        character must be a lowercase letter, and all following characters must
-        be a dash, lowercase letter, or digit, except the last character, which
-        cannot be a dash.
-        """
-        log.debug("Creating GCE Volume with parameters "
-                  "[label: %s size: %s zone: %s snapshot: %s "
-                  "description: %s]", label, size, zone, snapshot,
-                  description)
-        GCEVolume.assert_valid_resource_label(label)
+    @implement(event_pattern="provider.storage.volumes.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, size, zone, snapshot=None, description=None):
         name = GCEVolume._generate_name_from_label(label, 'cb-vol')
         if not isinstance(zone, GCEPlacementZone):
             zone = GCEPlacementZone(
@@ -1074,6 +1054,18 @@ class GCEVolumeService(BaseVolumeService):
                          .execute())
         cb_vol = self.get(operation.get('targetLink'))
         return cb_vol
+
+    @implement(event_pattern="provider.storage.volumes.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, volume_id):
+        vol = self.provider.get_resource('disks', volume_id)
+        zone_name = self.provider.parse_url(vol.get('zone')).parameters['zone']
+        (self._provider.gce_compute
+                       .disks()
+                       .delete(project=self.provider.project_name,
+                               zone=zone_name,
+                               disk=vol.get('name'))
+                       .execute())
 
 
 class GCESnapshotService(BaseSnapshotService):

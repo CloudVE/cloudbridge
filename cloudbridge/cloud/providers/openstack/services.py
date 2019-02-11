@@ -297,11 +297,9 @@ class OpenStackVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(OpenStackVolumeService, self).__init__(provider)
 
-    def get(self, volume_id):
-        """
-        Returns a volume given its id.
-        """
-        log.debug("Getting OpenStack Volume with the id: %s", volume_id)
+    @implement(event_pattern="provider.storage.volumes.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, volume_id):
         try:
             return OpenStackVolume(
                 self.provider, self.provider.cinder.volumes.get(volume_id))
@@ -309,7 +307,9 @@ class OpenStackVolumeService(BaseVolumeService):
             log.debug("Volume %s was not found.", volume_id)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.volumes.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -328,10 +328,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols)
 
-    def list(self, limit=None, marker=None):
-        """
-        List all volumes.
-        """
+    @implement(event_pattern="provider.storage.volumes.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         cb_vols = [
             OpenStackVolume(self.provider, vol)
             for vol in self.provider.cinder.volumes.list(
@@ -340,15 +339,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
-    def create(self, label, size, zone, snapshot=None, description=None):
-        """
-        Creates a new volume.
-        """
-        log.debug("Creating a new volume with the params: "
-                  "[label: %s size: %s zone: %s snapshot: %s description: %s]",
-                  label, size, zone, snapshot, description)
-        OpenStackVolume.assert_valid_resource_label(label)
-
+    @implement(event_pattern="provider.storage.volumes.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, size, zone, snapshot=None, description=None):
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, OpenStackSnapshot) and snapshot else snapshot
@@ -357,6 +350,12 @@ class OpenStackVolumeService(BaseVolumeService):
             size, name=label, description=description,
             availability_zone=zone_id, snapshot_id=snapshot_id)
         return OpenStackVolume(self.provider, os_vol)
+
+    @implement(event_pattern="provider.storage.volumes.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, volume_id):
+        os_vol = self.provider.cinder.volumes.get(volume_id)
+        os_vol.delete()
 
 
 class OpenStackSnapshotService(BaseSnapshotService):

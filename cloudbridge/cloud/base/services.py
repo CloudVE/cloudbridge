@@ -11,6 +11,7 @@ from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import Network
@@ -252,6 +253,67 @@ class BaseVolumeService(
     def __init__(self, provider):
         super(BaseVolumeService, self).__init__(provider)
         self._service_event_pattern += ".storage.volumes"
+
+    def get(self, volume_id):
+        """
+        Returns a volume given its ID. Returns ``None`` if the volume
+        does not exist.
+
+        :type volume_id: str
+        :param volume_id: The id of the desired volume.
+
+        :rtype: ``Volume``
+        :return:  ``None`` is returned if the volume does not exist, and
+                  the volume's provider-specific CloudBridge object is
+                  returned if the volume is found.
+        """
+        return self.dispatch(self, "provider.storage.volumes.get",
+                             volume_id)
+
+    def find(self, **kwargs):
+        """
+        Returns a list of volumes filtered by the given keyword arguments.
+        Accepted search arguments are: 'label'
+        """
+        return self.dispatch(self, "provider.storage.volumes.find",
+                             **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all volumes.
+        """
+        return self.dispatch(self, "provider.storage.volumes.list",
+                             limit=limit, marker=marker)
+
+    def create(self, label, size, zone, description=None, snapshot=None):
+        """
+        Create a new volume.
+
+        :type label: str
+        :param label: The label of the volume to be created. Note that labels
+                     do not have to be unique, and are changeable.
+        :type size: int
+        :param size: The size (in Gb) of the volume to be created
+
+        :type zone: str
+        :param zone: The availability zone in which to create the volume
+
+        :rtype: ``Volume``
+        :return:  The created volume's provider-specific CloudBridge object.
+        """
+        BaseVolume.assert_valid_resource_label(label)
+        return self.dispatch(self, "provider.storage.volumes.create",
+                             label, size, zone, description, snapshot)
+
+    def delete(self, volume_id):
+        """
+        Delete an existing volume.
+
+        :type volume_id: str
+        :param volume_id: The ID of the volume to be deleted.
+        """
+        return self.dispatch(self, "provider.storage.volumes.delete",
+                             volume_id)
 
 
 class BaseSnapshotService(
