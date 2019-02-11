@@ -1111,14 +1111,18 @@ class GCESnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(GCESnapshotService, self).__init__(provider)
 
-    def get(self, snapshot_id):
+    @implement(event_pattern="provider.storage.snapshots.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, snapshot_id):
         """
         Returns a snapshot given its id.
         """
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
         return GCESnapshot(self.provider, snapshot) if snapshot else None
 
-    def find(self, limit=None, marker=None, **kwargs):
+    @implement(event_pattern="provider.storage.snapshots.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, limit=None, marker=None, **kwargs):
         """
         Searches for a snapshot by a given list of attributes.
         """
@@ -1149,7 +1153,9 @@ class GCESnapshotService(BaseSnapshotService):
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.snapshots.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all snapshots.
         """
@@ -1170,7 +1176,9 @@ class GCESnapshotService(BaseSnapshotService):
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
-    def create(self, label, volume, description=None):
+    @implement(event_pattern="provider.storage.snapshots.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
@@ -1197,6 +1205,18 @@ class GCESnapshotService(BaseSnapshotService):
         cb_snap = self.get(name)
         return cb_snap
 
+    @implement(event_pattern="provider.storage.snapshots.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, snapshot):
+        cb_snap = (snapshot if isinstance(snapshot, GCESnapshot)
+                   else self.get(snapshot))
+        (self._provider
+         .gce_compute
+         .snapshots()
+         .delete(project=self.provider.project_name,
+                 snapshot=cb_snap.name)
+         .execute())
+
 
 class GCSBucketService(BaseBucketService):
 
@@ -1216,10 +1236,15 @@ class GCSBucketService(BaseBucketService):
 
     @implement(event_pattern="provider.storage.buckets.find",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _find(self, name, limit=None, marker=None):
-        """
-        Searches in bucket names for a substring.
-        """
+    def _find(self, limit=None, marker=None, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'name'))
+
         buckets = [bucket for bucket in self if name in bucket.name]
         return ClientPagedResultList(self.provider, buckets, limit=limit,
                                      marker=marker)

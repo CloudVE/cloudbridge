@@ -490,6 +490,12 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
             timeout=timeout,
             interval=interval)
 
+    def delete(self):
+        """
+        Delete this snapshot.
+        """
+        return self._provider.storage.snapshots.delete(self)
+
 
 class BaseKeyPair(BaseCloudResource, KeyPair):
 

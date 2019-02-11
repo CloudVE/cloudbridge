@@ -207,6 +207,26 @@ class BaseSnapshotService(
         super(BaseSnapshotService, self).__init__(provider)
         self._service_event_pattern += ".storage.snapshots"
 
+    def get(self, snapshot_id):
+        return self.dispatch(self, "provider.storage.snapshots.get",
+                             snapshot_id)
+
+    def list(self, limit=None, marker=None):
+        return self.dispatch(self, "provider.storage.snapshots.list",
+                             limit=limit, marker=marker)
+
+    def find(self, **kwargs):
+        return self.dispatch(self, "provider.storage.snapshots.find",
+                             **kwargs)
+
+    def create(self, label, volume, description=None):
+        return self.dispatch(self, "provider.storage.snapshots.create",
+                             label, volume=volume, description=description)
+
+    def delete(self, snapshot):
+        return self.dispatch(self, "provider.storage.snapshots.delete",
+                             snapshot)
+
 
 class BaseBucketService(
         BasePageableObjectMixin, BucketService, BaseCloudService):

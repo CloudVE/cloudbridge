@@ -351,7 +351,9 @@ class AzureSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(AzureSnapshotService, self).__init__(provider)
 
-    def get(self, ss_id):
+    @implement(event_pattern="provider.storage.snapshots.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, ss_id):
         """
         Returns a snapshot given its id.
         """
@@ -363,7 +365,9 @@ class AzureSnapshotService(BaseSnapshotService):
             log.exception(cloud_error)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.snapshots.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -377,7 +381,9 @@ class AzureSnapshotService(BaseSnapshotService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.snapshots.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
                List all snapshots.
         """
@@ -386,7 +392,9 @@ class AzureSnapshotService(BaseSnapshotService):
                  self.provider.azure_client.list_snapshots()]
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
-    def create(self, label, volume, description=None):
+    @implement(event_pattern="provider.storage.snapshots.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
@@ -413,6 +421,13 @@ class AzureSnapshotService(BaseSnapshotService):
         azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,
                                                                 params)
         return AzureSnapshot(self.provider, azure_snap)
+
+    @implement(event_pattern="provider.storage.volumes.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, snapshot):
+        snap_id = (snapshot.id if isinstance(snapshot, AzureSnapshot)
+                   else snapshot)
+        self.provider.azure_client.delete_snapshot(snap_id)
 
 
 class AzureBucketService(BaseBucketService):

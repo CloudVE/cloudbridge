@@ -284,12 +284,16 @@ class AWSSnapshotService(BaseSnapshotService):
                                   cb_resource=AWSSnapshot,
                                   boto_collection_name='snapshots')
 
-    def get(self, snapshot_id):
+    @implement(event_pattern="provider.storage.snapshots.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, snapshot_id):
         log.debug("Getting AWS Snapshot Service with the id: %s",
                   snapshot_id)
         return self.svc.get(snapshot_id)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.snapshots.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         # Filter by description or label
         label = kwargs.get('label', None)
 
@@ -304,11 +308,15 @@ class AWSSnapshotService(BaseSnapshotService):
         filters = ['label']
         return cb_helpers.generic_find(filters, kwargs, obj_list)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.snapshots.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker,
                              OwnerIds=['self'])
 
-    def create(self, label, volume, description=None):
+    @implement(event_pattern="provider.storage.snapshots.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, volume, description=None):
         """
         Creates a new snapshot of a given volume.
         """
@@ -326,6 +334,14 @@ class AWSSnapshotService(BaseSnapshotService):
         if cb_snap.description:
             cb_snap.description = description
         return cb_snap
+
+    @implement(event_pattern="provider.storage.snapshots.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, snapshot):
+        cb_snap = (snapshot if isinstance(snapshot, AWSSnapshot)
+                   else self.get(snapshot))
+        # pylint:disable=protected-access
+        cb_snap._snapshot.delete()
 
 
 class AWSBucketService(BaseBucketService):

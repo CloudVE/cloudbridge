@@ -379,7 +379,7 @@ class SnapshotService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, volume_id):
+    def get(self, snapshot_id):
         """
         Returns a snapshot given its id.
 
@@ -428,6 +428,15 @@ class SnapshotService(PageableObjectMixin, CloudService):
 
         :rtype: ``object`` of :class:`.Snapshot`
         :return: a newly created Snapshot object.
+        """
+        pass
+
+    def delete(self, snapshot):
+        """
+        Delete an existing snapshot.
+
+        :type snapshot: ``str`` or :class:`Snapshot`
+        :param snapshot: The object or ID of the snapshot to be deleted.
         """
         pass
 
