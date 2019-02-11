@@ -1249,9 +1249,6 @@ class OpenStackVMFirewall(BaseVMFirewall):
     def rules(self):
         return self._rule_svc
 
-    def delete(self):
-        return self._vm_firewall.delete(self._provider.os_conn.session)
-
     def refresh(self):
         self._vm_firewall = self._provider.os_conn.network.get_security_group(
             self.id)

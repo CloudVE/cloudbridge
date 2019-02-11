@@ -147,19 +147,21 @@ class AWSVMFirewallService(BaseVMFirewallService):
                                   cb_resource=AWSVMFirewall,
                                   boto_collection_name='security_groups')
 
-    def get(self, firewall_id):
-        log.debug("Getting Firewall Service with the id: %s", firewall_id)
-        return self.svc.get(firewall_id)
+    @implement(event_pattern="provider.security.vm_firewalls.get",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _get(self, vm_firewall_id):
+        log.debug("Getting Firewall Service with the id: %s", vm_firewall_id)
+        return self.svc.get(vm_firewall_id)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.security.vm_firewalls.list",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    def create(self, label, network, description=None):
-        log.debug("Creating Firewall Service with the parameters "
-                  "[label: %s id: %s description: %s]", label, network,
-                  description)
-        AWSVMFirewall.assert_valid_resource_label(label)
+    @implement(event_pattern="provider.security.vm_firewalls.create",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network, description=None):
         name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
         network_id = network.id if isinstance(network, Network) else network
         obj = self.svc.create('create_security_group', GroupName=name,
@@ -168,7 +170,9 @@ class AWSVMFirewallService(BaseVMFirewallService):
         obj.label = label
         return obj
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.security.vm_firewalls.find",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         # Filter by name or label
         label = kwargs.pop('label', None)
         log.debug("Searching for Firewall Service %s", label)
@@ -179,11 +183,11 @@ class AWSVMFirewallService(BaseVMFirewallService):
         return self.svc.find(filter_name='tag:Name',
                              filter_value=label)
 
-    def delete(self, firewall_id):
-        log.info("Deleting Firewall Service with the id %s", firewall_id)
-        firewall = self.svc.get(firewall_id)
-        if firewall:
-            firewall.delete()
+    @implement(event_pattern="provider.security.vm_firewalls.delete",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, vm_firewall_id):
+        aws_fw = self.svc.get_raw(vm_firewall_id)
+        aws_fw.delete()
 
 
 class AWSStorageService(BaseStorageService):

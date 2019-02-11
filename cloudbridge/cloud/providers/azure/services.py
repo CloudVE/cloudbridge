@@ -78,23 +78,28 @@ class AzureVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
         super(AzureVMFirewallService, self).__init__(provider)
 
-    def get(self, fw_id):
+    @implement(event_pattern="provider.security.vm_firewalls.get",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _get(self, vm_firewall_id):
         try:
-            fws = self.provider.azure_client.get_vm_firewall(fw_id)
+            fws = self.provider.azure_client.get_vm_firewall(vm_firewall_id)
             return AzureVMFirewall(self.provider, fws)
         except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.security.vm_firewalls.list",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         fws = [AzureVMFirewall(self.provider, fw)
                for fw in self.provider.azure_client.list_vm_firewall()]
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    def create(self, label, network, description=None):
-        AzureVMFirewall.assert_valid_resource_label(label)
+    @implement(event_pattern="provider.security.vm_firewalls.create",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network, description=None):
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         net = network.id if isinstance(network, Network) else network
         parameters = {"location": self.provider.region_name,
@@ -135,7 +140,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
         cb_fw = AzureVMFirewall(self.provider, fw)
         return cb_fw
 
-    def delete(self, group_id):
+    @implement(event_pattern="provider.security.vm_firewalls.delete",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, group_id):
         self.provider.azure_client.delete_vm_firewall(group_id)
 
 

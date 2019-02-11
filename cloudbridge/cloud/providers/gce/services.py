@@ -162,14 +162,19 @@ class GCEVMFirewallService(BaseVMFirewallService):
         super(GCEVMFirewallService, self).__init__(provider)
         self._delegate = GCEFirewallsDelegate(provider)
 
-    def get(self, group_id):
-        tag, network_name = self._delegate.get_tag_network_from_id(group_id)
+    @implement(event_pattern="provider.security.vm_firewalls.get",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _get(self, vm_firewall_id):
+        tag, network_name = \
+            self._delegate.get_tag_network_from_id(vm_firewall_id)
         if tag is None:
             return None
         network = self.provider.networking.networks.get(network_name)
         return GCEVMFirewall(self._delegate, tag, network)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.security.vm_firewalls.list",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         vm_firewalls = []
         for tag, network_name in self._delegate.tag_networks:
             network = self.provider.networking.networks.get(
@@ -179,8 +184,9 @@ class GCEVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, vm_firewalls,
                                      limit=limit, marker=marker)
 
-    def create(self, label, description, network=None):
-        GCEVMFirewall.assert_valid_resource_label(label)
+    @implement(event_pattern="provider.security.vm_firewalls.create",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network, description=None):
         network = (network if isinstance(network, GCENetwork)
                    else self.provider.networking.networks.get(network))
         fw = GCEVMFirewall(self._delegate, label, network, description)
@@ -192,8 +198,10 @@ class GCEVMFirewallService(BaseVMFirewallService):
         fw.label = label
         return fw
 
-    def delete(self, group_id):
-        return self._delegate.delete_tag_network_with_id(group_id)
+    @implement(event_pattern="provider.security.vm_firewalls.delete",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, vm_firewall_id):
+        return self._delegate.delete_tag_network_with_id(vm_firewall_id)
 
     def find_by_network_and_tags(self, network_name, tags):
         """

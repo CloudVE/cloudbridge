@@ -416,6 +416,10 @@ class GCEFirewallsDelegate(object):
                         .execute())
         self._provider.wait_for_operation(response)
         # TODO: process the response and handle errors.
+        tag_name = "_".join(["firewall", self.name, "label"])
+        if not helpers.remove_metadata_item(self._provider, tag_name):
+            log.warning('No label was found associated with this firewall '
+                        '"{}" when deleted.'.format(self.name))
         return True
 
     def _update_list_response(self):
@@ -505,16 +509,6 @@ class GCEVMFirewall(BaseVMFirewall):
     @property
     def rules(self):
         return self._rule_container
-
-    def delete(self):
-        for rule in self._rule_container:
-            rule.delete()
-        self._rule_container.dummy_rule.force_delete()
-        # Remove label
-        tag_name = "_".join(["firewall", self.name, "label"])
-        if not helpers.remove_metadata_item(self._provider, tag_name):
-            log.warning('No label was found associated with this firewall '
-                        '"{}" when deleted.'.format(self.name))
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))

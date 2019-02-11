@@ -10,6 +10,7 @@ from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import Network
@@ -115,7 +116,7 @@ class BaseKeyPairService(
                   the key pair's provider-specific CloudBridge object is
                   returned if the key pair is found.
         """
-        return self.dispatch(self, "provider.storage.key_pairs.get",
+        return self.dispatch(self, "provider.security.key_pairs.get",
                              key_pair_id)
 
     def find(self, **kwargs):
@@ -123,13 +124,14 @@ class BaseKeyPairService(
         Returns a list of key pairs filtered by the given keyword arguments.
         Accepted search arguments are: 'name'
         """
-        return self.dispatch(self, "provider.storage.key_pairs.find", **kwargs)
+        return self.dispatch(self, "provider.security.key_pairs.find",
+                             **kwargs)
 
     def list(self, limit=None, marker=None):
         """
         List all key pairs.
         """
-        return self.dispatch(self, "provider.storage.key_pairs.list",
+        return self.dispatch(self, "provider.security.key_pairs.list",
                              limit=limit, marker=marker)
 
     def create(self, name, location=None):
@@ -144,7 +146,7 @@ class BaseKeyPairService(
         :return:  The created key pair's provider-specific CloudBridge object.
         """
         BaseKeyPair.assert_valid_resource_name(name)
-        return self.dispatch(self, "provider.storage.key_pairs.create",
+        return self.dispatch(self, "provider.security.key_pairs.create",
                              name, location=location)
 
     def delete(self, key_pair_id):
@@ -154,7 +156,7 @@ class BaseKeyPairService(
         :type key_pair_id: str
         :param key_pair_id: The ID of the key pair to be deleted.
         """
-        return self.dispatch(self, "provider.storage.key_pairs.delete",
+        return self.dispatch(self, "provider.security.key_pairs.delete",
                              key_pair_id)
 
 
@@ -165,7 +167,65 @@ class BaseVMFirewallService(
         super(BaseVMFirewallService, self).__init__(provider)
         self._service_event_pattern += ".security.vm_firewalls"
 
+    def get(self, vm_firewall_id):
+        """
+        Returns a vm_firewall given its ID. Returns ``None`` if the vm_firewall
+        does not exist.
+
+        :type vm_firewall_id: str
+        :param vm_firewall_id: The id of the desired firewall.
+
+        :rtype: ``VMFirewall``
+        :return:  ``None`` is returned if the firewall does not exist, and
+                  the firewall's provider-specific CloudBridge object is
+                  returned if the firewall is found.
+        """
+        return self.dispatch(self, "provider.security.vm_firewalls.get",
+                             vm_firewall_id)
+
     def find(self, **kwargs):
+        """
+        Returns a list of firewalls filtered by the given keyword arguments.
+        Accepted search arguments are: 'label'
+        """
+        return self.dispatch(self, "provider.security.vm_firewalls.find",
+                             **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all firewalls.
+        """
+        return self.dispatch(self, "provider.security.vm_firewalls.list",
+                             limit=limit, marker=marker)
+
+    def create(self, label, network, description=None):
+        """
+        Create a new firewall.
+
+        :type label: str
+        :param label: The label of the firewall to be created. Note that labels
+                     do not have to be unique, and are changeable.
+
+        :rtype: ``VMFirewall``
+        :return:  The created firewall's provider-specific CloudBridge object.
+        """
+        BaseVMFirewall.assert_valid_resource_label(label)
+        return self.dispatch(self, "provider.security.vm_firewalls.create",
+                             label, self, label, network, description)
+
+    def delete(self, vm_firewall_id):
+        """
+        Delete an existing firewall.
+
+        :type vm_firewall_id: str
+        :param vm_firewall_id: The ID of the firewall to be deleted.
+        """
+        return self.dispatch(self, "provider.security.vm_firewalls.delete",
+                             vm_firewall_id)
+
+    @implement(event_pattern="provider.security.vm_firewalls.find",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)

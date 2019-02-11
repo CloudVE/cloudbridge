@@ -579,7 +579,7 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         """
         Delete this VM firewall.
         """
-        return self._vm_firewall.delete()
+        return self._provider.security.vm_firewalls.delete(self.id)
 
 
 class BaseVMFirewallRuleContainer(BasePageableObjectMixin,

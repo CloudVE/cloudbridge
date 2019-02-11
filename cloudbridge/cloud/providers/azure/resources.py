@@ -101,9 +101,6 @@ class AzureVMFirewall(BaseVMFirewall):
     def rules(self):
         return self._rule_container
 
-    def delete(self):
-        self._provider.azure_client.delete_vm_firewall(self.id)
-
     def refresh(self):
         """
         Refreshes the security group with tags if required.

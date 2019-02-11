@@ -211,17 +211,21 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
         super(OpenStackVMFirewallService, self).__init__(provider)
 
-    def get(self, firewall_id):
-        log.debug("Getting OpenStack VM Firewall with the id: %s", firewall_id)
+    @implement(event_pattern="provider.security.vm_firewalls.get",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _get(self, vm_firewall_id):
         try:
             return OpenStackVMFirewall(
                 self.provider,
-                self.provider.os_conn.network.get_security_group(firewall_id))
+                self.provider.os_conn.network
+                    .get_security_group(vm_firewall_id))
         except (ResourceNotFound, NotFoundException):
-            log.debug("Firewall %s not found.", firewall_id)
+            log.debug("Firewall %s not found.", vm_firewall_id)
             return None
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.security.vm_firewalls.list",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         firewalls = [
             OpenStackVMFirewall(self.provider, fw)
             for fw in self.provider.os_conn.network.security_groups()]
@@ -230,11 +234,9 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                                      limit=limit, marker=marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    def create(self, label, network, description=None):
-        OpenStackVMFirewall.assert_valid_resource_label(label)
-        log.debug("Creating OpenStack VM Firewall with the params: "
-                  "[label: %s network id: %s description: %s]", label,
-                  network, description)
+    @implement(event_pattern="provider.security.vm_firewalls.create",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network, description=None):
         net = network.id if isinstance(network, Network) else network
         # We generally simulate a network being associated with a firewall
         # by storing the supplied value in the firewall description field that
@@ -252,12 +254,17 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
             return OpenStackVMFirewall(self.provider, sg)
         return None
 
-    def delete(self, group_id):
-        log.debug("Deleting OpenStack Firewall with the id: %s", group_id)
-        firewall = self.get(group_id)
-        if firewall:
-            firewall.delete()
-        return True
+    @implement(event_pattern="provider.security.vm_firewalls.delete",
+               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, vm_firewall_id):
+        try:
+            os_fw = self.provider.os_conn.network.get_security_group(
+                vm_firewall_id)
+            os_fw.delete(self.provider.os_conn.session)
+            return True
+        except (ResourceNotFound, NotFoundException):
+            log.debug("Firewall %s not found.", vm_firewall_id)
+            return True
 
 
 class OpenStackStorageService(BaseStorageService):
