@@ -948,7 +948,9 @@ class AzureRegionService(BaseRegionService):
     def __init__(self, provider):
         super(AzureRegionService, self).__init__(provider)
 
-    def get(self, region_id):
+    @implement(event_pattern="provider.compute.regions.get",
+               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def _get(self, region_id):
         region = None
         for azureRegion in self.provider.azure_client.list_locations():
             if azureRegion.name == region_id:
@@ -956,7 +958,9 @@ class AzureRegionService(BaseRegionService):
                 break
         return region
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.regions.list",
+               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         regions = [AzureRegion(self.provider, region)
                    for region in self.provider.azure_client.list_locations()]
         return ClientPagedResultList(self.provider, regions,

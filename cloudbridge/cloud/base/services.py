@@ -650,11 +650,44 @@ class BaseRegionService(
         super(BaseRegionService, self).__init__(provider)
         self._service_event_pattern += ".compute.regions"
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.compute.regions.find",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
+
+    def get(self, region_id):
+        """
+        Returns a region given its ID. Returns ``None`` if the region
+        does not exist.
+
+        :type region_id: str
+        :param region_id: The id of the desired region.
+
+        :rtype: ``Region``
+        :return:  ``None`` is returned if the region does not exist, and
+                  the region's provider-specific CloudBridge object is
+                  returned if the region is found.
+        """
+        return self.dispatch(self, "provider.compute.regions.get",
+                             region_id)
+
+    def find(self, **kwargs):
+        """
+        Returns a list of regions filtered by the given keyword arguments.
+        Accepted search arguments are: 'name'
+        """
+        return self.dispatch(self, "provider.compute.regions.find",
+                             **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all regions.
+        """
+        return self.dispatch(self, "provider.compute.regions.list",
+                             limit=limit, marker=marker)
 
 
 class BaseNetworkingService(NetworkingService, BaseCloudService):

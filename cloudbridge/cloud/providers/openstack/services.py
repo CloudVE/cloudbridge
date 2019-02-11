@@ -833,12 +833,16 @@ class OpenStackRegionService(BaseRegionService):
     def __init__(self, provider):
         super(OpenStackRegionService, self).__init__(provider)
 
-    def get(self, region_id):
+    @implement(event_pattern="provider.compute.regions.get",
+               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def _get(self, region_id):
         log.debug("Getting OpenStack Region with the id: %s", region_id)
         region = (r for r in self if r.id == region_id)
         return next(region, None)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.regions.list",
+               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         # pylint:disable=protected-access
         if self.provider._keystone_version == 3:
             os_regions = [OpenStackRegion(self.provider, region)

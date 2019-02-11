@@ -270,12 +270,16 @@ class GCERegionService(BaseRegionService):
     def __init__(self, provider):
         super(GCERegionService, self).__init__(provider)
 
-    def get(self, region_id):
+    @implement(event_pattern="provider.compute.regions.get",
+               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def _get(self, region_id):
         region = self.provider.get_resource('regions', region_id,
                                             region=region_id)
         return GCERegion(self.provider, region) if region else None
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.regions.list",
+               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         regions_response = (self.provider
                                 .gce_compute
