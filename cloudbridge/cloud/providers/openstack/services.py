@@ -288,7 +288,9 @@ class OpenStackVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(OpenStackVolumeService, self).__init__(provider)
 
-    def get(self, volume_id):
+    @implement(event_pattern="provider.storage.volumes.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, volume_id):
         """
         Returns a volume given its id.
         """
@@ -300,7 +302,9 @@ class OpenStackVolumeService(BaseVolumeService):
             log.debug("Volume %s was not found.", volume_id)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.volumes.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -320,7 +324,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.volumes.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all volumes.
         """
@@ -332,7 +338,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
-    def create(self, label, size, zone, snapshot=None, description=None):
+    @implement(event_pattern="provider.storage.volumes.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
         """
@@ -349,6 +357,14 @@ class OpenStackVolumeService(BaseVolumeService):
             size, name=label, description=description,
             availability_zone=zone_id, snapshot_id=snapshot_id)
         return OpenStackVolume(self.provider, os_vol)
+
+    @implement(event_pattern="provider.storage.volumes.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, volume):
+        cb_vol = (volume if isinstance(volume, OpenStackVolume)
+                  else self.get(volume))
+        # pylint:disable=protected-access
+        cb_vol._volume.delete()
 
 
 class OpenStackSnapshotService(BaseSnapshotService):

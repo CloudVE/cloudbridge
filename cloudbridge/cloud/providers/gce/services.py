@@ -975,14 +975,18 @@ class GCEVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(GCEVolumeService, self).__init__(provider)
 
-    def get(self, volume_id):
+    @implement(event_pattern="provider.storage.volumes.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, volume_id):
         """
         Returns a volume given its id.
         """
         vol = self.provider.get_resource('disks', volume_id)
         return GCEVolume(self.provider, vol) if vol else None
 
-    def find(self, limit=None, marker=None, **kwargs):
+    @implement(event_pattern="provider.storage.volumes.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, limit=None, marker=None, **kwargs):
         """
         Searches for a volume by a given list of attributes.
         """
@@ -1014,7 +1018,9 @@ class GCEVolumeService(BaseVolumeService):
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.volumes.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all volumes.
 
@@ -1042,7 +1048,9 @@ class GCEVolumeService(BaseVolumeService):
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
 
-    def create(self, label, size, zone, snapshot=None, description=None):
+    @implement(event_pattern="provider.storage.volumes.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, size, zone, snapshot=None, description=None):
         """
         Creates a new volume.
 
@@ -1084,6 +1092,18 @@ class GCEVolumeService(BaseVolumeService):
                          .execute())
         cb_vol = self.get(operation.get('targetLink'))
         return cb_vol
+
+    @implement(event_pattern="provider.storage.volumes.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, volume):
+        cb_vol = volume if isinstance(volume, GCEVolume) else self.get(volume)
+        (self._provider
+         .gce_compute
+         .disks()
+         .delete(project=self.provider.project_name,
+                 zone=cb_vol.zone_name,
+                 disk=cb_vol.name)
+         .execute())
 
 
 class GCESnapshotService(BaseSnapshotService):

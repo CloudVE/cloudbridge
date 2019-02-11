@@ -521,12 +521,6 @@ class AzureVolume(BaseVolume):
         return self._provider.storage.snapshots.create(label, self,
                                                        description)
 
-    def delete(self):
-        """
-        Delete this volume.
-        """
-        self._provider.azure_client.delete_disk(self.id)
-
     @property
     def state(self):
         return AzureVolume.VOLUME_STATE_MAP.get(

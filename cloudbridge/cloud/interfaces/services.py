@@ -362,6 +362,15 @@ class VolumeService(PageableObjectMixin, CloudService):
         """
         pass
 
+    def delete(self, volume):
+        """
+        Delete an existing volume.
+
+        :type volume: ``str`` or :class:`Volume`
+        :param volume: The object or ID of the volume to be deleted.
+        """
+        pass
+
 
 class SnapshotService(PageableObjectMixin, CloudService):
     """

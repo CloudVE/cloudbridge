@@ -219,12 +219,16 @@ class AWSVolumeService(BaseVolumeService):
                                   cb_resource=AWSVolume,
                                   boto_collection_name='volumes')
 
-    def get(self, volume_id):
+    @implement(event_pattern="provider.storage.volumes.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, volume_id):
         log.debug("Getting AWS Volume Service with the id: %s",
                   volume_id)
         return self.svc.get(volume_id)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.volumes.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -236,10 +240,14 @@ class AWSVolumeService(BaseVolumeService):
         log.debug("Searching for AWS Volume Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.volumes.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, label, size, zone, snapshot=None, description=None):
+    @implement(event_pattern="provider.storage.volumes.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, size, zone, snapshot=None, description=None):
         log.debug("Creating AWS Volume Service with the parameters "
                   "[label: %s size: %s zone: %s snapshot: %s "
                   "description: %s]", label, size, zone, snapshot,
@@ -259,6 +267,13 @@ class AWSVolumeService(BaseVolumeService):
         if description:
             cb_vol.description = description
         return cb_vol
+
+    @implement(event_pattern="provider.storage.volumes.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, volume):
+        cb_vol = volume if isinstance(volume, AWSVolume) else self.get(volume)
+        # pylint:disable=protected-access
+        cb_vol._volume.delete()
 
 
 class AWSSnapshotService(BaseSnapshotService):

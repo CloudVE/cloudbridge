@@ -178,6 +178,27 @@ class BaseVolumeService(
         super(BaseVolumeService, self).__init__(provider)
         self._service_event_pattern += ".storage.volumes"
 
+    def get(self, volume_id):
+        return self.dispatch(self, "provider.storage.volumes.get",
+                             volume_id)
+
+    def list(self, limit=None, marker=None):
+        return self.dispatch(self, "provider.storage.volumes.list",
+                             limit=limit, marker=marker)
+
+    def find(self, **kwargs):
+        return self.dispatch(self, "provider.storage.volumes.find",
+                             **kwargs)
+
+    def create(self, label, size, zone, snapshot=None, description=None):
+        return self.dispatch(self, "provider.storage.volumes.create",
+                             label, size, zone, snapshot=snapshot,
+                             description=description)
+
+    def delete(self, volume):
+        return self.dispatch(self, "provider.storage.volumes.delete",
+                             volume)
+
 
 class BaseSnapshotService(
         BasePageableObjectMixin, SnapshotService, BaseCloudService):

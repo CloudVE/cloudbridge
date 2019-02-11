@@ -249,7 +249,9 @@ class AzureVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(AzureVolumeService, self).__init__(provider)
 
-    def get(self, volume_id):
+    @implement(event_pattern="provider.storage.volumes.get",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _get(self, volume_id):
         """
         Returns a volume given its id.
         """
@@ -261,7 +263,9 @@ class AzureVolumeService(BaseVolumeService):
             log.exception(cloud_error)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.volumes.find",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -275,7 +279,9 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.volumes.list",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all volumes.
         """
@@ -284,7 +290,9 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, label, size, zone, description=None, snapshot=None):
+    @implement(event_pattern="provider.storage.volumes.create",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, size, zone, description=None, snapshot=None):
         """
         Creates a new volume.
         """
@@ -331,6 +339,12 @@ class AzureVolumeService(BaseVolumeService):
         cb_vol = AzureVolume(self.provider, azure_vol)
 
         return cb_vol
+
+    @implement(event_pattern="provider.storage.volumes.delete",
+               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, volume):
+        vol_id = volume.id if isinstance(volume, AzureVolume) else volume
+        self.provider.azure_client.delete_disk(vol_id)
 
 
 class AzureSnapshotService(BaseSnapshotService):
