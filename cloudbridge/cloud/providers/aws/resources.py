@@ -1153,9 +1153,6 @@ class AWSRouter(BaseRouter):
     def network_id(self):
         return self._route_table.vpc_id
 
-    def delete(self):
-        self._route_table.delete()
-
     def attach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         self._route_table.associate_with_subnet(SubnetId=subnet_id)

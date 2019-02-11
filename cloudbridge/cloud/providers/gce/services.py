@@ -739,18 +739,24 @@ class GCERouterService(BaseRouterService):
     def __init__(self, provider):
         super(GCERouterService, self).__init__(provider)
 
-    def get(self, router_id):
+    @implement(event_pattern="provider.networking.routers.get",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _get(self, router_id):
         router = self.provider.get_resource(
             'routers', router_id, region=self.provider.region_name)
         return GCERouter(self.provider, router) if router else None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.networking.routers.find",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['name', 'label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.routers.list",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         region = self.provider.region_name
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -771,7 +777,9 @@ class GCERouterService(BaseRouterService):
                                      response.get('nextPageToken'),
                                      False, data=routers)
 
-    def create(self, label, network):
+    @implement(event_pattern="provider.networking.routers.create",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network):
         log.debug("Creating GCE Router Service with params "
                   "[label: %s network: %s]", label, network)
         GCERouter.assert_valid_resource_label(label)
@@ -794,9 +802,13 @@ class GCERouterService(BaseRouterService):
         cb_router.label = label
         return cb_router
 
-    def delete(self, router):
+    @implement(event_pattern="provider.networking.routers.delete",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, router_id):
         region_name = self.provider.region_name
-        name = router.name if isinstance(router, GCERouter) else router
+        gce_router = self.provider.get_resource(
+            'routers', router_id, region=region_name)
+        name = gce_router['name']
         (self.provider
          .gce_compute
          .routers()
@@ -804,6 +816,11 @@ class GCERouterService(BaseRouterService):
                  region=region_name,
                  router=name)
          .execute())
+        # Remove label
+        tag_name = "_".join(["router", name, "label"])
+        if not helpers.remove_metadata_item(self.provider, tag_name):
+            log.warning('No label was found associated with this router '
+                        '"{}" when deleted.'.format(name))
 
     def _get_in_region(self, router_id, region=None):
         region_name = self.provider.region_name

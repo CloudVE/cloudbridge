@@ -1022,11 +1022,14 @@ class AWSRouterService(BaseRouterService):
                                   cb_resource=AWSRouter,
                                   boto_collection_name='route_tables')
 
-    def get(self, router_id):
-        log.debug("Getting AWS Router Service with the id: %s", router_id)
+    @implement(event_pattern="provider.networking.routers.get",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _get(self, router_id):
         return self.svc.get(router_id)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.networking.routers.find",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -1037,17 +1040,23 @@ class AWSRouterService(BaseRouterService):
         log.debug("Searching for AWS Router Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.routers.list",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    def create(self, label, network):
-        log.debug("Creating AWS Router Service with the params "
-                  "[label: %s network: %s]", label, network)
-        AWSRouter.assert_valid_resource_label(label)
-
+    @implement(event_pattern="provider.networking.routers.create",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network):
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
         cb_router = self.svc.create('create_route_table', VpcId=network_id)
         if label:
             cb_router.label = label
         return cb_router
+
+    @implement(event_pattern="provider.networking.routers.delete",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, router_id):
+        aws_router = self.svc.get_raw(router_id)
+        aws_router.delete()

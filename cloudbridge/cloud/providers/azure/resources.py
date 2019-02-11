@@ -1618,9 +1618,6 @@ class AzureRouter(BaseRouter):
     def network_id(self):
         return None
 
-    def delete(self):
-        self._provider.azure_client.delete_route_table(self.name)
-
     def attach_subnet(self, subnet):
         self._provider.azure_client. \
             attach_subnet_to_route_table(subnet.id,

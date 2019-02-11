@@ -941,6 +941,9 @@ class BaseRouter(BaseCloudResource, Router):
                 self._provider == other._provider and
                 self.id == other.id)
 
+    def delete(self):
+        self._provider.networking.routers.delete(self.id)
+
 
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
                           InternetGateway):

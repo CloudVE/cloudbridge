@@ -1034,26 +1034,37 @@ class OpenStackRouterService(BaseRouterService):
     def __init__(self, provider):
         super(OpenStackRouterService, self).__init__(provider)
 
-    def get(self, router_id):
+    @implement(event_pattern="provider.networking.routers.get",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _get(self, router_id):
         log.debug("Getting OpenStack Router with the id: %s", router_id)
         router = self.provider.os_conn.get_router(router_id)
         return OpenStackRouter(self.provider, router) if router else None
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.routers.list",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         routers = self.provider.os_conn.list_routers()
         os_routers = [OpenStackRouter(self.provider, r) for r in routers]
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.networking.routers.find",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
-    def create(self, label, network):
+    @implement(event_pattern="provider.networking.routers.create",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network):
         """Parameter ``network`` is not used by OpenStack."""
-        log.debug("Creating OpenStack Router with the label: %s", label)
-        OpenStackRouter.assert_valid_resource_label(label)
         router = self.provider.os_conn.create_router(name=label)
         return OpenStackRouter(self.provider, router)
+
+    @implement(event_pattern="provider.networking.routers.delete",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, router_id):
+        self._provider.os_conn.delete_router(router_id)

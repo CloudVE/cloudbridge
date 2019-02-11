@@ -17,7 +17,6 @@ from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.resources import Network
-from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketObjectService
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
@@ -896,17 +895,6 @@ class BaseRouterService(
         super(BaseRouterService, self).__init__(provider)
         self._service_event_pattern += ".networking.routers"
 
-    def delete(self, router):
-        if isinstance(router, Router):
-            log.info("Router %s successful deleted.", router)
-            router.delete()
-        else:
-            log.info("Getting router %s", router)
-            router = self.get(router)
-            if router:
-                log.info("Router %s successful deleted.", router)
-                router.delete()
-
     def get_or_create_default(self, network):
         net_id = network.id if isinstance(network, Network) else network
         routers = self.provider.networking.routers.find(
@@ -917,3 +905,61 @@ class BaseRouterService(
         else:
             return self.provider.networking.routers.create(
                 network=net_id, label=BaseRouter.CB_DEFAULT_ROUTER_LABEL)
+
+    def get(self, router_id):
+        """
+        Returns a router given its ID. Returns ``None`` if the router
+        does not exist.
+
+        :type router_id: str
+        :param router_id: The id of the desired router.
+
+        :rtype: ``Router``
+        :return:  ``None`` is returned if the router does not exist, and
+                  the router's provider-specific CloudBridge object is
+                  returned if the router is found.
+        """
+        return self.dispatch(self, "provider.networking.routers.get",
+                             router_id)
+
+    def find(self, **kwargs):
+        """
+        Returns a list of routers filtered by the given keyword arguments.
+        Accepted search arguments are: 'label'
+        """
+        return self.dispatch(self, "provider.networking.routers.find",
+                             **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all routers.
+        """
+        return self.dispatch(self, "provider.networking.routers.list",
+                             limit=limit, marker=marker)
+
+    def create(self, label, network):
+        """
+        Create a new router.
+
+        :type label: str
+        :param label: The label of the router to be created. Note that labels
+                      do not have to be unique and can be changed.
+        :type network: ``Network``
+        :param network: The network in which the router should be created
+
+        :rtype: ``Router``
+        :return:  The created router's provider-specific CloudBridge object.
+        """
+        BaseRouter.assert_valid_resource_label(label)
+        return self.dispatch(self, "provider.networking.routers.create",
+                             label, network)
+
+    def delete(self, router_id):
+        """
+        Delete an existing router.
+
+        :type router_id: str
+        :param router_id: The ID of the router to be deleted.
+        """
+        return self.dispatch(self, "provider.networking.routers.delete",
+                             router_id)

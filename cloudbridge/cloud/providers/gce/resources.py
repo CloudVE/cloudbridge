@@ -1592,21 +1592,6 @@ class GCERouter(BaseRouter):
         network = self._provider.networking.networks.get(self.network_id)
         return network.subnets
 
-    def delete(self):
-        operation = (self._provider
-                     .gce_compute
-                     .routers()
-                     .delete(project=self._provider.project_name,
-                             region=self.region_name,
-                             router=self.name)
-                     .execute())
-        self._provider.wait_for_operation(operation, region=self.region_name)
-        # Remove label
-        tag_name = "_".join(["router", self.name, "label"])
-        if not helpers.remove_metadata_item(self._provider, tag_name):
-            log.warning('No label was found associated with this router '
-                        '"{}" when deleted.'.format(self.name))
-
     def attach_subnet(self, subnet):
         if not isinstance(subnet, GCESubnet):
             subnet = self._provider.networking.subnets.get(subnet)

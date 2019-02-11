@@ -1056,9 +1056,6 @@ class OpenStackRouter(BaseRouter):
             return ports[0].network_id
         return None
 
-    def delete(self):
-        self._provider.os_conn.delete_router(self.id)
-
     def attach_subnet(self, subnet):
         ret = self._provider.os_conn.add_router_interface(
             self._router.toDict(), subnet.id)

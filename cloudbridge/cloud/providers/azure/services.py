@@ -1141,7 +1141,9 @@ class AzureRouterService(BaseRouterService):
     def __init__(self, provider):
         super(AzureRouterService, self).__init__(provider)
 
-    def get(self, router_id):
+    @implement(event_pattern="provider.networking.routers.get",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _get(self, router_id):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
             return AzureRouter(self.provider, route)
@@ -1150,7 +1152,9 @@ class AzureRouterService(BaseRouterService):
             log.exception(cloud_error)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.networking.routers.find",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -1164,7 +1168,9 @@ class AzureRouterService(BaseRouterService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.routers.list",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         routes = [AzureRouter(self.provider, route)
                   for route in
                   self.provider.azure_client.list_route_tables()]
@@ -1172,8 +1178,9 @@ class AzureRouterService(BaseRouterService):
                                      routes,
                                      limit=limit, marker=marker)
 
-    def create(self, label, network):
-        AzureRouter.assert_valid_resource_label(label)
+    @implement(event_pattern="provider.networking.routers.create",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network):
         router_name = AzureRouter._generate_name_from_label(label, "cb-router")
 
         parameters = {"location": self.provider.region_name,
@@ -1182,3 +1189,9 @@ class AzureRouterService(BaseRouterService):
         route = self.provider.azure_client. \
             create_route_table(router_name, parameters)
         return AzureRouter(self.provider, route)
+
+    @implement(event_pattern="provider.networking.routers.delete",
+               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, router_id):
+        az_router = self.provider.azure_client.get_route_table(router_id)
+        self.provider.azure_client.delete_route_table(az_router.name)
