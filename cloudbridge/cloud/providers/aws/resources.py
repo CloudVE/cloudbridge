@@ -280,9 +280,6 @@ class AWSInstance(BaseInstance):
     def reboot(self):
         self._ec2_instance.reboot()
 
-    def delete(self):
-        self._ec2_instance.terminate()
-
     @property
     def image_id(self):
         return self._ec2_instance.image_id

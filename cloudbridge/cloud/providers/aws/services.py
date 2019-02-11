@@ -533,56 +533,6 @@ class AWSInstanceService(BaseInstanceService):
                                   cb_resource=AWSInstance,
                                   boto_collection_name='instances')
 
-    def create(self, label, image, vm_type, subnet, zone,
-               key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None, **kwargs):
-        log.debug("Creating AWS Instance Service with the params "
-                  "[label: %s image: %s type: %s subnet: %s zone: %s "
-                  "key pair: %s firewalls: %s user data: %s config %s "
-                  "others: %s]", label, image, vm_type, subnet, zone,
-                  key_pair, vm_firewalls, user_data, launch_config, kwargs)
-        AWSInstance.assert_valid_resource_label(label)
-
-        image_id = image.id if isinstance(image, MachineImage) else image
-        vm_size = vm_type.id if \
-            isinstance(vm_type, VMType) else vm_type
-        subnet = (self.provider.networking.subnets.get(subnet)
-                  if isinstance(subnet, str) else subnet)
-        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-        key_pair_name = key_pair.name if isinstance(
-            key_pair,
-            KeyPair) else key_pair
-        if launch_config:
-            bdm = self._process_block_device_mappings(launch_config)
-        else:
-            bdm = None
-
-        subnet_id, zone_id, vm_firewall_ids = \
-            self._resolve_launch_options(subnet, zone_id, vm_firewalls)
-
-        placement = {'AvailabilityZone': zone_id} if zone_id else None
-        inst = self.svc.create('create_instances',
-                               ImageId=image_id,
-                               MinCount=1,
-                               MaxCount=1,
-                               KeyName=key_pair_name,
-                               SecurityGroupIds=vm_firewall_ids or None,
-                               UserData=str(user_data) or None,
-                               InstanceType=vm_size,
-                               Placement=placement,
-                               BlockDeviceMappings=bdm,
-                               SubnetId=subnet_id
-                               )
-        if inst and len(inst) == 1:
-            # Wait until the resource exists
-            # pylint:disable=protected-access
-            inst[0]._wait_till_exists()
-            # Tag the instance w/ the name
-            inst[0].label = label
-            return inst[0]
-        raise ValueError(
-            'Expected a single object response, got a list: %s' % inst)
-
     def _resolve_launch_options(self, subnet=None, zone_id=None,
                                 vm_firewalls=None):
         """
@@ -668,10 +618,60 @@ class AWSInstanceService(BaseInstanceService):
     def create_launch_config(self):
         return AWSLaunchConfig(self.provider)
 
-    def get(self, instance_id):
+    @implement(event_pattern="provider.compute.instances.create",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, image, vm_type, subnet, zone,
+                key_pair=None, vm_firewalls=None, user_data=None,
+                launch_config=None, **kwargs):
+
+        image_id = image.id if isinstance(image, MachineImage) else image
+        vm_size = vm_type.id if \
+            isinstance(vm_type, VMType) else vm_type
+        subnet = (self.provider.networking.subnets.get(subnet)
+                  if isinstance(subnet, str) else subnet)
+        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+        key_pair_name = key_pair.name if isinstance(
+            key_pair,
+            KeyPair) else key_pair
+        if launch_config:
+            bdm = self._process_block_device_mappings(launch_config)
+        else:
+            bdm = None
+
+        subnet_id, zone_id, vm_firewall_ids = \
+            self._resolve_launch_options(subnet, zone_id, vm_firewalls)
+
+        placement = {'AvailabilityZone': zone_id} if zone_id else None
+        inst = self.svc.create('create_instances',
+                               ImageId=image_id,
+                               MinCount=1,
+                               MaxCount=1,
+                               KeyName=key_pair_name,
+                               SecurityGroupIds=vm_firewall_ids or None,
+                               UserData=str(user_data) or None,
+                               InstanceType=vm_size,
+                               Placement=placement,
+                               BlockDeviceMappings=bdm,
+                               SubnetId=subnet_id
+                               )
+        if inst and len(inst) == 1:
+            # Wait until the resource exists
+            # pylint:disable=protected-access
+            inst[0]._wait_till_exists()
+            # Tag the instance w/ the name
+            inst[0].label = label
+            return inst[0]
+        raise ValueError(
+            'Expected a single object response, got a list: %s' % inst)
+
+    @implement(event_pattern="provider.compute.instances.get",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _get(self, instance_id):
         return self.svc.get(instance_id)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.compute.instances.find",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -681,8 +681,16 @@ class AWSInstanceService(BaseInstanceService):
 
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.instances.list",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
+
+    @implement(event_pattern="provider.compute.instances.delete",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, instance_id):
+        aws_ins = self.svc.get_raw(instance_id)
+        aws_ins.terminate()
 
 
 class AWSVMTypeService(BaseVMTypeService):

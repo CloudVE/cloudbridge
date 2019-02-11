@@ -6,6 +6,7 @@ import logging
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
@@ -518,6 +519,75 @@ class BaseInstanceService(
     def __init__(self, provider):
         super(BaseInstanceService, self).__init__(provider)
         self._service_event_pattern += ".compute.instances"
+
+    def get(self, instance_id):
+        """
+        Returns a instance given its ID. Returns ``None`` if the instance
+        does not exist.
+
+        :type instance_id: str
+        :param instance_id: The id of the desired instance.
+
+        :rtype: ``Instance``
+        :return:  ``None`` is returned if the instance does not exist, and
+                  the instance's provider-specific CloudBridge object is
+                  returned if the instance is found.
+        """
+        return self.dispatch(self, "provider.compute.instances.get",
+                             instance_id)
+
+    def find(self, **kwargs):
+        """
+        Returns a list of instances filtered by the given keyword arguments.
+        Accepted search arguments are: 'label'
+        """
+        return self.dispatch(self, "provider.compute.instances.find",
+                             **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all instances.
+        """
+        return self.dispatch(self, "provider.compute.instances.list",
+                             limit=limit, marker=marker)
+
+    def create(self, label, image, vm_type, subnet, zone,
+               key_pair=None, vm_firewalls=None, user_data=None,
+               launch_config=None, **kwargs):
+        """
+        Create a new instance.
+
+        :type label: str
+        :param label: The label of the instance to be created. Note that labels
+                     do not have to be unique, and are changeable.
+        :type image: ``MachineImage``
+        :param image: The image to be used when creating the instance
+        :type vm_type: ``VMType``
+        :param vm_type: The type of virtual machine desired for this instance
+        :type subnet: ``Subnet``
+        :param subnet: The subnet to which the instance should be attached
+        :type zone: ``PlacementZone``
+        :param zone: The zone in which to place the instance
+
+        :rtype: ``Instance``
+        :return:  The created instance's provider-specific CloudBridge object.
+        """
+        BaseInstance.assert_valid_resource_label(label)
+        return self.dispatch(self, "provider.compute.instances.create",
+                             label, image, vm_type, subnet, zone,
+                             key_pair=key_pair, vm_firewalls=vm_firewalls,
+                             user_data=user_data, launch_config=launch_config,
+                             **kwargs)
+
+    def delete(self, instance_id):
+        """
+        Delete an existing instance.
+
+        :type instance_id: str
+        :param instance_id: The ID of the instance to be deleted.
+        """
+        return self.dispatch(self, "provider.compute.instances.delete",
+                             instance_id)
 
 
 class BaseVMTypeService(

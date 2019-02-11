@@ -957,19 +957,6 @@ class GCEInstance(BaseInstance):
                     instance=self.name)
              .execute())
 
-    def delete(self):
-        """
-        Permanently terminate this instance.
-        """
-        name = self.name
-        (self._provider
-         .gce_compute
-         .instances()
-         .delete(project=self._provider.project_name,
-                 zone=self.zone_name,
-                 instance=name)
-         .execute())
-
     def stop(self):
         """
         Stop this instance.

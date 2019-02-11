@@ -366,17 +366,6 @@ class OpenStackInstance(BaseInstance):
         """
         self._os_instance.reboot()
 
-    def delete(self):
-        """
-        Permanently delete this instance.
-        """
-        # delete the port we created when launching
-        # Assumption: it's the first interface in the list
-        iface_list = self._os_instance.interface_list()
-        if iface_list:
-            self._provider.neutron.delete_port(iface_list[0].port_id)
-        self._os_instance.delete()
-
     @property
     def image_id(self):
         """

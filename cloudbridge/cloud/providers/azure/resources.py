@@ -1271,31 +1271,6 @@ class AzureInstance(BaseInstance):
         """
         self._provider.azure_client.restart_vm(self.id)
 
-    def delete(self):
-        """
-        Permanently terminate this instance.
-        After deleting the VM. we are deleting the network interface
-        associated to the instance, public ip addresses associated to
-        the instance and also removing OS disk and data disks where
-        tag with name 'delete_on_terminate' has value True.
-        """
-        # Remove IPs first to avoid a network interface conflict
-        for public_ip_id in self._public_ip_ids:
-            self.remove_floating_ip(public_ip_id)
-        self._provider.azure_client.deallocate_vm(self.id)
-        self._provider.azure_client.delete_vm(self.id)
-        for nic_id in self._nic_ids:
-            self._provider.azure_client.delete_nic(nic_id)
-        for data_disk in self._vm.storage_profile.data_disks:
-            if data_disk.managed_disk:
-                if self._vm.tags.get('delete_on_terminate',
-                                     'False') == 'True':
-                    self._provider.azure_client.\
-                        delete_disk(data_disk.managed_disk.id)
-        if self._vm.storage_profile.os_disk.managed_disk:
-            self._provider.azure_client. \
-                delete_disk(self._vm.storage_profile.os_disk.managed_disk.id)
-
     @property
     def image_id(self):
         """

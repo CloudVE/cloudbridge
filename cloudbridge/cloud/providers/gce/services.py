@@ -356,9 +356,11 @@ class GCEInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(GCEInstanceService, self).__init__(provider)
 
-    def create(self, label, image, vm_type, subnet, zone=None,
-               key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None, **kwargs):
+    @implement(event_pattern="provider.compute.instances.create",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, image, vm_type, subnet, zone=None,
+                key_pair=None, vm_firewalls=None, user_data=None,
+                launch_config=None, **kwargs):
         """
         Creates a new virtual machine instance.
         """
@@ -505,7 +507,9 @@ class GCEInstanceService(BaseInstanceService):
         cb_inst = self.get(instance_id)
         return cb_inst
 
-    def get(self, instance_id):
+    @implement(event_pattern="provider.compute.instances.get",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _get(self, instance_id):
         """
         Returns an instance given its name. Returns None
         if the object does not exist.
@@ -516,7 +520,9 @@ class GCEInstanceService(BaseInstanceService):
         instance = self.provider.get_resource('instances', instance_id)
         return GCEInstance(self.provider, instance) if instance else None
 
-    def find(self, label, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.instances.find",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _find(self, label, limit=None, marker=None):
         """
         Searches for instances by instance label.
         :return: a list of Instance objects
@@ -527,7 +533,9 @@ class GCEInstanceService(BaseInstanceService):
             instances = instances[:limit]
         return instances
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.instances.list",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all instances.
         """
@@ -550,6 +558,20 @@ class GCEInstanceService(BaseInstanceService):
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=instances)
+
+    @implement(event_pattern="provider.compute.instances.delete",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, instance_id):
+        gce_instance = self.provider.get_resource('instances', instance_id)
+        (self._provider
+         .gce_compute
+         .instances()
+         .delete(project=self.provider.project_name,
+                 zone=self.provider
+                          .parse_url(gce_instance.get('zone'))
+                          .parameters['zone'],
+                 instance=gce_instance.get('name'))
+         .execute())
 
     def create_launch_config(self):
         return GCELaunchConfig(self.provider)

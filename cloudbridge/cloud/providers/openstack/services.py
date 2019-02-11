@@ -615,12 +615,64 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
-    def create(self, label, image, vm_type, subnet, zone,
-               key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None, **kwargs):
-        """Create a new virtual machine instance."""
-        OpenStackInstance.assert_valid_resource_label(label)
+    def _to_block_device_mapping(self, launch_config):
+        """
+        Extracts block device mapping information
+        from a launch config and constructs a BlockDeviceMappingV2
+        object.
+        """
+        bdm = []
+        for device in launch_config.block_devices:
+            bdm_dict = dict()
 
+            if device.is_volume:
+                bdm_dict['destination_type'] = 'volume'
+
+                if device.is_root:
+                    bdm_dict['device_name'] = '/dev/sda'
+                    bdm_dict['boot_index'] = 0
+
+                if isinstance(device.source, Snapshot):
+                    bdm_dict['source_type'] = 'snapshot'
+                    bdm_dict['uuid'] = device.source.id
+                elif isinstance(device.source, Volume):
+                    bdm_dict['source_type'] = 'volume'
+                    bdm_dict['uuid'] = device.source.id
+                elif isinstance(device.source, MachineImage):
+                    bdm_dict['source_type'] = 'image'
+                    bdm_dict['uuid'] = device.source.id
+                else:
+                    bdm_dict['source_type'] = 'blank'
+
+                if device.delete_on_terminate is not None:
+                    bdm_dict[
+                        'delete_on_termination'] = device.delete_on_terminate
+
+                if device.size:
+                    bdm_dict['volume_size'] = device.size
+            else:
+                bdm_dict['destination_type'] = 'local'
+                bdm_dict['source_type'] = 'blank'
+                bdm_dict['delete_on_termination'] = True
+            bdm.append(bdm_dict)
+        return bdm
+
+    def _has_root_device(self, launch_config):
+        if not launch_config:
+            return False
+        for device in launch_config.block_devices:
+            if device.is_root:
+                return True
+        return False
+
+    def create_launch_config(self):
+        return BaseLaunchConfig(self.provider)
+
+    @implement(event_pattern="provider.compute.instances.create",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, image, vm_type, subnet, zone,
+                key_pair=None, vm_firewalls=None, user_data=None,
+                launch_config=None, **kwargs):
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
             isinstance(vm_type, VMType) else \
@@ -698,60 +750,9 @@ class OpenStackInstanceService(BaseInstanceService):
             nics=nics)
         return OpenStackInstance(self.provider, os_instance)
 
-    def _to_block_device_mapping(self, launch_config):
-        """
-        Extracts block device mapping information
-        from a launch config and constructs a BlockDeviceMappingV2
-        object.
-        """
-        bdm = []
-        for device in launch_config.block_devices:
-            bdm_dict = dict()
-
-            if device.is_volume:
-                bdm_dict['destination_type'] = 'volume'
-
-                if device.is_root:
-                    bdm_dict['device_name'] = '/dev/sda'
-                    bdm_dict['boot_index'] = 0
-
-                if isinstance(device.source, Snapshot):
-                    bdm_dict['source_type'] = 'snapshot'
-                    bdm_dict['uuid'] = device.source.id
-                elif isinstance(device.source, Volume):
-                    bdm_dict['source_type'] = 'volume'
-                    bdm_dict['uuid'] = device.source.id
-                elif isinstance(device.source, MachineImage):
-                    bdm_dict['source_type'] = 'image'
-                    bdm_dict['uuid'] = device.source.id
-                else:
-                    bdm_dict['source_type'] = 'blank'
-
-                if device.delete_on_terminate is not None:
-                    bdm_dict[
-                        'delete_on_termination'] = device.delete_on_terminate
-
-                if device.size:
-                    bdm_dict['volume_size'] = device.size
-            else:
-                bdm_dict['destination_type'] = 'local'
-                bdm_dict['source_type'] = 'blank'
-                bdm_dict['delete_on_termination'] = True
-            bdm.append(bdm_dict)
-        return bdm
-
-    def _has_root_device(self, launch_config):
-        if not launch_config:
-            return False
-        for device in launch_config.block_devices:
-            if device.is_root:
-                return True
-        return False
-
-    def create_launch_config(self):
-        return BaseLaunchConfig(self.provider)
-
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.compute.instances.find",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -768,7 +769,9 @@ class OpenStackInstanceService(BaseInstanceService):
                 marker=None)]
         return oshelpers.to_server_paged_list(self.provider, cb_insts)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.instances.list",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all instances.
         """
@@ -779,7 +782,9 @@ class OpenStackInstanceService(BaseInstanceService):
                 marker=marker)]
         return oshelpers.to_server_paged_list(self.provider, cb_insts, limit)
 
-    def get(self, instance_id):
+    @implement(event_pattern="provider.compute.instances.get",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _get(self, instance_id):
         """
         Returns an instance given its id.
         """
@@ -789,6 +794,21 @@ class OpenStackInstanceService(BaseInstanceService):
         except NovaNotFound:
             log.debug("Instance %s was not found.", instance_id)
             return None
+
+    @implement(event_pattern="provider.compute.instances.delete",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, instance_id):
+        try:
+            os_instance = self.provider.nova.servers.get(instance_id)
+        except NovaNotFound:
+            log.debug("Instance %s was not found.", instance_id)
+            return None
+        # delete the port we created when launching
+        # Assumption: it's the first interface in the list
+        iface_list = os_instance.interface_list()
+        if iface_list:
+            self.provider.neutron.delete_port(iface_list[0].port_id)
+        os_instance.delete()
 
 
 class OpenStackVMTypeService(BaseVMTypeService):

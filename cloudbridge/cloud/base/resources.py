@@ -323,6 +323,9 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
             timeout=timeout,
             interval=interval)
 
+    def delete(self):
+        self._provider.compute.instances.delete(self.id)
+
 
 class BaseLaunchConfig(LaunchConfig):
 

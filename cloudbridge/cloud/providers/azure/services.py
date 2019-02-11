@@ -579,141 +579,6 @@ class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, label, image, vm_type, subnet, zone,
-               key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None, **kwargs):
-
-        AzureInstance.assert_valid_resource_label(label)
-
-        instance_name = AzureInstance._generate_name_from_label(label,
-                                                                "cb-ins")
-
-        image = (image if isinstance(image, AzureMachineImage) else
-                 self.provider.compute.images.get(image))
-        if not isinstance(image, AzureMachineImage):
-            raise Exception("Provided image %s is not a valid azure image"
-                            % image)
-
-        instance_size = vm_type.id if \
-            isinstance(vm_type, VMType) else vm_type
-
-        if not subnet:
-            # Azure has only a single zone per region; use the current one
-            zone = self.provider.compute.regions.get(
-                self.provider.region_name).zones[0]
-            subnet = self.provider.networking.subnets.get_or_create_default(
-                zone)
-        else:
-            subnet = (self.provider.networking.subnets.get(subnet)
-                      if isinstance(subnet, str) else subnet)
-
-        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-
-        subnet_id, zone_id, vm_firewall_id = \
-            self._resolve_launch_options(instance_name,
-                                         subnet, zone_id, vm_firewalls)
-
-        storage_profile = self._create_storage_profile(image, launch_config,
-                                                       instance_name, zone_id)
-
-        nic_params = {
-            'location': self.provider.region_name,
-            'ip_configurations': [{
-                'name': instance_name + '_ip_config',
-                'private_ip_allocation_method': 'Dynamic',
-                'subnet': {
-                    'id': subnet_id
-                }
-            }]
-        }
-
-        if vm_firewall_id:
-            nic_params['network_security_group'] = {
-                'id': vm_firewall_id
-            }
-        nic_info = self.provider.azure_client.create_nic(
-            instance_name + '_nic',
-            nic_params
-        )
-        # #! indicates shell script
-        ud = '#cloud-config\n' + user_data \
-            if user_data and not user_data.startswith('#!')\
-            and not user_data.startswith('#cloud-config') else user_data
-
-        # Key_pair is mandatory in azure and it should not be None.
-        temp_key_pair = None
-        if key_pair:
-            key_pair = (key_pair if isinstance(key_pair, AzureKeyPair)
-                        else self.provider.security.key_pairs.get(key_pair))
-        else:
-            # Create a temporary keypair if none is provided to keep Azure
-            # happy, but the private key will be discarded, so it'll be all
-            # but useless. However, this will allow an instance to be launched
-            # without specifying a keypair, so users may still be able to login
-            # if they have a preinstalled keypair/password baked into the image
-            temp_kp_name = "".join(["cb-default-kp-",
-                                   str(uuid.uuid5(uuid.NAMESPACE_OID,
-                                                  instance_name))[-6:]])
-            key_pair = self.provider.security.key_pairs.create(
-                name=temp_kp_name)
-            temp_key_pair = key_pair
-
-        params = {
-            'location': zone_id or self.provider.region_name,
-            'os_profile': {
-                'admin_username': self.provider.vm_default_user_name,
-                'computer_name': instance_name,
-                'linux_configuration': {
-                    "disable_password_authentication": True,
-                    "ssh": {
-                        "public_keys": [{
-                            "path":
-                                "/home/{}/.ssh/authorized_keys".format(
-                                        self.provider.vm_default_user_name),
-                                "key_data": key_pair._key_pair.Key
-                        }]
-                    }
-                }
-            },
-            'hardware_profile': {
-                'vm_size': instance_size
-            },
-            'network_profile': {
-                'network_interfaces': [{
-                    'id': nic_info.id
-                }]
-            },
-            'storage_profile': storage_profile,
-            'tags': {'Label': label}
-        }
-
-        for disk_def in storage_profile.get('data_disks', []):
-            params['tags'] = dict(disk_def.get('tags', {}), **params['tags'])
-
-        if user_data:
-            custom_data = base64.b64encode(bytes(ud, 'utf-8'))
-            params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
-
-        if not temp_key_pair:
-            params['tags'].update(Key_Pair=key_pair.id)
-
-        try:
-            vm = self.provider.azure_client.create_vm(instance_name, params)
-        except Exception as e:
-            # If VM creation fails, attempt to clean up intermediary resources
-            self.provider.azure_client.delete_nic(nic_info.id)
-            for disk_def in storage_profile.get('data_disks', []):
-                if disk_def.get('tags', {}).get('delete_on_terminate'):
-                    disk_id = disk_def.get('managed_disk', {}).get('id')
-                    if disk_id:
-                        vol = self.provider.storage.volumes.get(disk_id)
-                        vol.delete()
-            raise e
-        finally:
-            if temp_key_pair:
-                temp_key_pair.delete()
-        return AzureInstance(self.provider, vm)
-
     def _resolve_launch_options(self, inst_name, subnet=None, zone_id=None,
                                 vm_firewalls=None):
         if subnet:
@@ -852,7 +717,143 @@ class AzureInstanceService(BaseInstanceService):
     def create_launch_config(self):
         return AzureLaunchConfig(self.provider)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.compute.instances.create",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, image, vm_type, subnet, zone,
+                key_pair=None, vm_firewalls=None, user_data=None,
+                launch_config=None, **kwargs):
+        instance_name = AzureInstance._generate_name_from_label(label,
+                                                                "cb-ins")
+
+        image = (image if isinstance(image, AzureMachineImage) else
+                 self.provider.compute.images.get(image))
+        if not isinstance(image, AzureMachineImage):
+            raise Exception("Provided image %s is not a valid azure image"
+                            % image)
+
+        instance_size = vm_type.id if \
+            isinstance(vm_type, VMType) else vm_type
+
+        if not subnet:
+            # Azure has only a single zone per region; use the current one
+            zone = self.provider.compute.regions.get(
+                self.provider.region_name).zones[0]
+            subnet = self.provider.networking.subnets.get_or_create_default(
+                zone)
+        else:
+            subnet = (self.provider.networking.subnets.get(subnet)
+                      if isinstance(subnet, str) else subnet)
+
+        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+
+        subnet_id, zone_id, vm_firewall_id = \
+            self._resolve_launch_options(instance_name,
+                                         subnet, zone_id, vm_firewalls)
+
+        storage_profile = self._create_storage_profile(image, launch_config,
+                                                       instance_name, zone_id)
+
+        nic_params = {
+            'location': self.provider.region_name,
+            'ip_configurations': [{
+                'name': instance_name + '_ip_config',
+                'private_ip_allocation_method': 'Dynamic',
+                'subnet': {
+                    'id': subnet_id
+                }
+            }]
+        }
+
+        if vm_firewall_id:
+            nic_params['network_security_group'] = {
+                'id': vm_firewall_id
+            }
+        nic_info = self.provider.azure_client.create_nic(
+            instance_name + '_nic',
+            nic_params
+        )
+        # #! indicates shell script
+        ud = '#cloud-config\n' + user_data \
+            if user_data and not user_data.startswith('#!')\
+            and not user_data.startswith('#cloud-config') else user_data
+
+        # Key_pair is mandatory in azure and it should not be None.
+        temp_key_pair = None
+        if key_pair:
+            key_pair = (key_pair if isinstance(key_pair, AzureKeyPair)
+                        else self.provider.security.key_pairs.get(key_pair))
+        else:
+            # Create a temporary keypair if none is provided to keep Azure
+            # happy, but the private key will be discarded, so it'll be all
+            # but useless. However, this will allow an instance to be launched
+            # without specifying a keypair, so users may still be able to login
+            # if they have a preinstalled keypair/password baked into the image
+            temp_kp_name = "".join(["cb-default-kp-",
+                                   str(uuid.uuid5(uuid.NAMESPACE_OID,
+                                                  instance_name))[-6:]])
+            key_pair = self.provider.security.key_pairs.create(
+                name=temp_kp_name)
+            temp_key_pair = key_pair
+
+        params = {
+            'location': zone_id or self.provider.region_name,
+            'os_profile': {
+                'admin_username': self.provider.vm_default_user_name,
+                'computer_name': instance_name,
+                'linux_configuration': {
+                    "disable_password_authentication": True,
+                    "ssh": {
+                        "public_keys": [{
+                            "path":
+                                "/home/{}/.ssh/authorized_keys".format(
+                                        self.provider.vm_default_user_name),
+                                "key_data": key_pair._key_pair.Key
+                        }]
+                    }
+                }
+            },
+            'hardware_profile': {
+                'vm_size': instance_size
+            },
+            'network_profile': {
+                'network_interfaces': [{
+                    'id': nic_info.id
+                }]
+            },
+            'storage_profile': storage_profile,
+            'tags': {'Label': label}
+        }
+
+        for disk_def in storage_profile.get('data_disks', []):
+            params['tags'] = dict(disk_def.get('tags', {}), **params['tags'])
+
+        if user_data:
+            custom_data = base64.b64encode(bytes(ud, 'utf-8'))
+            params['os_profile']['custom_data'] = str(custom_data, 'utf-8')
+
+        if not temp_key_pair:
+            params['tags'].update(Key_Pair=key_pair.id)
+
+        try:
+            vm = self.provider.azure_client.create_vm(instance_name, params)
+        except Exception as e:
+            # If VM creation fails, attempt to clean up intermediary resources
+            self.provider.azure_client.delete_nic(nic_info.id)
+            for disk_def in storage_profile.get('data_disks', []):
+                if disk_def.get('tags', {}).get('delete_on_terminate'):
+                    disk_id = disk_def.get('managed_disk', {}).get('id')
+                    if disk_id:
+                        vol = self.provider.storage.volumes.get(disk_id)
+                        vol.delete()
+            raise e
+        finally:
+            if temp_key_pair:
+                temp_key_pair.delete()
+        return AzureInstance(self.provider, vm)
+
+    @implement(event_pattern="provider.compute.instances.list",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all instances.
         """
@@ -861,7 +862,9 @@ class AzureInstanceService(BaseInstanceService):
         return ClientPagedResultList(self.provider, instances,
                                      limit=limit, marker=marker)
 
-    def get(self, instance_id):
+    @implement(event_pattern="provider.compute.instances.get",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _get(self, instance_id):
         """
         Returns an instance given its id. Returns None
         if the object does not exist.
@@ -874,7 +877,9 @@ class AzureInstanceService(BaseInstanceService):
             log.exception(cloud_error)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.compute.instances.find",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -887,6 +892,34 @@ class AzureInstanceService(BaseInstanceService):
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
+
+    @implement(event_pattern="provider.compute.instances.delete",
+               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, instance_id):
+        """
+        Permanently terminate this instance.
+        After deleting the VM. we are deleting the network interface
+        associated to the instance, and also removing OS disk and data disks
+        where tag with name 'delete_on_terminate' has value True.
+        """
+        ins = self.get(instance_id)
+
+        # Remove IPs first to avoid a network interface conflict
+        for public_ip_id in ins._public_ip_ids:
+            ins.remove_floating_ip(public_ip_id)
+        self.provider.azure_client.deallocate_vm(ins.id)
+        self.provider.azure_client.delete_vm(ins.id)
+        for nic_id in ins._nic_ids:
+            self.provider.azure_client.delete_nic(nic_id)
+        for data_disk in ins._vm.storage_profile.data_disks:
+            if data_disk.managed_disk:
+                if ins._vm.tags.get('delete_on_terminate',
+                                    'False') == 'True':
+                    self.provider.azure_client. \
+                        delete_disk(data_disk.managed_disk.id)
+        if ins._vm.storage_profile.os_disk.managed_disk:
+            self.provider.azure_client. \
+                delete_disk(ins._vm.storage_profile.os_disk.managed_disk.id)
 
 
 class AzureVMTypeService(BaseVMTypeService):
