@@ -531,15 +531,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         self._private_material = value
 
     def delete(self):
-        """
-        Delete this KeyPair.
-
-        :rtype: bool
-        :return: True if successful, otherwise False.
-        """
-        # This implementation assumes the `delete` method exists across
-        #  multiple providers.
-        self._key_pair.delete()
+        self._provider.security.key_pairs.delete(self.id)
 
 
 class BaseVMFirewall(BaseCloudResource, VMFirewall):

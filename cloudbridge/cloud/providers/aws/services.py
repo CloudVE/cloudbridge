@@ -877,7 +877,7 @@ class AWSSubnetService(BaseSubnetService):
 
     @implement(event_pattern="provider.networking.subnets.find",
                priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    def _find(self, network=None, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.

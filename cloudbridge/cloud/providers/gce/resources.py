@@ -408,18 +408,19 @@ class GCEFirewallsDelegate(object):
         Delete a given firewall.
         """
         project_name = self._provider.project_name
+        name = firewall['name']
         response = (self._provider
                         .gce_compute
                         .firewalls()
                         .delete(project=project_name,
-                                firewall=firewall['name'])
+                                firewall=name)
                         .execute())
         self._provider.wait_for_operation(response)
         # TODO: process the response and handle errors.
-        tag_name = "_".join(["firewall", self.name, "label"])
+        tag_name = "_".join(["firewall", name, "label"])
         if not helpers.remove_metadata_item(self._provider, tag_name):
             log.warning('No label was found associated with this firewall '
-                        '"{}" when deleted.'.format(self.name))
+                        '"{}" when deleted.'.format(name))
         return True
 
     def _update_list_response(self):

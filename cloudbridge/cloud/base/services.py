@@ -286,7 +286,7 @@ class BaseVolumeService(
         return self.dispatch(self, "provider.storage.volumes.list",
                              limit=limit, marker=marker)
 
-    def create(self, label, size, zone, description=None, snapshot=None):
+    def create(self, label, size, zone, snapshot=None, description=None):
         """
         Create a new volume.
 
@@ -303,7 +303,7 @@ class BaseVolumeService(
         """
         BaseVolume.assert_valid_resource_label(label)
         return self.dispatch(self, "provider.storage.volumes.create",
-                             label, size, zone, description, snapshot)
+                             label, size, zone, snapshot, description)
 
     def delete(self, volume_id):
         """
@@ -803,8 +803,11 @@ class BaseSubnetService(
 
     @implement(event_pattern="provider.networking.subnets.find",
                priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
-        obj_list = self
+    def _find(self, network=None, **kwargs):
+        if not network:
+            obj_list = self
+        else:
+            obj_list = network.subnets
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))

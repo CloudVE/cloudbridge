@@ -939,7 +939,7 @@ class OpenStackNetworkService(BaseNetworkService):
             cb_net.label = label
         return cb_net
 
-    @implement(event_pattern="provider.networking.networks.create",
+    @implement(event_pattern="provider.networking.networks.delete",
                priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def _delete(self, network_id):
         network = self.get(network_id)

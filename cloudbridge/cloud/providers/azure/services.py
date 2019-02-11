@@ -295,7 +295,7 @@ class AzureVolumeService(BaseVolumeService):
 
     @implement(event_pattern="provider.storage.volumes.create",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, size, zone, description=None, snapshot=None):
+    def _create(self, label, size, zone, snapshot=None, description=None):
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         tags = {'Label': label}
 
