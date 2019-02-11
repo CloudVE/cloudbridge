@@ -1131,11 +1131,15 @@ class GCESnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(GCESnapshotService, self).__init__(provider)
 
-    def get(self, snapshot_id):
+    @implement(event_pattern="provider.storage.snapshots.get",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _get(self, snapshot_id):
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
         return GCESnapshot(self.provider, snapshot) if snapshot else None
 
-    def find(self, label, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.snapshots.find",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _find(self, label, limit=None, marker=None):
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1155,7 +1159,9 @@ class GCESnapshotService(BaseSnapshotService):
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.snapshots.list",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
                         .gce_compute
@@ -1173,7 +1179,9 @@ class GCESnapshotService(BaseSnapshotService):
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
-    def create(self, label, volume, description=None):
+    @implement(event_pattern="provider.storage.snapshots.create",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, volume, description=None):
         name = GCESnapshot._generate_name_from_label(label, 'cbsnap')
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
         snapshot_body = {
@@ -1196,7 +1204,9 @@ class GCESnapshotService(BaseSnapshotService):
         cb_snap = self.get(name)
         return cb_snap
 
-    def delete(self, snapshot_id):
+    @implement(event_pattern="provider.storage.snapshots.delete",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, snapshot_id):
         gce_snap = self.provider.get_resource('snapshots', snapshot_id)
         (self.provider
              .gce_compute
