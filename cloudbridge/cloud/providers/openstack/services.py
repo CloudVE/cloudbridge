@@ -987,7 +987,7 @@ class OpenStackSubnetService(BaseSubnetService):
             sn = self.provider.networking.subnets.create(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
                 cidr_block=OpenStackSubnet.CB_DEFAULT_SUBNET_IPV4RANGE,
-                network=net)
+                network=net, zone=zone)
             router = self.provider.networking.routers.get_or_create_default(
                 net)
             router.attach_subnet(sn)
