@@ -363,11 +363,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(OpenStackSnapshotService, self).__init__(provider)
 
-    def get(self, snapshot_id):
-        """
-        Returns a snapshot given its id.
-        """
-        log.debug("Getting OpenStack snapshot with the id: %s", snapshot_id)
+    @implement(event_pattern="provider.storage.snapshots.get",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _get(self, snapshot_id):
         try:
             return OpenStackSnapshot(
                 self.provider,
@@ -376,7 +374,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
             log.debug("Snapshot %s was not found.", snapshot_id)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.snapshots.find",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -396,10 +396,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_snaps)
 
-    def list(self, limit=None, marker=None):
-        """
-        List all snapshot.
-        """
+    @implement(event_pattern="provider.storage.snapshots.list",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         cb_snaps = [
             OpenStackSnapshot(self.provider, snap) for
             snap in self.provider.cinder.volume_snapshots.list(
@@ -408,13 +407,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
                              'marker': marker})]
         return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
 
-    def create(self, label, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
-        log.debug("Creating a new snapshot of the %s volume.", label)
-        OpenStackSnapshot.assert_valid_resource_label(label)
-
+    @implement(event_pattern="provider.storage.snapshots.create",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, volume, description=None):
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
                      else volume)
 
@@ -422,6 +417,12 @@ class OpenStackSnapshotService(BaseSnapshotService):
             volume_id, name=label,
             description=description)
         return OpenStackSnapshot(self.provider, os_snap)
+
+    @implement(event_pattern="provider.storage.snapshots.delete",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, snapshot_id):
+        os_snap = self.provider.cinder.volume_snapshots.get(snapshot_id)
+        os_snap.delete()
 
 
 class OpenStackBucketService(BaseBucketService):

@@ -279,12 +279,14 @@ class AWSSnapshotService(BaseSnapshotService):
                                   cb_resource=AWSSnapshot,
                                   boto_collection_name='snapshots')
 
-    def get(self, snapshot_id):
-        log.debug("Getting AWS Snapshot Service with the id: %s",
-                  snapshot_id)
+    @implement(event_pattern="provider.storage.snapshots.get",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _get(self, snapshot_id):
         return self.svc.get(snapshot_id)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.snapshots.find",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         # Filter by description or label
         label = kwargs.get('label', None)
 
@@ -299,19 +301,15 @@ class AWSSnapshotService(BaseSnapshotService):
         filters = ['label']
         return cb_helpers.generic_find(filters, kwargs, obj_list)
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.storage.snapshots.list",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker,
                              OwnerIds=['self'])
 
-    def create(self, label, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
-        log.debug("Creating a new AWS snapshot Service with the "
-                  "parameters [label: %s volume: %s description: %s]",
-                  label, volume, description)
-        AWSSnapshot.assert_valid_resource_label(label)
-
+    @implement(event_pattern="provider.storage.snapshots.create",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, volume, description=None):
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
         cb_snap = self.svc.create('create_snapshot', VolumeId=volume_id)
@@ -321,6 +319,12 @@ class AWSSnapshotService(BaseSnapshotService):
         if cb_snap.description:
             cb_snap.description = description
         return cb_snap
+
+    @implement(event_pattern="provider.storage.snapshots.delete",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, snapshot_id):
+        aws_snap = self.svc.get_raw(snapshot_id)
+        aws_snap.delete()
 
 
 class AWSBucketService(BaseBucketService):

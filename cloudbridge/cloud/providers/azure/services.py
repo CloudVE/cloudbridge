@@ -350,19 +350,20 @@ class AzureSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(AzureSnapshotService, self).__init__(provider)
 
-    def get(self, ss_id):
-        """
-        Returns a snapshot given its id.
-        """
+    @implement(event_pattern="provider.storage.snapshots.get",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _get(self, snapshot_id):
         try:
-            snapshot = self.provider.azure_client.get_snapshot(ss_id)
+            snapshot = self.provider.azure_client.get_snapshot(snapshot_id)
             return AzureSnapshot(self.provider, snapshot)
         except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.storage.snapshots.find",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -376,20 +377,17 @@ class AzureSnapshotService(BaseSnapshotService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def list(self, limit=None, marker=None):
-        """
-               List all snapshots.
-        """
+    @implement(event_pattern="provider.storage.snapshots.list",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         snaps = [AzureSnapshot(self.provider, obj)
                  for obj in
                  self.provider.azure_client.list_snapshots()]
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
-    def create(self, label, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
-        AzureSnapshot.assert_valid_resource_label(label)
+    @implement(event_pattern="provider.storage.snapshots.create",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, volume, description=None):
         snapshot_name = AzureSnapshot._generate_name_from_label(label,
                                                                 "cb-snap")
         tags = {'Label': label}
@@ -412,6 +410,11 @@ class AzureSnapshotService(BaseSnapshotService):
         azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,
                                                                 params)
         return AzureSnapshot(self.provider, azure_snap)
+
+    @implement(event_pattern="provider.storage.snapshots.delete",
+               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, snapshot_id):
+        self.provider.azure_client.delete_snapshot(snapshot_id)
 
 
 class AzureBucketService(BaseBucketService):

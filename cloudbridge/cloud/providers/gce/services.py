@@ -1074,16 +1074,10 @@ class GCESnapshotService(BaseSnapshotService):
         super(GCESnapshotService, self).__init__(provider)
 
     def get(self, snapshot_id):
-        """
-        Returns a snapshot given its id.
-        """
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
         return GCESnapshot(self.provider, snapshot) if snapshot else None
 
     def find(self, label, limit=None, marker=None):
-        """
-        Searches for a snapshot by a given list of attributes.
-        """
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1104,9 +1098,6 @@ class GCESnapshotService(BaseSnapshotService):
                                      False, data=snapshots)
 
     def list(self, limit=None, marker=None):
-        """
-        List all snapshots.
-        """
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
                         .gce_compute
@@ -1125,10 +1116,6 @@ class GCESnapshotService(BaseSnapshotService):
                                      False, data=snapshots)
 
     def create(self, label, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
-        GCESnapshot.assert_valid_resource_label(label)
         name = GCESnapshot._generate_name_from_label(label, 'cbsnap')
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
         snapshot_body = {
@@ -1150,6 +1137,15 @@ class GCESnapshotService(BaseSnapshotService):
                                          zone=self.provider.default_zone)
         cb_snap = self.get(name)
         return cb_snap
+
+    def delete(self, snapshot_id):
+        gce_snap = self.provider.get_resource('snapshots', snapshot_id)
+        (self.provider
+             .gce_compute
+             .snapshots()
+             .delete(project=self.provider.project_name,
+                     snapshot=gce_snap.get('name'))
+             .execute())
 
 
 class GCSBucketService(BaseBucketService):

@@ -9,6 +9,7 @@ from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
+from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVolume
@@ -322,6 +323,64 @@ class BaseSnapshotService(
     def __init__(self, provider):
         super(BaseSnapshotService, self).__init__(provider)
         self._service_event_pattern += ".storage.snapshots"
+
+    def get(self, snapshot_id):
+        """
+        Returns a snapshot given its ID. Returns ``None`` if the snapshot
+        does not exist.
+
+        :type snapshot_id: str
+        :param snapshot_id: The id of the desired snapshot.
+
+        :rtype: ``Snapshot``
+        :return:  ``None`` is returned if the snapshot does not exist, and
+                  the snapshot's provider-specific CloudBridge object is
+                  returned if the snapshot is found.
+        """
+        return self.dispatch(self, "provider.storage.snapshots.get",
+                             snapshot_id)
+
+    def find(self, **kwargs):
+        """
+        Returns a list of snapshots filtered by the given keyword arguments.
+        Accepted search arguments are: 'label'
+        """
+        return self.dispatch(self, "provider.storage.snapshots.find",
+                             **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all snapshots.
+        """
+        return self.dispatch(self, "provider.storage.snapshots.list",
+                             limit=limit, marker=marker)
+
+    def create(self, label, volume, description=None):
+        """
+        Create a new snapshot.
+
+        :type label: str
+        :param label: The label of the snapshot to be created. Note that labels
+                     do not have to be unique, and are changeable.
+        :type volume: ``Volume``
+        :param volume: The volume from which to create this snapshot.
+
+        :rtype: ``Snapshot``
+        :return:  The created snapshot's provider-specific CloudBridge object.
+        """
+        BaseSnapshot.assert_valid_resource_label(label)
+        return self.dispatch(self, "provider.storage.snapshots.create",
+                             label, volume, description)
+
+    def delete(self, snapshot_id):
+        """
+        Delete an existing snapshot.
+
+        :type snapshot_id: str
+        :param snapshot_id: The ID of the snapshot to be deleted.
+        """
+        return self.dispatch(self, "provider.storage.snapshots.delete",
+                             snapshot_id)
 
 
 class BaseBucketService(

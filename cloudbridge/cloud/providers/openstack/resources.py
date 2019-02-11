@@ -764,12 +764,6 @@ class OpenStackSnapshot(BaseSnapshot):
             # set the status to unknown
             self._snapshot.status = 'unknown'
 
-    def delete(self):
-        """
-        Delete this snapshot.
-        """
-        self._snapshot.delete()
-
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.

@@ -634,12 +634,6 @@ class AzureSnapshot(BaseSnapshot):
             # set the state to unknown
             self._state = 'unknown'
 
-    def delete(self):
-        """
-        Delete this snapshot.
-        """
-        self._provider.azure_client.delete_snapshot(self.id)
-
     def create_volume(self, placement=None,
                       size=None, volume_type=None, iops=None):
         """

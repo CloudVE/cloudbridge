@@ -2045,17 +2045,6 @@ class GCESnapshot(BaseSnapshot):
             # snapshot no longer exists
             self._snapshot['status'] = SnapshotState.UNKNOWN
 
-    def delete(self):
-        """
-        Delete this snapshot.
-        """
-        (self._provider
-         .gce_compute
-         .snapshots()
-         .delete(project=self._provider.project_name,
-                 snapshot=self.name)
-         .execute())
-
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.

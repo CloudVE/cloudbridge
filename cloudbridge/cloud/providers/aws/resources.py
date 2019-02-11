@@ -597,9 +597,6 @@ class AWSSnapshot(BaseSnapshot):
             # set the status to unknown
             self._unknown_state = True
 
-    def delete(self):
-        self._snapshot.delete()
-
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         label = "from-snap-{0}".format(self.label or self.id)
         cb_vol = self._provider.storage.volumes.create(
