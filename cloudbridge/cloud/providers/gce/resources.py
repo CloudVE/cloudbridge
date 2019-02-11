@@ -1739,9 +1739,6 @@ class GCESubnet(BaseSubnet):
     def zone(self):
         return None
 
-    def delete(self):
-        return self._provider.networking.subnets.delete(self)
-
     @property
     def state(self):
         if self._subnet.get('status') == SubnetState.UNKNOWN:

@@ -821,11 +821,15 @@ class GCESubnetService(BaseSubnetService):
     def __init__(self, provider):
         super(GCESubnetService, self).__init__(provider)
 
-    def get(self, subnet_id):
+    @implement(event_pattern="provider.networking.subnets.get",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _get(self, subnet_id):
         subnet = self.provider.get_resource('subnetworks', subnet_id)
         return GCESubnet(self.provider, subnet) if subnet else None
 
-    def list(self, network=None, zone=None, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.subnets.list",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _list(self, network=None, zone=None, limit=None, marker=None):
         """
         If the zone is not given, we list all subnets in the default region.
         """
@@ -851,7 +855,9 @@ class GCESubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, label, network, cidr_block, zone):
+    @implement(event_pattern="provider.networking.subnets.create",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network, cidr_block, zone):
         """
         GCE subnets are regional. The region is inferred from the zone;
         otherwise, the default region, as set in the
@@ -861,7 +867,6 @@ class GCESubnetService(BaseSubnetService):
         instead of creating a new subnet. In this case, other parameters, i.e.
         the name and the zone, are ignored.
         """
-        GCESubnet.assert_valid_resource_label(label)
         name = GCESubnet._generate_name_from_label(label, 'cbsubnet')
         region_name = self._zone_to_region(zone)
 #         for subnet in self.iter(network=network):
@@ -892,6 +897,25 @@ class GCESubnetService(BaseSubnetService):
         cb_subnet = self.get(name)
         cb_subnet.label = label
         return cb_subnet
+
+    @implement(event_pattern="provider.networking.subnets.delete",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, subnet_id):
+        gce_sn = self.provider.get_resource('subnetworks', subnet_id)
+        region_name = self.provider.parse_url(subnet_id).parameters['region']
+        response = (self.provider
+                    .gce_compute
+                    .subnetworks()
+                    .delete(project=self.provider.project_name,
+                            region=region_name,
+                            subnetwork=gce_sn['name'])
+                    .execute())
+        self.provider.wait_for_operation(response, region=region_name)
+        # Remove label
+        tag_name = "_".join(["subnet", gce_sn['name'], "label"])
+        if not helpers.remove_metadata_item(self._provider, tag_name):
+            log.warning('No label was found associated with this subnet '
+                        '"{}" when deleted.'.format(gce_sn['name']))
 
     def get_or_create_default(self, zone):
         """
@@ -936,21 +960,6 @@ class GCESubnetService(BaseSubnetService):
         gateway = net.gateways.get_or_create_inet_gateway()
         router.attach_gateway(gateway)
         return sn
-
-    def delete(self, subnet):
-        response = (self.provider
-                    .gce_compute
-                    .subnetworks()
-                    .delete(project=self.provider.project_name,
-                            region=subnet.region_name,
-                            subnetwork=subnet.name)
-                    .execute())
-        self.provider.wait_for_operation(response, region=subnet.region_name)
-        # Remove label
-        tag_name = "_".join(["subnet", subnet.name, "label"])
-        if not helpers.remove_metadata_item(self._provider, tag_name):
-            log.warning('No label was found associated with this subnet '
-                        '"{}" when deleted.'.format(subnet.name))
 
     def _zone_to_region(self, zone, return_name_only=True):
         """

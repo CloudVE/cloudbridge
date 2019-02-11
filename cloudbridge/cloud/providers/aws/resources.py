@@ -1038,9 +1038,6 @@ class AWSSubnet(BaseSubnet):
         return AWSPlacementZone(self._provider, self._subnet.availability_zone,
                                 self._provider.region_name)
 
-    def delete(self):
-        self._subnet.delete()
-
     @property
     def state(self):
         if self._unknown_state:

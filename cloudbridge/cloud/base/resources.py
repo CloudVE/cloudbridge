@@ -873,6 +873,9 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             timeout=timeout,
             interval=interval)
 
+    def delete(self):
+        self._provider.networking.subnets.delete(self.id)
+
 
 class BaseFloatingIPContainer(FloatingIPContainer, BasePageableObjectMixin):
 

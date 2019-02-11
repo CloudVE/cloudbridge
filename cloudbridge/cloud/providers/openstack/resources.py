@@ -936,10 +936,6 @@ class OpenStackSubnet(BaseSubnet):
         """
         return None
 
-    def delete(self):
-        if self.id in str(self._provider.neutron.list_subnets()):
-            self._provider.neutron.delete_subnet(self.id)
-
     @property
     def state(self):
         return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \

@@ -859,11 +859,14 @@ class AWSSubnetService(BaseSubnetService):
                                   cb_resource=AWSSubnet,
                                   boto_collection_name='subnets')
 
-    def get(self, subnet_id):
-        log.debug("Getting AWS Subnet Service with the id: %s", subnet_id)
+    @implement(event_pattern="provider.networking.subnets.get",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _get(self, subnet_id):
         return self.svc.get(subnet_id)
 
-    def list(self, network=None, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.subnets.list",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _list(self, network=None, limit=None, marker=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         if network_id:
             return self.svc.find(
@@ -872,7 +875,9 @@ class AWSSubnetService(BaseSubnetService):
         else:
             return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.networking.subnets.find",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -883,12 +888,9 @@ class AWSSubnetService(BaseSubnetService):
         log.debug("Searching for AWS Subnet Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    def create(self, label, network, cidr_block, zone):
-        log.debug("Creating AWS Subnet Service with the params "
-                  "[label: %s network: %s block: %s zone: %s]",
-                  label, network, cidr_block, zone)
-        AWSSubnet.assert_valid_resource_label(label)
-
+    @implement(event_pattern="provider.networking.subnets.create",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network, cidr_block, zone):
         zone_name = zone.name if isinstance(
             zone, AWSPlacementZone) else zone
 
@@ -901,6 +903,12 @@ class AWSSubnetService(BaseSubnetService):
         if label:
             subnet.label = label
         return subnet
+
+    @implement(event_pattern="provider.networking.subnets.delete",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, subnet_id):
+        aws_sn = self.svc.get_raw(subnet_id)
+        aws_sn.delete()
 
     def get_or_create_default(self, zone):
         zone_name = zone.name if isinstance(zone, AWSPlacementZone) else zone
@@ -1003,11 +1011,6 @@ class AWSSubnetService(BaseSubnetService):
         if not default_sn:
             default_sn = sn
         return default_sn
-
-    def delete(self, subnet):
-        log.debug("Deleting AWS Subnet Service: %s", subnet)
-        subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
-        self.svc.delete(subnet_id)
 
 
 class AWSRouterService(BaseRouterService):

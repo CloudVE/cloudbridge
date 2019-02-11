@@ -963,12 +963,15 @@ class OpenStackSubnetService(BaseSubnetService):
     def __init__(self, provider):
         super(OpenStackSubnetService, self).__init__(provider)
 
-    def get(self, subnet_id):
-        log.debug("Getting OpenStack Subnet with the id: %s", subnet_id)
+    @implement(event_pattern="provider.networking.subnets.get",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _get(self, subnet_id):
         subnet = (s for s in self if s.id == subnet_id)
         return next(subnet, None)
 
-    def list(self, network=None, limit=None, marker=None):
+    @implement(event_pattern="provider.networking.subnets.list",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _list(self, network=None, limit=None, marker=None):
         if network:
             network_id = (network.id if isinstance(network, OpenStackNetwork)
                           else network)
@@ -980,12 +983,10 @@ class OpenStackSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    def create(self, label, network, cidr_block, zone):
+    @implement(event_pattern="provider.networking.subnets.create",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network, cidr_block, zone):
         """zone param is ignored."""
-        log.debug("Creating OpenStack Subnet with the params: "
-                  "[Label: %s Network: %s Cinder Block: %s Zone: -ignored-]",
-                  label, network, cidr_block)
-        OpenStackSubnet.assert_valid_resource_label(label)
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
         subnet_info = {'name': label, 'network_id': network_id,
@@ -994,6 +995,15 @@ class OpenStackSubnetService(BaseSubnetService):
                   .get('subnet'))
         cb_subnet = OpenStackSubnet(self.provider, subnet)
         return cb_subnet
+
+    @implement(event_pattern="provider.networking.subnets.delete",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, subnet_id):
+        self.provider.neutron.delete_subnet(subnet_id)
+        # Adhere to the interface docs
+        if subnet_id not in self:
+            return True
+        return False
 
     def get_or_create_default(self, zone):
         """
@@ -1017,16 +1027,6 @@ class OpenStackSubnetService(BaseSubnetService):
             return sn
         except NeutronClientException:
             return None
-
-    def delete(self, subnet):
-        log.debug("Deleting subnet: %s", subnet)
-        subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
-                     else subnet)
-        self.provider.neutron.delete_subnet(subnet_id)
-        # Adhere to the interface docs
-        if subnet_id not in self:
-            return True
-        return False
 
 
 class OpenStackRouterService(BaseRouterService):

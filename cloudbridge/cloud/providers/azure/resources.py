@@ -1128,9 +1128,6 @@ class AzureSubnet(BaseSubnet):
     def network_id(self):
         return self._provider.azure_client.get_network_id_for_subnet(self.id)
 
-    def delete(self):
-        self._provider.azure_client.delete_subnet(self.id)
-
     @property
     def state(self):
         return self._SUBNET_STATE_MAP.get(self._state, NetworkState.UNKNOWN)

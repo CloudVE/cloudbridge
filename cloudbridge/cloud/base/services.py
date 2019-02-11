@@ -296,8 +296,7 @@ class BaseVolumeService(
                      do not have to be unique, and are changeable.
         :type size: int
         :param size: The size (in Gb) of the volume to be created
-
-        :type zone: str
+        :type zone: ``PlacementZone``
         :param zone: The availability zone in which to create the volume
 
         :rtype: ``Volume``
@@ -803,7 +802,9 @@ class BaseSubnetService(
         super(BaseSubnetService, self).__init__(provider)
         self._service_event_pattern += ".networking.subnets"
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.networking.subnets.find",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -820,6 +821,72 @@ class BaseSubnetService(
         subnet = self.create(BaseSubnet.CB_DEFAULT_SUBNET_LABEL, network,
                              BaseSubnet.CB_DEFAULT_SUBNET_IPV4RANGE, zone)
         return subnet
+
+    def get(self, subnet_id):
+        """
+        Returns a subnet given its ID. Returns ``None`` if the subnet
+        does not exist.
+
+        :type subnet_id: str
+        :param subnet_id: The id of the desired subnet.
+
+        :rtype: ``Subnet``
+        :return:  ``None`` is returned if the subnet does not exist, and
+                  the subnet's provider-specific CloudBridge object is
+                  returned if the subnet is found.
+        """
+        return self.dispatch(self, "provider.networking.subnets.get",
+                             subnet_id)
+
+    def find(self, network=None, **kwargs):
+        """
+        Returns a list of subnets filtered by the given keyword arguments.
+        Accepted search arguments are: 'label'
+        """
+        return self.dispatch(self, "provider.networking.subnets.find",
+                             network=network, **kwargs)
+
+    def list(self, network=None, limit=None, marker=None):
+        """
+        List all subnets.
+        """
+        return self.dispatch(self, "provider.networking.subnets.list",
+                             network=network, limit=limit, marker=marker)
+
+    def create(self, label, network, cidr_block, zone):
+        """
+        Create a new subnet.
+
+        :type label: str
+        :param label: The label of the subnet to be created. Note that labels
+                      do not have to be unique and can be changed.
+        :type network: ``Network``
+        :param network: The network in which the subnet should be created
+        :type cidr_block: str
+        :param cidr_block: A string representing a 'Classless Inter-Domain
+                           Routing' notation
+        :type cidr_block: str
+        :param cidr_block: A string representing a 'Classless Inter-Domain
+                           Routing' notation
+        :type zone: ``PlacementZone``
+        :param zone: The availability zone in which to create the subnet
+
+        :rtype: ``Subnet``
+        :return:  The created subnet's provider-specific CloudBridge object.
+        """
+        BaseSubnet.assert_valid_resource_label(label)
+        return self.dispatch(self, "provider.networking.subnets.create",
+                             label, network, cidr_block, zone)
+
+    def delete(self, subnet_id):
+        """
+        Delete an existing subnet.
+
+        :type subnet_id: str
+        :param subnet_id: The ID of the subnet to be deleted.
+        """
+        return self.dispatch(self, "provider.networking.subnets.delete",
+                             subnet_id)
 
 
 class BaseRouterService(

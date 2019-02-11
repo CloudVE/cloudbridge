@@ -34,7 +34,6 @@ from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
-from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
@@ -1043,33 +1042,6 @@ class AzureSubnetService(BaseSubnetService):
     def __init__(self, provider):
         super(AzureSubnetService, self).__init__(provider)
 
-    def get(self, subnet_id):
-        """
-         Azure does not provide an api to get the subnet directly by id.
-         It also requires the network id.
-         To make it consistent across the providers the following code
-         gets the specific code from the subnet list.
-
-        :param subnet_id:
-        :return:
-        """
-        try:
-            azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
-            return AzureSubnet(self.provider,
-                               azure_subnet) if azure_subnet else None
-        except (CloudError, InvalidValueException) as cloud_error:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloud_error)
-            return None
-
-    def list(self, network=None, limit=None, marker=None):
-        """
-        List subnets
-        """
-        return ClientPagedResultList(self.provider,
-                                     self._list_subnets(network),
-                                     limit=limit, marker=marker)
-
     def _list_subnets(self, network=None):
         result_list = []
         if network:
@@ -1092,7 +1064,34 @@ class AzureSubnetService(BaseSubnetService):
 
         return subnets
 
-    def find(self, network=None, **kwargs):
+    @implement(event_pattern="provider.networking.subnets.get",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _get(self, subnet_id):
+        """
+         Azure does not provide an api to get the subnet directly by id.
+         It also requires the network id.
+         To make it consistent across the providers the following code
+         gets the specific code from the subnet list.
+        """
+        try:
+            azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
+            return AzureSubnet(self.provider,
+                               azure_subnet) if azure_subnet else None
+        except (CloudError, InvalidValueException) as cloud_error:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloud_error)
+            return None
+
+    @implement(event_pattern="provider.networking.subnets.list",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _list(self, network=None, limit=None, marker=None):
+        return ClientPagedResultList(self.provider,
+                                     self._list_subnets(network),
+                                     limit=limit, marker=marker)
+
+    @implement(event_pattern="provider.networking.subnets.find",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _find(self, network=None, **kwargs):
         obj_list = self._list_subnets(network)
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -1100,13 +1099,11 @@ class AzureSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, label, network, cidr_block, zone):
-        """
-        Create subnet
-        """
+    @implement(event_pattern="provider.networking.subnets.create",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _create(self, label, network, cidr_block, zone):
         # Although Subnet doesn't support tags in Azure, we use the parent
         # Network's tags to track its subnets' labels
-        AzureSubnet.assert_valid_resource_label(label)
         subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
 
         network_id = network.id \
@@ -1125,15 +1122,17 @@ class AzureSubnetService(BaseSubnetService):
         subnet.label = label
         return subnet
 
-    def delete(self, subnet):
-        subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
+    @implement(event_pattern="provider.networking.subnets.delete",
+               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, subnet_id):
+        sn = self.get(subnet_id)
         self.provider.azure_client.delete_subnet(subnet_id)
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels, thus that network-level tag must
         # be deleted with the subnet
-        network = subnet.network
-        az_network = network._network
-        az_network.tags.pop(subnet.tag_name)
+        net_id = sn.network_id
+        az_network = self.provider.azure_client.get_network(net_id)
+        az_network.tags.pop(sn.tag_name)
         self._provider.azure_client.update_network_tags(
             az_network.id, az_network)
 
