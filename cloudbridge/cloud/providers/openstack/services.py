@@ -181,9 +181,6 @@ class OpenStackKeyPairService(BaseKeyPairService):
     @implement(event_pattern="provider.security.key_pairs.create",
                priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, public_key_material=None):
-        log.debug("Creating a new key pair with the name: %s", name)
-        OpenStackKeyPair.assert_valid_resource_name(name)
-
         existing_kp = self.find(name=name)
         if existing_kp:
             raise DuplicateResourceException(

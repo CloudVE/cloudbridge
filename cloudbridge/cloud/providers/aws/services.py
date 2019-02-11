@@ -115,8 +115,6 @@ class AWSKeyPairService(BaseKeyPairService):
     @implement(event_pattern="provider.security.key_pairs.create",
                priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, public_key_material=None):
-        log.debug("Creating Key Pair Service %s", name)
-        AWSKeyPair.assert_valid_resource_name(name)
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()

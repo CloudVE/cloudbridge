@@ -134,7 +134,7 @@ class BaseKeyPairService(
         return self.dispatch(self, "provider.security.key_pairs.list",
                              limit=limit, marker=marker)
 
-    def create(self, name, location=None):
+    def create(self, name, public_key_material=None):
         """
         Create a new key pair.
 
@@ -147,7 +147,7 @@ class BaseKeyPairService(
         """
         BaseKeyPair.assert_valid_resource_name(name)
         return self.dispatch(self, "provider.security.key_pairs.create",
-                             name, location=location)
+                             name,  public_key_material=public_key_material)
 
     def delete(self, key_pair_id):
         """
@@ -211,7 +211,7 @@ class BaseVMFirewallService(
         """
         BaseVMFirewall.assert_valid_resource_label(label)
         return self.dispatch(self, "provider.security.vm_firewalls.create",
-                             label, self, label, network, description)
+                             label, network, description)
 
     def delete(self, vm_firewall_id):
         """

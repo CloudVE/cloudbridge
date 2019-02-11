@@ -199,8 +199,6 @@ class AzureKeyPairService(BaseKeyPairService):
     @implement(event_pattern="provider.security.key_pairs.create",
                priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def _create(self, name, public_key_material=None):
-        AzureKeyPair.assert_valid_resource_name(name)
-
         key_pair = self.get(name)
 
         if key_pair:
