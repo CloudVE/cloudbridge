@@ -14,9 +14,9 @@ class InterceptingEventHandler(EventHandler):
 
     def __init__(self, event_pattern, priority, callback):
         self.__dispatcher = None
-        self.event_pattern = event_pattern
-        self.priority = priority
-        self.callback = callback
+        self.__event_pattern = event_pattern
+        self.__priority = priority
+        self.__callback = callback
 
     def __lt__(self, other):
         # This is required for the bisect module to insert
@@ -33,14 +33,21 @@ class InterceptingEventHandler(EventHandler):
         else:
             return None
 
+    @property
     def event_pattern(self):
-        pass
+        return self.__event_pattern
 
+    @property
     def priority(self):
-        pass
+        return self.__priority
 
+    @property
     def callback(self):
-        pass
+        return self.__callback
+
+    @callback.setter
+    def callback(self, value):
+        self.__callback = value
 
     @property
     def dispatcher(self):
