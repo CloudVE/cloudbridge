@@ -1605,9 +1605,6 @@ class AzureKeyPair(BaseKeyPair):
     def name(self):
         return self._key_pair.Name
 
-    def delete(self):
-        self._provider.azure_client.delete_public_key(self._key_pair)
-
 
 class AzureRouter(BaseRouter):
     def __init__(self, provider, route_table):

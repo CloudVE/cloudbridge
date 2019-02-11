@@ -131,7 +131,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(OpenStackKeyPairService, self).__init__(provider)
 
-    def get(self, key_pair_id):
+    @implement(event_pattern="provider.security.key_pairs.get",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _get(self, key_pair_id):
         """
         Returns a KeyPair given its id.
         """
@@ -143,7 +145,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
             log.debug("KeyPair %s was not found.", key_pair_id)
             return None
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.security.key_pairs.list",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         """
         List all key pairs associated with this account.
 
@@ -158,7 +162,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.security.key_pairs.find",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         name = kwargs.pop('name', None)
 
         # All kwargs should have been popped at this time.
@@ -172,7 +178,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
         log.debug("Searching for %s in: %s", name, keypairs)
         return ClientPagedResultList(self.provider, results)
 
-    def create(self, name, public_key_material=None):
+    @implement(event_pattern="provider.security.key_pairs.create",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _create(self, name, public_key_material=None):
         log.debug("Creating a new key pair with the name: %s", name)
         OpenStackKeyPair.assert_valid_resource_name(name)
 
@@ -190,6 +198,12 @@ class OpenStackKeyPairService(BaseKeyPairService):
         cb_kp = OpenStackKeyPair(self.provider, kp)
         cb_kp.material = private_key
         return cb_kp
+
+    @implement(event_pattern="provider.security.key_pairs.delete",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, key_pair_id):
+        os_kp = self.provider.nova.keypairs.get(key_pair_id)
+        os_kp.delete()
 
 
 class OpenStackVMFirewallService(BaseVMFirewallService):

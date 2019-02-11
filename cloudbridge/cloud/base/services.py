@@ -6,6 +6,7 @@ import logging
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
 from cloudbridge.cloud.base.resources import BaseSubnet
@@ -101,23 +102,60 @@ class BaseKeyPairService(
         super(BaseKeyPairService, self).__init__(provider)
         self._service_event_pattern += ".security.key_pairs"
 
+    def get(self, key_pair_id):
+        """
+        Returns a key_pair given its ID. Returns ``None`` if the key_pair
+        does not exist.
+
+        :type key_pair_id: str
+        :param key_pair_id: The id of the desired key pair.
+
+        :rtype: ``KeyPair``
+        :return:  ``None`` is returned if the key pair does not exist, and
+                  the key pair's provider-specific CloudBridge object is
+                  returned if the key pair is found.
+        """
+        return self.dispatch(self, "provider.storage.key_pairs.get",
+                             key_pair_id)
+
+    def find(self, **kwargs):
+        """
+        Returns a list of key pairs filtered by the given keyword arguments.
+        Accepted search arguments are: 'name'
+        """
+        return self.dispatch(self, "provider.storage.key_pairs.find", **kwargs)
+
+    def list(self, limit=None, marker=None):
+        """
+        List all key pairs.
+        """
+        return self.dispatch(self, "provider.storage.key_pairs.list",
+                             limit=limit, marker=marker)
+
+    def create(self, name, location=None):
+        """
+        Create a new key pair.
+
+        :type name: str
+        :param name: The name of the key pair to be created. Note that names
+                     must be unique, and are unchangeable.
+
+        :rtype: ``KeyPair``
+        :return:  The created key pair's provider-specific CloudBridge object.
+        """
+        BaseKeyPair.assert_valid_resource_name(name)
+        return self.dispatch(self, "provider.storage.key_pairs.create",
+                             name, location=location)
+
     def delete(self, key_pair_id):
         """
         Delete an existing key pair.
 
         :type key_pair_id: str
-        :param key_pair_id: The id of the key pair to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the key does not exist. Note that this implies
-                  that the key may not have been deleted by this method but
-                  instead has not existed in the first place.
+        :param key_pair_id: The ID of the key pair to be deleted.
         """
-        log.info("Deleting the existing key pair %s", key_pair_id)
-        kp = self.get(key_pair_id)
-        if kp:
-            kp.delete()
-        return True
+        return self.dispatch(self, "provider.storage.key_pairs.delete",
+                             key_pair_id)
 
 
 class BaseVMFirewallService(

@@ -77,7 +77,9 @@ class GCEKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(GCEKeyPairService, self).__init__(provider)
 
-    def get(self, key_pair_id):
+    @implement(event_pattern="provider.security.key_pairs.get",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _get(self, key_pair_id):
         """
         Returns a KeyPair given its ID.
         """
@@ -87,7 +89,9 @@ class GCEKeyPairService(BaseKeyPairService):
         else:
             return None
 
-    def list(self, limit=None, marker=None):
+    @implement(event_pattern="provider.security.key_pairs.list",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _list(self, limit=None, marker=None):
         key_pairs = []
         for item in helpers.find_matching_metadata_items(
                 self.provider, GCEKeyPair.KP_TAG_REGEX):
@@ -97,7 +101,9 @@ class GCEKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, key_pairs,
                                      limit=limit, marker=marker)
 
-    def find(self, **kwargs):
+    @implement(event_pattern="provider.security.key_pairs.find",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _find(self, **kwargs):
         """
         Searches for a key pair by a given list of attributes.
         """
@@ -114,7 +120,9 @@ class GCEKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, name, public_key_material=None):
+    @implement(event_pattern="provider.security.key_pairs.create",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _create(self, name, public_key_material=None):
         GCEKeyPair.assert_valid_resource_name(name)
 
         private_key = None
@@ -139,7 +147,9 @@ class GCEKeyPairService(BaseKeyPairService):
                         'A KeyPair with name {0} already exists'.format(name))
             raise
 
-    def delete(self, key_pair_id):
+    @implement(event_pattern="provider.security.key_pairs.delete",
+               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, key_pair_id):
         kp = self.get(key_pair_id)
         if kp:
             helpers.remove_metadata_item(
