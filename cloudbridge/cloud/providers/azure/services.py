@@ -29,6 +29,7 @@ from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
@@ -188,9 +189,9 @@ class AzureKeyPairService(BaseKeyPairService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -278,9 +279,9 @@ class AzureVolumeService(BaseVolumeService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -342,7 +343,9 @@ class AzureVolumeService(BaseVolumeService):
     @implement(event_pattern="provider.storage.volumes.delete",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def _delete(self, volume_id):
-        self.provider.azure_client.delete_disk(volume_id)
+        vol_id = (volume_id.id if isinstance(volume_id, AzureVolume)
+                  else volume_id)
+        self.provider.azure_client.delete_disk(vol_id)
 
 
 class AzureSnapshotService(BaseSnapshotService):
@@ -369,9 +372,9 @@ class AzureSnapshotService(BaseSnapshotService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -413,7 +416,9 @@ class AzureSnapshotService(BaseSnapshotService):
     @implement(event_pattern="provider.storage.snapshots.delete",
                priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def _delete(self, snapshot_id):
-        self.provider.azure_client.delete_snapshot(snapshot_id)
+        snap_id = (snapshot_id.id if isinstance(snapshot_id, AzureSnapshot)
+                   else snapshot_id)
+        self.provider.azure_client.delete_snapshot(snap_id)
 
 
 class AzureBucketService(BaseBucketService):
@@ -554,9 +559,9 @@ class AzureImageService(BaseImageService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -885,9 +890,9 @@ class AzureInstanceService(BaseInstanceService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -1161,9 +1166,9 @@ class AzureRouterService(BaseRouterService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])

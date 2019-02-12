@@ -466,7 +466,10 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
             interval=interval)
 
     def delete(self):
-        self._provider.storage.volumes.delete(self.id)
+        """
+        Delete this volume.
+        """
+        return self._provider.storage.volumes.delete(self)
 
 
 class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
@@ -491,7 +494,10 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
             interval=interval)
 
     def delete(self):
-        self._provider.storage.snapshots.delete(self.id)
+        """
+        Delete this snapshot.
+        """
+        return self._provider.storage.snapshots.delete(self)
 
 
 class BaseKeyPair(BaseCloudResource, KeyPair):

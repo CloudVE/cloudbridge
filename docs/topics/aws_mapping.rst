@@ -1,3 +1,6 @@
+Detailed AWS Type and Resource Mappings
+=======================================
+
 AWS Dashboard
 -------------
 AWS has a particular dashboard as resources are found within different
@@ -88,7 +91,7 @@ web portal.
    resources in AWS. By default, this label will appear in the first
    column.
 
-.. figure:: captures/az-ami-dash.png
+.. figure:: captures/aws-ami-dash.png
    :alt: name, ID, and label properties for AWS EC2 AMIs
 
    When an AWS resource allows for an unchangeable name, the CloudBridge

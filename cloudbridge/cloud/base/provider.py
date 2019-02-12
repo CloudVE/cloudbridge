@@ -11,6 +11,7 @@ except ImportError:  # Python 2
 import six
 
 from ..base.events import SimpleEventDispatcher
+from ..base.middleware import ExceptionWrappingMiddleware
 from ..base.middleware import SimpleMiddlewareManager
 from ..interfaces import CloudProvider
 from ..interfaces.exceptions import ProviderConnectionException
@@ -88,6 +89,7 @@ class BaseCloudProvider(CloudProvider):
         self._config_parser.read(CloudBridgeConfigLocations)
         self._events = SimpleEventDispatcher()
         self._middleware = SimpleMiddlewareManager(self._events)
+        self.add_required_middleware()
 
     @property
     def config(self):
@@ -104,6 +106,13 @@ class BaseCloudProvider(CloudProvider):
     @property
     def middleware(self):
         return self._middleware
+
+    def add_required_middleware(self):
+        """
+        Adds common middleware that is essential for cloudbridge to function.
+        Any other extra middleware can be added through the provider factory.
+        """
+        self.middleware.add(ExceptionWrappingMiddleware())
 
     def authenticate(self):
         """

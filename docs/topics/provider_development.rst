@@ -56,8 +56,8 @@ You should see the tests fail with the following message:
 
 .. code-block:: bash
 
-    TypeError: Can't instantiate abstract class GCECloudProvider with abstract
-    methods storage, compute, security, network
+    "TypeError: Can't instantiate abstract class GCECloudProvider with abstract
+    methods storage, compute, security, network."
 
 6. Therefore, our next step is to implement these methods. We can start off by
 implementing these methods in ``provider.py`` and raising a
@@ -125,8 +125,8 @@ tests to fail:
 
 .. code-block:: bash
 
-    TypeError: Can't instantiate abstract class GCESecurityService with abstract
-    methods key_pairs, security_groups
+    "TypeError: Can't instantiate abstract class GCESecurityService with abstract
+    methods key_pairs, security_groups."
 
 The Abstract Base Classes are doing their job and flagging all methods that
 need to be implemented.
@@ -180,8 +180,8 @@ Once again, running the tests will complain of missing methods:
 
 .. code-block:: bash
 
-    TypeError: Can't instantiate abstract class GCEKeyPairService with abstract
-    methods create, find, get, list
+    "TypeError: Can't instantiate abstract class GCEKeyPairService with abstract
+    methods create, find, get, list."
 
 11. Keep implementing the methods till the security service works, and the
 tests pass.

@@ -33,7 +33,7 @@ class CloudResource(object):
 
     This interface has a  _provider property that can be used to access the
     provider associated with the resource, which is only intended for use by
-    subclasses. Every cloudbridge resource also has an id, a name and a
+    subclasses. Every CloudBridge resource also has an id, a name and a
     label property. The id property is a unique identifier for the resource.
     The name is a more user-friendly version of an id, suitable for
     display to an end-user. However, it cannot be used in place of id. See
@@ -60,11 +60,11 @@ class CloudResource(object):
         Get the resource identifier.
 
         The id property is used to uniquely identify the resource, and is an
-        opaque value which should not be interpreted by cloudbridge clients,
+        opaque value which should not be interpreted by CloudBridge clients,
         and is a value meaningful to the underlying cloud provider.
 
-        :rtype: ``str`` :return: ID for this resource as returned by the cloud
-        middleware.
+        :rtype: ``str``
+        :return: ID for this resource as returned by the cloud middleware.
         """
         pass
 
@@ -74,30 +74,32 @@ class CloudResource(object):
         Get the name id for the resource.
 
         The name property is typically a user-friendly id value for the
-        resource. The name is different from the id property in the
-        following ways:
-        1. The name property is often a more user-friendly value to
-           display to the user than the id property.
-        2. The name may sometimes be the same as the id, but should never
-           be used in place of the id.
-        3. The id is what will uniquely identify a resource, and will be used
-           internally by cloudbridge for all get operations etc.
-        4. All resources have a name.
-        5. The name is read-only.
-        6. However, the name may not necessarily be unique, which is the
-           reason why it should not be used for uniquely identifying a
-           resource.
+        resource. The name is different from the id property in the following
+        ways:
+
+         1. The name property is often a more user-friendly value to
+            display to the user than the id property.
+         2. The name may sometimes be the same as the id, but should never
+            be used in place of the id.
+         3. The id is what will uniquely identify a resource, and will be used
+            internally by CloudBridge for all get operations etc.
+         4. All resources have a name.
+         5. The name is read-only.
+         6. However, the name may not necessarily be unique, which is the
+            reason why it should not be used for uniquely identifying a
+            resource.
+
         Example:
-        The AWS machine image name maps to a cloudbridge name. It is not
-        editable and is a user friendly name such as 'Ubuntu 14.04' and
+        The AWS machine image name maps to a CloudBridge name. It is not
+        editable and is a user friendly name such as 'Ubuntu 18.04' and
         corresponds to the ami-name. It is distinct from the ami-id, which
-        maps to cloudbridge's id property. The ami-name cannot be edited, and
+        maps to CloudBridge's id property. The ami-name cannot be edited, and
         is set at creation time. It is not necessarily unique.
-        In Azure, the machine image's name corresponds to cloudbridge's name
+        In Azure, the machine image's name corresponds to CloudBridge's name
         property. In Azure, it also happens to be the same as the id property.
 
         The name property and the label property share the same character
-        restrictions. see :py:attr:`~LabeledCloudResource.label`
+        restrictions. See :py:attr:`~LabeledCloudResource.label`.
         """
         pass
 
@@ -121,6 +123,7 @@ class LabeledCloudResource(CloudResource):
         in the underlying cloud provider, or be simulated through tags/labels.
 
         The label property adheres to the following restrictions:
+
         * Must be at least 3 characters in length.
         * Cannot be longer than 63 characters.
         * May only contain ASCII characters comprising of lowercase letters,
@@ -129,18 +132,19 @@ class LabeledCloudResource(CloudResource):
           (i.e. cannot begin or end with a dash)
 
         Some resources may not support labels, in which case, a
-        NotImplementedError will be thrown.
+        ``NotImplementedError`` will be thrown.
 
         :rtype: ``str``
         :return: Label for this resource as returned by the cloud middleware.
-        :throws NotImplementedError if this resource does not support labels
+        :raise: ``NotImplementedError`` if this resource does not support
+                labels.
         """
         pass
 
 
 class Configuration(dict):
     """
-    Represents a cloudbridge configuration object
+    Represents a CloudBridge configuration object
     """
 
     @abstractproperty
@@ -507,6 +511,9 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
     def label(self, value):
         """
         Set the instance label.
+
+        :type value: ``str``
+        :param value: The value to set the label to.
         """
         pass
 
@@ -895,6 +902,9 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
     def label(self, value):
         """
         Set the resource label.
+
+        :type value: ``str``
+        :param value: The value to set the label to.
         """
         pass
 
@@ -1013,6 +1023,9 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
     def label(self, value):
         """
         Set the resource label.
+
+        :type value: ``str``
+        :param value: The value to set the label to.
         """
         pass
 
@@ -1232,6 +1245,9 @@ class Router(LabeledCloudResource):
     def label(self, value):
         """
         Set the resource label.
+
+        :type value: ``str``
+        :param value: The value to set the label to.
         """
         pass
 

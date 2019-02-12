@@ -32,6 +32,7 @@ from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
@@ -106,8 +107,9 @@ class AWSKeyPairService(BaseKeyPairService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'name'))
 
         log.debug("Searching for Key Pair %s", name)
         return self.svc.find(filter_name='key-name', filter_value=name)
@@ -176,8 +178,9 @@ class AWSVMFirewallService(BaseVMFirewallService):
         log.debug("Searching for Firewall Service %s", label)
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
         return self.svc.find(filter_name='tag:Name',
                              filter_value=label)
 
@@ -236,8 +239,9 @@ class AWSVolumeService(BaseVolumeService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Volume Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
@@ -267,7 +271,10 @@ class AWSVolumeService(BaseVolumeService):
     @implement(event_pattern="provider.storage.volumes.delete",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def _delete(self, volume_id):
-        aws_vol = self.svc.get_raw(volume_id)
+        if isinstance(volume_id, AWSVolume):
+            aws_vol = volume_id._volume
+        else:
+            aws_vol = self.svc.get_raw(volume_id)
         aws_vol.delete()
 
 
@@ -323,6 +330,8 @@ class AWSSnapshotService(BaseSnapshotService):
     @implement(event_pattern="provider.storage.snapshots.delete",
                priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def _delete(self, snapshot_id):
+        if isinstance(snapshot_id, AWSSnapshot):
+            aws_snap = snapshot_id._snapshot
         aws_snap = self.svc.get_raw(snapshot_id)
         aws_snap.delete()
 
@@ -499,8 +508,9 @@ class AWSImageService(BaseImageService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         extra_args = {}
         if owner:
@@ -676,8 +686,9 @@ class AWSInstanceService(BaseInstanceService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
@@ -807,8 +818,9 @@ class AWSNetworkService(BaseNetworkService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Network Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
@@ -882,8 +894,9 @@ class AWSSubnetService(BaseSubnetService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Subnet Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
@@ -1034,8 +1047,9 @@ class AWSRouterService(BaseRouterService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Router Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)

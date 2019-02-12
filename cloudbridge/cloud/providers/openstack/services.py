@@ -38,6 +38,7 @@ from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
     import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
@@ -169,8 +170,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'name'))
 
         keypairs = self.provider.nova.keypairs.findall(name=name)
         results = [OpenStackKeyPair(self.provider, kp)
@@ -314,8 +316,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for an OpenStack Volume with the label %s", label)
         search_opts = {'name': label}
@@ -354,7 +357,10 @@ class OpenStackVolumeService(BaseVolumeService):
     @implement(event_pattern="provider.storage.volumes.delete",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def _delete(self, volume_id):
-        os_vol = self.provider.cinder.volumes.get(volume_id)
+        if isinstance(volume_id, OpenStackVolume):
+            os_vol = volume_id._volume
+        else:
+            os_vol = self.provider.cinder.volumes.get(volume_id)
         os_vol.delete()
 
 
@@ -381,8 +387,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         search_opts = {'name': label,  # TODO: Cinder is ignoring name
                        'limit': oshelpers.os_result_limit(self.provider),
@@ -421,7 +428,10 @@ class OpenStackSnapshotService(BaseSnapshotService):
     @implement(event_pattern="provider.storage.snapshots.delete",
                priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def _delete(self, snapshot_id):
-        os_snap = self.provider.cinder.volume_snapshots.get(snapshot_id)
+        if isinstance(snapshot_id, OpenStackSnapshot):
+            os_snap = snapshot_id._snapshot
+        else:
+            os_snap = self.provider.cinder.volume_snapshots.get(snapshot_id)
         os_snap.delete()
 
 
@@ -454,8 +464,9 @@ class OpenStackBucketService(BaseBucketService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'name'))
         _, container_list = self.provider.swift.get_account()
         cb_buckets = [OpenStackBucket(self.provider, c)
                       for c in container_list
@@ -757,8 +768,9 @@ class OpenStackInstanceService(BaseInstanceService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         search_opts = {'name': label}
         cb_insts = [
@@ -918,8 +930,9 @@ class OpenStackNetworkService(BaseNetworkService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for OpenStack Network with label: %s", label)
         networks = [OpenStackNetwork(self.provider, network)
@@ -1018,7 +1031,7 @@ class OpenStackSubnetService(BaseSubnetService):
             sn = self.provider.networking.subnets.create(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
                 cidr_block=OpenStackSubnet.CB_DEFAULT_SUBNET_IPV4RANGE,
-                network=net)
+                network=net, zone=zone)
             router = self.provider.networking.routers.get_or_create_default(
                 net)
             router.attach_subnet(sn)

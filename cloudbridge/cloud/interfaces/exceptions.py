@@ -94,8 +94,19 @@ class DuplicateResourceException(CloudBridgeBaseException):
     pass
 
 
+class InvalidParamException(InvalidNameException):
+    """
+    Marker interface for an invalid or unexpected parameter, for example,
+    to a service.find() method.
+    """
+
+    def __init__(self, msg):
+        super(InvalidParamException, self).__init__(msg)
+
+
 class HandlerException(CloudBridgeBaseException):
     """
     Marker interface for event handler exceptions.
     """
-    pass
+    def __init__(self, msg):
+        super(HandlerException, self).__init__(msg)

@@ -29,6 +29,9 @@ class EventSystemTestCase(unittest.TestCase):
         dispatcher = SimpleEventDispatcher()
         handler = dispatcher.observe(event_pattern=EVENT_NAME, priority=1000,
                                      callback=my_callback)
+        assert handler.event_pattern == EVENT_NAME
+        assert handler.priority == 1000
+        assert handler.callback == my_callback
         self.assertIsInstance(handler, EventHandler)
         result = dispatcher.dispatch(self, EVENT_NAME, 'first_pos_arg',
                                      a_keyword_arg='another_thing')

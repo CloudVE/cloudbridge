@@ -1,3 +1,6 @@
+Detailed Azure Type and Resource Mappings
+=========================================
+
 Azure - Labeled Resources
 -------------------------
 +---------------------------------------+------------------------+-------+------------------------+------------------------------------+
@@ -106,8 +109,9 @@ It is also important to note that some of these resources are paid and
 required a plan to use, while others are free but likewise require accepting
 certain terms before being used. These plans and terms are passed and
 accepted silently by CloudBridge in order to keep the code cloud-independent.
-We therefore encourage using the `marketplace website<https://azuremarketplace.microsoft.com/en-us>`_
-to view image and plan details before using them in CloudBridge.
+We therefore encourage using the
+`marketplace website <https://azuremarketplace.microsoft.com/en-us>`_
+to view the images and plan details before using them in CloudBridge.
 
 Additionally, Subnets are a particular resource in Azure because they are
 not simply found in the Resource Group like most resources, but are rather

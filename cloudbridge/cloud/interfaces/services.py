@@ -362,6 +362,15 @@ class VolumeService(PageableObjectMixin, CloudService):
         """
         pass
 
+    def delete(self, volume):
+        """
+        Delete an existing volume.
+
+        :type volume: ``str`` or :class:`Volume`
+        :param volume: The object or ID of the volume to be deleted.
+        """
+        pass
+
 
 class SnapshotService(PageableObjectMixin, CloudService):
     """
@@ -370,7 +379,7 @@ class SnapshotService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, volume_id):
+    def get(self, snapshot_id):
         """
         Returns a snapshot given its id.
 
@@ -419,6 +428,15 @@ class SnapshotService(PageableObjectMixin, CloudService):
 
         :rtype: ``object`` of :class:`.Snapshot`
         :return: a newly created Snapshot object.
+        """
+        pass
+
+    def delete(self, snapshot):
+        """
+        Delete an existing snapshot.
+
+        :type snapshot: ``str`` or :class:`Snapshot`
+        :param snapshot: The object or ID of the snapshot to be deleted.
         """
         pass
 
@@ -701,7 +719,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         :param subnet_id: The ID of the subnet to retrieve.
 
         :rtype: ``object`` of :class:`.Subnet`
-        return: a Subnet object
+        :return: a Subnet object
         """
         pass
 

@@ -16,6 +16,7 @@ from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.services import BucketObjectService
 from cloudbridge.cloud.interfaces.services import BucketService
@@ -152,6 +153,12 @@ class BaseKeyPairService(
                              name,  public_key_material=public_key_material)
 
     def delete(self, key_pair_id):
+        return self.dispatch(self, "provider.security.key_pairs.delete",
+                             key_pair_id)
+
+    @implement(event_pattern="provider.security.key_pairs.delete",
+               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def _delete(self, key_pair_id):
         """
         Delete an existing key pair.
 
@@ -234,9 +241,9 @@ class BaseVMFirewallService(
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -391,7 +398,7 @@ class BaseBucketService(
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
-    @implement(event_pattern="*.storage.buckets.find",
+    @implement(event_pattern="provider.storage.buckets.find",
                priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def _find(self, **kwargs):
         obj_list = self
@@ -400,9 +407,9 @@ class BaseBucketService(
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])

@@ -16,6 +16,8 @@ import six
 
 import cloudbridge
 
+from ..interfaces.exceptions import InvalidParamException
+
 
 def generate_key_pair():
     """
@@ -69,7 +71,7 @@ def generic_find(filter_names, kwargs, objs):
 
     # All kwargs should have been popped at this time.
     if len(kwargs) > 0:
-        raise TypeError(
+        raise InvalidParamException(
             "Unrecognised parameters for search: %s. Supported attributes: %s"
             % (kwargs, filter_names))
 
@@ -153,8 +155,8 @@ def rename_kwargs(func_name, kwargs, aliases):
     for alias, new in aliases.items():
         if alias in kwargs:
             if new in kwargs:
-                raise TypeError('{} received both {} and {}'.format(
-                    func_name, alias, new))
+                raise InvalidParamException(
+                    '{} received both {} and {}'.format(func_name, alias, new))
             # Manually invoke the deprecated decorator with an empty lambda
             # to signal deprecation
             deprecated(deprecated_in='1.1',

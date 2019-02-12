@@ -30,6 +30,7 @@ from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
@@ -113,9 +114,9 @@ class GCEKeyPairService(BaseKeyPairService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
@@ -247,7 +248,8 @@ class GCEVMTypeService(BaseVMTypeService):
             is_match = True
             for key, value in kwargs.items():
                 if key not in inst_type:
-                    raise TypeError("The attribute key is not valid.")
+                    raise InvalidParamException(
+                        "Unrecognised parameters for search: %s." % key)
                 if inst_type.get(key) != value:
                     is_match = False
                     break
@@ -334,13 +336,20 @@ class GCEImageService(BaseImageService):
                 return public_image
         return None
 
-    def find(self, label, limit=None, marker=None):
+    def find(self, limit=None, marker=None, **kwargs):
         """
         Searches for an image by a given list of attributes
         """
-        filters = {'label': label}
+        label = kwargs.pop('label', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
         # Retrieve all available images by setting limit to sys.maxsize
-        images = [image for image in self if image.label == filters['label']]
+        images = [image for image in self if image.label == label]
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
 
@@ -532,16 +541,23 @@ class GCEInstanceService(BaseInstanceService):
 
     @implement(event_pattern="provider.compute.instances.find",
                priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _find(self, label, limit=None, marker=None):
+    def _find(self, limit=None, marker=None, **kwargs):
         """
         Searches for instances by instance label.
         :return: a list of Instance objects
         """
+        label = kwargs.pop('label', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
         instances = [instance for instance in self.list()
                      if instance.label == label]
-        if limit and len(instances) > limit:
-            instances = instances[:limit]
-        return instances
+        return ClientPagedResultList(self.provider, instances,
+                                     limit=limit, marker=marker)
 
     @implement(event_pattern="provider.compute.instances.list",
                priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
@@ -655,7 +671,8 @@ class GCENetworkService(BaseNetworkService):
         obj_list = self
         filters = ['name', 'label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=limit, marker=marker)
 
     @implement(event_pattern="provider.networking.networks.list",
                priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
@@ -748,11 +765,12 @@ class GCERouterService(BaseRouterService):
 
     @implement(event_pattern="provider.networking.routers.find",
                priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    def find(self, limit=None, marker=None, **kwargs):
         obj_list = self
         filters = ['name', 'label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
+        return ClientPagedResultList(self._provider, list(matches),
+                                     limit=limit, marker=marker)
 
     @implement(event_pattern="provider.networking.routers.list",
                priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
@@ -1039,7 +1057,18 @@ class GCEVolumeService(BaseVolumeService):
 
     @implement(event_pattern="provider.storage.volumes.find",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _find(self, label, limit=None, marker=None):
+    def _find(self, limit=None, marker=None, **kwargs):
+        """
+        Searches for a volume by a given list of attributes.
+        """
+        label = kwargs.pop('label', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1063,6 +1092,13 @@ class GCEVolumeService(BaseVolumeService):
     @implement(event_pattern="provider.storage.volumes.list",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def _list(self, limit=None, marker=None):
+        """
+        List all volumes.
+
+        limit: The maximum number of volumes to return. The returned
+               ResultList's is_truncated property can be used to determine
+               whether more records are available.
+        """
         # For GCE API, Acceptable values are 0 to 500, inclusive.
         # (Default: 500).
         max_result = limit if limit is not None and limit < 500 else 500
@@ -1116,13 +1152,17 @@ class GCEVolumeService(BaseVolumeService):
     @implement(event_pattern="provider.storage.volumes.delete",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def _delete(self, volume_id):
-        vol = self.provider.get_resource('disks', volume_id)
-        zone_name = self.provider.parse_url(vol.get('zone')).parameters['zone']
+        if isinstance(volume_id, GCEVolume):
+            gce_vol = volume_id._volume
+        else:
+            gce_vol = self.provider.get_resource('disks', volume_id)
+        zone_name = (self.provider.parse_url(gce_vol.get('zone'))
+                         .parameters['zone'])
         (self._provider.gce_compute
                        .disks()
                        .delete(project=self.provider.project_name,
                                zone=zone_name,
-                               disk=vol.get('name'))
+                               disk=gce_vol.get('name'))
                        .execute())
 
 
@@ -1139,7 +1179,15 @@ class GCESnapshotService(BaseSnapshotService):
 
     @implement(event_pattern="provider.storage.snapshots.find",
                priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _find(self, label, limit=None, marker=None):
+    def _find(self, limit=None, marker=None, **kwargs):
+        label = kwargs.pop('label', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1207,7 +1255,10 @@ class GCESnapshotService(BaseSnapshotService):
     @implement(event_pattern="provider.storage.snapshots.delete",
                priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def _delete(self, snapshot_id):
-        gce_snap = self.provider.get_resource('snapshots', snapshot_id)
+        if isinstance(snapshot_id, GCESnapshot):
+            gce_snap = snapshot_id._snapshot
+        else:
+            gce_snap = self.provider.get_resource('snapshots', snapshot_id)
         (self.provider
              .gce_compute
              .snapshots()
@@ -1234,10 +1285,15 @@ class GCSBucketService(BaseBucketService):
 
     @implement(event_pattern="provider.storage.buckets.find",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _find(self, name, limit=None, marker=None):
-        """
-        Searches in bucket names for a substring.
-        """
+    def _find(self, limit=None, marker=None, **kwargs):
+        name = kwargs.pop('name', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'name'))
+
         buckets = [bucket for bucket in self if name in bucket.name]
         return ClientPagedResultList(self.provider, buckets, limit=limit,
                                      marker=marker)
@@ -1350,22 +1406,11 @@ class GCSBucketObjectService(BaseBucketObjectService):
                                      response.get('nextPageToken'),
                                      False, data=objects)
 
-    def find(self, bucket, **kwargs):
-        master_list = []
-        obj_list = self.list(bucket=bucket, limit=500)
-        if obj_list.supports_server_paging:
-            master_list.extend(obj_list)
-            while obj_list.is_truncated:
-                obj_list = self.list(marker=obj_list.marker,
-                                     **kwargs)
-                master_list.extend(obj_list)
-        else:
-            master_list.extend(obj_list.data)
-
+    def find(self, bucket, limit=None, marker=None, **kwargs):
         filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        matches = cb_helpers.generic_find(filters, kwargs, bucket.objects)
         return ClientPagedResultList(self._provider, list(matches),
-                                     limit=None, marker=None)
+                                     limit=limit, marker=marker)
 
     def _create_object_with_media_body(self, bucket, name, media_body):
         response = (self.provider

@@ -14,9 +14,9 @@ class InterceptingEventHandler(EventHandler):
 
     def __init__(self, event_pattern, priority, callback):
         self.__dispatcher = None
-        self.event_pattern = event_pattern
-        self.priority = priority
-        self.callback = callback
+        self.__event_pattern = event_pattern
+        self.__priority = priority
+        self.__callback = callback
 
     def __lt__(self, other):
         # This is required for the bisect module to insert
@@ -33,14 +33,21 @@ class InterceptingEventHandler(EventHandler):
         else:
             return None
 
+    @property
     def event_pattern(self):
-        pass
+        return self.__event_pattern
 
+    @property
     def priority(self):
-        pass
+        return self.__priority
 
+    @property
     def callback(self):
-        pass
+        return self.__callback
+
+    @callback.setter
+    def callback(self, value):
+        self.__callback = value
 
     @property
     def dispatcher(self):
@@ -151,20 +158,29 @@ class SimpleEventDispatcher(EventDispatcher):
             raise HandlerException(message)
         return cache_list
 
+    def _invalidate_cache(self, event_pattern=None):
+        if not event_pattern:
+            # invalidate entire cache
+            self.__handler_cache = {}
+        else:
+            # Smarter invalidation by only deleting events that
+            # are affected by the pattern
+            for key in list(self.__handler_cache.keys()):
+                if re.search(fnmatch.translate(event_pattern), key):
+                    del self.__handler_cache[key]
+
     def subscribe(self, event_handler):
         event_handler.dispatcher = self
         handler_list = self.__events.get(event_handler.event_pattern, [])
         handler_list.append(event_handler)
         self.__events[event_handler.event_pattern] = handler_list
-        # invalidate cache
-        self.__handler_cache = {}
+        self._invalidate_cache(event_pattern=event_handler.event_pattern)
 
     def unsubscribe(self, event_handler):
         handler_list = self.__events.get(event_handler.event_pattern, [])
         handler_list.remove(event_handler)
         event_handler.dispatcher = None
-        # invalidate cache
-        self.__handler_cache = {}
+        self._invalidate_cache(event_pattern=event_handler.event_pattern)
 
     def observe(self, event_pattern, priority, callback):
         handler = ObservingEventHandler(event_pattern, priority, callback)
