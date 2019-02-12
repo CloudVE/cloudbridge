@@ -4,16 +4,11 @@ Base implementation for services available through a provider
 import logging
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.middleware import implement
+from cloudbridge.cloud.base.middleware import dispatch
 from cloudbridge.cloud.base.resources import BaseBucket
-from cloudbridge.cloud.base.resources import BaseInstance
-from cloudbridge.cloud.base.resources import BaseKeyPair
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
-from cloudbridge.cloud.base.resources import BaseVMFirewall
-from cloudbridge.cloud.base.resources import BaseVolume
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
@@ -57,40 +52,9 @@ class BaseCloudService(CloudService):
     def provider(self):
         return self._provider
 
-    def dispatch(self, sender, event, *args, **kwargs):
-        return self._provider.events.dispatch(sender, event, *args, **kwargs)
-
-    def _generate_event_pattern(self, func_name):
-        return ".".join((self._service_event_pattern, func_name))
-
-    def observe_function(self, func_name, priority, callback):
-        event_pattern = self._generate_event_pattern(func_name)
-        self.provider.events.observe(event_pattern, priority, callback)
-
-    def intercept_function(self, func_name, priority, callback):
-        event_pattern = self._generate_event_pattern(func_name)
-        self.provider.events.intercept(event_pattern, priority, callback)
-
-    def implement_function(self, func_name, priority, callback):
-        event_pattern = self._generate_event_pattern(func_name)
-        self.provider.events.implement(event_pattern, priority, callback)
-
-    def dispatch_function(self, sender, func_name, *args, **kwargs):
-        """
-        Emits the event corresponding to the given function name for the
-        current service
-
-        :type sender: CloudService
-        :param sender: The CloudBridge Service object sending the emit signal
-        :type func_name: str
-        :param func_name: The name of the function to be emitted. e.g.: 'get'
-        :type args: CloudService
-
-        :return:  The return value resulting from the handler chain invocations
-        """
-        full_event_name = self._generate_event_pattern(func_name)
-        return self._provider.events.dispatch(sender, full_event_name,
-                                              *args, **kwargs)
+    @property
+    def events(self):
+        return self._provider.events
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):
@@ -106,68 +70,6 @@ class BaseKeyPairService(
         super(BaseKeyPairService, self).__init__(provider)
         self._service_event_pattern += ".security.key_pairs"
 
-    def get(self, key_pair_id):
-        """
-        Returns a key_pair given its ID. Returns ``None`` if the key_pair
-        does not exist.
-
-        :type key_pair_id: str
-        :param key_pair_id: The id of the desired key pair.
-
-        :rtype: ``KeyPair``
-        :return:  ``None`` is returned if the key pair does not exist, and
-                  the key pair's provider-specific CloudBridge object is
-                  returned if the key pair is found.
-        """
-        return self.dispatch(self, "provider.security.key_pairs.get",
-                             key_pair_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of key pairs filtered by the given keyword arguments.
-        Accepted search arguments are: 'name'
-        """
-        return self.dispatch(self, "provider.security.key_pairs.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all key pairs.
-        """
-        return self.dispatch(self, "provider.security.key_pairs.list",
-                             limit=limit, marker=marker)
-
-    def create(self, name, public_key_material=None):
-        """
-        Create a new key pair.
-
-        :type name: str
-        :param name: The name of the key pair to be created. Note that names
-                     must be unique, and are unchangeable.
-
-        :rtype: ``KeyPair``
-        :return:  The created key pair's provider-specific CloudBridge object.
-        """
-        BaseKeyPair.assert_valid_resource_name(name)
-        return self.dispatch(self, "provider.security.key_pairs.create",
-                             name,  public_key_material=public_key_material)
-
-    def delete(self, key_pair):
-        return self.dispatch(self, "provider.security.key_pairs.delete",
-                             key_pair)
-
-    @implement(event_pattern="provider.security.key_pairs.delete",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, key_pair_id):
-        """
-        Delete an existing key pair.
-
-        :type key_pair_id: str
-        :param key_pair_id: The ID of the key pair to be deleted.
-        """
-        return self.dispatch(self, "provider.security.key_pairs.delete",
-                             key_pair_id)
-
 
 class BaseVMFirewallService(
         BasePageableObjectMixin, VMFirewallService, BaseCloudService):
@@ -176,62 +78,9 @@ class BaseVMFirewallService(
         super(BaseVMFirewallService, self).__init__(provider)
         self._service_event_pattern += ".security.vm_firewalls"
 
-    def get(self, vm_firewall_id):
-        """
-        Returns a vm_firewall given its ID. Returns ``None`` if the vm_firewall
-        does not exist.
-
-        :type vm_firewall_id: str
-        :param vm_firewall_id: The id of the desired firewall.
-
-        :rtype: ``VMFirewall``
-        :return:  ``None`` is returned if the firewall does not exist, and
-                  the firewall's provider-specific CloudBridge object is
-                  returned if the firewall is found.
-        """
-        return self.dispatch(self, "provider.security.vm_firewalls.get",
-                             vm_firewall_id)
-
+    @dispatch(event="provider.security.vm_firewalls.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
-        """
-        Returns a list of firewalls filtered by the given keyword arguments.
-        Accepted search arguments are: 'label'
-        """
-        return self.dispatch(self, "provider.security.vm_firewalls.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all firewalls.
-        """
-        return self.dispatch(self, "provider.security.vm_firewalls.list",
-                             limit=limit, marker=marker)
-
-    def create(self, label, network, description=None):
-        """
-        Create a new firewall.
-
-        :type label: str
-        :param label: The label of the firewall to be created. Note that labels
-                     do not have to be unique, and are changeable.
-
-        :rtype: ``VMFirewall``
-        :return:  The created firewall's provider-specific CloudBridge object.
-        """
-        BaseVMFirewall.assert_valid_resource_label(label)
-        return self.dispatch(self, "provider.security.vm_firewalls.create",
-                             label, network, description)
-
-    def delete(self, vm_firewall):
-        """
-        Delete an existing firewall.
-        """
-        return self.dispatch(self, "provider.security.vm_firewalls.delete",
-                             vm_firewall)
-
-    @implement(event_pattern="provider.security.vm_firewalls.find",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -259,63 +108,6 @@ class BaseVolumeService(
         super(BaseVolumeService, self).__init__(provider)
         self._service_event_pattern += ".storage.volumes"
 
-    def get(self, volume_id):
-        """
-        Returns a volume given its ID. Returns ``None`` if the volume
-        does not exist.
-
-        :type volume_id: str
-        :param volume_id: The id of the desired volume.
-
-        :rtype: ``Volume``
-        :return:  ``None`` is returned if the volume does not exist, and
-                  the volume's provider-specific CloudBridge object is
-                  returned if the volume is found.
-        """
-        return self.dispatch(self, "provider.storage.volumes.get",
-                             volume_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of volumes filtered by the given keyword arguments.
-        Accepted search arguments are: 'label'
-        """
-        return self.dispatch(self, "provider.storage.volumes.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all volumes.
-        """
-        return self.dispatch(self, "provider.storage.volumes.list",
-                             limit=limit, marker=marker)
-
-    def create(self, label, size, zone, snapshot=None, description=None):
-        """
-        Create a new volume.
-
-        :type label: str
-        :param label: The label of the volume to be created. Note that labels
-                     do not have to be unique, and are changeable.
-        :type size: int
-        :param size: The size (in Gb) of the volume to be created
-        :type zone: ``PlacementZone``
-        :param zone: The availability zone in which to create the volume
-
-        :rtype: ``Volume``
-        :return:  The created volume's provider-specific CloudBridge object.
-        """
-        BaseVolume.assert_valid_resource_label(label)
-        return self.dispatch(self, "provider.storage.volumes.create",
-                             label, size, zone, snapshot, description)
-
-    def delete(self, volume):
-        """
-        Delete an existing volume.
-        """
-        return self.dispatch(self, "provider.storage.volumes.delete",
-                             volume)
-
 
 class BaseSnapshotService(
         BasePageableObjectMixin, SnapshotService, BaseCloudService):
@@ -323,61 +115,6 @@ class BaseSnapshotService(
     def __init__(self, provider):
         super(BaseSnapshotService, self).__init__(provider)
         self._service_event_pattern += ".storage.snapshots"
-
-    def get(self, snapshot_id):
-        """
-        Returns a snapshot given its ID. Returns ``None`` if the snapshot
-        does not exist.
-
-        :type snapshot_id: str
-        :param snapshot_id: The id of the desired snapshot.
-
-        :rtype: ``Snapshot``
-        :return:  ``None`` is returned if the snapshot does not exist, and
-                  the snapshot's provider-specific CloudBridge object is
-                  returned if the snapshot is found.
-        """
-        return self.dispatch(self, "provider.storage.snapshots.get",
-                             snapshot_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of snapshots filtered by the given keyword arguments.
-        Accepted search arguments are: 'label'
-        """
-        return self.dispatch(self, "provider.storage.snapshots.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all snapshots.
-        """
-        return self.dispatch(self, "provider.storage.snapshots.list",
-                             limit=limit, marker=marker)
-
-    def create(self, label, volume, description=None):
-        """
-        Create a new snapshot.
-
-        :type label: str
-        :param label: The label of the snapshot to be created. Note that labels
-                     do not have to be unique, and are changeable.
-        :type volume: ``Volume``
-        :param volume: The volume from which to create this snapshot.
-
-        :rtype: ``Snapshot``
-        :return:  The created snapshot's provider-specific CloudBridge object.
-        """
-        BaseSnapshot.assert_valid_resource_label(label)
-        return self.dispatch(self, "provider.storage.snapshots.create",
-                             label, volume, description)
-
-    def delete(self, snapshot):
-        """
-        Delete an existing snapshot.
-        """
-        return self.dispatch(self, "provider.storage.snapshots.delete",
-                             snapshot)
 
 
 class BaseBucketService(
@@ -389,9 +126,9 @@ class BaseBucketService(
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
-    @implement(event_pattern="provider.storage.buckets.find",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.storage.buckets.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -404,57 +141,6 @@ class BaseBucketService(
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
-
-    def get(self, bucket_id):
-        """
-        Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist.
-
-        :type bucket_id: str
-        :param bucket_id: The id of the desired bucket.
-
-        :rtype: ``Bucket``
-        :return:  ``None`` is returned if the bucket does not exist, and
-                  the bucket's provider-specific CloudBridge object is
-                  returned if the bucket is found.
-        """
-        return self.dispatch(self, "provider.storage.buckets.get", bucket_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of buckets filtered by the given keyword arguments.
-        Accepted search arguments are: 'name'
-        """
-        return self.dispatch(self, "provider.storage.buckets.find", **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all buckets.
-        """
-        return self.dispatch(self, "provider.storage.buckets.list",
-                             limit=limit, marker=marker)
-
-    def create(self, name, location=None):
-        """
-        Create a new bucket.
-
-        :type name: str
-        :param name: The name of the bucket to be created. Note that names
-                     must be unique, and are unchangeable.
-
-        :rtype: ``Bucket``
-        :return:  The created bucket's provider-specific CloudBridge object.
-        """
-        BaseBucket.assert_valid_resource_name(name)
-        return self.dispatch(self, "provider.storage.buckets.create",
-                             name, location=location)
-
-    def delete(self, bucket):
-        """
-        Delete an existing bucket.
-        """
-        return self.dispatch(self, "provider.storage.buckets.delete",
-                             bucket)
 
 
 class BaseBucketObjectService(
@@ -513,72 +199,6 @@ class BaseInstanceService(
         super(BaseInstanceService, self).__init__(provider)
         self._service_event_pattern += ".compute.instances"
 
-    def get(self, instance_id):
-        """
-        Returns a instance given its ID. Returns ``None`` if the instance
-        does not exist.
-
-        :type instance_id: str
-        :param instance_id: The id of the desired instance.
-
-        :rtype: ``Instance``
-        :return:  ``None`` is returned if the instance does not exist, and
-                  the instance's provider-specific CloudBridge object is
-                  returned if the instance is found.
-        """
-        return self.dispatch(self, "provider.compute.instances.get",
-                             instance_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of instances filtered by the given keyword arguments.
-        Accepted search arguments are: 'label'
-        """
-        return self.dispatch(self, "provider.compute.instances.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all instances.
-        """
-        return self.dispatch(self, "provider.compute.instances.list",
-                             limit=limit, marker=marker)
-
-    def create(self, label, image, vm_type, subnet, zone,
-               key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None, **kwargs):
-        """
-        Create a new instance.
-
-        :type label: str
-        :param label: The label of the instance to be created. Note that labels
-                     do not have to be unique, and are changeable.
-        :type image: ``MachineImage``
-        :param image: The image to be used when creating the instance
-        :type vm_type: ``VMType``
-        :param vm_type: The type of virtual machine desired for this instance
-        :type subnet: ``Subnet``
-        :param subnet: The subnet to which the instance should be attached
-        :type zone: ``PlacementZone``
-        :param zone: The zone in which to place the instance
-
-        :rtype: ``Instance``
-        :return:  The created instance's provider-specific CloudBridge object.
-        """
-        BaseInstance.assert_valid_resource_label(label)
-        return self.dispatch(self, "provider.compute.instances.create",
-                             label, image, vm_type, subnet, zone,
-                             key_pair=key_pair, vm_firewalls=vm_firewalls,
-                             user_data=user_data, launch_config=launch_config,
-                             **kwargs)
-
-    def delete(self, instance):
-        """
-        Delete an existing instance.
-        """
-        return self.dispatch(self, "provider.compute.instances.delete",
-                             instance)
-
 
 class BaseVMTypeService(
         BasePageableObjectMixin, VMTypeService, BaseCloudService):
@@ -587,50 +207,19 @@ class BaseVMTypeService(
         super(BaseVMTypeService, self).__init__(provider)
         self._service_event_pattern += ".compute.vm_types"
 
-    @implement(event_pattern="provider.compute.vm_types.get",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _get(self, vm_type_id):
+    @dispatch(event="provider.compute.vm_types.get",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def get(self, vm_type_id):
         vm_type = (t for t in self if t.id == vm_type_id)
         return next(vm_type, None)
 
-    @implement(event_pattern="provider.compute.vm_types.find",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.compute.vm_types.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
-
-    def get(self, vm_type_id):
-        """
-        Returns a vm_type given its ID. Returns ``None`` if the vm_type
-        does not exist.
-
-        :type vm_type_id: str
-        :param vm_type_id: The id of the desired VM type.
-
-        :rtype: ``VMType``
-        :return:  ``None`` is returned if the VM type does not exist, and
-                  the VM type's provider-specific CloudBridge object is
-                  returned if the VM type is found.
-        """
-        return self.dispatch(self, "provider.compute.vm_types.get",
-                             vm_type_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of VM types filtered by the given keyword arguments.
-        Accepted search arguments are: 'name'
-        """
-        return self.dispatch(self, "provider.compute.vm_types.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all VM types.
-        """
-        return self.dispatch(self, "provider.compute.vm_types.list",
-                             limit=limit, marker=marker)
 
 
 class BaseRegionService(
@@ -640,44 +229,13 @@ class BaseRegionService(
         super(BaseRegionService, self).__init__(provider)
         self._service_event_pattern += ".compute.regions"
 
-    @implement(event_pattern="provider.compute.regions.find",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.compute.regions.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
-
-    def get(self, region_id):
-        """
-        Returns a region given its ID. Returns ``None`` if the region
-        does not exist.
-
-        :type region_id: str
-        :param region_id: The id of the desired region.
-
-        :rtype: ``Region``
-        :return:  ``None`` is returned if the region does not exist, and
-                  the region's provider-specific CloudBridge object is
-                  returned if the region is found.
-        """
-        return self.dispatch(self, "provider.compute.regions.get",
-                             region_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of regions filtered by the given keyword arguments.
-        Accepted search arguments are: 'name'
-        """
-        return self.dispatch(self, "provider.compute.regions.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all regions.
-        """
-        return self.dispatch(self, "provider.compute.regions.list",
-                             limit=limit, marker=marker)
 
 
 class BaseNetworkingService(NetworkingService, BaseCloudService):
@@ -710,9 +268,9 @@ class BaseNetworkService(
             return self.provider.networking.networks.create(
                 BaseNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
 
-    @implement(event_pattern="provider.networking.networks.find",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.networking.networks.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -726,62 +284,6 @@ class BaseNetworkService(
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def get(self, network_id):
-        """
-        Returns a network given its ID. Returns ``None`` if the network
-        does not exist.
-
-        :type network_id: str
-        :param network_id: The id of the desired network.
-
-        :rtype: ``network``
-        :return:  ``None`` is returned if the network does not exist, and
-                  the network's provider-specific CloudBridge object is
-                  returned if the network is found.
-        """
-        return self.dispatch(self, "provider.networking.networks.get",
-                             network_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of networks filtered by the given keyword arguments.
-        Accepted search arguments are: 'label'
-        """
-        return self.dispatch(self, "provider.networking.networks.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all networks.
-        """
-        return self.dispatch(self, "provider.networking.networks.list",
-                             limit=limit, marker=marker)
-
-    def create(self, label, cidr_block):
-        """
-        Create a new network.
-
-        :type label: str
-        :param label: The label of the network to be created. Note that labels
-                      do not have to be unique and can be changed.
-        :type cidr_block: str
-        :param cidr_block: A string representing a 'Classless Inter-Domain
-                           Routing' notation
-
-        :rtype: ``Network``
-        :return:  The created network's provider-specific CloudBridge object.
-        """
-        BaseNetwork.assert_valid_resource_label(label)
-        return self.dispatch(self, "provider.networking.networks.create",
-                             label, cidr_block)
-
-    def delete(self, network):
-        """
-        Delete an existing network.
-        """
-        return self.dispatch(self, "provider.networking.networks.delete",
-                             network)
-
 
 class BaseSubnetService(
         BasePageableObjectMixin, SubnetService, BaseCloudService):
@@ -790,9 +292,9 @@ class BaseSubnetService(
         super(BaseSubnetService, self).__init__(provider)
         self._service_event_pattern += ".networking.subnets"
 
-    @implement(event_pattern="provider.networking.subnets.find",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _find(self, network=None, **kwargs):
+    @dispatch(event="provider.networking.subnets.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, network=None, **kwargs):
         if not network:
             obj_list = self
         else:
@@ -813,69 +315,6 @@ class BaseSubnetService(
                              BaseSubnet.CB_DEFAULT_SUBNET_IPV4RANGE, zone)
         return subnet
 
-    def get(self, subnet_id):
-        """
-        Returns a subnet given its ID. Returns ``None`` if the subnet
-        does not exist.
-
-        :type subnet_id: str
-        :param subnet_id: The id of the desired subnet.
-
-        :rtype: ``Subnet``
-        :return:  ``None`` is returned if the subnet does not exist, and
-                  the subnet's provider-specific CloudBridge object is
-                  returned if the subnet is found.
-        """
-        return self.dispatch(self, "provider.networking.subnets.get",
-                             subnet_id)
-
-    def find(self, network=None, **kwargs):
-        """
-        Returns a list of subnets filtered by the given keyword arguments.
-        Accepted search arguments are: 'label'
-        """
-        return self.dispatch(self, "provider.networking.subnets.find",
-                             network=network, **kwargs)
-
-    def list(self, network=None, limit=None, marker=None):
-        """
-        List all subnets.
-        """
-        return self.dispatch(self, "provider.networking.subnets.list",
-                             network=network, limit=limit, marker=marker)
-
-    def create(self, label, network, cidr_block, zone):
-        """
-        Create a new subnet.
-
-        :type label: str
-        :param label: The label of the subnet to be created. Note that labels
-                      do not have to be unique and can be changed.
-        :type network: ``Network``
-        :param network: The network in which the subnet should be created
-        :type cidr_block: str
-        :param cidr_block: A string representing a 'Classless Inter-Domain
-                           Routing' notation
-        :type cidr_block: str
-        :param cidr_block: A string representing a 'Classless Inter-Domain
-                           Routing' notation
-        :type zone: ``PlacementZone``
-        :param zone: The availability zone in which to create the subnet
-
-        :rtype: ``Subnet``
-        :return:  The created subnet's provider-specific CloudBridge object.
-        """
-        BaseSubnet.assert_valid_resource_label(label)
-        return self.dispatch(self, "provider.networking.subnets.create",
-                             label, network, cidr_block, zone)
-
-    def delete(self, subnet):
-        """
-        Delete an existing subnet.
-        """
-        return self.dispatch(self, "provider.networking.subnets.delete",
-                             subnet)
-
 
 class BaseRouterService(
         BasePageableObjectMixin, RouterService, BaseCloudService):
@@ -894,58 +333,3 @@ class BaseRouterService(
         else:
             return self.provider.networking.routers.create(
                 network=net_id, label=BaseRouter.CB_DEFAULT_ROUTER_LABEL)
-
-    def get(self, router_id):
-        """
-        Returns a router given its ID. Returns ``None`` if the router
-        does not exist.
-
-        :type router_id: str
-        :param router_id: The id of the desired router.
-
-        :rtype: ``Router``
-        :return:  ``None`` is returned if the router does not exist, and
-                  the router's provider-specific CloudBridge object is
-                  returned if the router is found.
-        """
-        return self.dispatch(self, "provider.networking.routers.get",
-                             router_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of routers filtered by the given keyword arguments.
-        Accepted search arguments are: 'label'
-        """
-        return self.dispatch(self, "provider.networking.routers.find",
-                             **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all routers.
-        """
-        return self.dispatch(self, "provider.networking.routers.list",
-                             limit=limit, marker=marker)
-
-    def create(self, label, network):
-        """
-        Create a new router.
-
-        :type label: str
-        :param label: The label of the router to be created. Note that labels
-                      do not have to be unique and can be changed.
-        :type network: ``Network``
-        :param network: The network in which the router should be created
-
-        :rtype: ``Router``
-        :return:  The created router's provider-specific CloudBridge object.
-        """
-        BaseRouter.assert_valid_resource_label(label)
-        return self.dispatch(self, "provider.networking.routers.create",
-                             label, network)
-
-    def delete(self, router):
-        """
-        Delete an existing router.
-        """
-        return self.dispatch(self, "provider.networking.routers.delete",
-                             router)

@@ -44,7 +44,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         def cleanup_kp(kp):
             if kp:
-                self.provider.security.key_pairs.delete(key_pair=kp.id)
+                self.provider.security.key_pairs.delete(kp.id)
 
         def extra_tests(kp):
             # Recreating existing keypair should raise an exception

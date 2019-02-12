@@ -8,7 +8,7 @@ from azure.mgmt.compute.models import DiskCreateOption
 from msrestazure.azure_exceptions import CloudError
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.middleware import implement
+from cloudbridge.cloud.base.middleware import dispatch
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
@@ -78,9 +78,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
         super(AzureVMFirewallService, self).__init__(provider)
 
-    @implement(event_pattern="provider.security.vm_firewalls.get",
-               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def _get(self, vm_firewall_id):
+    @dispatch(event="provider.security.vm_firewalls.get",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def get(self, vm_firewall_id):
         try:
             fws = self.provider.azure_client.get_vm_firewall(vm_firewall_id)
             return AzureVMFirewall(self.provider, fws)
@@ -89,17 +89,17 @@ class AzureVMFirewallService(BaseVMFirewallService):
             log.exception(cloud_error)
             return None
 
-    @implement(event_pattern="provider.security.vm_firewalls.list",
-               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.security.vm_firewalls.list",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         fws = [AzureVMFirewall(self.provider, fw)
                for fw in self.provider.azure_client.list_vm_firewall()]
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    @implement(event_pattern="provider.security.vm_firewalls.create",
-               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, network, description=None):
+    @dispatch(event="provider.security.vm_firewalls.create",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, network, description=None):
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         net = network.id if isinstance(network, Network) else network
         parameters = {"location": self.provider.region_name,
@@ -140,9 +140,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
         cb_fw = AzureVMFirewall(self.provider, fw)
         return cb_fw
 
-    @implement(event_pattern="provider.security.vm_firewalls.delete",
-               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, vmf):
+    @dispatch(event="provider.security.vm_firewalls.delete",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def delete(self, vmf):
         fw_id = vmf.id if isinstance(vmf, AzureVMFirewall) else vmf
         self.provider.azure_client.delete_vm_firewall(fw_id)
 
@@ -153,9 +153,9 @@ class AzureKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(AzureKeyPairService, self).__init__(provider)
 
-    @implement(event_pattern="provider.security.key_pairs.get",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _get(self, key_pair_id):
+    @dispatch(event="provider.security.key_pairs.get",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def get(self, key_pair_id):
         try:
             key_pair = self.provider.azure_client.\
                 get_public_key(key_pair_id)
@@ -168,9 +168,9 @@ class AzureKeyPairService(BaseKeyPairService):
             log.debug(error)
             return None
 
-    @implement(event_pattern="provider.security.key_pairs.list",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.security.key_pairs.list",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
             AzureKeyPairService.PARTITION_KEY, marker=marker,
             limit=limit or self.provider.config.default_result_limit)
@@ -181,9 +181,9 @@ class AzureKeyPairService(BaseKeyPairService):
                                      supports_total=False,
                                      data=results)
 
-    @implement(event_pattern="provider.security.key_pairs.find",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.security.key_pairs.find",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -197,9 +197,10 @@ class AzureKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    @implement(event_pattern="provider.security.key_pairs.create",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _create(self, name, public_key_material=None):
+    @dispatch(event="provider.security.key_pairs.create",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, public_key_material=None):
+        AzureKeyPair.assert_valid_resource_name(name)
         key_pair = self.get(name)
 
         if key_pair:
@@ -222,9 +223,9 @@ class AzureKeyPairService(BaseKeyPairService):
         key_pair.material = private_key
         return key_pair
 
-    @implement(event_pattern="provider.security.key_pairs.delete",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, kp):
+    @dispatch(event="provider.security.key_pairs.delete",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def delete(self, kp):
         key_pair = kp if isinstance(kp, AzureKeyPair) else self.get(kp)
         if key_pair:
             # pylint:disable=protected-access
@@ -262,9 +263,9 @@ class AzureVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(AzureVolumeService, self).__init__(provider)
 
-    @implement(event_pattern="provider.storage.volumes.get",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _get(self, volume_id):
+    @dispatch(event="provider.storage.volumes.get",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def get(self, volume_id):
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
@@ -273,9 +274,9 @@ class AzureVolumeService(BaseVolumeService):
             log.exception(cloud_error)
             return None
 
-    @implement(event_pattern="provider.storage.volumes.find",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.storage.volumes.find",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -289,17 +290,17 @@ class AzureVolumeService(BaseVolumeService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    @implement(event_pattern="provider.storage.volumes.list",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.storage.volumes.list",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         azure_vols = self.provider.azure_client.list_disks()
         cb_vols = [AzureVolume(self.provider, vol) for vol in azure_vols]
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    @implement(event_pattern="provider.storage.volumes.create",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, size, zone, snapshot=None, description=None):
+    @dispatch(event="provider.storage.volumes.create",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, size, zone, snapshot=None, description=None):
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         tags = {'Label': label}
 
@@ -343,9 +344,9 @@ class AzureVolumeService(BaseVolumeService):
 
         return cb_vol
 
-    @implement(event_pattern="provider.storage.volumes.delete",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, volume_id):
+    @dispatch(event="provider.storage.volumes.delete",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def delete(self, volume_id):
         vol_id = (volume_id.id if isinstance(volume_id, AzureVolume)
                   else volume_id)
         self.provider.azure_client.delete_disk(vol_id)
@@ -355,9 +356,9 @@ class AzureSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(AzureSnapshotService, self).__init__(provider)
 
-    @implement(event_pattern="provider.storage.snapshots.get",
-               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _get(self, snapshot_id):
+    @dispatch(event="provider.storage.snapshots.get",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def get(self, snapshot_id):
         try:
             snapshot = self.provider.azure_client.get_snapshot(snapshot_id)
             return AzureSnapshot(self.provider, snapshot)
@@ -366,9 +367,9 @@ class AzureSnapshotService(BaseSnapshotService):
             log.exception(cloud_error)
             return None
 
-    @implement(event_pattern="provider.storage.snapshots.find",
-               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.storage.snapshots.find",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -382,17 +383,17 @@ class AzureSnapshotService(BaseSnapshotService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    @implement(event_pattern="provider.storage.snapshots.list",
-               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.storage.snapshots.list",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         snaps = [AzureSnapshot(self.provider, obj)
                  for obj in
                  self.provider.azure_client.list_snapshots()]
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
-    @implement(event_pattern="provider.storage.snapshots.create",
-               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, volume, description=None):
+    @dispatch(event="provider.storage.snapshots.create",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, volume, description=None):
         snapshot_name = AzureSnapshot._generate_name_from_label(label,
                                                                 "cb-snap")
         tags = {'Label': label}
@@ -416,9 +417,9 @@ class AzureSnapshotService(BaseSnapshotService):
                                                                 params)
         return AzureSnapshot(self.provider, azure_snap)
 
-    @implement(event_pattern="provider.storage.snapshots.delete",
-               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, snapshot_id):
+    @dispatch(event="provider.storage.snapshots.delete",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def delete(self, snapshot_id):
         snap_id = (snapshot_id.id if isinstance(snapshot_id, AzureSnapshot)
                    else snapshot_id)
         self.provider.azure_client.delete_snapshot(snap_id)
@@ -428,9 +429,9 @@ class AzureBucketService(BaseBucketService):
     def __init__(self, provider):
         super(AzureBucketService, self).__init__(provider)
 
-    @implement(event_pattern="provider.storage.buckets.get",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _get(self, bucket_id):
+    @dispatch(event="provider.storage.buckets.get",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
@@ -442,18 +443,18 @@ class AzureBucketService(BaseBucketService):
             log.exception(error)
             return None
 
-    @implement(event_pattern="provider.storage.buckets.list",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit, marker):
+    @dispatch(event="provider.storage.buckets.list",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit, marker):
         buckets = [AzureBucket(self.provider, bucket)
                    for bucket
                    in self.provider.azure_client.list_containers()[0]]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
-    @implement(event_pattern="provider.storage.buckets.create",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _create(self, name, location=None):
+    @dispatch(event="provider.storage.buckets.create",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, location=None):
         """
         Create a new bucket.
         """
@@ -461,9 +462,9 @@ class AzureBucketService(BaseBucketService):
         bucket = self.provider.azure_client.create_container(name)
         return AzureBucket(self.provider, bucket)
 
-    @implement(event_pattern="provider.storage.buckets.delete",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, bucket):
+    @dispatch(event="provider.storage.buckets.delete",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def delete(self, bucket):
         """
         Delete this bucket.
         """
@@ -725,11 +726,11 @@ class AzureInstanceService(BaseInstanceService):
     def create_launch_config(self):
         return AzureLaunchConfig(self.provider)
 
-    @implement(event_pattern="provider.compute.instances.create",
-               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, image, vm_type, subnet, zone,
-                key_pair=None, vm_firewalls=None, user_data=None,
-                launch_config=None, **kwargs):
+    @dispatch(event="provider.compute.instances.create",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, image, vm_type, subnet, zone,
+               key_pair=None, vm_firewalls=None, user_data=None,
+               launch_config=None, **kwargs):
         instance_name = AzureInstance._generate_name_from_label(label,
                                                                 "cb-ins")
 
@@ -859,9 +860,9 @@ class AzureInstanceService(BaseInstanceService):
                 temp_key_pair.delete()
         return AzureInstance(self.provider, vm)
 
-    @implement(event_pattern="provider.compute.instances.list",
-               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.compute.instances.list",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         """
         List all instances.
         """
@@ -870,9 +871,9 @@ class AzureInstanceService(BaseInstanceService):
         return ClientPagedResultList(self.provider, instances,
                                      limit=limit, marker=marker)
 
-    @implement(event_pattern="provider.compute.instances.get",
-               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _get(self, instance_id):
+    @dispatch(event="provider.compute.instances.get",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def get(self, instance_id):
         """
         Returns an instance given its id. Returns None
         if the object does not exist.
@@ -885,9 +886,9 @@ class AzureInstanceService(BaseInstanceService):
             log.exception(cloud_error)
             return None
 
-    @implement(event_pattern="provider.compute.instances.find",
-               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.compute.instances.find",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -901,9 +902,9 @@ class AzureInstanceService(BaseInstanceService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    @implement(event_pattern="provider.compute.instances.delete",
-               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, inst):
+    @dispatch(event="provider.compute.instances.delete",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def delete(self, inst):
         """
         Permanently terminate this instance.
         After deleting the VM. we are deleting the network interface
@@ -945,9 +946,9 @@ class AzureVMTypeService(BaseVMTypeService):
         r = self.provider.azure_client.list_vm_types()
         return r
 
-    @implement(event_pattern="provider.compute.vm_types.list",
-               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.compute.vm_types.list",
+              priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         vm_types = [AzureVMType(self.provider, vm_type)
                     for vm_type in self.instance_data]
         return ClientPagedResultList(self.provider, vm_types,
@@ -958,9 +959,9 @@ class AzureRegionService(BaseRegionService):
     def __init__(self, provider):
         super(AzureRegionService, self).__init__(provider)
 
-    @implement(event_pattern="provider.compute.regions.get",
-               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
-    def _get(self, region_id):
+    @dispatch(event="provider.compute.regions.get",
+              priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def get(self, region_id):
         region = None
         for azureRegion in self.provider.azure_client.list_locations():
             if azureRegion.name == region_id:
@@ -968,9 +969,9 @@ class AzureRegionService(BaseRegionService):
                 break
         return region
 
-    @implement(event_pattern="provider.compute.regions.list",
-               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.compute.regions.list",
+              priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         regions = [AzureRegion(self.provider, region)
                    for region in self.provider.azure_client.list_locations()]
         return ClientPagedResultList(self.provider, regions,
@@ -1005,9 +1006,9 @@ class AzureNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(AzureNetworkService, self).__init__(provider)
 
-    @implement(event_pattern="provider.networking.networks.get",
-               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def _get(self, network_id):
+    @dispatch(event="provider.networking.networks.get",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def get(self, network_id):
         try:
             network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
@@ -1016,17 +1017,17 @@ class AzureNetworkService(BaseNetworkService):
             log.exception(cloud_error)
             return None
 
-    @implement(event_pattern="provider.networking.networks.list",
-               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.networking.networks.list",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         networks = [AzureNetwork(self.provider, network)
                     for network in self.provider.azure_client.list_networks()]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    @implement(event_pattern="provider.networking.networks.create",
-               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, cidr_block):
+    @dispatch(event="provider.networking.networks.create",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, cidr_block):
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
@@ -1042,9 +1043,9 @@ class AzureNetworkService(BaseNetworkService):
         cb_network = AzureNetwork(self.provider, az_network)
         return cb_network
 
-    @implement(event_pattern="provider.networking.networks.delete",
-               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, net):
+    @dispatch(event="provider.networking.networks.delete",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def delete(self, net):
         net_id = net.id if isinstance(net, AzureNetwork) else net
         if net_id:
             self.provider.azure_client.delete_network(net_id)
@@ -1077,9 +1078,9 @@ class AzureSubnetService(BaseSubnetService):
 
         return subnets
 
-    @implement(event_pattern="provider.networking.subnets.get",
-               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _get(self, subnet_id):
+    @dispatch(event="provider.networking.subnets.get",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def get(self, subnet_id):
         """
          Azure does not provide an api to get the subnet directly by id.
          It also requires the network id.
@@ -1095,16 +1096,16 @@ class AzureSubnetService(BaseSubnetService):
             log.exception(cloud_error)
             return None
 
-    @implement(event_pattern="provider.networking.subnets.list",
-               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _list(self, network=None, limit=None, marker=None):
+    @dispatch(event="provider.networking.subnets.list",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def list(self, network=None, limit=None, marker=None):
         return ClientPagedResultList(self.provider,
                                      self._list_subnets(network),
                                      limit=limit, marker=marker)
 
-    @implement(event_pattern="provider.networking.subnets.find",
-               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _find(self, network=None, **kwargs):
+    @dispatch(event="provider.networking.subnets.find",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def find(self, network=None, **kwargs):
         obj_list = self._list_subnets(network)
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -1112,9 +1113,10 @@ class AzureSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    @implement(event_pattern="provider.networking.subnets.create",
-               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, network, cidr_block, zone):
+    @dispatch(event="provider.networking.subnets.create",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, network, cidr_block, zone):
+        AzureSubnet.assert_valid_resource_label(label)
         # Although Subnet doesn't support tags in Azure, we use the parent
         # Network's tags to track its subnets' labels
         subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
@@ -1135,9 +1137,9 @@ class AzureSubnetService(BaseSubnetService):
         subnet.label = label
         return subnet
 
-    @implement(event_pattern="provider.networking.subnets.delete",
-               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, subnet):
+    @dispatch(event="provider.networking.subnets.delete",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def delete(self, subnet):
         sn = subnet if isinstance(subnet, AzureSubnet) else self.get(subnet)
         if sn:
             self.provider.azure_client.delete_subnet(sn.id)
@@ -1155,9 +1157,9 @@ class AzureRouterService(BaseRouterService):
     def __init__(self, provider):
         super(AzureRouterService, self).__init__(provider)
 
-    @implement(event_pattern="provider.networking.routers.get",
-               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _get(self, router_id):
+    @dispatch(event="provider.networking.routers.get",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def get(self, router_id):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
             return AzureRouter(self.provider, route)
@@ -1166,9 +1168,9 @@ class AzureRouterService(BaseRouterService):
             log.exception(cloud_error)
             return None
 
-    @implement(event_pattern="provider.networking.routers.find",
-               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.networking.routers.find",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -1182,9 +1184,9 @@ class AzureRouterService(BaseRouterService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    @implement(event_pattern="provider.networking.routers.list",
-               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.networking.routers.list",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         routes = [AzureRouter(self.provider, route)
                   for route in
                   self.provider.azure_client.list_route_tables()]
@@ -1192,9 +1194,9 @@ class AzureRouterService(BaseRouterService):
                                      routes,
                                      limit=limit, marker=marker)
 
-    @implement(event_pattern="provider.networking.routers.create",
-               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, network):
+    @dispatch(event="provider.networking.routers.create",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, network):
         router_name = AzureRouter._generate_name_from_label(label, "cb-router")
 
         parameters = {"location": self.provider.region_name,
@@ -1204,9 +1206,9 @@ class AzureRouterService(BaseRouterService):
             create_route_table(router_name, parameters)
         return AzureRouter(self.provider, route)
 
-    @implement(event_pattern="provider.networking.routers.delete",
-               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, router):
+    @dispatch(event="provider.networking.routers.delete",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def delete(self, router):
         r = router if isinstance(router, AzureRouter) else self.get(router)
         if r:
             self.provider.azure_client.delete_route_table(r.name)
