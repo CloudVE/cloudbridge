@@ -10,7 +10,7 @@ from ..interfaces.exceptions import HandlerException
 log = logging.getLogger(__name__)
 
 
-class InterceptingEventHandler(EventHandler):
+class BaseEventHandler(EventHandler):
 
     def __init__(self, event_pattern, priority, callback):
         self.__dispatcher = None
@@ -58,6 +58,17 @@ class InterceptingEventHandler(EventHandler):
     def dispatcher(self, value):
         self.__dispatcher = value
 
+    def unsubscribe(self):
+        if self.dispatcher:
+            self.dispatcher.unsubscribe(self)
+
+
+class InterceptingEventHandler(BaseEventHandler):
+
+    def __init__(self, event_pattern, priority, callback):
+        super(InterceptingEventHandler, self).__init__(event_pattern, priority,
+                                                       callback)
+
     def invoke(self, event_args, *args, **kwargs):
         next_handler = self._get_next_handler(event_args.get('event'))
         event_args['next_handler'] = next_handler
@@ -68,12 +79,8 @@ class InterceptingEventHandler(EventHandler):
         event_args.pop('next_handler', None)
         return result
 
-    def unsubscribe(self):
-        if self.dispatcher:
-            self.dispatcher.unsubscribe(self)
 
-
-class ObservingEventHandler(InterceptingEventHandler):
+class ObservingEventHandler(BaseEventHandler):
 
     def __init__(self, event_pattern, priority, callback):
         super(ObservingEventHandler, self).__init__(event_pattern, priority,
@@ -92,7 +99,7 @@ class ObservingEventHandler(InterceptingEventHandler):
             return None
 
 
-class ImplementingEventHandler(InterceptingEventHandler):
+class ImplementingEventHandler(BaseEventHandler):
 
     def __init__(self, event_pattern, priority, callback):
         super(ImplementingEventHandler, self).__init__(event_pattern, priority,
