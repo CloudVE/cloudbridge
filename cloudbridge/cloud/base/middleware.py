@@ -59,7 +59,7 @@ def dispatch_event(event):
     def deco(f):
         @functools.wraps(f)
         def wrapper(self, *args, **kwargs):
-            events = getattr(self, 'events')
+            events = getattr(self, 'events', None)
             if events:
                 # Don't call the wrapped method, just dispatch the event,
                 # and the event handler will get invoked

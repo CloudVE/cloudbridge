@@ -10,6 +10,7 @@ from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.middleware import intercept
 from cloudbridge.cloud.base.middleware import observe
 from cloudbridge.cloud.interfaces.exceptions import CloudBridgeBaseException
+from cloudbridge.cloud.interfaces.exceptions import HandlerException
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.middleware import Middleware
@@ -272,6 +273,31 @@ class MiddlewareSystemTestCase(unittest.TestCase):
             'first_pos_arg', a_keyword_arg='something')
 
         self.assertEqual(result, None)
+
+    def test_event_decorator_no_event_property(self):
+        EVENT_NAME = "some.event.occurred"
+
+        class SomeDummyClass(object):
+
+            @dispatch_event(EVENT_NAME)
+            def my_callback_impl(self, *args, **kwargs):
+                assert 'first_pos_arg' in args
+                assert kwargs.get('a_keyword_arg') == "something"
+                return "hello"
+
+        obj = SomeDummyClass()
+        events = SimpleEventDispatcher()
+        manager = SimpleMiddlewareManager(events)
+        manager.add(obj)
+
+        # calling my_implementation should raise an exception
+        with self.assertRaises(HandlerException):
+            obj.my_callback_impl('first_pos_arg', a_keyword_arg='something')
+
+        obj.events = events
+        result = obj.my_callback_impl('first_pos_arg',
+                                      a_keyword_arg='something')
+        self.assertEqual(result, "hello")
 
 
 class ExceptionWrappingMiddlewareTestCase(unittest.TestCase):
