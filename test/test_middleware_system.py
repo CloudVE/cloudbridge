@@ -5,6 +5,7 @@ from cloudbridge.cloud.base.middleware import BaseMiddleware
 from cloudbridge.cloud.base.middleware import EventDebugLoggingMiddleware
 from cloudbridge.cloud.base.middleware import ExceptionWrappingMiddleware
 from cloudbridge.cloud.base.middleware import SimpleMiddlewareManager
+from cloudbridge.cloud.base.middleware import dispatch_event
 from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.middleware import intercept
 from cloudbridge.cloud.base.middleware import observe
@@ -206,6 +207,71 @@ class MiddlewareSystemTestCase(unittest.TestCase):
             [],
             [handler.callback for handler in
              dispatcher.get_handlers_for_event(EVENT_NAME)])
+
+    def test_event_decorator(self):
+        EVENT_NAME = "some.event.occurred"
+
+        class SomeDummyClass(object):
+
+            def __init__(self):
+                self.invocation_order = ""
+                self.events = SimpleEventDispatcher()
+
+            @intercept(event_pattern="some.event.*", priority=900)
+            def my_callback_intcpt(self, event_args, *args, **kwargs):
+                self.invocation_order += "intcpt_"
+                assert 'first_pos_arg' in args
+                assert kwargs.get('a_keyword_arg') == "something"
+                next_handler = event_args.get('next_handler')
+                return next_handler.invoke(event_args, *args, **kwargs)
+
+            @observe(event_pattern="some.event.*", priority=3000)
+            def my_callback_obs(self, event_args, *args, **kwargs):
+                self.invocation_order += "obs"
+                assert 'first_pos_arg' in args
+                assert event_args['result'] == "hello"
+                assert kwargs.get('a_keyword_arg') == "something"
+
+            @dispatch_event(EVENT_NAME)
+            def my_callback_impl(self, *args, **kwargs):
+                self.invocation_order += "impl_"
+                assert 'first_pos_arg' in args
+                assert kwargs.get('a_keyword_arg') == "something"
+                return "hello"
+
+        obj = SomeDummyClass()
+        manager = SimpleMiddlewareManager(obj.events)
+        middleware = manager.add(obj)
+
+        # calling my_implementation should trigger all events
+        result = obj.my_callback_impl(
+            'first_pos_arg', a_keyword_arg='something')
+
+        self.assertEqual(result, "hello")
+        self.assertEqual(obj.invocation_order, "intcpt_impl_obs")
+        callbacks = [handler.callback for handler
+                     in middleware.events.get_handlers_for_event(EVENT_NAME)]
+
+        self.assertNotIn(
+            obj.my_callback_impl, callbacks,
+            "The event impl callback should not be directly contained"
+            " in callbacks to avoid a circular dispatch")
+
+        self.assertEqual(
+            len(set(callbacks).difference(
+                set([obj.my_callback_intcpt,
+                     obj.my_callback_obs]))),
+            1,
+            "The event impl callback should be included in the list of"
+            "  callbacks indirectly")
+
+        manager.remove(middleware)
+
+        # calling my_implementation again should trigger a None response
+        result = obj.my_callback_impl(
+            'first_pos_arg', a_keyword_arg='something')
+
+        self.assertEqual(result, None)
 
 
 class ExceptionWrappingMiddlewareTestCase(unittest.TestCase):

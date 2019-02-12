@@ -1,3 +1,4 @@
+import functools
 import inspect
 import logging
 import sys
@@ -9,6 +10,7 @@ from ..base.events import InterceptingEventHandler
 from ..base.events import ObservingEventHandler
 from ..interfaces.events import EventHandler
 from ..interfaces.exceptions import CloudBridgeBaseException
+from ..interfaces.exceptions import HandlerException
 from ..interfaces.middleware import Middleware
 from ..interfaces.middleware import MiddlewareManager
 
@@ -21,7 +23,7 @@ def intercept(event_pattern, priority):
         # The callback cannot be set to f as it is not bound yet and will be
         # set during auto discovery
         f.__event_handler = InterceptingEventHandler(
-            event_pattern, priority, None)
+            event_pattern, priority, f)
         return f
     return deco
 
@@ -32,7 +34,7 @@ def observe(event_pattern, priority):
         # The callback cannot be set to f as it is not bound yet and will be
         # set during auto discovery
         f.__event_handler = ObservingEventHandler(
-            event_pattern, priority, None)
+            event_pattern, priority, f)
         return f
     return deco
 
@@ -40,11 +42,37 @@ def observe(event_pattern, priority):
 def implement(event_pattern, priority):
     def deco(f):
         # Mark function as having an event_handler so we can discover it
-        # The callback cannot be set to f as it is not bound yet and will be
-        # set during auto discovery
+        # The callback will be unbound since we do not have access to `self`
+        # yet, and must be bound before invocation. This binding is done
+        # during middleware auto discovery
         f.__event_handler = ImplementingEventHandler(
-            event_pattern, priority, None)
+            event_pattern, priority, f)
         return f
+    return deco
+
+
+def dispatch_event(event):
+    """
+    The event decorator combines the functionality of the implement decorator
+    and a manual event dispatch into a single decorator.
+    """
+    def deco(f):
+        @functools.wraps(f)
+        def wrapper(self, *args, **kwargs):
+            events = getattr(self, 'events')
+            if events:
+                # Don't call the wrapped method, just dispatch the event,
+                # and the event handler will get invoked
+                return events.dispatch(self, event, *args, **kwargs)
+            else:
+                raise HandlerException(
+                    "Cannot dispatch event: {0}. The object {1} should have"
+                    " an events property".format(event, self))
+        # Mark function as having an event_handler so we can discover it
+        # The callback f is unbound and will be bound during middleware
+        # auto discovery
+        wrapper.__event_handler = ImplementingEventHandler(event, 2500, f)
+        return wrapper
     return deco
 
 
@@ -117,8 +145,9 @@ class BaseMiddleware(Middleware):
         for _, func in getmembers_static(class_or_obj, inspect.ismethod):
             handler = getattr(func, "__event_handler", None)
             if handler and isinstance(handler, EventHandler):
-                # Set the properly bound method as the callback
-                handler.callback = func
+                # Bind the currently unbound method
+                # and set the bound method as the callback
+                handler.callback = handler.callback.__get__(class_or_obj)
                 discovered_handlers.append(handler)
         return discovered_handlers
 
