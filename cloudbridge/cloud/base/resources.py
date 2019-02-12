@@ -324,7 +324,7 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
             interval=interval)
 
     def delete(self):
-        self._provider.compute.instances.delete(self.id)
+        self._provider.compute.instances.delete(self)
 
 
 class BaseLaunchConfig(LaunchConfig):
@@ -537,7 +537,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         self._private_material = value
 
     def delete(self):
-        self._provider.security.key_pairs.delete(self.id)
+        self._provider.security.key_pairs.delete(self)
 
 
 class BaseVMFirewall(BaseCloudResource, VMFirewall):
@@ -586,7 +586,7 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         """
         Delete this VM firewall.
         """
-        return self._provider.security.vm_firewalls.delete(self.id)
+        return self._provider.security.vm_firewalls.delete(self)
 
 
 class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
@@ -831,7 +831,7 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             interval=interval)
 
     def delete(self):
-        self._provider.networking.networks.delete(self.id)
+        self._provider.networking.networks.delete(self)
 
     def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(
@@ -872,7 +872,7 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             interval=interval)
 
     def delete(self):
-        self._provider.networking.subnets.delete(self.id)
+        self._provider.networking.subnets.delete(self)
 
 
 class BaseFloatingIPContainer(FloatingIPContainer, BasePageableObjectMixin):
@@ -940,7 +940,7 @@ class BaseRouter(BaseCloudResource, Router):
                 self.id == other.id)
 
     def delete(self):
-        self._provider.networking.routers.delete(self.id)
+        self._provider.networking.routers.delete(self)
 
 
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,

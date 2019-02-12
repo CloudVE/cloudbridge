@@ -152,9 +152,9 @@ class BaseKeyPairService(
         return self.dispatch(self, "provider.security.key_pairs.create",
                              name,  public_key_material=public_key_material)
 
-    def delete(self, key_pair_id):
+    def delete(self, key_pair):
         return self.dispatch(self, "provider.security.key_pairs.delete",
-                             key_pair_id)
+                             key_pair)
 
     @implement(event_pattern="provider.security.key_pairs.delete",
                priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
@@ -222,15 +222,12 @@ class BaseVMFirewallService(
         return self.dispatch(self, "provider.security.vm_firewalls.create",
                              label, network, description)
 
-    def delete(self, vm_firewall_id):
+    def delete(self, vm_firewall):
         """
         Delete an existing firewall.
-
-        :type vm_firewall_id: str
-        :param vm_firewall_id: The ID of the firewall to be deleted.
         """
         return self.dispatch(self, "provider.security.vm_firewalls.delete",
-                             vm_firewall_id)
+                             vm_firewall)
 
     @implement(event_pattern="provider.security.vm_firewalls.find",
                priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
@@ -312,15 +309,12 @@ class BaseVolumeService(
         return self.dispatch(self, "provider.storage.volumes.create",
                              label, size, zone, snapshot, description)
 
-    def delete(self, volume_id):
+    def delete(self, volume):
         """
         Delete an existing volume.
-
-        :type volume_id: str
-        :param volume_id: The ID of the volume to be deleted.
         """
         return self.dispatch(self, "provider.storage.volumes.delete",
-                             volume_id)
+                             volume)
 
 
 class BaseSnapshotService(
@@ -378,15 +372,12 @@ class BaseSnapshotService(
         return self.dispatch(self, "provider.storage.snapshots.create",
                              label, volume, description)
 
-    def delete(self, snapshot_id):
+    def delete(self, snapshot):
         """
         Delete an existing snapshot.
-
-        :type snapshot_id: str
-        :param snapshot_id: The ID of the snapshot to be deleted.
         """
         return self.dispatch(self, "provider.storage.snapshots.delete",
-                             snapshot_id)
+                             snapshot)
 
 
 class BaseBucketService(
@@ -458,15 +449,12 @@ class BaseBucketService(
         return self.dispatch(self, "provider.storage.buckets.create",
                              name, location=location)
 
-    def delete(self, bucket_id):
+    def delete(self, bucket):
         """
         Delete an existing bucket.
-
-        :type bucket_id: str
-        :param bucket_id: The ID of the bucket to be deleted.
         """
         return self.dispatch(self, "provider.storage.buckets.delete",
-                             bucket_id)
+                             bucket)
 
 
 class BaseBucketObjectService(
@@ -584,15 +572,12 @@ class BaseInstanceService(
                              user_data=user_data, launch_config=launch_config,
                              **kwargs)
 
-    def delete(self, instance_id):
+    def delete(self, instance):
         """
         Delete an existing instance.
-
-        :type instance_id: str
-        :param instance_id: The ID of the instance to be deleted.
         """
         return self.dispatch(self, "provider.compute.instances.delete",
-                             instance_id)
+                             instance)
 
 
 class BaseVMTypeService(
@@ -790,15 +775,12 @@ class BaseNetworkService(
         return self.dispatch(self, "provider.networking.networks.create",
                              label, cidr_block)
 
-    def delete(self, network_id):
+    def delete(self, network):
         """
         Delete an existing network.
-
-        :type network_id: str
-        :param network_id: The ID of the network to be deleted.
         """
         return self.dispatch(self, "provider.networking.networks.delete",
-                             network_id)
+                             network)
 
 
 class BaseSubnetService(
@@ -887,15 +869,12 @@ class BaseSubnetService(
         return self.dispatch(self, "provider.networking.subnets.create",
                              label, network, cidr_block, zone)
 
-    def delete(self, subnet_id):
+    def delete(self, subnet):
         """
         Delete an existing subnet.
-
-        :type subnet_id: str
-        :param subnet_id: The ID of the subnet to be deleted.
         """
         return self.dispatch(self, "provider.networking.subnets.delete",
-                             subnet_id)
+                             subnet)
 
 
 class BaseRouterService(
@@ -964,12 +943,9 @@ class BaseRouterService(
         return self.dispatch(self, "provider.networking.routers.create",
                              label, network)
 
-    def delete(self, router_id):
+    def delete(self, router):
         """
         Delete an existing router.
-
-        :type router_id: str
-        :param router_id: The ID of the router to be deleted.
         """
         return self.dispatch(self, "provider.networking.routers.delete",
-                             router_id)
+                             router)

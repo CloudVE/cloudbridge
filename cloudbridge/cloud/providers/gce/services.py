@@ -148,8 +148,8 @@ class GCEKeyPairService(BaseKeyPairService):
 
     @implement(event_pattern="provider.security.key_pairs.delete",
                priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, key_pair_id):
-        kp = self.get(key_pair_id)
+    def _delete(self, kp):
+        kp = kp if isinstance(kp, GCEKeyPair) else self.get(kp)
         if kp:
             helpers.remove_metadata_item(
                 self.provider, GCEKeyPair.KP_TAG_PREFIX + kp.name)
@@ -199,8 +199,9 @@ class GCEVMFirewallService(BaseVMFirewallService):
 
     @implement(event_pattern="provider.security.vm_firewalls.delete",
                priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, vm_firewall_id):
-        return self._delegate.delete_tag_network_with_id(vm_firewall_id)
+    def _delete(self, vmf):
+        fw_id = vmf.id if isinstance(vmf, GCEVMFirewall) else vmf
+        return self._delegate.delete_tag_network_with_id(fw_id)
 
     def find_by_network_and_tags(self, network_name, tags):
         """
@@ -587,17 +588,16 @@ class GCEInstanceService(BaseInstanceService):
 
     @implement(event_pattern="provider.compute.instances.delete",
                priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, instance_id):
-        gce_instance = self.provider.get_resource('instances', instance_id)
-        (self._provider
-         .gce_compute
-         .instances()
-         .delete(project=self.provider.project_name,
-                 zone=self.provider
-                          .parse_url(gce_instance.get('zone'))
-                          .parameters['zone'],
-                 instance=gce_instance.get('name'))
-         .execute())
+    def _delete(self, inst):
+        instance = inst if isinstance(inst, GCEInstance) else self.get(inst)
+        if instance:
+            (self._provider
+             .gce_compute
+             .instances()
+             .delete(project=self.provider.project_name,
+                     zone=instance.zone_name,
+                     instance=instance.name)
+             .execute())
 
     def create_launch_config(self):
         return GCELaunchConfig(self.provider)
@@ -727,15 +727,15 @@ class GCENetworkService(BaseNetworkService):
 
     @implement(event_pattern="provider.networking.networks.delete",
                priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, network_id):
+    def _delete(self, network):
         # Accepts network object
-        if isinstance(network_id, GCENetwork):
-            name = network_id.name
+        if isinstance(network, GCENetwork):
+            name = network.name
         # Accepts both name and ID
-        elif 'googleapis' in network_id:
-            name = network_id.split('/')[-1]
+        elif 'googleapis' in network:
+            name = network.split('/')[-1]
         else:
-            name = network_id
+            name = network
         response = (self.provider
                         .gce_compute
                         .networks()
@@ -747,7 +747,7 @@ class GCENetworkService(BaseNetworkService):
         tag_name = "_".join(["network", name, "label"])
         if not helpers.remove_metadata_item(self.provider, tag_name):
             log.warning('No label was found associated with this network '
-                        '"{}" when deleted.'.format(network_id))
+                        '"{}" when deleted.'.format(network))
         return True
 
 
@@ -822,23 +822,21 @@ class GCERouterService(BaseRouterService):
 
     @implement(event_pattern="provider.networking.routers.delete",
                priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, router_id):
-        region_name = self.provider.region_name
-        gce_router = self.provider.get_resource(
-            'routers', router_id, region=region_name)
-        name = gce_router['name']
-        (self.provider
-         .gce_compute
-         .routers()
-         .delete(project=self.provider.project_name,
-                 region=region_name,
-                 router=name)
-         .execute())
-        # Remove label
-        tag_name = "_".join(["router", name, "label"])
-        if not helpers.remove_metadata_item(self.provider, tag_name):
-            log.warning('No label was found associated with this router '
-                        '"{}" when deleted.'.format(name))
+    def _delete(self, router):
+        r = router if isinstance(router, GCERouter) else self.get(router)
+        if r:
+            (self.provider
+             .gce_compute
+             .routers()
+             .delete(project=self.provider.project_name,
+                     region=r.region_name,
+                     router=r.name)
+             .execute())
+            # Remove label
+            tag_name = "_".join(["router", r.name, "label"])
+            if not helpers.remove_metadata_item(self.provider, tag_name):
+                log.warning('No label was found associated with this router '
+                            '"{}" when deleted.'.format(r.name))
 
     def _get_in_region(self, router_id, region=None):
         region_name = self.provider.region_name
@@ -935,22 +933,23 @@ class GCESubnetService(BaseSubnetService):
 
     @implement(event_pattern="provider.networking.subnets.delete",
                priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, subnet_id):
-        gce_sn = self.provider.get_resource('subnetworks', subnet_id)
-        region_name = self.provider.parse_url(subnet_id).parameters['region']
+    def _delete(self, subnet):
+        sn = subnet if isinstance(subnet, GCESubnet) else self.get(subnet)
+        if not sn:
+            return
         response = (self.provider
                     .gce_compute
                     .subnetworks()
                     .delete(project=self.provider.project_name,
-                            region=region_name,
-                            subnetwork=gce_sn['name'])
+                            region=sn.region_name,
+                            subnetwork=sn.name)
                     .execute())
-        self.provider.wait_for_operation(response, region=region_name)
+        self.provider.wait_for_operation(response, region=sn.region_name)
         # Remove label
-        tag_name = "_".join(["subnet", gce_sn['name'], "label"])
+        tag_name = "_".join(["subnet", sn.name, "label"])
         if not helpers.remove_metadata_item(self._provider, tag_name):
             log.warning('No label was found associated with this subnet '
-                        '"{}" when deleted.'.format(gce_sn['name']))
+                        '"{}" when deleted.'.format(sn.name))
 
     def get_or_create_default(self, zone):
         """
@@ -1151,19 +1150,15 @@ class GCEVolumeService(BaseVolumeService):
 
     @implement(event_pattern="provider.storage.volumes.delete",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, volume_id):
-        if isinstance(volume_id, GCEVolume):
-            gce_vol = volume_id._volume
-        else:
-            gce_vol = self.provider.get_resource('disks', volume_id)
-        zone_name = (self.provider.parse_url(gce_vol.get('zone'))
-                         .parameters['zone'])
-        (self._provider.gce_compute
-                       .disks()
-                       .delete(project=self.provider.project_name,
-                               zone=zone_name,
-                               disk=gce_vol.get('name'))
-                       .execute())
+    def _delete(self, vol):
+        volume = vol if isinstance(vol, GCEVolume) else self.get(vol)
+        if volume:
+            (self._provider.gce_compute
+                           .disks()
+                           .delete(project=self.provider.project_name,
+                                   zone=volume.zone_name,
+                                   disk=volume.name)
+                           .execute())
 
 
 class GCESnapshotService(BaseSnapshotService):
@@ -1254,17 +1249,15 @@ class GCESnapshotService(BaseSnapshotService):
 
     @implement(event_pattern="provider.storage.snapshots.delete",
                priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, snapshot_id):
-        if isinstance(snapshot_id, GCESnapshot):
-            gce_snap = snapshot_id._snapshot
-        else:
-            gce_snap = self.provider.get_resource('snapshots', snapshot_id)
-        (self.provider
-             .gce_compute
-             .snapshots()
-             .delete(project=self.provider.project_name,
-                     snapshot=gce_snap.get('name'))
-             .execute())
+    def _delete(self, snap):
+        snapshot = snap if isinstance(snap, GCESnapshot) else self.get(snap)
+        if snapshot:
+            (self.provider
+                 .gce_compute
+                 .snapshots()
+                 .delete(project=self.provider.project_name,
+                         snapshot=snapshot.name)
+                 .execute())
 
 
 class GCSBucketService(BaseBucketService):
@@ -1351,23 +1344,21 @@ class GCSBucketService(BaseBucketService):
 
     @implement(event_pattern="provider.storage.buckets.delete",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, bucket_id):
+    def _delete(self, bucket):
         """
         Delete this bucket.
         """
-        # GCE uses name rather than URL to identify resources
-        name = (self.provider._storage_resources
-                    .parse_url(bucket_id)
-                    .parameters.get("bucket"))
-        (self.provider
-             .gcs_storage
-             .buckets()
-             .delete(bucket=name)
-             .execute())
-        # GCS has a rate limit of 1 operation per 2 seconds for bucket
-        # creation/deletion: https://cloud.google.com/storage/quotas. Throttle
-        # here to avoid future failures.
-        time.sleep(2)
+        b = bucket if isinstance(bucket, GCSBucket) else self.get(bucket)
+        if b:
+            (self.provider
+                 .gcs_storage
+                 .buckets()
+                 .delete(bucket=b.name)
+                 .execute())
+            # GCS has a rate limit of 1 operation per 2 seconds for bucket
+            # creation/deletion: https://cloud.google.com/storage/quotas.
+            # Throttle here to avoid future failures.
+            time.sleep(2)
 
 
 class GCSBucketObjectService(BaseBucketObjectService):

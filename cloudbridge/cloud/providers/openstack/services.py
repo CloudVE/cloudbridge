@@ -200,9 +200,11 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
     @implement(event_pattern="provider.security.key_pairs.delete",
                priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, key_pair_id):
-        os_kp = self.provider.nova.keypairs.get(key_pair_id)
-        os_kp.delete()
+    def _delete(self, kp):
+        keypair = kp if isinstance(kp, OpenStackKeyPair) else self.get(kp)
+        if keypair:
+            # pylint:disable=protected-access
+            keypair._key_pair.delete()
 
 
 class OpenStackVMFirewallService(BaseVMFirewallService):
@@ -255,15 +257,11 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
 
     @implement(event_pattern="provider.security.vm_firewalls.delete",
                priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, vm_firewall_id):
-        try:
-            os_fw = self.provider.os_conn.network.get_security_group(
-                vm_firewall_id)
-            os_fw.delete(self.provider.os_conn.session)
-            return True
-        except (ResourceNotFound, NotFoundException):
-            log.debug("Firewall %s not found.", vm_firewall_id)
-            return True
+    def _delete(self, vmf):
+        fw = vmf if isinstance(vmf, OpenStackVMFirewall) else self.get(vmf)
+        if fw:
+            # pylint:disable=protected-access
+            fw._vm_firewall.delete(self.provider.os_conn.session)
 
 
 class OpenStackStorageService(BaseStorageService):
@@ -356,12 +354,11 @@ class OpenStackVolumeService(BaseVolumeService):
 
     @implement(event_pattern="provider.storage.volumes.delete",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, volume_id):
-        if isinstance(volume_id, OpenStackVolume):
-            os_vol = volume_id._volume
-        else:
-            os_vol = self.provider.cinder.volumes.get(volume_id)
-        os_vol.delete()
+    def _delete(self, vol):
+        volume = vol if isinstance(vol, OpenStackVolume) else self.get(vol)
+        if volume:
+            # pylint:disable=protected-access
+            volume._volume.delete()
 
 
 class OpenStackSnapshotService(BaseSnapshotService):
@@ -427,12 +424,11 @@ class OpenStackSnapshotService(BaseSnapshotService):
 
     @implement(event_pattern="provider.storage.snapshots.delete",
                priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, snapshot_id):
-        if isinstance(snapshot_id, OpenStackSnapshot):
-            os_snap = snapshot_id._snapshot
-        else:
-            os_snap = self.provider.cinder.volume_snapshots.get(snapshot_id)
-        os_snap.delete()
+    def _delete(self, snap):
+        s = snap if isinstance(snap, OpenStackSnapshot) else self.get(snap)
+        if s:
+            # pylint:disable=protected-access
+            s._snapshot.delete()
 
 
 class OpenStackBucketService(BaseBucketService):
@@ -498,8 +494,9 @@ class OpenStackBucketService(BaseBucketService):
 
     @implement(event_pattern="provider.storage.buckets.delete",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, bucket_id):
-        self.provider.swift.delete_container(bucket_id)
+    def _delete(self, bucket):
+        b_id = bucket.id if isinstance(bucket, OpenStackBucket) else bucket
+        self.provider.swift.delete_container(b_id)
 
 
 class OpenStackBucketObjectService(BaseBucketObjectService):
@@ -809,18 +806,17 @@ class OpenStackInstanceService(BaseInstanceService):
 
     @implement(event_pattern="provider.compute.instances.delete",
                priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, instance_id):
-        try:
-            os_instance = self.provider.nova.servers.get(instance_id)
-        except NovaNotFound:
-            log.debug("Instance %s was not found.", instance_id)
-            return None
-        # delete the port we created when launching
-        # Assumption: it's the first interface in the list
-        iface_list = os_instance.interface_list()
-        if iface_list:
-            self.provider.neutron.delete_port(iface_list[0].port_id)
-        os_instance.delete()
+    def _delete(self, inst):
+        ins = inst if isinstance(inst, OpenStackInstance) else self.get(inst)
+        if ins:
+            # pylint:disable=protected-access
+            os_instance = ins._os_instance
+            # delete the port we created when launching
+            # Assumption: it's the first interface in the list
+            iface_list = os_instance.interface_list()
+            if iface_list:
+                self.provider.neutron.delete_port(iface_list[0].port_id)
+            os_instance.delete()
 
 
 class OpenStackVMTypeService(BaseVMTypeService):
@@ -954,13 +950,15 @@ class OpenStackNetworkService(BaseNetworkService):
 
     @implement(event_pattern="provider.networking.networks.delete",
                priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, network_id):
-        network = self.get(network_id)
-        if not network.external and network_id in str(
+    def _delete(self, net):
+        network = net if isinstance(net, OpenStackNetwork) else self.get(net)
+        if not network:
+            return
+        if not network.external and network.id in str(
                 self.provider.neutron.list_networks()):
             # If there are ports associated with the network, it won't delete
             ports = self.provider.neutron.list_ports(
-                network_id=network_id).get('ports', [])
+                network_id=network.id).get('ports', [])
             for port in ports:
                 try:
                     self.provider.neutron.delete_port(port.get('id'))
@@ -968,7 +966,7 @@ class OpenStackNetworkService(BaseNetworkService):
                     # Ports could have already been deleted if instances
                     # are terminated etc. so exceptions can be safely ignored
                     pass
-            self.provider.neutron.delete_network(network_id)
+            self.provider.neutron.delete_network(network.id)
 
 
 class OpenStackSubnetService(BaseSubnetService):
@@ -1011,12 +1009,9 @@ class OpenStackSubnetService(BaseSubnetService):
 
     @implement(event_pattern="provider.networking.subnets.delete",
                priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, subnet_id):
-        self.provider.neutron.delete_subnet(subnet_id)
-        # Adhere to the interface docs
-        if subnet_id not in self:
-            return True
-        return False
+    def _delete(self, subnet):
+        sn_id = subnet.id if isinstance(subnet, OpenStackSubnet) else subnet
+        self.provider.neutron.delete_subnet(sn_id)
 
     def get_or_create_default(self, zone):
         """
@@ -1079,5 +1074,6 @@ class OpenStackRouterService(BaseRouterService):
 
     @implement(event_pattern="provider.networking.routers.delete",
                priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, router_id):
-        self._provider.os_conn.delete_router(router_id)
+    def _delete(self, router):
+        r_id = router.id if isinstance(router, OpenStackRouter) else router
+        self.provider.os_conn.delete_router(r_id)

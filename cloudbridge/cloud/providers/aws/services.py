@@ -134,9 +134,11 @@ class AWSKeyPairService(BaseKeyPairService):
 
     @implement(event_pattern="provider.security.key_pairs.delete",
                priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, key_pair_id):
-        aws_kp = self.svc.get_raw(key_pair_id)
-        aws_kp.delete()
+    def _delete(self, kp):
+        key_pair = kp if isinstance(kp, AWSKeyPair) else self.get(kp)
+        if key_pair:
+            # pylint:disable=protected-access
+            key_pair._key_pair.delete()
 
 
 class AWSVMFirewallService(BaseVMFirewallService):
@@ -186,9 +188,11 @@ class AWSVMFirewallService(BaseVMFirewallService):
 
     @implement(event_pattern="provider.security.vm_firewalls.delete",
                priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, vm_firewall_id):
-        aws_fw = self.svc.get_raw(vm_firewall_id)
-        aws_fw.delete()
+    def _delete(self, vmf):
+        firewall = vmf if isinstance(vmf, AWSVMFirewall) else self.get(vmf)
+        if firewall:
+            # pylint:disable=protected-access
+            firewall._vm_firewall.delete()
 
 
 class AWSStorageService(BaseStorageService):
@@ -270,12 +274,11 @@ class AWSVolumeService(BaseVolumeService):
 
     @implement(event_pattern="provider.storage.volumes.delete",
                priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, volume_id):
-        if isinstance(volume_id, AWSVolume):
-            aws_vol = volume_id._volume
-        else:
-            aws_vol = self.svc.get_raw(volume_id)
-        aws_vol.delete()
+    def _delete(self, vol):
+        volume = vol if isinstance(vol, AWSVolume) else self.get(vol)
+        if volume:
+            # pylint:disable=protected-access
+            volume._volume.delete()
 
 
 class AWSSnapshotService(BaseSnapshotService):
@@ -329,11 +332,11 @@ class AWSSnapshotService(BaseSnapshotService):
 
     @implement(event_pattern="provider.storage.snapshots.delete",
                priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, snapshot_id):
-        if isinstance(snapshot_id, AWSSnapshot):
-            aws_snap = snapshot_id._snapshot
-        aws_snap = self.svc.get_raw(snapshot_id)
-        aws_snap.delete()
+    def _delete(self, snap):
+        snapshot = snap if isinstance(snap, AWSSnapshot) else self.get(snap)
+        if snapshot:
+            # pylint:disable=protected-access
+            snapshot._snapshot.delete()
 
 
 class AWSBucketService(BaseBucketService):
@@ -416,10 +419,11 @@ class AWSBucketService(BaseBucketService):
 
     @implement(event_pattern="provider.storage.buckets.delete",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, bucket_id):
-        bucket = self._get(bucket_id)
-        if bucket:
-            bucket._bucket.delete()
+    def _delete(self, bucket):
+        b = bucket if isinstance(bucket, AWSBucket) else self.get(bucket)
+        if b:
+            # pylint:disable=protected-access
+            b._bucket.delete()
 
 
 class AWSBucketObjectService(BaseBucketObjectService):
@@ -699,9 +703,11 @@ class AWSInstanceService(BaseInstanceService):
 
     @implement(event_pattern="provider.compute.instances.delete",
                priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, instance_id):
-        aws_ins = self.svc.get_raw(instance_id)
-        aws_ins.terminate()
+    def _delete(self, inst):
+        aws_inst = inst if isinstance(inst, AWSInstance) else self.get(inst)
+        if aws_inst:
+            # pylint:disable=protected-access
+            aws_inst._ec2_instance.terminate()
 
 
 class AWSVMTypeService(BaseVMTypeService):
@@ -839,9 +845,11 @@ class AWSNetworkService(BaseNetworkService):
 
     @implement(event_pattern="provider.networking.networks.delete",
                priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, network_id):
-        net = self.get(network_id)
-        net._vpc.delete()
+    def _delete(self, net):
+        network = net if isinstance(net, AWSNetwork) else self.get(net)
+        if network:
+            # pylint:disable=protected-access
+            network._vpc.delete()
 
     def get_or_create_default(self):
         # # Look for provided default network
@@ -919,9 +927,11 @@ class AWSSubnetService(BaseSubnetService):
 
     @implement(event_pattern="provider.networking.subnets.delete",
                priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, subnet_id):
-        aws_sn = self.svc.get_raw(subnet_id)
-        aws_sn.delete()
+    def _delete(self, subnet):
+        sn = subnet if isinstance(subnet, AWSSubnet) else self.get(subnet)
+        if sn:
+            # pylint:disable=protected-access
+            sn._subnet.delete()
 
     def get_or_create_default(self, zone):
         zone_name = zone.name if isinstance(zone, AWSPlacementZone) else zone
@@ -1071,6 +1081,8 @@ class AWSRouterService(BaseRouterService):
 
     @implement(event_pattern="provider.networking.routers.delete",
                priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, router_id):
-        aws_router = self.svc.get_raw(router_id)
-        aws_router.delete()
+    def _delete(self, router):
+        r = router if isinstance(router, AWSRouter) else self.get(router)
+        if r:
+            # pylint:disable=protected-access
+            r._route_table.delete()

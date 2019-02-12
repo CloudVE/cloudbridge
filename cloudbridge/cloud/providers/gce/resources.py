@@ -1376,9 +1376,6 @@ class GCENetwork(BaseNetwork):
     def subnets(self):
         return list(self._provider.networking.subnets.iter(network=self))
 
-    def delete(self):
-        self._provider.networking.networks.delete(self)
-
     def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(
             label, self, cidr_block, zone)

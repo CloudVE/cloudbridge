@@ -142,8 +142,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
 
     @implement(event_pattern="provider.security.vm_firewalls.delete",
                priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, group_id):
-        self.provider.azure_client.delete_vm_firewall(group_id)
+    def _delete(self, vmf):
+        fw_id = vmf.id if isinstance(vmf, AzureVMFirewall) else vmf
+        self.provider.azure_client.delete_vm_firewall(fw_id)
 
 
 class AzureKeyPairService(BaseKeyPairService):
@@ -223,9 +224,11 @@ class AzureKeyPairService(BaseKeyPairService):
 
     @implement(event_pattern="provider.security.key_pairs.delete",
                priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, key_pair_id):
-        az_kp = self.provider.azure_client.get_public_key(key_pair_id)
-        self.provider.azure_client.delete_public_key(az_kp)
+    def _delete(self, kp):
+        key_pair = kp if isinstance(kp, AzureKeyPair) else self.get(kp)
+        if key_pair:
+            # pylint:disable=protected-access
+            self.provider.azure_client.delete_public_key(key_pair._key_pair)
 
 
 class AzureStorageService(BaseStorageService):
@@ -460,11 +463,12 @@ class AzureBucketService(BaseBucketService):
 
     @implement(event_pattern="provider.storage.buckets.delete",
                priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, bucket_id):
+    def _delete(self, bucket):
         """
         Delete this bucket.
         """
-        self.provider.azure_client.delete_container(bucket_id)
+        b_id = bucket.id if isinstance(bucket, AzureBucket) else bucket
+        self.provider.azure_client.delete_container(b_id)
 
 
 class AzureBucketObjectService(BaseBucketObjectService):
@@ -899,14 +903,16 @@ class AzureInstanceService(BaseInstanceService):
 
     @implement(event_pattern="provider.compute.instances.delete",
                priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, instance_id):
+    def _delete(self, inst):
         """
         Permanently terminate this instance.
         After deleting the VM. we are deleting the network interface
         associated to the instance, and also removing OS disk and data disks
         where tag with name 'delete_on_terminate' has value True.
         """
-        ins = self.get(instance_id)
+        ins = inst if isinstance(inst, AzureInstance) else self.get(inst)
+        if not inst:
+            return
 
         # Remove IPs first to avoid a network interface conflict
         for public_ip_id in ins._public_ip_ids:
@@ -1038,8 +1044,10 @@ class AzureNetworkService(BaseNetworkService):
 
     @implement(event_pattern="provider.networking.networks.delete",
                priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, network_id):
-        self.provider.azure_client.delete_network(network_id)
+    def _delete(self, net):
+        net_id = net.id if isinstance(net, AzureNetwork) else net
+        if net_id:
+            self.provider.azure_client.delete_network(net_id)
 
 
 class AzureSubnetService(BaseSubnetService):
@@ -1129,17 +1137,18 @@ class AzureSubnetService(BaseSubnetService):
 
     @implement(event_pattern="provider.networking.subnets.delete",
                priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, subnet_id):
-        sn = self.get(subnet_id)
-        self.provider.azure_client.delete_subnet(subnet_id)
-        # Although Subnet doesn't support labels, we use the parent Network's
-        # tags to track the subnet's labels, thus that network-level tag must
-        # be deleted with the subnet
-        net_id = sn.network_id
-        az_network = self.provider.azure_client.get_network(net_id)
-        az_network.tags.pop(sn.tag_name)
-        self._provider.azure_client.update_network_tags(
-            az_network.id, az_network)
+    def _delete(self, subnet):
+        sn = subnet if isinstance(subnet, AzureSubnet) else self.get(subnet)
+        if sn:
+            self.provider.azure_client.delete_subnet(sn.id)
+            # Although Subnet doesn't support labels, we use the parent
+            # Network's tags to track the subnet's labels, thus that
+            # network-level tag must be deleted with the subnet
+            net_id = sn.network_id
+            az_network = self.provider.azure_client.get_network(net_id)
+            az_network.tags.pop(sn.tag_name)
+            self._provider.azure_client.update_network_tags(
+                az_network.id, az_network)
 
 
 class AzureRouterService(BaseRouterService):
@@ -1197,6 +1206,7 @@ class AzureRouterService(BaseRouterService):
 
     @implement(event_pattern="provider.networking.routers.delete",
                priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, router_id):
-        az_router = self.provider.azure_client.get_route_table(router_id)
-        self.provider.azure_client.delete_route_table(az_router.name)
+    def _delete(self, router):
+        r = router if isinstance(router, AzureRouter) else self.get(router)
+        if r:
+            self.provider.azure_client.delete_route_table(r.name)
