@@ -51,7 +51,7 @@ def implement(event_pattern, priority):
     return deco
 
 
-def dispatch_event(event):
+def dispatch(event, priority):
     """
     The event decorator combines the functionality of the implement decorator
     and a manual event dispatch into a single decorator.
@@ -71,7 +71,7 @@ def dispatch_event(event):
         # Mark function as having an event_handler so we can discover it
         # The callback f is unbound and will be bound during middleware
         # auto discovery
-        wrapper.__event_handler = ImplementingEventHandler(event, 2500, f)
+        wrapper.__event_handler = ImplementingEventHandler(event, priority, f)
         return wrapper
     return deco
 
