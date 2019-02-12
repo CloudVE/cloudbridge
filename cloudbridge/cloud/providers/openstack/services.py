@@ -239,6 +239,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
+        OpenStackVMFirewall.assert_valid_resource_label(label)
         net = network.id if isinstance(network, Network) else network
         # We generally simulate a network being associated with a firewall
         # by storing the supplied value in the firewall description field that
@@ -344,6 +345,7 @@ class OpenStackVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, zone, snapshot=None, description=None):
+        OpenStackVolume.assert_valid_resource_label(label)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, OpenStackSnapshot) and snapshot else snapshot
@@ -415,6 +417,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
     @dispatch(event="provider.storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
+        OpenStackSnapshot.assert_valid_resource_label(label)
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
                      else volume)
 
@@ -482,7 +485,7 @@ class OpenStackBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.create",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def create(self, name, location):
+    def create(self, name, location=None):
         OpenStackBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
         try:
@@ -682,6 +685,7 @@ class OpenStackInstanceService(BaseInstanceService):
     def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
+        OpenStackInstance.assert_valid_resource_label(label)
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
             isinstance(vm_type, VMType) else \

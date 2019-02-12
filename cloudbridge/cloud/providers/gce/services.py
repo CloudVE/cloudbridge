@@ -187,6 +187,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
+        GCEVMFirewall.assert_valid_resource_label(label)
         network = (network if isinstance(network, GCENetwork)
                    else self.provider.networking.networks.get(network))
         fw = GCEVMFirewall(self._delegate, label, network, description)
@@ -1123,6 +1124,7 @@ class GCEVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, zone, snapshot=None, description=None):
+        GCEVolume.assert_valid_resource_label(label)
         name = GCEVolume._generate_name_from_label(label, 'cb-vol')
         if not isinstance(zone, GCEPlacementZone):
             zone = GCEPlacementZone(
@@ -1227,6 +1229,7 @@ class GCESnapshotService(BaseSnapshotService):
     @dispatch(event="provider.storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
+        GCESnapshot.assert_valid_resource_label(label)
         name = GCESnapshot._generate_name_from_label(label, 'cbsnap')
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
         snapshot_body = {

@@ -100,6 +100,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
+        AzureVMFirewall.assert_valid_resource_label(label)
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         net = network.id if isinstance(network, Network) else network
         parameters = {"location": self.provider.region_name,
@@ -301,6 +302,7 @@ class AzureVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, zone, snapshot=None, description=None):
+        AzureVolume.assert_valid_resource_label(label)
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         tags = {'Label': label}
 
@@ -394,6 +396,7 @@ class AzureSnapshotService(BaseSnapshotService):
     @dispatch(event="provider.storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
+        AzureSnapshot.assert_valid_resource_label(label)
         snapshot_name = AzureSnapshot._generate_name_from_label(label,
                                                                 "cb-snap")
         tags = {'Label': label}
@@ -445,7 +448,7 @@ class AzureBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.list",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit, marker):
+    def list(self, limit=None, marker=None):
         buckets = [AzureBucket(self.provider, bucket)
                    for bucket
                    in self.provider.azure_client.list_containers()[0]]
@@ -731,6 +734,7 @@ class AzureInstanceService(BaseInstanceService):
     def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
+        AzureInstance.assert_valid_resource_label(label)
         instance_name = AzureInstance._generate_name_from_label(label,
                                                                 "cb-ins")
 
@@ -1028,6 +1032,7 @@ class AzureNetworkService(BaseNetworkService):
     @dispatch(event="provider.networking.networks.create",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def create(self, label, cidr_block):
+        AzureNetwork.assert_valid_resource_label(label)
         params = {
             'location': self.provider.azure_client.region_name,
             'address_space': {
