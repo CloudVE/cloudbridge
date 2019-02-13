@@ -145,10 +145,17 @@ class BaseMiddleware(Middleware):
         for _, func in getmembers_static(class_or_obj, inspect.ismethod):
             handler = getattr(func, "__event_handler", None)
             if handler and isinstance(handler, EventHandler):
+                # create a new handler that mimics the original one,
+                # essentially deep-copying the handler, so that the bound
+                # method is never stored in the function itself, preventing
+                # further bonding
+                new_handler = handler.__class__(handler.event_pattern,
+                                                handler.priority,
+                                                handler.callback)
                 # Bind the currently unbound method
                 # and set the bound method as the callback
-                handler.callback = handler.callback.__get__(class_or_obj)
-                discovered_handlers.append(handler)
+                new_handler.callback = handler.callback.__get__(class_or_obj)
+                discovered_handlers.append(new_handler)
         return discovered_handlers
 
 
