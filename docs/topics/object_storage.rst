@@ -66,5 +66,5 @@ Once a provider is obtained, you can access the container as usual:
 .. code-block:: python
 
     bucket = provider.storage.buckets.get(container)
-    obj = bucket.create_object('my_object.txt')
+    obj = bucket.objects.create('my_object.txt')
     obj.upload_from_file(source)

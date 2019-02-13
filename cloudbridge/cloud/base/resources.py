@@ -12,21 +12,17 @@ import uuid
 
 import six
 
-import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.interfaces.exceptions \
-    import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import \
+    InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidLabelException
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
-from cloudbridge.cloud.interfaces.resources import BucketContainer
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
-from cloudbridge.cloud.interfaces.resources import FloatingIPContainer
 from cloudbridge.cloud.interfaces.resources import FloatingIpState
-from cloudbridge.cloud.interfaces.resources import GatewayContainer
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -49,10 +45,11 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMFirewallRule
-from cloudbridge.cloud.interfaces.resources import VMFirewallRuleContainer
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
+
+from . import helpers as cb_helpers
 
 log = logging.getLogger(__name__)
 
@@ -589,37 +586,6 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         return self._provider.security.vm_firewalls.delete(self)
 
 
-class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
-                                  VMFirewallRuleContainer):
-
-    def __init__(self, provider, firewall):
-        self.__provider = provider
-        self.firewall = firewall
-
-    @property
-    def _provider(self):
-        return self.__provider
-
-    def get(self, rule_id):
-        matches = [rule for rule in self if rule.id == rule_id]
-        if matches:
-            return matches[0]
-        else:
-            return None
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
-                   'cidr', 'src_dest_fw', 'src_dest_fw_id']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
-
-    def delete(self, rule_id):
-        rule = self.get(rule_id)
-        if rule:
-            rule.delete()
-
-
 class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
 
     def __init__(self, parent_fw, rule):
@@ -768,38 +734,6 @@ class BaseBucket(BaseCloudResource, Bucket):
     # TODO: Discuss creating `create_object` method, or change docs
 
 
-class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
-
-    def __init__(self, provider, bucket):
-        self.__provider = provider
-        self.bucket = bucket
-
-    @property
-    def _provider(self):
-        return self.__provider
-
-    def get(self, name):
-        return self._provider.storage.bucket_objects.get(self.bucket, name)
-
-    def list(self, limit=None, marker=None, prefix=None):
-        return self._provider.storage.bucket_objects.list(self.bucket, limit,
-                                                          marker, prefix)
-
-    def find(self, **kwargs):
-        return self._provider.storage.bucket_objects.find(self.bucket,
-                                                          **kwargs)
-
-    def create(self, name):
-        return self._provider.storage.bucket_objects.create(self.bucket, name)
-
-
-class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
-
-    def __init__(self, provider, network):
-        self._network = network
-        self._provider = provider
-
-
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_LABEL = os.environ.get('CB_DEFAULT_NETWORK_LABEL',
@@ -873,28 +807,6 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
     def delete(self):
         self._provider.networking.subnets.delete(self)
-
-
-class BaseFloatingIPContainer(FloatingIPContainer, BasePageableObjectMixin):
-
-    def __init__(self, provider, gateway):
-        self.__provider = provider
-        self.gateway = gateway
-
-    @property
-    def _provider(self):
-        return self.__provider
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name', 'public_ip']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
-
-    def delete(self, fip_id):
-        floating_ip = self.get(fip_id)
-        if floating_ip:
-            floating_ip.delete()
 
 
 class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):

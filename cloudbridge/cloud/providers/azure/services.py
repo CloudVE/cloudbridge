@@ -256,7 +256,7 @@ class AzureStorageService(BaseStorageService):
         return self._bucket_svc
 
     @property
-    def bucket_objects(self):
+    def _bucket_objects(self):
         return self._bucket_obj_svc
 
 

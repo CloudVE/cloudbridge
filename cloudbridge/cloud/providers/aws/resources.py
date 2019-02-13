@@ -9,11 +9,8 @@ from botocore.exceptions import ClientError
 
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
-from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
-from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
-from cloudbridge.cloud.base.resources import BaseGatewayContainer
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -27,11 +24,8 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVMFirewallRule
-from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
-from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
@@ -42,9 +36,12 @@ from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
-from .helpers import BotoEC2Service
 from .helpers import find_tag_value
 from .helpers import trim_empty_params
+from .subservices import AWSBucketObjectSubService
+from .subservices import AWSFloatingIPSubService
+from .subservices import AWSGatewaySubService
+from .subservices import AWSVMFirewallRuleSubService
 
 log = logging.getLogger(__name__)
 
@@ -615,7 +612,7 @@ class AWSVMFirewall(BaseVMFirewall):
 
     def __init__(self, provider, _vm_firewall):
         super(AWSVMFirewall, self).__init__(provider, _vm_firewall)
-        self._rule_container = AWSVMFirewallRuleContainer(provider, self)
+        self._rule_container = AWSVMFirewallRuleSubService(provider, self)
 
     @property
     def name(self):
@@ -657,56 +654,6 @@ class AWSVMFirewall(BaseVMFirewall):
         if js.get('network_id'):
             js.pop('network_id')  # Omit for consistency across cloud providers
         return js
-
-
-class AWSVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
-
-    def __init__(self, provider, firewall):
-        super(AWSVMFirewallRuleContainer, self).__init__(provider, firewall)
-
-    def list(self, limit=None, marker=None):
-        # pylint:disable=protected-access
-        rules = [AWSVMFirewallRule(self.firewall,
-                                   TrafficDirection.INBOUND, r)
-                 for r in self.firewall._vm_firewall.ip_permissions]
-        rules = rules + [
-            AWSVMFirewallRule(
-                self.firewall, TrafficDirection.OUTBOUND, r)
-            for r in self.firewall._vm_firewall.ip_permissions_egress]
-        return ClientPagedResultList(self._provider, rules,
-                                     limit=limit, marker=marker)
-
-    def create(self,  direction, protocol=None, from_port=None,
-               to_port=None, cidr=None, src_dest_fw=None):
-        src_dest_fw_id = (
-            src_dest_fw.id if isinstance(src_dest_fw, AWSVMFirewall)
-            else src_dest_fw)
-
-        # pylint:disable=protected-access
-        ip_perm_entry = AWSVMFirewallRule._construct_ip_perms(
-            protocol, from_port, to_port, cidr, src_dest_fw_id)
-        # Filter out empty values to please Boto
-        ip_perms = [trim_empty_params(ip_perm_entry)]
-
-        try:
-            if direction == TrafficDirection.INBOUND:
-                # pylint:disable=protected-access
-                self.firewall._vm_firewall.authorize_ingress(
-                    IpPermissions=ip_perms)
-            elif direction == TrafficDirection.OUTBOUND:
-                # pylint:disable=protected-access
-                self.firewall._vm_firewall.authorize_egress(
-                    IpPermissions=ip_perms)
-            else:
-                raise InvalidValueException("direction", direction)
-            self.firewall.refresh()
-            return AWSVMFirewallRule(self.firewall, direction, ip_perm_entry)
-        except ClientError as ec2e:
-            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
-                return AWSVMFirewallRule(
-                    self.firewall, direction, ip_perm_entry)
-            else:
-                raise ec2e
 
 
 class AWSVMFirewallRule(BaseVMFirewallRule):
@@ -865,7 +812,7 @@ class AWSBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(AWSBucket, self).__init__(provider)
         self._bucket = bucket
-        self._object_container = AWSBucketContainer(provider, self)
+        self._object_container = AWSBucketObjectSubService(provider, self)
 
     @property
     def id(self):
@@ -878,12 +825,6 @@ class AWSBucket(BaseBucket):
     @property
     def objects(self):
         return self._object_container
-
-
-class AWSBucketContainer(BaseBucketContainer):
-
-    def __init__(self, provider, bucket):
-        super(AWSBucketContainer, self).__init__(provider, bucket)
 
 
 class AWSRegion(BaseRegion):
@@ -927,7 +868,7 @@ class AWSNetwork(BaseNetwork):
     def __init__(self, provider, network):
         super(AWSNetwork, self).__init__(provider)
         self._vpc = network
-        self._gtw_container = AWSGatewayContainer(provider, self)
+        self._gtw_container = AWSGatewaySubService(provider, self)
         self._unknown_state = False
 
     @property
@@ -1058,31 +999,6 @@ class AWSSubnet(BaseSubnet):
             self._unknown_state = True
 
 
-class AWSFloatingIPContainer(BaseFloatingIPContainer):
-
-    def __init__(self, provider, gateway):
-        super(AWSFloatingIPContainer, self).__init__(provider, gateway)
-        self.svc = BotoEC2Service(provider=self._provider,
-                                  cb_resource=AWSFloatingIP,
-                                  boto_collection_name='vpc_addresses')
-
-    def get(self, fip_id):
-        log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
-        return self.svc.get(fip_id)
-
-    def list(self, limit=None, marker=None):
-        log.debug("Listing all floating IPs under gateway %s", self.gateway)
-        return self.svc.list(limit=limit, marker=marker)
-
-    def create(self):
-        log.debug("Creating a floating IP under gateway %s", self.gateway)
-        ip = self._provider.ec2_conn.meta.client.allocate_address(
-            Domain='vpc')
-        return AWSFloatingIP(
-            self._provider,
-            self._provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
-
-
 class AWSFloatingIP(BaseFloatingIP):
 
     def __init__(self, provider, floating_ip):
@@ -1186,57 +1102,13 @@ class AWSRouter(BaseRouter):
             InternetGatewayId=gw_id, VpcId=self._route_table.vpc_id)
 
 
-class AWSGatewayContainer(BaseGatewayContainer):
-
-    def __init__(self, provider, network):
-        super(AWSGatewayContainer, self).__init__(provider, network)
-        self.svc = BotoEC2Service(provider=provider,
-                                  cb_resource=AWSInternetGateway,
-                                  boto_collection_name='internet_gateways')
-
-    def get_or_create_inet_gateway(self):
-        log.debug("Get or create inet gateway on net %s",
-                  self._network)
-        network_id = self._network.id if isinstance(
-            self._network, AWSNetwork) else self._network
-        # Don't filter by label because it may conflict with at least the
-        # default VPC that most accounts have but that network is typically
-        # without a name.
-        gtw = self.svc.find(filter_name='attachment.vpc-id',
-                            filter_value=network_id)
-        if gtw:
-            return gtw[0]  # There can be only one gtw attached to a VPC
-        # Gateway does not exist so create one and attach to the supplied net
-        cb_gateway = self.svc.create('create_internet_gateway')
-        cb_gateway._gateway.create_tags(
-            Tags=[{'Key': 'Name',
-                   'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
-                   }])
-        cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
-        return cb_gateway
-
-    def delete(self, gateway):
-        log.debug("Service deleting AWS Gateway %s", gateway)
-        gateway_id = gateway.id if isinstance(
-            gateway, AWSInternetGateway) else gateway
-        gateway = self.svc.get(gateway_id)
-        if gateway:
-            gateway.delete()
-
-    def list(self, limit=None, marker=None):
-        log.debug("Listing current AWS internet gateways for net %s.",
-                  self._network.id)
-        fltr = [{'Name': 'attachment.vpc-id', 'Values': [self._network.id]}]
-        return self.svc.list(limit=None, marker=None, Filters=fltr)
-
-
 class AWSInternetGateway(BaseInternetGateway):
 
     def __init__(self, provider, gateway):
         super(AWSInternetGateway, self).__init__(provider)
         self._gateway = gateway
         self._gateway.state = ''
-        self._fips_container = AWSFloatingIPContainer(provider, self)
+        self._fips_container = AWSFloatingIPSubService(provider, self)
 
     @property
     def id(self):

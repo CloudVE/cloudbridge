@@ -3,14 +3,6 @@ Base implementation for services available through a provider
 """
 import logging
 
-import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.middleware import dispatch
-from cloudbridge.cloud.base.resources import BaseBucket
-from cloudbridge.cloud.base.resources import BaseNetwork
-from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSubnet
-from cloudbridge.cloud.interfaces.exceptions import \
-    InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.services import BucketObjectService
@@ -32,7 +24,12 @@ from cloudbridge.cloud.interfaces.services import VMFirewallService
 from cloudbridge.cloud.interfaces.services import VMTypeService
 from cloudbridge.cloud.interfaces.services import VolumeService
 
+from . import helpers as cb_helpers
+from .middleware import dispatch
+from .resources import BaseNetwork
 from .resources import BasePageableObjectMixin
+from .resources import BaseRouter
+from .resources import BaseSubnet
 from .resources import ClientPagedResultList
 
 log = logging.getLogger(__name__)
@@ -143,39 +140,12 @@ class BaseBucketService(
                                      matches if matches else [])
 
 
-class BaseBucketObjectService(
-        BasePageableObjectMixin, BucketObjectService, BaseCloudService):
+class BaseBucketObjectService(BucketObjectService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseBucketObjectService, self).__init__(provider)
-        self._service_event_pattern += ".storage.bucket_objects"
+        self._service_event_pattern += ".storage._bucket_objects"
         self._bucket = None
-
-    # Default bucket needs to be set in order for the service to be iterable
-    def set_bucket(self, bucket):
-        bucket = bucket if isinstance(bucket, BaseBucket) \
-                 else self.provider.storage.buckets.get(bucket)
-        self._bucket = bucket
-
-    def __iter__(self):
-        if not self._bucket:
-            message = "You must set a bucket before iterating through its " \
-                      "objects. We do not allow iterating through all " \
-                      "buckets at this time. In order to set a bucket, use: " \
-                      "`provider.storage.bucket_objects.set_bucket(my_bucket)`"
-            raise InvalidConfigurationException(message)
-        result_list = self.list(bucket=self._bucket)
-        if result_list.supports_server_paging:
-            for result in result_list:
-                yield result
-            while result_list.is_truncated:
-                result_list = self.list(bucket=self._bucket,
-                                        marker=result_list.marker)
-                for result in result_list:
-                    yield result
-        else:
-            for result in result_list.data:
-                yield result
 
 
 class BaseComputeService(ComputeService, BaseCloudService):

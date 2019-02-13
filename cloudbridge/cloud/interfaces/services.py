@@ -965,7 +965,7 @@ class BucketService(PageableObjectMixin, CloudService):
         pass
 
 
-class BucketObjectService(PageableObjectMixin, CloudService):
+class BucketObjectService(CloudService):
 
     """
     The Bucket Object Service interface provides access to the underlying
@@ -988,7 +988,7 @@ class BucketObjectService(PageableObjectMixin, CloudService):
         .. code-block:: python
 
             bucket = provider.storage.buckets.get('my_bucket_id')
-            buck_obj = provider.storage.bucket_objects.get('my_object_id',
+            buck_obj = provider.storage._bucket_objects.get('my_object_id',
                                                            bucket)
             print(buck_obj.id, buck_obj.name)
 
@@ -1009,7 +1009,7 @@ class BucketObjectService(PageableObjectMixin, CloudService):
         .. code-block:: python
 
             bucket = provider.storage.buckets.get('my_bucket_id')
-            objs = provider.storage.bucket_objects.find(bucket,
+            objs = provider.storage._bucket_objects.find(bucket,
                                                         name='my_obj_name')
             for buck_obj in objs:
                 print(buck_obj.id, buck_obj.name)
@@ -1029,7 +1029,7 @@ class BucketObjectService(PageableObjectMixin, CloudService):
         .. code-block:: python
 
             bucket = provider.storage.buckets.get('my_bucket_id')
-            objs = provider.storage.bucket_objects.list(bucket)
+            objs = provider.storage._bucket_objects.list(bucket)
             for buck_obj in objs:
                 print(buck_obj.id, buck_obj.name)
 
@@ -1048,7 +1048,7 @@ class BucketObjectService(PageableObjectMixin, CloudService):
         .. code-block:: python
 
             bucket = provider.storage.buckets.get('my_bucket_id')
-            buck_obj = provider.storage.bucket_objects.create('my_name',
+            buck_obj = provider.storage._bucket_objects.create('my_name',
                                                               bucket)
             print(buck_obj.name)
 
