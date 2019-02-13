@@ -18,6 +18,8 @@ matrix:
   - python: 2.7
     env: TOX_ENV=py27-gce
   - python: 2.7
+    env: TOX_ENV=py27-mock
+  - python: 2.7
     env: TOX_ENV=py27-openstack
   - python: 3.6
     env: TOX_ENV=py36-aws
@@ -25,6 +27,8 @@ matrix:
     env: TOX_ENV=py36-azure
   - python: 3.6
     env: TOX_ENV=py36-gce
+  - python: 3.6
+    env: TOX_ENV=py36-mock
   - python: 3.6
     env: TOX_ENV=py36-openstack
 env:

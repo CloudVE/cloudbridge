@@ -24,22 +24,27 @@ Build Status Tests
 
 .. |aws-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1
               :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
+.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
               :target: https://travis-ci.org/CloudVE/cloudbridge
 
 .. |azure-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2
                 :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
+.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
                 :target: https://travis-ci.org/CloudVE/cloudbridge
 
 .. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
               :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
+.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
               :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
+.. |mock-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
+              :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |mock-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/9
+              :target: https://travis-ci.org/CloudVE/cloudbridge
+
+.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
              :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
+.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/10
              :target: https://travis-ci.org/CloudVE/cloudbridge
 
 +---------------------------+----------------+----------------+
@@ -52,6 +57,8 @@ Build Status Tests
 | **Microsoft Azure**       | |azure-py27|   | |azure-py36|   |
 +---------------------------+----------------+----------------+
 | **OpenStack**             | |os-py27|      | |os-py36|      |
++---------------------------+----------------+----------------+
+| **Mock Provider**         | |mock-py27|    | |mock-py36|    |
 +---------------------------+----------------+----------------+
 
 Installation

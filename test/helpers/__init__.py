@@ -294,11 +294,8 @@ class ProviderTestBase(unittest.TestCase):
 
     def create_provider_instance(self):
         provider_name = get_env("CB_TEST_PROVIDER", "aws")
-        use_mock_drivers = parse_bool(
-            os.environ.get("CB_USE_MOCK_PROVIDERS", "True"))
         factory = CloudProviderFactory()
-        provider_class = factory.get_provider_class(provider_name,
-                                                    get_mock=use_mock_drivers)
+        provider_class = factory.get_provider_class(provider_name)
         config = {'default_wait_interval':
                   self.get_provider_wait_interval(provider_class),
                   'default_result_limit': 5}

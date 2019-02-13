@@ -6,9 +6,6 @@ from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.provider import CloudProvider
 from cloudbridge.cloud.providers.aws import AWSCloudProvider
-from cloudbridge.cloud.providers.aws.provider import MockAWSCloudProvider
-
-from test import helpers
 
 
 class CloudFactoryTestCase(unittest.TestCase):
@@ -29,25 +26,6 @@ class CloudFactoryTestCase(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             CloudProviderFactory().create_provider("ec23", {})
 
-    def test_find_provider_mock_valid(self):
-        # Searching for a provider with a known mock driver should return
-        # an implementation implementing helpers.TestMockHelperMixin
-        mock = CloudProviderFactory().get_provider_class(
-            factory.ProviderList.AWS, get_mock=True)
-        self.assertTrue(
-            issubclass(
-                mock,
-                helpers.TestMockHelperMixin),
-            "Expected mock for AWS but class does not implement mock provider")
-        for cls in CloudProviderFactory().get_all_provider_classes(
-                get_mock=False):
-            self.assertTrue(
-                not issubclass(
-                    cls,
-                    TestMockHelperMixin),
-                "Did not expect mock but %s implements mock provider" %
-                cls)
-
     def test_get_provider_class_valid(self):
         # Searching for a provider class with a known name should return a
         # valid class
@@ -59,6 +37,20 @@ class CloudFactoryTestCase(unittest.TestCase):
         # return None
         self.assertIsNone(CloudProviderFactory().get_provider_class("aws1"))
 
+    def test_find_provider_include_mocks(self):
+        self.assertTrue(
+            any(cls for cls
+                in CloudProviderFactory().get_all_provider_classes()
+                if issubclass(cls, TestMockHelperMixin)),
+            "expected to find at least one mock provider")
+
+    def test_find_provider_exclude_mocks(self):
+        for cls in CloudProviderFactory().get_all_provider_classes(
+                ignore_mocks=True):
+            self.assertTrue(
+                not issubclass(cls, TestMockHelperMixin),
+                "Did not expect mock but %s implements mock provider" % cls)
+
     def test_register_provider_class_invalid(self):
         # Attempting to register an invalid test class should be ignored
         class DummyClass(object):
@@ -67,7 +59,7 @@ class CloudFactoryTestCase(unittest.TestCase):
         factory = CloudProviderFactory()
         factory.register_provider_class(DummyClass)
         self.assertTrue(DummyClass not in
-                        factory.get_all_provider_classes(get_mock=False))
+                        factory.get_all_provider_classes())
 
     def test_register_provider_class_double(self):
         # Attempting to register the same class twice should register second
@@ -79,23 +71,9 @@ class CloudFactoryTestCase(unittest.TestCase):
         factory.list_providers()
         factory.register_provider_class(DummyClass)
         self.assertTrue(DummyClass in
-                        factory.get_all_provider_classes(get_mock=False))
+                        factory.get_all_provider_classes())
         self.assertTrue(AWSCloudProvider not in
-                        factory.get_all_provider_classes(get_mock=False))
-
-    def test_register_mock_provider_class_double(self):
-        # Attempting to register the same mock provider twice should register
-        # only the second instance
-        class DummyClass(CloudProvider, TestMockHelperMixin):
-            PROVIDER_ID = 'aws'
-
-        factory = CloudProviderFactory()
-        factory.list_providers()
-        factory.register_provider_class(DummyClass)
-        self.assertTrue(DummyClass in
-                        factory.get_all_provider_classes(get_mock=True))
-        self.assertTrue(MockAWSCloudProvider not in
-                        factory.get_all_provider_classes(get_mock=True))
+                        factory.get_all_provider_classes())
 
     def test_register_provider_class_without_id(self):
         # Attempting to register a class without a PROVIDER_ID attribute
@@ -106,4 +84,4 @@ class CloudFactoryTestCase(unittest.TestCase):
         factory = CloudProviderFactory()
         factory.register_provider_class(DummyClass)
         self.assertTrue(DummyClass not in
-                        factory.get_all_provider_classes(get_mock=False))
+                        factory.get_all_provider_classes())

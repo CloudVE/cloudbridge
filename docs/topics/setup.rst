@@ -329,9 +329,6 @@ a whole.
 |                             | debug output to be printed for each provider         |
 |                             | (including HTTP traces).                             |
 +-----------------------------+------------------------------------------------------+
-| CB_USE_MOCK_PROVIDERS       | Setting this to ``True`` will cause the CloudBridge  |
-|                             | test suite to use mock drivers when available.       |
-+-----------------------------+------------------------------------------------------+
 | CB_TEST_PROVIDER            | Set this value to a valid :class:`.ProviderList`     |
 |                             | value such as ``aws``, to limit tests to that        |
 |                             | provider only.                                       |
