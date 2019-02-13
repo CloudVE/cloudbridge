@@ -475,7 +475,7 @@ class OpenStackBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.list",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def list(self, limit, marker):
+    def list(self, limit=None, marker=None):
         _, container_list = self.provider.swift.get_account(
             limit=oshelpers.os_result_limit(self.provider, limit),
             marker=marker)
