@@ -4,7 +4,7 @@ Base implementation for services available through a provider
 import logging
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.middleware import implement
+from cloudbridge.cloud.base.middleware import dispatch
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.base.resources import BaseRouter
@@ -13,7 +13,6 @@ from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import Network
-from cloudbridge.cloud.interfaces.resources import Router
 from cloudbridge.cloud.interfaces.services import BucketObjectService
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
@@ -53,40 +52,9 @@ class BaseCloudService(CloudService):
     def provider(self):
         return self._provider
 
-    def dispatch(self, sender, event, *args, **kwargs):
-        return self._provider.events.dispatch(sender, event, *args, **kwargs)
-
-    def _generate_event_pattern(self, func_name):
-        return ".".join((self._service_event_pattern, func_name))
-
-    def observe_function(self, func_name, priority, callback):
-        event_pattern = self._generate_event_pattern(func_name)
-        self.provider.events.observe(event_pattern, priority, callback)
-
-    def intercept_function(self, func_name, priority, callback):
-        event_pattern = self._generate_event_pattern(func_name)
-        self.provider.events.intercept(event_pattern, priority, callback)
-
-    def implement_function(self, func_name, priority, callback):
-        event_pattern = self._generate_event_pattern(func_name)
-        self.provider.events.implement(event_pattern, priority, callback)
-
-    def dispatch_function(self, sender, func_name, *args, **kwargs):
-        """
-        Emits the event corresponding to the given function name for the
-        current service
-
-        :type sender: CloudService
-        :param sender: The CloudBridge Service object sending the emit signal
-        :type func_name: str
-        :param func_name: The name of the function to be emitted. e.g.: 'get'
-        :type args: CloudService
-
-        :return:  The return value resulting from the handler chain invocations
-        """
-        full_event_name = self._generate_event_pattern(func_name)
-        return self._provider.events.dispatch(sender, full_event_name,
-                                              *args, **kwargs)
+    @property
+    def events(self):
+        return self._provider.events
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):
@@ -102,46 +70,6 @@ class BaseKeyPairService(
         super(BaseKeyPairService, self).__init__(provider)
         self._service_event_pattern += ".security.key_pairs"
 
-    def get(self, key_pair_id):
-        return self.dispatch(self, "provider.security.key_pairs.get",
-                             key_pair_id)
-
-    def list(self, limit=None, marker=None):
-        return self.dispatch(self, "provider.security.key_pairs.list",
-                             limit=limit, marker=marker)
-
-    def find(self, **kwargs):
-        return self.dispatch(self, "provider.security.key_pairs.find",
-                             **kwargs)
-
-    def create(self, name, public_key_material=None):
-        return self.dispatch(self, "provider.security.key_pairs.create",
-                             name, public_key_material=public_key_material)
-
-    def delete(self, key_pair_id):
-        return self.dispatch(self, "provider.security.key_pairs.delete",
-                             key_pair_id)
-
-    @implement(event_pattern="provider.security.key_pairs.delete",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, key_pair_id):
-        """
-        Delete an existing key pair.
-
-        :type key_pair_id: str
-        :param key_pair_id: The id of the key pair to be deleted.
-
-        :rtype: ``bool``
-        :return:  ``True`` if the key does not exist. Note that this implies
-                  that the key may not have been deleted by this method but
-                  instead has not existed in the first place.
-        """
-        log.info("Deleting the existing key pair %s", key_pair_id)
-        kp = self.get(key_pair_id)
-        if kp:
-            kp.delete()
-        return True
-
 
 class BaseVMFirewallService(
         BasePageableObjectMixin, VMFirewallService, BaseCloudService):
@@ -150,6 +78,8 @@ class BaseVMFirewallService(
         super(BaseVMFirewallService, self).__init__(provider)
         self._service_event_pattern += ".security.vm_firewalls"
 
+    @dispatch(event="provider.security.vm_firewalls.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
         filters = ['label']
@@ -178,27 +108,6 @@ class BaseVolumeService(
         super(BaseVolumeService, self).__init__(provider)
         self._service_event_pattern += ".storage.volumes"
 
-    def get(self, volume_id):
-        return self.dispatch(self, "provider.storage.volumes.get",
-                             volume_id)
-
-    def list(self, limit=None, marker=None):
-        return self.dispatch(self, "provider.storage.volumes.list",
-                             limit=limit, marker=marker)
-
-    def find(self, **kwargs):
-        return self.dispatch(self, "provider.storage.volumes.find",
-                             **kwargs)
-
-    def create(self, label, size, zone, snapshot=None, description=None):
-        return self.dispatch(self, "provider.storage.volumes.create",
-                             label, size, zone, snapshot=snapshot,
-                             description=description)
-
-    def delete(self, volume):
-        return self.dispatch(self, "provider.storage.volumes.delete",
-                             volume)
-
 
 class BaseSnapshotService(
         BasePageableObjectMixin, SnapshotService, BaseCloudService):
@@ -206,26 +115,6 @@ class BaseSnapshotService(
     def __init__(self, provider):
         super(BaseSnapshotService, self).__init__(provider)
         self._service_event_pattern += ".storage.snapshots"
-
-    def get(self, snapshot_id):
-        return self.dispatch(self, "provider.storage.snapshots.get",
-                             snapshot_id)
-
-    def list(self, limit=None, marker=None):
-        return self.dispatch(self, "provider.storage.snapshots.list",
-                             limit=limit, marker=marker)
-
-    def find(self, **kwargs):
-        return self.dispatch(self, "provider.storage.snapshots.find",
-                             **kwargs)
-
-    def create(self, label, volume, description=None):
-        return self.dispatch(self, "provider.storage.snapshots.create",
-                             label, volume=volume, description=description)
-
-    def delete(self, snapshot):
-        return self.dispatch(self, "provider.storage.snapshots.delete",
-                             snapshot)
 
 
 class BaseBucketService(
@@ -237,9 +126,9 @@ class BaseBucketService(
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
-    @implement(event_pattern="provider.storage.buckets.find",
-               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.storage.buckets.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         obj_list = self
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
@@ -252,60 +141,6 @@ class BaseBucketService(
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
-
-    def get(self, bucket_id):
-        """
-        Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist.
-
-        :type bucket_id: str
-        :param bucket_id: The id of the desired bucket.
-
-        :rtype: ``Bucket``
-        :return:  ``None`` is returned if the bucket does not exist, and
-                  the bucket's provider-specific CloudBridge object is
-                  returned if the bucket is found.
-        """
-        return self.dispatch(self, "provider.storage.buckets.get", bucket_id)
-
-    def find(self, **kwargs):
-        """
-        Returns a list of buckets filtered by the given keyword arguments.
-        Accepted search arguments are: 'name'
-        """
-        return self.dispatch(self, "provider.storage.buckets.find", **kwargs)
-
-    def list(self, limit=None, marker=None):
-        """
-        List all buckets.
-        """
-        return self.dispatch(self, "provider.storage.buckets.list",
-                             limit=limit, marker=marker)
-
-    def create(self, name, location=None):
-        """
-        Create a new bucket.
-
-        :type name: str
-        :param name: The name of the bucket to be created. Note that names
-                     must be unique, and are unchangeable.
-
-        :rtype: ``Bucket``
-        :return:  The created bucket's provider-specific CloudBridge object.
-        """
-        BaseBucket.assert_valid_resource_name(name)
-        return self.dispatch(self, "provider.storage.buckets.create",
-                             name, location=location)
-
-    def delete(self, bucket_id):
-        """
-        Delete an existing bucket.
-
-        :type bucket_id: str
-        :param bucket_id: The ID of the bucket to be deleted.
-        """
-        return self.dispatch(self, "provider.storage.buckets.delete",
-                             bucket_id)
 
 
 class BaseBucketObjectService(
@@ -372,10 +207,14 @@ class BaseVMTypeService(
         super(BaseVMTypeService, self).__init__(provider)
         self._service_event_pattern += ".compute.vm_types"
 
+    @dispatch(event="provider.compute.vm_types.get",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def get(self, vm_type_id):
         vm_type = (t for t in self if t.id == vm_type_id)
         return next(vm_type, None)
 
+    @dispatch(event="provider.compute.vm_types.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -390,6 +229,8 @@ class BaseRegionService(
         super(BaseRegionService, self).__init__(provider)
         self._service_event_pattern += ".compute.regions"
 
+    @dispatch(event="provider.compute.regions.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -415,12 +256,6 @@ class BaseNetworkService(
         return [subnet for subnet in self.provider.subnets
                 if subnet.network_id == self.id]
 
-    def delete(self, network_id):
-        network = self.get(network_id)
-        if network:
-            log.info("Deleting network %s", network_id)
-            network.delete()
-
     def get_or_create_default(self):
         networks = self.provider.networking.networks.find(
             label=BaseNetwork.CB_DEFAULT_NETWORK_LABEL)
@@ -433,6 +268,22 @@ class BaseNetworkService(
             return self.provider.networking.networks.create(
                 BaseNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
 
+    @dispatch(event="provider.networking.networks.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise TypeError("Unrecognised parameters for search: %s."
+                            " Supported attributes: %s" % (kwargs,
+                                                           ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
 
 class BaseSubnetService(
         BasePageableObjectMixin, SubnetService, BaseCloudService):
@@ -441,8 +292,13 @@ class BaseSubnetService(
         super(BaseSubnetService, self).__init__(provider)
         self._service_event_pattern += ".networking.subnets"
 
-    def find(self, **kwargs):
-        obj_list = self
+    @dispatch(event="provider.networking.subnets.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, network=None, **kwargs):
+        if not network:
+            obj_list = self
+        else:
+            obj_list = network.subnets
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
@@ -466,17 +322,6 @@ class BaseRouterService(
     def __init__(self, provider):
         super(BaseRouterService, self).__init__(provider)
         self._service_event_pattern += ".networking.routers"
-
-    def delete(self, router):
-        if isinstance(router, Router):
-            log.info("Router %s successful deleted.", router)
-            router.delete()
-        else:
-            log.info("Getting router %s", router)
-            router = self.get(router)
-            if router:
-                log.info("Router %s successful deleted.", router)
-                router.delete()
 
     def get_or_create_default(self, network):
         net_id = network.id if isinstance(network, Network) else network

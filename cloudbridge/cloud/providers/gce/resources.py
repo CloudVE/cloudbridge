@@ -408,14 +408,19 @@ class GCEFirewallsDelegate(object):
         Delete a given firewall.
         """
         project_name = self._provider.project_name
+        name = firewall['name']
         response = (self._provider
                         .gce_compute
                         .firewalls()
                         .delete(project=project_name,
-                                firewall=firewall['name'])
+                                firewall=name)
                         .execute())
         self._provider.wait_for_operation(response)
         # TODO: process the response and handle errors.
+        tag_name = "_".join(["firewall", name, "label"])
+        if not helpers.remove_metadata_item(self._provider, tag_name):
+            log.warning('No label was found associated with this firewall '
+                        '"{}" when deleted.'.format(name))
         return True
 
     def _update_list_response(self):
@@ -505,16 +510,6 @@ class GCEVMFirewall(BaseVMFirewall):
     @property
     def rules(self):
         return self._rule_container
-
-    def delete(self):
-        for rule in self._rule_container:
-            rule.delete()
-        self._rule_container.dummy_rule.force_delete()
-        # Remove label
-        tag_name = "_".join(["firewall", self.name, "label"])
-        if not helpers.remove_metadata_item(self._provider, tag_name):
-            log.warning('No label was found associated with this firewall '
-                        '"{}" when deleted.'.format(self.name))
 
     def to_json(self):
         attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
@@ -963,19 +958,6 @@ class GCEInstance(BaseInstance):
                     instance=self.name)
              .execute())
 
-    def delete(self):
-        """
-        Permanently terminate this instance.
-        """
-        name = self.name
-        (self._provider
-         .gce_compute
-         .instances()
-         .delete(project=self._provider.project_name,
-                 zone=self.zone_name,
-                 instance=name)
-         .execute())
-
     def stop(self):
         """
         Stop this instance.
@@ -1394,9 +1376,6 @@ class GCENetwork(BaseNetwork):
     def subnets(self):
         return list(self._provider.networking.subnets.iter(network=self))
 
-    def delete(self):
-        self._provider.networking.networks.delete(self)
-
     def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(
             label, self, cidr_block, zone)
@@ -1611,21 +1590,6 @@ class GCERouter(BaseRouter):
         network = self._provider.networking.networks.get(self.network_id)
         return network.subnets
 
-    def delete(self):
-        operation = (self._provider
-                     .gce_compute
-                     .routers()
-                     .delete(project=self._provider.project_name,
-                             region=self.region_name,
-                             router=self.name)
-                     .execute())
-        self._provider.wait_for_operation(operation, region=self.region_name)
-        # Remove label
-        tag_name = "_".join(["router", self.name, "label"])
-        if not helpers.remove_metadata_item(self._provider, tag_name):
-            log.warning('No label was found associated with this router '
-                        '"{}" when deleted.'.format(self.name))
-
     def attach_subnet(self, subnet):
         if not isinstance(subnet, GCESubnet):
             subnet = self._provider.networking.subnets.get(subnet)
@@ -1757,9 +1721,6 @@ class GCESubnet(BaseSubnet):
     @property
     def zone(self):
         return None
-
-    def delete(self):
-        return self._provider.networking.subnets.delete(self)
 
     @property
     def state(self):

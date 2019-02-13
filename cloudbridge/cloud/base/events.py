@@ -10,6 +10,14 @@ from ..interfaces.exceptions import HandlerException
 log = logging.getLogger(__name__)
 
 
+class PlaceHoldingEventHandler(object):
+    def __init__(self, event_pattern, priority, callback, handler_class):
+        self.event_pattern = event_pattern
+        self.priority = priority
+        self.callback = callback
+        self.handler_class = handler_class
+
+
 class BaseEventHandler(EventHandler):
 
     def __init__(self, event_pattern, priority, callback):

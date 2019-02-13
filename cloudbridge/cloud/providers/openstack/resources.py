@@ -14,8 +14,6 @@ except ImportError:  # python 2
 
 from keystoneclient.v3.regions import Region
 
-from neutronclient.common.exceptions import PortNotFoundClient
-
 import novaclient.exceptions as novaex
 
 from openstack.exceptions import HttpException
@@ -367,17 +365,6 @@ class OpenStackInstance(BaseInstance):
         Reboot this instance (using the cloud middleware API).
         """
         self._os_instance.reboot()
-
-    def delete(self):
-        """
-        Permanently delete this instance.
-        """
-        # delete the port we created when launching
-        # Assumption: it's the first interface in the list
-        iface_list = self._os_instance.interface_list()
-        if iface_list:
-            self._provider.neutron.delete_port(iface_list[0].port_id)
-        self._os_instance.delete()
 
     @property
     def image_id(self):
@@ -882,21 +869,6 @@ class OpenStackNetwork(BaseNetwork):
         # OpenStack does not define a CIDR block for networks
         return ''
 
-    def delete(self):
-        if not self.external and self.id in str(
-                self._provider.neutron.list_networks()):
-            # If there are ports associated with the network, it won't delete
-            ports = self._provider.neutron.list_ports(
-                network_id=self.id).get('ports', [])
-            for port in ports:
-                try:
-                    self._provider.neutron.delete_port(port.get('id'))
-                except PortNotFoundClient:
-                    # Ports could have already been deleted if instances
-                    # are terminated etc. so exceptions can be safely ignored
-                    pass
-            self._provider.neutron.delete_network(self.id)
-
     @property
     def subnets(self):
         subnets = (self._provider.neutron.list_subnets(network_id=self.id)
@@ -963,10 +935,6 @@ class OpenStackSubnet(BaseSubnet):
         Default to None.
         """
         return None
-
-    def delete(self):
-        if self.id in str(self._provider.neutron.list_subnets()):
-            self._provider.neutron.delete_subnet(self.id)
 
     @property
     def state(self):
@@ -1087,9 +1055,6 @@ class OpenStackRouter(BaseRouter):
         if ports:
             return ports[0].network_id
         return None
-
-    def delete(self):
-        self._provider.os_conn.delete_router(self.id)
 
     def attach_subnet(self, subnet):
         ret = self._provider.os_conn.add_router_interface(
@@ -1253,9 +1218,6 @@ class OpenStackVMFirewall(BaseVMFirewall):
     @property
     def rules(self):
         return self._rule_svc
-
-    def delete(self):
-        return self._vm_firewall.delete(self._provider.os_conn.session)
 
     def refresh(self):
         self._vm_firewall = self._provider.os_conn.network.get_security_group(

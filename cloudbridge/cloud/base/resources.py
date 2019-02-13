@@ -323,6 +323,9 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
             timeout=timeout,
             interval=interval)
 
+    def delete(self):
+        self._provider.compute.instances.delete(self)
+
 
 class BaseLaunchConfig(LaunchConfig):
 
@@ -534,15 +537,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         self._private_material = value
 
     def delete(self):
-        """
-        Delete this KeyPair.
-
-        :rtype: bool
-        :return: True if successful, otherwise False.
-        """
-        # This implementation assumes the `delete` method exists across
-        #  multiple providers.
-        self._key_pair.delete()
+        self._provider.security.key_pairs.delete(self)
 
 
 class BaseVMFirewall(BaseCloudResource, VMFirewall):
@@ -591,7 +586,7 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         """
         Delete this VM firewall.
         """
-        return self._vm_firewall.delete()
+        return self._provider.security.vm_firewalls.delete(self)
 
 
 class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
@@ -835,6 +830,9 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
+    def delete(self):
+        self._provider.networking.networks.delete(self)
+
     def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(
             label=label, network=self, cidr_block=cidr_block, zone=zone)
@@ -872,6 +870,9 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             terminal_states=[SubnetState.ERROR],
             timeout=timeout,
             interval=interval)
+
+    def delete(self):
+        self._provider.networking.subnets.delete(self)
 
 
 class BaseFloatingIPContainer(FloatingIPContainer, BasePageableObjectMixin):
@@ -937,6 +938,9 @@ class BaseRouter(BaseCloudResource, Router):
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
+
+    def delete(self):
+        self._provider.networking.routers.delete(self)
 
 
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,

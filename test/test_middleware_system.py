@@ -5,7 +5,7 @@ from cloudbridge.cloud.base.middleware import BaseMiddleware
 from cloudbridge.cloud.base.middleware import EventDebugLoggingMiddleware
 from cloudbridge.cloud.base.middleware import ExceptionWrappingMiddleware
 from cloudbridge.cloud.base.middleware import SimpleMiddlewareManager
-from cloudbridge.cloud.base.middleware import dispatch_event
+from cloudbridge.cloud.base.middleware import dispatch
 from cloudbridge.cloud.base.middleware import implement
 from cloudbridge.cloud.base.middleware import intercept
 from cloudbridge.cloud.base.middleware import observe
@@ -233,7 +233,7 @@ class MiddlewareSystemTestCase(unittest.TestCase):
                 assert event_args['result'] == "hello"
                 assert kwargs.get('a_keyword_arg') == "something"
 
-            @dispatch_event(EVENT_NAME)
+            @dispatch(event=EVENT_NAME, priority=2500)
             def my_callback_impl(self, *args, **kwargs):
                 self.invocation_order += "impl_"
                 assert 'first_pos_arg' in args
@@ -279,7 +279,7 @@ class MiddlewareSystemTestCase(unittest.TestCase):
 
         class SomeDummyClass(object):
 
-            @dispatch_event(EVENT_NAME)
+            @dispatch(event=EVENT_NAME, priority=2500)
             def my_callback_impl(self, *args, **kwargs):
                 assert 'first_pos_arg' in args
                 assert kwargs.get('a_keyword_arg') == "something"

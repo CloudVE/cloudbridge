@@ -671,12 +671,12 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, network_id):
+    def delete(self, network):
         """
         Delete an existing Network.
 
-        :type network_id: ``str``
-        :param network_id: The ID of the network to be deleted.
+        :type network: ``str`` or :class:`.Network`
+        :param network: The object or id of the network to be deleted.
         """
         pass
 
@@ -1188,12 +1188,12 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, key_pair_id):
+    def delete(self, key_pair):
         """
-        Delete an existing VMFirewall.
+        Delete an existing keypair.
 
-        :type key_pair_id: str
-        :param key_pair_id: The id of the key pair to be deleted.
+        :type key_pair: ``str`` or :class:`.KeyPair`
+        :param key_pair: The object or id of the key pair to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if the key does not exist, ``False`` otherwise. Note
@@ -1274,12 +1274,12 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, group_id):
+    def delete(self, firewall):
         """
         Delete an existing VMFirewall.
 
-        :type group_id: str
-        :param group_id: The VM firewall ID to be deleted.
+        :type firewall: ``str`` or :class:`.VMFirewall`
+        :param firewall: The object or VM firewall ID to be deleted.
         """
         pass
 

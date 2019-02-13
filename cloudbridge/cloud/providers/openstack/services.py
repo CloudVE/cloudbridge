@@ -6,6 +6,7 @@ import logging
 from cinderclient.exceptions import NotFound as CinderNotFound
 
 from neutronclient.common.exceptions import NeutronClientException
+from neutronclient.common.exceptions import PortNotFoundClient
 
 from novaclient.exceptions import NotFound as NovaNotFound
 
@@ -15,7 +16,7 @@ from openstack.exceptions import ResourceNotFound
 from swiftclient import ClientException as SwiftClientException
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.middleware import implement
+from cloudbridge.cloud.base.middleware import dispatch
 from cloudbridge.cloud.base.resources import BaseLaunchConfig
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
@@ -131,9 +132,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(OpenStackKeyPairService, self).__init__(provider)
 
-    @implement(event_pattern="provider.security.key_pairs.get",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _get(self, key_pair_id):
+    @dispatch(event="provider.security.key_pairs.get",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def get(self, key_pair_id):
         """
         Returns a KeyPair given its id.
         """
@@ -145,9 +146,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
             log.debug("KeyPair %s was not found.", key_pair_id)
             return None
 
-    @implement(event_pattern="provider.security.key_pairs.list",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
+    @dispatch(event="provider.security.key_pairs.list",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         """
         List all key pairs associated with this account.
 
@@ -162,9 +163,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
-    @implement(event_pattern="provider.security.key_pairs.find",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.security.key_pairs.find",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         name = kwargs.pop('name', None)
 
         # All kwargs should have been popped at this time.
@@ -179,12 +180,10 @@ class OpenStackKeyPairService(BaseKeyPairService):
         log.debug("Searching for %s in: %s", name, keypairs)
         return ClientPagedResultList(self.provider, results)
 
-    @implement(event_pattern="provider.security.key_pairs.create",
-               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def _create(self, name, public_key_material=None):
-        log.debug("Creating a new key pair with the name: %s", name)
+    @dispatch(event="provider.security.key_pairs.create",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, public_key_material=None):
         OpenStackKeyPair.assert_valid_resource_name(name)
-
         existing_kp = self.find(name=name)
         if existing_kp:
             raise DuplicateResourceException(
@@ -200,22 +199,34 @@ class OpenStackKeyPairService(BaseKeyPairService):
         cb_kp.material = private_key
         return cb_kp
 
+    @dispatch(event="provider.security.key_pairs.delete",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def delete(self, kp):
+        keypair = kp if isinstance(kp, OpenStackKeyPair) else self.get(kp)
+        if keypair:
+            # pylint:disable=protected-access
+            keypair._key_pair.delete()
+
 
 class OpenStackVMFirewallService(BaseVMFirewallService):
 
     def __init__(self, provider):
         super(OpenStackVMFirewallService, self).__init__(provider)
 
-    def get(self, firewall_id):
-        log.debug("Getting OpenStack VM Firewall with the id: %s", firewall_id)
+    @dispatch(event="provider.security.vm_firewalls.get",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def get(self, vm_firewall_id):
         try:
             return OpenStackVMFirewall(
                 self.provider,
-                self.provider.os_conn.network.get_security_group(firewall_id))
+                self.provider.os_conn.network
+                    .get_security_group(vm_firewall_id))
         except (ResourceNotFound, NotFoundException):
-            log.debug("Firewall %s not found.", firewall_id)
+            log.debug("Firewall %s not found.", vm_firewall_id)
             return None
 
+    @dispatch(event="provider.security.vm_firewalls.list",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         firewalls = [
             OpenStackVMFirewall(self.provider, fw)
@@ -225,11 +236,10 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                                      limit=limit, marker=marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
+    @dispatch(event="provider.security.vm_firewalls.create",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
         OpenStackVMFirewall.assert_valid_resource_label(label)
-        log.debug("Creating OpenStack VM Firewall with the params: "
-                  "[label: %s network id: %s description: %s]", label,
-                  network, description)
         net = network.id if isinstance(network, Network) else network
         # We generally simulate a network being associated with a firewall
         # by storing the supplied value in the firewall description field that
@@ -247,12 +257,13 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
             return OpenStackVMFirewall(self.provider, sg)
         return None
 
-    def delete(self, group_id):
-        log.debug("Deleting OpenStack Firewall with the id: %s", group_id)
-        firewall = self.get(group_id)
-        if firewall:
-            firewall.delete()
-        return True
+    @dispatch(event="provider.security.vm_firewalls.delete",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def delete(self, vmf):
+        fw = vmf if isinstance(vmf, OpenStackVMFirewall) else self.get(vmf)
+        if fw:
+            # pylint:disable=protected-access
+            fw._vm_firewall.delete(self.provider.os_conn.session)
 
 
 class OpenStackStorageService(BaseStorageService):
@@ -288,13 +299,9 @@ class OpenStackVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(OpenStackVolumeService, self).__init__(provider)
 
-    @implement(event_pattern="provider.storage.volumes.get",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _get(self, volume_id):
-        """
-        Returns a volume given its id.
-        """
-        log.debug("Getting OpenStack Volume with the id: %s", volume_id)
+    @dispatch(event="provider.storage.volumes.get",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def get(self, volume_id):
         try:
             return OpenStackVolume(
                 self.provider, self.provider.cinder.volumes.get(volume_id))
@@ -302,9 +309,9 @@ class OpenStackVolumeService(BaseVolumeService):
             log.debug("Volume %s was not found.", volume_id)
             return None
 
-    @implement(event_pattern="provider.storage.volumes.find",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.storage.volumes.find",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -324,12 +331,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols)
 
-    @implement(event_pattern="provider.storage.volumes.list",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
-        """
-        List all volumes.
-        """
+    @dispatch(event="provider.storage.volumes.list",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         cb_vols = [
             OpenStackVolume(self.provider, vol)
             for vol in self.provider.cinder.volumes.list(
@@ -338,17 +342,10 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
-    @implement(event_pattern="provider.storage.volumes.create",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, size, zone, snapshot=None, description=None):
-        """
-        Creates a new volume.
-        """
-        log.debug("Creating a new volume with the params: "
-                  "[label: %s size: %s zone: %s snapshot: %s description: %s]",
-                  label, size, zone, snapshot, description)
+    @dispatch(event="provider.storage.volumes.create",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, size, zone, snapshot=None, description=None):
         OpenStackVolume.assert_valid_resource_label(label)
-
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, OpenStackSnapshot) and snapshot else snapshot
@@ -358,13 +355,13 @@ class OpenStackVolumeService(BaseVolumeService):
             availability_zone=zone_id, snapshot_id=snapshot_id)
         return OpenStackVolume(self.provider, os_vol)
 
-    @implement(event_pattern="provider.storage.volumes.delete",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, volume):
-        cb_vol = (volume if isinstance(volume, OpenStackVolume)
-                  else self.get(volume))
-        # pylint:disable=protected-access
-        cb_vol._volume.delete()
+    @dispatch(event="provider.storage.volumes.delete",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def delete(self, vol):
+        volume = vol if isinstance(vol, OpenStackVolume) else self.get(vol)
+        if volume:
+            # pylint:disable=protected-access
+            volume._volume.delete()
 
 
 class OpenStackSnapshotService(BaseSnapshotService):
@@ -372,13 +369,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(OpenStackSnapshotService, self).__init__(provider)
 
-    @implement(event_pattern="provider.storage.snapshots.get",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _get(self, snapshot_id):
-        """
-        Returns a snapshot given its id.
-        """
-        log.debug("Getting OpenStack snapshot with the id: %s", snapshot_id)
+    @dispatch(event="provider.storage.snapshots.get",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def get(self, snapshot_id):
         try:
             return OpenStackSnapshot(
                 self.provider,
@@ -387,9 +380,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
             log.debug("Snapshot %s was not found.", snapshot_id)
             return None
 
-    @implement(event_pattern="provider.storage.snapshots.find",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.storage.snapshots.find",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
@@ -410,12 +403,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_snaps)
 
-    @implement(event_pattern="provider.storage.snapshots.list",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit=None, marker=None):
-        """
-        List all snapshot.
-        """
+    @dispatch(event="provider.storage.snapshots.list",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         cb_snaps = [
             OpenStackSnapshot(self.provider, snap) for
             snap in self.provider.cinder.volume_snapshots.list(
@@ -424,15 +414,10 @@ class OpenStackSnapshotService(BaseSnapshotService):
                              'marker': marker})]
         return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
 
-    @implement(event_pattern="provider.storage.snapshots.create",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _create(self, label, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
-        log.debug("Creating a new snapshot of the %s volume.", label)
+    @dispatch(event="provider.storage.snapshots.create",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, volume, description=None):
         OpenStackSnapshot.assert_valid_resource_label(label)
-
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
                      else volume)
 
@@ -441,13 +426,13 @@ class OpenStackSnapshotService(BaseSnapshotService):
             description=description)
         return OpenStackSnapshot(self.provider, os_snap)
 
-    @implement(event_pattern="provider.storage.snapshots.delete",
-               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, snapshot):
-        cb_snap = (snapshot if isinstance(snapshot, OpenStackSnapshot)
-                   else self.get(snapshot))
-        # pylint:disable=protected-access
-        cb_snap._snapshot.delete()
+    @dispatch(event="provider.storage.snapshots.delete",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def delete(self, snap):
+        s = snap if isinstance(snap, OpenStackSnapshot) else self.get(snap)
+        if s:
+            # pylint:disable=protected-access
+            s._snapshot.delete()
 
 
 class OpenStackBucketService(BaseBucketService):
@@ -455,9 +440,9 @@ class OpenStackBucketService(BaseBucketService):
     def __init__(self, provider):
         super(OpenStackBucketService, self).__init__(provider)
 
-    @implement(event_pattern="provider.storage.buckets.get",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _get(self, bucket_id):
+    @dispatch(event="provider.storage.buckets.get",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
@@ -472,9 +457,9 @@ class OpenStackBucketService(BaseBucketService):
             log.debug("Bucket %s was not found.", bucket_id)
             return None
 
-    @implement(event_pattern="provider.storage.buckets.find",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _find(self, **kwargs):
+    @dispatch(event="provider.storage.buckets.find",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
         name = kwargs.pop('name', None)
 
         # All kwargs should have been popped at this time.
@@ -488,9 +473,9 @@ class OpenStackBucketService(BaseBucketService):
                       if name in c.get("name")]
         return oshelpers.to_server_paged_list(self.provider, cb_buckets)
 
-    @implement(event_pattern="provider.storage.buckets.list",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _list(self, limit, marker):
+    @dispatch(event="provider.storage.buckets.list",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
         _, container_list = self.provider.swift.get_account(
             limit=oshelpers.os_result_limit(self.provider, limit),
             marker=marker)
@@ -498,9 +483,9 @@ class OpenStackBucketService(BaseBucketService):
                       for c in container_list]
         return oshelpers.to_server_paged_list(self.provider, cb_buckets, limit)
 
-    @implement(event_pattern="provider.storage.buckets.create",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _create(self, name, location):
+    @dispatch(event="provider.storage.buckets.create",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, location=None):
         OpenStackBucket.assert_valid_resource_name(name)
         location = location or self.provider.region_name
         try:
@@ -511,10 +496,11 @@ class OpenStackBucketService(BaseBucketService):
             self.provider.swift.put_container(name)
             return self.get(name)
 
-    @implement(event_pattern="provider.storage.buckets.delete",
-               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
-    def _delete(self, bucket_id):
-        self.provider.swift.delete_container(bucket_id)
+    @dispatch(event="provider.storage.buckets.delete",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def delete(self, bucket):
+        b_id = bucket.id if isinstance(bucket, OpenStackBucket) else bucket
+        self.provider.swift.delete_container(b_id)
 
 
 class OpenStackBucketObjectService(BaseBucketObjectService):
@@ -641,12 +627,65 @@ class OpenStackInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(OpenStackInstanceService, self).__init__(provider)
 
+    def _to_block_device_mapping(self, launch_config):
+        """
+        Extracts block device mapping information
+        from a launch config and constructs a BlockDeviceMappingV2
+        object.
+        """
+        bdm = []
+        for device in launch_config.block_devices:
+            bdm_dict = dict()
+
+            if device.is_volume:
+                bdm_dict['destination_type'] = 'volume'
+
+                if device.is_root:
+                    bdm_dict['device_name'] = '/dev/sda'
+                    bdm_dict['boot_index'] = 0
+
+                if isinstance(device.source, Snapshot):
+                    bdm_dict['source_type'] = 'snapshot'
+                    bdm_dict['uuid'] = device.source.id
+                elif isinstance(device.source, Volume):
+                    bdm_dict['source_type'] = 'volume'
+                    bdm_dict['uuid'] = device.source.id
+                elif isinstance(device.source, MachineImage):
+                    bdm_dict['source_type'] = 'image'
+                    bdm_dict['uuid'] = device.source.id
+                else:
+                    bdm_dict['source_type'] = 'blank'
+
+                if device.delete_on_terminate is not None:
+                    bdm_dict[
+                        'delete_on_termination'] = device.delete_on_terminate
+
+                if device.size:
+                    bdm_dict['volume_size'] = device.size
+            else:
+                bdm_dict['destination_type'] = 'local'
+                bdm_dict['source_type'] = 'blank'
+                bdm_dict['delete_on_termination'] = True
+            bdm.append(bdm_dict)
+        return bdm
+
+    def _has_root_device(self, launch_config):
+        if not launch_config:
+            return False
+        for device in launch_config.block_devices:
+            if device.is_root:
+                return True
+        return False
+
+    def create_launch_config(self):
+        return BaseLaunchConfig(self.provider)
+
+    @dispatch(event="provider.compute.instances.create",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
-        """Create a new virtual machine instance."""
         OpenStackInstance.assert_valid_resource_label(label)
-
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
             isinstance(vm_type, VMType) else \
@@ -724,59 +763,8 @@ class OpenStackInstanceService(BaseInstanceService):
             nics=nics)
         return OpenStackInstance(self.provider, os_instance)
 
-    def _to_block_device_mapping(self, launch_config):
-        """
-        Extracts block device mapping information
-        from a launch config and constructs a BlockDeviceMappingV2
-        object.
-        """
-        bdm = []
-        for device in launch_config.block_devices:
-            bdm_dict = dict()
-
-            if device.is_volume:
-                bdm_dict['destination_type'] = 'volume'
-
-                if device.is_root:
-                    bdm_dict['device_name'] = '/dev/sda'
-                    bdm_dict['boot_index'] = 0
-
-                if isinstance(device.source, Snapshot):
-                    bdm_dict['source_type'] = 'snapshot'
-                    bdm_dict['uuid'] = device.source.id
-                elif isinstance(device.source, Volume):
-                    bdm_dict['source_type'] = 'volume'
-                    bdm_dict['uuid'] = device.source.id
-                elif isinstance(device.source, MachineImage):
-                    bdm_dict['source_type'] = 'image'
-                    bdm_dict['uuid'] = device.source.id
-                else:
-                    bdm_dict['source_type'] = 'blank'
-
-                if device.delete_on_terminate is not None:
-                    bdm_dict[
-                        'delete_on_termination'] = device.delete_on_terminate
-
-                if device.size:
-                    bdm_dict['volume_size'] = device.size
-            else:
-                bdm_dict['destination_type'] = 'local'
-                bdm_dict['source_type'] = 'blank'
-                bdm_dict['delete_on_termination'] = True
-            bdm.append(bdm_dict)
-        return bdm
-
-    def _has_root_device(self, launch_config):
-        if not launch_config:
-            return False
-        for device in launch_config.block_devices:
-            if device.is_root:
-                return True
-        return False
-
-    def create_launch_config(self):
-        return BaseLaunchConfig(self.provider)
-
+    @dispatch(event="provider.compute.instances.find",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
 
@@ -795,6 +783,8 @@ class OpenStackInstanceService(BaseInstanceService):
                 marker=None)]
         return oshelpers.to_server_paged_list(self.provider, cb_insts)
 
+    @dispatch(event="provider.compute.instances.list",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         """
         List all instances.
@@ -806,6 +796,8 @@ class OpenStackInstanceService(BaseInstanceService):
                 marker=marker)]
         return oshelpers.to_server_paged_list(self.provider, cb_insts, limit)
 
+    @dispatch(event="provider.compute.instances.get",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def get(self, instance_id):
         """
         Returns an instance given its id.
@@ -817,12 +809,28 @@ class OpenStackInstanceService(BaseInstanceService):
             log.debug("Instance %s was not found.", instance_id)
             return None
 
+    @dispatch(event="provider.compute.instances.delete",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def delete(self, inst):
+        ins = inst if isinstance(inst, OpenStackInstance) else self.get(inst)
+        if ins:
+            # pylint:disable=protected-access
+            os_instance = ins._os_instance
+            # delete the port we created when launching
+            # Assumption: it's the first interface in the list
+            iface_list = os_instance.interface_list()
+            if iface_list:
+                self.provider.neutron.delete_port(iface_list[0].port_id)
+            os_instance.delete()
+
 
 class OpenStackVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
         super(OpenStackVMTypeService, self).__init__(provider)
 
+    @dispatch(event="provider.compute.vm_types.list",
+              priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         cb_itypes = [
             OpenStackVMType(self.provider, obj)
@@ -838,11 +846,15 @@ class OpenStackRegionService(BaseRegionService):
     def __init__(self, provider):
         super(OpenStackRegionService, self).__init__(provider)
 
+    @dispatch(event="provider.compute.regions.get",
+              priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def get(self, region_id):
         log.debug("Getting OpenStack Region with the id: %s", region_id)
         region = (r for r in self if r.id == region_id)
         return next(region, None)
 
+    @dispatch(event="provider.compute.regions.list",
+              priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         # pylint:disable=protected-access
         if self.provider._keystone_version == 3:
@@ -897,11 +909,14 @@ class OpenStackNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(OpenStackNetworkService, self).__init__(provider)
 
+    @dispatch(event="provider.networking.networks.get",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def get(self, network_id):
-        log.debug("Getting OpenStack Network with the id: %s", network_id)
         network = (n for n in self if n.id == network_id)
         return next(network, None)
 
+    @dispatch(event="provider.networking.networks.list",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks()
@@ -909,6 +924,8 @@ class OpenStackNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
+    @dispatch(event="provider.networking.networks.find",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
 
@@ -925,9 +942,9 @@ class OpenStackNetworkService(BaseNetworkService):
                     .get('networks') if network]
         return ClientPagedResultList(self.provider, networks)
 
+    @dispatch(event="provider.networking.networks.create",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def create(self, label, cidr_block):
-        log.debug("Creating OpenStack Network with the params: "
-                  "[label: %s Cinder Block: %s]", label, cidr_block)
         OpenStackNetwork.assert_valid_resource_label(label)
         net_info = {'name': label or ""}
         network = self.provider.neutron.create_network({'network': net_info})
@@ -936,17 +953,40 @@ class OpenStackNetworkService(BaseNetworkService):
             cb_net.label = label
         return cb_net
 
+    @dispatch(event="provider.networking.networks.delete",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def delete(self, net):
+        network = net if isinstance(net, OpenStackNetwork) else self.get(net)
+        if not network:
+            return
+        if not network.external and network.id in str(
+                self.provider.neutron.list_networks()):
+            # If there are ports associated with the network, it won't delete
+            ports = self.provider.neutron.list_ports(
+                network_id=network.id).get('ports', [])
+            for port in ports:
+                try:
+                    self.provider.neutron.delete_port(port.get('id'))
+                except PortNotFoundClient:
+                    # Ports could have already been deleted if instances
+                    # are terminated etc. so exceptions can be safely ignored
+                    pass
+            self.provider.neutron.delete_network(network.id)
+
 
 class OpenStackSubnetService(BaseSubnetService):
 
     def __init__(self, provider):
         super(OpenStackSubnetService, self).__init__(provider)
 
+    @dispatch(event="provider.networking.subnets.get",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def get(self, subnet_id):
-        log.debug("Getting OpenStack Subnet with the id: %s", subnet_id)
         subnet = (s for s in self if s.id == subnet_id)
         return next(subnet, None)
 
+    @dispatch(event="provider.networking.subnets.list",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def list(self, network=None, limit=None, marker=None):
         if network:
             network_id = (network.id if isinstance(network, OpenStackNetwork)
@@ -959,11 +999,10 @@ class OpenStackSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
+    @dispatch(event="provider.networking.subnets.create",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, cidr_block, zone):
         """zone param is ignored."""
-        log.debug("Creating OpenStack Subnet with the params: "
-                  "[Label: %s Network: %s Cinder Block: %s Zone: -ignored-]",
-                  label, network, cidr_block)
         OpenStackSubnet.assert_valid_resource_label(label)
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
@@ -973,6 +1012,12 @@ class OpenStackSubnetService(BaseSubnetService):
                   .get('subnet'))
         cb_subnet = OpenStackSubnet(self.provider, subnet)
         return cb_subnet
+
+    @dispatch(event="provider.networking.subnets.delete",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def delete(self, subnet):
+        sn_id = subnet.id if isinstance(subnet, OpenStackSubnet) else subnet
+        self.provider.neutron.delete_subnet(sn_id)
 
     def get_or_create_default(self, zone):
         """
@@ -997,42 +1042,44 @@ class OpenStackSubnetService(BaseSubnetService):
         except NeutronClientException:
             return None
 
-    def delete(self, subnet):
-        log.debug("Deleting subnet: %s", subnet)
-        subnet_id = (subnet.id if isinstance(subnet, OpenStackSubnet)
-                     else subnet)
-        self.provider.neutron.delete_subnet(subnet_id)
-        # Adhere to the interface docs
-        if subnet_id not in self:
-            return True
-        return False
-
 
 class OpenStackRouterService(BaseRouterService):
 
     def __init__(self, provider):
         super(OpenStackRouterService, self).__init__(provider)
 
+    @dispatch(event="provider.networking.routers.get",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def get(self, router_id):
         log.debug("Getting OpenStack Router with the id: %s", router_id)
         router = self.provider.os_conn.get_router(router_id)
         return OpenStackRouter(self.provider, router) if router else None
 
+    @dispatch(event="provider.networking.routers.list",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         routers = self.provider.os_conn.list_routers()
         os_routers = [OpenStackRouter(self.provider, r) for r in routers]
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
 
+    @dispatch(event="provider.networking.routers.find",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
         filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
+    @dispatch(event="provider.networking.routers.create",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network):
         """Parameter ``network`` is not used by OpenStack."""
-        log.debug("Creating OpenStack Router with the label: %s", label)
-        OpenStackRouter.assert_valid_resource_label(label)
         router = self.provider.os_conn.create_router(name=label)
         return OpenStackRouter(self.provider, router)
+
+    @dispatch(event="provider.networking.routers.delete",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def delete(self, router):
+        r_id = router.id if isinstance(router, OpenStackRouter) else router
+        self.provider.os_conn.delete_router(r_id)

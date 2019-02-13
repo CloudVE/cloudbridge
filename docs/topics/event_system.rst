@@ -116,7 +116,7 @@ getter, from the CloudBridge developer perspective.
         def __init__(self, provider):
             super(MyFirstProviderService, self).__init__(provider)
 
-        def _get(self, obj_id):
+        def get(self, obj_id):
             # do the getting
             resource = ...
             return MyFirstProviderResource(resource)
@@ -126,7 +126,7 @@ getter, from the CloudBridge developer perspective.
         def __init__(self, provider):
             super(MySecondProviderService, self).__init__(provider)
 
-        def _get(self, obj_id):
+        def get(self, obj_id):
             # do the getting
             resource = ...
             return MySecondProviderResource(resource)

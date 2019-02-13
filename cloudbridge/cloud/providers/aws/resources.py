@@ -280,9 +280,6 @@ class AWSInstance(BaseInstance):
     def reboot(self):
         self._ec2_instance.reboot()
 
-    def delete(self):
-        self._ec2_instance.terminate()
-
     @property
     def image_id(self):
         return self._ec2_instance.image_id
@@ -974,9 +971,6 @@ class AWSNetwork(BaseNetwork):
     def cidr_block(self):
         return self._vpc.cidr_block
 
-    def delete(self):
-        self._vpc.delete()
-
     @property
     def subnets(self):
         return [AWSSubnet(self._provider, s) for s in self._vpc.subnets.all()]
@@ -1043,9 +1037,6 @@ class AWSSubnet(BaseSubnet):
     def zone(self):
         return AWSPlacementZone(self._provider, self._subnet.availability_zone,
                                 self._provider.region_name)
-
-    def delete(self):
-        self._subnet.delete()
 
     @property
     def state(self):
@@ -1161,9 +1152,6 @@ class AWSRouter(BaseRouter):
     @property
     def network_id(self):
         return self._route_table.vpc_id
-
-    def delete(self):
-        self._route_table.delete()
 
     def attach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
