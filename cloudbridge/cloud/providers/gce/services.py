@@ -26,6 +26,7 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallRuleService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
@@ -48,6 +49,7 @@ from .resources import GCERouter
 from .resources import GCESnapshot
 from .resources import GCESubnet
 from .resources import GCEVMFirewall
+from .resources import GCEVMFirewallRule
 from .resources import GCEVMType
 from .resources import GCEVolume
 from .resources import GCSBucket
@@ -221,6 +223,71 @@ class GCEVMFirewallService(BaseVMFirewallService):
             vm_firewalls.append(
                 GCEVMFirewall(self._delegate, tag, network))
         return vm_firewalls
+
+
+class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
+
+    def __init__(self, provider):
+        super(GCEVMFirewallRuleService, self).__init__(provider)
+        self._dummy_rule = None
+
+    def list(self, firewall, limit=None, marker=None):
+        rules = []
+        for firewall in firewall.delegate.iter_firewalls(
+                firewall.name, firewall.network.name):
+            rule = GCEVMFirewallRule(firewall, firewall['id'])
+            if rule.is_dummy_rule():
+                self._dummy_rule = rule
+            else:
+                rules.append(rule)
+        return ClientPagedResultList(self.provider, rules,
+                                     limit=limit, marker=marker)
+
+    @property
+    def dummy_rule(self):
+        if not self._dummy_rule:
+            self.list()
+        return self._dummy_rule
+
+    @staticmethod
+    def to_port_range(from_port, to_port):
+        if from_port is not None and to_port is not None:
+            return '%d-%d' % (from_port, to_port)
+        elif from_port is not None:
+            return from_port
+        else:
+            return to_port
+
+    def create_with_priority(self, firewall, direction, protocol, priority,
+                             from_port=None, to_port=None, cidr=None,
+                             src_dest_fw=None):
+        port = GCEVMFirewallRuleService.to_port_range(from_port, to_port)
+        src_dest_tag = None
+        src_dest_fw_id = None
+        if src_dest_fw:
+            src_dest_tag = src_dest_fw.name
+            src_dest_fw_id = src_dest_fw.id
+        if not firewall.delegate.add_firewall(
+                firewall.name, direction, protocol, priority, port, cidr,
+                src_dest_tag, firewall.description,
+                firewall.network.name):
+            return None
+        rules = self.find(direction=direction, protocol=protocol,
+                          from_port=from_port, to_port=to_port, cidr=cidr,
+                          src_dest_fw_id=src_dest_fw_id)
+        if len(rules) < 1:
+            return None
+        return rules[0]
+
+    def create(self, firewall, direction, protocol, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        return self.create_with_priority(direction, protocol, 1000, from_port,
+                                         to_port, cidr, src_dest_fw)
+
+    def delete(self, firewall, rule):
+        if rule.is_dummy_rule():
+            return True
+        firewall.delegate.delete_firewall_id(rule._rule)
 
 
 class GCEVMTypeService(BaseVMTypeService):

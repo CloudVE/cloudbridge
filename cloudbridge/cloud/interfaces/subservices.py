@@ -203,6 +203,9 @@ class VMFirewallRuleSubService(PageableObjectMixin):
             rule = fw.rules.get('rule_id')
             print(rule.id, rule.label)
 
+        :type rule_id: str
+        :param rule_id: The ID of the desired firewall rule
+
         :rtype: :class:`.FirewallRule`
         :return:  a FirewallRule instance
         """

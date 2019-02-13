@@ -33,7 +33,6 @@ from cloudbridge.cloud.interfaces.resources import NetworkState
 from cloudbridge.cloud.interfaces.resources import RouterState
 from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
-from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
 from .helpers import find_tag_value
@@ -721,23 +720,6 @@ class AWSVMFirewallRule(BaseVMFirewallRule):
                 'GroupId': src_dest_fw_id}
             ] if src_dest_fw_id else None
         }
-
-    def delete(self):
-        ip_perm_entry = self._construct_ip_perms(
-            self.protocol, self.from_port, self.to_port,
-            self.cidr, self.src_dest_fw_id)
-
-        # Filter out empty values to please Boto
-        ip_perms = [trim_empty_params(ip_perm_entry)]
-
-        # pylint:disable=protected-access
-        if self.direction == TrafficDirection.INBOUND:
-            self.firewall._vm_firewall.revoke_ingress(
-                IpPermissions=ip_perms)
-        else:
-            self.firewall._vm_firewall.revoke_egress(
-                IpPermissions=ip_perms)
-        self.firewall.refresh()
 
 
 class AWSBucketObject(BaseBucketObject):

@@ -10,6 +10,7 @@ from neutronclient.common.exceptions import PortNotFoundClient
 
 from novaclient.exceptions import NotFound as NovaNotFound
 
+from openstack.exceptions import HttpException
 from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
 
@@ -34,23 +35,26 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallRuleService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
     import DuplicateResourceException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
-from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
+from . import helpers as oshelpers
 from .resources import OpenStackBucket
 from .resources import OpenStackBucketObject
 from .resources import OpenStackInstance
@@ -63,6 +67,7 @@ from .resources import OpenStackRouter
 from .resources import OpenStackSnapshot
 from .resources import OpenStackSubnet
 from .resources import OpenStackVMFirewall
+from .resources import OpenStackVMFirewallRule
 from .resources import OpenStackVMType
 from .resources import OpenStackVolume
 
@@ -266,6 +271,58 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
         if fw:
             # pylint:disable=protected-access
             fw._vm_firewall.delete(self.provider.os_conn.session)
+
+
+class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
+
+    def __init__(self, provider, firewall):
+        super(OpenStackVMFirewallRuleService, self).__init__(provider)
+
+    def list(self, firewall, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [OpenStackVMFirewallRule(firewall, r)
+                 for r in firewall._vm_firewall.security_group_rules]
+        return ClientPagedResultList(self.provider, rules,
+                                     limit=limit, marker=marker)
+
+    def create(self, firewall, direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (src_dest_fw.id if isinstance(src_dest_fw,
+                                                       OpenStackVMFirewall)
+                          else src_dest_fw)
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                os_direction = 'ingress'
+            elif direction == TrafficDirection.OUTBOUND:
+                os_direction = 'egress'
+            else:
+                raise InvalidValueException("direction", direction)
+            # pylint:disable=protected-access
+            rule = self.provider.os_conn.network.create_security_group_rule(
+                security_group_id=firewall.id,
+                direction=os_direction,
+                port_range_max=to_port,
+                port_range_min=from_port,
+                protocol=protocol,
+                remote_ip_prefix=cidr,
+                remote_group_id=src_dest_fw_id)
+            firewall.refresh()
+            return OpenStackVMFirewallRule(firewall, rule.to_dict())
+        except HttpException as e:
+            firewall.refresh()
+            # 409=Conflict, raised for duplicate rule
+            if e.status_code == 409:
+                existing = self.find(direction=direction, protocol=protocol,
+                                     from_port=from_port, to_port=to_port,
+                                     cidr=cidr, src_dest_fw_id=src_dest_fw_id)
+                return existing[0]
+            else:
+                raise e
+
+    def delete(self, firewall, rule):
+        self.provider.os_conn.network.delete_security_group_rule(rule.id)
+        firewall.refresh()
 
 
 class OpenStackStorageService(BaseStorageService):

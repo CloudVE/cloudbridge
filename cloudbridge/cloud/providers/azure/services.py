@@ -26,6 +26,7 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallRuleService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
@@ -36,6 +37,7 @@ from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
@@ -53,6 +55,7 @@ from .resources import AzureRouter
 from .resources import AzureSnapshot
 from .resources import AzureSubnet
 from .resources import AzureVMFirewall
+from .resources import AzureVMFirewallRule
 from .resources import AzureVMType
 from .resources import AzureVolume
 
@@ -148,6 +151,80 @@ class AzureVMFirewallService(BaseVMFirewallService):
     def delete(self, vmf):
         fw_id = vmf.id if isinstance(vmf, AzureVMFirewall) else vmf
         self.provider.azure_client.delete_vm_firewall(fw_id)
+
+
+class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
+
+    def __init__(self, provider):
+        super(AzureVMFirewallRuleService, self).__init__(provider)
+
+    def list(self, firewall, limit=None, marker=None):
+        # Filter out firewall rules with priority < 3500 because values
+        # between 3500 and 4096 are assumed to be owned by cloudbridge
+        # default rules.
+        # pylint:disable=protected-access
+        rules = [AzureVMFirewallRule(firewall, rule) for rule
+                 in firewall._vm_firewall.security_rules
+                 if rule.priority < 3500]
+        return ClientPagedResultList(self._provider, rules,
+                                     limit=limit, marker=marker)
+
+    def create(self, firewall, direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        if protocol and from_port and to_port:
+            return self._create_rule(direction, protocol, from_port,
+                                     to_port, cidr)
+        elif src_dest_fw:
+            result = None
+            fw = (self._provider.security.vm_firewalls.get(src_dest_fw)
+                  if isinstance(src_dest_fw, str) else src_dest_fw)
+            for rule in fw.rules:
+                result = self._create_rule(
+                    rule.direction, rule.protocol, rule.from_port,
+                    rule.to_port, rule.cidr)
+            return result
+        else:
+            return None
+
+    def _create_rule(self, firewall, direction, protocol,
+                     from_port, to_port, cidr):
+
+        # If cidr is None, default values is set as 0.0.0.0/0
+        if not cidr:
+            cidr = '0.0.0.0/0'
+
+        count = len(firewall._vm_firewall.security_rules) + 1
+        rule_name = "cb-rule-" + str(count)
+        priority = 1000 + count
+        destination_port_range = str(from_port) + "-" + str(to_port)
+        source_port_range = '*'
+        destination_address_prefix = "*"
+        access = "Allow"
+        direction = ("Inbound" if direction == TrafficDirection.INBOUND
+                     else "Outbound")
+        parameters = {"priority": priority,
+                      "protocol": protocol,
+                      "source_port_range": source_port_range,
+                      "source_address_prefix": cidr,
+                      "destination_port_range": destination_port_range,
+                      "destination_address_prefix": destination_address_prefix,
+                      "access": access,
+                      "direction": direction}
+        result = self._provider.azure_client. \
+            create_vm_firewall_rule(firewall.id,
+                                    rule_name, parameters)
+        # pylint:disable=protected-access
+        firewall._vm_firewall.security_rules.append(result)
+        return AzureVMFirewallRule(firewall, result)
+
+    def delete(self, firewall, rule):
+        vm_firewall = firewall.name
+        self.provider.azure_client. \
+            delete_vm_firewall_rule(rule.id, vm_firewall)
+        for i, o in enumerate(firewall._vm_firewall.security_rules):
+            if o.id == rule.id:
+                del firewall._vm_firewall.security_rules[i]
+                break
 
 
 class AzureKeyPairService(BaseKeyPairService):

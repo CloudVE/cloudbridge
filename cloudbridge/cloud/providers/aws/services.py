@@ -27,6 +27,7 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallRuleService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
@@ -34,17 +35,20 @@ from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
+from .helpers import trim_empty_params
 from .resources import AWSBucket
 from .resources import AWSBucketObject
 from .resources import AWSInstance
@@ -59,6 +63,7 @@ from .resources import AWSRouter
 from .resources import AWSSnapshot
 from .resources import AWSSubnet
 from .resources import AWSVMFirewall
+from .resources import AWSVMFirewallRule
 from .resources import AWSVMType
 from .resources import AWSVolume
 
@@ -196,6 +201,73 @@ class AWSVMFirewallService(BaseVMFirewallService):
         if firewall:
             # pylint:disable=protected-access
             firewall._vm_firewall.delete()
+
+
+class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
+
+    def __init__(self, provider):
+        super(AWSVMFirewallRuleService, self).__init__(provider)
+
+    def list(self, firewall, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [AWSVMFirewallRule(firewall,
+                                   TrafficDirection.INBOUND, r)
+                 for r in firewall._vm_firewall.ip_permissions]
+        rules = rules + [
+            AWSVMFirewallRule(
+                firewall, TrafficDirection.OUTBOUND, r)
+            for r in firewall._vm_firewall.ip_permissions_egress]
+        return ClientPagedResultList(self.provider, rules,
+                                     limit=limit, marker=marker)
+
+    def create(self, firewall,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (
+            src_dest_fw.id if isinstance(src_dest_fw, AWSVMFirewall)
+            else src_dest_fw)
+
+        # pylint:disable=protected-access
+        ip_perm_entry = AWSVMFirewallRule._construct_ip_perms(
+            protocol, from_port, to_port, cidr, src_dest_fw_id)
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                # pylint:disable=protected-access
+                firewall._vm_firewall.authorize_ingress(
+                    IpPermissions=ip_perms)
+            elif direction == TrafficDirection.OUTBOUND:
+                # pylint:disable=protected-access
+                firewall._vm_firewall.authorize_egress(
+                    IpPermissions=ip_perms)
+            else:
+                raise InvalidValueException("direction", direction)
+            firewall.refresh()
+            return AWSVMFirewallRule(firewall, direction, ip_perm_entry)
+        except ClientError as ec2e:
+            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
+                return AWSVMFirewallRule(
+                    firewall, direction, ip_perm_entry)
+            else:
+                raise ec2e
+
+    def delete(self, firewall, rule):
+        ip_perm_entry = rule._construct_ip_perms(
+            rule.protocol, rule.from_port, rule.to_port,
+            rule.cidr, rule.src_dest_fw_id)
+
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        # pylint:disable=protected-access
+        if rule.direction == TrafficDirection.INBOUND:
+            firewall._vm_firewall.revoke_ingress(
+                IpPermissions=ip_perms)
+        else:
+            firewall._vm_firewall.revoke_egress(
+                IpPermissions=ip_perms)
+        firewall.refresh()
 
 
 class AWSStorageService(BaseStorageService):

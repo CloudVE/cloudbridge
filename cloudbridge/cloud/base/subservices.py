@@ -69,30 +69,36 @@ class BaseVMFirewallRuleSubService(BasePageableObjectMixin,
 
     def __init__(self, provider, firewall):
         self.__provider = provider
-        self.firewall = firewall
+        self._firewall = firewall
 
     @property
     def _provider(self):
         return self.__provider
 
     def get(self, rule_id):
-        matches = [rule for rule in self if rule.id == rule_id]
-        if matches:
-            return matches[0]
-        else:
-            return None
+        return self._provider.security._vm_firewall_rules.get(self._firewall)
+
+    def list(self, limit=None, marker=None):
+        return self._provider.security._vm_firewall_rules.list(self._firewall,
+                                                        limit, marker)
+
+    def create(self, direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        return (self._provider
+                    .security
+                    ._vm_firewall_rules
+                    .create(self._firewall, direction, protocol, from_port,
+                            to_port, cidr, src_dest_fw))
 
     def find(self, **kwargs):
-        obj_list = self
-        filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
-                   'cidr', 'src_dest_fw', 'src_dest_fw_id']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
+        return self._provider.security._vm_firewall_rules.find(self._firewall,
+                                                        **kwargs)
 
     def delete(self, rule_id):
-        rule = self.get(rule_id)
-        if rule:
-            rule.delete()
+        return (self._provider
+                    .security
+                    ._vm_firewall_rules
+                    .delete(self._firewall, rule_id))
 
 
 class BaseFloatingIPSubService(FloatingIPSubService, BasePageableObjectMixin):

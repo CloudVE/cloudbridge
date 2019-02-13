@@ -1284,6 +1284,159 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
 
+class VMFirewallRuleService(CloudService):
+    """
+    Base interface for Firewall rules.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, firewall, rule_id):
+        """
+        Return a firewall rule given its ID.
+
+        Returns ``None`` if the rule does not exist.
+
+        Example:
+
+        .. code-block:: python
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            rule = fw.rules.get('rule_id')
+            print(rule.id, rule.label)
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall to which the rule is attached
+
+        :type rule_id: str
+        :param rule_id: The ID of the desired firewall rule
+
+        :rtype: :class:`.FirewallRule`
+        :return:  a FirewallRule instance
+        """
+        pass
+
+    @abstractmethod
+    def list(self, firewall, limit=None, marker=None):
+        """
+        List all firewall rules associated with this firewall.
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall to which the rules are attached
+
+        :rtype: ``list`` of :class:`.FirewallRule`
+        :return:  list of Firewall rule objects
+        """
+        pass
+
+    @abstractmethod
+    def create(self, firewall,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        """
+        Create a VM firewall rule.
+
+        If a matching rule already exists, return it.
+
+        Example:
+
+        .. code-block:: python
+            from cloudbridge.cloud.interfaces.resources import TrafficDirection
+            from cloudbridge.cloud.interfaces.resources import BaseNetwork
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
+                            from_port=80, to_port=80,
+                            cidr=BaseNetwork.CB_DEFAULT_IPV4RANGE)
+            fw.rules.create(TrafficDirection.INBOUND, src_dest_fw=fw)
+            fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
+
+        You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
+        ``from_port``, ``to_port``, ``cidr``. In other words, either
+        you are authorizing another group or you are authorizing some
+        IP-based rule.
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall to which the rule should be attached
+
+        :type direction: :class:``.TrafficDirection``
+        :param direction: Either ``TrafficDirection.INBOUND`` |
+                          ``TrafficDirection.OUTBOUND``
+
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+
+        :type from_port: ``int``
+        :param from_port: The beginning port number you are enabling.
+
+        :type to_port: ``int``
+        :param to_port: The ending port number you are enabling.
+
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
+
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
+
+        :rtype: :class:`.VMFirewallRule`
+        :return: Rule object if successful or ``None``.
+        """
+        pass
+
+    @abstractmethod
+    def find(self, firewall, **kwargs):
+        """
+        Find a firewall rule filtered by the given parameters.
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall in which to look for rules
+
+        :type label: str
+        :param label: The label of the VM firewall to retrieve.
+
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+
+        :type from_port: ``int``
+        :param from_port: The beginning port number you are enabling.
+
+        :type to_port: ``int``
+        :param to_port: The ending port number you are enabling.
+
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
+
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
+
+        :type src_dest_fw_id: :class:`.str`
+        :param src_dest_fw_id: The VM firewall id which is the
+                               source/destination of the traffic, depending on
+                               whether it's ingress/egress traffic.
+
+        :rtype: list of :class:`VMFirewallRule`
+        :return: A list of VMFirewall objects or an empty list if none
+                 found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, firewall, rule_id):
+        """
+        Delete an existing VMFirewall rule.
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall to which the rule is attached
+
+        :type rule_id: str
+        :param rule_id: The VM firewall rule to be deleted.
+        """
+        pass
+
+
 class VMTypeService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 

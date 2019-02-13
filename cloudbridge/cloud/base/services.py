@@ -21,6 +21,7 @@ from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
 from cloudbridge.cloud.interfaces.services import StorageService
 from cloudbridge.cloud.interfaces.services import SubnetService
+from cloudbridge.cloud.interfaces.services import VMFirewallRuleService
 from cloudbridge.cloud.interfaces.services import VMFirewallService
 from cloudbridge.cloud.interfaces.services import VMTypeService
 from cloudbridge.cloud.interfaces.services import VolumeService
@@ -91,6 +92,31 @@ class BaseVMFirewallService(
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
+
+
+class BaseVMFirewallRuleService(BasePageableObjectMixin,
+                                VMFirewallRuleService):
+
+    def __init__(self, provider):
+        self.__provider = provider
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def get(self, firewall, rule_id):
+        matches = [rule for rule in firewall.rules if rule.id == rule_id]
+        if matches:
+            return matches[0]
+        else:
+            return None
+
+    def find(self, firewall, **kwargs):
+        obj_list = firewall.rules
+        filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
+                   'cidr', 'src_dest_fw', 'src_dest_fw_id']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
 
 class BaseStorageService(StorageService, BaseCloudService):

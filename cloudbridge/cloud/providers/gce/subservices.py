@@ -1,7 +1,6 @@
 import logging
 import uuid
 
-from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.subservices import BaseBucketObjectSubService
 from cloudbridge.cloud.base.subservices import BaseFloatingIPSubService
@@ -10,7 +9,6 @@ from cloudbridge.cloud.base.subservices import \
 from cloudbridge.cloud.base.subservices import BaseVMFirewallRuleSubService
 
 from .resources import GCEFloatingIP
-from .resources import GCEVMFirewallRule
 
 log = logging.getLogger(__name__)
 
@@ -28,63 +26,8 @@ class GCEGatewaySubService(BaseGatewaySubService):
 
 class GCEVMFirewallRuleSubService(BaseVMFirewallRuleSubService):
 
-    def __init__(self, firewall):
-        super(GCEVMFirewallRuleSubService, self).__init__(
-                firewall.delegate.provider, firewall)
-        self._dummy_rule = None
-
-    def list(self, limit=None, marker=None):
-        rules = []
-        for firewall in self.firewall.delegate.iter_firewalls(
-                self.firewall.name, self.firewall.network.name):
-            rule = GCEVMFirewallRule(self.firewall, firewall['id'])
-            if rule.is_dummy_rule():
-                self._dummy_rule = rule
-            else:
-                rules.append(rule)
-        return ClientPagedResultList(self._provider, rules,
-                                     limit=limit, marker=marker)
-
-    @property
-    def dummy_rule(self):
-        if not self._dummy_rule:
-            self.list()
-        return self._dummy_rule
-
-    @staticmethod
-    def to_port_range(from_port, to_port):
-        if from_port is not None and to_port is not None:
-            return '%d-%d' % (from_port, to_port)
-        elif from_port is not None:
-            return from_port
-        else:
-            return to_port
-
-    def create_with_priority(self, direction, protocol, priority,
-                             from_port=None, to_port=None, cidr=None,
-                             src_dest_fw=None):
-        port = GCEVMFirewallRuleSubService.to_port_range(from_port, to_port)
-        src_dest_tag = None
-        src_dest_fw_id = None
-        if src_dest_fw:
-            src_dest_tag = src_dest_fw.name
-            src_dest_fw_id = src_dest_fw.id
-        if not self.firewall.delegate.add_firewall(
-                self.firewall.name, direction, protocol, priority, port, cidr,
-                src_dest_tag, self.firewall.description,
-                self.firewall.network.name):
-            return None
-        rules = self.find(direction=direction, protocol=protocol,
-                          from_port=from_port, to_port=to_port, cidr=cidr,
-                          src_dest_fw_id=src_dest_fw_id)
-        if len(rules) < 1:
-            return None
-        return rules[0]
-
-    def create(self, direction, protocol, from_port=None, to_port=None,
-               cidr=None, src_dest_fw=None):
-        return self.create_with_priority(direction, protocol, 1000, from_port,
-                                         to_port, cidr, src_dest_fw)
+    def __init__(self, provider, firewall):
+        super(GCEVMFirewallRuleSubService, self).__init__(provider)
 
 
 class GCEFloatingIPSubService(BaseFloatingIPSubService):

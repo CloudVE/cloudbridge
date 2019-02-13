@@ -174,15 +174,6 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
     def src_dest_fw(self):
         return self.firewall
 
-    def delete(self):
-        vm_firewall = self.firewall.name
-        self._provider.azure_client. \
-            delete_vm_firewall_rule(self.id, vm_firewall)
-        for i, o in enumerate(self.firewall._vm_firewall.security_rules):
-            if o.id == self.id:
-                del self.firewall._vm_firewall.security_rules[i]
-                break
-
 
 class AzureBucketObject(BaseBucketObject):
     def __init__(self, provider, container, key):

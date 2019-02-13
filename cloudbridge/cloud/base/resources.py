@@ -641,6 +641,9 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
         js['firewall'] = self.firewall.id
         return js
 
+    def delete(self):
+        self._provider.sercurity._vm_firewall_rules.delete(self.firewall, self)
+
 
 class BasePlacementZone(BaseCloudResource, PlacementZone):
 

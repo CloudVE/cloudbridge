@@ -640,14 +640,6 @@ class GCEVMFirewallRule(BaseVMFirewallRule):
             return False
         return True
 
-    def delete(self):
-        if (self.is_dummy_rule()):
-            return
-        self.force_delete()
-
-    def force_delete(self):
-        self.firewall.delegate.delete_firewall_id(self._rule)
-
 
 class GCEMachineImage(BaseMachineImage):
 

@@ -1204,10 +1204,6 @@ class OpenStackVMFirewallRule(BaseVMFirewallRule):
             return self._provider.security.vm_firewalls.get(fw_id)
         return None
 
-    def delete(self):
-        self._provider.os_conn.network.delete_security_group_rule(self.id)
-        self.firewall.refresh()
-
 
 class OpenStackBucketObject(BaseBucketObject):
 
