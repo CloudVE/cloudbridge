@@ -849,12 +849,6 @@ class AzureFloatingIP(BaseFloatingIP):
     def in_use(self):
         return True if self._ip.ip_configuration else False
 
-    def delete(self):
-        """
-        Delete an existing floating ip.
-        """
-        self._provider.azure_client.delete_floating_ip(self.id)
-
     def refresh(self):
         net = self._provider.networking.networks.get(self._network_id)
         gw = net.gateways.get_or_create_inet_gateway()

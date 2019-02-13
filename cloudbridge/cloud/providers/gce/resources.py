@@ -1358,30 +1358,6 @@ class GCEFloatingIP(BaseFloatingIP):
     def in_use(self):
         return True if self._target_instance else False
 
-    def delete(self):
-        project_name = self._provider.project_name
-        # First, delete the forwarding rule, if there is any.
-        if self._rule:
-            response = (self._provider
-                            .gce_compute
-                            .forwardingRules()
-                            .delete(project=project_name,
-                                    region=self.region_name,
-                                    forwardingRule=self._rule['name'])
-                            .execute())
-            self._provider.wait_for_operation(response,
-                                              region=self.region_name)
-
-        # Release the address.
-        response = (self._provider
-                        .gce_compute
-                        .addresses()
-                        .delete(project=project_name,
-                                region=self.region_name,
-                                address=self._ip['name'])
-                        .execute())
-        self._provider.wait_for_operation(response, region=self.region_name)
-
     def refresh(self):
         fip = self._gateway.floating_ips.get(self.id)
         # pylint:disable=protected-access

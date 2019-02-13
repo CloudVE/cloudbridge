@@ -23,6 +23,7 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -57,6 +58,7 @@ from cloudbridge.cloud.interfaces.resources import Volume
 from . import helpers as oshelpers
 from .resources import OpenStackBucket
 from .resources import OpenStackBucketObject
+from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
 from .resources import OpenStackInternetGateway
 from .resources import OpenStackKeyPair
@@ -1186,3 +1188,41 @@ class OpenStackGatewayService(BaseGatewayService):
                if n.external and self._check_fip_connectivity(n)]
         return ClientPagedResultList(self._provider, igl, limit=limit,
                                      marker=marker)
+
+
+class OpenStackFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider, gateway):
+        super(OpenStackFloatingIPService, self).__init__(provider, gateway)
+
+    def get(self, gateway, fip_id):
+        try:
+            return OpenStackFloatingIP(
+                self.provider, self.provider.os_conn.network.get_ip(fip_id))
+        except (ResourceNotFound, NotFoundException):
+            log.debug("Floating IP %s not found.", fip_id)
+            return None
+
+    def list(self, gateway, limit=None, marker=None):
+        fips = [OpenStackFloatingIP(self.provider, fip)
+                for fip in self.provider.os_conn.network.ips(
+                    floating_network_id=gateway.id
+                )]
+        return ClientPagedResultList(self.provider, fips,
+                                     limit=limit, marker=marker)
+
+    def create(self, gateway):
+        return OpenStackFloatingIP(
+            self.provider, self.provider.os_conn.network.create_ip(
+                floating_network_id=gateway.id))
+
+    def delete(self, gateway, fip):
+        if isinstance(fip, OpenStackFloatingIP):
+            os_ip = fip._ip
+        else:
+            try:
+                os_ip = self.provider.os_conn.network.get_ip(fip)
+            except (ResourceNotFound, NotFoundException):
+                log.debug("Floating IP %s not found.", fip)
+                return True
+        os_ip.delete(self._provider.os_conn.session)

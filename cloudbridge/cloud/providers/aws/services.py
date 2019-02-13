@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -51,6 +52,7 @@ from .helpers import BotoS3Service
 from .helpers import trim_empty_params
 from .resources import AWSBucket
 from .resources import AWSBucketObject
+from .resources import AWSFloatingIP
 from .resources import AWSInstance
 from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
@@ -1211,3 +1213,35 @@ class AWSGatewayService(BaseGatewayService):
                   network.id)
         fltr = [{'Name': 'attachment.vpc-id', 'Values': [network.id]}]
         return self.svc.list(limit=None, marker=None, Filters=fltr)
+
+
+class AWSFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider, gateway):
+        super(AWSFloatingIPService, self).__init__(provider, gateway)
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSFloatingIP,
+                                  boto_collection_name='vpc_addresses')
+
+    def get(self, gateway, fip_id):
+        log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
+        return self.svc.get(fip_id)
+
+    def list(self, gateway, limit=None, marker=None):
+        log.debug("Listing all floating IPs under gateway %s", gateway)
+        return self.svc.list(limit=limit, marker=marker)
+
+    def create(self, gateway):
+        log.debug("Creating a floating IP under gateway %s", gateway)
+        ip = self.provider.ec2_conn.meta.client.allocate_address(
+            Domain='vpc')
+        return AWSFloatingIP(
+            self.provider,
+            self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
+
+    def delete(self, gateway, fip):
+        if isinstance(fip, AWSFloatingIP):
+            os_fip = fip._ip
+        else:
+            os_fip = self.svc.get_raw(fip)
+        os_fip.release()

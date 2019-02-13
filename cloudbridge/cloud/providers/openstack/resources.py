@@ -925,9 +925,6 @@ class OpenStackFloatingIP(BaseFloatingIP):
     def in_use(self):
         return bool(self._ip.port_id)
 
-    def delete(self):
-        self._ip.delete(self._provider.os_conn.session)
-
     def refresh(self):
         net = self._provider.networking.networks.get(
             self._ip.floating_network_id)

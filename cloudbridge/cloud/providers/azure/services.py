@@ -14,6 +14,7 @@ from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -44,6 +45,7 @@ from cloudbridge.cloud.interfaces.resources import Volume
 
 from .resources import AzureBucket
 from .resources import AzureBucketObject
+from .resources import AzureFloatingIP
 from .resources import AzureInstance
 from .resources import AzureInternetGateway
 from .resources import AzureKeyPair
@@ -1321,3 +1323,39 @@ class AzureGatewayService(BaseGatewayService):
 
     def delete(self, network, gateway):
         pass
+
+
+class AzureFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(AzureFloatingIPService, self).__init__(provider)
+
+    def get(self, gateway, fip_id):
+        log.debug("Getting Azure Floating IP container with the id: %s",
+                  fip_id)
+        fip = [fip for fip in self if fip.id == fip_id]
+        return fip[0] if fip else None
+
+    def list(self, gateway, limit=None, marker=None):
+        floating_ips = [AzureFloatingIP(self.provider, floating_ip,
+                                        gateway.network_id)
+                        for floating_ip in self.provider.azure_client.
+                        list_floating_ips()]
+        return ClientPagedResultList(self.provider, floating_ips,
+                                     limit=limit, marker=marker)
+
+    def create(self, gateway):
+        public_ip_parameters = {
+            'location': self.provider.azure_client.region_name,
+            'public_ip_allocation_method': 'Static'
+        }
+
+        public_ip_name = AzureFloatingIP._generate_name_from_label('cb-fip-')
+
+        floating_ip = self.provider.azure_client.\
+            create_floating_ip(public_ip_name, public_ip_parameters)
+        return AzureFloatingIP(self.provider, floating_ip, gateway.network_id)
+
+    def delete(self, gateway, fip):
+        fip_id = fip if isinstance(fip, AzureFloatingIP) else fip
+        self._provider.azure_client.delete_floating_ip(fip_id)

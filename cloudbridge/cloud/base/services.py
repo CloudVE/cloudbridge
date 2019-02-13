@@ -9,6 +9,7 @@ from cloudbridge.cloud.interfaces.services import BucketObjectService
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
+from cloudbridge.cloud.interfaces.services import FloatingIPService
 from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
@@ -336,3 +337,19 @@ class BaseGatewayService(GatewayService, BaseCloudService):
 
     def __init__(self, provider):
         self._provider = provider
+
+
+class BaseFloatingIPService(FloatingIPService):
+
+    def __init__(self, provider):
+        self.__provider = provider
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def find(self, gateway, **kwargs):
+        obj_list = gateway.floating_ips
+        filters = ['name', 'public_ip']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))

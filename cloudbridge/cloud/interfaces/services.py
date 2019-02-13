@@ -1581,3 +1581,87 @@ class GatewayService(CloudService):
         :return: Current list of internet gateways.
         """
         pass
+
+
+class FloatingIPService(CloudService):
+    """
+    Base interface for a FloatingIP Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, gateway, fip_id):
+        """
+        Returns a FloatingIP given its ID or ``None`` if not found.
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IP is attached
+
+        :type fip_id: ``str``
+        :param fip_id: The ID of the FloatingIP to retrieve.
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return: a FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def list(self, gateway, limit=None, marker=None):
+        """
+        List floating (i.e., static) IP addresses.
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IPs are attached
+
+        :rtype: ``list`` of :class:`.FloatingIP`
+        :return: list of FloatingIP objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, gateway, **kwargs):
+        """
+        Searches for a FloatingIP by a given list of attributes.
+
+        Supported attributes: name, public_ip
+
+        Example:
+
+        .. code-block:: python
+
+            fip = provider.networking.gateways.get('id').floating_ips.find(
+                        public_ip='public_ip')
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IPs are attached
+
+        :rtype: List of ``object`` of :class:`.FloatingIP`
+        :return: A list of FloatingIP objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, gateway):
+        """
+        Allocate a new floating (i.e., static) IP address.
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IP should be attached
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return:  A FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, gateway, fip):
+        """
+        Delete an existing FloatingIP.
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IP is attached
+
+        :type fip: ``str``
+        :param fip: The FloatingIP to be deleted.
+        """
+        pass

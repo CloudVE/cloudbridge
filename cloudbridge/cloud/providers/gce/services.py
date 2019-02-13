@@ -14,6 +14,7 @@ from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
 from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
@@ -37,6 +38,7 @@ from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.providers.gce import helpers
 
 from .resources import GCEFirewallsDelegate
+from .resources import GCEFloatingIP
 from .resources import GCEInstance
 from .resources import GCEInternetGateway
 from .resources import GCEKeyPair
@@ -1520,3 +1522,73 @@ class GCEGatewayService(BaseGatewayService):
         return ClientPagedResultList(self._provider,
                                      gws,
                                      limit=limit, marker=marker)
+
+
+class GCEFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider, gateway):
+        super(GCEFloatingIPService, self).__init__(provider, gateway)
+
+    def get(self, gateway, floating_ip_id):
+        fip = self.provider.get_resource('addresses', floating_ip_id)
+        return (GCEFloatingIP(self.provider, gateway, fip)
+                if fip else None)
+
+    def list(self, gateway, limit=None, marker=None):
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gce_compute
+                        .addresses()
+                        .list(project=self.provider.project_name,
+                              region=self.provider.region_name,
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        ips = [GCEFloatingIP(self.provider, gateway, ip)
+               for ip in response.get('items', [])]
+        if len(ips) > max_result:
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(ips))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=ips)
+
+    def create(self, gateway):
+        region_name = self.provider.region_name
+        ip_name = 'ip-{0}'.format(uuid.uuid4())
+        response = (self.provider
+                    .gce_compute
+                    .addresses()
+                    .insert(project=self.provider.project_name,
+                            region=region_name,
+                            body={'name': ip_name})
+                    .execute())
+        self.provider.wait_for_operation(response, region=region_name)
+        return self.get(ip_name)
+
+    def delete(self, gateway, fip):
+        fip = fip if isinstance(fip, GCEFloatingIP) else \
+            gateway.floating_ips.get(fip)
+        project_name = self.provider.project_name
+        # First, delete the forwarding rule, if there is any.
+        if fip._rule:
+            response = (self.provider
+                        .gce_compute
+                        .forwardingRules()
+                        .delete(project=project_name,
+                                region=fip.region_name,
+                                forwardingRule=fip._rule['name'])
+                        .execute())
+            self.provider.wait_for_operation(response,
+                                             region=fip.region_name)
+
+        # Release the address.
+        response = (self.provider
+                    .gce_compute
+                    .addresses()
+                    .delete(project=project_name,
+                            region=fip.region_name,
+                            address=fip._ip['name'])
+                    .execute())
+        self.provider.wait_for_operation(response,
+                                         region=fip.region_name)

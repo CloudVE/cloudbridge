@@ -5,9 +5,7 @@ from cloudbridge.cloud.interfaces.subservices import FloatingIPSubService
 from cloudbridge.cloud.interfaces.subservices import GatewaySubService
 from cloudbridge.cloud.interfaces.subservices import VMFirewallRuleSubService
 
-from . import helpers as cb_helpers
 from .resources import BasePageableObjectMixin
-from .resources import ClientPagedResultList
 
 log = logging.getLogger(__name__)
 
@@ -80,7 +78,7 @@ class BaseVMFirewallRuleSubService(BasePageableObjectMixin,
 
     def list(self, limit=None, marker=None):
         return self._provider.security._vm_firewall_rules.list(self._firewall,
-                                                        limit, marker)
+                                                               limit, marker)
 
     def create(self, direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
@@ -92,7 +90,7 @@ class BaseVMFirewallRuleSubService(BasePageableObjectMixin,
 
     def find(self, **kwargs):
         return self._provider.security._vm_firewall_rules.find(self._firewall,
-                                                        **kwargs)
+                                                               **kwargs)
 
     def delete(self, rule_id):
         return (self._provider
@@ -111,13 +109,21 @@ class BaseFloatingIPSubService(FloatingIPSubService, BasePageableObjectMixin):
     def _provider(self):
         return self.__provider
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name', 'public_ip']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
+    def get(self, fip_id):
+        return self._provider.networking._floating_ips.get(self.gateway,
+                                                           fip_id)
 
-    def delete(self, fip_id):
-        floating_ip = self.get(fip_id)
-        if floating_ip:
-            floating_ip.delete()
+    def list(self, limit=None, marker=None):
+        return self._provider.networking._floating_ips.list(self.gateway,
+                                                            limit, marker)
+
+    def find(self, **kwargs):
+        return self._provider.networking._floating_ips.find(self.gateway,
+                                                            **kwargs)
+
+    def create(self):
+        return self._provider.networking._floating_ips.create(self.gateway)
+
+    def delete(self, fip):
+        return self._provider.networking._floating_ips.delete(self.gateway,
+                                                              fip)
