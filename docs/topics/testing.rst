@@ -73,6 +73,8 @@ may incur costs. For the AWS cloud, there is also a mock provider (`moto`_) that
 will simulate AWS resources. You can use ``CB_TEST_PROVIDER=mock`` to run tests
 against the mock provider only, which will provide faster feedback times.
 
+Alternatively you can run the mock tests through tox.
+``tox -e "py27-mock"``
 
 .. _design goals: https://github.com/CloudVE/cloudbridge/
    blob/master/README.rst

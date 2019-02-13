@@ -69,7 +69,10 @@ class CloudProviderFactory(object):
         """
         for _, modname, _ in pkgutil.iter_modules(providers.__path__):
             log.debug("Importing provider: %s", modname)
-            self._import_provider(modname)
+            try:
+                self._import_provider(modname)
+            except Exception as e:
+                log.warn("Could not import provider: %s", e)
 
     def _import_provider(self, module_name):
         """
