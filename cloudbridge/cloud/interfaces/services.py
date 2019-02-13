@@ -1379,3 +1379,52 @@ class RegionService(PageableObjectMixin, CloudService):
         :return: a Region object
         """
         pass
+
+
+class GatewayService(CloudService):
+    """
+    Manage internet gateway resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_or_create_inet_gateway(self, network):
+        """
+        Creates new or returns an existing internet gateway for a network.
+
+        The returned gateway object can subsequently be attached to a router to
+        provide internet routing to a network.
+
+        :type  network: ``Network``
+        :param network: The network to which the gateway should be attached.
+
+        :rtype: ``object``  of :class:`.InternetGateway` or ``None``
+        :return: an InternetGateway object of ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, network, gateway):
+        """
+        Delete a gateway.
+
+        :type  network: ``Network``
+        :param network: The network to which the gateway is attached.
+
+        :type gateway: :class:`.Gateway` object
+        :param gateway: Gateway object to delete.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, network, limit=None, marker=None):
+        """
+        List all available internet gateways.
+
+        :type  network: ``Network``
+        :param network: The network to which the gateway is attached.
+
+        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
+        :return: Current list of internet gateways.
+        """
+        pass

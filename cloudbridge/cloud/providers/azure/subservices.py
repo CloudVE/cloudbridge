@@ -10,7 +10,6 @@ from cloudbridge.cloud.base.subservices import BaseVMFirewallRuleSubService
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 
 from .resources import AzureFloatingIP
-from .resources import AzureInternetGateway
 from .resources import AzureVMFirewallRule
 
 log = logging.getLogger(__name__)
@@ -20,6 +19,11 @@ class AzureBucketObjectSubService(BaseBucketObjectSubService):
 
     def __init__(self, provider, bucket):
         super(AzureBucketObjectSubService, self).__init__(provider, bucket)
+
+
+class AzureGatewaySubService(BaseGatewaySubService):
+    def __init__(self, provider, network):
+        super(AzureGatewaySubService, self).__init__(provider, network)
 
 
 class AzureVMFirewallRuleSubService(BaseVMFirewallRuleSubService):
@@ -84,28 +88,6 @@ class AzureVMFirewallRuleSubService(BaseVMFirewallRuleSubService):
         # pylint:disable=protected-access
         self.firewall._vm_firewall.security_rules.append(result)
         return AzureVMFirewallRule(self.firewall, result)
-
-
-class AzureGatewaySubService(BaseGatewaySubService):
-    def __init__(self, provider, network):
-        super(AzureGatewaySubService, self).__init__(provider, network)
-        # Azure doesn't have a notion of a route table or an internet
-        # gateway as OS and AWS so create placeholder objects of the
-        # AzureInternetGateway here.
-        # http://bit.ly/2BqGdVh
-        # Singleton returned by the list method
-        self.gateway_singleton = AzureInternetGateway(self._provider, None,
-                                                      network)
-
-    def get_or_create_inet_gateway(self):
-        gateway = AzureInternetGateway(self._provider, None, self._network)
-        return gateway
-
-    def list(self, limit=None, marker=None):
-        return [self.gateway_singleton]
-
-    def delete(self, gateway):
-        pass
 
 
 class AzureFloatingIPSubService(BaseFloatingIPSubService):

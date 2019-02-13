@@ -9,6 +9,7 @@ from cloudbridge.cloud.interfaces.services import BucketObjectService
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
+from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import KeyPairService
@@ -303,3 +304,9 @@ class BaseRouterService(
         else:
             return self.provider.networking.routers.create(
                 network=net_id, label=BaseRouter.CB_DEFAULT_ROUTER_LABEL)
+
+
+class BaseGatewayService(GatewayService, BaseCloudService):
+
+    def __init__(self, provider):
+        self._provider = provider

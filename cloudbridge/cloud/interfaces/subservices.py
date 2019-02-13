@@ -86,9 +86,6 @@ class GatewaySubService(PageableObjectMixin):
         The returned gateway object can subsequently be attached to a router to
         provide internet routing to a network.
 
-        :type  name: ``str``
-        :param name: The gateway label.
-
         :rtype: ``object``  of :class:`.InternetGateway` or ``None``
         :return: an InternetGateway object of ``None`` if not found.
         """

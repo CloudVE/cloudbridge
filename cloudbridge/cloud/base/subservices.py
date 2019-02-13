@@ -42,7 +42,26 @@ class BaseGatewaySubService(GatewaySubService, BasePageableObjectMixin):
 
     def __init__(self, provider, network):
         self._network = network
-        self._provider = provider
+        self.__provider = provider
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def get_or_create_inet_gateway(self):
+        return (self._provider.networking
+                              ._gateways
+                              .get_or_create_inet_gateway(self._network))
+
+    def delete(self, gateway):
+        return (self._provider.networking
+                              ._gateways
+                              .delete(self._network, gateway))
+
+    def list(self, limit=None, marker=None):
+        return (self._provider.networking
+                              ._gateways
+                              .list(self._network, limit, marker))
 
 
 class BaseVMFirewallRuleSubService(BasePageableObjectMixin,

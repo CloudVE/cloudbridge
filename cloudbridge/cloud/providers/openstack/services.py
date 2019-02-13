@@ -22,6 +22,7 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -53,6 +54,7 @@ from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 from .resources import OpenStackBucket
 from .resources import OpenStackBucketObject
 from .resources import OpenStackInstance
+from .resources import OpenStackInternetGateway
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
 from .resources import OpenStackNetwork
@@ -1083,3 +1085,47 @@ class OpenStackRouterService(BaseRouterService):
     def delete(self, router):
         r_id = router.id if isinstance(router, OpenStackRouter) else router
         self.provider.os_conn.delete_router(r_id)
+
+
+class OpenStackGatewayService(BaseGatewayService):
+    """For OpenStack, an internet gateway is a just an 'external' network."""
+
+    def __init__(self, provider):
+        super(OpenStackGatewayService, self).__init__(provider)
+
+    def _check_fip_connectivity(self, network, external_net):
+        # Due to current limitations in OpenStack:
+        # https://bugs.launchpad.net/neutron/+bug/1743480, it's not
+        # possible to differentiate between floating ip networks and provider
+        # external networks. Therefore, we systematically step through
+        # all available networks and perform an assignment test to infer valid
+        # floating ip nets.
+        dummy_router = self._provider.networking.routers.create(
+            label='cb-conn-test-router', network=network)
+        with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
+            try:
+                dummy_router.attach_gateway(external_net)
+                return True
+            except Exception:
+                return False
+
+    def get_or_create_inet_gateway(self, network):
+        """For OS, inet gtw is any net that has `external` property set."""
+        external_nets = (n for n in self._provider.networking.networks
+                         if n.external)
+        for net in external_nets:
+            if self._check_fip_connectivity(net):
+                return OpenStackInternetGateway(self._provider, net)
+        return None
+
+    def delete(self, network, gateway):
+        log.debug("Deleting OpenStack Gateway: %s", gateway)
+        gateway.delete()
+
+    def list(self, network, limit=None, marker=None):
+        log.debug("OpenStack listing of all current internet gateways")
+        igl = [OpenStackInternetGateway(self._provider, n)
+               for n in self._provider.networking.networks
+               if n.external and self._check_fip_connectivity(n)]
+        return ClientPagedResultList(self._provider, igl, limit=limit,
+                                     marker=marker)

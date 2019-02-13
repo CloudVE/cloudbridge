@@ -14,6 +14,7 @@ from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -36,6 +37,7 @@ from cloudbridge.cloud.providers.gce import helpers
 
 from .resources import GCEFirewallsDelegate
 from .resources import GCEInstance
+from .resources import GCEInternetGateway
 from .resources import GCEKeyPair
 from .resources import GCELaunchConfig
 from .resources import GCEMachineImage
@@ -1426,3 +1428,28 @@ class GCSBucketObjectService(BaseBucketObjectService):
         return GCSObject(self._provider,
                          bucket,
                          response) if response else None
+
+
+class GCEGatewayService(BaseGatewayService):
+    _DEFAULT_GATEWAY_NAME = 'default-internet-gateway'
+    _GATEWAY_URL_PREFIX = 'global/gateways/'
+
+    def __init__(self, provider):
+        super(GCEGatewayService, self).__init__(provider)
+        self._default_internet_gateway = GCEInternetGateway(
+            provider,
+            {'id': (GCEGatewayService._GATEWAY_URL_PREFIX +
+                    GCEGatewayService._DEFAULT_GATEWAY_NAME),
+             'name': GCEGatewayService._DEFAULT_GATEWAY_NAME})
+
+    def get_or_create_inet_gateway(self, network):
+        return self._default_internet_gateway
+
+    def delete(self, network, gateway):
+        pass
+
+    def list(self, network, limit=None, marker=None):
+        gws = [self._default_internet_gateway]
+        return ClientPagedResultList(self._provider,
+                                     gws,
+                                     limit=limit, marker=marker)

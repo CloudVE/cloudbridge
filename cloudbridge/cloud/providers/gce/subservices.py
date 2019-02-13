@@ -10,7 +10,6 @@ from cloudbridge.cloud.base.subservices import \
 from cloudbridge.cloud.base.subservices import BaseVMFirewallRuleSubService
 
 from .resources import GCEFloatingIP
-from .resources import GCEInternetGateway
 from .resources import GCEVMFirewallRule
 
 log = logging.getLogger(__name__)
@@ -20,6 +19,11 @@ class GCSBucketObjectSubService(BaseBucketObjectSubService):
 
     def __init__(self, provider, bucket):
         super(GCSBucketObjectSubService, self).__init__(provider, bucket)
+
+
+class GCEGatewaySubService(BaseGatewaySubService):
+    def __init__(self, provider, network):
+        super(GCEGatewaySubService, self).__init__(provider, network)
 
 
 class GCEVMFirewallRuleSubService(BaseVMFirewallRuleSubService):
@@ -124,27 +128,3 @@ class GCEFloatingIPSubService(BaseFloatingIPSubService):
                     .execute())
         self._provider.wait_for_operation(response, region=region_name)
         return self.get(ip_name)
-
-
-class GCEGatewaySubService(BaseGatewaySubService):
-    _DEFAULT_GATEWAY_NAME = 'default-internet-gateway'
-    _GATEWAY_URL_PREFIX = 'global/gateways/'
-
-    def __init__(self, provider, network):
-        super(GCEGatewaySubService, self).__init__(provider, network)
-        self._default_internet_gateway = GCEInternetGateway(
-            provider,
-            {'id': (GCEGatewaySubService._GATEWAY_URL_PREFIX +
-                    GCEGatewaySubService._DEFAULT_GATEWAY_NAME),
-             'name': GCEGatewaySubService._DEFAULT_GATEWAY_NAME})
-
-    def get_or_create_inet_gateway(self, name=None):
-        return self._default_internet_gateway
-
-    def delete(self, gateway):
-        pass
-
-    def list(self, limit=None, marker=None):
-        return ClientPagedResultList(self._provider,
-                                     [self._default_internet_gateway],
-                                     limit=limit, marker=marker)

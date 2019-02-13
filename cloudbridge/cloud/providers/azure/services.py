@@ -14,6 +14,7 @@ from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -42,6 +43,7 @@ from cloudbridge.cloud.interfaces.resources import Volume
 from .resources import AzureBucket
 from .resources import AzureBucketObject
 from .resources import AzureInstance
+from .resources import AzureInternetGateway
 from .resources import AzureKeyPair
 from .resources import AzureLaunchConfig
 from .resources import AzureMachineImage
@@ -1217,3 +1219,28 @@ class AzureRouterService(BaseRouterService):
         r = router if isinstance(router, AzureRouter) else self.get(router)
         if r:
             self.provider.azure_client.delete_route_table(r.name)
+
+
+class AzureGatewayService(BaseGatewayService):
+    def __init__(self, provider):
+        super(AzureGatewayService, self).__init__(provider)
+
+    # Azure doesn't have a notion of a route table or an internet
+    # gateway as OS and AWS so create placeholder objects of the
+    # AzureInternetGateway here.
+    # http://bit.ly/2BqGdVh
+    # Singleton returned by the list and get methods
+    def _gateway_singleton(self, network):
+        return AzureInternetGateway(self._provider, None, network)
+
+    def get_or_create_inet_gateway(self, network):
+        return self._gateway_singleton(network)
+
+    def list(self, network, limit=None, marker=None):
+        gws = [self._gateway_singleton(network)]
+        return ClientPagedResultList(self._provider,
+                                     gws,
+                                     limit=limit, marker=marker)
+
+    def delete(self, network, gateway):
+        pass

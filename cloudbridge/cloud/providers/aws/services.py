@@ -15,6 +15,7 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -47,6 +48,7 @@ from .helpers import BotoS3Service
 from .resources import AWSBucket
 from .resources import AWSBucketObject
 from .resources import AWSInstance
+from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
@@ -786,6 +788,7 @@ class AWSNetworkingService(BaseNetworkingService):
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
         self._router_service = AWSRouterService(self.provider)
+        self._gateway_service = AWSGatewayService(self.provider)
 
     @property
     def networks(self):
@@ -798,6 +801,10 @@ class AWSNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
+
+    @property
+    def _gateways(self):
+        return self._gateway_service
 
 
 class AWSNetworkService(BaseNetworkService):
@@ -1088,3 +1095,47 @@ class AWSRouterService(BaseRouterService):
         if r:
             # pylint:disable=protected-access
             r._route_table.delete()
+
+
+class AWSGatewayService(BaseGatewayService):
+
+    def __init__(self, provider):
+        super(AWSGatewayService, self).__init__(provider)
+        self.svc = BotoEC2Service(provider=provider,
+                                  cb_resource=AWSInternetGateway,
+                                  boto_collection_name='internet_gateways')
+
+    def get_or_create_inet_gateway(self, network):
+        log.debug("Get or create inet gateway on net %s",
+                  network)
+        network_id = network.id if isinstance(
+            network, AWSNetwork) else network
+        # Don't filter by label because it may conflict with at least the
+        # default VPC that most accounts have but that network is typically
+        # without a name.
+        gtw = self.svc.find(filter_name='attachment.vpc-id',
+                            filter_value=network_id)
+        if gtw:
+            return gtw[0]  # There can be only one gtw attached to a VPC
+        # Gateway does not exist so create one and attach to the supplied net
+        cb_gateway = self.svc.create('create_internet_gateway')
+        cb_gateway._gateway.create_tags(
+            Tags=[{'Key': 'Name',
+                   'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                   }])
+        cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
+        return cb_gateway
+
+    def delete(self, network, gateway):
+        log.debug("Service deleting AWS Gateway %s", gateway)
+        gateway_id = gateway.id if isinstance(
+            gateway, AWSInternetGateway) else gateway
+        gateway = self.svc.get(gateway_id)
+        if gateway:
+            gateway.delete()
+
+    def list(self, network, limit=None, marker=None):
+        log.debug("Listing current AWS internet gateways for net %s.",
+                  network.id)
+        fltr = [{'Name': 'attachment.vpc-id', 'Values': [network.id]}]
+        return self.svc.list(limit=None, marker=None, Filters=fltr)

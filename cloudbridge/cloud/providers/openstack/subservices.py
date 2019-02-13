@@ -4,7 +4,6 @@ from openstack.exceptions import HttpException
 from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
 
-from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.subservices import BaseBucketObjectSubService
 from cloudbridge.cloud.base.subservices import BaseFloatingIPSubService
@@ -15,7 +14,6 @@ from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 
 from .resources import OpenStackFloatingIP
-from .resources import OpenStackInternetGateway
 from .resources import OpenStackVMFirewall
 from .resources import OpenStackVMFirewallRule
 
@@ -29,47 +27,9 @@ class OpenStackBucketObjectSubService(BaseBucketObjectSubService):
 
 
 class OpenStackGatewaySubService(BaseGatewaySubService):
-    """For OpenStack, an internet gateway is a just an 'external' network."""
 
     def __init__(self, provider, network):
         super(OpenStackGatewaySubService, self).__init__(provider, network)
-
-    def _check_fip_connectivity(self, external_net):
-        # Due to current limitations in OpenStack:
-        # https://bugs.launchpad.net/neutron/+bug/1743480, it's not
-        # possible to differentiate between floating ip networks and provider
-        # external networks. Therefore, we systematically step through
-        # all available networks and perform an assignment test to infer valid
-        # floating ip nets.
-        dummy_router = self._provider.networking.routers.create(
-            label='cb-conn-test-router', network=self._network)
-        with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
-            try:
-                dummy_router.attach_gateway(external_net)
-                return True
-            except Exception:
-                return False
-
-    def get_or_create_inet_gateway(self):
-        """For OS, inet gtw is any net that has `external` property set."""
-        external_nets = (n for n in self._provider.networking.networks
-                         if n.external)
-        for net in external_nets:
-            if self._check_fip_connectivity(net):
-                return OpenStackInternetGateway(self._provider, net)
-        return None
-
-    def delete(self, gateway):
-        log.debug("Deleting OpenStack Gateway: %s", gateway)
-        gateway.delete()
-
-    def list(self, limit=None, marker=None):
-        log.debug("OpenStack listing of all current internet gateways")
-        igl = [OpenStackInternetGateway(self._provider, n)
-               for n in self._provider.networking.networks
-               if n.external and self._check_fip_connectivity(n)]
-        return ClientPagedResultList(self._provider, igl, limit=limit,
-                                     marker=marker)
 
 
 class OpenStackFloatingIPSubService(BaseFloatingIPSubService):
