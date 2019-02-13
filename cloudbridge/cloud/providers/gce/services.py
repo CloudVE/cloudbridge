@@ -7,7 +7,6 @@ import uuid
 
 import googleapiclient
 
-import cloudbridge as cb
 from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.base.middleware import dispatch
 from cloudbridge.cloud.base.resources import ClientPagedResultList
@@ -296,8 +295,8 @@ class GCERegionService(BaseRegionService):
         regions = [GCERegion(self.provider, region)
                    for region in regions_response['items']]
         if len(regions) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(regions))
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(regions))
         return ServerPagedResultList('nextPageToken' in regions_response,
                                      regions_response.get('nextPageToken'),
                                      False, data=regions)
@@ -434,7 +433,7 @@ class GCEInstanceService(BaseInstanceService):
                     source_field = 'source'
                     source_value = volume.id
                 else:
-                    cb.log.warning('Unknown disk source')
+                    log.warning('Unknown disk source')
                     continue
                 autoDelete = True
                 if disk.delete_on_terminate is not None:
@@ -450,13 +449,13 @@ class GCEInstanceService(BaseInstanceService):
                                   source_field: source_value})
 
         if num_roots > 1:
-            cb.log.warning('The launch config contains %d boot disks. Will '
-                           'use the first one', num_roots)
+            log.warning('The launch config contains %d boot disks. Will '
+                        'use the first one', num_roots)
         if image:
             if boot_disk:
-                cb.log.warning('A boot image is given while the launch config '
-                               'contains a boot disk, too. The launch config '
-                               'will be used.')
+                log.warning('A boot image is given while the launch config '
+                            'contains a boot disk, too. The launch config '
+                            'will be used.')
             else:
                 if not isinstance(image, GCEMachineImage):
                     image = self.provider.compute.images.get(image)
@@ -470,7 +469,7 @@ class GCEInstanceService(BaseInstanceService):
                         'diskName': 'image-disk-{0}'.format(uuid.uuid4())}}
 
         if not boot_disk:
-            cb.log.warning('No boot disk is given for instance %s.', label)
+            log.warning('No boot disk is given for instance %s.', label)
             return None
         # The boot disk must be the first disk attached to the instance.
         disks.insert(0, boot_disk)
@@ -582,8 +581,8 @@ class GCEInstanceService(BaseInstanceService):
         instances = [GCEInstance(self.provider, inst)
                      for inst in response.get('items', [])]
         if len(instances) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(instances))
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(instances))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=instances)
@@ -791,8 +790,8 @@ class GCERouterService(BaseRouterService):
         for router in response.get('items', []):
             routers.append(GCERouter(self.provider, router))
         if len(routers) > max_result:
-            cb.log.warning('Expected at most %d results; go %d',
-                           max_result, len(routers))
+            log.warning('Expected at most %d results; go %d',
+                        max_result, len(routers))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=routers)
@@ -908,7 +907,7 @@ class GCESubnetService(BaseSubnetService):
 #         for subnet in self.iter(network=network):
 #            if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
 #                 if subnet.region_name != region_name:
-#                     cb.log.error('Failed to create subnetwork in region %s: '
+#                     log.error('Failed to create subnetwork in region %s: '
 #                                  'the given IP range %s overlaps with a '
 #                                  'subnetwork in a different region %s',
 #                                  region_name, cidr_block, subnet.region_name)
@@ -1085,8 +1084,8 @@ class GCEVolumeService(BaseVolumeService):
         gce_vols = [GCEVolume(self.provider, vol)
                     for vol in response.get('items', [])]
         if len(gce_vols) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(gce_vols))
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(gce_vols))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
@@ -1115,8 +1114,8 @@ class GCEVolumeService(BaseVolumeService):
         gce_vols = [GCEVolume(self.provider, vol)
                     for vol in response.get('items', [])]
         if len(gce_vols) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(gce_vols))
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(gce_vols))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=gce_vols)
@@ -1200,8 +1199,8 @@ class GCESnapshotService(BaseSnapshotService):
         snapshots = [GCESnapshot(self.provider, snapshot)
                      for snapshot in response.get('items', [])]
         if len(snapshots) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(snapshots))
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(snapshots))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
@@ -1220,8 +1219,8 @@ class GCESnapshotService(BaseSnapshotService):
         snapshots = [GCESnapshot(self.provider, snapshot)
                      for snapshot in response.get('items', [])]
         if len(snapshots) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(snapshots))
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(snapshots))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
@@ -1314,8 +1313,8 @@ class GCSBucketService(BaseBucketService):
         for bucket in response.get('items', []):
             buckets.append(GCSBucket(self.provider, bucket))
         if len(buckets) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(buckets))
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(buckets))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=buckets)
@@ -1396,8 +1395,8 @@ class GCSBucketObjectService(BaseBucketObjectService):
         for obj in response.get('items', []):
             objects.append(GCSObject(self.provider, bucket, obj))
         if len(objects) > max_result:
-            cb.log.warning('Expected at most %d results; got %d',
-                           max_result, len(objects))
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(objects))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
                                      False, data=objects)

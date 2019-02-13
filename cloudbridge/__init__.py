@@ -53,7 +53,7 @@ class CBLogger(logging.Logger):
 #   import cloudbridge
 #   cloudbridge.set_stream_logger(__name__)
 #   OR
-#   cloudbridge.set_file_logger(__name__, '/tmp/cb.log')
+#   cloudbridge.set_file_logger(__name__, '/tmp/log')
 default_format_string = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 logging.setLoggerClass(CBLogger)
 logging.addLevelName(TRACE, "TRACE")
@@ -66,7 +66,7 @@ log.addHandler(NullHandler())
 #   import cloudbridge
 #   cloudbridge.set_stream_logger(__name__)
 #   OR
-#   cloudbridge.set_file_logger(__name__, '/tmp/cb.log')
+#   cloudbridge.set_file_logger(__name__, '/tmp/log')
 
 
 def set_stream_logger(name, level=TRACE, format_string=None):

@@ -15,7 +15,6 @@ from collections import namedtuple
 
 import googleapiclient
 
-import cloudbridge as cb
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
 from cloudbridge.cloud.base.resources import BaseBucketObject
@@ -295,8 +294,8 @@ class GCEFirewallsDelegate(object):
             firewall[src_dest_str + 'Ranges'] = [src_dest_range]
         if src_dest_tag is not None:
             if direction == TrafficDirection.OUTBOUND:
-                cb.log.warning('GCP does not support egress rules to network '
-                               'tags. Only IP ranges are acceptable.')
+                log.warning('GCP does not support egress rules to network '
+                            'tags. Only IP ranges are acceptable.')
             else:
                 firewall['sourceTags'] = [src_dest_tag]
         if priority is not None:
@@ -996,7 +995,7 @@ class GCEInstance(BaseInstance):
         self.assert_valid_resource_label(label)
         name = self._generate_name_from_label(label, 'cb-img')
         if 'disks' not in self._gce_instance:
-            cb.log.error('Failed to create image: no disks found.')
+            log.error('Failed to create image: no disks found.')
             return
         for disk in self._gce_instance['disks']:
             if 'boot' in disk and disk['boot']:
@@ -1015,7 +1014,7 @@ class GCEInstance(BaseInstance):
                 self._provider.wait_for_operation(operation)
                 img = self._provider.get_resource('images', name)
                 return GCEMachineImage(self._provider, img) if img else None
-        cb.log.error('Failed to create image: no boot disk found.')
+        log.error('Failed to create image: no boot disk found.')
 
     def _get_existing_target_instance(self):
         """
@@ -1032,7 +1031,7 @@ class GCEInstance(BaseInstance):
                 if url.parameters['instance'] == self.name:
                     return target_instance
         except Exception as e:
-            cb.log.warning('Exception while listing target instances: %s', e)
+            log.warning('Exception while listing target instances: %s', e)
         return None
 
     def _get_target_instance(self):
@@ -1058,8 +1057,7 @@ class GCEInstance(BaseInstance):
                             .execute())
             self._provider.wait_for_operation(response, zone=self.zone_name)
         except Exception as e:
-            cb.log.warning('Exception while inserting a target instance: %s',
-                           e)
+            log.warning('Exception while inserting a target instance: %s', e)
             return None
 
         # The following method should find the target instance that we
@@ -1099,7 +1097,7 @@ class GCEInstance(BaseInstance):
                                                   region=ip.region_name)
                 return True
         except Exception as e:
-            cb.log.warning(
+            log.warning(
                 'Exception while listing/changing forwarding rules: %s', e)
         return False
 
@@ -1125,8 +1123,7 @@ class GCEInstance(BaseInstance):
                             .execute())
             self._provider.wait_for_operation(response, region=ip.region_name)
         except Exception as e:
-            cb.log.warning('Exception while inserting a forwarding rule: %s',
-                           e)
+            log.warning('Exception while inserting a forwarding rule: %s', e)
             return False
         return True
 
@@ -1148,7 +1145,7 @@ class GCEInstance(BaseInstance):
                 temp_zone = parsed_target_url.parameters['zone']
                 temp_name = parsed_target_url.parameters['targetInstance']
                 if temp_zone != zone or temp_name != name:
-                    cb.log.warning(
+                    log.warning(
                             '"%s" is forwarded to "%s" in zone "%s"',
                             ip.public_ip, temp_name, temp_zone)
                     return False
@@ -1164,7 +1161,7 @@ class GCEInstance(BaseInstance):
                                                   region=ip.region_name)
                 return True
         except Exception as e:
-            cb.log.warning(
+            log.warning(
                 'Exception while listing/deleting forwarding rules: %s', e)
             return False
         return True
@@ -1177,17 +1174,17 @@ class GCEInstance(BaseInstance):
                else self.inet_gateway.floating_ips.get(floating_ip))
         if fip.in_use:
             if fip.private_ip not in self.private_ips:
-                cb.log.warning('Floating IP "%s" is not associated to "%s"',
-                               fip.public_ip, self.name)
+                log.warning('Floating IP "%s" is not associated to "%s"',
+                            fip.public_ip, self.name)
             return
         target_instance = self._get_target_instance()
         if not target_instance:
-            cb.log.warning('Could not create a targetInstance for "%s"',
-                           self.name)
+            log.warning('Could not create a targetInstance for "%s"',
+                        self.name)
             return
         if not self._forward(fip, target_instance):
-            cb.log.warning('Could not forward "%s" to "%s"',
-                           fip.public_ip, target_instance['selfLink'])
+            log.warning('Could not forward "%s" to "%s"',
+                        fip.public_ip, target_instance['selfLink'])
 
     def remove_floating_ip(self, floating_ip):
         """
@@ -1196,17 +1193,17 @@ class GCEInstance(BaseInstance):
         fip = (floating_ip if isinstance(floating_ip, GCEFloatingIP)
                else self.inet_gateway.floating_ips.get(floating_ip))
         if not fip.in_use or fip.private_ip not in self.private_ips:
-            cb.log.warning('Floating IP "%s" is not associated to "%s"',
-                           fip.public_ip, self.name)
+            log.warning('Floating IP "%s" is not associated to "%s"',
+                        fip.public_ip, self.name)
             return
         target_instance = self._get_target_instance()
         if not target_instance:
             # We should not be here.
-            cb.log.warning('Something went wrong! "%s" is associated to "%s" '
-                           'with no target instance', fip.public_ip, self.name)
+            log.warning('Something went wrong! "%s" is associated to "%s" '
+                        'with no target instance', fip.public_ip, self.name)
             return
         if not self._delete_existing_rule(fip, target_instance):
-            cb.log.warning(
+            log.warning(
                 'Could not remove floating IP "%s" from instance "%s"',
                 fip.public_ip, self.name)
 
@@ -1406,8 +1403,8 @@ class GCEFloatingIP(BaseFloatingIP):
         if 'users' in self._ip and len(self._ip['users']) > 0:
             provider = self._provider
             if len(self._ip['users']) > 1:
-                cb.log.warning('Address "%s" in use by more than one resource',
-                               self._ip.get('address'))
+                log.warning('Address "%s" in use by more than one resource',
+                            self._ip.get('address'))
             resource_parsed_url = provider.parse_url(self._ip['users'][0])
             resource = resource_parsed_url.get_resource()
             if resource['kind'] == 'compute#forwardingRule':
@@ -1420,11 +1417,11 @@ class GCEFloatingIP(BaseFloatingIP):
                     except googleapiclient.errors.HttpError:
                         self._target_instance = GCEFloatingIP._DEAD_INSTANCE
                 else:
-                    cb.log.warning('Address "%s" is forwarded to a %s',
-                                   self._ip.get('address'), target['kind'])
+                    log.warning('Address "%s" is forwarded to a %s',
+                                self._ip.get('address'), target['kind'])
             else:
-                cb.log.warning('Address "%s" in use by a %s',
-                               self._ip.get('address'), resource['kind'])
+                log.warning('Address "%s" in use by a %s',
+                            self._ip.get('address'), resource['kind'])
 
 
 class GCERouter(BaseRouter):
@@ -1491,14 +1488,14 @@ class GCERouter(BaseRouter):
             subnet = self._provider.networking.subnets.get(subnet)
         if subnet.network_id == self.network_id:
             return
-        cb.log.warning('Google Cloud Routers automatically learn new subnets '
-                       'in your VPC network and announces them to your '
-                       'on-premises network')
+        log.warning('Google Cloud Routers automatically learn new subnets '
+                    'in your VPC network and announces them to your '
+                    'on-premises network')
 
     def detach_subnet(self, network_id):
-        cb.log.warning('Cannot detach from subnet. Google Cloud Routers '
-                       'automatically learn new subnets in your VPC network '
-                       'and announces them to your on-premises network')
+        log.warning('Cannot detach from subnet. Google Cloud Routers '
+                    'automatically learn new subnets in your VPC network '
+                    'and announces them to your on-premises network')
 
     def attach_gateway(self, gateway):
         pass
@@ -1708,7 +1705,7 @@ class GCEVolume(BaseVolume):
         # the first user of a disk.
         if 'users' in self._volume and len(self._volume) > 0:
             if len(self._volume) > 1:
-                cb.log.warning("This volume is attached to multiple instances")
+                log.warning("This volume is attached to multiple instances")
             return BaseAttachmentInfo(self,
                                       self._volume.get('users')[0],
                                       None)
