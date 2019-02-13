@@ -8,7 +8,7 @@ import six
 from ..base.events import ImplementingEventHandler
 from ..base.events import InterceptingEventHandler
 from ..base.events import ObservingEventHandler
-from ..interfaces.events import EventHandler
+from ..base.events import PlaceHoldingEventHandler
 from ..interfaces.exceptions import CloudBridgeBaseException
 from ..interfaces.exceptions import HandlerException
 from ..interfaces.middleware import Middleware
@@ -22,8 +22,8 @@ def intercept(event_pattern, priority):
         # Mark function as having an event_handler so we can discover it
         # The callback cannot be set to f as it is not bound yet and will be
         # set during auto discovery
-        f.__event_handler = InterceptingEventHandler(
-            event_pattern, priority, f)
+        f.__event_handler = PlaceHoldingEventHandler(
+            event_pattern, priority, f, InterceptingEventHandler)
         return f
     return deco
 
@@ -33,8 +33,8 @@ def observe(event_pattern, priority):
         # Mark function as having an event_handler so we can discover it
         # The callback cannot be set to f as it is not bound yet and will be
         # set during auto discovery
-        f.__event_handler = ObservingEventHandler(
-            event_pattern, priority, f)
+        f.__event_handler = PlaceHoldingEventHandler(
+            event_pattern, priority, f, ObservingEventHandler)
         return f
     return deco
 
@@ -45,8 +45,8 @@ def implement(event_pattern, priority):
         # The callback will be unbound since we do not have access to `self`
         # yet, and must be bound before invocation. This binding is done
         # during middleware auto discovery
-        f.__event_handler = ImplementingEventHandler(
-            event_pattern, priority, f)
+        f.__event_handler = PlaceHoldingEventHandler(
+            event_pattern, priority, f, ImplementingEventHandler)
         return f
     return deco
 
@@ -71,7 +71,8 @@ def dispatch(event, priority):
         # Mark function as having an event_handler so we can discover it
         # The callback f is unbound and will be bound during middleware
         # auto discovery
-        wrapper.__event_handler = ImplementingEventHandler(event, priority, f)
+        wrapper.__event_handler = PlaceHoldingEventHandler(
+            event, priority, f, ImplementingEventHandler)
         return wrapper
     return deco
 
@@ -144,17 +145,18 @@ class BaseMiddleware(Middleware):
         discovered_handlers = []
         for _, func in getmembers_static(class_or_obj, inspect.ismethod):
             handler = getattr(func, "__event_handler", None)
-            if handler and isinstance(handler, EventHandler):
+            if handler and isinstance(handler, PlaceHoldingEventHandler):
                 # create a new handler that mimics the original one,
                 # essentially deep-copying the handler, so that the bound
                 # method is never stored in the function itself, preventing
                 # further bonding
-                new_handler = handler.__class__(handler.event_pattern,
-                                                handler.priority,
-                                                handler.callback)
+                new_handler = handler.handler_class(handler.event_pattern,
+                                                    handler.priority,
+                                                    handler.callback)
                 # Bind the currently unbound method
                 # and set the bound method as the callback
-                new_handler.callback = handler.callback.__get__(class_or_obj)
+                new_handler.callback = (new_handler.callback
+                                                   .__get__(class_or_obj))
                 discovered_handlers.append(new_handler)
         return discovered_handlers
 
