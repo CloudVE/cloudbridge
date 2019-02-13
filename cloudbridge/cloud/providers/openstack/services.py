@@ -84,26 +84,7 @@ class OpenStackSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = OpenStackKeyPairService(provider)
         self._vm_firewalls = OpenStackVMFirewallService(provider)
-
-    @property
-    def key_pairs(self):
-        """
-        Provides access to key pairs for this provider.
-
-        :rtype: ``object`` of :class:`.KeyPairService`
-        :return: a KeyPairService object
-        """
-        return self._key_pairs
-
-    @property
-    def vm_firewalls(self):
-        """
-        Provides access to VM firewalls for this provider.
-
-        :rtype: ``object`` of :class:`.VMFirewallService`
-        :return: a VMFirewallService object
-        """
-        return self._vm_firewalls
+        self._vm_firewall_rules = OpenStackVMFirewallRuleService(provider)
 
     def get_or_create_ec2_credentials(self):
         """
@@ -951,18 +932,8 @@ class OpenStackNetworkingService(BaseNetworkingService):
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
         self._router_service = OpenStackRouterService(self.provider)
-
-    @property
-    def networks(self):
-        return self._network_service
-
-    @property
-    def subnets(self):
-        return self._subnet_service
-
-    @property
-    def routers(self):
-        return self._router_service
+        self._gateway_service = OpenStackGatewayService(self.provider)
+        self._floating_ip_service = OpenStackFloatingIPService(self.provider)
 
 
 class OpenStackNetworkService(BaseNetworkService):

@@ -71,14 +71,7 @@ class AzureSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = AzureKeyPairService(provider)
         self._vm_firewalls = AzureVMFirewallService(provider)
-
-    @property
-    def key_pairs(self):
-        return self._key_pairs
-
-    @property
-    def vm_firewalls(self):
-        return self._vm_firewalls
+        self._vm_firewall_rules = AzureVMFirewallRuleService(provider)
 
 
 class AzureVMFirewallService(BaseVMFirewallService):
@@ -1073,18 +1066,8 @@ class AzureNetworkingService(BaseNetworkingService):
         self._network_service = AzureNetworkService(self.provider)
         self._subnet_service = AzureSubnetService(self.provider)
         self._router_service = AzureRouterService(self.provider)
-
-    @property
-    def networks(self):
-        return self._network_service
-
-    @property
-    def subnets(self):
-        return self._subnet_service
-
-    @property
-    def routers(self):
-        return self._router_service
+        self._gateway_service = AzureGatewayService(self.provider)
+        self._floating_ip_service = AzureFloatingIPService(self.provider)
 
 
 class AzureNetworkService(BaseNetworkService):
