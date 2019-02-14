@@ -165,6 +165,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
+        AWSVMFirewall.assert_valid_resource_label(label)
         name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
         network_id = network.id if isinstance(network, Network) else network
         obj = self.svc.create('create_security_group', GroupName=name,
@@ -259,6 +260,7 @@ class AWSVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, zone, snapshot=None, description=None):
+        AWSVolume.assert_valid_resource_label(label)
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, AWSSnapshot) and snapshot else snapshot
@@ -321,6 +323,7 @@ class AWSSnapshotService(BaseSnapshotService):
     @dispatch(event="provider.storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
+        AWSSnapshot.assert_valid_resource_label(label)
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
         cb_snap = self.svc.create('create_snapshot', VolumeId=volume_id)
@@ -638,7 +641,7 @@ class AWSInstanceService(BaseInstanceService):
     def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
-
+        AWSInstance.assert_valid_resource_label(label)
         image_id = image.id if isinstance(image, MachineImage) else image
         vm_size = vm_type.id if \
             isinstance(vm_type, VMType) else vm_type
