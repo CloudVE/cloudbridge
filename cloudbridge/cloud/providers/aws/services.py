@@ -1230,7 +1230,7 @@ class AWSFloatingIPService(BaseFloatingIPService):
     def list(self, gateway, limit=None, marker=None):
         log.debug("Listing all floating IPs under gateway %s", gateway)
         limit = limit or self.provider.config.default_result_limit
-        collection = self.boto_collection.filter()
+        collection = self.svc.boto_collection.filter()
         pag_type, resume_token, boto_objs = self.svc._make_query(collection,
                                                                  limit,
                                                                  marker)

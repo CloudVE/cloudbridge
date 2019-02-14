@@ -271,7 +271,7 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
                 src_dest_tag, firewall.description,
                 firewall.network.name):
             return None
-        rules = self.find(direction=direction, protocol=protocol,
+        rules = self.find(firewall, direction=direction, protocol=protocol,
                           from_port=from_port, to_port=to_port, cidr=cidr,
                           src_dest_fw_id=src_dest_fw_id)
         if len(rules) < 1:
@@ -282,13 +282,15 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall, direction, protocol, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
-        return self.create_with_priority(direction, protocol, 1000, from_port,
-                                         to_port, cidr, src_dest_fw)
+        return self.create_with_priority(firewall, direction, protocol,
+                                         1000, from_port, to_port, cidr,
+                                         src_dest_fw)
 
     @dispatch(event="provider.security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
-        rule = rule if isinstance(rule, GCEVMFirewallRule) else self.get(rule)
+        rule = (rule if isinstance(rule, GCEVMFirewallRule)
+                else self.get(firewall, rule))
         if rule.is_dummy_rule():
             return True
         firewall.delegate.delete_firewall_id(rule._rule)

@@ -1334,7 +1334,7 @@ class AzureFloatingIPService(BaseFloatingIPService):
     def get(self, gateway, fip_id):
         log.debug("Getting Azure Floating IP container with the id: %s",
                   fip_id)
-        fip = [fip for fip in gateway._floating_ips if fip.id == fip_id]
+        fip = [fip for fip in gateway.floating_ips if fip.id == fip_id]
         return fip[0] if fip else None
 
     @dispatch(event="provider.networking.floating_ips.list",
