@@ -263,7 +263,7 @@ class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
     def __init__(self, provider, firewall):
         super(OpenStackVMFirewallRuleService, self).__init__(provider)
 
-    @dispatch(event_pattern="provider.security.vm_firewall_rules.list",
+    @dispatch(event="provider.security.vm_firewall_rules.list",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def list(self, firewall, limit=None, marker=None):
         # pylint:disable=protected-access
@@ -272,7 +272,7 @@ class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
         return ClientPagedResultList(self.provider, rules,
                                      limit=limit, marker=marker)
 
-    @dispatch(event_pattern="provider.security.vm_firewall_rules.create",
+    @dispatch(event="provider.security.vm_firewall_rules.create",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall, direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
@@ -309,7 +309,7 @@ class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
             else:
                 raise e
 
-    @dispatch(event_pattern="provider.security.vm_firewall_rules.delete",
+    @dispatch(event="provider.security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
         rule_id = (rule.id if isinstance(rule, OpenStackVMFirewallRule)
@@ -1153,7 +1153,7 @@ class OpenStackGatewayService(BaseGatewayService):
             except Exception:
                 return False
 
-    @dispatch(event_pattern="provider.networking.gateways.get_or_create",
+    @dispatch(event="provider.networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def get_or_create(self, network):
         """For OS, inet gtw is any net that has `external` property set."""
@@ -1164,12 +1164,12 @@ class OpenStackGatewayService(BaseGatewayService):
                 return OpenStackInternetGateway(self._provider, net)
         return None
 
-    @dispatch(event_pattern="provider.networking.gateways.delete",
+    @dispatch(event="provider.networking.gateways.delete",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def delete(self, network, gateway):
         pass
 
-    @dispatch(event_pattern="provider.networking.gateways.list",
+    @dispatch(event="provider.networking.gateways.list",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def list(self, network, limit=None, marker=None):
         log.debug("OpenStack listing of all current internet gateways")
@@ -1185,7 +1185,7 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
     def __init__(self, provider, gateway):
         super(OpenStackFloatingIPService, self).__init__(provider, gateway)
 
-    @dispatch(event_pattern="provider.networking.floating_ips.get",
+    @dispatch(event="provider.networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, fip_id):
         try:
@@ -1195,7 +1195,7 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
             log.debug("Floating IP %s not found.", fip_id)
             return None
 
-    @dispatch(event_pattern="provider.networking.floating_ips.list",
+    @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
         fips = [OpenStackFloatingIP(self.provider, fip)
@@ -1205,14 +1205,14 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
         return ClientPagedResultList(self.provider, fips,
                                      limit=limit, marker=marker)
 
-    @dispatch(event_pattern="provider.networking.floating_ips.create",
+    @dispatch(event="provider.networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
         return OpenStackFloatingIP(
             self.provider, self.provider.os_conn.network.create_ip(
                 floating_network_id=gateway.id))
 
-    @dispatch(event_pattern="provider.networking.floating_ips.delete",
+    @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         if isinstance(fip, OpenStackFloatingIP):

@@ -205,7 +205,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
     def __init__(self, provider):
         super(AWSVMFirewallRuleService, self).__init__(provider)
 
-    @dispatch(event_pattern="provider.security.vm_firewall_rules.list",
+    @dispatch(event="provider.security.vm_firewall_rules.list",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def list(self, firewall, limit=None, marker=None):
         # pylint:disable=protected-access
@@ -219,7 +219,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
         return ClientPagedResultList(self.provider, rules,
                                      limit=limit, marker=marker)
 
-    @dispatch(event_pattern="provider.security.vm_firewall_rules.create",
+    @dispatch(event="provider.security.vm_firewall_rules.create",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall,  direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
@@ -253,7 +253,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
             else:
                 raise ec2e
 
-    @dispatch(event_pattern="provider.security.vm_firewall_rules.delete",
+    @dispatch(event="provider.security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
         ip_perm_entry = rule._construct_ip_perms(
@@ -1168,7 +1168,7 @@ class AWSGatewayService(BaseGatewayService):
                                   cb_resource=AWSInternetGateway,
                                   boto_collection_name='internet_gateways')
 
-    @dispatch(event_pattern="provider.networking.gateways.get_or_create",
+    @dispatch(event="provider.networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def get_or_create(self, network):
         network_id = network.id if isinstance(
@@ -1189,7 +1189,7 @@ class AWSGatewayService(BaseGatewayService):
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 
-    @dispatch(event_pattern="provider.networking.gateways.delete",
+    @dispatch(event="provider.networking.gateways.delete",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def delete(self, network, gateway):
         gw = (gateway if isinstance(gateway, AWSInternetGateway)
@@ -1201,7 +1201,7 @@ class AWSGatewayService(BaseGatewayService):
         except ClientError as e:
             log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
 
-    @dispatch(event_pattern="provider.networking.gateways.list",
+    @dispatch(event="provider.networking.gateways.list",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def list(self, network, limit=None, marker=None):
         log.debug("Listing current AWS internet gateways for net %s.",
@@ -1218,19 +1218,19 @@ class AWSFloatingIPService(BaseFloatingIPService):
                                   cb_resource=AWSFloatingIP,
                                   boto_collection_name='vpc_addresses')
 
-    @dispatch(event_pattern="provider.networking.floating_ips.get",
+    @dispatch(event="provider.networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, fip_id):
         log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
         return self.svc.get(fip_id)
 
-    @dispatch(event_pattern="provider.networking.floating_ips.list",
+    @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
         log.debug("Listing all floating IPs under gateway %s", gateway)
         return self.svc.list(limit=limit, marker=marker)
 
-    @dispatch(event_pattern="provider.networking.floating_ips.create",
+    @dispatch(event="provider.networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
         log.debug("Creating a floating IP under gateway %s", gateway)
@@ -1240,7 +1240,7 @@ class AWSFloatingIPService(BaseFloatingIPService):
             self.provider,
             self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
 
-    @dispatch(event_pattern="provider.networking.floating_ips.delete",
+    @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         if isinstance(fip, AWSFloatingIP):
