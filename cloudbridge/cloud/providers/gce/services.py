@@ -68,7 +68,7 @@ class GCESecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = GCEKeyPairService(provider)
         self._vm_firewalls = GCEVMFirewallService(provider)
-        self._vm_firewall_rules = GCEVMFirewallRuleService(provider)
+        self._vm_firewall_rule_svc = GCEVMFirewallRuleService(provider)
 
 
 class GCEKeyPairService(BaseKeyPairService):
@@ -1526,8 +1526,8 @@ class GCEGatewayService(BaseGatewayService):
 
 class GCEFloatingIPService(BaseFloatingIPService):
 
-    def __init__(self, provider, gateway):
-        super(GCEFloatingIPService, self).__init__(provider, gateway)
+    def __init__(self, provider):
+        super(GCEFloatingIPService, self).__init__(provider)
 
     @dispatch(event="provider.networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)

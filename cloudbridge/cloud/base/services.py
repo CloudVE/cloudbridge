@@ -72,7 +72,7 @@ class BaseSecurityService(SecurityService, BaseCloudService):
 
     @property
     def _vm_firewall_rules(self):
-        return self._vm_firewall_rules
+        return self._vm_firewall_rule_svc
 
 
 class BaseKeyPairService(
@@ -108,9 +108,11 @@ class BaseVMFirewallService(
 
 
 class BaseVMFirewallRuleService(BasePageableObjectMixin,
-                                VMFirewallRuleService):
+                                VMFirewallRuleService,
+                                BaseCloudService):
 
     def __init__(self, provider):
+        super(BaseVMFirewallRuleService, self).__init__(provider)
         self._provider = provider
 
     @property
@@ -372,6 +374,7 @@ class BaseRouterService(
 class BaseGatewayService(GatewayService, BaseCloudService):
 
     def __init__(self, provider):
+        super(BaseGatewayService, self).__init__(provider)
         self._provider = provider
 
     @property
@@ -379,9 +382,10 @@ class BaseGatewayService(GatewayService, BaseCloudService):
         return self._provider
 
 
-class BaseFloatingIPService(FloatingIPService):
+class BaseFloatingIPService(FloatingIPService, BaseCloudService):
 
     def __init__(self, provider):
+        super(BaseFloatingIPService, self).__init__(provider)
         self._provider = provider
 
     @property

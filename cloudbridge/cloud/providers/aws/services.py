@@ -80,7 +80,7 @@ class AWSSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = AWSKeyPairService(provider)
         self._vm_firewalls = AWSVMFirewallService(provider)
-        self._vm_firewall_rules = AWSVMFirewallRuleService(provider)
+        self._vm_firewall_rule_svc = AWSVMFirewallRuleService(provider)
 
 
 class AWSKeyPairService(BaseKeyPairService):
@@ -1193,13 +1193,13 @@ class AWSGatewayService(BaseGatewayService):
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def delete(self, network, gateway):
         gw = (gateway if isinstance(gateway, AWSInternetGateway)
-              else self.get(gateway))
+              else self.svc.get(gateway))
         try:
             if gw.network_id:
                 gw._gateway.detach_from_vpc(VpcId=gw.network_id)
-            gw._gateway.delete()
         except ClientError as e:
             log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
+        gw._gateway.delete()
 
     @dispatch(event="provider.networking.gateways.list",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
@@ -1212,8 +1212,8 @@ class AWSGatewayService(BaseGatewayService):
 
 class AWSFloatingIPService(BaseFloatingIPService):
 
-    def __init__(self, provider, gateway):
-        super(AWSFloatingIPService, self).__init__(provider, gateway)
+    def __init__(self, provider):
+        super(AWSFloatingIPService, self).__init__(provider)
         self.svc = BotoEC2Service(provider=self.provider,
                                   cb_resource=AWSFloatingIP,
                                   boto_collection_name='vpc_addresses')

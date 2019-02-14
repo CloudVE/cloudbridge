@@ -1509,8 +1509,7 @@ class AzureInternetGateway(BaseInternetGateway):
         self._network_id = gateway_net.id if isinstance(
             gateway_net, AzureNetwork) else gateway_net
         self._state = ''
-        self._fips_container = AzureFloatingIPSubService(
-            provider, self, self._network_id)
+        self._fips_container = AzureFloatingIPSubService(provider, self)
 
     @property
     def id(self):

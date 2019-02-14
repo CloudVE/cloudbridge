@@ -453,7 +453,8 @@ class GCEVMFirewall(BaseVMFirewall):
                              .get_or_create_default())
         else:
             self._network = network
-        self._rule_container = GCEVMFirewallRuleSubService(self)
+        self._rule_container = GCEVMFirewallRuleSubService(self._provider,
+                                                           self)
 
     @property
     def id(self):

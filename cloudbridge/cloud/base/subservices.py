@@ -74,7 +74,8 @@ class BaseVMFirewallRuleSubService(BasePageableObjectMixin,
         return self.__provider
 
     def get(self, rule_id):
-        return self._provider.security._vm_firewall_rules.get(self._firewall)
+        return self._provider.security._vm_firewall_rules.get(self._firewall,
+                                                              rule_id)
 
     def list(self, limit=None, marker=None):
         return self._provider.security._vm_firewall_rules.list(self._firewall,

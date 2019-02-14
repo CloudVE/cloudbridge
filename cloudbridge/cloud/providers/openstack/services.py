@@ -84,7 +84,7 @@ class OpenStackSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = OpenStackKeyPairService(provider)
         self._vm_firewalls = OpenStackVMFirewallService(provider)
-        self._vm_firewall_rules = OpenStackVMFirewallRuleService(provider)
+        self._vm_firewall_rule_svc = OpenStackVMFirewallRuleService(provider)
 
     def get_or_create_ec2_credentials(self):
         """
@@ -260,7 +260,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
 
 class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
 
-    def __init__(self, provider, firewall):
+    def __init__(self, provider):
         super(OpenStackVMFirewallRuleService, self).__init__(provider)
 
     @dispatch(event="provider.security.vm_firewall_rules.list",
@@ -302,9 +302,10 @@ class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
             firewall.refresh()
             # 409=Conflict, raised for duplicate rule
             if e.status_code == 409:
-                existing = self.find(direction=direction, protocol=protocol,
-                                     from_port=from_port, to_port=to_port,
-                                     cidr=cidr, src_dest_fw_id=src_dest_fw_id)
+                existing = self.find(firewall, direction=direction,
+                                     protocol=protocol, from_port=from_port,
+                                     to_port=to_port, cidr=cidr,
+                                     src_dest_fw_id=src_dest_fw_id)
                 return existing[0]
             else:
                 raise e
@@ -1160,7 +1161,7 @@ class OpenStackGatewayService(BaseGatewayService):
         external_nets = (n for n in self._provider.networking.networks
                          if n.external)
         for net in external_nets:
-            if self._check_fip_connectivity(net):
+            if self._check_fip_connectivity(network, net):
                 return OpenStackInternetGateway(self._provider, net)
         return None
 
@@ -1175,15 +1176,15 @@ class OpenStackGatewayService(BaseGatewayService):
         log.debug("OpenStack listing of all current internet gateways")
         igl = [OpenStackInternetGateway(self._provider, n)
                for n in self._provider.networking.networks
-               if n.external and self._check_fip_connectivity(n)]
+               if n.external and self._check_fip_connectivity(network, n)]
         return ClientPagedResultList(self._provider, igl, limit=limit,
                                      marker=marker)
 
 
 class OpenStackFloatingIPService(BaseFloatingIPService):
 
-    def __init__(self, provider, gateway):
-        super(OpenStackFloatingIPService, self).__init__(provider, gateway)
+    def __init__(self, provider):
+        super(OpenStackFloatingIPService, self).__init__(provider)
 
     @dispatch(event="provider.networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)

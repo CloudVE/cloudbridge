@@ -24,7 +24,7 @@ class GCEGatewaySubService(BaseGatewaySubService):
 class GCEVMFirewallRuleSubService(BaseVMFirewallRuleSubService):
 
     def __init__(self, provider, firewall):
-        super(GCEVMFirewallRuleSubService, self).__init__(provider)
+        super(GCEVMFirewallRuleSubService, self).__init__(provider, firewall)
 
 
 class GCEFloatingIPSubService(BaseFloatingIPSubService):

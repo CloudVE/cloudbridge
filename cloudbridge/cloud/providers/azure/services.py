@@ -71,7 +71,7 @@ class AzureSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = AzureKeyPairService(provider)
         self._vm_firewalls = AzureVMFirewallService(provider)
-        self._vm_firewall_rules = AzureVMFirewallRuleService(provider)
+        self._vm_firewall_rule_svc = AzureVMFirewallRuleService(provider)
 
 
 class AzureVMFirewallService(BaseVMFirewallService):
@@ -164,7 +164,7 @@ class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
         rules = [AzureVMFirewallRule(firewall, rule) for rule
                  in firewall._vm_firewall.security_rules
                  if rule.priority < 3500]
-        return ClientPagedResultList(self._provider, rules,
+        return ClientPagedResultList(self.provider, rules,
                                      limit=limit, marker=marker)
 
     @dispatch(event="provider.security.vm_firewall_rules.create",
@@ -172,11 +172,11 @@ class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
     def create(self, firewall, direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
         if protocol and from_port and to_port:
-            return self._create_rule(direction, protocol, from_port,
+            return self._create_rule(firewall, direction, protocol, from_port,
                                      to_port, cidr)
         elif src_dest_fw:
             result = None
-            fw = (self._provider.security.vm_firewalls.get(src_dest_fw)
+            fw = (self.provider.security.vm_firewalls.get(src_dest_fw)
                   if isinstance(src_dest_fw, str) else src_dest_fw)
             for rule in fw.rules:
                 result = self._create_rule(
@@ -210,7 +210,7 @@ class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
                       "destination_address_prefix": destination_address_prefix,
                       "access": access,
                       "direction": direction}
-        result = self._provider.azure_client. \
+        result = self.provider.azure_client. \
             create_vm_firewall_rule(firewall.id,
                                     rule_name, parameters)
         # pylint:disable=protected-access
@@ -1228,7 +1228,7 @@ class AzureSubnetService(BaseSubnetService):
             net_id = sn.network_id
             az_network = self.provider.azure_client.get_network(net_id)
             az_network.tags.pop(sn.tag_name)
-            self._provider.azure_client.update_network_tags(
+            self.provider.azure_client.update_network_tags(
                 az_network.id, az_network)
 
 
@@ -1303,7 +1303,7 @@ class AzureGatewayService(BaseGatewayService):
     # http://bit.ly/2BqGdVh
     # Singleton returned by the list and get methods
     def _gateway_singleton(self, network):
-        return AzureInternetGateway(self._provider, None, network)
+        return AzureInternetGateway(self.provider, None, network)
 
     @dispatch(event="provider.networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
@@ -1314,7 +1314,7 @@ class AzureGatewayService(BaseGatewayService):
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def list(self, network, limit=None, marker=None):
         gws = [self._gateway_singleton(network)]
-        return ClientPagedResultList(self._provider,
+        return ClientPagedResultList(self.provider,
                                      gws,
                                      limit=limit, marker=marker)
 
@@ -1365,4 +1365,4 @@ class AzureFloatingIPService(BaseFloatingIPService):
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         fip_id = fip if isinstance(fip, AzureFloatingIP) else fip
-        self._provider.azure_client.delete_floating_ip(fip_id)
+        self.provider.azure_client.delete_floating_ip(fip_id)

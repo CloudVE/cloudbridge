@@ -642,7 +642,7 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
         return js
 
     def delete(self):
-        self._provider.sercurity._vm_firewall_rules.delete(self.firewall, self)
+        self._provider.security._vm_firewall_rules.delete(self.firewall, self)
 
 
 class BasePlacementZone(BaseCloudResource, PlacementZone):
@@ -880,3 +880,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
             terminal_states=[GatewayState.ERROR, GatewayState.UNKNOWN],
             timeout=timeout,
             interval=interval)
+
+    def delete(self):
+        return self._provider.networking._gateways.delete(self.network_id,
+                                                          self)
