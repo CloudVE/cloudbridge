@@ -68,7 +68,7 @@ that subnet.
     # make sure subnet has internet access
     router = self.provider.networking.routers.create(label='my-router', network=net)
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway()
+    gateway = net.gateways.get_or_create()
     router.attach_gateway(gateway)
 
     inst = provider.compute.instances.create(

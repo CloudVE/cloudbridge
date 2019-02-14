@@ -257,7 +257,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     len(router.subnets) == 1,
                     "Subnet {0} not attached to router {1}".format(sn, router)
                 )
-            gteway = net.gateways.get_or_create_inet_gateway()
+            gteway = net.gateways.get_or_create()
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 

@@ -117,6 +117,8 @@ class BaseVMFirewallRuleService(BasePageableObjectMixin,
     def _provider(self):
         return self.__provider
 
+    @dispatch(event_pattern="provider.security.vm_firewall_rules.get",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def get(self, firewall, rule_id):
         matches = [rule for rule in firewall.rules if rule.id == rule_id]
         if matches:
@@ -124,6 +126,8 @@ class BaseVMFirewallRuleService(BasePageableObjectMixin,
         else:
             return None
 
+    @dispatch(event_pattern="provider.security.vm_firewall_rules.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, firewall, **kwargs):
         obj_list = firewall.rules
         filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
@@ -380,6 +384,8 @@ class BaseFloatingIPService(FloatingIPService):
     def _provider(self):
         return self.__provider
 
+    @dispatch(event_pattern="provider.networking.floating_ips.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, gateway, **kwargs):
         obj_list = gateway.floating_ips
         filters = ['name', 'public_ip']

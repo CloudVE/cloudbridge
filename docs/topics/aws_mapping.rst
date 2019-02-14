@@ -158,7 +158,7 @@ take a name parameter, and the `name` property is set automatically to a
 default value. Note that since this value is stored in the tag with key Name,
 the AWS dashboard does allow for its modification, although that is not
 encouraged as the default name is expected for the
-`get_or_create_inet_gateway` method.
+`get_or_create` method.
 
 Finally, Firewall Rules in AWS differ from traditional unlabeled resources
 by the fact that they do not take a `name` parameter at creation, and the

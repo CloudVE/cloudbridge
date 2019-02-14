@@ -46,10 +46,10 @@ class BaseGatewaySubService(GatewaySubService, BasePageableObjectMixin):
     def _provider(self):
         return self.__provider
 
-    def get_or_create_inet_gateway(self):
+    def get_or_create(self):
         return (self._provider.networking
                               ._gateways
-                              .get_or_create_inet_gateway(self._network))
+                              .get_or_create(self._network))
 
     def delete(self, gateway):
         return (self._provider.networking

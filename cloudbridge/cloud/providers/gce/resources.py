@@ -977,7 +977,7 @@ class GCEInstance(BaseInstance):
         network_url = self._gce_instance.get('networkInterfaces')[0].get(
             'network')
         network = self._provider.networking.networks.get(network_url)
-        self._inet_gateway = network.gateways.get_or_create_inet_gateway()
+        self._inet_gateway = network.gateways.get_or_create()
         return self._inet_gateway
 
     def create_image(self, label):

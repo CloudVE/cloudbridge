@@ -79,7 +79,7 @@ class GatewaySubService(PageableObjectMixin):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self):
+    def get_or_create(self):
         """
         Creates new or returns an existing internet gateway for a network.
 

@@ -204,7 +204,7 @@ def get_test_gateway(provider):
     """
     sn = get_or_create_default_subnet(provider)
     net = sn.network
-    return net.gateways.get_or_create_inet_gateway()
+    return net.gateways.get_or_create()
 
 
 def cleanup_gateway(gateway):

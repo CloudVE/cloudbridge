@@ -154,6 +154,8 @@ class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
     def __init__(self, provider):
         super(AzureVMFirewallRuleService, self).__init__(provider)
 
+    @dispatch(event_pattern="provider.security.vm_firewall_rules.list",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def list(self, firewall, limit=None, marker=None):
         # Filter out firewall rules with priority < 3500 because values
         # between 3500 and 4096 are assumed to be owned by cloudbridge
@@ -165,6 +167,8 @@ class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
         return ClientPagedResultList(self._provider, rules,
                                      limit=limit, marker=marker)
 
+    @dispatch(event_pattern="provider.security.vm_firewall_rules.create",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall, direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
         if protocol and from_port and to_port:
@@ -213,6 +217,8 @@ class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
         firewall._vm_firewall.security_rules.append(result)
         return AzureVMFirewallRule(firewall, result)
 
+    @dispatch(event_pattern="provider.security.vm_firewall_rules.delete",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
         rule_id = rule.id if isinstance(rule, AzureVMFirewallRule) else rule
         fw_name = firewall.name
@@ -1299,15 +1305,21 @@ class AzureGatewayService(BaseGatewayService):
     def _gateway_singleton(self, network):
         return AzureInternetGateway(self._provider, None, network)
 
-    def get_or_create_inet_gateway(self, network):
+    @dispatch(event_pattern="provider.networking.gateways.get_or_create",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def get_or_create(self, network):
         return self._gateway_singleton(network)
 
+    @dispatch(event_pattern="provider.networking.gateways.list",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def list(self, network, limit=None, marker=None):
         gws = [self._gateway_singleton(network)]
         return ClientPagedResultList(self._provider,
                                      gws,
                                      limit=limit, marker=marker)
 
+    @dispatch(event_pattern="provider.networking.gateways.delete",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def delete(self, network, gateway):
         pass
 
@@ -1317,12 +1329,16 @@ class AzureFloatingIPService(BaseFloatingIPService):
     def __init__(self, provider):
         super(AzureFloatingIPService, self).__init__(provider)
 
+    @dispatch(event_pattern="provider.networking.floating_ips.get",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, fip_id):
         log.debug("Getting Azure Floating IP container with the id: %s",
                   fip_id)
         fip = [fip for fip in self if fip.id == fip_id]
         return fip[0] if fip else None
 
+    @dispatch(event_pattern="provider.networking.floating_ips.list",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
         floating_ips = [AzureFloatingIP(self.provider, floating_ip,
                                         gateway.network_id)
@@ -1331,6 +1347,8 @@ class AzureFloatingIPService(BaseFloatingIPService):
         return ClientPagedResultList(self.provider, floating_ips,
                                      limit=limit, marker=marker)
 
+    @dispatch(event_pattern="provider.networking.floating_ips.create",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
         public_ip_parameters = {
             'location': self.provider.azure_client.region_name,
@@ -1343,6 +1361,8 @@ class AzureFloatingIPService(BaseFloatingIPService):
             create_floating_ip(public_ip_name, public_ip_parameters)
         return AzureFloatingIP(self.provider, floating_ip, gateway.network_id)
 
+    @dispatch(event_pattern="provider.networking.floating_ips.delete",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         fip_id = fip if isinstance(fip, AzureFloatingIP) else fip
         self._provider.azure_client.delete_floating_ip(fip_id)

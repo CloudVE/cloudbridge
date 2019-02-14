@@ -1541,7 +1541,7 @@ class GatewayService(CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_or_create_inet_gateway(self, network):
+    def get_or_create(self, network):
         """
         Creates new or returns an existing internet gateway for a network.
 

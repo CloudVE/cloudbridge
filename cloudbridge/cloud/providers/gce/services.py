@@ -228,6 +228,8 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
         super(GCEVMFirewallRuleService, self).__init__(provider)
         self._dummy_rule = None
 
+    @dispatch(event_pattern="provider.security.vm_firewall_rules.list",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def list(self, firewall, limit=None, marker=None):
         rules = []
         for firewall in firewall.delegate.iter_firewalls(
@@ -276,11 +278,15 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
             return None
         return rules[0]
 
+    @dispatch(event_pattern="provider.security.vm_firewall_rules.create",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall, direction, protocol, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
         return self.create_with_priority(direction, protocol, 1000, from_port,
                                          to_port, cidr, src_dest_fw)
 
+    @dispatch(event_pattern="provider.security.vm_firewall_rules.delete",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
         rule = rule if isinstance(rule, GCEVMFirewallRule) else self.get(rule)
         if rule.is_dummy_rule():
@@ -1051,7 +1057,7 @@ class GCESubnetService(BaseSubnetService):
                 cidr_block=cidr_block, network=net, zone=zone)
         router = self.provider.networking.routers.get_or_create_default(net)
         router.attach_subnet(sn)
-        gateway = net.gateways.get_or_create_inet_gateway()
+        gateway = net.gateways.get_or_create()
         router.attach_gateway(gateway)
         return sn
 
@@ -1499,12 +1505,18 @@ class GCEGatewayService(BaseGatewayService):
                     GCEGatewayService._DEFAULT_GATEWAY_NAME),
              'name': GCEGatewayService._DEFAULT_GATEWAY_NAME})
 
-    def get_or_create_inet_gateway(self, network):
+    @dispatch(event_pattern="provider.networking.gateways.get_or_create",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def get_or_create(self, network):
         return self._default_internet_gateway
 
+    @dispatch(event_pattern="provider.networking.gateways.delete",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def delete(self, network, gateway):
         pass
 
+    @dispatch(event_pattern="provider.networking.gateways.list",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def list(self, network, limit=None, marker=None):
         gws = [self._default_internet_gateway]
         return ClientPagedResultList(self._provider,
@@ -1517,11 +1529,15 @@ class GCEFloatingIPService(BaseFloatingIPService):
     def __init__(self, provider, gateway):
         super(GCEFloatingIPService, self).__init__(provider, gateway)
 
+    @dispatch(event_pattern="provider.networking.floating_ips.get",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, floating_ip_id):
         fip = self.provider.get_resource('addresses', floating_ip_id)
         return (GCEFloatingIP(self.provider, gateway, fip)
                 if fip else None)
 
+    @dispatch(event_pattern="provider.networking.floating_ips.list",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1541,6 +1557,8 @@ class GCEFloatingIPService(BaseFloatingIPService):
                                      response.get('nextPageToken'),
                                      False, data=ips)
 
+    @dispatch(event_pattern="provider.networking.floating_ips.create",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
         region_name = self.provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
@@ -1554,6 +1572,8 @@ class GCEFloatingIPService(BaseFloatingIPService):
         self.provider.wait_for_operation(response, region=region_name)
         return self.get(ip_name)
 
+    @dispatch(event_pattern="provider.networking.floating_ips.delete",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         fip = (fip if isinstance(fip, GCEFloatingIP)
                else gateway.floating_ips.get(fip))
