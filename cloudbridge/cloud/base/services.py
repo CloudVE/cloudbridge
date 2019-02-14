@@ -111,11 +111,11 @@ class BaseVMFirewallRuleService(BasePageableObjectMixin,
                                 VMFirewallRuleService):
 
     def __init__(self, provider):
-        self.__provider = provider
+        self._provider = provider
 
     @property
-    def _provider(self):
-        return self.__provider
+    def provider(self):
+        return self._provider
 
     @dispatch(event_pattern="provider.security.vm_firewall_rules.get",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
@@ -374,15 +374,19 @@ class BaseGatewayService(GatewayService, BaseCloudService):
     def __init__(self, provider):
         self._provider = provider
 
+    @property
+    def provider(self):
+        return self._provider
+
 
 class BaseFloatingIPService(FloatingIPService):
 
     def __init__(self, provider):
-        self.__provider = provider
+        self._provider = provider
 
     @property
-    def _provider(self):
-        return self.__provider
+    def provider(self):
+        return self._provider
 
     @dispatch(event_pattern="provider.networking.floating_ips.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
