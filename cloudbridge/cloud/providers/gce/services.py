@@ -190,12 +190,12 @@ class GCEVMFirewallService(BaseVMFirewallService):
         network = (network if isinstance(network, GCENetwork)
                    else self.provider.networking.networks.get(network))
         fw = GCEVMFirewall(self._delegate, label, network, description)
+        fw.label = label
         # This rule exists implicitly. Add it explicitly so that the firewall
         # is not empty and the rule is shown by list/get/find methods.
-        fw.rules.create_with_priority(
-                direction=TrafficDirection.OUTBOUND, protocol='tcp',
-                priority=65534, cidr='0.0.0.0/0')
-        fw.label = label
+        self.provider.security._vm_firewall_rules.create_with_priority(
+            fw, direction=TrafficDirection.OUTBOUND, protocol='tcp',
+            priority=65534, cidr='0.0.0.0/0')
         return fw
 
     @dispatch(event="provider.security.vm_firewalls.delete",
