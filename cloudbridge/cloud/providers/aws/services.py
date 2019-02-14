@@ -1223,7 +1223,7 @@ class AWSFloatingIPService(BaseFloatingIPService):
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, fip_id):
         log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
-        return self.svc.get(fip_id)
+        return AWSFloatingIP(self.provider, gateway, self.svc.get_raw(fip_id))
 
     @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)

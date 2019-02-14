@@ -232,9 +232,9 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def list(self, firewall, limit=None, marker=None):
         rules = []
-        for firewall in firewall.delegate.iter_firewalls(
+        for fw in firewall.delegate.iter_firewalls(
                 firewall.name, firewall.network.name):
-            rule = GCEVMFirewallRule(firewall, firewall['id'])
+            rule = GCEVMFirewallRule(firewall, fw['id'])
             if rule.is_dummy_rule():
                 self._dummy_rule = rule
             else:
