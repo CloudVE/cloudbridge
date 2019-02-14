@@ -1116,14 +1116,6 @@ class AWSInternetGateway(BaseInternetGateway):
             return self._gateway.attachments[0].get('VpcId')
         return None
 
-    def delete(self):
-        try:
-            if self.network_id:
-                self._gateway.detach_from_vpc(VpcId=self.network_id)
-            self._gateway.delete()
-        except ClientError as e:
-            log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
-
     @property
     def floating_ips(self):
         return self._fips_container

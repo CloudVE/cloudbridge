@@ -1059,10 +1059,6 @@ class OpenStackInternetGateway(BaseInternetGateway):
         return self.GATEWAY_STATE_MAP.get(
             self._gateway_net.state, GatewayState.UNKNOWN)
 
-    def delete(self):
-        """Do nothing on openstack"""
-        pass
-
     @property
     def floating_ips(self):
         return self._fips_container

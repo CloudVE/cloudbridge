@@ -137,8 +137,9 @@ class AWSKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def delete(self, kp):
-        key_pair = kp if isinstance(kp, AWSKeyPair) else self.get(kp)
+    def delete(self, key_pair):
+        key_pair = (key_pair if isinstance(key_pair, AWSKeyPair) else
+                    self.get(key_pair))
         if key_pair:
             # pylint:disable=protected-access
             key_pair._key_pair.delete()
@@ -191,8 +192,9 @@ class AWSVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vmf):
-        firewall = vmf if isinstance(vmf, AWSVMFirewall) else self.get(vmf)
+    def delete(self, vm_firewall):
+        firewall = (vm_firewall if isinstance(vm_firewall, AWSVMFirewall)
+                    else self.get(vm_firewall))
         if firewall:
             # pylint:disable=protected-access
             firewall._vm_firewall.delete()
@@ -402,8 +404,9 @@ class AWSSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def delete(self, snap):
-        snapshot = snap if isinstance(snap, AWSSnapshot) else self.get(snap)
+    def delete(self, snapshot):
+        snapshot = (snapshot if isinstance(snapshot, AWSSnapshot) else
+                    self.get(snapshot))
         if snapshot:
             # pylint:disable=protected-access
             snapshot._snapshot.delete()
@@ -773,8 +776,9 @@ class AWSInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def delete(self, inst):
-        aws_inst = inst if isinstance(inst, AWSInstance) else self.get(inst)
+    def delete(self, instance):
+        aws_inst = (instance if isinstance(instance, AWSInstance) else
+                    self.get(instance))
         if aws_inst:
             # pylint:disable=protected-access
             aws_inst._ec2_instance.terminate()
@@ -905,8 +909,9 @@ class AWSNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def delete(self, net):
-        network = net if isinstance(net, AWSNetwork) else self.get(net)
+    def delete(self, network):
+        network = (network if isinstance(network, AWSNetwork)
+                   else self.get(network))
         if network:
             # pylint:disable=protected-access
             network._vpc.delete()
@@ -1158,8 +1163,6 @@ class AWSGatewayService(BaseGatewayService):
                                   boto_collection_name='internet_gateways')
 
     def get_or_create_inet_gateway(self, network):
-        log.debug("Get or create inet gateway on net %s",
-                  network)
         network_id = network.id if isinstance(
             network, AWSNetwork) else network
         # Don't filter by label because it may conflict with at least the
@@ -1179,12 +1182,14 @@ class AWSGatewayService(BaseGatewayService):
         return cb_gateway
 
     def delete(self, network, gateway):
-        log.debug("Service deleting AWS Gateway %s", gateway)
-        gateway_id = gateway.id if isinstance(
-            gateway, AWSInternetGateway) else gateway
-        gateway = self.svc.get(gateway_id)
-        if gateway:
-            gateway.delete()
+        gw = (gateway if isinstance(gateway, AWSInternetGateway)
+              else self.get(gateway))
+        try:
+            if gw.network_id:
+                gw._gateway.detach_from_vpc(VpcId=gw.network_id)
+            gw._gateway.delete()
+        except ClientError as e:
+            log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
 
     def list(self, network, limit=None, marker=None):
         log.debug("Listing current AWS internet gateways for net %s.",

@@ -191,8 +191,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def delete(self, kp):
-        keypair = kp if isinstance(kp, OpenStackKeyPair) else self.get(kp)
+    def delete(self, key_pair):
+        keypair = (key_pair if isinstance(key_pair, OpenStackKeyPair)
+                   else self.get(key_pair))
         if keypair:
             # pylint:disable=protected-access
             keypair._key_pair.delete()
@@ -249,8 +250,9 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vmf):
-        fw = vmf if isinstance(vmf, OpenStackVMFirewall) else self.get(vmf)
+    def delete(self, vm_firewall):
+        fw = (vm_firewall if isinstance(vm_firewall, OpenStackVMFirewall)
+              else self.get(vm_firewall))
         if fw:
             # pylint:disable=protected-access
             fw._vm_firewall.delete(self.provider.os_conn.session)
@@ -304,7 +306,9 @@ class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
                 raise e
 
     def delete(self, firewall, rule):
-        self.provider.os_conn.network.delete_security_group_rule(rule.id)
+        rule_id = (rule.id if isinstance(rule, OpenStackVMFirewallRule)
+                   else rule)
+        self.provider.os_conn.network.delete_security_group_rule(rule_id)
         firewall.refresh()
 
 
@@ -399,8 +403,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vol):
-        volume = vol if isinstance(vol, OpenStackVolume) else self.get(vol)
+    def delete(self, volume):
+        volume = (volume if isinstance(volume, OpenStackVolume)
+                  else self.get(volume))
         if volume:
             # pylint:disable=protected-access
             volume._volume.delete()
@@ -470,8 +475,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def delete(self, snap):
-        s = snap if isinstance(snap, OpenStackSnapshot) else self.get(snap)
+    def delete(self, snapshot):
+        s = (snapshot if isinstance(snapshot, OpenStackSnapshot) else
+             self.get(snapshot))
         if s:
             # pylint:disable=protected-access
             s._snapshot.delete()
@@ -853,8 +859,9 @@ class OpenStackInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def delete(self, inst):
-        ins = inst if isinstance(inst, OpenStackInstance) else self.get(inst)
+    def delete(self, instance):
+        ins = (instance if isinstance(instance, OpenStackInstance) else
+               self.get(instance))
         if ins:
             # pylint:disable=protected-access
             os_instance = ins._os_instance
@@ -987,8 +994,9 @@ class OpenStackNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def delete(self, net):
-        network = net if isinstance(net, OpenStackNetwork) else self.get(net)
+    def delete(self, network):
+        network = (network if isinstance(network, OpenStackNetwork) else
+                   self.get(network))
         if not network:
             return
         if not network.external and network.id in str(
@@ -1149,8 +1157,7 @@ class OpenStackGatewayService(BaseGatewayService):
         return None
 
     def delete(self, network, gateway):
-        log.debug("Deleting OpenStack Gateway: %s", gateway)
-        gateway.delete()
+        pass
 
     def list(self, network, limit=None, marker=None):
         log.debug("OpenStack listing of all current internet gateways")

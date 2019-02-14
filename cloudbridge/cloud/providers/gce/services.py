@@ -147,11 +147,12 @@ class GCEKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def delete(self, kp):
-        kp = kp if isinstance(kp, GCEKeyPair) else self.get(kp)
-        if kp:
+    def delete(self, key_pair):
+        key_pair = (key_pair if isinstance(key_pair, GCEKeyPair) else
+                    self.get(key_pair))
+        if key_pair:
             helpers.remove_metadata_item(
-                self.provider, GCEKeyPair.KP_TAG_PREFIX + kp.name)
+                self.provider, GCEKeyPair.KP_TAG_PREFIX + key_pair.name)
 
 
 class GCEVMFirewallService(BaseVMFirewallService):
@@ -199,8 +200,9 @@ class GCEVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vmf):
-        fw_id = vmf.id if isinstance(vmf, GCEVMFirewall) else vmf
+    def delete(self, vm_firewall):
+        fw_id = (vm_firewall.id if isinstance(vm_firewall, GCEVMFirewall)
+                 else vm_firewall)
         return self._delegate.delete_tag_network_with_id(fw_id)
 
     def find_by_network_and_tags(self, network_name, tags):
@@ -280,6 +282,7 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
                                          to_port, cidr, src_dest_fw)
 
     def delete(self, firewall, rule):
+        rule = rule if isinstance(rule, GCEVMFirewallRule) else self.get(rule)
         if rule.is_dummy_rule():
             return True
         firewall.delegate.delete_firewall_id(rule._rule)
@@ -653,8 +656,9 @@ class GCEInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def delete(self, inst):
-        instance = inst if isinstance(inst, GCEInstance) else self.get(inst)
+    def delete(self, instance):
+        instance = (instance if isinstance(instance, GCEInstance) else
+                    self.get(instance))
         if instance:
             (self._provider
              .gce_compute
@@ -1207,8 +1211,8 @@ class GCEVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vol):
-        volume = vol if isinstance(vol, GCEVolume) else self.get(vol)
+    def delete(self, volume):
+        volume = volume if isinstance(volume, GCEVolume) else self.get(volume)
         if volume:
             (self._provider.gce_compute
                            .disks()
@@ -1307,8 +1311,9 @@ class GCESnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def delete(self, snap):
-        snapshot = snap if isinstance(snap, GCESnapshot) else self.get(snap)
+    def delete(self, snapshot):
+        snapshot = (snapshot if isinstance(snapshot, GCESnapshot)
+                    else self.get(snapshot))
         if snapshot:
             (self.provider
                  .gce_compute
@@ -1550,8 +1555,8 @@ class GCEFloatingIPService(BaseFloatingIPService):
         return self.get(ip_name)
 
     def delete(self, gateway, fip):
-        fip = fip if isinstance(fip, GCEFloatingIP) else \
-            gateway.floating_ips.get(fip)
+        fip = (fip if isinstance(fip, GCEFloatingIP)
+               else gateway.floating_ips.get(fip))
         project_name = self.provider.project_name
         # First, delete the forwarding rule, if there is any.
         if fip._rule:

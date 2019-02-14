@@ -1274,12 +1274,12 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, firewall):
+    def delete(self, vm_firewall):
         """
         Delete an existing VMFirewall.
 
-        :type firewall: ``str`` or :class:`.VMFirewall`
-        :param firewall: The object or VM firewall ID to be deleted.
+        :type vm_firewall: ``str`` or :class:`.VMFirewall`
+        :param vm_firewall: The object or VM firewall ID to be deleted.
         """
         pass
 

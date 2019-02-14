@@ -143,8 +143,9 @@ class AzureVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vmf):
-        fw_id = vmf.id if isinstance(vmf, AzureVMFirewall) else vmf
+    def delete(self, vm_firewall):
+        fw_id = (vm_firewall.id if isinstance(vm_firewall, AzureVMFirewall)
+                 else vm_firewall)
         self.provider.azure_client.delete_vm_firewall(fw_id)
 
 
@@ -213,11 +214,12 @@ class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
         return AzureVMFirewallRule(firewall, result)
 
     def delete(self, firewall, rule):
-        vm_firewall = firewall.name
+        rule_id = rule.id if isinstance(rule, AzureVMFirewallRule) else rule
+        fw_name = firewall.name
         self.provider.azure_client. \
-            delete_vm_firewall_rule(rule.id, vm_firewall)
+            delete_vm_firewall_rule(rule_id, fw_name)
         for i, o in enumerate(firewall._vm_firewall.security_rules):
-            if o.id == rule.id:
+            if o.id == rule_id:
                 del firewall._vm_firewall.security_rules[i]
                 break
 
@@ -300,8 +302,9 @@ class AzureKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def delete(self, kp):
-        key_pair = kp if isinstance(kp, AzureKeyPair) else self.get(kp)
+    def delete(self, key_pair):
+        key_pair = (key_pair if isinstance(key_pair, AzureKeyPair) else
+                    self.get(key_pair))
         if key_pair:
             # pylint:disable=protected-access
             self.provider.azure_client.delete_public_key(key_pair._key_pair)
@@ -982,15 +985,16 @@ class AzureInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def delete(self, inst):
+    def delete(self, instance):
         """
         Permanently terminate this instance.
         After deleting the VM. we are deleting the network interface
         associated to the instance, and also removing OS disk and data disks
         where tag with name 'delete_on_terminate' has value True.
         """
-        ins = inst if isinstance(inst, AzureInstance) else self.get(inst)
-        if not inst:
+        ins = (instance if isinstance(instance, AzureInstance) else
+               self.get(instance))
+        if not instance:
             return
 
         # Remove IPs first to avoid a network interface conflict
@@ -1114,8 +1118,8 @@ class AzureNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def delete(self, net):
-        net_id = net.id if isinstance(net, AzureNetwork) else net
+    def delete(self, network):
+        net_id = network.id if isinstance(network, AzureNetwork) else network
         if net_id:
             self.provider.azure_client.delete_network(net_id)
 
