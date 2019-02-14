@@ -61,7 +61,7 @@ before_install:
            }
            ;;
         *)
-           echo "Build triggered through API or CRON job. Running regardless of changes..."
+           echo "Build triggered through API or CRON job. Running regardless of changes."
            ;;
       esac
 install:
