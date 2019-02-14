@@ -1570,7 +1570,7 @@ class GCEFloatingIPService(BaseFloatingIPService):
                             body={'name': ip_name})
                     .execute())
         self.provider.wait_for_operation(response, region=region_name)
-        return self.get(ip_name)
+        return self.get(gateway, ip_name)
 
     @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)

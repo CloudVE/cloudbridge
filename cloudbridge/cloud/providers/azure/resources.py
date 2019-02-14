@@ -819,10 +819,10 @@ class AzureNetwork(BaseNetwork):
 
 class AzureFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, floating_ip, network_id):
-        super(AzureFloatingIP, self).__init__(provider)
+    def __init__(self, provider, gateway, floating_ip):
+        super(AzureFloatingIP, self).__init__(provider, gateway)
         self._ip = floating_ip
-        self._network_id = network_id
+        self._network_id = gateway.network_id
 
     @property
     def id(self):

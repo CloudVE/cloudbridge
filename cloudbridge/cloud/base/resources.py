@@ -814,8 +814,9 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
 class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
-    def __init__(self, provider):
+    def __init__(self, provider, gateway):
         super(BaseFloatingIP, self).__init__(provider)
+        self._gateway = gateway
 
     @property
     def name(self):
@@ -838,6 +839,9 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
+
+    def delete(self):
+        self._provider.networking._floating_ips.delete(self._gateway, self)
 
 
 class BaseRouter(BaseCloudResource, Router):

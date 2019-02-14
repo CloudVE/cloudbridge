@@ -1238,6 +1238,7 @@ class AWSFloatingIPService(BaseFloatingIPService):
             Domain='vpc')
         return AWSFloatingIP(
             self.provider,
+            gateway,
             self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
 
     @dispatch(event="provider.networking.floating_ips.delete",

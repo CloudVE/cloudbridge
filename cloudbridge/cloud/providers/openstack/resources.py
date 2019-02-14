@@ -443,9 +443,7 @@ class OpenStackInstance(BaseInstance):
 
     def _get_fip(self, floating_ip):
         """Get a floating IP object based on the supplied ID."""
-        return OpenStackFloatingIP(
-            self._provider,
-            self._provider.os_conn.network.get_ip(floating_ip))
+        return self._provider.networking._floating_ips.get(floating_ip)
 
     def add_floating_ip(self, floating_ip):
         """
@@ -905,8 +903,8 @@ class OpenStackSubnet(BaseSubnet):
 
 class OpenStackFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, floating_ip):
-        super(OpenStackFloatingIP, self).__init__(provider)
+    def __init__(self, provider, gateway, floating_ip):
+        super(OpenStackFloatingIP, self).__init__(provider, gateway)
         self._ip = floating_ip
 
     @property

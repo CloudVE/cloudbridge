@@ -1340,8 +1340,7 @@ class AzureFloatingIPService(BaseFloatingIPService):
     @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
-        floating_ips = [AzureFloatingIP(self.provider, floating_ip,
-                                        gateway.network_id)
+        floating_ips = [AzureFloatingIP(self.provider, gateway, floating_ip)
                         for floating_ip in self.provider.azure_client.
                         list_floating_ips()]
         return ClientPagedResultList(self.provider, floating_ips,
@@ -1355,11 +1354,12 @@ class AzureFloatingIPService(BaseFloatingIPService):
             'public_ip_allocation_method': 'Static'
         }
 
-        public_ip_name = AzureFloatingIP._generate_name_from_label('cb-fip-')
+        public_ip_name = AzureFloatingIP._generate_name_from_label(
+            None, 'cb-fip-')
 
         floating_ip = self.provider.azure_client.\
             create_floating_ip(public_ip_name, public_ip_parameters)
-        return AzureFloatingIP(self.provider, floating_ip, gateway.network_id)
+        return AzureFloatingIP(self.provider, gateway, floating_ip)
 
     @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)

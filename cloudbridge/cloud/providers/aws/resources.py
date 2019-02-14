@@ -323,9 +323,7 @@ class AWSInstance(BaseInstance):
 
     def _get_fip(self, floating_ip):
         """Get a floating IP object based on the supplied allocation ID."""
-        return AWSFloatingIP(
-            self._provider, list(self._provider.ec2_conn.vpc_addresses.filter(
-                AllocationIds=[floating_ip]))[0])
+        return self._provider.networking._floating_ips.get(None, floating_ip)
 
     def add_floating_ip(self, floating_ip):
         fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
@@ -983,8 +981,8 @@ class AWSSubnet(BaseSubnet):
 
 class AWSFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, floating_ip):
-        super(AWSFloatingIP, self).__init__(provider)
+    def __init__(self, provider, gateway, floating_ip):
+        super(AWSFloatingIP, self).__init__(provider, gateway)
         self._ip = floating_ip
 
     @property

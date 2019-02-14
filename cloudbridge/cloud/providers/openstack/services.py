@@ -1191,7 +1191,8 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
     def get(self, gateway, fip_id):
         try:
             return OpenStackFloatingIP(
-                self.provider, self.provider.os_conn.network.get_ip(fip_id))
+                self.provider, gateway,
+                self.provider.os_conn.network.get_ip(fip_id))
         except (ResourceNotFound, NotFoundException):
             log.debug("Floating IP %s not found.", fip_id)
             return None
@@ -1199,7 +1200,7 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
     @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
-        fips = [OpenStackFloatingIP(self.provider, fip)
+        fips = [OpenStackFloatingIP(self.provider, gateway, fip)
                 for fip in self.provider.os_conn.network.ips(
                     floating_network_id=gateway.id
                 )]
@@ -1210,7 +1211,7 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
         return OpenStackFloatingIP(
-            self.provider, self.provider.os_conn.network.create_ip(
+            self.provider, gateway, self.provider.os_conn.network.create_ip(
                 floating_network_id=gateway.id))
 
     @dispatch(event="provider.networking.floating_ips.delete",
