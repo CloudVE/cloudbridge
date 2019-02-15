@@ -54,7 +54,7 @@ class BaseCloudService(CloudService):
 
     @property
     def events(self):
-        return self._provider.events
+        return self._provider.middleware.events
 
 
 class BaseSecurityService(SecurityService, BaseCloudService):

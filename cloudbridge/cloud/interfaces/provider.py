@@ -55,6 +55,21 @@ class CloudProvider(object):
                   used to initialize the provider, as well as other global
                   configuration properties.
         """
+        pass
+
+    @abstractproperty
+    def middleware(self):
+        """
+        Returns the middleware manager associated with this provider. The
+        middleware manager can be used to add or remove middleware from
+        cloudbridge. Refer to pyeventsystem documentation for more information
+        on how the middleware manager works.
+
+        :rtype: :class:`.MiddlewareManager`
+        :return:  An object of class MiddlewareManager, which can be used to
+        add or remove middleware from cloudbridge.
+        """
+        pass
 
     @abstractmethod
     def authenticate(self):
