@@ -150,6 +150,7 @@ class OpenStackMachineImage(BaseMachineImage):
         log.debug("Refreshing OpenStack Machine Image")
         image = self._provider.compute.images.get(self.id)
         if image:
+            # pylint:disable=protected-access
             self._os_image = image._os_image  # pylint:disable=protected-access
         else:
             # The image no longer exists and cannot be refreshed.
@@ -658,6 +659,7 @@ class OpenStackVolume(BaseVolume):
         vol = self._provider.storage.volumes.get(
             self.id)
         if vol:
+            # pylint:disable=protected-access
             self._volume = vol._volume  # pylint:disable=protected-access
         else:
             # The volume no longer exists and cannot be refreshed.
@@ -740,6 +742,7 @@ class OpenStackSnapshot(BaseSnapshot):
         snap = self._provider.storage.snapshots.get(
             self.id)
         if snap:
+            # pylint:disable=protected-access
             self._snapshot = snap._snapshot  # pylint:disable=protected-access
         else:
             # The snapshot no longer exists and cannot be refreshed.

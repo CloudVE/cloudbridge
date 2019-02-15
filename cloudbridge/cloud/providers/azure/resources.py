@@ -946,6 +946,7 @@ class AzureSubnet(BaseSubnet):
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels
         network = self.network
+        # pylint:disable=protected-access
         az_network = network._network
         return az_network.tags.get(self.tag_name, None)
 
@@ -954,6 +955,7 @@ class AzureSubnet(BaseSubnet):
     def label(self, value):
         self.assert_valid_resource_label(value)
         network = self.network
+        # pylint:disable=protected-access
         az_network = network._network
         kwargs = {self.tag_name: value or ""}
         az_network.tags.update(**kwargs)

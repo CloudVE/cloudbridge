@@ -140,6 +140,7 @@ class AWSPlacementZone(BasePlacementZone):
         if isinstance(zone, AWSPlacementZone):
             # pylint:disable=protected-access
             self._aws_zone = zone._aws_zone
+            # pylint:disable=protected-access
             self._aws_region = zone._aws_region
         else:
             self._aws_zone = zone
@@ -328,11 +329,11 @@ class AWSInstance(BaseInstance):
     def add_floating_ip(self, floating_ip):
         fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
                else self._get_fip(floating_ip))
+        # pylint:disable=protected-access
         params = trim_empty_params({
             'InstanceId': self.id,
             'PublicIp': None if self._ec2_instance.vpc_id else
             fip.public_ip,
-            # pylint:disable=protected-access
             'AllocationId': fip._ip.allocation_id})
         self._provider.ec2_conn.meta.client.associate_address(**params)
         self.refresh()
@@ -340,10 +341,10 @@ class AWSInstance(BaseInstance):
     def remove_floating_ip(self, floating_ip):
         fip = (floating_ip if isinstance(floating_ip, AWSFloatingIP)
                else self._get_fip(floating_ip))
+        # pylint:disable=protected-access
         params = trim_empty_params({
             'PublicIp': None if self._ec2_instance.vpc_id else
             fip.public_ip,
-            # pylint:disable=protected-access
             'AssociationId': fip._ip.association_id})
         self._provider.ec2_conn.meta.client.disassociate_address(**params)
         self.refresh()

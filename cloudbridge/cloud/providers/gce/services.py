@@ -205,6 +205,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
         fw.label = label
         # This rule exists implicitly. Add it explicitly so that the firewall
         # is not empty and the rule is shown by list/get/find methods.
+        # pylint:disable=protected-access
         self.provider.security._vm_firewall_rules.create_with_priority(
             fw, direction=TrafficDirection.OUTBOUND, protocol='tcp',
             priority=65534, cidr='0.0.0.0/0')
@@ -1613,6 +1614,7 @@ class GCEFloatingIPService(BaseFloatingIPService):
                else self.get(gateway, fip))
         project_name = self.provider.project_name
         # First, delete the forwarding rule, if there is any.
+        # pylint:disable=protected-access
         if fip._rule:
             response = (self.provider
                         .gce_compute

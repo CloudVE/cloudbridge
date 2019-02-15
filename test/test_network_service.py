@@ -20,6 +20,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                               'networking.networks',
                               'networking.routers'])
     def test_storage_services_event_pattern(self):
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.networks._service_event_pattern,
             "provider.networking.networks",
@@ -28,6 +29,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                                      "provider.networking.networks",
                                      self.provider.networking.networks.
                                      _service_event_pattern))
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.subnets._service_event_pattern,
             "provider.networking.subnets",
@@ -36,6 +38,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                                      "provider.networking.subnets",
                                      self.provider.networking.subnets.
                                      _service_event_pattern))
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.routers._service_event_pattern,
             "provider.networking.routers",

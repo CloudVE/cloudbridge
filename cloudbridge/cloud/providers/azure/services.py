@@ -238,6 +238,7 @@ class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
             delete_vm_firewall_rule(rule_id, fw_name)
         for i, o in enumerate(firewall._vm_firewall.security_rules):
             if o.id == rule_id:
+                # pylint:disable=protected-access
                 del firewall._vm_firewall.security_rules[i]
                 break
 
@@ -721,6 +722,7 @@ class AzureInstanceService(BaseInstanceService):
                                 zone_id):
 
         if image.is_gallery_image:
+            # pylint:disable=protected-access
             reference = image._image.as_dict()
             image_ref = {
                 'publisher': reference['publisher'],
@@ -1016,18 +1018,23 @@ class AzureInstanceService(BaseInstanceService):
             return
 
         # Remove IPs first to avoid a network interface conflict
+        # pylint:disable=protected-access
         for public_ip_id in ins._public_ip_ids:
             ins.remove_floating_ip(public_ip_id)
         self.provider.azure_client.deallocate_vm(ins.id)
         self.provider.azure_client.delete_vm(ins.id)
+        # pylint:disable=protected-access
         for nic_id in ins._nic_ids:
             self.provider.azure_client.delete_nic(nic_id)
+        # pylint:disable=protected-access
         for data_disk in ins._vm.storage_profile.data_disks:
             if data_disk.managed_disk:
+                # pylint:disable=protected-access
                 if ins._vm.tags.get('delete_on_terminate',
                                     'False') == 'True':
                     self.provider.azure_client. \
                         delete_disk(data_disk.managed_disk.id)
+        # pylint:disable=protected-access
         if ins._vm.storage_profile.os_disk.managed_disk:
             self.provider.azure_client. \
                 delete_disk(ins._vm.storage_profile.os_disk.managed_disk.id)

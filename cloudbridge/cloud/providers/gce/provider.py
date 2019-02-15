@@ -102,6 +102,7 @@ class GCPResources(object):
         #   }
         #   ...
         # }
+        # pylint:disable=protected-access
         desc = connection._resourceDesc
         self._root_url = desc['rootUrl']
         self._service_path = desc['servicePath']

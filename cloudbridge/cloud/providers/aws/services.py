@@ -225,6 +225,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
         rules = [AWSVMFirewallRule(firewall,
                                    TrafficDirection.INBOUND, r)
                  for r in firewall._vm_firewall.ip_permissions]
+        # pylint:disable=protected-access
         rules = rules + [
             AWSVMFirewallRule(
                 firewall, TrafficDirection.OUTBOUND, r)
@@ -269,6 +270,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
     @dispatch(event="provider.security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
+        # pylint:disable=protected-access
         ip_perm_entry = rule._construct_ip_perms(
             rule.protocol, rule.from_port, rule.to_port,
             rule.cidr, rule.src_dest_fw_id)
@@ -281,6 +283,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
             firewall._vm_firewall.revoke_ingress(
                 IpPermissions=ip_perms)
         else:
+            # pylint:disable=protected-access
             firewall._vm_firewall.revoke_egress(
                 IpPermissions=ip_perms)
         firewall.refresh()
@@ -547,6 +550,7 @@ class AWSBucketObjectService(BaseBucketObjectService):
                                      limit=limit, marker=marker)
 
     def find(self, bucket, **kwargs):
+        # pylint:disable=protected-access
         obj_list = [AWSBucketObject(self.provider, o)
                     for o in bucket._bucket.objects.all()]
         filters = ['name']
@@ -960,6 +964,7 @@ class AWSNetworkService(BaseNetworkService):
     def get_or_create_default(self):
         # # Look for provided default network
         # for net in self.provider.networking.networks:
+        # pylint:disable=protected-access
         #     if net._vpc.is_default:
         #         return net
 
@@ -1069,6 +1074,7 @@ class AWSSubnetService(BaseSubnetService):
         snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")
 
         if snl:
+            # pylint:disable=protected-access
             snl.sort(key=lambda sn: sn._subnet.availability_zone)
             if not zone_name:
                 return snl[0]
@@ -1231,9 +1237,11 @@ class AWSGatewayService(BaseGatewayService):
               else self.svc.get(gateway))
         try:
             if gw.network_id:
+                # pylint:disable=protected-access
                 gw._gateway.detach_from_vpc(VpcId=gw.network_id)
         except ClientError as e:
             log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
+        # pylint:disable=protected-access
         gw._gateway.delete()
 
     @dispatch(event="provider.networking.gateways.list",
@@ -1278,6 +1286,7 @@ class AWSFloatingIPService(BaseFloatingIPService):
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         if isinstance(fip, AWSFloatingIP):
+            # pylint:disable=protected-access
             aws_fip = fip._ip
         else:
             aws_fip = self.svc.get_raw(fip)

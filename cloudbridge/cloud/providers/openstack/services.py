@@ -1250,6 +1250,7 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         if isinstance(fip, OpenStackFloatingIP):
+            # pylint:disable=protected-access
             os_ip = fip._ip
         else:
             try:

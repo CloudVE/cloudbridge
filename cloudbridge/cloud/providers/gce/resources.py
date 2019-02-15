@@ -524,8 +524,11 @@ class GCEVMFirewall(BaseVMFirewall):
         if fw:
             # pylint:disable=protected-access
             self._delegate = fw._delegate
+            # pylint:disable=protected-access
             self._description = fw._description
+            # pylint:disable=protected-access
             self._network = fw._network
+            # pylint:disable=protected-access
             self._rule_container = fw._rule_container
 
     @property
@@ -962,6 +965,7 @@ class GCEInstance(BaseInstance):
         """
         # Get instance again to avoid stale metadata
         ins = self._provider.compute.instances.get(self.id)
+        # pylint:disable=protected-access
         meta = ins._gce_instance.get('metadata', {})
         if meta:
             items = meta.get("items", [])
@@ -1924,6 +1928,7 @@ class GCSObject(BaseBucketObject):
             data = data.encode()
         media_body = googleapiclient.http.MediaIoBaseUpload(
                 io.BytesIO(data), mimetype='plain/text')
+        # pylint:disable=protected-access
         response = (self._provider
                         .storage._bucket_objects
                         ._create_object_with_media_body(self._bucket,
@@ -1939,6 +1944,7 @@ class GCSObject(BaseBucketObject):
         with open(path, 'rb') as f:
             media_body = googleapiclient.http.MediaIoBaseUpload(
                     f, 'application/octet-stream')
+            # pylint:disable=protected-access
             response = (self._provider
                         .storage._bucket_objects
                         ._create_object_with_media_body(self._bucket,
