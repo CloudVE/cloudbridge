@@ -819,10 +819,9 @@ class AzureNetwork(BaseNetwork):
 
 class AzureFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, gateway, floating_ip):
-        super(AzureFloatingIP, self).__init__(provider, gateway)
+    def __init__(self, provider, floating_ip):
+        super(AzureFloatingIP, self).__init__(provider)
         self._ip = floating_ip
-        self._network_id = gateway.network_id
 
     @property
     def id(self):
@@ -850,10 +849,10 @@ class AzureFloatingIP(BaseFloatingIP):
         return True if self._ip.ip_configuration else False
 
     def refresh(self):
-        net = self._provider.networking.networks.get(self._network_id)
-        gw = net.gateways.get_or_create()
-        fip = gw.floating_ips.get(self.id)
-        self._ip = fip._ip
+        # Gateway is not needed as it doesn't exist in Azure, so just
+        # getting the Floating IP again from the client
+        # pylint:disable=protected-access
+        return self._provider.networking._floating_ips.get(None, self.id)
 
 
 class AzureRegion(BaseRegion):

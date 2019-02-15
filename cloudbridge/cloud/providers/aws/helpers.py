@@ -130,21 +130,7 @@ class BotoGenericService(object):
 
         :returns A CloudBridge wrapped resource
         """
-        try:
-            log.debug("Retrieving resource: %s with id: %s",
-                      self.boto_collection_model.name, resource_id)
-            obj = self.boto_resource(resource_id)
-            obj.load()
-            log.debug("Successfully Retrieved: %s", obj)
-            return self.cb_resource(self.provider, obj)
-        except ClientError as exc:
-            error_code = exc.response['Error']['Code']
-            if any(status in error_code for status in
-                   ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
-                log.debug("Object not found: %s", resource_id)
-                return None
-            else:
-                raise exc
+        return self.cb_resource(self.provider, self.get_raw(resource_id))
 
     def _get_list_operation(self):
         """

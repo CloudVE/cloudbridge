@@ -814,9 +814,8 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
 class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
 
-    def __init__(self, provider, gateway):
+    def __init__(self, provider):
         super(BaseFloatingIP, self).__init__(provider)
-        self._gateway = gateway
 
     @property
     def name(self):
@@ -841,7 +840,10 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
                 self.id == other.id)
 
     def delete(self):
-        self._provider.networking._floating_ips.delete(self._gateway, self)
+        # For OS where the gateway is necessary, we pass the gateway when
+        # deleting, for all others we pass None and it will be ignored
+        gw = getattr(self, '_gateway_id', None)
+        self._provider.networking._floating_ips.delete(gw, self.id)
 
 
 class BaseRouter(BaseCloudResource, Router):

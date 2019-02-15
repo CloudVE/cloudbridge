@@ -1535,7 +1535,7 @@ class GCEFloatingIPService(BaseFloatingIPService):
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, floating_ip_id):
         fip = self.provider.get_resource('addresses', floating_ip_id)
-        return (GCEFloatingIP(self.provider, gateway, fip)
+        return (GCEFloatingIP(self.provider, fip)
                 if fip else None)
 
     @dispatch(event="provider.networking.floating_ips.list",
@@ -1550,7 +1550,7 @@ class GCEFloatingIPService(BaseFloatingIPService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        ips = [GCEFloatingIP(self.provider, gateway, ip)
+        ips = [GCEFloatingIP(self.provider, ip)
                for ip in response.get('items', [])]
         if len(ips) > max_result:
             log.warning('Expected at most %d results; got %d',
@@ -1578,7 +1578,7 @@ class GCEFloatingIPService(BaseFloatingIPService):
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         fip = (fip if isinstance(fip, GCEFloatingIP)
-               else gateway.floating_ips.get(fip))
+               else self.get(gateway, fip))
         project_name = self.provider.project_name
         # First, delete the forwarding rule, if there is any.
         if fip._rule:

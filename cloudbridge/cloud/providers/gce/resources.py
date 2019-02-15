@@ -1326,8 +1326,8 @@ class GCENetwork(BaseNetwork):
 class GCEFloatingIP(BaseFloatingIP):
     _DEAD_INSTANCE = 'dead instance'
 
-    def __init__(self, provider, gateway, floating_ip):
-        super(GCEFloatingIP, self).__init__(provider, gateway)
+    def __init__(self, provider, floating_ip):
+        super(GCEFloatingIP, self).__init__(provider)
         self._ip = floating_ip
         self._process_ip_users()
 

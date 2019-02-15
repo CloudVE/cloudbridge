@@ -981,8 +981,8 @@ class AWSSubnet(BaseSubnet):
 
 class AWSFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, gateway, floating_ip):
-        super(AWSFloatingIP, self).__init__(provider, gateway)
+    def __init__(self, provider, floating_ip):
+        super(AWSFloatingIP, self).__init__(provider)
         self._ip = floating_ip
 
     @property

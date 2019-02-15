@@ -903,8 +903,8 @@ class OpenStackSubnet(BaseSubnet):
 
 class OpenStackFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, gateway, floating_ip):
-        super(OpenStackFloatingIP, self).__init__(provider, gateway)
+    def __init__(self, provider, floating_ip):
+        super(OpenStackFloatingIP, self).__init__(provider)
         self._ip = floating_ip
 
     @property
@@ -930,6 +930,10 @@ class OpenStackFloatingIP(BaseFloatingIP):
         fip = gw.floating_ips.get(self.id)
         # pylint:disable=protected-access
         self._ip = fip._ip
+
+    @property
+    def _gateway_id(self):
+        return self._ip.floating_network_id
 
 
 class OpenStackRouter(BaseRouter):

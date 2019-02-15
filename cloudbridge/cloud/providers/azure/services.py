@@ -1332,15 +1332,18 @@ class AzureFloatingIPService(BaseFloatingIPService):
     @dispatch(event="provider.networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, fip_id):
-        log.debug("Getting Azure Floating IP container with the id: %s",
-                  fip_id)
-        fip = [fip for fip in gateway.floating_ips if fip.id == fip_id]
-        return fip[0] if fip else None
+        try:
+            az_ip = self.provider.azure_client.get_floating_ip(fip_id)
+        except (CloudError, InvalidValueException) as cloud_error:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloud_error)
+            return None
+        return AzureFloatingIP(self.provider, az_ip)
 
     @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
-        floating_ips = [AzureFloatingIP(self.provider, gateway, floating_ip)
+        floating_ips = [AzureFloatingIP(self.provider, floating_ip)
                         for floating_ip in self.provider.azure_client.
                         list_floating_ips()]
         return ClientPagedResultList(self.provider, floating_ips,
@@ -1359,10 +1362,10 @@ class AzureFloatingIPService(BaseFloatingIPService):
 
         floating_ip = self.provider.azure_client.\
             create_floating_ip(public_ip_name, public_ip_parameters)
-        return AzureFloatingIP(self.provider, gateway, floating_ip)
+        return AzureFloatingIP(self.provider, floating_ip)
 
     @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
-        fip_id = fip if isinstance(fip, AzureFloatingIP) else fip
+        fip_id = fip.id if isinstance(fip, AzureFloatingIP) else fip
         self.provider.azure_client.delete_floating_ip(fip_id)

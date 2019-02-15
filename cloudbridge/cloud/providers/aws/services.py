@@ -12,7 +12,6 @@ import requests
 import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.middleware import dispatch
 from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.resources import ServerPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
@@ -1226,34 +1225,12 @@ class AWSFloatingIPService(BaseFloatingIPService):
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, fip_id):
         log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
-        return AWSFloatingIP(self.provider, gateway, self.svc.get_raw(fip_id))
+        return self.svc.get(fip_id)
 
     @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
-        log.debug("Listing all floating IPs under gateway %s", gateway)
-        limit = limit or self.provider.config.default_result_limit
-        collection = self.svc.boto_collection.filter()
-        pag_type, resume_token, boto_objs = self.svc._make_query(collection,
-                                                                 limit,
-                                                                 marker)
-        # Wrap in CB objects.
-        results = [AWSFloatingIP(self.provider, gateway, obj) for obj in
-                   boto_objs]
-
-        if pag_type == 'server':
-            log.debug("Using server pagination.")
-            return ServerPagedResultList(is_truncated=True if resume_token
-                                         else False,
-                                         marker=resume_token if resume_token
-                                         else None,
-                                         supports_total=False,
-                                         data=results)
-        else:
-            log.debug("Did not received a resume token, will page in client"
-                      " if necessary.")
-            return ClientPagedResultList(self.provider, results,
-                                         limit=limit, marker=marker)
+        self.svc.list(limit, marker)
 
     @dispatch(event="provider.networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
@@ -1263,14 +1240,13 @@ class AWSFloatingIPService(BaseFloatingIPService):
             Domain='vpc')
         return AWSFloatingIP(
             self.provider,
-            gateway,
             self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
 
     @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         if isinstance(fip, AWSFloatingIP):
-            os_fip = fip._ip
+            aws_fip = fip._ip
         else:
-            os_fip = self.svc.get_raw(fip)
-        os_fip.release()
+            aws_fip = self.svc.get_raw(fip)
+        aws_fip.release()
