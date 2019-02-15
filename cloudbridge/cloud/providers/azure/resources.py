@@ -852,7 +852,9 @@ class AzureFloatingIP(BaseFloatingIP):
         # Gateway is not needed as it doesn't exist in Azure, so just
         # getting the Floating IP again from the client
         # pylint:disable=protected-access
-        return self._provider.networking._floating_ips.get(None, self.id)
+        fip = self._provider.networking._floating_ips.get(None, self.id)
+        # pylint:disable=protected-access
+        self._ip = fip._ip
 
 
 class AzureRegion(BaseRegion):

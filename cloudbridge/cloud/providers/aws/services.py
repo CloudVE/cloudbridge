@@ -1270,7 +1270,7 @@ class AWSFloatingIPService(BaseFloatingIPService):
     @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
-        self.svc.list(limit, marker)
+        return self.svc.list(limit, marker)
 
     @dispatch(event="provider.networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
