@@ -82,6 +82,18 @@ class AWSSecurityService(BaseSecurityService):
         self._vm_firewalls = AWSVMFirewallService(provider)
         self._vm_firewall_rule_svc = AWSVMFirewallRuleService(provider)
 
+    @property
+    def key_pairs(self):
+        return self._key_pairs
+
+    @property
+    def vm_firewalls(self):
+        return self._vm_firewalls
+
+    @property
+    def _vm_firewall_rules(self):
+        return self._vm_firewall_rule_svc
+
 
 class AWSKeyPairService(BaseKeyPairService):
 
@@ -870,6 +882,26 @@ class AWSNetworkingService(BaseNetworkingService):
         self._router_service = AWSRouterService(self.provider)
         self._gateway_service = AWSGatewayService(self.provider)
         self._floating_ip_service = AWSFloatingIPService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
+
+    @property
+    def routers(self):
+        return self._router_service
+
+    @property
+    def _gateways(self):
+        return self._gateway_service
+
+    @property
+    def _floating_ips(self):
+        return self._floating_ip_service
 
 
 class AWSNetworkService(BaseNetworkService):

@@ -73,6 +73,18 @@ class AzureSecurityService(BaseSecurityService):
         self._vm_firewalls = AzureVMFirewallService(provider)
         self._vm_firewall_rule_svc = AzureVMFirewallRuleService(provider)
 
+    @property
+    def key_pairs(self):
+        return self._key_pairs
+
+    @property
+    def vm_firewalls(self):
+        return self._vm_firewalls
+
+    @property
+    def _vm_firewall_rules(self):
+        return self._vm_firewall_rule_svc
+
 
 class AzureVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
@@ -1078,6 +1090,26 @@ class AzureNetworkingService(BaseNetworkingService):
         self._router_service = AzureRouterService(self.provider)
         self._gateway_service = AzureGatewayService(self.provider)
         self._floating_ip_service = AzureFloatingIPService(self.provider)
+
+    @property
+    def networks(self):
+        return self._network_service
+
+    @property
+    def subnets(self):
+        return self._subnet_service
+
+    @property
+    def routers(self):
+        return self._router_service
+
+    @property
+    def _gateways(self):
+        return self._gateway_service
+
+    @property
+    def _floating_ips(self):
+        return self._floating_ip_service
 
 
 class AzureNetworkService(BaseNetworkService):
