@@ -331,10 +331,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             net = self.provider.networking.networks.create(
                 label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             cidr = '10.0.1.0/24'
-            subnet = net.create_subnet(label=label, cidr_block=cidr,
-                                       zone=helpers.get_provider_test_data(
-                                                    self.provider,
-                                                    'placement'))
+            subnet = net.subnets.create(label=label, cidr_block=cidr,
+                                        zone=helpers.get_provider_test_data(
+                                                     self.provider,
+                                                     'placement'))
             test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(

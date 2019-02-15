@@ -961,29 +961,6 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         """
         pass
 
-    @abstractmethod
-    def create_subnet(self, label, cidr_block, zone):
-        """
-        Create a new network subnet and associate it with this Network.
-
-        :type label: ``str``
-        :param label: The subnet label. The subnet name will be derived from
-                      this label.
-
-        :type cidr_block: ``str``
-        :param cidr_block: CIDR block within this Network to assign to the
-                           subnet.
-
-        :type zone: ``str``
-        :param zone: Placement zone where to create the subnet. Some providers
-                     may not support subnet zones, in which case the value is
-                     ignored.
-
-        :rtype: ``object`` of :class:`.Subnet`
-        :return:  A Subnet object
-        """
-        pass
-
     @abstractproperty
     def gateways(self):
         """

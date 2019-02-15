@@ -1311,10 +1311,6 @@ class GCENetwork(BaseNetwork):
     def subnets(self):
         return self._subnet_svc
 
-    def create_subnet(self, label, cidr_block, zone):
-        return self._provider.networking.subnets.create(
-            label, self, cidr_block, zone)
-
     def refresh(self):
         net = self._provider.networking.networks.get(self.id)
         if net:

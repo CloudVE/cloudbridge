@@ -131,7 +131,7 @@ attaching an internet gateway to the subnet via a router.
     net = provider.networking.networks.create(cidr_block='10.0.0.0/16',
                                               label='cb-network')
     zone = provider.compute.regions.get(provider.region_name).zones[0]
-    sn = net.create_subnet(
+    sn = net.subnets.create(
         cidr_block='10.0.0.0/28', label='cb-subnet', zone=zone)
     router = provider.networking.routers.create(network=net, label='cb-router')
     router.attach_subnet(sn)

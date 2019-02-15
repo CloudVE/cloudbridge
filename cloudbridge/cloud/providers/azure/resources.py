@@ -798,18 +798,6 @@ class AzureNetwork(BaseNetwork):
     def subnets(self):
         return self._subnet_svc
 
-    def create_subnet(self, label, cidr_block, zone):
-        """
-        Create the subnet with cidr_block
-        :param cidr_block:
-        :param label:
-        :param zone:
-        :return:
-        """
-        return self._provider.networking.subnets. \
-            create(label=label, network=self.id, cidr_block=cidr_block,
-                   zone=zone)
-
     @property
     def gateways(self):
         return self._gateway_service

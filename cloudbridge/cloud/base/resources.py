@@ -770,10 +770,6 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
     def delete(self):
         self._provider.networking.networks.delete(self)
 
-    def create_subnet(self, label, cidr_block, zone):
-        return self._provider.networking.subnets.create(
-            label=label, network=self, cidr_block=cidr_block, zone=zone)
-
     def __eq__(self, other):
         return (isinstance(other, Network) and
                 # pylint:disable=protected-access

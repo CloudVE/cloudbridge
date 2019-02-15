@@ -64,7 +64,7 @@ that subnet.
 
     net = self.provider.networking.networks.create(
         label='my-network', cidr_block='10.0.0.0/16')
-    sn = net.create_subnet(label='my-subnet', cidr_block='10.0.0.0/28')
+    sn = net.subnets.create(label='my-subnet', cidr_block='10.0.0.0/28')
     # make sure subnet has internet access
     router = self.provider.networking.routers.create(label='my-router', network=net)
     router.attach_subnet(sn)

@@ -89,7 +89,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 % (net.cidr_block, BaseNetwork.CB_DEFAULT_IPV4RANGE))
 
             cidr = '10.0.20.0/24'
-            sn = net.create_subnet(
+            sn = net.subnets.create(
                 label=subnet_label, cidr_block=cidr,
                 zone=helpers.get_provider_test_data(self.provider,
                                                     'placement'))
@@ -106,7 +106,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 )
 
                 self.assertListEqual(
-                    net.subnets, [sn],
+                    list(net.subnets), [sn],
                     "Network should have exactly one subnet: %s." % sn.id)
 
                 self.assertEqual(
@@ -232,9 +232,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             router = self.provider.networking.routers.create(label=label,
                                                              network=net)
             cidr = '10.0.15.0/24'
-            sn = net.create_subnet(label=label, cidr_block=cidr,
-                                   zone=helpers.get_provider_test_data(
-                                       self.provider, 'placement'))
+            sn = net.subnets.create(label=label, cidr_block=cidr,
+                                    zone=helpers.get_provider_test_data(
+                                        self.provider, 'placement'))
 
             # Check basic router properties
             sit.check_standard_behaviour(
