@@ -23,7 +23,8 @@ REQS_BASE = [
     'six>=1.11',
     'tenacity>=4.12.0,<=5.0',
     'cachetools>=2.1.0',
-    'deprecated>=1.2.3'
+    'deprecated>=1.2.3',
+    'pyeventsystem'
 ]
 REQS_AWS = ['boto3>=1.9.86']
 # Install azure>=3.0.0 package to find which of the azure libraries listed
@@ -94,5 +95,8 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython'],
-    test_suite="test"
+    test_suite="test",
+    dependency_links=[
+        "git+git://github.com/CloudVE/pyeventsystem.git#egg=pyeventsystem"
+    ]
 )
