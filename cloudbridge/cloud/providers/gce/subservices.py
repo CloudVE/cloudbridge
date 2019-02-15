@@ -2,8 +2,8 @@ import logging
 
 from cloudbridge.cloud.base.subservices import BaseBucketObjectSubService
 from cloudbridge.cloud.base.subservices import BaseFloatingIPSubService
-from cloudbridge.cloud.base.subservices import \
-    BaseGatewaySubService
+from cloudbridge.cloud.base.subservices import BaseGatewaySubService
+from cloudbridge.cloud.base.subservices import BaseSubnetSubService
 from cloudbridge.cloud.base.subservices import BaseVMFirewallRuleSubService
 
 
@@ -31,3 +31,9 @@ class GCEFloatingIPSubService(BaseFloatingIPSubService):
 
     def __init__(self, provider, gateway):
         super(GCEFloatingIPSubService, self).__init__(provider, gateway)
+
+
+class GCESubnetSubService(BaseSubnetSubService):
+
+    def __init__(self, provider, network):
+        super(GCESubnetSubService, self).__init__(provider, network)

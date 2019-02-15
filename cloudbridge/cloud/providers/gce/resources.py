@@ -47,6 +47,7 @@ from cloudbridge.cloud.interfaces.resources import VolumeState
 from . import helpers
 from .subservices import GCEFloatingIPSubService
 from .subservices import GCEGatewaySubService
+from .subservices import GCESubnetSubService
 from .subservices import GCEVMFirewallRuleSubService
 from .subservices import GCSBucketObjectSubService
 
@@ -1257,6 +1258,7 @@ class GCENetwork(BaseNetwork):
         super(GCENetwork, self).__init__(provider)
         self._network = network
         self._gateway_container = GCEGatewaySubService(provider, self)
+        self._subnet_svc = GCESubnetSubService(provider, self)
 
     @property
     def resource_url(self):
@@ -1307,7 +1309,7 @@ class GCENetwork(BaseNetwork):
 
     @property
     def subnets(self):
-        return list(self._provider.networking.subnets.iter(network=self))
+        return self._subnet_svc
 
     def create_subnet(self, label, cidr_block, zone):
         return self._provider.networking.subnets.create(

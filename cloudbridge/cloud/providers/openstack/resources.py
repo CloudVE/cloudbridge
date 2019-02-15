@@ -53,6 +53,7 @@ from cloudbridge.cloud.interfaces.resources import VolumeState
 from .subservices import OpenStackBucketObjectSubService
 from .subservices import OpenStackFloatingIPSubService
 from .subservices import OpenStackGatewaySubService
+from .subservices import OpenStackSubnetSubService
 from .subservices import OpenStackVMFirewallRuleSubService
 
 ONE_GIG = 1048576000  # in bytes
@@ -151,7 +152,7 @@ class OpenStackMachineImage(BaseMachineImage):
         image = self._provider.compute.images.get(self.id)
         if image:
             # pylint:disable=protected-access
-            self._os_image = image._os_image  # pylint:disable=protected-access
+            self._os_image = image._os_image
         else:
             # The image no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -743,7 +744,7 @@ class OpenStackSnapshot(BaseSnapshot):
             self.id)
         if snap:
             # pylint:disable=protected-access
-            self._snapshot = snap._snapshot  # pylint:disable=protected-access
+            self._snapshot = snap._snapshot
         else:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -782,6 +783,7 @@ class OpenStackNetwork(BaseNetwork):
         super(OpenStackNetwork, self).__init__(provider)
         self._network = network
         self._gateway_service = OpenStackGatewaySubService(provider, self)
+        self._subnet_svc = OpenStackSubnetSubService(provider, self)
 
     @property
     def id(self):
@@ -796,7 +798,7 @@ class OpenStackNetwork(BaseNetwork):
         return self._network.get('name', None)
 
     @label.setter
-    def label(self, value):  # pylint:disable=arguments-differ
+    def label(self, value):
         """
         Set the network label.
         """
@@ -823,9 +825,7 @@ class OpenStackNetwork(BaseNetwork):
 
     @property
     def subnets(self):
-        subnets = (self._provider.neutron.list_subnets(network_id=self.id)
-                   .get('subnets', []))
-        return [OpenStackSubnet(self._provider, subnet) for subnet in subnets]
+        return self._subnet_svc
 
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""

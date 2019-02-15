@@ -318,3 +318,84 @@ class VMFirewallRuleSubService(PageableObjectMixin):
         :param rule_id: The VM firewall rule to be deleted.
         """
         pass
+
+
+class SubnetSubService(PageableObjectMixin):
+    """
+    Base interface for a Subnet Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, subnet_id):
+        """
+        Returns a Subnet given its ID or ``None`` if not found.
+
+        :type subnet_id: ``str``
+        :param subnet_id: The ID of the Subnet to retrieve.
+
+        :rtype: ``object`` of :class:`.Subnet`
+        :return: a Subnet object
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List subnets within the network holding this subservice.
+
+        :rtype: ``list`` of :class:`.Subnet`
+        :return: list of Subnet objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, **kwargs):
+        """
+        Searches for a Subnet by a given list of attributes.
+
+        Supported attributes: label
+
+        Example:
+
+        .. code-block:: python
+
+            subnet = provider.networking.networks.get('id').subnets.find(
+                        label='my-subnet')
+
+
+        :rtype: List of ``object`` of :class:`.Subnet`
+        :return: A list of Subnet objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, label, cidr_block, zone):
+        """
+        Create a new subnet within the network holding this subservice.
+
+        :type label: ``str``
+        :param label: The subnet label.
+
+        :type cidr_block: ``str``
+        :param cidr_block: CIDR block within the Network to assign to the
+                           subnet.
+
+        :type zone: ``str``
+        :param zone: A placement zone for the subnet. Some providers
+                     may not support this, in which case the value is ignored.
+
+        :rtype: ``object`` of :class:`.Subnet`
+        :return:  A Subnet object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, subnet_id):
+        """
+        Delete an existing Subnet.
+
+        :type subnet_id: ``str``
+        :param subnet_id: The ID of the Subnet to be deleted.
+        """
+        pass

@@ -3,6 +3,7 @@ import logging
 from cloudbridge.cloud.interfaces.subservices import BucketObjectSubService
 from cloudbridge.cloud.interfaces.subservices import FloatingIPSubService
 from cloudbridge.cloud.interfaces.subservices import GatewaySubService
+from cloudbridge.cloud.interfaces.subservices import SubnetSubService
 from cloudbridge.cloud.interfaces.subservices import VMFirewallRuleSubService
 
 from .resources import BasePageableObjectMixin
@@ -128,3 +129,40 @@ class BaseFloatingIPSubService(FloatingIPSubService, BasePageableObjectMixin):
     def delete(self, fip):
         return self._provider.networking._floating_ips.delete(self.gateway,
                                                               fip)
+
+
+class BaseSubnetSubService(SubnetSubService, BasePageableObjectMixin):
+
+    def __init__(self, provider, network):
+        self.__provider = provider
+        self.network = network
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def get(self, subnet_id):
+        sn = self._provider.networking.subnets.get(self.network, subnet_id)
+        if sn.network_id != self.network.id:
+            log.warning("The SubnetSubService nested in the network '{}' "
+                        "returned subnet '{}' which is attached to another "
+                        "network '{}'".format(str(self.network), str(sn),
+                                              str(sn.network)))
+        return sn
+
+    def list(self, limit=None, marker=None):
+        return self._provider.networking.subnets.list(network=self.network,
+                                                      limit=limit,
+                                                      marker=marker)
+
+    def find(self, **kwargs):
+        return self._provider.networking.subnets.find(network=self.network,
+                                                      **kwargs)
+
+    def create(self, label, cidr_block, zone):
+        return self._provider.networking.subnets.create(label,
+                                                        self.network,
+                                                        cidr_block, zone)
+
+    def delete(self, subnet):
+        return self._provider.networking.subnets.delete(subnet)

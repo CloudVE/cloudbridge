@@ -40,6 +40,7 @@ from .helpers import trim_empty_params
 from .subservices import AWSBucketObjectSubService
 from .subservices import AWSFloatingIPSubService
 from .subservices import AWSGatewaySubService
+from .subservices import AWSSubnetSubService
 from .subservices import AWSVMFirewallRuleSubService
 
 log = logging.getLogger(__name__)
@@ -849,8 +850,9 @@ class AWSNetwork(BaseNetwork):
     def __init__(self, provider, network):
         super(AWSNetwork, self).__init__(provider)
         self._vpc = network
-        self._gtw_container = AWSGatewaySubService(provider, self)
         self._unknown_state = False
+        self._gtw_container = AWSGatewaySubService(provider, self)
+        self._subnet_svc = AWSSubnetSubService(provider, self)
 
     @property
     def id(self):
@@ -895,7 +897,7 @@ class AWSNetwork(BaseNetwork):
 
     @property
     def subnets(self):
-        return [AWSSubnet(self._provider, s) for s in self._vpc.subnets.all()]
+        return self._subnet_svc
 
     def refresh(self):
         try:

@@ -45,6 +45,7 @@ from . import helpers as azure_helpers
 from .subservices import AzureBucketObjectSubService
 from .subservices import AzureFloatingIPSubService
 from .subservices import AzureGatewaySubService
+from .subservices import AzureSubnetSubService
 from .subservices import AzureVMFirewallRuleSubService
 
 log = logging.getLogger(__name__)
@@ -717,6 +718,7 @@ class AzureNetwork(BaseNetwork):
         if not self._network.tags:
             self._network.tags = {}
         self._gateway_service = AzureGatewaySubService(provider, self)
+        self._subnet_svc = AzureSubnetSubService(provider, self)
 
     @property
     def id(self):
@@ -794,11 +796,7 @@ class AzureNetwork(BaseNetwork):
 
     @property
     def subnets(self):
-        """
-        List all the subnets in this network
-        :return:
-        """
-        return self._provider.networking.subnets.list(network=self.id)
+        return self._subnet_svc
 
     def create_subnet(self, label, cidr_block, zone):
         """

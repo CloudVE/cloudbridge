@@ -3,8 +3,8 @@ import logging
 from cloudbridge.cloud.base.subservices import BaseBucketObjectSubService
 from cloudbridge.cloud.base.subservices import BaseFloatingIPSubService
 from cloudbridge.cloud.base.subservices import BaseGatewaySubService
-from cloudbridge.cloud.base.subservices import \
-    BaseVMFirewallRuleSubService
+from cloudbridge.cloud.base.subservices import BaseSubnetSubService
+from cloudbridge.cloud.base.subservices import BaseVMFirewallRuleSubService
 
 
 log = logging.getLogger(__name__)
@@ -33,3 +33,9 @@ class OpenStackVMFirewallRuleSubService(BaseVMFirewallRuleSubService):
     def __init__(self, provider, firewall):
         super(OpenStackVMFirewallRuleSubService, self).__init__(
             provider, firewall)
+
+
+class OpenStackSubnetSubService(BaseSubnetSubService):
+
+    def __init__(self, provider, network):
+        super(OpenStackSubnetSubService, self).__init__(provider, network)
