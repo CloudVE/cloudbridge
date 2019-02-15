@@ -1231,13 +1231,15 @@ class GCEVolumeService(BaseVolumeService):
         zone_name = zone.name
         snapshot_id = snapshot.id if isinstance(
             snapshot, GCESnapshot) and snapshot else snapshot
+        labels = {'cblabel': label}
+        if description:
+            labels['description'] = description
         disk_body = {
             'name': name,
             'sizeGb': size,
             'type': 'zones/{0}/diskTypes/{1}'.format(zone_name, 'pd-standard'),
             'sourceSnapshot': snapshot_id,
-            'description': description,
-            'labels': {'cblabel': label}
+            'labels': labels
         }
         operation = (self.provider
                          .gce_compute
@@ -1330,10 +1332,12 @@ class GCESnapshotService(BaseSnapshotService):
         GCESnapshot.assert_valid_resource_label(label)
         name = GCESnapshot._generate_name_from_label(label, 'cbsnap')
         volume_name = volume.name if isinstance(volume, GCEVolume) else volume
+        labels = {'cblabel': label}
+        if description:
+            labels['description'] = description
         snapshot_body = {
             "name": name,
-            "description": description,
-            "labels": {'cblabel': label}
+            "labels": labels
         }
         operation = (self.provider
                          .gce_compute
