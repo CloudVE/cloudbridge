@@ -22,6 +22,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.instances'])
     def test_storage_services_event_pattern(self):
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.compute.instances._service_event_pattern,
             "provider.compute.instances",
@@ -357,7 +358,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
             # check floating ips
             router = self.provider.networking.routers.create(label, net)
-            gateway = net.gateways.get_or_create_inet_gateway()
+            gateway = net.gateways.get_or_create()
 
             def cleanup_router(router, gateway):
                 with helpers.cleanup_action(lambda: router.delete()):

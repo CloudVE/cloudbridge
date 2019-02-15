@@ -3,20 +3,14 @@ Base implementation for services available through a provider
 """
 import logging
 
-import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.middleware import dispatch
-from cloudbridge.cloud.base.resources import BaseBucket
-from cloudbridge.cloud.base.resources import BaseNetwork
-from cloudbridge.cloud.base.resources import BaseRouter
-from cloudbridge.cloud.base.resources import BaseSubnet
-from cloudbridge.cloud.interfaces.exceptions import \
-    InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.services import BucketObjectService
 from cloudbridge.cloud.interfaces.services import BucketService
 from cloudbridge.cloud.interfaces.services import CloudService
 from cloudbridge.cloud.interfaces.services import ComputeService
+from cloudbridge.cloud.interfaces.services import FloatingIPService
+from cloudbridge.cloud.interfaces.services import GatewayService
 from cloudbridge.cloud.interfaces.services import ImageService
 from cloudbridge.cloud.interfaces.services import InstanceService
 from cloudbridge.cloud.interfaces.services import KeyPairService
@@ -28,11 +22,17 @@ from cloudbridge.cloud.interfaces.services import SecurityService
 from cloudbridge.cloud.interfaces.services import SnapshotService
 from cloudbridge.cloud.interfaces.services import StorageService
 from cloudbridge.cloud.interfaces.services import SubnetService
+from cloudbridge.cloud.interfaces.services import VMFirewallRuleService
 from cloudbridge.cloud.interfaces.services import VMFirewallService
 from cloudbridge.cloud.interfaces.services import VMTypeService
 from cloudbridge.cloud.interfaces.services import VolumeService
 
+from . import helpers as cb_helpers
+from .middleware import dispatch
+from .resources import BaseNetwork
 from .resources import BasePageableObjectMixin
+from .resources import BaseRouter
+from .resources import BaseSubnet
 from .resources import ClientPagedResultList
 
 log = logging.getLogger(__name__)
@@ -95,6 +95,37 @@ class BaseVMFirewallService(
                                      matches if matches else [])
 
 
+class BaseVMFirewallRuleService(BasePageableObjectMixin,
+                                VMFirewallRuleService,
+                                BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseVMFirewallRuleService, self).__init__(provider)
+        self._provider = provider
+
+    @property
+    def provider(self):
+        return self._provider
+
+    @dispatch(event="provider.security.vm_firewall_rules.get",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def get(self, firewall, rule_id):
+        matches = [rule for rule in firewall.rules if rule.id == rule_id]
+        if matches:
+            return matches[0]
+        else:
+            return None
+
+    @dispatch(event="provider.security.vm_firewall_rules.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, firewall, **kwargs):
+        obj_list = firewall.rules
+        filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
+                   'cidr', 'src_dest_fw', 'src_dest_fw_id']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
+
+
 class BaseStorageService(StorageService, BaseCloudService):
 
     def __init__(self, provider):
@@ -143,39 +174,12 @@ class BaseBucketService(
                                      matches if matches else [])
 
 
-class BaseBucketObjectService(
-        BasePageableObjectMixin, BucketObjectService, BaseCloudService):
+class BaseBucketObjectService(BucketObjectService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseBucketObjectService, self).__init__(provider)
-        self._service_event_pattern += ".storage.bucket_objects"
+        self._service_event_pattern += ".storage._bucket_objects"
         self._bucket = None
-
-    # Default bucket needs to be set in order for the service to be iterable
-    def set_bucket(self, bucket):
-        bucket = bucket if isinstance(bucket, BaseBucket) \
-                 else self.provider.storage.buckets.get(bucket)
-        self._bucket = bucket
-
-    def __iter__(self):
-        if not self._bucket:
-            message = "You must set a bucket before iterating through its " \
-                      "objects. We do not allow iterating through all " \
-                      "buckets at this time. In order to set a bucket, use: " \
-                      "`provider.storage.bucket_objects.set_bucket(my_bucket)`"
-            raise InvalidConfigurationException(message)
-        result_list = self.list(bucket=self._bucket)
-        if result_list.supports_server_paging:
-            for result in result_list:
-                yield result
-            while result_list.is_truncated:
-                result_list = self.list(bucket=self._bucket,
-                                        marker=result_list.marker)
-                for result in result_list:
-                    yield result
-        else:
-            for result in result_list.data:
-                yield result
 
 
 class BaseComputeService(ComputeService, BaseCloudService):
@@ -333,3 +337,33 @@ class BaseRouterService(
         else:
             return self.provider.networking.routers.create(
                 network=net_id, label=BaseRouter.CB_DEFAULT_ROUTER_LABEL)
+
+
+class BaseGatewayService(GatewayService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseGatewayService, self).__init__(provider)
+        self._provider = provider
+
+    @property
+    def provider(self):
+        return self._provider
+
+
+class BaseFloatingIPService(FloatingIPService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseFloatingIPService, self).__init__(provider)
+        self._provider = provider
+
+    @property
+    def provider(self):
+        return self._provider
+
+    @dispatch(event="provider.networking.floating_ips.find",
+              priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    def find(self, gateway, **kwargs):
+        obj_list = gateway.floating_ips
+        filters = ['name', 'public_ip']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))

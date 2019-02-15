@@ -135,7 +135,7 @@ attaching an internet gateway to the subnet via a router.
         cidr_block='10.0.0.0/28', label='cb-subnet', zone=zone)
     router = provider.networking.routers.create(network=net, label='cb-router')
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway()
+    gateway = net.gateways.get_or_create()
     router.attach_gateway(gateway)
 
 
@@ -250,7 +250,7 @@ their provider mappings, see :doc:`topics/resource_types_and_mapping`.
     router = router_list[0]
 
     # Gateway
-    gateway = net.gateways.get_or_create_inet_gateway()
+    gateway = net.gateways.get_or_create()
 
     # Firewall
     fw = provider.security.vm_firewalls.get('firewall ID')

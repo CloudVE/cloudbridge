@@ -21,6 +21,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.volumes', 'storage.volumes'])
     def test_storage_services_event_pattern(self):
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.storage.volumes._service_event_pattern,
             "provider.storage.volumes",
@@ -29,6 +30,7 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                                      "provider.storage.volumes",
                                      self.provider.storage.volumes.
                                      _service_event_pattern))
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.storage.snapshots._service_event_pattern,
             "provider.storage.snapshots",

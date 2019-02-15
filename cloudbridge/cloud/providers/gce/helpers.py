@@ -181,6 +181,7 @@ def change_label(resource, key, value, res_att, request):
         request.body = str(request_body)
         request.body_size = len(str(request_body))
         response = request.execute()
+        # pylint:disable=protected-access
         resource._provider.wait_for_operation(
             response, zone=getattr(resource, 'zone_name', None))
     finally:

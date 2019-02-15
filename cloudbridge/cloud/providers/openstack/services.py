@@ -10,6 +10,7 @@ from neutronclient.common.exceptions import PortNotFoundClient
 
 from novaclient.exceptions import NotFound as NovaNotFound
 
+from openstack.exceptions import HttpException
 from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
 
@@ -22,6 +23,8 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -33,26 +36,31 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallRuleService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
 from cloudbridge.cloud.interfaces.exceptions \
     import DuplicateResourceException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Subnet
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
-from cloudbridge.cloud.providers.openstack import helpers as oshelpers
 
+from . import helpers as oshelpers
 from .resources import OpenStackBucket
 from .resources import OpenStackBucketObject
+from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
+from .resources import OpenStackInternetGateway
 from .resources import OpenStackKeyPair
 from .resources import OpenStackMachineImage
 from .resources import OpenStackNetwork
@@ -61,6 +69,7 @@ from .resources import OpenStackRouter
 from .resources import OpenStackSnapshot
 from .resources import OpenStackSubnet
 from .resources import OpenStackVMFirewall
+from .resources import OpenStackVMFirewallRule
 from .resources import OpenStackVMType
 from .resources import OpenStackVolume
 
@@ -75,26 +84,19 @@ class OpenStackSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = OpenStackKeyPairService(provider)
         self._vm_firewalls = OpenStackVMFirewallService(provider)
+        self._vm_firewall_rule_svc = OpenStackVMFirewallRuleService(provider)
 
     @property
     def key_pairs(self):
-        """
-        Provides access to key pairs for this provider.
-
-        :rtype: ``object`` of :class:`.KeyPairService`
-        :return: a KeyPairService object
-        """
         return self._key_pairs
 
     @property
     def vm_firewalls(self):
-        """
-        Provides access to VM firewalls for this provider.
-
-        :rtype: ``object`` of :class:`.VMFirewallService`
-        :return: a VMFirewallService object
-        """
         return self._vm_firewalls
+
+    @property
+    def _vm_firewall_rules(self):
+        return self._vm_firewall_rule_svc
 
     def get_or_create_ec2_credentials(self):
         """
@@ -201,8 +203,9 @@ class OpenStackKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def delete(self, kp):
-        keypair = kp if isinstance(kp, OpenStackKeyPair) else self.get(kp)
+    def delete(self, key_pair):
+        keypair = (key_pair if isinstance(key_pair, OpenStackKeyPair)
+                   else self.get(key_pair))
         if keypair:
             # pylint:disable=protected-access
             keypair._key_pair.delete()
@@ -259,11 +262,73 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vmf):
-        fw = vmf if isinstance(vmf, OpenStackVMFirewall) else self.get(vmf)
+    def delete(self, vm_firewall):
+        fw = (vm_firewall if isinstance(vm_firewall, OpenStackVMFirewall)
+              else self.get(vm_firewall))
         if fw:
             # pylint:disable=protected-access
             fw._vm_firewall.delete(self.provider.os_conn.session)
+
+
+class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
+
+    def __init__(self, provider):
+        super(OpenStackVMFirewallRuleService, self).__init__(provider)
+
+    @dispatch(event="provider.security.vm_firewall_rules.list",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def list(self, firewall, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [OpenStackVMFirewallRule(firewall, r)
+                 for r in firewall._vm_firewall.security_group_rules]
+        return ClientPagedResultList(self.provider, rules,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.security.vm_firewall_rules.create",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def create(self, firewall, direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (src_dest_fw.id if isinstance(src_dest_fw,
+                                                       OpenStackVMFirewall)
+                          else src_dest_fw)
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                os_direction = 'ingress'
+            elif direction == TrafficDirection.OUTBOUND:
+                os_direction = 'egress'
+            else:
+                raise InvalidValueException("direction", direction)
+            # pylint:disable=protected-access
+            rule = self.provider.os_conn.network.create_security_group_rule(
+                security_group_id=firewall.id,
+                direction=os_direction,
+                port_range_max=to_port,
+                port_range_min=from_port,
+                protocol=protocol,
+                remote_ip_prefix=cidr,
+                remote_group_id=src_dest_fw_id)
+            firewall.refresh()
+            return OpenStackVMFirewallRule(firewall, rule.to_dict())
+        except HttpException as e:
+            firewall.refresh()
+            # 409=Conflict, raised for duplicate rule
+            if e.status_code == 409:
+                existing = self.find(firewall, direction=direction,
+                                     protocol=protocol, from_port=from_port,
+                                     to_port=to_port, cidr=cidr,
+                                     src_dest_fw_id=src_dest_fw_id)
+                return existing[0]
+            else:
+                raise e
+
+    @dispatch(event="provider.security.vm_firewall_rules.delete",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def delete(self, firewall, rule):
+        rule_id = (rule.id if isinstance(rule, OpenStackVMFirewallRule)
+                   else rule)
+        self.provider.os_conn.network.delete_security_group_rule(rule_id)
+        firewall.refresh()
 
 
 class OpenStackStorageService(BaseStorageService):
@@ -290,7 +355,7 @@ class OpenStackStorageService(BaseStorageService):
         return self._bucket_svc
 
     @property
-    def bucket_objects(self):
+    def _bucket_objects(self):
         return self._bucket_obj_svc
 
 
@@ -357,8 +422,9 @@ class OpenStackVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vol):
-        volume = vol if isinstance(vol, OpenStackVolume) else self.get(vol)
+    def delete(self, volume):
+        volume = (volume if isinstance(volume, OpenStackVolume)
+                  else self.get(volume))
         if volume:
             # pylint:disable=protected-access
             volume._volume.delete()
@@ -428,8 +494,9 @@ class OpenStackSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def delete(self, snap):
-        s = snap if isinstance(snap, OpenStackSnapshot) else self.get(snap)
+    def delete(self, snapshot):
+        s = (snapshot if isinstance(snapshot, OpenStackSnapshot) else
+             self.get(snapshot))
         if s:
             # pylint:disable=protected-access
             s._snapshot.delete()
@@ -811,8 +878,9 @@ class OpenStackInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def delete(self, inst):
-        ins = inst if isinstance(inst, OpenStackInstance) else self.get(inst)
+    def delete(self, instance):
+        ins = (instance if isinstance(instance, OpenStackInstance) else
+               self.get(instance))
         if ins:
             # pylint:disable=protected-access
             os_instance = ins._os_instance
@@ -890,6 +958,8 @@ class OpenStackNetworkingService(BaseNetworkingService):
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
         self._router_service = OpenStackRouterService(self.provider)
+        self._gateway_service = OpenStackGatewayService(self.provider)
+        self._floating_ip_service = OpenStackFloatingIPService(self.provider)
 
     @property
     def networks(self):
@@ -902,6 +972,14 @@ class OpenStackNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
+
+    @property
+    def _gateways(self):
+        return self._gateway_service
+
+    @property
+    def _floating_ips(self):
+        return self._floating_ip_service
 
 
 class OpenStackNetworkService(BaseNetworkService):
@@ -955,8 +1033,9 @@ class OpenStackNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def delete(self, net):
-        network = net if isinstance(net, OpenStackNetwork) else self.get(net)
+    def delete(self, network):
+        network = (network if isinstance(network, OpenStackNetwork) else
+                   self.get(network))
         if not network:
             return
         if not network.external and network.id in str(
@@ -1036,7 +1115,7 @@ class OpenStackSubnetService(BaseSubnetService):
             router = self.provider.networking.routers.get_or_create_default(
                 net)
             router.attach_subnet(sn)
-            gateway = net.gateways.get_or_create_inet_gateway()
+            gateway = net.gateways.get_or_create()
             router.attach_gateway(gateway)
             return sn
         except NeutronClientException:
@@ -1083,3 +1162,100 @@ class OpenStackRouterService(BaseRouterService):
     def delete(self, router):
         r_id = router.id if isinstance(router, OpenStackRouter) else router
         self.provider.os_conn.delete_router(r_id)
+
+
+class OpenStackGatewayService(BaseGatewayService):
+    """For OpenStack, an internet gateway is a just an 'external' network."""
+
+    def __init__(self, provider):
+        super(OpenStackGatewayService, self).__init__(provider)
+
+    def _check_fip_connectivity(self, network, external_net):
+        # Due to current limitations in OpenStack:
+        # https://bugs.launchpad.net/neutron/+bug/1743480, it's not
+        # possible to differentiate between floating ip networks and provider
+        # external networks. Therefore, we systematically step through
+        # all available networks and perform an assignment test to infer valid
+        # floating ip nets.
+        dummy_router = self._provider.networking.routers.create(
+            label='cb-conn-test-router', network=network)
+        with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
+            try:
+                dummy_router.attach_gateway(external_net)
+                return True
+            except Exception:
+                return False
+
+    @dispatch(event="provider.networking.gateways.get_or_create",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def get_or_create(self, network):
+        """For OS, inet gtw is any net that has `external` property set."""
+        external_nets = (n for n in self._provider.networking.networks
+                         if n.external)
+        for net in external_nets:
+            if self._check_fip_connectivity(network, net):
+                return OpenStackInternetGateway(self._provider, net)
+        return None
+
+    @dispatch(event="provider.networking.gateways.delete",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def delete(self, network, gateway):
+        pass
+
+    @dispatch(event="provider.networking.gateways.list",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def list(self, network, limit=None, marker=None):
+        log.debug("OpenStack listing of all current internet gateways")
+        igl = [OpenStackInternetGateway(self._provider, n)
+               for n in self._provider.networking.networks
+               if n.external and self._check_fip_connectivity(network, n)]
+        return ClientPagedResultList(self._provider, igl, limit=limit,
+                                     marker=marker)
+
+
+class OpenStackFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(OpenStackFloatingIPService, self).__init__(provider)
+
+    @dispatch(event="provider.networking.floating_ips.get",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def get(self, gateway, fip_id):
+        try:
+            return OpenStackFloatingIP(
+                self.provider,
+                self.provider.os_conn.network.get_ip(fip_id))
+        except (ResourceNotFound, NotFoundException):
+            log.debug("Floating IP %s not found.", fip_id)
+            return None
+
+    @dispatch(event="provider.networking.floating_ips.list",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def list(self, gateway, limit=None, marker=None):
+        fips = [OpenStackFloatingIP(self.provider, fip)
+                for fip in self.provider.os_conn.network.ips(
+                    floating_network_id=gateway.id
+                )]
+        return ClientPagedResultList(self.provider, fips,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.networking.floating_ips.create",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def create(self, gateway):
+        return OpenStackFloatingIP(
+            self.provider, self.provider.os_conn.network.create_ip(
+                floating_network_id=gateway.id))
+
+    @dispatch(event="provider.networking.floating_ips.delete",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def delete(self, gateway, fip):
+        if isinstance(fip, OpenStackFloatingIP):
+            # pylint:disable=protected-access
+            os_ip = fip._ip
+        else:
+            try:
+                os_ip = self.provider.os_conn.network.get_ip(fip)
+            except (ResourceNotFound, NotFoundException):
+                log.debug("Floating IP %s not found.", fip)
+                return True
+        os_ip.delete(self._provider.os_conn.session)

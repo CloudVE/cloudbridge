@@ -15,6 +15,8 @@ from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -26,6 +28,7 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallRuleService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
@@ -33,20 +36,25 @@ from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
+from .helpers import trim_empty_params
 from .resources import AWSBucket
 from .resources import AWSBucketObject
+from .resources import AWSFloatingIP
 from .resources import AWSInstance
+from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
@@ -57,6 +65,7 @@ from .resources import AWSRouter
 from .resources import AWSSnapshot
 from .resources import AWSSubnet
 from .resources import AWSVMFirewall
+from .resources import AWSVMFirewallRule
 from .resources import AWSVMType
 from .resources import AWSVolume
 
@@ -71,6 +80,7 @@ class AWSSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = AWSKeyPairService(provider)
         self._vm_firewalls = AWSVMFirewallService(provider)
+        self._vm_firewall_rule_svc = AWSVMFirewallRuleService(provider)
 
     @property
     def key_pairs(self):
@@ -79,6 +89,10 @@ class AWSSecurityService(BaseSecurityService):
     @property
     def vm_firewalls(self):
         return self._vm_firewalls
+
+    @property
+    def _vm_firewall_rules(self):
+        return self._vm_firewall_rule_svc
 
 
 class AWSKeyPairService(BaseKeyPairService):
@@ -135,8 +149,9 @@ class AWSKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
-    def delete(self, kp):
-        key_pair = kp if isinstance(kp, AWSKeyPair) else self.get(kp)
+    def delete(self, key_pair):
+        key_pair = (key_pair if isinstance(key_pair, AWSKeyPair) else
+                    self.get(key_pair))
         if key_pair:
             # pylint:disable=protected-access
             key_pair._key_pair.delete()
@@ -190,11 +205,88 @@ class AWSVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
-    def delete(self, vmf):
-        firewall = vmf if isinstance(vmf, AWSVMFirewall) else self.get(vmf)
+    def delete(self, vm_firewall):
+        firewall = (vm_firewall if isinstance(vm_firewall, AWSVMFirewall)
+                    else self.get(vm_firewall))
         if firewall:
             # pylint:disable=protected-access
             firewall._vm_firewall.delete()
+
+
+class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
+
+    def __init__(self, provider):
+        super(AWSVMFirewallRuleService, self).__init__(provider)
+
+    @dispatch(event="provider.security.vm_firewall_rules.list",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def list(self, firewall, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [AWSVMFirewallRule(firewall,
+                                   TrafficDirection.INBOUND, r)
+                 for r in firewall._vm_firewall.ip_permissions]
+        # pylint:disable=protected-access
+        rules = rules + [
+            AWSVMFirewallRule(
+                firewall, TrafficDirection.OUTBOUND, r)
+            for r in firewall._vm_firewall.ip_permissions_egress]
+        return ClientPagedResultList(self.provider, rules,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.security.vm_firewall_rules.create",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def create(self, firewall,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (
+            src_dest_fw.id if isinstance(src_dest_fw, AWSVMFirewall)
+            else src_dest_fw)
+
+        # pylint:disable=protected-access
+        ip_perm_entry = AWSVMFirewallRule._construct_ip_perms(
+            protocol, from_port, to_port, cidr, src_dest_fw_id)
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                # pylint:disable=protected-access
+                firewall._vm_firewall.authorize_ingress(
+                    IpPermissions=ip_perms)
+            elif direction == TrafficDirection.OUTBOUND:
+                # pylint:disable=protected-access
+                firewall._vm_firewall.authorize_egress(
+                    IpPermissions=ip_perms)
+            else:
+                raise InvalidValueException("direction", direction)
+            firewall.refresh()
+            return AWSVMFirewallRule(firewall, direction, ip_perm_entry)
+        except ClientError as ec2e:
+            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
+                return AWSVMFirewallRule(
+                    firewall, direction, ip_perm_entry)
+            else:
+                raise ec2e
+
+    @dispatch(event="provider.security.vm_firewall_rules.delete",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def delete(self, firewall, rule):
+        # pylint:disable=protected-access
+        ip_perm_entry = rule._construct_ip_perms(
+            rule.protocol, rule.from_port, rule.to_port,
+            rule.cidr, rule.src_dest_fw_id)
+
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        # pylint:disable=protected-access
+        if rule.direction == TrafficDirection.INBOUND:
+            firewall._vm_firewall.revoke_ingress(
+                IpPermissions=ip_perms)
+        else:
+            # pylint:disable=protected-access
+            firewall._vm_firewall.revoke_egress(
+                IpPermissions=ip_perms)
+        firewall.refresh()
 
 
 class AWSStorageService(BaseStorageService):
@@ -221,7 +313,7 @@ class AWSStorageService(BaseStorageService):
         return self._bucket_svc
 
     @property
-    def bucket_objects(self):
+    def _bucket_objects(self):
         return self._bucket_obj_svc
 
 
@@ -336,8 +428,9 @@ class AWSSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
-    def delete(self, snap):
-        snapshot = snap if isinstance(snap, AWSSnapshot) else self.get(snap)
+    def delete(self, snapshot):
+        snapshot = (snapshot if isinstance(snapshot, AWSSnapshot) else
+                    self.get(snapshot))
         if snapshot:
             # pylint:disable=protected-access
             snapshot._snapshot.delete()
@@ -457,6 +550,7 @@ class AWSBucketObjectService(BaseBucketObjectService):
                                      limit=limit, marker=marker)
 
     def find(self, bucket, **kwargs):
+        # pylint:disable=protected-access
         obj_list = [AWSBucketObject(self.provider, o)
                     for o in bucket._bucket.objects.all()]
         filters = ['name']
@@ -707,8 +801,9 @@ class AWSInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def delete(self, inst):
-        aws_inst = inst if isinstance(inst, AWSInstance) else self.get(inst)
+    def delete(self, instance):
+        aws_inst = (instance if isinstance(instance, AWSInstance) else
+                    self.get(instance))
         if aws_inst:
             # pylint:disable=protected-access
             aws_inst._ec2_instance.terminate()
@@ -789,6 +884,8 @@ class AWSNetworkingService(BaseNetworkingService):
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
         self._router_service = AWSRouterService(self.provider)
+        self._gateway_service = AWSGatewayService(self.provider)
+        self._floating_ip_service = AWSFloatingIPService(self.provider)
 
     @property
     def networks(self):
@@ -801,6 +898,14 @@ class AWSNetworkingService(BaseNetworkingService):
     @property
     def routers(self):
         return self._router_service
+
+    @property
+    def _gateways(self):
+        return self._gateway_service
+
+    @property
+    def _floating_ips(self):
+        return self._floating_ip_service
 
 
 class AWSNetworkService(BaseNetworkService):
@@ -849,8 +954,9 @@ class AWSNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
-    def delete(self, net):
-        network = net if isinstance(net, AWSNetwork) else self.get(net)
+    def delete(self, network):
+        network = (network if isinstance(network, AWSNetwork)
+                   else self.get(network))
         if network:
             # pylint:disable=protected-access
             network._vpc.delete()
@@ -858,6 +964,7 @@ class AWSNetworkService(BaseNetworkService):
     def get_or_create_default(self):
         # # Look for provided default network
         # for net in self.provider.networking.networks:
+        # pylint:disable=protected-access
         #     if net._vpc.is_default:
         #         return net
 
@@ -967,6 +1074,7 @@ class AWSSubnetService(BaseSubnetService):
         snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")
 
         if snl:
+            # pylint:disable=protected-access
             snl.sort(key=lambda sn: sn._subnet.availability_zone)
             if not zone_name:
                 return snl[0]
@@ -989,7 +1097,7 @@ class AWSSubnetService(BaseSubnetService):
         # though because the provider-default network will have Internet
         # connectivity (unlike the CloudBridge-default network with this
         # being commented) and is hence left in the codebase.
-        # default_gtw = default_net.gateways.get_or_create_inet_gateway()
+        # default_gtw = default_net.gateways.get_or_create()
         # router_label = "{0}-router".format(
         #   AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
         # default_routers = self.provider.networking.routers.find(
@@ -1091,3 +1199,95 @@ class AWSRouterService(BaseRouterService):
         if r:
             # pylint:disable=protected-access
             r._route_table.delete()
+
+
+class AWSGatewayService(BaseGatewayService):
+
+    def __init__(self, provider):
+        super(AWSGatewayService, self).__init__(provider)
+        self.svc = BotoEC2Service(provider=provider,
+                                  cb_resource=AWSInternetGateway,
+                                  boto_collection_name='internet_gateways')
+
+    @dispatch(event="provider.networking.gateways.get_or_create",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def get_or_create(self, network):
+        network_id = network.id if isinstance(
+            network, AWSNetwork) else network
+        # Don't filter by label because it may conflict with at least the
+        # default VPC that most accounts have but that network is typically
+        # without a name.
+        gtw = self.svc.find(filter_name='attachment.vpc-id',
+                            filter_value=network_id)
+        if gtw:
+            return gtw[0]  # There can be only one gtw attached to a VPC
+        # Gateway does not exist so create one and attach to the supplied net
+        cb_gateway = self.svc.create('create_internet_gateway')
+        cb_gateway._gateway.create_tags(
+            Tags=[{'Key': 'Name',
+                   'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                   }])
+        cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
+        return cb_gateway
+
+    @dispatch(event="provider.networking.gateways.delete",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def delete(self, network, gateway):
+        gw = (gateway if isinstance(gateway, AWSInternetGateway)
+              else self.svc.get(gateway))
+        try:
+            if gw.network_id:
+                # pylint:disable=protected-access
+                gw._gateway.detach_from_vpc(VpcId=gw.network_id)
+        except ClientError as e:
+            log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
+        # pylint:disable=protected-access
+        gw._gateway.delete()
+
+    @dispatch(event="provider.networking.gateways.list",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def list(self, network, limit=None, marker=None):
+        log.debug("Listing current AWS internet gateways for net %s.",
+                  network.id)
+        fltr = [{'Name': 'attachment.vpc-id', 'Values': [network.id]}]
+        return self.svc.list(limit=None, marker=None, Filters=fltr)
+
+
+class AWSFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(AWSFloatingIPService, self).__init__(provider)
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSFloatingIP,
+                                  boto_collection_name='vpc_addresses')
+
+    @dispatch(event="provider.networking.floating_ips.get",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def get(self, gateway, fip_id):
+        log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
+        return self.svc.get(fip_id)
+
+    @dispatch(event="provider.networking.floating_ips.list",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def list(self, gateway, limit=None, marker=None):
+        return self.svc.list(limit, marker)
+
+    @dispatch(event="provider.networking.floating_ips.create",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def create(self, gateway):
+        log.debug("Creating a floating IP under gateway %s", gateway)
+        ip = self.provider.ec2_conn.meta.client.allocate_address(
+            Domain='vpc')
+        return AWSFloatingIP(
+            self.provider,
+            self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
+
+    @dispatch(event="provider.networking.floating_ips.delete",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def delete(self, gateway, fip):
+        if isinstance(fip, AWSFloatingIP):
+            # pylint:disable=protected-access
+            aws_fip = fip._ip
+        else:
+            aws_fip = self.svc.get_raw(fip)
+        aws_fip.release()

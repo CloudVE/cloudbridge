@@ -55,7 +55,7 @@ SubnetService
 
 FloatingIPService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.FloatingIPContainer
+.. autoclass:: cloudbridge.cloud.interfaces.resources.FloatingIPSubService
     :members:
 
 RouterService
@@ -65,7 +65,7 @@ RouterService
 
 GatewayService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.GatewayContainer
+.. autoclass:: cloudbridge.cloud.interfaces.resources.GatewaySubService
     :members:
 
 BucketService

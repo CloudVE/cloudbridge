@@ -20,6 +20,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                               'networking.networks',
                               'networking.routers'])
     def test_storage_services_event_pattern(self):
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.networks._service_event_pattern,
             "provider.networking.networks",
@@ -28,6 +29,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                                      "provider.networking.networks",
                                      self.provider.networking.networks.
                                      _service_event_pattern))
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.subnets._service_event_pattern,
             "provider.networking.subnets",
@@ -36,6 +38,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                                      "provider.networking.subnets",
                                      self.provider.networking.subnets.
                                      _service_event_pattern))
+        # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.routers._service_event_pattern,
             "provider.networking.routers",
@@ -257,7 +260,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                     len(router.subnets) == 1,
                     "Subnet {0} not attached to router {1}".format(sn, router)
                 )
-            gteway = net.gateways.get_or_create_inet_gateway()
+            gteway = net.gateways.get_or_create()
             router.attach_gateway(gteway)
             # TODO: add a check for routes after that's been implemented
 

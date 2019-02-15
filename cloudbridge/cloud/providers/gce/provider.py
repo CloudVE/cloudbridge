@@ -15,7 +15,6 @@ from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
-import cloudbridge as cb
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 
@@ -23,6 +22,8 @@ from .services import GCEComputeService
 from .services import GCENetworkingService
 from .services import GCESecurityService
 from .services import GCPStorageService
+
+log = logging.getLogger(__name__)
 
 
 class GCPResourceUrl(object):
@@ -101,6 +102,7 @@ class GCPResources(object):
         #   }
         #   ...
         # }
+        # pylint:disable=protected-access
         desc = connection._resourceDesc
         self._root_url = desc['rootUrl']
         self._service_path = desc['servicePath']
@@ -177,7 +179,7 @@ class GCPResources(object):
             return self.parse_url(url_or_name)
         # Otherwise, construct resource URL with default values.
         if resource not in self._resources:
-            cb.log.warning('Unknown resource: %s', resource)
+            log.warning('Unknown resource: %s', resource)
             return None
 
         parameter_defaults = self._parameter_defaults.copy()

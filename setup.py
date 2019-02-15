@@ -6,7 +6,8 @@ import ast
 import os
 import re
 
-from setuptools import find_packages, setup
+from setuptools import find_packages
+from setuptools import setup
 
 # Cannot use "from cloudbridge import get_version" because that would try to
 # import the six package which may not be installed yet.
