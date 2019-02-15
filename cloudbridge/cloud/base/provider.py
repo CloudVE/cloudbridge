@@ -8,11 +8,12 @@ try:
 except ImportError:  # Python 2
     from ConfigParser import SafeConfigParser as ConfigParser
 
+from pyeventsystem.events import SimpleEventDispatcher
+from pyeventsystem.middleware import SimpleMiddlewareManager
+
 import six
 
-from ..base.events import SimpleEventDispatcher
 from ..base.middleware import ExceptionWrappingMiddleware
-from ..base.middleware import SimpleMiddlewareManager
 from ..interfaces import CloudProvider
 from ..interfaces.exceptions import ProviderConnectionException
 from ..interfaces.resources import Configuration

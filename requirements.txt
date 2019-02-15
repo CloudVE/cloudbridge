@@ -1,1 +1,2 @@
+git+https://github.com/CloudVE/pyeventsystem
 -e ".[dev]"
