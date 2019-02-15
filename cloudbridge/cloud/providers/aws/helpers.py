@@ -130,7 +130,11 @@ class BotoGenericService(object):
 
         :returns A CloudBridge wrapped resource
         """
-        return self.cb_resource(self.provider, self.get_raw(resource_id))
+        aws_res = self.get_raw(resource_id)
+        if aws_res:
+            return self.cb_resource(self.provider, aws_res)
+        else:
+            return None
 
     def _get_list_operation(self):
         """

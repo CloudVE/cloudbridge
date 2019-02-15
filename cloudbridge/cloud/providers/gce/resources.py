@@ -1359,7 +1359,7 @@ class GCEFloatingIP(BaseFloatingIP):
         return True if self._target_instance else False
 
     def refresh(self):
-        fip = self._gateway.floating_ips.get(self.id)
+        fip = self._provider.netowrking._floating_ips.get(None, self.id)
         # pylint:disable=protected-access
         self._ip = fip._ip
         self._process_ip_users()
