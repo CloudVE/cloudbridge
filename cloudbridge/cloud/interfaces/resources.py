@@ -1909,7 +1909,7 @@ class VMFirewall(LabeledCloudResource):
     @abstractproperty
     def rules(self):
         """
-        Get a container for the rules belonging to this VM firewall.
+        Get access to the rules belonging to this VM firewall.
 
         This object can be used for further operations on rules, such as get,
         list, create, etc.

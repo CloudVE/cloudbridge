@@ -604,6 +604,28 @@ class NetworkingService(CloudService):
         """
         pass
 
+    @abstractproperty
+    def _floating_ips(self):
+        """
+        Provides access to floating ips for this provider.
+        This service is not iterable.
+
+        :rtype: :class:`.FloatingIPService`
+        :return: a FloatingIPService object
+        """
+        pass
+
+    @abstractproperty
+    def _gateways(self):
+        """
+        Provides access to internet gateways for this provider.
+        This service is not iterable.
+
+        :rtype: :class:`.GatewayService`
+        :return: a GatewayService object
+        """
+        pass
+
 
 class NetworkService(PageableObjectMixin, CloudService):
 
@@ -1118,6 +1140,17 @@ class SecurityService(CloudService):
 
         :rtype: :class:`.VMFirewallService`
         :return: a VMFirewallService object
+        """
+        pass
+
+    @abstractproperty
+    def _vm_firewall_rules(self):
+        """
+        Provides access to firewall (security group) rules for this provider.
+        This service is not iterable.
+
+        :rtype: :class:`.VMFirewallRuleService`
+        :return: a VMFirewallRuleService object
         """
         pass
 
