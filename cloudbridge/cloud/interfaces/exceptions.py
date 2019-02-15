@@ -102,11 +102,3 @@ class InvalidParamException(InvalidNameException):
 
     def __init__(self, msg):
         super(InvalidParamException, self).__init__(msg)
-
-
-class HandlerException(CloudBridgeBaseException):
-    """
-    Marker interface for event handler exceptions.
-    """
-    def __init__(self, msg):
-        super(HandlerException, self).__init__(msg)
