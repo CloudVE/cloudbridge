@@ -504,6 +504,24 @@ class GCEVMFirewall(BaseVMFirewall):
             self._description = ''
         return self._description
 
+    @description.setter
+    def description(self, value):
+        # Change the description on all rules
+        for fw in self._delegate.iter_firewalls(self._vm_firewall,
+                                                self._network.name):
+            fw['description'] = value or ''
+            response = (self._provider
+                        .gce_compute
+                        .firewalls()
+                        .update(project=self._provider.project_name,
+                                firewall=fw['name'],
+                                body=fw)
+                        .execute())
+            self._provider.wait_for_operation(response)
+        # Set back to None so that the next time the user gets it, it updates
+        # but don't force update here to avoid more overhead
+        self._description = None
+
     @property
     def network_id(self):
         return self._network.id

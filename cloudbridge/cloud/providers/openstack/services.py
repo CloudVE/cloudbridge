@@ -243,17 +243,17 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
         OpenStackVMFirewall.assert_valid_resource_label(label)
-        net = network.id if isinstance(network, Network) else network
+        net_id = network.id if isinstance(network, Network) else network
         # We generally simulate a network being associated with a firewall
         # by storing the supplied value in the firewall description field that
         # is not modifiable after creation; however, because of some networking
         # specificity in Nectar, we must also allow an empty network id value.
-        if not net:
-            net = ""
+        if not net_id:
+            net_id = ""
         if not description:
             description = ""
         description += " [{}{}]".format(OpenStackVMFirewall._network_id_tag,
-                                        net)
+                                        net_id)
         sg = self.provider.os_conn.network.create_security_group(
             name=label, description=description)
         if sg:

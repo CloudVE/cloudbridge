@@ -184,9 +184,10 @@ class AWSVMFirewallService(BaseVMFirewallService):
         name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
         network_id = network.id if isinstance(network, Network) else network
         obj = self.svc.create('create_security_group', GroupName=name,
-                              Description=description or name,
+                              Description=name,
                               VpcId=network_id)
         obj.label = label
+        obj.description = description
         return obj
 
     @dispatch(event="provider.security.vm_firewalls.find",

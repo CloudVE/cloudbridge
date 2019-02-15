@@ -5,6 +5,7 @@ import inspect
 import ipaddress
 import logging
 import os
+import re
 
 try:
     from urllib.parse import urlparse
@@ -1090,19 +1091,16 @@ class OpenStackVMFirewall(BaseVMFirewall):
         :return: The network ID supplied when this firewall was created or
                  `None` if ID cannot be identified.
         """
-        # Best way would be to use regex, but using this hacky way to avoid
-        # importing the re package
-        # FIXME: This doesn't work as soon as the _description doesn't conform
-        # to this rigid string structure.
-        net_id = self._description\
-                     .split(" [{}".format(self._network_id_tag))[-1]\
-                     .split(']')[0]
+        # Extracting networking ID from description
+        exp = ".*\\[" + self._network_id_tag + "([^\\]]*)\\].*"
+        matches = re.match(exp, self._description)
+        if matches:
+            return matches.group(1)
         # We generally simulate a network being associated with a firewall;
         # however, because of some networking specificity in Nectar, we must
         # allow `None` return value as well in case an ID was not discovered.
-        if not net_id:
+        else:
             return None
-        return net_id
 
     @property
     def _description(self):
@@ -1117,6 +1115,16 @@ class OpenStackVMFirewall(BaseVMFirewall):
             return desc.replace(desc_fragment, "")
         else:
             return None
+
+    @description.setter
+    def description(self, value):
+        if not value:
+            value = ""
+        value += " [{}{}]".format(self._network_id_tag,
+                                  self.network_id)
+        self._provider.os_conn.network.update_security_group(
+            self.id, description=value)
+        self.refresh()
 
     @property
     def name(self):

@@ -635,6 +635,19 @@ class AWSVMFirewall(BaseVMFirewall):
                                              'Value': value or ""}])
 
     @property
+    def description(self):
+        try:
+            return find_tag_value(self._vm_firewall.tags, 'Description')
+        except ClientError:
+            return None
+
+    @description.setter
+    # pylint:disable=arguments-differ
+    def description(self, value):
+        self._vm_firewall.create_tags(Tags=[{'Key': 'Description',
+                                             'Value': value or ""}])
+
+    @property
     def network_id(self):
         return self._vm_firewall.vpc_id
 
