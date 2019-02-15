@@ -83,12 +83,13 @@ class BaseConfiguration(Configuration):
 
 
 class BaseCloudProvider(CloudProvider):
-    def __init__(self, config):
+    def __init__(self, config, tag):
         self._config = BaseConfiguration(config)
         self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
         self._middleware = SimpleMiddlewareManager()
         self.add_required_middleware()
+        self.tag = tag
 
     @property
     def config(self):
@@ -165,6 +166,9 @@ class BaseCloudProvider(CloudProvider):
 
         :return: a configuration value for the supplied ``key``
         """
+        prov_id = self.PROVIDER_ID
+        if self.tag:
+            prov_id = "-".join((prov_id, self.tag))
         log.debug("Getting config key %s, with supplied default value: %s",
                   key, default_value)
         value = default_value
@@ -172,9 +176,9 @@ class BaseCloudProvider(CloudProvider):
             value = self.config.get(key, default_value)
         elif hasattr(self.config, key) and getattr(self.config, key):
             value = getattr(self.config, key)
-        elif (self._config_parser.has_option(self.PROVIDER_ID, key) and
-              self._config_parser.get(self.PROVIDER_ID, key)):
-            value = self._config_parser.get(self.PROVIDER_ID, key)
+        elif (self._config_parser.has_option(prov_id, key) and
+              self._config_parser.get(prov_id, key)):
+            value = self._config_parser.get(prov_id, key)
         if isinstance(value, six.string_types) and not isinstance(
                 value, six.text_type):
             return six.u(value)

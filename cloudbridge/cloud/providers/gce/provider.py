@@ -196,8 +196,8 @@ class GCECloudProvider(BaseCloudProvider):
 
     PROVIDER_ID = 'gce'
 
-    def __init__(self, config):
-        super(GCECloudProvider, self).__init__(config)
+    def __init__(self, config, tag):
+        super(GCECloudProvider, self).__init__(config, tag)
 
         # Disable warnings about file_cache not being available when using
         # oauth2client >= 4.0.0.

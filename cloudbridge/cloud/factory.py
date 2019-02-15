@@ -108,7 +108,7 @@ class CloudProviderFactory(object):
         log.debug("List of available providers: %s", self.provider_list)
         return self.provider_list
 
-    def create_provider(self, name, config):
+    def create_provider(self, name, config, tag=None):
         """
         Searches all available providers for a CloudProvider interface with the
         given name, and instantiates it based on the given config dictionary,
@@ -127,7 +127,10 @@ class CloudProviderFactory(object):
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
         """
-        log.info("Creating '%s' provider", name)
+        if not tag:
+            log.info("Creating default '%s' provider", name)
+        else:
+            log.info("Creating '%s' provider with tag '%s'", name, tag)
         provider_class = self.get_provider_class(name)
         if provider_class is None:
             log.exception("A provider with the name %s could not "
@@ -136,7 +139,7 @@ class CloudProviderFactory(object):
                 'A provider with name {0} could not be'
                 ' found'.format(name))
         log.debug("Created '%s' provider", name)
-        return provider_class(config)
+        return provider_class(config, tag)
 
     def get_provider_class(self, name):
         """
