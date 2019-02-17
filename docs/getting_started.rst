@@ -85,11 +85,11 @@ Google Compute Cloud:
 
     from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
 
-    config = {'gce_project_name': 'project name',
-              'gce_service_creds_file': 'service_file.json',
-              'gce_default_zone': 'us-east1-b',  # Use desired value
-              'gce_region_name': 'us-east1'}  # Use desired value
-    provider = CloudProviderFactory().create_provider(ProviderList.GCE, config)
+    config = {'gcp_project_name': 'project name',
+              'gcp_service_creds_file': 'service_file.json',
+              'gcp_default_zone': 'us-east1-b',  # Use desired value
+              'gcp_region_name': 'us-east1'}  # Use desired value
+    provider = CloudProviderFactory().create_provider(ProviderList.GCP, config)
     image_id = 'https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-1804-bionic-v20181222'
 
 List some resources

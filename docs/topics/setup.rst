@@ -38,11 +38,11 @@ will override environment values.
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
 
 
-    ## For GCE
-    config = {'gce_service_creds_file': '<service_creds_file_name>.json'}
+    ## For GCP
+    config = {'gcp_service_creds_file': '<service_creds_file_name>.json'}
     # Alternatively, we can supply a dictionary with the credentials values
     # as the following:
-    gce_creds = {
+    gcp_creds = {
         "type": "service_account",
         "project_id": "<project_name>",
         "private_key_id": "<private_key_id>",
@@ -54,8 +54,8 @@ will override environment values.
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
         "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/service-name%40my-project.iam.gserviceaccount.com"
     }
-    config = {'gce_service_creds_dict': gce_creds}
-    provider = CloudProviderFactory().create_provider(ProviderList.GCE, config)
+    config = {'gcp_service_creds_dict': gcp_creds}
+    provider = CloudProviderFactory().create_provider(ProviderList.GCP, config)
 
 
     ## For OpenStack
@@ -142,19 +142,19 @@ Azure
 |                                     | placed.                                                  |
 +-------------------------------------+----------------------------------------------------------+
 
-GCE
+GCP
 ~~~
 
 +-------------------------+----------------------------------------------------------+
 | Variable                | Description                                              |
 +=========================+==========================================================+
-| gce_default_zone        | Default placement zone to use for the current session.   |
+| gcp_default_zone        | Default placement zone to use for the current session.   |
 |                         | Default is ``us-central1-a``.                            |
 +-------------------------+----------------------------------------------------------+
-| gce_region_name         | Default region to use for the current session. Default   |
+| gcp_region_name         | Default region to use for the current session. Default   |
 |                         | is ``us-central1``.                                      |
 +-------------------------+----------------------------------------------------------+
-| gce_vm_default_username | System user name for which supplied key pair will be     |
+| gcp_vm_default_username | System user name for which supplied key pair will be     |
 |                         | placed.                                                  |
 +-------------------------+----------------------------------------------------------+
 
@@ -216,21 +216,21 @@ https://docs.microsoft.com/en-us/azure/role-based-access-control/overview.
 | AZURE_VM_DEFAULT_USER_NAME          |           |
 +-------------------------------------+-----------+
 
-GCE
+GCP
 ~~~
 
 +------------------------+-----------+
 | Variable               | Required? |
 +========================+===========+
-| GCE_SERVICE_CREDS_DICT | ✔         |
+| GCP_SERVICE_CREDS_DICT | ✔         |
 | or                     |           |
-| GCE_SERVICE_CREDS_FILE |           |
+| GCP_SERVICE_CREDS_FILE |           |
 +------------------------+-----------+
-| GCE_DEFAULT_ZONE       |           |
+| GCP_DEFAULT_ZONE       |           |
 +------------------------+-----------+
-| GCE_PROJECT_NAME       |           |
+| GCP_PROJECT_NAME       |           |
 +------------------------+-----------+
-| GCE_REGION_NAME        |           |
+| GCP_REGION_NAME        |           |
 +------------------------+-----------+
 
 OpenStack
@@ -261,7 +261,7 @@ OpenStack
 +------------------------+-----------+
 
 Once the environment variables are set, you can create a connection as follows,
-replacing ``ProviderList.AWS`` with the desired provider (AZURE, GCE, or
+replacing ``ProviderList.AWS`` with the desired provider (AZURE, GCP, or
 OPENSTACK):
 
 .. code-block:: python
@@ -276,7 +276,7 @@ Providing access credentials in a CloudBridge config file
 CloudBridge can also read credentials from a file on your local file system.
 The file should be placed in one of two locations: ``/etc/cloudbridge.ini`` or
 ``~/.cloudbridge``. Each set of credentials should be delineated with the
-provider ID (e.g., ``openstack``, ``aws``, ``azure``, ``gce``) with the
+provider ID (e.g., ``openstack``, ``aws``, ``azure``, ``gcp``) with the
 necessary credentials being supplied in YAML format. Note that only one set
 of credentials per cloud provider type can be supplied (i.e., via this
 method, it is not possible to provide credentials for two different
@@ -295,8 +295,8 @@ OpenStack clouds).
     azure_secret: secret
     azure_resource_group: resource group
 
-    [gce]
-    gce_service_creds_file: absolute path to credentials file
+    [gcp]
+    gcp_service_creds_file: absolute path to credentials file
 
     [openstack]
     os_username: username
@@ -307,7 +307,7 @@ OpenStack clouds).
     os_project_name: project name
 
 Once the file is created, you can create a connection as follows, replacing
-``ProviderList.AWS`` with the desired provider (AZURE, GCE, or OPENSTACK):
+``ProviderList.AWS`` with the desired provider (AZURE, GCP, or OPENSTACK):
 
 .. code-block:: python
 

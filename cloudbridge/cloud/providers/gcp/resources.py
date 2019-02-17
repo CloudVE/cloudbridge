@@ -45,11 +45,11 @@ from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
 
 from . import helpers
-from .subservices import GCEFloatingIPSubService
-from .subservices import GCEGatewaySubService
-from .subservices import GCESubnetSubService
-from .subservices import GCEVMFirewallRuleSubService
-from .subservices import GCSBucketObjectSubService
+from .subservices import GCPBucketObjectSubService
+from .subservices import GCPFloatingIPSubService
+from .subservices import GCPGatewaySubService
+from .subservices import GCPSubnetSubService
+from .subservices import GCPVMFirewallRuleSubService
 
 # Older versions of Python do not have a built-in set data-structure.
 
@@ -61,14 +61,14 @@ except NameError:
 log = logging.getLogger(__name__)
 
 
-class GCEKeyPair(BaseKeyPair):
+class GCPKeyPair(BaseKeyPair):
 
     KP_TAG_PREFIX = "cb_key_pair_"
     KP_TAG_REGEX = re.compile("^" + KP_TAG_PREFIX + ".*")
-    GCEKeyInfo = namedtuple('GCEKeyInfo', ['name', 'public_key'])
+    GCPKeyInfo = namedtuple('GCPKeyInfo', ['name', 'public_key'])
 
     def __init__(self, provider, kp_info, private_key=None):
-        super(GCEKeyPair, self).__init__(provider, None)
+        super(GCPKeyPair, self).__init__(provider, None)
         self._key_pair = kp_info
         self._private_key = private_key
 
@@ -88,9 +88,9 @@ class GCEKeyPair(BaseKeyPair):
         return self._private_key
 
 
-class GCEVMType(BaseVMType):
+class GCPVMType(BaseVMType):
     def __init__(self, provider, instance_dict):
-        super(GCEVMType, self).__init__(provider)
+        super(GCPVMType, self).__init__(provider)
         self._inst_dict = instance_dict
 
     @property
@@ -137,10 +137,10 @@ class GCEVMType(BaseVMType):
                                'maximumPersistentDisks']}
 
 
-class GCEPlacementZone(BasePlacementZone):
+class GCPPlacementZone(BasePlacementZone):
 
     def __init__(self, provider, zone):
-        super(GCEPlacementZone, self).__init__(provider)
+        super(GCPPlacementZone, self).__init__(provider)
         self._zone = zone
 
     @property
@@ -172,19 +172,19 @@ class GCEPlacementZone(BasePlacementZone):
         return parsed_region_url.parameters['region']
 
 
-class GCERegion(BaseRegion):
+class GCPRegion(BaseRegion):
 
-    def __init__(self, provider, gce_region):
-        super(GCERegion, self).__init__(provider)
-        self._gce_region = gce_region
+    def __init__(self, provider, gcp_region):
+        super(GCPRegion, self).__init__(provider)
+        self._gcp_region = gcp_region
 
     @property
     def id(self):
-        return self._gce_region.get('selfLink')
+        return self._gcp_region.get('selfLink')
 
     @property
     def name(self):
-        return self._gce_region.get('name')
+        return self._gcp_region.get('name')
 
     @property
     def zones(self):
@@ -192,16 +192,16 @@ class GCERegion(BaseRegion):
         Accesss information about placement zones within this region.
         """
         zones_response = (self._provider
-                              .gce_compute
+                              .gcp_compute
                               .zones()
                               .list(project=self._provider.project_name)
                               .execute())
         zones = [zone for zone in zones_response['items']
-                 if zone['region'] == self._gce_region['selfLink']]
-        return [GCEPlacementZone(self._provider, zone) for zone in zones]
+                 if zone['region'] == self._gcp_region['selfLink']]
+        return [GCPPlacementZone(self._provider, zone) for zone in zones]
 
 
-class GCEFirewallsDelegate(object):
+class GCPFirewallsDelegate(object):
     _NETWORK_URL_PREFIX = 'global/networks/'
 
     def __init__(self, provider):
@@ -238,7 +238,7 @@ class GCEFirewallsDelegate(object):
         Extract the network name of a firewall.
         """
         if 'network' not in firewall:
-            return GCENetwork.CB_DEFAULT_NETWORK_LABEL
+            return GCPNetwork.CB_DEFAULT_NETWORK_LABEL
         url = self._provider.parse_url(firewall['network'])
         return url.parameters['network']
 
@@ -247,7 +247,7 @@ class GCEFirewallsDelegate(object):
         Map an ID back to the (tag, network name) pair.
         """
         for tag, network_name in self.tag_networks:
-            current_id = GCEFirewallsDelegate.tag_network_id(tag, network_name)
+            current_id = GCPFirewallsDelegate.tag_network_id(tag, network_name)
             if current_id == tag_network_id:
                 return (tag, network_name)
         return (None, None)
@@ -278,7 +278,7 @@ class GCEFirewallsDelegate(object):
             return False
         firewall = {
             'name': 'firewall-{0}'.format(uuid.uuid4()),
-            'network': GCEFirewallsDelegate._NETWORK_URL_PREFIX + network_name,
+            'network': GCPFirewallsDelegate._NETWORK_URL_PREFIX + network_name,
             'allowed': [{'IPProtocol': str(protocol)}],
             'targetTags': [tag]}
         if description is not None:
@@ -304,7 +304,7 @@ class GCEFirewallsDelegate(object):
         project_name = self._provider.project_name
         try:
             response = (self._provider
-                            .gce_compute
+                            .gcp_compute
                             .firewalls()
                             .insert(project=project_name,
                                     body=firewall)
@@ -410,7 +410,7 @@ class GCEFirewallsDelegate(object):
         project_name = self._provider.project_name
         name = firewall['name']
         response = (self._provider
-                        .gce_compute
+                        .gcp_compute
                         .firewalls()
                         .delete(project=project_name,
                                 firewall=name)
@@ -428,7 +428,7 @@ class GCEFirewallsDelegate(object):
         Sync the local cache of all firewalls with the server.
         """
         self._list_response = list(
-                helpers.iter_all(self._provider.gce_compute.firewalls(),
+                helpers.iter_all(self._provider.gcp_compute.firewalls(),
                                  project=self._provider.project_name))
 
     def _check_list_in_dict(self, dictionary, field_name, value):
@@ -443,10 +443,10 @@ class GCEFirewallsDelegate(object):
         return True
 
 
-class GCEVMFirewall(BaseVMFirewall):
+class GCPVMFirewall(BaseVMFirewall):
 
     def __init__(self, delegate, tag, network=None, description=None):
-        super(GCEVMFirewall, self).__init__(delegate.provider, tag)
+        super(GCPVMFirewall, self).__init__(delegate.provider, tag)
         self._delegate = delegate
         self._description = description
         if network is None:
@@ -454,7 +454,7 @@ class GCEVMFirewall(BaseVMFirewall):
                              .get_or_create_default())
         else:
             self._network = network
-        self._rule_container = GCEVMFirewallRuleSubService(self._provider,
+        self._rule_container = GCPVMFirewallRuleSubService(self._provider,
                                                            self)
 
     @property
@@ -463,7 +463,7 @@ class GCEVMFirewall(BaseVMFirewall):
         Return the ID of this VM firewall which is determined based on the
         network and the target tag corresponding to this VM firewall.
         """
-        return GCEFirewallsDelegate.tag_network_id(self._vm_firewall,
+        return GCPFirewallsDelegate.tag_network_id(self._vm_firewall,
                                                    self._network.name)
 
     @property
@@ -490,9 +490,9 @@ class GCEVMFirewall(BaseVMFirewall):
         """
         The description of the VM firewall is even explicitly given when the
         VM firewall is created or is determined from a VM firewall rule, i.e. a
-        GCE firewall, in the VM firewall.
+        GCP firewall, in the VM firewall.
 
-        If the GCE firewalls are created using this API, they all have the same
+        If the GCP firewalls are created using this API, they all have the same
         description.
         """
         if self._description is None:
@@ -511,7 +511,7 @@ class GCEVMFirewall(BaseVMFirewall):
                                                 self._network.name):
             fw['description'] = value or ''
             response = (self._provider
-                        .gce_compute
+                        .gcp_compute
                         .firewalls()
                         .update(project=self._provider.project_name,
                                 firewall=fw['name'],
@@ -559,10 +559,10 @@ class GCEVMFirewall(BaseVMFirewall):
         return self._delegate
 
 
-class GCEVMFirewallRule(BaseVMFirewallRule):
+class GCPVMFirewallRule(BaseVMFirewallRule):
 
     def __init__(self, parent_fw, rule):
-        super(GCEVMFirewallRule, self).__init__(parent_fw, rule)
+        super(GCPVMFirewallRule, self).__init__(parent_fw, rule)
 
     @property
     def id(self):
@@ -629,7 +629,7 @@ class GCEVMFirewallRule(BaseVMFirewallRule):
         info = self.firewall.delegate.get_firewall_info(self._rule)
         if info is None or 'src_dest_tag' not in info:
             return None
-        return GCEFirewallsDelegate.tag_network_id(info['src_dest_tag'],
+        return GCPFirewallsDelegate.tag_network_id(info['src_dest_tag'],
                                                    self.firewall.network.name)
 
     @property
@@ -640,7 +640,7 @@ class GCEVMFirewallRule(BaseVMFirewallRule):
         info = self.firewall.delegate.get_firewall_info(self._rule)
         if info is None or 'src_dest_tag' not in info:
             return None
-        return GCEVMFirewall(
+        return GCPVMFirewall(
                 self.firewall.delegate, info['src_dest_tag'],
                 self.firewall.network)
 
@@ -664,7 +664,7 @@ class GCEVMFirewallRule(BaseVMFirewallRule):
         return True
 
 
-class GCEMachineImage(BaseMachineImage):
+class GCPMachineImage(BaseMachineImage):
 
     IMAGE_STATE_MAP = {
         'PENDING': MachineImageState.PENDING,
@@ -673,16 +673,16 @@ class GCEMachineImage(BaseMachineImage):
     }
 
     def __init__(self, provider, image):
-        super(GCEMachineImage, self).__init__(provider)
-        if isinstance(image, GCEMachineImage):
+        super(GCPMachineImage, self).__init__(provider)
+        if isinstance(image, GCPMachineImage):
             # pylint:disable=protected-access
-            self._gce_image = image._gce_image
+            self._gcp_image = image._gcp_image
         else:
-            self._gce_image = image
+            self._gcp_image = image
 
     @property
     def resource_url(self):
-        return self._gce_image.get('selfLink')
+        return self._gcp_image.get('selfLink')
 
     @property
     def id(self):
@@ -691,7 +691,7 @@ class GCEMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: ID for this instance as returned by the cloud middleware.
         """
-        return self._gce_image.get('selfLink')
+        return self._gcp_image.get('selfLink')
 
     @property
     def name(self):
@@ -700,24 +700,24 @@ class GCEMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Name for this image as returned by the cloud middleware.
         """
-        return self._gce_image['name']
+        return self._gcp_image['name']
 
     @property
     def label(self):
-        labels = self._gce_image.get('labels')
+        labels = self._gcp_image.get('labels')
         return labels.get('cblabel', '') if labels else ''
 
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         req = (self._provider
-                   .gce_compute
+                   .gcp_compute
                    .images()
                    .setLabels(project=self._provider.project_name,
                               resource=self.name,
                               body={}))
 
-        helpers.change_label(self, 'cblabel', value, '_gce_image', req)
+        helpers.change_label(self, 'cblabel', value, '_gcp_image', req)
 
     @property
     def description(self):
@@ -726,7 +726,7 @@ class GCEMachineImage(BaseMachineImage):
         :rtype: ``str``
         :return: Description for this image as returned by the cloud middleware
         """
-        return self._gce_image.get('description', '')
+        return self._gcp_image.get('description', '')
 
     @property
     def min_disk(self):
@@ -736,14 +736,14 @@ class GCEMachineImage(BaseMachineImage):
         :rtype: ``int``
         :return: The minimum disk size needed by this image
         """
-        return int(math.ceil(float(self._gce_image.get('diskSizeGb'))))
+        return int(math.ceil(float(self._gcp_image.get('diskSizeGb'))))
 
     def delete(self):
         """
         Delete this image
         """
         (self._provider
-             .gce_compute
+             .gcp_compute
              .images()
              .delete(project=self._provider.project_name,
                      image=self.name)
@@ -751,8 +751,8 @@ class GCEMachineImage(BaseMachineImage):
 
     @property
     def state(self):
-        return GCEMachineImage.IMAGE_STATE_MAP.get(
-            self._gce_image['status'], MachineImageState.UNKNOWN)
+        return GCPMachineImage.IMAGE_STATE_MAP.get(
+            self._gcp_image['status'], MachineImageState.UNKNOWN)
 
     def refresh(self):
         """
@@ -762,13 +762,13 @@ class GCEMachineImage(BaseMachineImage):
         image = self._provider.compute.images.get(self.id)
         if image:
             # pylint:disable=protected-access
-            self._gce_image = image._gce_image
+            self._gcp_image = image._gcp_image
         else:
             # image no longer exists
-            self._gce_image['status'] = MachineImageState.UNKNOWN
+            self._gcp_image['status'] = MachineImageState.UNKNOWN
 
 
-class GCEInstance(BaseInstance):
+class GCPInstance(BaseInstance):
     # https://cloud.google.com/compute/docs/reference/latest/instances
     # The status of the instance. One of the following values:
     # PROVISIONING, STAGING, RUNNING, STOPPING, SUSPENDING, SUSPENDED,
@@ -783,49 +783,49 @@ class GCEInstance(BaseInstance):
         'SUSPENDED': InstanceState.STOPPED
     }
 
-    def __init__(self, provider, gce_instance):
-        super(GCEInstance, self).__init__(provider)
-        self._gce_instance = gce_instance
+    def __init__(self, provider, gcp_instance):
+        super(GCPInstance, self).__init__(provider)
+        self._gcp_instance = gcp_instance
         self._inet_gateway = None
 
     @property
     def resource_url(self):
-        return self._gce_instance.get('selfLink')
+        return self._gcp_instance.get('selfLink')
 
     @property
     def id(self):
         """
         Get the instance identifier.
 
-        A GCE instance is uniquely identified by its selfLink, which is used
+        A GCP instance is uniquely identified by its selfLink, which is used
         as its id.
         """
-        return self._gce_instance.get('selfLink')
+        return self._gcp_instance.get('selfLink')
 
     @property
     def name(self):
         """
         Get the instance name.
         """
-        return self._gce_instance['name']
+        return self._gcp_instance['name']
 
     @property
     def label(self):
-        labels = self._gce_instance.get('labels')
+        labels = self._gcp_instance.get('labels')
         return labels.get('cblabel', '') if labels else ''
 
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         req = (self._provider
-                   .gce_compute
+                   .gcp_compute
                    .instances()
                    .setLabels(project=self._provider.project_name,
                               zone=self.zone_name,
                               instance=self.name,
                               body={}))
 
-        helpers.change_label(self, 'cblabel', value, '_gce_instance', req)
+        helpers.change_label(self, 'cblabel', value, '_gcp_instance', req)
 
     @property
     def public_ips(self):
@@ -833,7 +833,7 @@ class GCEInstance(BaseInstance):
         Get all the public IP addresses for this instance.
         """
         ips = []
-        network_interfaces = self._gce_instance.get('networkInterfaces')
+        network_interfaces = self._gcp_instance.get('networkInterfaces')
         if network_interfaces is not None and len(network_interfaces) > 0:
             access_configs = network_interfaces[0].get('accessConfigs')
             if access_configs is not None and len(access_configs) > 0:
@@ -856,7 +856,7 @@ class GCEInstance(BaseInstance):
         """
         Get all the private IP addresses for this instance.
         """
-        network_interfaces = self._gce_instance.get('networkInterfaces')
+        network_interfaces = self._gcp_instance.get('networkInterfaces')
         if network_interfaces is None or len(network_interfaces) == 0:
             return []
         if 'networkIP' in network_interfaces[0]:
@@ -869,25 +869,25 @@ class GCEInstance(BaseInstance):
         """
         Get the instance type name.
         """
-        return self._gce_instance.get('machineType')
+        return self._gcp_instance.get('machineType')
 
     @property
     def vm_type(self):
         """
         Get the instance type.
         """
-        machine_type_uri = self._gce_instance.get('machineType')
+        machine_type_uri = self._gcp_instance.get('machineType')
         if machine_type_uri is None:
             return None
         parsed_uri = self._provider.parse_url(machine_type_uri)
-        return GCEVMType(self._provider, parsed_uri.get_resource())
+        return GCPVMType(self._provider, parsed_uri.get_resource())
 
     @property
     def subnet_id(self):
         """
         Get the zone for this instance.
         """
-        return (self._gce_instance.get('networkInterfaces', [{}])[0]
+        return (self._gcp_instance.get('networkInterfaces', [{}])[0]
                 .get('subnetwork'))
 
     def reboot(self):
@@ -896,7 +896,7 @@ class GCEInstance(BaseInstance):
         """
         if self.state == InstanceState.STOPPED:
             (self._provider
-             .gce_compute
+             .gcp_compute
              .instances()
              .start(project=self._provider.project_name,
                     zone=self.zone_name,
@@ -904,7 +904,7 @@ class GCEInstance(BaseInstance):
              .execute())
         else:
             (self._provider
-             .gce_compute
+             .gcp_compute
              .instances()
              .reset(project=self._provider.project_name,
                     zone=self.zone_name,
@@ -916,7 +916,7 @@ class GCEInstance(BaseInstance):
         Stop this instance.
         """
         (self._provider
-         .gce_compute
+         .gcp_compute
          .instances()
          .stop(project=self._provider.project_name,
                zone=self.zone_name,
@@ -928,9 +928,9 @@ class GCEInstance(BaseInstance):
         """
         Get the image ID for this insance.
         """
-        if 'disks' not in self._gce_instance:
+        if 'disks' not in self._gcp_instance:
             return None
-        for disk in self._gce_instance['disks']:
+        for disk in self._gcp_instance['disks']:
             if 'boot' in disk and disk['boot']:
                 disk_url = self._provider.parse_url(disk['source'])
                 return disk_url.get_resource().get('sourceImage')
@@ -941,7 +941,7 @@ class GCEInstance(BaseInstance):
         """
         Get the placement zone id where this instance is running.
         """
-        return self._gce_instance.get('zone')
+        return self._gcp_instance.get('zone')
 
     @property
     def zone_name(self):
@@ -952,13 +952,13 @@ class GCEInstance(BaseInstance):
         """
         Get the VM firewalls associated with this instance.
         """
-        network_url = self._gce_instance.get('networkInterfaces')[0].get(
+        network_url = self._gcp_instance.get('networkInterfaces')[0].get(
             'network')
         url = self._provider.parse_url(network_url)
         network_name = url.parameters['network']
-        if 'items' not in self._gce_instance['tags']:
+        if 'items' not in self._gcp_instance['tags']:
             return []
-        tags = self._gce_instance['tags']['items']
+        tags = self._gcp_instance['tags']['items']
         # Tags are mapped to non-empty VM firewalls under the instance network.
         # Unmatched tags are ignored.
         sgs = (self._provider.security
@@ -985,7 +985,7 @@ class GCEInstance(BaseInstance):
         # Get instance again to avoid stale metadata
         ins = self._provider.compute.instances.get(self.id)
         # pylint:disable=protected-access
-        meta = ins._gce_instance.get('metadata', {})
+        meta = ins._gcp_instance.get('metadata', {})
         if meta:
             items = meta.get("items", [])
             for item in items:
@@ -998,7 +998,7 @@ class GCEInstance(BaseInstance):
     def inet_gateway(self):
         if self._inet_gateway:
             return self._inet_gateway
-        network_url = self._gce_instance.get('networkInterfaces')[0].get(
+        network_url = self._gcp_instance.get('networkInterfaces')[0].get(
             'network')
         network = self._provider.networking.networks.get(network_url)
         self._inet_gateway = network.gateways.get_or_create()
@@ -1010,10 +1010,10 @@ class GCEInstance(BaseInstance):
         """
         self.assert_valid_resource_label(label)
         name = self._generate_name_from_label(label, 'cb-img')
-        if 'disks' not in self._gce_instance:
+        if 'disks' not in self._gcp_instance:
             log.error('Failed to create image: no disks found.')
             return
-        for disk in self._gce_instance['disks']:
+        for disk in self._gcp_instance['disks']:
             if 'boot' in disk and disk['boot']:
                 image_body = {
                     'name': name,
@@ -1021,7 +1021,7 @@ class GCEInstance(BaseInstance):
                     'labels': {'cblabel': label.replace(' ', '_').lower()},
                 }
                 operation = (self._provider
-                             .gce_compute
+                             .gcp_compute
                              .images()
                              .insert(project=self._provider.project_name,
                                      body=image_body,
@@ -1029,7 +1029,7 @@ class GCEInstance(BaseInstance):
                              .execute())
                 self._provider.wait_for_operation(operation)
                 img = self._provider.get_resource('images', name)
-                return GCEMachineImage(self._provider, img) if img else None
+                return GCPMachineImage(self._provider, img) if img else None
         log.error('Failed to create image: no boot disk found.')
 
     def _get_existing_target_instance(self):
@@ -1040,7 +1040,7 @@ class GCEInstance(BaseInstance):
         """
         try:
             for target_instance in helpers.iter_all(
-                    self._provider.gce_compute.targetInstances(),
+                    self._provider.gcp_compute.targetInstances(),
                     project=self._provider.project_name,
                     zone=self.zone_name):
                 url = self._provider.parse_url(target_instance['instance'])
@@ -1062,10 +1062,10 @@ class GCEInstance(BaseInstance):
 
         # No targetInstance exists for this instance. Create one.
         body = {'name': 'target-instance-{0}'.format(uuid.uuid4()),
-                'instance': self._gce_instance['selfLink']}
+                'instance': self._gcp_instance['selfLink']}
         try:
             response = (self._provider
-                            .gce_compute
+                            .gcp_compute
                             .targetInstances()
                             .insert(project=self._provider.project_name,
                                     zone=self.zone_name,
@@ -1090,7 +1090,7 @@ class GCEInstance(BaseInstance):
         new_url = target_instance['selfLink']
         try:
             for rule in helpers.iter_all(
-                    self._provider.gce_compute.forwardingRules(),
+                    self._provider.gcp_compute.forwardingRules(),
                     project=self._provider.project_name,
                     region=ip.region_name):
                 if rule['IPAddress'] != ip.public_ip:
@@ -1101,7 +1101,7 @@ class GCEInstance(BaseInstance):
                 if old_zone == new_zone and old_name == new_name:
                     return True
                 response = (self._provider
-                                .gce_compute
+                                .gcp_compute
                                 .forwardingRules()
                                 .setTarget(
                                     project=self._provider.project_name,
@@ -1131,7 +1131,7 @@ class GCEInstance(BaseInstance):
                 'target': target_instance['selfLink']}
         try:
             response = (self._provider
-                            .gce_compute
+                            .gcp_compute
                             .forwardingRules()
                             .insert(project=self._provider.project_name,
                                     region=ip.region_name,
@@ -1152,7 +1152,7 @@ class GCEInstance(BaseInstance):
         name = target_instance['name']
         try:
             for rule in helpers.iter_all(
-                    self._provider.gce_compute.forwardingRules(),
+                    self._provider.gcp_compute.forwardingRules(),
                     project=self._provider.project_name,
                     region=ip.region_name):
                 if rule['IPAddress'] != ip.public_ip:
@@ -1166,7 +1166,7 @@ class GCEInstance(BaseInstance):
                             ip.public_ip, temp_name, temp_zone)
                     return False
                 response = (self._provider
-                                .gce_compute
+                                .gcp_compute
                                 .forwardingRules()
                                 .delete(
                                     project=self._provider.project_name,
@@ -1186,7 +1186,7 @@ class GCEInstance(BaseInstance):
         """
         Add an elastic IP address to this instance.
         """
-        fip = (floating_ip if isinstance(floating_ip, GCEFloatingIP)
+        fip = (floating_ip if isinstance(floating_ip, GCPFloatingIP)
                else self.inet_gateway.floating_ips.get(floating_ip))
         if fip.in_use:
             if fip.private_ip not in self.private_ips:
@@ -1206,7 +1206,7 @@ class GCEInstance(BaseInstance):
         """
         Remove a elastic IP address from this instance.
         """
-        fip = (floating_ip if isinstance(floating_ip, GCEFloatingIP)
+        fip = (floating_ip if isinstance(floating_ip, GCPFloatingIP)
                else self.inet_gateway.floating_ips.get(floating_ip))
         if not fip.in_use or fip.private_ip not in self.private_ips:
             log.warning('Floating IP "%s" is not associated to "%s"',
@@ -1225,8 +1225,8 @@ class GCEInstance(BaseInstance):
 
     @property
     def state(self):
-        return GCEInstance.INSTANCE_STATE_MAP.get(
-            self._gce_instance['status'], InstanceState.UNKNOWN)
+        return GCPInstance.INSTANCE_STATE_MAP.get(
+            self._gcp_instance['status'], InstanceState.UNKNOWN)
 
     def refresh(self):
         """
@@ -1236,20 +1236,20 @@ class GCEInstance(BaseInstance):
         inst = self._provider.compute.instances.get(self.id)
         if inst:
             # pylint:disable=protected-access
-            self._gce_instance = inst._gce_instance
+            self._gcp_instance = inst._gcp_instance
         else:
             # instance no longer exists
-            self._gce_instance['status'] = InstanceState.UNKNOWN
+            self._gcp_instance['status'] = InstanceState.UNKNOWN
 
     def add_vm_firewall(self, sg):
-        tag = sg.name if isinstance(sg, GCEVMFirewall) else sg
-        tags = self._gce_instance.get('tags', {}).get('items', [])
+        tag = sg.name if isinstance(sg, GCPVMFirewall) else sg
+        tags = self._gcp_instance.get('tags', {}).get('items', [])
         tags.append(tag)
         self._set_tags(tags)
 
     def remove_vm_firewall(self, sg):
-        tag = sg.name if isinstance(sg, GCEVMFirewall) else sg
-        tags = self._gce_instance.get('tags', {}).get('items', [])
+        tag = sg.name if isinstance(sg, GCPVMFirewall) else sg
+        tags = self._gcp_instance.get('tags', {}).get('items', [])
         if tag in tags:
             tags.remove(tag)
             self._set_tags(tags)
@@ -1257,9 +1257,9 @@ class GCEInstance(BaseInstance):
     def _set_tags(self, tags):
         # Refresh to make sure we are using the most recent tags fingerprint.
         self.refresh()
-        fingerprint = self._gce_instance.get('tags', {}).get('fingerprint', '')
+        fingerprint = self._gcp_instance.get('tags', {}).get('fingerprint', '')
         response = (self._provider
-                        .gce_compute
+                        .gcp_compute
                         .instances()
                         .setTags(project=self._provider.project_name,
                                  zone=self.zone_name,
@@ -1270,13 +1270,13 @@ class GCEInstance(BaseInstance):
         self._provider.wait_for_operation(response, zone=self.zone_name)
 
 
-class GCENetwork(BaseNetwork):
+class GCPNetwork(BaseNetwork):
 
     def __init__(self, provider, network):
-        super(GCENetwork, self).__init__(provider)
+        super(GCPNetwork, self).__init__(provider)
         self._network = network
-        self._gateway_container = GCEGatewaySubService(provider, self)
-        self._subnet_svc = GCESubnetSubService(provider, self)
+        self._gateway_container = GCPGatewaySubService(provider, self)
+        self._subnet_svc = GCPSubnetSubService(provider, self)
 
     @property
     def resource_url(self):
@@ -1323,7 +1323,7 @@ class GCENetwork(BaseNetwork):
         if 'IPv4Range' in self._network:
             # This is a legacy network.
             return self._network['IPv4Range']
-        return GCENetwork.CB_DEFAULT_IPV4RANGE
+        return GCPNetwork.CB_DEFAULT_IPV4RANGE
 
     @property
     def subnets(self):
@@ -1343,11 +1343,11 @@ class GCENetwork(BaseNetwork):
         return self._gateway_container
 
 
-class GCEFloatingIP(BaseFloatingIP):
+class GCPFloatingIP(BaseFloatingIP):
     _DEAD_INSTANCE = 'dead instance'
 
     def __init__(self, provider, floating_ip):
-        super(GCEFloatingIP, self).__init__(provider)
+        super(GCPFloatingIP, self).__init__(provider)
         self._ip = floating_ip
         self._process_ip_users()
 
@@ -1370,7 +1370,7 @@ class GCEFloatingIP(BaseFloatingIP):
     @property
     def private_ip(self):
         if (not self._target_instance or
-                self._target_instance == GCEFloatingIP._DEAD_INSTANCE):
+                self._target_instance == GCPFloatingIP._DEAD_INSTANCE):
             return None
         return self._target_instance['networkInterfaces'][0]['networkIP']
 
@@ -1404,7 +1404,7 @@ class GCEFloatingIP(BaseFloatingIP):
                     try:
                         self._target_instance = url.get_resource()
                     except googleapiclient.errors.HttpError:
-                        self._target_instance = GCEFloatingIP._DEAD_INSTANCE
+                        self._target_instance = GCPFloatingIP._DEAD_INSTANCE
                 else:
                     log.warning('Address "%s" is forwarded to a %s',
                                 self._ip.get('address'), target['kind'])
@@ -1413,10 +1413,10 @@ class GCEFloatingIP(BaseFloatingIP):
                             self._ip.get('address'), resource['kind'])
 
 
-class GCERouter(BaseRouter):
+class GCPRouter(BaseRouter):
 
     def __init__(self, provider, router):
-        super(GCERouter, self).__init__(provider)
+        super(GCPRouter, self).__init__(provider)
         self._router = router
 
     @property
@@ -1458,7 +1458,7 @@ class GCERouter(BaseRouter):
         # be UNKNOWN.
         if self._router.get('status') == RouterState.UNKNOWN:
             return RouterState.UNKNOWN
-        # GCE routers are always attached to a network.
+        # GCP routers are always attached to a network.
         return RouterState.ATTACHED
 
     @property
@@ -1473,7 +1473,7 @@ class GCERouter(BaseRouter):
         return network.subnets
 
     def attach_subnet(self, subnet):
-        if not isinstance(subnet, GCESubnet):
+        if not isinstance(subnet, GCPSubnet):
             subnet = self._provider.networking.subnets.get(subnet)
         if subnet.network_id == self.network_id:
             return
@@ -1493,12 +1493,12 @@ class GCERouter(BaseRouter):
         pass
 
 
-class GCEInternetGateway(BaseInternetGateway):
+class GCPInternetGateway(BaseInternetGateway):
 
     def __init__(self, provider, gateway):
-        super(GCEInternetGateway, self).__init__(provider)
+        super(GCPInternetGateway, self).__init__(provider)
         self._gateway = gateway
-        self._fip_container = GCEFloatingIPSubService(provider, self)
+        self._fip_container = GCPFloatingIPSubService(provider, self)
 
     @property
     def id(self):
@@ -1518,7 +1518,7 @@ class GCEInternetGateway(BaseInternetGateway):
     @property
     def network_id(self):
         """
-        GCE internet gateways are not attached to a network.
+        GCP internet gateways are not attached to a network.
         """
         return None
 
@@ -1530,10 +1530,10 @@ class GCEInternetGateway(BaseInternetGateway):
         return self._fip_container
 
 
-class GCESubnet(BaseSubnet):
+class GCPSubnet(BaseSubnet):
 
     def __init__(self, provider, subnet):
-        super(GCESubnet, self).__init__(provider)
+        super(GCPSubnet, self).__init__(provider)
         self._subnet = subnet
 
     @property
@@ -1596,7 +1596,7 @@ class GCESubnet(BaseSubnet):
             self._subnet['status'] = SubnetState.UNKNOWN
 
 
-class GCEVolume(BaseVolume):
+class GCPVolume(BaseVolume):
 
     VOLUME_STATE_MAP = {
         'CREATING': VolumeState.CONFIGURING,
@@ -1606,7 +1606,7 @@ class GCEVolume(BaseVolume):
     }
 
     def __init__(self, provider, volume):
-        super(GCEVolume, self).__init__(provider)
+        super(GCPVolume, self).__init__(provider)
         self._volume = volume
 
     @property
@@ -1628,7 +1628,7 @@ class GCEVolume(BaseVolume):
     @label.setter
     def label(self, value):
         req = (self._provider
-                   .gce_compute
+                   .gcp_compute
                    .disks()
                    .setLabels(project=self._provider.project_name,
                               zone=self.zone_name,
@@ -1647,7 +1647,7 @@ class GCEVolume(BaseVolume):
     @description.setter
     def description(self, value):
         req = (self._provider
-               .gce_compute
+               .gcp_compute
                .disks()
                .setLabels(project=self._provider.project_name,
                           zone=self.zone_name,
@@ -1676,19 +1676,19 @@ class GCEVolume(BaseVolume):
     def source(self):
         if 'sourceSnapshot' in self._volume:
             snapshot_uri = self._volume.get('sourceSnapshot')
-            return GCESnapshot(
+            return GCPSnapshot(
                     self._provider,
                     self._provider.parse_url(snapshot_uri).get_resource())
         if 'sourceImage' in self._volume:
             image_uri = self._volume.get('sourceImage')
-            return GCEMachineImage(
+            return GCPMachineImage(
                     self._provider,
                     self._provider.parse_url(image_uri).get_resource())
         return None
 
     @property
     def attachments(self):
-        # GCE Persistent Disk supports multiple instances attaching a READ-ONLY
+        # GCP Persistent Disk supports multiple instances attaching a READ-ONLY
         # disk. In cloudbridge, volume usage pattern is that a disk is attached
         # to a single instance in a read-write mode. Therefore, we only check
         # the first user of a disk.
@@ -1716,10 +1716,10 @@ class GCEVolume(BaseVolume):
             "source": self.id,
             "deviceName": device.split('/')[-1],
         }
-        if not isinstance(instance, GCEInstance):
+        if not isinstance(instance, GCPInstance):
             instance = self._provider.get_resource('instances', instance)
         (self._provider
-             .gce_compute
+             .gcp_compute
              .instances()
              .attachDisk(project=self._provider.project_name,
                          zone=instance.zone_name,
@@ -1747,7 +1747,7 @@ class GCEVolume(BaseVolume):
         if not device_name:
             return
         (self._provider
-             .gce_compute
+             .gcp_compute
              .instances()
              .detachDisk(project=self._provider.project_name,
                          zone=self.zone_name,
@@ -1766,7 +1766,7 @@ class GCEVolume(BaseVolume):
     def state(self):
         if len(self._volume.get('users', [])) > 0:
             return VolumeState.IN_USE
-        return GCEVolume.VOLUME_STATE_MAP.get(
+        return GCPVolume.VOLUME_STATE_MAP.get(
             self._volume.get('status'), VolumeState.UNKNOWN)
 
     def refresh(self):
@@ -1783,7 +1783,7 @@ class GCEVolume(BaseVolume):
             self._volume['status'] = VolumeState.UNKNOWN
 
 
-class GCESnapshot(BaseSnapshot):
+class GCPSnapshot(BaseSnapshot):
 
     SNAPSHOT_STATE_MAP = {
         'PENDING': SnapshotState.PENDING,
@@ -1791,7 +1791,7 @@ class GCESnapshot(BaseSnapshot):
     }
 
     def __init__(self, provider, snapshot):
-        super(GCESnapshot, self).__init__(provider)
+        super(GCPSnapshot, self).__init__(provider)
         self._snapshot = snapshot
 
     @property
@@ -1814,7 +1814,7 @@ class GCESnapshot(BaseSnapshot):
     # pylint:disable=arguments-differ
     def label(self, value):
         req = (self._provider
-                   .gce_compute
+                   .gcp_compute
                    .snapshots()
                    .setLabels(project=self._provider.project_name,
                               resource=self.name,
@@ -1832,7 +1832,7 @@ class GCESnapshot(BaseSnapshot):
     @description.setter
     def description(self, value):
         req = (self._provider
-               .gce_compute
+               .gcp_compute
                .snapshots()
                .setLabels(project=self._provider.project_name,
                           resource=self.name,
@@ -1854,7 +1854,7 @@ class GCESnapshot(BaseSnapshot):
 
     @property
     def state(self):
-        return GCESnapshot.SNAPSHOT_STATE_MAP.get(
+        return GCPSnapshot.SNAPSHOT_STATE_MAP.get(
             self._snapshot.get('status'), SnapshotState.UNKNOWN)
 
     def refresh(self):
@@ -1875,15 +1875,15 @@ class GCESnapshot(BaseSnapshot):
         Create a new Volume from this Snapshot.
 
         Args:
-            placement: GCE zone name, e.g. 'us-central1-f'.
+            placement: GCP zone name, e.g. 'us-central1-f'.
             size: The size of the new volume, in GiB (optional). Defaults to
                 the size of the snapshot.
             volume_type: Type of persistent disk. Either 'pd-standard' or
                 'pd-ssd'.
-            iops: Not supported by GCE.
+            iops: Not supported by GCP.
         """
         zone_name = placement
-        if isinstance(placement, GCEPlacementZone):
+        if isinstance(placement, GCPPlacementZone):
             zone_name = placement.name
         vol_type = 'zones/{0}/diskTypes/{1}'.format(
             zone_name,
@@ -1896,7 +1896,7 @@ class GCESnapshot(BaseSnapshot):
             'sourceSnapshot': self.id
         }
         operation = (self._provider
-                         .gce_compute
+                         .gcp_compute
                          .disks()
                          .insert(project=self._provider.project_name,
                                  zone=zone_name,
@@ -1906,10 +1906,10 @@ class GCESnapshot(BaseSnapshot):
             operation.get('targetLink'))
 
 
-class GCSObject(BaseBucketObject):
+class GCPBucketObject(BaseBucketObject):
 
     def __init__(self, provider, bucket, obj):
-        super(GCSObject, self).__init__(provider)
+        super(GCPBucketObject, self).__init__(provider)
         self._bucket = bucket
         self._obj = obj
 
@@ -1931,7 +1931,7 @@ class GCSObject(BaseBucketObject):
 
     def iter_content(self):
         return io.BytesIO(self._provider
-                              .gcs_storage
+                              .gcp_storage
                               .objects()
                               .get_media(bucket=self._obj['bucket'],
                                          object=self.name)
@@ -1972,7 +1972,7 @@ class GCSObject(BaseBucketObject):
 
     def delete(self):
         (self._provider
-             .gcs_storage
+             .gcp_storage
              .objects()
              .delete(bucket=self._obj['bucket'], object=self.name)
              .execute())
@@ -1999,12 +1999,12 @@ class GCSObject(BaseBucketObject):
         self._obj = self.bucket.objects.get(self.id)._obj
 
 
-class GCSBucket(BaseBucket):
+class GCPBucket(BaseBucket):
 
     def __init__(self, provider, bucket):
-        super(GCSBucket, self).__init__(provider)
+        super(GCPBucket, self).__init__(provider)
         self._bucket = bucket
-        self._object_container = GCSBucketObjectSubService(provider, self)
+        self._object_container = GCPBucketObjectSubService(provider, self)
 
     @property
     def id(self):
@@ -2022,7 +2022,7 @@ class GCSBucket(BaseBucket):
         return self._object_container
 
 
-class GCELaunchConfig(BaseLaunchConfig):
+class GCPLaunchConfig(BaseLaunchConfig):
 
     def __init__(self, provider):
-        super(GCELaunchConfig, self).__init__(provider)
+        super(GCPLaunchConfig, self).__init__(provider)

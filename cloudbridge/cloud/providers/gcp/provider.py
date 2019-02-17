@@ -1,6 +1,6 @@
 """
 Provider implementation based on google-api-python-client library
-for GCE.
+for GCP.
 """
 import json
 import logging
@@ -18,9 +18,9 @@ from oauth2client.service_account import ServiceAccountCredentials
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 
-from .services import GCEComputeService
-from .services import GCENetworkingService
-from .services import GCESecurityService
+from .services import GCPComputeService
+from .services import GCPNetworkingService
+from .services import GCPSecurityService
 from .services import GCPStorageService
 
 log = logging.getLogger(__name__)
@@ -192,12 +192,12 @@ class GCPResources(object):
         return parsed_url
 
 
-class GCECloudProvider(BaseCloudProvider):
+class GCPCloudProvider(BaseCloudProvider):
 
-    PROVIDER_ID = 'gce'
+    PROVIDER_ID = 'gcp'
 
     def __init__(self, config):
-        super(GCECloudProvider, self).__init__(config)
+        super(GCPCloudProvider, self).__init__(config)
 
         # Disable warnings about file_cache not being available when using
         # oauth2client >= 4.0.0.
@@ -206,44 +206,44 @@ class GCECloudProvider(BaseCloudProvider):
 
         # Initialize cloud connection fields
         self.credentials_file = self._get_config_value(
-                'gce_service_creds_file',
-                os.getenv('GCE_SERVICE_CREDS_FILE'))
+                'gcp_service_creds_file',
+                os.getenv('GCP_SERVICE_CREDS_FILE'))
         self.credentials_dict = self._get_config_value(
-                'gce_service_creds_dict',
-                json.loads(os.getenv('GCE_SERVICE_CREDS_DICT', '{}')))
+                'gcp_service_creds_dict',
+                json.loads(os.getenv('GCP_SERVICE_CREDS_DICT', '{}')))
         self.vm_default_user_name = self._get_config_value(
-            'gce_vm_default_username',
-            os.getenv('GCE_VM_DEFAULT_USERNAME', "cbuser"))
+            'gcp_vm_default_username',
+            os.getenv('GCP_VM_DEFAULT_USERNAME', "cbuser"))
 
-        # If 'gce_service_creds_dict' is not passed in from config and
+        # If 'gcp_service_creds_dict' is not passed in from config and
         # self.credentials_file is available, read and parse the json file to
         # self.credentials_dict.
         if self.credentials_file and not self.credentials_dict:
             with open(self.credentials_file) as creds_file:
                 self.credentials_dict = json.load(creds_file)
         self.default_zone = self._get_config_value(
-            'gce_default_zone',
-            os.environ.get('GCE_DEFAULT_ZONE') or 'us-central1-a')
+            'gcp_default_zone',
+            os.environ.get('GCP_DEFAULT_ZONE') or 'us-central1-a')
         self.region_name = self._get_config_value(
-            'gce_region_name',
-            os.environ.get('GCE_DEFAULT_REGION') or 'us-central1')
+            'gcp_region_name',
+            os.environ.get('GCP_DEFAULT_REGION') or 'us-central1')
 
         if self.credentials_dict and 'project_id' in self.credentials_dict:
             self.project_name = self.credentials_dict['project_id']
         else:
-            self.project_name = os.environ.get('GCE_PROJECT_NAME')
+            self.project_name = os.environ.get('GCP_PROJECT_NAME')
 
         # service connections, lazily initialized
-        self._gce_compute = None
-        self._gcs_storage = None
+        self._gcp_compute = None
+        self._gcp_storage = None
         self._credentials_cache = None
         self._compute_resources_cache = None
         self._storage_resources_cache = None
 
         # Initialize provider services
-        self._compute = GCEComputeService(self)
-        self._security = GCESecurityService(self)
-        self._networking = GCENetworkingService(self)
+        self._compute = GCPComputeService(self)
+        self._security = GCPSecurityService(self)
+        self._networking = GCPNetworkingService(self)
         self._storage = GCPStorageService(self)
 
     @property
@@ -263,22 +263,22 @@ class GCECloudProvider(BaseCloudProvider):
         return self._storage
 
     @property
-    def gce_compute(self):
-        if not self._gce_compute:
-            self._gce_compute = self._connect_gce_compute()
-        return self._gce_compute
+    def gcp_compute(self):
+        if not self._gcp_compute:
+            self._gcp_compute = self._connect_gcp_compute()
+        return self._gcp_compute
 
     @property
-    def gcs_storage(self):
-        if not self._gcs_storage:
-            self._gcs_storage = self._connect_gcs_storage()
-        return self._gcs_storage
+    def gcp_storage(self):
+        if not self._gcp_storage:
+            self._gcp_storage = self._connect_gcp_storage()
+        return self._gcp_storage
 
     @property
     def _compute_resources(self):
         if not self._compute_resources_cache:
             self._compute_resources_cache = GCPResources(
-                    self.gce_compute,
+                    self.gcp_compute,
                     project=self.project_name,
                     region=self.region_name,
                     zone=self.default_zone)
@@ -287,7 +287,7 @@ class GCECloudProvider(BaseCloudProvider):
     @property
     def _storage_resources(self):
         if not self._storage_resources_cache:
-            self._storage_resources_cache = GCPResources(self.gcs_storage)
+            self._storage_resources_cache = GCPResources(self.gcp_storage)
         return self._storage_resources_cache
 
     @property
@@ -309,23 +309,23 @@ class GCECloudProvider(BaseCloudProvider):
     def client_id(self):
         return self._credentials.service_account_email
 
-    def _connect_gcs_storage(self):
+    def _connect_gcp_storage(self):
         return discovery.build('storage', 'v1', credentials=self._credentials,
                                cache_discovery=False)
 
-    def _connect_gce_compute(self):
+    def _connect_gcp_compute(self):
         return discovery.build('compute', 'v1', credentials=self._credentials,
                                cache_discovery=False)
 
     def wait_for_operation(self, operation, region=None, zone=None):
         args = {'project': self.project_name, 'operation': operation['name']}
         if not region and not zone:
-            operations = self.gce_compute.globalOperations()
+            operations = self.gcp_compute.globalOperations()
         elif zone:
-            operations = self.gce_compute.zoneOperations()
+            operations = self.gcp_compute.zoneOperations()
             args['zone'] = zone
         else:
-            operations = self.gce_compute.regionOperations()
+            operations = self.gcp_compute.regionOperations()
             args['region'] = region
 
         while True:
@@ -362,7 +362,7 @@ class GCECloudProvider(BaseCloudProvider):
 
     def authenticate(self):
         try:
-            self.gce_compute
+            self.gcp_compute
             return True
         except Exception as e:
             raise ProviderConnectionException(
