@@ -138,7 +138,7 @@ def get_env(varname, default_value=None):
     return value
 
 
-# Alias deprication decorator, following:
+# Alias deprecation decorator, following:
 # https://stackoverflow.com/questions/49802412/
 # how-to-implement-deprecation-in-python-with-argument-alias
 def deprecated_alias(**aliases):
