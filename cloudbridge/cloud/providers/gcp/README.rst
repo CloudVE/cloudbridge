@@ -1,6 +1,6 @@
 CloudBridge support for `Google Cloud Platform`_. Compute is provided by `Google
-Compute Engine`_ (GCP). Object storage is provided by `Google Cloud Storage`_
-(GCP).
+Compute Engine`_ (GCE). Object storage is provided by `Google Cloud Storage`_
+(GCS).
 
 Security Groups
 ~~~~~~~~~~~~~~~
@@ -27,7 +27,7 @@ list firewalls with one rule. This should be OK as long as all firewalls are
 created through the CloudBridge API.
 
 .. _`Google Cloud Platform`: https://cloud.google.com/
-.. _`Google compute platform`: https://cloud.google.com/compute/docs
+.. _`Google Compute Engine`: https://cloud.google.com/compute/docs
 .. _`Google Cloud Storage`: https://cloud.google.com/storage/docs
 .. _`tags`: https://cloud.google.com/compute/docs/reference/latest/instances/
    setTags

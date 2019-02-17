@@ -137,10 +137,10 @@ specific roles can also be assigned for more limited access.
 
 .. _google-creds:
 
-Google compute platform (GCP)
+Google Cloud Platform (GCP)
 ---------------------------
 
-For Google compute platform (GCP), create a service account followed by creating
+For Google Cloud Platform (GCP), create a service account followed by creating
 and downloading a key. Additional instructions are available at this link
 https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating_a_service_account.
 
