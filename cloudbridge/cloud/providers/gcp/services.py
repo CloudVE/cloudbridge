@@ -35,40 +35,40 @@ from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
-from cloudbridge.cloud.providers.gce import helpers
+from cloudbridge.cloud.providers.gcp import helpers
 
-from .resources import GCEFirewallsDelegate
-from .resources import GCEFloatingIP
-from .resources import GCEInstance
-from .resources import GCEInternetGateway
-from .resources import GCEKeyPair
-from .resources import GCELaunchConfig
-from .resources import GCEMachineImage
-from .resources import GCENetwork
-from .resources import GCEPlacementZone
-from .resources import GCERegion
-from .resources import GCERouter
-from .resources import GCESnapshot
-from .resources import GCESubnet
-from .resources import GCEVMFirewall
-from .resources import GCEVMFirewallRule
-from .resources import GCEVMType
-from .resources import GCEVolume
-from .resources import GCSBucket
-from .resources import GCSObject
+from .resources import GCPBucket
+from .resources import GCPBucketObject
+from .resources import GCPFirewallsDelegate
+from .resources import GCPFloatingIP
+from .resources import GCPInstance
+from .resources import GCPInternetGateway
+from .resources import GCPKeyPair
+from .resources import GCPLaunchConfig
+from .resources import GCPMachineImage
+from .resources import GCPNetwork
+from .resources import GCPPlacementZone
+from .resources import GCPRegion
+from .resources import GCPRouter
+from .resources import GCPSnapshot
+from .resources import GCPSubnet
+from .resources import GCPVMFirewall
+from .resources import GCPVMFirewallRule
+from .resources import GCPVMType
+from .resources import GCPVolume
 
 log = logging.getLogger(__name__)
 
 
-class GCESecurityService(BaseSecurityService):
+class GCPSecurityService(BaseSecurityService):
 
     def __init__(self, provider):
-        super(GCESecurityService, self).__init__(provider)
+        super(GCPSecurityService, self).__init__(provider)
 
         # Initialize provider services
-        self._key_pairs = GCEKeyPairService(provider)
-        self._vm_firewalls = GCEVMFirewallService(provider)
-        self._vm_firewall_rule_svc = GCEVMFirewallRuleService(provider)
+        self._key_pairs = GCPKeyPairService(provider)
+        self._vm_firewalls = GCPVMFirewallService(provider)
+        self._vm_firewall_rule_svc = GCPVMFirewallRuleService(provider)
 
     @property
     def key_pairs(self):
@@ -83,10 +83,10 @@ class GCESecurityService(BaseSecurityService):
         return self._vm_firewall_rule_svc
 
 
-class GCEKeyPairService(BaseKeyPairService):
+class GCPKeyPairService(BaseKeyPairService):
 
     def __init__(self, provider):
-        super(GCEKeyPairService, self).__init__(provider)
+        super(GCPKeyPairService, self).__init__(provider)
 
     @dispatch(event="provider.security.key_pairs.get",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
@@ -105,10 +105,10 @@ class GCEKeyPairService(BaseKeyPairService):
     def list(self, limit=None, marker=None):
         key_pairs = []
         for item in helpers.find_matching_metadata_items(
-                self.provider, GCEKeyPair.KP_TAG_REGEX):
+                self.provider, GCPKeyPair.KP_TAG_REGEX):
             metadata_value = json.loads(item['value'])
-            kp_info = GCEKeyPair.GCEKeyInfo(**metadata_value)
-            key_pairs.append(GCEKeyPair(self.provider, kp_info))
+            kp_info = GCPKeyPair.GCPKeyInfo(**metadata_value)
+            key_pairs.append(GCPKeyPair(self.provider, kp_info))
         return ClientPagedResultList(self.provider, key_pairs,
                                      limit=limit, marker=marker)
 
@@ -134,20 +134,20 @@ class GCEKeyPairService(BaseKeyPairService):
     @dispatch(event="provider.security.key_pairs.create",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def create(self, name, public_key_material=None):
-        GCEKeyPair.assert_valid_resource_name(name)
+        GCPKeyPair.assert_valid_resource_name(name)
         private_key = None
         if not public_key_material:
             public_key_material, private_key = cb_helpers.generate_key_pair()
         # TODO: Add support for other formats not assume ssh-rsa
         elif "ssh-rsa" not in public_key_material:
             public_key_material = "ssh-rsa {}".format(public_key_material)
-        kp_info = GCEKeyPair.GCEKeyInfo(name, public_key_material)
+        kp_info = GCPKeyPair.GCPKeyInfo(name, public_key_material)
         metadata_value = json.dumps(kp_info._asdict())
         try:
             helpers.add_metadata_item(self.provider,
-                                      GCEKeyPair.KP_TAG_PREFIX + name,
+                                      GCPKeyPair.KP_TAG_PREFIX + name,
                                       metadata_value)
-            return GCEKeyPair(self.provider, kp_info, private_key)
+            return GCPKeyPair(self.provider, kp_info, private_key)
         except googleapiclient.errors.HttpError as err:
             if err.resp.get('content-type', '').startswith('application/json'):
                 message = (json.loads(err.content).get('error', {})
@@ -160,18 +160,18 @@ class GCEKeyPairService(BaseKeyPairService):
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def delete(self, key_pair):
-        key_pair = (key_pair if isinstance(key_pair, GCEKeyPair) else
+        key_pair = (key_pair if isinstance(key_pair, GCPKeyPair) else
                     self.get(key_pair))
         if key_pair:
             helpers.remove_metadata_item(
-                self.provider, GCEKeyPair.KP_TAG_PREFIX + key_pair.name)
+                self.provider, GCPKeyPair.KP_TAG_PREFIX + key_pair.name)
 
 
-class GCEVMFirewallService(BaseVMFirewallService):
+class GCPVMFirewallService(BaseVMFirewallService):
 
     def __init__(self, provider):
-        super(GCEVMFirewallService, self).__init__(provider)
-        self._delegate = GCEFirewallsDelegate(provider)
+        super(GCPVMFirewallService, self).__init__(provider)
+        self._delegate = GCPFirewallsDelegate(provider)
 
     @dispatch(event="provider.security.vm_firewalls.get",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
@@ -181,7 +181,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
         if tag is None:
             return None
         network = self.provider.networking.networks.get(network_name)
-        return GCEVMFirewall(self._delegate, tag, network)
+        return GCPVMFirewall(self._delegate, tag, network)
 
     @dispatch(event="provider.security.vm_firewalls.list",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
@@ -190,7 +190,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
         for tag, network_name in self._delegate.tag_networks:
             network = self.provider.networking.networks.get(
                     network_name)
-            vm_firewall = GCEVMFirewall(self._delegate, tag, network)
+            vm_firewall = GCPVMFirewall(self._delegate, tag, network)
             vm_firewalls.append(vm_firewall)
         return ClientPagedResultList(self.provider, vm_firewalls,
                                      limit=limit, marker=marker)
@@ -198,10 +198,10 @@ class GCEVMFirewallService(BaseVMFirewallService):
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
-        GCEVMFirewall.assert_valid_resource_label(label)
-        network = (network if isinstance(network, GCENetwork)
+        GCPVMFirewall.assert_valid_resource_label(label)
+        network = (network if isinstance(network, GCPNetwork)
                    else self.provider.networking.networks.get(network))
-        fw = GCEVMFirewall(self._delegate, label, network, description)
+        fw = GCPVMFirewall(self._delegate, label, network, description)
         fw.label = label
         # This rule exists implicitly. Add it explicitly so that the firewall
         # is not empty and the rule is shown by list/get/find methods.
@@ -214,7 +214,7 @@ class GCEVMFirewallService(BaseVMFirewallService):
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def delete(self, vm_firewall):
-        fw_id = (vm_firewall.id if isinstance(vm_firewall, GCEVMFirewall)
+        fw_id = (vm_firewall.id if isinstance(vm_firewall, GCPVMFirewall)
                  else vm_firewall)
         return self._delegate.delete_tag_network_with_id(fw_id)
 
@@ -231,14 +231,14 @@ class GCEVMFirewallService(BaseVMFirewallService):
                 continue
             network = self.provider.networking.networks.get(net_name)
             vm_firewalls.append(
-                GCEVMFirewall(self._delegate, tag, network))
+                GCPVMFirewall(self._delegate, tag, network))
         return vm_firewalls
 
 
-class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
+class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
 
     def __init__(self, provider):
-        super(GCEVMFirewallRuleService, self).__init__(provider)
+        super(GCPVMFirewallRuleService, self).__init__(provider)
         self._dummy_rule = None
 
     @dispatch(event="provider.security.vm_firewall_rules.list",
@@ -247,7 +247,7 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
         rules = []
         for fw in firewall.delegate.iter_firewalls(
                 firewall.name, firewall.network.name):
-            rule = GCEVMFirewallRule(firewall, fw['id'])
+            rule = GCPVMFirewallRule(firewall, fw['id'])
             if rule.is_dummy_rule():
                 self._dummy_rule = rule
             else:
@@ -273,7 +273,7 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
     def create_with_priority(self, firewall, direction, protocol, priority,
                              from_port=None, to_port=None, cidr=None,
                              src_dest_fw=None):
-        port = GCEVMFirewallRuleService.to_port_range(from_port, to_port)
+        port = GCPVMFirewallRuleService.to_port_range(from_port, to_port)
         src_dest_tag = None
         src_dest_fw_id = None
         if src_dest_fw:
@@ -302,22 +302,22 @@ class GCEVMFirewallRuleService(BaseVMFirewallRuleService):
     @dispatch(event="provider.security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
-        rule = (rule if isinstance(rule, GCEVMFirewallRule)
+        rule = (rule if isinstance(rule, GCPVMFirewallRule)
                 else self.get(firewall, rule))
         if rule.is_dummy_rule():
             return True
         firewall.delegate.delete_firewall_id(rule._rule)
 
 
-class GCEVMTypeService(BaseVMTypeService):
+class GCPVMTypeService(BaseVMTypeService):
 
     def __init__(self, provider):
-        super(GCEVMTypeService, self).__init__(provider)
+        super(GCPVMTypeService, self).__init__(provider)
 
     @property
     def instance_data(self):
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .machineTypes()
                         .list(project=self.provider.project_name,
                               zone=self.provider.default_zone)
@@ -328,7 +328,7 @@ class GCEVMTypeService(BaseVMTypeService):
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def get(self, vm_type_id):
         vm_type = self.provider.get_resource('machineTypes', vm_type_id)
-        return GCEVMType(self.provider, vm_type) if vm_type else None
+        return GCPVMType(self.provider, vm_type) if vm_type else None
 
     @dispatch(event="provider.compute.vm_types.find",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
@@ -345,42 +345,42 @@ class GCEVMTypeService(BaseVMTypeService):
                     break
             if is_match:
                 matched_inst_types.append(
-                    GCEVMType(self.provider, inst_type))
+                    GCPVMType(self.provider, inst_type))
         return matched_inst_types
 
     @dispatch(event="provider.compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        inst_types = [GCEVMType(self.provider, inst_type)
+        inst_types = [GCPVMType(self.provider, inst_type)
                       for inst_type in self.instance_data]
         return ClientPagedResultList(self.provider, inst_types,
                                      limit=limit, marker=marker)
 
 
-class GCERegionService(BaseRegionService):
+class GCPRegionService(BaseRegionService):
 
     def __init__(self, provider):
-        super(GCERegionService, self).__init__(provider)
+        super(GCPRegionService, self).__init__(provider)
 
     @dispatch(event="provider.compute.regions.get",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def get(self, region_id):
         region = self.provider.get_resource('regions', region_id,
                                             region=region_id)
-        return GCERegion(self.provider, region) if region else None
+        return GCPRegion(self.provider, region) if region else None
 
     @dispatch(event="provider.compute.regions.list",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         regions_response = (self.provider
-                                .gce_compute
+                                .gcp_compute
                                 .regions()
                                 .list(project=self.provider.project_name,
                                       maxResults=max_result,
                                       pageToken=marker)
                                 .execute())
-        regions = [GCERegion(self.provider, region)
+        regions = [GCPRegion(self.provider, region)
                    for region in regions_response['items']]
         if len(regions) > max_result:
             log.warning('Expected at most %d results; got %d',
@@ -394,10 +394,10 @@ class GCERegionService(BaseRegionService):
         return self.get(self.provider.region_name)
 
 
-class GCEImageService(BaseImageService):
+class GCPImageService(BaseImageService):
 
     def __init__(self, provider):
-        super(GCEImageService, self).__init__(provider)
+        super(GCPImageService, self).__init__(provider)
         self._public_images = None
 
     _PUBLIC_IMAGE_PROJECTS = ['centos-cloud', 'coreos-cloud', 'debian-cloud',
@@ -407,11 +407,11 @@ class GCEImageService(BaseImageService):
         if self._public_images is not None:
             return
         self._public_images = []
-        for project in GCEImageService._PUBLIC_IMAGE_PROJECTS:
+        for project in GCPImageService._PUBLIC_IMAGE_PROJECTS:
             for image in helpers.iter_all(
-                    self.provider.gce_compute.images(), project=project):
+                    self.provider.gcp_compute.images(), project=project):
                 self._public_images.append(
-                    GCEMachineImage(self.provider, image))
+                    GCPMachineImage(self.provider, image))
 
     def get(self, image_id):
         """
@@ -419,7 +419,7 @@ class GCEImageService(BaseImageService):
         """
         image = self.provider.get_resource('images', image_id)
         if image:
-            return GCEMachineImage(self.provider, image)
+            return GCPMachineImage(self.provider, image)
         self._retrieve_public_images()
         for public_image in self._public_images:
             if public_image.id == image_id or public_image.name == image_id:
@@ -450,20 +450,20 @@ class GCEImageService(BaseImageService):
         self._retrieve_public_images()
         images = []
         if (self.provider.project_name not in
-                GCEImageService._PUBLIC_IMAGE_PROJECTS):
+                GCPImageService._PUBLIC_IMAGE_PROJECTS):
             for image in helpers.iter_all(
-                    self.provider.gce_compute.images(),
+                    self.provider.gcp_compute.images(),
                     project=self.provider.project_name):
-                images.append(GCEMachineImage(self.provider, image))
+                images.append(GCPMachineImage(self.provider, image))
         images.extend(self._public_images)
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
 
 
-class GCEInstanceService(BaseInstanceService):
+class GCPInstanceService(BaseInstanceService):
 
     def __init__(self, provider):
-        super(GCEInstanceService, self).__init__(provider)
+        super(GCPInstanceService, self).__init__(provider)
 
     @dispatch(event="provider.compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
@@ -473,15 +473,15 @@ class GCEInstanceService(BaseInstanceService):
         """
         Creates a new virtual machine instance.
         """
-        GCEInstance.assert_valid_resource_name(label)
+        GCPInstance.assert_valid_resource_name(label)
         zone_name = self.provider.default_zone
         if zone:
-            if not isinstance(zone, GCEPlacementZone):
-                zone = GCEPlacementZone(
+            if not isinstance(zone, GCPPlacementZone):
+                zone = GCPPlacementZone(
                     self.provider,
                     self.provider.get_resource('zones', zone))
             zone_name = zone.name
-        if not isinstance(vm_type, GCEVMType):
+        if not isinstance(vm_type, GCPVMType):
             vm_type = self.provider.compute.vm_types.get(vm_type)
 
         network_interface = {'accessConfigs': [{'type': 'ONE_TO_ONE_NAT',
@@ -494,7 +494,7 @@ class GCEInstanceService(BaseInstanceService):
         num_roots = 0
         disks = []
         boot_disk = None
-        if isinstance(launch_config, GCELaunchConfig):
+        if isinstance(launch_config, GCPLaunchConfig):
             for disk in launch_config.block_devices:
                 if not disk.source:
                     volume_name = 'disk-{0}'.format(uuid.uuid4())
@@ -504,7 +504,7 @@ class GCEInstanceService(BaseInstanceService):
                     volume.wait_till_ready()
                     source_field = 'source'
                     source_value = volume.id
-                elif isinstance(disk.source, GCEMachineImage):
+                elif isinstance(disk.source, GCPMachineImage):
                     source_field = 'initializeParams'
                     # Explicitly set diskName; otherwise, instance label will
                     # be used by default which may collide with existing disks.
@@ -512,10 +512,10 @@ class GCEInstanceService(BaseInstanceService):
                         'sourceImage': disk.source.id,
                         'diskName': 'image-disk-{0}'.format(uuid.uuid4()),
                         'diskSizeGb': disk.size if disk.size else 20}
-                elif isinstance(disk.source, GCEVolume):
+                elif isinstance(disk.source, GCPVolume):
                     source_field = 'source'
                     source_value = disk.source.id
-                elif isinstance(disk.source, GCESnapshot):
+                elif isinstance(disk.source, GCPSnapshot):
                     volume = disk.source.create_volume(zone, size=disk.size)
                     volume.wait_till_ready()
                     source_field = 'source'
@@ -545,7 +545,7 @@ class GCEInstanceService(BaseInstanceService):
                             'contains a boot disk, too. The launch config '
                             'will be used.')
             else:
-                if not isinstance(image, GCEMachineImage):
+                if not isinstance(image, GCPMachineImage):
                     image = self.provider.compute.images.get(image)
                 # Explicitly set diskName; otherwise, instance name will be
                 # used by default which may conflict with existing disks.
@@ -563,7 +563,7 @@ class GCEInstanceService(BaseInstanceService):
         disks.insert(0, boot_disk)
 
         config = {
-            'name': GCEInstance._generate_name_from_label(label, 'cb-inst'),
+            'name': GCPInstance._generate_name_from_label(label, 'cb-inst'),
             'machineType': vm_type.resource_url,
             'disks': disks,
             'networkInterfaces': [network_interface]
@@ -584,7 +584,7 @@ class GCEInstanceService(BaseInstanceService):
             config['metadata'] = {'items': [entry]}
 
         if key_pair:
-            if not isinstance(key_pair, GCEKeyPair):
+            if not isinstance(key_pair, GCPKeyPair):
                 key_pair = self._provider.security.key_pairs.get(key_pair)
             if key_pair:
                 kp = key_pair._key_pair
@@ -606,7 +606,7 @@ class GCEInstanceService(BaseInstanceService):
         config['labels'] = {'cblabel': label}
 
         operation = (self.provider
-                         .gce_compute.instances()
+                         .gcp_compute.instances()
                          .insert(project=self.provider.project_name,
                                  zone=zone_name,
                                  body=config)
@@ -623,11 +623,11 @@ class GCEInstanceService(BaseInstanceService):
         Returns an instance given its name. Returns None
         if the object does not exist.
 
-        A GCE instance is uniquely identified by its selfLink, which is used
+        A GCP instance is uniquely identified by its selfLink, which is used
         as its id.
         """
         instance = self.provider.get_resource('instances', instance_id)
-        return GCEInstance(self.provider, instance) if instance else None
+        return GCPInstance(self.provider, instance) if instance else None
 
     @dispatch(event="provider.compute.instances.find",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
@@ -655,18 +655,18 @@ class GCEInstanceService(BaseInstanceService):
         """
         List all instances.
         """
-        # For GCE API, Acceptable values are 0 to 500, inclusive.
+        # For GCP API, Acceptable values are 0 to 500, inclusive.
         # (Default: 500).
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .instances()
                         .list(project=self.provider.project_name,
                               zone=self.provider.default_zone,
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        instances = [GCEInstance(self.provider, inst)
+        instances = [GCPInstance(self.provider, inst)
                      for inst in response.get('items', [])]
         if len(instances) > max_result:
             log.warning('Expected at most %d results; got %d',
@@ -678,11 +678,11 @@ class GCEInstanceService(BaseInstanceService):
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def delete(self, instance):
-        instance = (instance if isinstance(instance, GCEInstance) else
+        instance = (instance if isinstance(instance, GCPInstance) else
                     self.get(instance))
         if instance:
             (self._provider
-             .gce_compute
+             .gcp_compute
              .instances()
              .delete(project=self.provider.project_name,
                      zone=instance.zone_name,
@@ -690,17 +690,17 @@ class GCEInstanceService(BaseInstanceService):
              .execute())
 
     def create_launch_config(self):
-        return GCELaunchConfig(self.provider)
+        return GCPLaunchConfig(self.provider)
 
 
-class GCEComputeService(BaseComputeService):
-    # TODO: implement GCEComputeService
+class GCPComputeService(BaseComputeService):
+    # TODO: implement GCPComputeService
     def __init__(self, provider):
-        super(GCEComputeService, self).__init__(provider)
-        self._instance_svc = GCEInstanceService(self.provider)
-        self._vm_type_svc = GCEVMTypeService(self.provider)
-        self._region_svc = GCERegionService(self.provider)
-        self._images_svc = GCEImageService(self.provider)
+        super(GCPComputeService, self).__init__(provider)
+        self._instance_svc = GCPInstanceService(self.provider)
+        self._vm_type_svc = GCPVMTypeService(self.provider)
+        self._region_svc = GCPRegionService(self.provider)
+        self._images_svc = GCPImageService(self.provider)
 
     @property
     def images(self):
@@ -719,15 +719,15 @@ class GCEComputeService(BaseComputeService):
         return self._region_svc
 
 
-class GCENetworkingService(BaseNetworkingService):
+class GCPNetworkingService(BaseNetworkingService):
 
     def __init__(self, provider):
-        super(GCENetworkingService, self).__init__(provider)
-        self._network_service = GCENetworkService(self.provider)
-        self._subnet_service = GCESubnetService(self.provider)
-        self._router_service = GCERouterService(self.provider)
-        self._gateway_service = GCEGatewayService(self.provider)
-        self._floating_ip_service = GCEFloatingIPService(self.provider)
+        super(GCPNetworkingService, self).__init__(provider)
+        self._network_service = GCPNetworkService(self.provider)
+        self._subnet_service = GCPSubnetService(self.provider)
+        self._router_service = GCPRouterService(self.provider)
+        self._gateway_service = GCPGatewayService(self.provider)
+        self._floating_ip_service = GCPFloatingIPService(self.provider)
 
     @property
     def networks(self):
@@ -750,22 +750,22 @@ class GCENetworkingService(BaseNetworkingService):
         return self._floating_ip_service
 
 
-class GCENetworkService(BaseNetworkService):
+class GCPNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
-        super(GCENetworkService, self).__init__(provider)
+        super(GCPNetworkService, self).__init__(provider)
 
     @dispatch(event="provider.networking.networks.get",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def get(self, network_id):
         network = self.provider.get_resource('networks', network_id)
-        return GCENetwork(self.provider, network) if network else None
+        return GCPNetwork(self.provider, network) if network else None
 
     @dispatch(event="provider.networking.networks.find",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def find(self, limit=None, marker=None, **kwargs):
         """
-        GCE networks are global. There is at most one network with a given
+        GCP networks are global. There is at most one network with a given
         name.
         """
         obj_list = self
@@ -780,13 +780,13 @@ class GCENetworkService(BaseNetworkService):
         # TODO: Decide whether we keep filter in 'list'
         networks = []
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .networks()
                         .list(project=self.provider.project_name,
                               filter=filter)
                         .execute())
         for network in response.get('items', []):
-            networks.append(GCENetwork(self.provider, network))
+            networks.append(GCPNetwork(self.provider, network))
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
@@ -797,13 +797,13 @@ class GCENetworkService(BaseNetworkService):
         Creates an auto mode VPC network with default subnets. It is possible
         to add additional subnets later.
         """
-        GCENetwork.assert_valid_resource_label(label)
-        name = GCENetwork._generate_name_from_label(label, 'cbnet')
+        GCPNetwork.assert_valid_resource_label(label)
+        name = GCPNetwork._generate_name_from_label(label, 'cbnet')
         body = {'name': name}
         # This results in a custom mode network
         body['autoCreateSubnetworks'] = False
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .networks()
                         .insert(project=self.provider.project_name,
                                 body=body)
@@ -815,21 +815,21 @@ class GCENetworkService(BaseNetworkService):
 
     def get_or_create_default(self):
         default_nets = self.provider.networking.networks.find(
-            label=GCENetwork.CB_DEFAULT_NETWORK_LABEL)
+            label=GCPNetwork.CB_DEFAULT_NETWORK_LABEL)
         if default_nets:
             return default_nets[0]
         else:
             log.info("Creating a CloudBridge-default network labeled %s",
-                     GCENetwork.CB_DEFAULT_NETWORK_LABEL)
+                     GCPNetwork.CB_DEFAULT_NETWORK_LABEL)
             return self.create(
-                label=GCENetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block=GCENetwork.CB_DEFAULT_IPV4RANGE)
+                label=GCPNetwork.CB_DEFAULT_NETWORK_LABEL,
+                cidr_block=GCPNetwork.CB_DEFAULT_IPV4RANGE)
 
     @dispatch(event="provider.networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def delete(self, network):
         # Accepts network object
-        if isinstance(network, GCENetwork):
+        if isinstance(network, GCPNetwork):
             name = network.name
         # Accepts both name and ID
         elif 'googleapis' in network:
@@ -837,7 +837,7 @@ class GCENetworkService(BaseNetworkService):
         else:
             name = network
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .networks()
                         .delete(project=self.provider.project_name,
                                 network=name)
@@ -851,17 +851,17 @@ class GCENetworkService(BaseNetworkService):
         return True
 
 
-class GCERouterService(BaseRouterService):
+class GCPRouterService(BaseRouterService):
 
     def __init__(self, provider):
-        super(GCERouterService, self).__init__(provider)
+        super(GCPRouterService, self).__init__(provider)
 
     @dispatch(event="provider.networking.routers.get",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def get(self, router_id):
         router = self.provider.get_resource(
             'routers', router_id, region=self.provider.region_name)
-        return GCERouter(self.provider, router) if router else None
+        return GCPRouter(self.provider, router) if router else None
 
     @dispatch(event="provider.networking.routers.find",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
@@ -878,7 +878,7 @@ class GCERouterService(BaseRouterService):
         region = self.provider.region_name
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .routers()
                         .list(project=self.provider.project_name,
                               region=region,
@@ -887,7 +887,7 @@ class GCERouterService(BaseRouterService):
                         .execute())
         routers = []
         for router in response.get('items', []):
-            routers.append(GCERouter(self.provider, router))
+            routers.append(GCPRouter(self.provider, router))
         if len(routers) > max_result:
             log.warning('Expected at most %d results; go %d',
                         max_result, len(routers))
@@ -898,17 +898,17 @@ class GCERouterService(BaseRouterService):
     @dispatch(event="provider.networking.routers.create",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network):
-        log.debug("Creating GCE Router Service with params "
+        log.debug("Creating GCP Router Service with params "
                   "[label: %s network: %s]", label, network)
-        GCERouter.assert_valid_resource_label(label)
-        name = GCERouter._generate_name_from_label(label, 'cb-router')
+        GCPRouter.assert_valid_resource_label(label)
+        name = GCPRouter._generate_name_from_label(label, 'cb-router')
 
-        if not isinstance(network, GCENetwork):
+        if not isinstance(network, GCPNetwork):
             network = self.provider.networking.networks.get(network)
         network_url = network.resource_url
         region_name = self.provider.region_name
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .routers()
                         .insert(project=self.provider.project_name,
                                 region=region_name,
@@ -923,10 +923,10 @@ class GCERouterService(BaseRouterService):
     @dispatch(event="provider.networking.routers.delete",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def delete(self, router):
-        r = router if isinstance(router, GCERouter) else self.get(router)
+        r = router if isinstance(router, GCPRouter) else self.get(router)
         if r:
             (self.provider
-             .gce_compute
+             .gcp_compute
              .routers()
              .delete(project=self.provider.project_name,
                      region=r.region_name,
@@ -941,24 +941,24 @@ class GCERouterService(BaseRouterService):
     def _get_in_region(self, router_id, region=None):
         region_name = self.provider.region_name
         if region:
-            if not isinstance(region, GCERegion):
+            if not isinstance(region, GCPRegion):
                 region = self.provider.compute.regions.get(region)
             region_name = region.name
         router = self.provider.get_resource(
             'routers', router_id, region=region_name)
-        return GCERouter(self.provider, router) if router else None
+        return GCPRouter(self.provider, router) if router else None
 
 
-class GCESubnetService(BaseSubnetService):
+class GCPSubnetService(BaseSubnetService):
 
     def __init__(self, provider):
-        super(GCESubnetService, self).__init__(provider)
+        super(GCPSubnetService, self).__init__(provider)
 
     @dispatch(event="provider.networking.subnets.get",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def get(self, subnet_id):
         subnet = self.provider.get_resource('subnetworks', subnet_id)
-        return GCESubnet(self.provider, subnet) if subnet else None
+        return GCPSubnet(self.provider, subnet) if subnet else None
 
     @dispatch(event="provider.networking.subnets.list",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
@@ -968,7 +968,7 @@ class GCESubnetService(BaseSubnetService):
         """
         filter = None
         if network is not None:
-            network = (network if isinstance(network, GCENetwork)
+            network = (network if isinstance(network, GCPNetwork)
                        else self.provider.networking.networks.get(network))
             filter = 'network eq %s' % network.resource_url
         if zone:
@@ -977,14 +977,14 @@ class GCESubnetService(BaseSubnetService):
             region_name = self.provider.region_name
         subnets = []
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .subnetworks()
                         .list(project=self.provider.project_name,
                               region=region_name,
                               filter=filter)
                         .execute())
         for subnet in response.get('items', []):
-            subnets.append(GCESubnet(self.provider, subnet))
+            subnets.append(GCPSubnet(self.provider, subnet))
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
@@ -992,7 +992,7 @@ class GCESubnetService(BaseSubnetService):
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, cidr_block, zone):
         """
-        GCE subnets are regional. The region is inferred from the zone;
+        GCP subnets are regional. The region is inferred from the zone;
         otherwise, the default region, as set in the
         provider, is used.
 
@@ -1000,8 +1000,8 @@ class GCESubnetService(BaseSubnetService):
         instead of creating a new subnet. In this case, other parameters, i.e.
         the name and the zone, are ignored.
         """
-        GCESubnet.assert_valid_resource_label(label)
-        name = GCESubnet._generate_name_from_label(label, 'cbsubnet')
+        GCPSubnet.assert_valid_resource_label(label)
+        name = GCPSubnet._generate_name_from_label(label, 'cbsubnet')
         region_name = self._zone_to_region(zone)
 #         for subnet in self.iter(network=network):
 #            if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
@@ -1021,7 +1021,7 @@ class GCESubnetService(BaseSubnetService):
                 'region': region_name
                 }
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .subnetworks()
                         .insert(project=self.provider.project_name,
                                 region=region_name,
@@ -1035,11 +1035,11 @@ class GCESubnetService(BaseSubnetService):
     @dispatch(event="provider.networking.subnets.delete",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def delete(self, subnet):
-        sn = subnet if isinstance(subnet, GCESubnet) else self.get(subnet)
+        sn = subnet if isinstance(subnet, GCPSubnet) else self.get(subnet)
         if not sn:
             return
         response = (self.provider
-                    .gce_compute
+                    .gcp_compute
                     .subnetworks()
                     .delete(project=self.provider.project_name,
                             region=sn.region_name,
@@ -1064,7 +1064,7 @@ class GCESubnetService(BaseSubnetService):
         region = self._zone_to_region(zone or self.provider.default_zone,
                                       return_name_only=False)
         # Check if a default subnet already exists for the given region/zone
-        for sn in self.find(label=GCESubnet.CB_DEFAULT_SUBNET_LABEL):
+        for sn in self.find(label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL):
             if sn.region == region.id:
                 return sn
         # No default subnet in the supplied zone. Look for a default network,
@@ -1072,7 +1072,7 @@ class GCESubnetService(BaseSubnetService):
         # other existing subnets. If there are existing subnets, this process
         # largely assumes the subnet address spaces are contiguous when it
         # does the calculations (e.g., 10.0.0.0/24, 10.0.1.0/24).
-        cidr_block = GCESubnet.CB_DEFAULT_SUBNET_IPV4RANGE
+        cidr_block = GCPSubnet.CB_DEFAULT_SUBNET_IPV4RANGE
         net = self.provider.networking.networks.get_or_create_default()
         if net.subnets:
             max_sn = net.subnets[0]
@@ -1088,7 +1088,7 @@ class GCESubnetService(BaseSubnetService):
                 next(max_sn_ipa.hosts()) + max_sn_ipa.num_addresses - 1)
             cidr_block = "{}/{}".format(next_sn_address, max_sn_ipa.prefixlen)
         sn = self.provider.networking.subnets.create(
-                label=GCESubnet.CB_DEFAULT_SUBNET_LABEL,
+                label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL,
                 cidr_block=cidr_block, network=net, zone=zone)
         router = self.provider.networking.routers.get_or_create_default(net)
         router.attach_subnet(sn)
@@ -1098,16 +1098,16 @@ class GCESubnetService(BaseSubnetService):
 
     def _zone_to_region(self, zone, return_name_only=True):
         """
-        Given a GCE zone, return parent region.
+        Given a GCP zone, return parent region.
 
-        Supplied `zone` param can be a `str` or `GCEPlacementZone`.
+        Supplied `zone` param can be a `str` or `GCPPlacementZone`.
 
         If ``return_name_only`` is set, return the region name as a string;
-        otherwise, return a GCERegion object.
+        otherwise, return a GCPRegion object.
         """
         region_name = self.provider.region_name
         if zone:
-            if isinstance(zone, GCEPlacementZone):
+            if isinstance(zone, GCPPlacementZone):
                 region_name = zone.region_name
             else:
                 region_name = zone[:-2]
@@ -1122,10 +1122,10 @@ class GCPStorageService(BaseStorageService):
         super(GCPStorageService, self).__init__(provider)
 
         # Initialize provider services
-        self._volume_svc = GCEVolumeService(self.provider)
-        self._snapshot_svc = GCESnapshotService(self.provider)
-        self._bucket_svc = GCSBucketService(self.provider)
-        self._bucket_obj_svc = GCSBucketObjectService(self.provider)
+        self._volume_svc = GCPVolumeService(self.provider)
+        self._snapshot_svc = GCPSnapshotService(self.provider)
+        self._bucket_svc = GCPBucketService(self.provider)
+        self._bucket_obj_svc = GCPBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -1144,16 +1144,16 @@ class GCPStorageService(BaseStorageService):
         return self._bucket_obj_svc
 
 
-class GCEVolumeService(BaseVolumeService):
+class GCPVolumeService(BaseVolumeService):
 
     def __init__(self, provider):
-        super(GCEVolumeService, self).__init__(provider)
+        super(GCPVolumeService, self).__init__(provider)
 
     @dispatch(event="provider.storage.volumes.get",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
         vol = self.provider.get_resource('disks', volume_id)
-        return GCEVolume(self.provider, vol) if vol else None
+        return GCPVolume(self.provider, vol) if vol else None
 
     @dispatch(event="provider.storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
@@ -1172,7 +1172,7 @@ class GCEVolumeService(BaseVolumeService):
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .disks()
                         .list(project=self.provider.project_name,
                               zone=self.provider.default_zone,
@@ -1180,14 +1180,14 @@ class GCEVolumeService(BaseVolumeService):
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        gce_vols = [GCEVolume(self.provider, vol)
+        gcp_vols = [GCPVolume(self.provider, vol)
                     for vol in response.get('items', [])]
-        if len(gce_vols) > max_result:
+        if len(gcp_vols) > max_result:
             log.warning('Expected at most %d results; got %d',
-                        max_result, len(gce_vols))
+                        max_result, len(gcp_vols))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
-                                     False, data=gce_vols)
+                                     False, data=gcp_vols)
 
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
@@ -1199,38 +1199,38 @@ class GCEVolumeService(BaseVolumeService):
                ResultList's is_truncated property can be used to determine
                whether more records are available.
         """
-        # For GCE API, Acceptable values are 0 to 500, inclusive.
+        # For GCP API, Acceptable values are 0 to 500, inclusive.
         # (Default: 500).
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .disks()
                         .list(project=self.provider.project_name,
                               zone=self.provider.default_zone,
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        gce_vols = [GCEVolume(self.provider, vol)
+        gcp_vols = [GCPVolume(self.provider, vol)
                     for vol in response.get('items', [])]
-        if len(gce_vols) > max_result:
+        if len(gcp_vols) > max_result:
             log.warning('Expected at most %d results; got %d',
-                        max_result, len(gce_vols))
+                        max_result, len(gcp_vols))
         return ServerPagedResultList('nextPageToken' in response,
                                      response.get('nextPageToken'),
-                                     False, data=gce_vols)
+                                     False, data=gcp_vols)
 
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, zone, snapshot=None, description=None):
-        GCEVolume.assert_valid_resource_label(label)
-        name = GCEVolume._generate_name_from_label(label, 'cb-vol')
-        if not isinstance(zone, GCEPlacementZone):
-            zone = GCEPlacementZone(
+        GCPVolume.assert_valid_resource_label(label)
+        name = GCPVolume._generate_name_from_label(label, 'cb-vol')
+        if not isinstance(zone, GCPPlacementZone):
+            zone = GCPPlacementZone(
                 self.provider,
                 self.provider.get_resource('zones', zone))
         zone_name = zone.name
         snapshot_id = snapshot.id if isinstance(
-            snapshot, GCESnapshot) and snapshot else snapshot
+            snapshot, GCPSnapshot) and snapshot else snapshot
         labels = {'cblabel': label}
         if description:
             labels['description'] = description
@@ -1242,7 +1242,7 @@ class GCEVolumeService(BaseVolumeService):
             'labels': labels
         }
         operation = (self.provider
-                         .gce_compute
+                         .gcp_compute
                          .disks()
                          .insert(
                              project=self._provider.project_name,
@@ -1255,9 +1255,9 @@ class GCEVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def delete(self, volume):
-        volume = volume if isinstance(volume, GCEVolume) else self.get(volume)
+        volume = volume if isinstance(volume, GCPVolume) else self.get(volume)
         if volume:
-            (self._provider.gce_compute
+            (self._provider.gcp_compute
                            .disks()
                            .delete(project=self.provider.project_name,
                                    zone=volume.zone_name,
@@ -1265,16 +1265,16 @@ class GCEVolumeService(BaseVolumeService):
                            .execute())
 
 
-class GCESnapshotService(BaseSnapshotService):
+class GCPSnapshotService(BaseSnapshotService):
 
     def __init__(self, provider):
-        super(GCESnapshotService, self).__init__(provider)
+        super(GCPSnapshotService, self).__init__(provider)
 
     @dispatch(event="provider.storage.snapshots.get",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def get(self, snapshot_id):
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
-        return GCESnapshot(self.provider, snapshot) if snapshot else None
+        return GCPSnapshot(self.provider, snapshot) if snapshot else None
 
     @dispatch(event="provider.storage.snapshots.find",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
@@ -1290,14 +1290,14 @@ class GCESnapshotService(BaseSnapshotService):
         filtr = 'labels.cblabel eq ' + label
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .snapshots()
                         .list(project=self.provider.project_name,
                               filter=filtr,
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        snapshots = [GCESnapshot(self.provider, snapshot)
+        snapshots = [GCPSnapshot(self.provider, snapshot)
                      for snapshot in response.get('items', [])]
         if len(snapshots) > max_result:
             log.warning('Expected at most %d results; got %d',
@@ -1311,13 +1311,13 @@ class GCESnapshotService(BaseSnapshotService):
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .snapshots()
                         .list(project=self.provider.project_name,
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        snapshots = [GCESnapshot(self.provider, snapshot)
+        snapshots = [GCPSnapshot(self.provider, snapshot)
                      for snapshot in response.get('items', [])]
         if len(snapshots) > max_result:
             log.warning('Expected at most %d results; got %d',
@@ -1329,9 +1329,9 @@ class GCESnapshotService(BaseSnapshotService):
     @dispatch(event="provider.storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
-        GCESnapshot.assert_valid_resource_label(label)
-        name = GCESnapshot._generate_name_from_label(label, 'cbsnap')
-        volume_name = volume.name if isinstance(volume, GCEVolume) else volume
+        GCPSnapshot.assert_valid_resource_label(label)
+        name = GCPSnapshot._generate_name_from_label(label, 'cbsnap')
+        volume_name = volume.name if isinstance(volume, GCPVolume) else volume
         labels = {'cblabel': label}
         if description:
             labels['description'] = description
@@ -1340,7 +1340,7 @@ class GCESnapshotService(BaseSnapshotService):
             "labels": labels
         }
         operation = (self.provider
-                         .gce_compute
+                         .gcp_compute
                          .disks()
                          .createSnapshot(
                              project=self.provider.project_name,
@@ -1357,21 +1357,21 @@ class GCESnapshotService(BaseSnapshotService):
     @dispatch(event="provider.storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def delete(self, snapshot):
-        snapshot = (snapshot if isinstance(snapshot, GCESnapshot)
+        snapshot = (snapshot if isinstance(snapshot, GCPSnapshot)
                     else self.get(snapshot))
         if snapshot:
             (self.provider
-                 .gce_compute
+                 .gcp_compute
                  .snapshots()
                  .delete(project=self.provider.project_name,
                          snapshot=snapshot.name)
                  .execute())
 
 
-class GCSBucketService(BaseBucketService):
+class GCPBucketService(BaseBucketService):
 
     def __init__(self, provider):
-        super(GCSBucketService, self).__init__(provider)
+        super(GCPBucketService, self).__init__(provider)
 
     @dispatch(event="provider.storage.buckets.get",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
@@ -1382,7 +1382,7 @@ class GCSBucketService(BaseBucketService):
         bucket.
         """
         bucket = self.provider.get_resource('buckets', bucket_id)
-        return GCSBucket(self.provider, bucket) if bucket else None
+        return GCPBucket(self.provider, bucket) if bucket else None
 
     @dispatch(event="provider.storage.buckets.find",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
@@ -1407,7 +1407,7 @@ class GCSBucketService(BaseBucketService):
         """
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gcs_storage
+                        .gcp_storage
                         .buckets()
                         .list(project=self.provider.project_name,
                               maxResults=max_result,
@@ -1415,7 +1415,7 @@ class GCSBucketService(BaseBucketService):
                         .execute())
         buckets = []
         for bucket in response.get('items', []):
-            buckets.append(GCSBucket(self.provider, bucket))
+            buckets.append(GCPBucket(self.provider, bucket))
         if len(buckets) > max_result:
             log.warning('Expected at most %d results; got %d',
                         max_result, len(buckets))
@@ -1426,22 +1426,22 @@ class GCSBucketService(BaseBucketService):
     @dispatch(event="provider.storage.buckets.create",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def create(self, name, location=None):
-        GCSBucket.assert_valid_resource_name(name)
+        GCPBucket.assert_valid_resource_name(name)
         body = {'name': name}
         if location:
             body['location'] = location
         try:
             response = (self.provider
-                            .gcs_storage
+                            .gcp_storage
                             .buckets()
                             .insert(project=self.provider.project_name,
                                     body=body)
                             .execute())
-            # GCS has a rate limit of 1 operation per 2 seconds for bucket
+            # GCP has a rate limit of 1 operation per 2 seconds for bucket
             # creation/deletion: https://cloud.google.com/storage/quotas.
             # Throttle here to avoid future failures.
             time.sleep(2)
-            return GCSBucket(self.provider, response)
+            return GCPBucket(self.provider, response)
         except googleapiclient.errors.HttpError as http_error:
             # 409 = conflict
             if http_error.resp.status in [409]:
@@ -1456,23 +1456,23 @@ class GCSBucketService(BaseBucketService):
         """
         Delete this bucket.
         """
-        b = bucket if isinstance(bucket, GCSBucket) else self.get(bucket)
+        b = bucket if isinstance(bucket, GCPBucket) else self.get(bucket)
         if b:
             (self.provider
-                 .gcs_storage
+                 .gcp_storage
                  .buckets()
                  .delete(bucket=b.name)
                  .execute())
-            # GCS has a rate limit of 1 operation per 2 seconds for bucket
+            # GCP has a rate limit of 1 operation per 2 seconds for bucket
             # creation/deletion: https://cloud.google.com/storage/quotas.
             # Throttle here to avoid future failures.
             time.sleep(2)
 
 
-class GCSBucketObjectService(BaseBucketObjectService):
+class GCPBucketObjectService(BaseBucketObjectService):
 
     def __init__(self, provider):
-        super(GCSBucketObjectService, self).__init__(provider)
+        super(GCPBucketObjectService, self).__init__(provider)
 
     def get(self, bucket, name):
         """
@@ -1480,7 +1480,7 @@ class GCSBucketObjectService(BaseBucketObjectService):
         """
         obj = self.provider.get_resource('objects', name,
                                          bucket=bucket.name)
-        return GCSObject(self.provider, bucket, obj) if obj else None
+        return GCPBucketObject(self.provider, bucket, obj) if obj else None
 
     def list(self, bucket, limit=None, marker=None, prefix=None):
         """
@@ -1488,7 +1488,7 @@ class GCSBucketObjectService(BaseBucketObjectService):
         """
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gcs_storage
+                        .gcp_storage
                         .objects()
                         .list(bucket=bucket.name,
                               prefix=prefix if prefix else '',
@@ -1497,7 +1497,7 @@ class GCSBucketObjectService(BaseBucketObjectService):
                         .execute())
         objects = []
         for obj in response.get('items', []):
-            objects.append(GCSObject(self.provider, bucket, obj))
+            objects.append(GCPBucketObject(self.provider, bucket, obj))
         if len(objects) > max_result:
             log.warning('Expected at most %d results; got %d',
                         max_result, len(objects))
@@ -1513,7 +1513,7 @@ class GCSBucketObjectService(BaseBucketObjectService):
 
     def _create_object_with_media_body(self, bucket, name, media_body):
         response = (self.provider
-                    .gcs_storage
+                    .gcp_storage
                     .objects()
                     .insert(bucket=bucket.name,
                             body={'name': name},
@@ -1527,22 +1527,22 @@ class GCSBucketObjectService(BaseBucketObjectService):
                             name,
                             googleapiclient.http.MediaIoBaseUpload(
                                 io.BytesIO(b''), mimetype='plain/text'))
-        return GCSObject(self._provider,
-                         bucket,
-                         response) if response else None
+        return GCPBucketObject(self._provider,
+                               bucket,
+                               response) if response else None
 
 
-class GCEGatewayService(BaseGatewayService):
+class GCPGatewayService(BaseGatewayService):
     _DEFAULT_GATEWAY_NAME = 'default-internet-gateway'
     _GATEWAY_URL_PREFIX = 'global/gateways/'
 
     def __init__(self, provider):
-        super(GCEGatewayService, self).__init__(provider)
-        self._default_internet_gateway = GCEInternetGateway(
+        super(GCPGatewayService, self).__init__(provider)
+        self._default_internet_gateway = GCPInternetGateway(
             provider,
-            {'id': (GCEGatewayService._GATEWAY_URL_PREFIX +
-                    GCEGatewayService._DEFAULT_GATEWAY_NAME),
-             'name': GCEGatewayService._DEFAULT_GATEWAY_NAME})
+            {'id': (GCPGatewayService._GATEWAY_URL_PREFIX +
+                    GCPGatewayService._DEFAULT_GATEWAY_NAME),
+             'name': GCPGatewayService._DEFAULT_GATEWAY_NAME})
 
     @dispatch(event="provider.networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
@@ -1563,16 +1563,16 @@ class GCEGatewayService(BaseGatewayService):
                                      limit=limit, marker=marker)
 
 
-class GCEFloatingIPService(BaseFloatingIPService):
+class GCPFloatingIPService(BaseFloatingIPService):
 
     def __init__(self, provider):
-        super(GCEFloatingIPService, self).__init__(provider)
+        super(GCPFloatingIPService, self).__init__(provider)
 
     @dispatch(event="provider.networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, floating_ip_id):
         fip = self.provider.get_resource('addresses', floating_ip_id)
-        return (GCEFloatingIP(self.provider, fip)
+        return (GCPFloatingIP(self.provider, fip)
                 if fip else None)
 
     @dispatch(event="provider.networking.floating_ips.list",
@@ -1580,14 +1580,14 @@ class GCEFloatingIPService(BaseFloatingIPService):
     def list(self, gateway, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .addresses()
                         .list(project=self.provider.project_name,
                               region=self.provider.region_name,
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
-        ips = [GCEFloatingIP(self.provider, ip)
+        ips = [GCPFloatingIP(self.provider, ip)
                for ip in response.get('items', [])]
         if len(ips) > max_result:
             log.warning('Expected at most %d results; got %d',
@@ -1602,7 +1602,7 @@ class GCEFloatingIPService(BaseFloatingIPService):
         region_name = self.provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
         response = (self.provider
-                    .gce_compute
+                    .gcp_compute
                     .addresses()
                     .insert(project=self.provider.project_name,
                             region=region_name,
@@ -1614,14 +1614,14 @@ class GCEFloatingIPService(BaseFloatingIPService):
     @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
-        fip = (fip if isinstance(fip, GCEFloatingIP)
+        fip = (fip if isinstance(fip, GCPFloatingIP)
                else self.get(gateway, fip))
         project_name = self.provider.project_name
         # First, delete the forwarding rule, if there is any.
         # pylint:disable=protected-access
         if fip._rule:
             response = (self.provider
-                        .gce_compute
+                        .gcp_compute
                         .forwardingRules()
                         .delete(project=project_name,
                                 region=fip.region_name,
@@ -1632,7 +1632,7 @@ class GCEFloatingIPService(BaseFloatingIPService):
 
         # Release the address.
         response = (self.provider
-                    .gce_compute
+                    .gcp_compute
                     .addresses()
                     .delete(project=project_name,
                             region=fip.region_name,

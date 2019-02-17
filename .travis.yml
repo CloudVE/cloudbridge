@@ -16,7 +16,7 @@ matrix:
   - python: 2.7
     env: TOX_ENV=py27-azure
   - python: 2.7
-    env: TOX_ENV=py27-gce
+    env: TOX_ENV=py27-gcp
   - python: 2.7
     env: TOX_ENV=py27-mock
   - python: 2.7
@@ -26,7 +26,7 @@ matrix:
   - python: 3.6
     env: TOX_ENV=py36-azure
   - python: 3.6
-    env: TOX_ENV=py36-gce
+    env: TOX_ENV=py36-gcp
   - python: 3.6
     env: TOX_ENV=py36-mock
   - python: 3.6

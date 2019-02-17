@@ -128,12 +128,12 @@ TEST_DATA_CONFIG = {
         "vm_type": os.environ.get('CB_VM_TYPE_OS', 'm1.tiny'),
         "placement": os.environ.get('CB_PLACEMENT_OS', 'nova'),
     },
-    'GCECloudProvider': {
+    'GCPCloudProvider': {
         'image': ('https://www.googleapis.com/compute/v1/'
                   'projects/ubuntu-os-cloud/global/images/'
                   'ubuntu-1710-artful-v20180126'),
         'vm_type': 'f1-micro',
-        'placement': os.environ.get('GCE_DEFAULT_ZONE', 'us-central1-a'),
+        'placement': os.environ.get('GCP_DEFAULT_ZONE', 'us-central1-a'),
     },
     "AzureCloudProvider": {
         "placement":
@@ -152,8 +152,8 @@ def get_provider_test_data(provider, key):
         return TEST_DATA_CONFIG.get("AWSCloudProvider").get(key)
     elif "OpenStackCloudProvider" in provider.name:
         return TEST_DATA_CONFIG.get("OpenStackCloudProvider").get(key)
-    elif "GCECloudProvider" in provider.name:
-        return TEST_DATA_CONFIG.get("GCECloudProvider").get(key)
+    elif "GCPCloudProvider" in provider.name:
+        return TEST_DATA_CONFIG.get("GCPCloudProvider").get(key)
     elif "AzureCloudProvider" in provider.name:
         return TEST_DATA_CONFIG.get("AzureCloudProvider").get(key)
     return None

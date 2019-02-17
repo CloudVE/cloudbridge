@@ -41,8 +41,8 @@ Resource identification, naming, and labeling
   continued to use id and name, with the name being changeable for some
   resources, and read-only in others.
 
-  As CloudBridge evolved and support was added for Azure and GCE, things only
-  became more complex. Some providers (e.g. Azure and GCE) used a user-provided
+  As CloudBridge evolved and support was added for Azure and GCP, things only
+  became more complex. Some providers (e.g. Azure and GCP) used a user-provided
   value instead of an auto-generated value as an `id`, which would also be
   displayed in their respective dashboards as `Name`. This meant that they were
   treating their servers as individually named pets, instead of adopting the
@@ -65,7 +65,7 @@ Resource identification, naming, and labeling
   **Second iteration**
   However, it soon became apparent that this overloaded terminology was
   continuing to cause confusion. The `id` property in CloudBridge mapped to the
-  unchangeable `name` property in Azure and GCE, and the *name* property in
+  unchangeable `name` property in Azure and GCP, and the *name* property in
   cloudbridge sometimes mapped to a *tag* in certain providers, and a *name* in
   other providers and they were sometimes read-only, sometimes writable. In an
   attempt to disambiguate these concepts, it was then decided that perhaps

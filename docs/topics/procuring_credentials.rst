@@ -137,10 +137,10 @@ specific roles can also be assigned for more limited access.
 
 .. _google-creds:
 
-Google Compute Engine (GCE)
+Google compute platform (GCP)
 ---------------------------
 
-For Google Compute Engine (GCE), create a service account followed by creating
+For Google compute platform (GCP), create a service account followed by creating
 and downloading a key. Additional instructions are available at this link
 https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating_a_service_account.
 
@@ -148,36 +148,36 @@ Start off by clicking on the `Create Service Account` button on the
 IAM & admin section of the Google Cloud Console:
 https://console.cloud.google.com/iam-admin/serviceaccounts.
 
-.. figure:: captures/gce-sa-1.png
-   :alt: GCE Service Account 1
+.. figure:: captures/gcp-sa-1.png
+   :alt: GCP Service Account 1
 
 Next, we provide a name for the service account and an informative description.
 Note that the supplied name is used to create an email address for the service
 account. Once created, this email cannot be changed.
 
-.. figure:: captures/gce-sa-2.png
-   :alt: GCE Service Account 2
+.. figure:: captures/gcp-sa-2.png
+   :alt: GCP Service Account 2
 
 We then assign a role to the service account. Depending on what you will be
 doing with the service account, and CloudBridge, you can set granular access
 roles for the service account. The `Editor` role on the project is very broad
 and will allow you to exercise all of the CloudBridge capabilities.
 
-.. figure:: captures/gce-sa-3.png
-   :alt: GCE Service Account 3
+.. figure:: captures/gcp-sa-3.png
+   :alt: GCP Service Account 3
 
 After a service account has been created, we need to add a key to it.
 
-.. figure:: captures/gce-sa-4.png
-   :alt: GCE Service Account key 1
+.. figure:: captures/gcp-sa-4.png
+   :alt: GCP Service Account key 1
 
 Finally, choose the JSON format for the key when prompted. The file that is
 downloaded will be used with CloudBridge through the variables shown
 on the `Connection and Authentication Setup <setup.html>`_ page. Note that you
 may have multiple keys associated with the same service account.
 
-.. figure:: captures/gce-sa-5.png
-   :alt: GCE Service Account key 2
+.. figure:: captures/gcp-sa-5.png
+   :alt: GCP Service Account key 2
 
 The JSON credentials file will have a similar form to the example shown
 below, and can either be passed through an absolute path to the file, or

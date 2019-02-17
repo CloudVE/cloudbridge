@@ -7,8 +7,8 @@ import tenacity
 from cloudbridge.cloud.interfaces.exceptions import ProviderInternalException
 
 
-def gce_projects(provider):
-    return provider.gce_compute.projects()
+def gcp_projects(provider):
+    return provider.gcp_compute.projects()
 
 
 def iter_all(resource, **kwargs):
@@ -26,7 +26,7 @@ def get_common_metadata(provider):
     """
     Get a project's commonInstanceMetadata entry
     """
-    metadata = gce_projects(provider).get(
+    metadata = gcp_projects(provider).get(
         project=provider.project_name).execute()
     return metadata["commonInstanceMetadata"]
 
@@ -46,9 +46,9 @@ def __if_fingerprint_differs(e):
                 retry=tenacity.retry_if_exception(__if_fingerprint_differs),
                 wait=tenacity.wait_exponential(max=10),
                 reraise=True)
-def gce_metadata_save_op(provider, callback):
+def gcp_metadata_save_op(provider, callback):
     """
-    Carries out a metadata save operation. In GCE, a fingerprint based
+    Carries out a metadata save operation. In GCP, a fingerprint based
     locking mechanism is used to prevent lost updates. A new fingerprint
     is returned each time metadata is retrieved. Therefore, this method
     retrieves the metadata, invokes the provided callback with that
@@ -61,7 +61,7 @@ def gce_metadata_save_op(provider, callback):
         # allow callback to do processing on it
         callback(metadata)
         # save the metadata
-        operation = gce_projects(provider).setCommonInstanceMetadata(
+        operation = gcp_projects(provider).setCommonInstanceMetadata(
             project=provider.project_name, body=metadata).execute()
         provider.wait_for_operation(operation)
 
@@ -82,7 +82,7 @@ def modify_or_add_metadata_item(provider, key, value):
             else:
                 metadata['items'].append(entry)
 
-    gce_metadata_save_op(provider, _update_metadata_key)
+    gcp_metadata_save_op(provider, _update_metadata_key)
 
 
 # This function will raise an HttpError with message containing
@@ -97,7 +97,7 @@ def add_metadata_item(provider, key, value):
         # if not it will be already updated
         metadata['items'] = entries
 
-    gce_metadata_save_op(provider, _add_metadata_key)
+    gcp_metadata_save_op(provider, _add_metadata_key)
 
 
 def find_matching_metadata_items(provider, key_regex):
@@ -141,7 +141,7 @@ def remove_metadata_item(provider, key):
             else:
                 metadata['items'] = entries
 
-    gce_metadata_save_op(provider, _remove_metadata_by_key)
+    gcp_metadata_save_op(provider, _remove_metadata_by_key)
     return True
 
 

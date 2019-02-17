@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 class ProviderList(object):
     AWS = 'aws'
     AZURE = 'azure'
-    GCE = 'gce'
+    GCP = 'gcp'
     OPENSTACK = 'openstack'
     MOCK = 'mock'
 

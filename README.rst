@@ -32,9 +32,9 @@ Build Status Tests
 .. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
                 :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
+.. |gcp-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
               :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
+.. |gcp-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
               :target: https://travis-ci.org/CloudVE/cloudbridge
 
 .. |mock-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
@@ -52,7 +52,7 @@ Build Status Tests
 +---------------------------+----------------+----------------+
 | **Amazon Web Services**   | |aws-py27|     | |aws-py36|     |
 +---------------------------+----------------+----------------+
-| **Google Compute Engine** | |gce-py27|     | |gce-py36|     |
+| **Google compute platform** | |gcp-py27|     | |gcp-py36|     |
 +---------------------------+----------------+----------------+
 | **Microsoft Azure**       | |azure-py27|   | |azure-py36|   |
 +---------------------------+----------------+----------------+
@@ -88,7 +88,7 @@ exploring the API:
   print(provider.security.key_pairs.list())
 
 The exact same command (as well as any other CloudBridge method) will run with
-any of the supported providers: ``ProviderList.[AWS | AZURE | GCE | OPENSTACK]``!
+any of the supported providers: ``ProviderList.[AWS | AZURE | GCP | OPENSTACK]``!
 
 
 Citation

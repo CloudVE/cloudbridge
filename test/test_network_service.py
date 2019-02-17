@@ -239,7 +239,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             # Check basic router properties
             sit.check_standard_behaviour(
                 self, self.provider.networking.routers, router)
-            if (self.provider.PROVIDER_ID != 'gce'):
+            if (self.provider.PROVIDER_ID != 'gcp'):
                 self.assertEqual(
                     router.state, RouterState.DETACHED,
                     "Router {0} state {1} should be {2}.".format(
