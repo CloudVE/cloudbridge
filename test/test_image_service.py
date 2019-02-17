@@ -1,3 +1,4 @@
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.interfaces import MachineImageState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import MachineImage
@@ -56,8 +57,8 @@ class CloudImageServiceTestCase(ProviderTestBase):
 
         def create_instance_from_image(img):
             img_instance = None
-            with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                    img_instance)):
+            with cb_helpers.cleanup_action(
+                    lambda: helpers.cleanup_test_resources(img_instance)):
                 img_instance = self.provider.compute.instances.create(
                     img_inst_label, img,
                     helpers.get_provider_test_data(self.provider, 'vm_type'),
@@ -86,7 +87,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
                                 "private ip should"
                                 " contain a valid value")
 
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance)):
             subnet = helpers.get_or_create_default_subnet(
                 self.provider)

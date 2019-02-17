@@ -2,6 +2,7 @@ import ipaddress
 
 import six
 
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces import InstanceState
@@ -90,7 +91,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         test_instance = None
         fw = None
         kp = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, fw, kp)):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
@@ -243,7 +244,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
            label, 1,
            helpers.get_provider_test_data(self.provider,
                                           "placement"))
-        with helpers.cleanup_action(lambda: test_vol.delete()):
+        with cb_helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(label=label,
                                                  description=label)
@@ -254,7 +255,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     snap.wait_for([SnapshotState.UNKNOWN],
                                   terminal_states=[SnapshotState.ERROR])
 
-            with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
+            with cb_helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready()
 
                 lc = self.provider.compute.instances.create_launch_config()
@@ -301,7 +302,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     self.provider)
 
                 inst = None
-                with helpers.cleanup_action(
+                with cb_helpers.cleanup_action(
                         lambda: helpers.delete_instance(inst)):
                     inst = helpers.create_test_instance(
                         self.provider,
@@ -326,7 +327,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         net = None
         test_inst = None
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 instance=test_inst, vm_firewall=fw, network=net)):
             net = self.provider.networking.networks.create(
                 label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
@@ -361,18 +362,19 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             gateway = net.gateways.get_or_create()
 
             def cleanup_router(router, gateway):
-                with helpers.cleanup_action(lambda: router.delete()):
-                    with helpers.cleanup_action(lambda: gateway.delete()):
+                with cb_helpers.cleanup_action(lambda: router.delete()):
+                    with cb_helpers.cleanup_action(lambda: gateway.delete()):
                         router.detach_subnet(subnet)
                         router.detach_gateway(gateway)
 
-            with helpers.cleanup_action(lambda: cleanup_router(router,
-                                                               gateway)):
+            with cb_helpers.cleanup_action(lambda: cleanup_router(router,
+                                                                  gateway)):
                 router.attach_subnet(subnet)
                 router.attach_gateway(gateway)
                 fip = None
 
-                with helpers.cleanup_action(lambda: helpers.cleanup_fip(fip)):
+                with cb_helpers.cleanup_action(
+                        lambda: helpers.cleanup_fip(fip)):
                     # check whether adding an elastic ip works
                     fip = gateway.floating_ips.create()
                     self.assertFalse(
@@ -380,7 +382,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         "Newly created floating IP %s should not be in use." %
                         fip.public_ip)
 
-                    with helpers.cleanup_action(
+                    with cb_helpers.cleanup_action(
                             lambda: test_inst.remove_floating_ip(fip)):
                         test_inst.add_floating_ip(fip)
                         test_inst.refresh()

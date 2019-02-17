@@ -59,7 +59,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_key_pair_properties(self):
         name = 'cb-kpprops-{0}'.format(helpers.get_uuid())
         kp = self.provider.security.key_pairs.create(name=name)
-        with helpers.cleanup_action(lambda: kp.delete()):
+        with cb_helpers.cleanup_action(lambda: kp.delete()):
             self.assertIsNotNone(
                 kp.material,
                 "KeyPair material is empty but it should not be.")
@@ -75,7 +75,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         public_key, _ = cb_helpers.generate_key_pair()
         kp = self.provider.security.key_pairs.create(
             name=name, public_key_material=public_key)
-        with helpers.cleanup_action(lambda: kp.delete()):
+        with cb_helpers.cleanup_action(lambda: kp.delete()):
             self.assertIsNone(kp.material, "Private KeyPair material should"
                               " be None when key is imported.")
 
@@ -108,7 +108,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 vm_firewall=fw)):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
@@ -125,7 +125,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         net = subnet.network
 
         fw = None
-        with helpers.cleanup_action(lambda: fw.delete()):
+        with cb_helpers.cleanup_action(lambda: fw.delete()):
             fw = self.provider.security.vm_firewalls.create(
                 label=label, description=label, network=net.id)
 
@@ -149,7 +149,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 vm_firewall=fw)):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
@@ -172,7 +172,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 vm_firewall=fw)):
 
             subnet = helpers.get_or_create_default_subnet(self.provider)
@@ -196,7 +196,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 vm_firewall=fw)):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network

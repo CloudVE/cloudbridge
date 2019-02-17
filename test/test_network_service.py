@@ -1,3 +1,4 @@
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.interfaces.resources import FloatingIP
 from cloudbridge.cloud.interfaces.resources import Network
@@ -75,7 +76,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         subnet_label = 'cb-propsubnet-{0}'.format(helpers.get_uuid())
         net = self.provider.networking.networks.create(
             label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
-        with helpers.cleanup_action(lambda: helpers.cleanup_network(net)):
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_network(net)):
             net.wait_till_ready()
             self.assertEqual(
                 net.state, 'available',
@@ -93,7 +94,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                 label=subnet_label, cidr_block=cidr,
                 zone=helpers.get_provider_test_data(self.provider,
                                                     'placement'))
-            with helpers.cleanup_action(lambda: helpers.cleanup_subnet(sn)):
+            with cb_helpers.cleanup_action(lambda: helpers.cleanup_subnet(sn)):
                 self.assertTrue(
                     sn in net.subnets,
                     "Subnet ID %s should be listed in network subnets %s."
@@ -176,7 +177,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             if fip:
                 gw.floating_ips.delete(fip.id)
 
-        with helpers.cleanup_action(
+        with cb_helpers.cleanup_action(
                 lambda: helpers.cleanup_gateway(gw)):
             sit.check_crud(self, gw.floating_ips, FloatingIP,
                            "cb-crudfip", create_fip, cleanup_fip,
@@ -187,9 +188,9 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         gw = helpers.get_test_gateway(
             self.provider)
         fip = gw.floating_ips.create()
-        with helpers.cleanup_action(
+        with cb_helpers.cleanup_action(
                 lambda: helpers.cleanup_gateway(gw)):
-            with helpers.cleanup_action(lambda: fip.delete()):
+            with cb_helpers.cleanup_action(lambda: fip.delete()):
                 fipl = list(gw.floating_ips)
                 self.assertIn(fip, fipl)
                 # 2016-08: address filtering not implemented in moto
@@ -210,11 +211,13 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
     def test_crud_router(self):
 
         def _cleanup(net, subnet, router, gateway):
-            with helpers.cleanup_action(lambda: helpers.cleanup_network(net)):
-                with helpers.cleanup_action(
+            with cb_helpers.cleanup_action(
+                    lambda: helpers.cleanup_network(net)):
+                with cb_helpers.cleanup_action(
                         lambda: helpers.cleanup_subnet(subnet)):
-                    with helpers.cleanup_action(lambda: router.delete()):
-                        with helpers.cleanup_action(
+                    with cb_helpers.cleanup_action(
+                            lambda: router.delete()):
+                        with cb_helpers.cleanup_action(
                                 lambda: helpers.cleanup_gateway(gateway)):
                             router.detach_subnet(subnet)
                             router.detach_gateway(gateway)
@@ -226,7 +229,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
         sn = None
         router = None
         gteway = None
-        with helpers.cleanup_action(lambda: _cleanup(net, sn, router, gteway)):
+        with cb_helpers.cleanup_action(
+                lambda: _cleanup(net, sn, router, gteway)):
             net = self.provider.networking.networks.create(
                 label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             router = self.provider.networking.routers.create(label=label,

@@ -9,6 +9,7 @@ import uuid
 
 import tenacity
 
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
 from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
@@ -330,7 +331,7 @@ def check_crud(test, service, iface, label_prefix,
     """
 
     obj = None
-    with helpers.cleanup_action(lambda: cleanup_func(obj)):
+    with cb_helpers.cleanup_action(lambda: cleanup_func(obj)):
         label = "{0}-{1}".format(label_prefix, helpers.get_uuid())
         if not skip_name_check:
             check_create(test, service, iface, label_prefix,

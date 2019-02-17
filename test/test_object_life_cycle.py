@@ -1,3 +1,4 @@
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.interfaces import VolumeState
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 
@@ -14,7 +15,7 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
         # Test object life cycle methods by using a volume.
         label = "cb-objlifecycle-{0}".format(helpers.get_uuid())
         test_vol = None
-        with helpers.cleanup_action(lambda: test_vol.delete()):
+        with cb_helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol = self.provider.storage.volumes.create(
                 label, 1,
                 helpers.get_provider_test_data(self.provider, "placement"))

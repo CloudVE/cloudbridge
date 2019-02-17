@@ -15,6 +15,8 @@ from .helpers import skipIfPython
 
 class ExceptionWrappingMiddlewareTestCase(unittest.TestCase):
 
+    _multiprocess_can_split_ = True
+
     def test_unknown_exception_is_wrapped(self):
         EVENT_NAME = "an.exceptional.event"
 
@@ -59,6 +61,8 @@ class ExceptionWrappingMiddlewareTestCase(unittest.TestCase):
 
 
 class EventDebugLoggingMiddlewareTestCase(unittest.TestCase):
+
+    _multiprocess_can_split_ = True
 
     # Only python 3 has assertLogs support
     @skipIfPython("<", 3, 0)

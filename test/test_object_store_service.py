@@ -7,6 +7,7 @@ from unittest import skip
 
 import requests
 
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import Bucket
@@ -78,7 +79,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
             if bucket_obj:
                 bucket_obj.delete()
 
-        with helpers.cleanup_action(lambda: test_bucket.delete()):
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
             name = "cb-crudbucketobj-{0}".format(helpers.get_uuid())
             test_bucket = self.provider.storage.buckets.create(name)
 
@@ -98,12 +99,12 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         objects = test_bucket.objects.list()
         self.assertEqual([], objects)
 
-        with helpers.cleanup_action(lambda: test_bucket.delete()):
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name_prefix = "hello"
             obj_name = obj_name_prefix + "_world.txt"
             obj = test_bucket.objects.create(obj_name)
 
-            with helpers.cleanup_action(lambda: obj.delete()):
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
                 # TODO: This is wrong. We shouldn't have to have a separate
                 # call to upload some content before being able to delete
                 # the content. Maybe the create_object method should accept
@@ -152,11 +153,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
 
-        with helpers.cleanup_action(lambda: test_bucket.delete()):
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
             obj = test_bucket.objects.create(obj_name)
 
-            with helpers.cleanup_action(lambda: obj.delete()):
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
                 content = b"Hello World. Here's some content."
                 # TODO: Upload and download methods accept different parameter
                 # types. Need to make this consistent - possibly provider
@@ -175,11 +176,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
 
-        with helpers.cleanup_action(lambda: test_bucket.delete()):
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
             obj = test_bucket.objects.create(obj_name)
 
-            with helpers.cleanup_action(lambda: obj.delete()):
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
                 content = b"Hello World. Generate a url."
                 obj.upload(content)
                 target_stream = BytesIO()
@@ -197,11 +198,11 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)
 
-        with helpers.cleanup_action(lambda: test_bucket.delete()):
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
             obj_name = "hello_upload_download.txt"
             obj = test_bucket.objects.create(obj_name)
 
-            with helpers.cleanup_action(lambda: obj.delete()):
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
                 test_file = os.path.join(
                     helpers.get_test_fixtures_folder(), 'logo.jpg')
                 obj.upload_from_file(test_file)
@@ -221,17 +222,17 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
         six_gig_file = os.path.join(temp_dir, file_name)
         with open(six_gig_file, "wb") as out:
             out.truncate(6 * 1024 * 1024 * 1024)  # 6 Gig...
-        with helpers.cleanup_action(lambda: os.remove(six_gig_file)):
+        with cb_helpers.cleanup_action(lambda: os.remove(six_gig_file)):
             download_file = "{0}/cbtestfile-{1}".format(temp_dir, file_name)
             bucket_name = "cbtestbucketlargeobjs-{0}".format(
                                                             helpers.get_uuid())
             test_bucket = self.provider.storage.buckets.create(bucket_name)
-            with helpers.cleanup_action(lambda: test_bucket.delete()):
+            with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
                 test_obj = test_bucket.objects.create(file_name)
-                with helpers.cleanup_action(lambda: test_obj.delete()):
+                with cb_helpers.cleanup_action(lambda: test_obj.delete()):
                     file_uploaded = test_obj.upload_from_file(six_gig_file)
                     self.assertTrue(file_uploaded, "Could not upload object?")
-                    with helpers.cleanup_action(
+                    with cb_helpers.cleanup_action(
                             lambda: os.remove(download_file)):
                         with open(download_file, 'wb') as f:
                             test_obj.save_content(f)
