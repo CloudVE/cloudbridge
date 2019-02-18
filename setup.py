@@ -26,22 +26,29 @@ REQS_BASE = [
     'deprecated>=1.2.3',
     'pyeventsystem'
 ]
-REQS_AWS = ['boto3>=1.9.86']
+REQS_AWS = [
+    'boto3>=1.9.86'
+]
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
-REQS_AZURE = ['msrest>=0.5.4,<0.6',
-              'msrestazure==0.5.0',
-              'azure-common==1.1.14',
-              'azure-mgmt-devtestlabs==2.2.0',
-              'azure-mgmt-resource==2.0.0',
-              'azure-mgmt-compute==4.0.1',
-              'azure-mgmt-network>=2.0.1,<=2.1',
-              'azure-mgmt-storage==2.0.0',
-              'azure-storage-blob==1.3.1',
-              'azure-cosmosdb-table==1.0.4',
-              'pysftp==0.2.9']
-REQS_GCP = ['google-api-python-client', 'oauth2client']
+REQS_AZURE = [
+    'msrest>=0.5.4,<0.6',
+    'msrestazure==0.5.0',
+    'azure-common==1.1.14',
+    'azure-mgmt-devtestlabs==2.2.0',
+    'azure-mgmt-resource==2.0.0',
+    'azure-mgmt-compute==4.0.1',
+    'azure-mgmt-network>=2.0.1,<=2.1',
+    'azure-mgmt-storage==2.0.0',
+    'azure-storage-blob==1.3.1',
+    'azure-cosmosdb-table==1.0.4',
+    'pysftp==0.2.9'
+]
+REQS_GCP = [
+    'google-api-python-client',
+    'oauth2client'
+]
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0,<=0.17',
     'python-novaclient>=7.0.0,<=11.0',
@@ -95,8 +102,5 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython'],
-    test_suite="test",
-    dependency_links=[
-        "git+git://github.com/CloudVE/pyeventsystem.git#egg=pyeventsystem"
-    ]
+    test_suite="test"
 )
