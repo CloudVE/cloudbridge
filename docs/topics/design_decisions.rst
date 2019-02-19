@@ -119,7 +119,18 @@ Resource identification, naming, and labeling
   `labels` adhere to the same restrictions - a minimum length of 3 which
   should be alphanumeric characters or dashes only. Names or labels should
   not begin or end with a dash, or have consecutive dashes.
-   
+
+Make providers single zone
+---------------------------
+
+  Allowing each operation to specify its own zone led to various complications,
+  such as the one detailed above. Ultimately, it led to an impasse with GCP,
+  which tended to require the zone for almost every operation and some of our
+  methods were not geared to do so. Therefore, by making the provider zone
+  specific, we have removed a considerable amount of complexity from both the
+  code, with no significant impact on usability, since operations generally
+  tend to be confined to the same zone. Multi-zone operations now require
+  multiple cloud provider instances.
 
   .. _63: https://github.com/CloudVE/cloudbridge/issues/63
   .. _131: https://github.com/CloudVE/cloudbridge/issues/131

@@ -86,31 +86,24 @@ AWS
 +---------------------+--------------------------------------------------------------+
 | Variable            | Description                                                  |
 +=====================+==============================================================+
+| aws_region_name     | Default region name. Default is ``us-east-1``.               |
++---------------------+--------------------------------------------------------------+
+| aws_zone_name       | Default zone name. If not specified, defaults to first zone  |
+|                     | in default region. If specified, must match default region.  |
++---------------------+--------------------------------------------------------------+
 | aws_session_token   | Session key for your AWS account (if using temporary         |
 |                     | credentials).                                                |
 +---------------------+--------------------------------------------------------------+
-| ec2_conn_path	      | Connection path. Default is ``/``.                           |
+| ec2_endpoint_url    | Endpoint to use. Default is ``ec2.us-east-1.amazonaws.com``. |
 +---------------------+--------------------------------------------------------------+
 | ec2_is_secure       | True to use an SSL connection. Default is ``True``.          |
-+---------------------+--------------------------------------------------------------+
-| ec2_port            | EC2 connection port. Does not need to be specified unless    |
-|                     | EC2 service is running on an alternative port.               |
-+---------------------+--------------------------------------------------------------+
-| ec2_region_endpoint | Endpoint to use. Default is ``ec2.us-east-1.amazonaws.com``. |
-+---------------------+--------------------------------------------------------------+
-| ec2_region_name     | Default region name. Default is ``us-east-1``.               |
 +---------------------+--------------------------------------------------------------+
 | ec2_validate_certs  | Whether to use SSL certificate verification. Default is      |
 |                     | ``False``.                                                   |
 +---------------------+--------------------------------------------------------------+
-| s3_conn_path        | Connection path. Default is ``/``.                           |
+| s3_endpoint_url     | Host connection endpoint. Default is ``s3.amazonaws.com``.   |
 +---------------------+--------------------------------------------------------------+
 | s3_is_secure        | True to use an SSL connection. Default is ``True``.          |
-+---------------------+--------------------------------------------------------------+
-| s3_host             | Host connection endpoint. Default is ``s3.amazonaws.com``.   |
-+---------------------+--------------------------------------------------------------+
-| s3_port             | Host connection port. Does not need to be specified unless   |
-|                     | S3 service is running on an alternative port.                |
 +---------------------+--------------------------------------------------------------+
 | s3_validate_certs   | Whether to use SSL certificate verification. Default is      |
 |                     | ``False``.                                                   |
@@ -130,6 +123,10 @@ Azure
 | azure_region_name                   | Default region to use for the current                    |
 |                                     | session. Default is ``eastus``.                          |
 +-------------------------------------+----------------------------------------------------------+
+| aws_zone_name                       | Default zone name. If not specified, defaults to first   |
+|                                     | zone in default region. If specified, must match default |
+|                                     | region.                                                  |
++-------------------------------------+--------------------------------------------------------------+
 | azure_resource_group                | Azure resource group to use. Default is ``cloudbridge``. |
 +-------------------------------------+----------------------------------------------------------+
 | azure_storage_account               | Azure storage account to use. Note that this value must  |
@@ -148,11 +145,12 @@ GCP
 +-------------------------+----------------------------------------------------------+
 | Variable                | Description                                              |
 +=========================+==========================================================+
-| gcp_default_zone        | Default placement zone to use for the current session.   |
-|                         | Default is ``us-central1-a``.                            |
-+-------------------------+----------------------------------------------------------+
 | gcp_region_name         | Default region to use for the current session. Default   |
 |                         | is ``us-central1``.                                      |
++-------------------------+----------------------------------------------------------+
+| gcp_zone_name           | Default zone name. If not specified, defaults to first   |
+|                         | zone in default region. If specified, must match default |
+|                         | region.                                                  |
 +-------------------------+----------------------------------------------------------+
 | gcp_vm_default_username | System user name for which supplied key pair will be     |
 |                         | placed.                                                  |
@@ -209,6 +207,8 @@ https://docs.microsoft.com/en-us/azure/role-based-access-control/overview.
 +-------------------------------------+-----------+
 | AZURE_REGION_NAME                   |           |
 +-------------------------------------+-----------+
+| AZURE_ZONE_NAME                     |           |
++-------------------------------------+-----------+
 | AZURE_RESOURCE_GROUP                |           |
 +-------------------------------------+-----------+
 | AZURE_STORAGE_ACCOUNT               |           |
@@ -226,7 +226,7 @@ GCP
 | or                     |           |
 | GCP_SERVICE_CREDS_FILE |           |
 +------------------------+-----------+
-| GCP_DEFAULT_ZONE       |           |
+| GCP_ZONE_NAME          |           |
 +------------------------+-----------+
 | GCP_PROJECT_NAME       |           |
 +------------------------+-----------+
@@ -248,6 +248,8 @@ OpenStack
 | OS_PROJECT_NAME        | ✔         |
 +------------------------+-----------+
 | OS_REGION_NAME         | ✔         |
++------------------------+-----------+
+| OS_ZONE_NAME           |           |
 +------------------------+-----------+
 | NOVA_SERVICE_NAME      |           |
 +------------------------+-----------+

@@ -87,8 +87,8 @@ Google Compute Cloud:
 
     config = {'gcp_project_name': 'project name',
               'gcp_service_creds_file': 'service_file.json',
-              'gcp_default_zone': 'us-east1-b',  # Use desired value
-              'gcp_region_name': 'us-east1'}  # Use desired value
+              'gcp_region_name': 'us-east1',  # Use desired value
+              'gcp_zone_name': 'us-east1-b'}  # Use desired value
     provider = CloudProviderFactory().create_provider(ProviderList.GCP, config)
     image_id = 'https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-1804-bionic-v20181222'
 

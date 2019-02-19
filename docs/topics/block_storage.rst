@@ -14,7 +14,7 @@ performed via the :class:`.VolumeService`. To start, let's create a 1GB volume.
 
 .. code-block:: python
 
-    vol = provider.storage.volumes.create('cloudbridge-vol', 1, 'us-east-1e')
+    vol = provider.storage.volumes.create('cloudbridge-vol', 1)
     vol.wait_till_ready()
     provider.storage.volumes.list()
 

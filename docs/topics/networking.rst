@@ -75,8 +75,7 @@ subnet (``/28``).
     net = provider.networking.networks.create(
         label='my-network', cidr_block='10.0.0.0/16')
     sn = net.subnets.create(label='my-subnet',
-                            cidr_block='10.0.0.0/28',
-                            zone=zone)
+                            cidr_block='10.0.0.0/28')
     router = provider.networking.routers.create(label='my-router', network=net)
     router.attach_subnet(sn)
     gateway = net.gateways.get_or_create()
@@ -91,9 +90,9 @@ The additional step that's required here is to assign a floating IP to the VM:
 
     net = provider.networking.networks.create(
         label='my-network', cidr_block='10.0.0.0/16')
-    sn = net.subnets.create(label='my-subnet', cidr_block='10.0.0.0/28', zone=zone)
+    sn = net.subnets.create(label='my-subnet', cidr_block='10.0.0.0/28')
 
-    vm = provider.compute.instances.create(label='my-inst', subnet=sn, zone=zone, ...)
+    vm = provider.compute.instances.create(label='my-inst', subnet=sn, ...)
 
     router = provider.networking.routers.create(label='my-router', network=net)
     router.attach_subnet(sn)
