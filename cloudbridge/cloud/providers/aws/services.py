@@ -1,4 +1,5 @@
 """Services implemented by the AWS provider."""
+import ipaddress
 import logging
 import string
 
@@ -9,9 +10,13 @@ import cachetools
 import requests
 
 import cloudbridge.cloud.base.helpers as cb_helpers
+from cloudbridge.cloud.base.middleware import dispatch
 from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.services import BaseBucketObjectService
 from cloudbridge.cloud.base.services import BaseBucketService
 from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
+from cloudbridge.cloud.base.services import BaseGatewayService
 from cloudbridge.cloud.base.services import BaseImageService
 from cloudbridge.cloud.base.services import BaseInstanceService
 from cloudbridge.cloud.base.services import BaseKeyPairService
@@ -23,24 +28,33 @@ from cloudbridge.cloud.base.services import BaseSecurityService
 from cloudbridge.cloud.base.services import BaseSnapshotService
 from cloudbridge.cloud.base.services import BaseStorageService
 from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallRuleService
 from cloudbridge.cloud.base.services import BaseVMFirewallService
 from cloudbridge.cloud.base.services import BaseVMTypeService
 from cloudbridge.cloud.base.services import BaseVolumeService
-from cloudbridge.cloud.interfaces.exceptions \
-    import DuplicateResourceException, InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import \
+    InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
 from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 
 from .helpers import BotoEC2Service
 from .helpers import BotoS3Service
+from .helpers import trim_empty_params
 from .resources import AWSBucket
+from .resources import AWSBucketObject
+from .resources import AWSFloatingIP
 from .resources import AWSInstance
+from .resources import AWSInternetGateway
 from .resources import AWSKeyPair
 from .resources import AWSLaunchConfig
 from .resources import AWSMachineImage
@@ -51,6 +65,7 @@ from .resources import AWSRouter
 from .resources import AWSSnapshot
 from .resources import AWSSubnet
 from .resources import AWSVMFirewall
+from .resources import AWSVMFirewallRule
 from .resources import AWSVMType
 from .resources import AWSVolume
 
@@ -65,6 +80,7 @@ class AWSSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = AWSKeyPairService(provider)
         self._vm_firewalls = AWSVMFirewallService(provider)
+        self._vm_firewall_rule_svc = AWSVMFirewallRuleService(provider)
 
     @property
     def key_pairs(self):
@@ -73,6 +89,10 @@ class AWSSecurityService(BaseSecurityService):
     @property
     def vm_firewalls(self):
         return self._vm_firewalls
+
+    @property
+    def _vm_firewall_rules(self):
+        return self._vm_firewall_rule_svc
 
 
 class AWSKeyPairService(BaseKeyPairService):
@@ -83,26 +103,34 @@ class AWSKeyPairService(BaseKeyPairService):
                                   cb_resource=AWSKeyPair,
                                   boto_collection_name='key_pairs')
 
+    @dispatch(event="provider.security.key_pairs.get",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def get(self, key_pair_id):
         log.debug("Getting Key Pair Service %s", key_pair_id)
         return self.svc.get(key_pair_id)
 
+    @dispatch(event="provider.security.key_pairs.list",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
+    @dispatch(event="provider.security.key_pairs.find",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         name = kwargs.pop('name', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'name'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'name'))
 
         log.debug("Searching for Key Pair %s", name)
         return self.svc.find(filter_name='key-name', filter_value=name)
 
+    @dispatch(event="provider.security.key_pairs.create",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def create(self, name, public_key_material=None):
-        log.debug("Creating Key Pair Service %s", name)
         AWSKeyPair.assert_valid_resource_name(name)
         private_key = None
         if not public_key_material:
@@ -119,6 +147,15 @@ class AWSKeyPairService(BaseKeyPairService):
             else:
                 raise e
 
+    @dispatch(event="provider.security.key_pairs.delete",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def delete(self, key_pair):
+        key_pair = (key_pair if isinstance(key_pair, AWSKeyPair) else
+                    self.get(key_pair))
+        if key_pair:
+            # pylint:disable=protected-access
+            key_pair._key_pair.delete()
+
 
 class AWSVMFirewallService(BaseVMFirewallService):
 
@@ -128,43 +165,129 @@ class AWSVMFirewallService(BaseVMFirewallService):
                                   cb_resource=AWSVMFirewall,
                                   boto_collection_name='security_groups')
 
-    def get(self, firewall_id):
-        log.debug("Getting Firewall Service with the id: %s", firewall_id)
-        return self.svc.get(firewall_id)
+    @dispatch(event="provider.security.vm_firewalls.get",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def get(self, vm_firewall_id):
+        log.debug("Getting Firewall Service with the id: %s", vm_firewall_id)
+        return self.svc.get(vm_firewall_id)
 
+    @dispatch(event="provider.security.vm_firewalls.list",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    def create(self, label, network=None, description=None):
-        log.debug("Creating Firewall Service with the parameters "
-                  "[label: %s id: %s description: %s]", label, network,
-                  description)
+    @dispatch(event="provider.security.vm_firewalls.create",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, network, description=None):
         AWSVMFirewall.assert_valid_resource_label(label)
         name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
         network_id = network.id if isinstance(network, Network) else network
         obj = self.svc.create('create_security_group', GroupName=name,
-                              Description=description or name,
+                              Description=name,
                               VpcId=network_id)
         obj.label = label
+        obj.description = description
         return obj
 
+    @dispatch(event="provider.security.vm_firewalls.find",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         # Filter by name or label
         label = kwargs.pop('label', None)
         log.debug("Searching for Firewall Service %s", label)
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
         return self.svc.find(filter_name='tag:Name',
                              filter_value=label)
 
-    def delete(self, firewall_id):
-        log.info("Deleting Firewall Service with the id %s", firewall_id)
-        firewall = self.svc.get(firewall_id)
+    @dispatch(event="provider.security.vm_firewalls.delete",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def delete(self, vm_firewall):
+        firewall = (vm_firewall if isinstance(vm_firewall, AWSVMFirewall)
+                    else self.get(vm_firewall))
         if firewall:
-            firewall.delete()
+            # pylint:disable=protected-access
+            firewall._vm_firewall.delete()
+
+
+class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
+
+    def __init__(self, provider):
+        super(AWSVMFirewallRuleService, self).__init__(provider)
+
+    @dispatch(event="provider.security.vm_firewall_rules.list",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def list(self, firewall, limit=None, marker=None):
+        # pylint:disable=protected-access
+        rules = [AWSVMFirewallRule(firewall,
+                                   TrafficDirection.INBOUND, r)
+                 for r in firewall._vm_firewall.ip_permissions]
+        # pylint:disable=protected-access
+        rules = rules + [
+            AWSVMFirewallRule(
+                firewall, TrafficDirection.OUTBOUND, r)
+            for r in firewall._vm_firewall.ip_permissions_egress]
+        return ClientPagedResultList(self.provider, rules,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.security.vm_firewall_rules.create",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def create(self, firewall,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        src_dest_fw_id = (
+            src_dest_fw.id if isinstance(src_dest_fw, AWSVMFirewall)
+            else src_dest_fw)
+
+        # pylint:disable=protected-access
+        ip_perm_entry = AWSVMFirewallRule._construct_ip_perms(
+            protocol, from_port, to_port, cidr, src_dest_fw_id)
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        try:
+            if direction == TrafficDirection.INBOUND:
+                # pylint:disable=protected-access
+                firewall._vm_firewall.authorize_ingress(
+                    IpPermissions=ip_perms)
+            elif direction == TrafficDirection.OUTBOUND:
+                # pylint:disable=protected-access
+                firewall._vm_firewall.authorize_egress(
+                    IpPermissions=ip_perms)
+            else:
+                raise InvalidValueException("direction", direction)
+            firewall.refresh()
+            return AWSVMFirewallRule(firewall, direction, ip_perm_entry)
+        except ClientError as ec2e:
+            if ec2e.response['Error']['Code'] == "InvalidPermission.Duplicate":
+                return AWSVMFirewallRule(
+                    firewall, direction, ip_perm_entry)
+            else:
+                raise ec2e
+
+    @dispatch(event="provider.security.vm_firewall_rules.delete",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def delete(self, firewall, rule):
+        # pylint:disable=protected-access
+        ip_perm_entry = rule._construct_ip_perms(
+            rule.protocol, rule.from_port, rule.to_port,
+            rule.cidr, rule.src_dest_fw_id)
+
+        # Filter out empty values to please Boto
+        ip_perms = [trim_empty_params(ip_perm_entry)]
+
+        # pylint:disable=protected-access
+        if rule.direction == TrafficDirection.INBOUND:
+            firewall._vm_firewall.revoke_ingress(
+                IpPermissions=ip_perms)
+        else:
+            # pylint:disable=protected-access
+            firewall._vm_firewall.revoke_egress(
+                IpPermissions=ip_perms)
+        firewall.refresh()
 
 
 class AWSStorageService(BaseStorageService):
@@ -176,6 +299,7 @@ class AWSStorageService(BaseStorageService):
         self._volume_svc = AWSVolumeService(self.provider)
         self._snapshot_svc = AWSSnapshotService(self.provider)
         self._bucket_svc = AWSBucketService(self.provider)
+        self._bucket_obj_svc = AWSBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -189,6 +313,10 @@ class AWSStorageService(BaseStorageService):
     def buckets(self):
         return self._bucket_svc
 
+    @property
+    def _bucket_objects(self):
+        return self._bucket_obj_svc
+
 
 class AWSVolumeService(BaseVolumeService):
 
@@ -198,32 +326,34 @@ class AWSVolumeService(BaseVolumeService):
                                   cb_resource=AWSVolume,
                                   boto_collection_name='volumes')
 
+    @dispatch(event="provider.storage.volumes.get",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
-        log.debug("Getting AWS Volume Service with the id: %s",
-                  volume_id)
         return self.svc.get(volume_id)
 
+    @dispatch(event="provider.storage.volumes.find",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Volume Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
+    @dispatch(event="provider.storage.volumes.list",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
+    @dispatch(event="provider.storage.volumes.create",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, zone, snapshot=None, description=None):
-        log.debug("Creating AWS Volume Service with the parameters "
-                  "[label: %s size: %s zone: %s snapshot: %s "
-                  "description: %s]", label, size, zone, snapshot,
-                  description)
         AWSVolume.assert_valid_resource_label(label)
-
         zone_id = zone.id if isinstance(zone, PlacementZone) else zone
         snapshot_id = snapshot.id if isinstance(
             snapshot, AWSSnapshot) and snapshot else snapshot
@@ -238,6 +368,14 @@ class AWSVolumeService(BaseVolumeService):
             cb_vol.description = description
         return cb_vol
 
+    @dispatch(event="provider.storage.volumes.delete",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def delete(self, vol):
+        volume = vol if isinstance(vol, AWSVolume) else self.get(vol)
+        if volume:
+            # pylint:disable=protected-access
+            volume._volume.delete()
+
 
 class AWSSnapshotService(BaseSnapshotService):
 
@@ -247,11 +385,13 @@ class AWSSnapshotService(BaseSnapshotService):
                                   cb_resource=AWSSnapshot,
                                   boto_collection_name='snapshots')
 
+    @dispatch(event="provider.storage.snapshots.get",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def get(self, snapshot_id):
-        log.debug("Getting AWS Snapshot Service with the id: %s",
-                  snapshot_id)
         return self.svc.get(snapshot_id)
 
+    @dispatch(event="provider.storage.snapshots.find",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         # Filter by description or label
         label = kwargs.get('label', None)
@@ -267,19 +407,16 @@ class AWSSnapshotService(BaseSnapshotService):
         filters = ['label']
         return cb_helpers.generic_find(filters, kwargs, obj_list)
 
+    @dispatch(event="provider.storage.snapshots.list",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker,
                              OwnerIds=['self'])
 
+    @dispatch(event="provider.storage.snapshots.create",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
-        log.debug("Creating a new AWS snapshot Service with the "
-                  "parameters [label: %s volume: %s description: %s]",
-                  label, volume, description)
         AWSSnapshot.assert_valid_resource_label(label)
-
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
         cb_snap = self.svc.create('create_snapshot', VolumeId=volume_id)
@@ -290,6 +427,15 @@ class AWSSnapshotService(BaseSnapshotService):
             cb_snap.description = description
         return cb_snap
 
+    @dispatch(event="provider.storage.snapshots.delete",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def delete(self, snapshot):
+        snapshot = (snapshot if isinstance(snapshot, AWSSnapshot) else
+                    self.get(snapshot))
+        if snapshot:
+            # pylint:disable=protected-access
+            snapshot._snapshot.delete()
+
 
 class AWSBucketService(BaseBucketService):
 
@@ -299,12 +445,13 @@ class AWSBucketService(BaseBucketService):
                                  cb_resource=AWSBucket,
                                  boto_collection_name='buckets')
 
+    @dispatch(event="provider.storage.buckets.get",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        log.debug("Getting AWS Bucket Service with the id: %s", bucket_id)
         try:
             # Make a call to make sure the bucket exists. There's an edge case
             # where a 403 response can occur when the bucket exists but the
@@ -328,21 +475,16 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches),
-                                     limit=None, marker=None)
-
+    @dispatch(event="provider.storage.buckets.list",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
+    @dispatch(event="provider.storage.buckets.create",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def create(self, name, location=None):
-        log.debug("Creating AWS Bucket with the params "
-                  "[name: %s, location: %s]", name, location)
         AWSBucket.assert_valid_resource_name(name)
-        loc_constraint = location or self.provider.region_name
+        location = location or self.provider.region_name
         # Due to an API issue in S3, specifying us-east-1 as a
         # LocationConstraint results in an InvalidLocationConstraint.
         # Therefore, it must be special-cased and omitted altogether.
@@ -350,7 +492,7 @@ class AWSBucketService(BaseBucketService):
         # In addition, us-east-1 also behaves differently when it comes
         # to raising duplicate resource exceptions, so perform a manual
         # check
-        if loc_constraint == 'us-east-1':
+        if location == 'us-east-1':
             try:
                 # check whether bucket already exists
                 self.provider.s3_conn.meta.client.head_bucket(Bucket=name)
@@ -364,7 +506,7 @@ class AWSBucketService(BaseBucketService):
             try:
                 return self.svc.create('create_bucket', Bucket=name,
                                        CreateBucketConfiguration={
-                                           'LocationConstraint': loc_constraint
+                                           'LocationConstraint': location
                                         })
             except ClientError as e:
                 if e.response['Error']['Code'] == "BucketAlreadyOwnedByYou":
@@ -373,47 +515,54 @@ class AWSBucketService(BaseBucketService):
                 else:
                     raise
 
+    @dispatch(event="provider.storage.buckets.delete",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def delete(self, bucket):
+        b = bucket if isinstance(bucket, AWSBucket) else self.get(bucket)
+        if b:
+            # pylint:disable=protected-access
+            b._bucket.delete()
 
-class AWSImageService(BaseImageService):
+
+class AWSBucketObjectService(BaseBucketObjectService):
 
     def __init__(self, provider):
-        super(AWSImageService, self).__init__(provider)
-        self.svc = BotoEC2Service(provider=self.provider,
-                                  cb_resource=AWSMachineImage,
-                                  boto_collection_name='images')
+        super(AWSBucketObjectService, self).__init__(provider)
 
-    def get(self, image_id):
-        log.debug("Getting AWS Image Service with the id: %s", image_id)
-        return self.svc.get(image_id)
+    def get(self, bucket, object_id):
+        try:
+            # pylint:disable=protected-access
+            obj = bucket._bucket.Object(object_id)
+            # load() throws an error if object does not exist
+            obj.load()
+            return AWSBucketObject(self.provider, obj)
+        except ClientError:
+            return None
 
-    def find(self, **kwargs):
-        # Filter by name or label
-        name = kwargs.get('name', None)
-        label = kwargs.get('label', None)
-        # Popped here, not used in the generic find
-        owner = kwargs.pop('owners', None)
-        extra_args = {}
-        if owner:
-            extra_args.update(Owners=owner)
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        if prefix:
+            # pylint:disable=protected-access
+            boto_objs = bucket._bucket.objects.filter(Prefix=prefix)
+        else:
+            # pylint:disable=protected-access
+            boto_objs = bucket._bucket.objects.all()
+        objects = [AWSBucketObject(self.provider, obj) for obj in boto_objs]
+        return ClientPagedResultList(self.provider, objects,
+                                     limit=limit, marker=marker)
 
-        obj_list = []
-        if name:
-            log.debug("Searching for AWS Image Service %s", name)
-            obj_list.extend(self.svc.find(filter_name='name',
-                                          filter_value=name, **extra_args))
-        if label:
-            obj_list.extend(self.svc.find(filter_name='tag:Name',
-                                          filter_value=label, **extra_args))
-        if not name and not label:
-            obj_list = self
+    def find(self, bucket, **kwargs):
+        # pylint:disable=protected-access
+        obj_list = [AWSBucketObject(self.provider, o)
+                    for o in bucket._bucket.objects.all()]
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
 
-        filters = ['label', 'name']
-        return cb_helpers.generic_find(filters, kwargs, obj_list)
-
-    def list(self, filter_by_owner=True, limit=None, marker=None):
-        return self.svc.list(Owners=['self'] if filter_by_owner else
-                             ['amazon', 'self'],
-                             limit=limit, marker=marker)
+    def create(self, bucket, name):
+        # pylint:disable=protected-access
+        obj = bucket._bucket.Object(name)
+        return AWSBucketObject(self.provider, obj)
 
 
 class AWSComputeService(BaseComputeService):
@@ -442,6 +591,53 @@ class AWSComputeService(BaseComputeService):
         return self._region_svc
 
 
+class AWSImageService(BaseImageService):
+
+    def __init__(self, provider):
+        super(AWSImageService, self).__init__(provider)
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSMachineImage,
+                                  boto_collection_name='images')
+
+    def get(self, image_id):
+        log.debug("Getting AWS Image Service with the id: %s", image_id)
+        return self.svc.get(image_id)
+
+    def find(self, **kwargs):
+        # Filter by name or label
+        label = kwargs.pop('label', None)
+        # Popped here, not used in the generic find
+        owner = kwargs.pop('owners', None)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
+
+        extra_args = {}
+        if owner:
+            extra_args.update(Owners=owner)
+
+        # The original list is made by combining both searches by "tag:Name"
+        # and "AMI name" to allow for searches of public images
+        if label:
+            log.debug("Searching for AWS Image Service %s", label)
+            obj_list = []
+            obj_list.extend(self.svc.find(filter_name='name',
+                                          filter_value=label, **extra_args))
+            obj_list.extend(self.svc.find(filter_name='tag:Name',
+                                          filter_value=label, **extra_args))
+            return obj_list
+        else:
+            return []
+
+    def list(self, filter_by_owner=True, limit=None, marker=None):
+        return self.svc.list(Owners=['self'] if filter_by_owner else
+                             ['amazon', 'self'],
+                             limit=limit, marker=marker)
+
+
 class AWSInstanceService(BaseInstanceService):
 
     def __init__(self, provider):
@@ -449,56 +645,6 @@ class AWSInstanceService(BaseInstanceService):
         self.svc = BotoEC2Service(provider=self.provider,
                                   cb_resource=AWSInstance,
                                   boto_collection_name='instances')
-
-    def create(self, label, image, vm_type, subnet, zone,
-               key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None, **kwargs):
-        log.debug("Creating AWS Instance Service with the params "
-                  "[label: %s image: %s type: %s subnet: %s zone: %s "
-                  "key pair: %s firewalls: %s user data: %s config %s "
-                  "others: %s]", label, image, vm_type, subnet, zone,
-                  key_pair, vm_firewalls, user_data, launch_config, kwargs)
-        AWSInstance.assert_valid_resource_label(label)
-
-        image_id = image.id if isinstance(image, MachineImage) else image
-        vm_size = vm_type.id if \
-            isinstance(vm_type, VMType) else vm_type
-        subnet = (self.provider.networking.subnets.get(subnet)
-                  if isinstance(subnet, str) else subnet)
-        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
-        key_pair_name = key_pair.name if isinstance(
-            key_pair,
-            KeyPair) else key_pair
-        if launch_config:
-            bdm = self._process_block_device_mappings(launch_config)
-        else:
-            bdm = None
-
-        subnet_id, zone_id, vm_firewall_ids = \
-            self._resolve_launch_options(subnet, zone_id, vm_firewalls)
-
-        placement = {'AvailabilityZone': zone_id} if zone_id else None
-        inst = self.svc.create('create_instances',
-                               ImageId=image_id,
-                               MinCount=1,
-                               MaxCount=1,
-                               KeyName=key_pair_name,
-                               SecurityGroupIds=vm_firewall_ids or None,
-                               UserData=str(user_data) or None,
-                               InstanceType=vm_size,
-                               Placement=placement,
-                               BlockDeviceMappings=bdm,
-                               SubnetId=subnet_id
-                               )
-        if inst and len(inst) == 1:
-            # Wait until the resource exists
-            # pylint:disable=protected-access
-            inst[0]._wait_till_exists()
-            # Tag the instance w/ the name
-            inst[0].label = label
-            return inst[0]
-        raise ValueError(
-            'Expected a single object response, got a list: %s' % inst)
 
     def _resolve_launch_options(self, subnet=None, zone_id=None,
                                 vm_firewalls=None):
@@ -585,21 +731,83 @@ class AWSInstanceService(BaseInstanceService):
     def create_launch_config(self):
         return AWSLaunchConfig(self.provider)
 
+    @dispatch(event="provider.compute.instances.create",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, image, vm_type, subnet, zone,
+               key_pair=None, vm_firewalls=None, user_data=None,
+               launch_config=None, **kwargs):
+        AWSInstance.assert_valid_resource_label(label)
+        image_id = image.id if isinstance(image, MachineImage) else image
+        vm_size = vm_type.id if \
+            isinstance(vm_type, VMType) else vm_type
+        subnet = (self.provider.networking.subnets.get(subnet)
+                  if isinstance(subnet, str) else subnet)
+        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+        key_pair_name = key_pair.name if isinstance(
+            key_pair,
+            KeyPair) else key_pair
+        if launch_config:
+            bdm = self._process_block_device_mappings(launch_config)
+        else:
+            bdm = None
+
+        subnet_id, zone_id, vm_firewall_ids = \
+            self._resolve_launch_options(subnet, zone_id, vm_firewalls)
+
+        placement = {'AvailabilityZone': zone_id} if zone_id else None
+        inst = self.svc.create('create_instances',
+                               ImageId=image_id,
+                               MinCount=1,
+                               MaxCount=1,
+                               KeyName=key_pair_name,
+                               SecurityGroupIds=vm_firewall_ids or None,
+                               UserData=str(user_data) or None,
+                               InstanceType=vm_size,
+                               Placement=placement,
+                               BlockDeviceMappings=bdm,
+                               SubnetId=subnet_id
+                               )
+        if inst and len(inst) == 1:
+            # Wait until the resource exists
+            # pylint:disable=protected-access
+            inst[0]._wait_till_exists()
+            # Tag the instance w/ the name
+            inst[0].label = label
+            return inst[0]
+        raise ValueError(
+            'Expected a single object response, got a list: %s' % inst)
+
+    @dispatch(event="provider.compute.instances.get",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def get(self, instance_id):
         return self.svc.get(instance_id)
 
+    @dispatch(event="provider.compute.instances.find",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
+    @dispatch(event="provider.compute.instances.list",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
+
+    @dispatch(event="provider.compute.instances.delete",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def delete(self, instance):
+        aws_inst = (instance if isinstance(instance, AWSInstance) else
+                    self.get(instance))
+        if aws_inst:
+            # pylint:disable=protected-access
+            aws_inst._ec2_instance.terminate()
 
 
 class AWSVMTypeService(BaseVMTypeService):
@@ -619,14 +827,19 @@ class AWSVMTypeService(BaseVMTypeService):
         https://github.com/powdahound/ec2instances.info (in particular, this
         file: https://raw.githubusercontent.com/powdahound/ec2instances.info/
         master/www/instances.json).
-
-        TODO: Needs a caching function with timeout
         """
         r = requests.get(self.provider.config.get(
             "aws_instance_info_url",
             self.provider.AWS_INSTANCE_DATA_DEFAULT_URL))
-        return r.json()
+        # Some instances are only available in certain regions. Use pricing
+        # info to determine and filter out instance types that are not
+        # available in the current region
+        vm_types_list = r.json()
+        return [vm_type for vm_type in vm_types_list
+                if vm_type.get('pricing', {}).get(self.provider.region_name)]
 
+    @dispatch(event="provider.compute.vm_types.list",
+              priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         vm_types = [AWSVMType(self.provider, vm_type)
                     for vm_type in self.instance_data]
@@ -639,6 +852,8 @@ class AWSRegionService(BaseRegionService):
     def __init__(self, provider):
         super(AWSRegionService, self).__init__(provider)
 
+    @dispatch(event="provider.compute.regions.get",
+              priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def get(self, region_id):
         log.debug("Getting AWS Region Service with the id: %s",
                   region_id)
@@ -648,6 +863,8 @@ class AWSRegionService(BaseRegionService):
         else:
             return None
 
+    @dispatch(event="provider.compute.regions.list",
+              priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         regions = [
             AWSRegion(self.provider, region) for region in
@@ -668,6 +885,8 @@ class AWSNetworkingService(BaseNetworkingService):
         self._network_service = AWSNetworkService(self.provider)
         self._subnet_service = AWSSubnetService(self.provider)
         self._router_service = AWSRouterService(self.provider)
+        self._gateway_service = AWSGatewayService(self.provider)
+        self._floating_ip_service = AWSFloatingIPService(self.provider)
 
     @property
     def networks(self):
@@ -681,6 +900,14 @@ class AWSNetworkingService(BaseNetworkingService):
     def routers(self):
         return self._router_service
 
+    @property
+    def _gateways(self):
+        return self._gateway_service
+
+    @property
+    def _floating_ips(self):
+        return self._floating_ip_service
+
 
 class AWSNetworkService(BaseNetworkService):
 
@@ -690,28 +917,33 @@ class AWSNetworkService(BaseNetworkService):
                                   cb_resource=AWSNetwork,
                                   boto_collection_name='vpcs')
 
+    @dispatch(event="provider.networking.networks.get",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def get(self, network_id):
-        log.debug("Getting AWS Network Service with the id: %s",
-                  network_id)
         return self.svc.get(network_id)
 
+    @dispatch(event="provider.networking.networks.list",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
+    @dispatch(event="provider.networking.networks.find",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Network Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
+    @dispatch(event="provider.networking.networks.create",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def create(self, label, cidr_block):
-        log.debug("Creating AWS Network Service with the params "
-                  "[label: %s block: %s]", label, cidr_block)
         AWSNetwork.assert_valid_resource_label(label)
 
         cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block)
@@ -720,6 +952,35 @@ class AWSNetworkService(BaseNetworkService):
         if label:
             cb_net.label = label
         return cb_net
+
+    @dispatch(event="provider.networking.networks.delete",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def delete(self, network):
+        network = (network if isinstance(network, AWSNetwork)
+                   else self.get(network))
+        if network:
+            # pylint:disable=protected-access
+            network._vpc.delete()
+
+    def get_or_create_default(self):
+        # # Look for provided default network
+        # for net in self.provider.networking.networks:
+        # pylint:disable=protected-access
+        #     if net._vpc.is_default:
+        #         return net
+
+        # No provider-default, try CB-default instead
+        default_nets = self.provider.networking.networks.find(
+            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+        if default_nets:
+            return default_nets[0]
+
+        else:
+            log.info("Creating a CloudBridge-default network labeled %s",
+                     AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
+            return self.provider.networking.networks.create(
+                label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
+                cidr_block=AWSNetwork.CB_DEFAULT_IPV4RANGE)
 
 
 class AWSSubnetService(BaseSubnetService):
@@ -730,10 +991,13 @@ class AWSSubnetService(BaseSubnetService):
                                   cb_resource=AWSSubnet,
                                   boto_collection_name='subnets')
 
+    @dispatch(event="provider.networking.subnets.get",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def get(self, subnet_id):
-        log.debug("Getting AWS Subnet Service with the id: %s", subnet_id)
         return self.svc.get(subnet_id)
 
+    @dispatch(event="provider.networking.subnets.list",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def list(self, network=None, limit=None, marker=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         if network_id:
@@ -743,23 +1007,24 @@ class AWSSubnetService(BaseSubnetService):
         else:
             return self.svc.list(limit=limit, marker=marker)
 
-    def find(self, **kwargs):
+    @dispatch(event="provider.networking.subnets.find",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def find(self, network=None, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Subnet Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
+    @dispatch(event="provider.networking.subnets.create",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, cidr_block, zone):
-        log.debug("Creating AWS Subnet Service with the params "
-                  "[label: %s network: %s block: %s zone: %s]",
-                  label, network, cidr_block, zone)
         AWSSubnet.assert_valid_resource_label(label)
-
         zone_name = zone.name if isinstance(
             zone, AWSPlacementZone) else zone
 
@@ -773,52 +1038,58 @@ class AWSSubnetService(BaseSubnetService):
             subnet.label = label
         return subnet
 
-    def get_or_create_default(self, zone):
-        zone_name = zone.name if isinstance(
-            zone, AWSPlacementZone) else zone
-        snl = self.svc.find('availabilityZone', zone_name)
-        # Find first available default subnet by sorted order
-        # of availability zone. Prefer zone us-east-1a over 1e,
-        # because newer zones tend to have less compatibility
-        # with different instance types (e.g. c5.large not available
-        # on us-east-1e as of 14 Dec. 2017).
-        # pylint:disable=protected-access
-        snl.sort(key=lambda sn: sn._subnet.availability_zone)
-        for sn in snl:
+    @dispatch(event="provider.networking.subnets.delete",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def delete(self, subnet):
+        sn = subnet if isinstance(subnet, AWSSubnet) else self.get(subnet)
+        if sn:
             # pylint:disable=protected-access
-            if sn._subnet.default_for_az:
-                return sn
+            sn._subnet.delete()
 
-        # Refresh the list for the default label
-        snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL)
+    def get_or_create_default(self, zone):
+        zone_name = zone.name if isinstance(zone, AWSPlacementZone) else zone
 
-        if len(snl) > 0:
-            return snl[0]
+        # # Look for provider default subnet in current zone
+        # if zone_name:
+        #     snl = self.svc.find('availabilityZone', zone_name)
+        #
+        # else:
+        #     snl = self.svc.list()
+        #     # Find first available default subnet by sorted order
+        #     # of availability zone. Prefer zone us-east-1a over 1e,
+        #     # because newer zones tend to have less compatibility
+        #     # with different instance types (e.g. c5.large not available
+        #     # on us-east-1e as of 14 Dec. 2017).
+        #     # pylint:disable=protected-access
+        #     snl.sort(key=lambda sn: sn._subnet.availability_zone)
+        #
+        # for sn in snl:
+        #     # pylint:disable=protected-access
+        #     if sn._subnet.default_for_az:
+        #         return sn
 
-        """
-        No provider-default Subnet exists, try to create a CloudBridge-specific
-        network. This involves creating the network, subnets, internet gateway,
-        and connecting it all together so that the network has Internet
-        connectivity.
-        """
-        # Check if a default net already exists
-        default_nets = self.provider.networking.networks.find(
-            label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
-        if len(default_nets) > 0:
-            default_net = default_nets[0]
-            for sn in default_net.subnets:
-                if zone and zone == sn.zone.name:
-                    return sn
-            if len(default_net.subnets) == 0:
-                pass  # No subnets exist within the default net so continue
-            else:
-                return default_net.subnets[0]  # Pick a (first) subnet
-        else:
-            log.info("Creating a CloudBridge-default network labeled %s",
-                     AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
-            default_net = self.provider.networking.networks.create(
-                label=AWSNetwork.CB_DEFAULT_NETWORK_LABEL,
-                cidr_block='10.0.0.0/16')
+        # If no provider-default subnet has been found, look for
+        # cloudbridge-default by label. We suffix labels by availability zone,
+        # thus we add the wildcard for the regular expression to find the
+        # subnet
+        snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")
+
+        if snl:
+            # pylint:disable=protected-access
+            snl.sort(key=lambda sn: sn._subnet.availability_zone)
+            if not zone_name:
+                return snl[0]
+            for subnet in snl:
+                if subnet.zone.name == zone_name:
+                    return subnet
+
+        # No default Subnet exists, try to create a CloudBridge-specific
+        # subnet. This involves creating the network, subnets, internet
+        # gateway, and connecting it all together so that the network has
+        # Internet connectivity.
+
+        # Check if a default net already exists and get it or create on
+        default_net = self.provider.networking.networks.get_or_create_default()
 
         # Get/create an internet gateway for the default network and a
         # corresponding router if it does not already exist.
@@ -827,7 +1098,7 @@ class AWSSubnetService(BaseSubnetService):
         # though because the provider-default network will have Internet
         # connectivity (unlike the CloudBridge-default network with this
         # being commented) and is hence left in the codebase.
-        # default_gtw = default_net.gateways.get_or_create_inet_gateway()
+        # default_gtw = default_net.gateways.get_or_create()
         # router_label = "{0}-router".format(
         #   AWSNetwork.CB_DEFAULT_NETWORK_LABEL)
         # default_routers = self.provider.networking.routers.find(
@@ -842,26 +1113,41 @@ class AWSSubnetService(BaseSubnetService):
         # Create a subnet in each of the region's zones
         region = self.provider.compute.regions.get(self.provider.region_name)
         default_sn = None
-        for i, z in enumerate(region.zones):
+
+        # Determine how many subnets we'll need for the default network and the
+        # number of available zones. We need to derive a non-overlapping
+        # network size for each subnet within the parent net so figure those
+        # subnets here. `<net>.subnets` method will do this but we need to give
+        # it a prefix. Determining that prefix depends on the size of the
+        # network and should be incorporate the number of zones. So iterate
+        # over potential number of subnets until enough can be created to
+        # accommodate the number of available zones. That is where the fixed
+        # number comes from in the for loop as that many iterations will yield
+        # more potential subnets than any region has zones.
+        ip_net = ipaddress.ip_network(AWSNetwork.CB_DEFAULT_IPV4RANGE)
+        for x in range(5):
+            if len(region.zones) <= len(list(ip_net.subnets(
+                    prefixlen_diff=x))):
+                prefixlen_diff = x
+                break
+        subnets = list(ip_net.subnets(prefixlen_diff=prefixlen_diff))
+
+        for i, z in reversed(list(enumerate(region.zones))):
             sn_label = "{0}-{1}".format(AWSSubnet.CB_DEFAULT_SUBNET_LABEL,
                                         z.id[-1])
-            log.info("Creating default CloudBridge subnet %s", sn_label)
-            sn = self.create(
-                sn_label, default_net, '10.0.{0}.0/24'.format(i), z)
+            log.info("Creating a default CloudBridge subnet %s: %s" %
+                     (sn_label, str(subnets[i])))
+            sn = self.create(sn_label, default_net, str(subnets[i]), z)
             # Create a route table entry between the SN and the inet gateway
             # See note above about why this is commented
             # default_router.attach_subnet(sn)
-            if zone and zone == z.name:
+            if zone and zone_name == z.name:
                 default_sn = sn
         # No specific zone was supplied; return the last created subnet
+        # The list was originally reversed to have the last subnet be in zone a
         if not default_sn:
             default_sn = sn
         return default_sn
-
-    def delete(self, subnet):
-        log.debug("Deleting AWS Subnet Service: %s", subnet)
-        subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
-        self.svc.delete(subnet_id)
 
 
 class AWSRouterService(BaseRouterService):
@@ -873,32 +1159,136 @@ class AWSRouterService(BaseRouterService):
                                   cb_resource=AWSRouter,
                                   boto_collection_name='route_tables')
 
+    @dispatch(event="provider.networking.routers.get",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def get(self, router_id):
-        log.debug("Getting AWS Router Service with the id: %s", router_id)
         return self.svc.get(router_id)
 
+    @dispatch(event="provider.networking.routers.find",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs, 'label'))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Router Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
+    @dispatch(event="provider.networking.routers.list",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
+    @dispatch(event="provider.networking.routers.create",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network):
-        log.debug("Creating AWS Router Service with the params "
-                  "[label: %s network: %s]", label, network)
-        AWSRouter.assert_valid_resource_label(label)
-
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
         cb_router = self.svc.create('create_route_table', VpcId=network_id)
         if label:
             cb_router.label = label
         return cb_router
+
+    @dispatch(event="provider.networking.routers.delete",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def delete(self, router):
+        r = router if isinstance(router, AWSRouter) else self.get(router)
+        if r:
+            # pylint:disable=protected-access
+            r._route_table.delete()
+
+
+class AWSGatewayService(BaseGatewayService):
+
+    def __init__(self, provider):
+        super(AWSGatewayService, self).__init__(provider)
+        self.svc = BotoEC2Service(provider=provider,
+                                  cb_resource=AWSInternetGateway,
+                                  boto_collection_name='internet_gateways')
+
+    @dispatch(event="provider.networking.gateways.get_or_create",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def get_or_create(self, network):
+        network_id = network.id if isinstance(
+            network, AWSNetwork) else network
+        # Don't filter by label because it may conflict with at least the
+        # default VPC that most accounts have but that network is typically
+        # without a name.
+        gtw = self.svc.find(filter_name='attachment.vpc-id',
+                            filter_value=network_id)
+        if gtw:
+            return gtw[0]  # There can be only one gtw attached to a VPC
+        # Gateway does not exist so create one and attach to the supplied net
+        cb_gateway = self.svc.create('create_internet_gateway')
+        cb_gateway._gateway.create_tags(
+            Tags=[{'Key': 'Name',
+                   'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                   }])
+        cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
+        return cb_gateway
+
+    @dispatch(event="provider.networking.gateways.delete",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def delete(self, network, gateway):
+        gw = (gateway if isinstance(gateway, AWSInternetGateway)
+              else self.svc.get(gateway))
+        try:
+            if gw.network_id:
+                # pylint:disable=protected-access
+                gw._gateway.detach_from_vpc(VpcId=gw.network_id)
+        except ClientError as e:
+            log.warn("Error deleting gateway {0}: {1}".format(self.id, e))
+        # pylint:disable=protected-access
+        gw._gateway.delete()
+
+    @dispatch(event="provider.networking.gateways.list",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def list(self, network, limit=None, marker=None):
+        log.debug("Listing current AWS internet gateways for net %s.",
+                  network.id)
+        fltr = [{'Name': 'attachment.vpc-id', 'Values': [network.id]}]
+        return self.svc.list(limit=None, marker=None, Filters=fltr)
+
+
+class AWSFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(AWSFloatingIPService, self).__init__(provider)
+        self.svc = BotoEC2Service(provider=self.provider,
+                                  cb_resource=AWSFloatingIP,
+                                  boto_collection_name='vpc_addresses')
+
+    @dispatch(event="provider.networking.floating_ips.get",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def get(self, gateway, fip_id):
+        log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
+        return self.svc.get(fip_id)
+
+    @dispatch(event="provider.networking.floating_ips.list",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def list(self, gateway, limit=None, marker=None):
+        return self.svc.list(limit, marker)
+
+    @dispatch(event="provider.networking.floating_ips.create",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def create(self, gateway):
+        log.debug("Creating a floating IP under gateway %s", gateway)
+        ip = self.provider.ec2_conn.meta.client.allocate_address(
+            Domain='vpc')
+        return AWSFloatingIP(
+            self.provider,
+            self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
+
+    @dispatch(event="provider.networking.floating_ips.delete",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def delete(self, gateway, fip):
+        if isinstance(fip, AWSFloatingIP):
+            # pylint:disable=protected-access
+            aws_fip = fip._ip
+        else:
+            aws_fip = self.svc.get_raw(fip)
+        aws_fip.release()

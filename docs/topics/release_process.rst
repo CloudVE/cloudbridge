@@ -22,7 +22,7 @@ Release Process
    ``git shortlog <last release hash>..HEAD``
 
 5. Release to PyPi.
-   (make sure you have run `pip install wheel`)
+   (make sure you have run `pip install wheel twine`)
    First, test release with PyPI staging server as described in:
    https://hynek.me/articles/sharing-your-labor-of-love-pypi-quick-and-dirty/
 
@@ -32,14 +32,15 @@ Release Process
 
    # remove stale files or wheel might package them
    rm -r build dist
-   python setup.py sdist upload
-   python setup.py bdist_wheel upload
+   python setup.py sdist bdist_wheel
+   twine upload -r pypi dist/cloudbridge-1.0.0*
 
 6. Tag release and make a GitHub release.
 
 .. code-block:: bash
 
    git tag -a v1.0.0 -m "Release 1.0.0"
+   git push
    git push --tags
 
 7. Increment version number in ``cloudbridge/__init__.py`` to ``version-dev``

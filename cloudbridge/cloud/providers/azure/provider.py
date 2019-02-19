@@ -12,9 +12,10 @@ from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.base.helpers import get_env
 from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
 from cloudbridge.cloud.providers.azure.azure_client import AzureClient
-from cloudbridge.cloud.providers.azure.services \
-    import AzureComputeService, AzureNetworkingService, \
-    AzureSecurityService, AzureStorageService
+from cloudbridge.cloud.providers.azure.services import AzureComputeService
+from cloudbridge.cloud.providers.azure.services import AzureNetworkingService
+from cloudbridge.cloud.providers.azure.services import AzureSecurityService
+from cloudbridge.cloud.providers.azure.services import AzureStorageService
 
 log = logging.getLogger(__name__)
 

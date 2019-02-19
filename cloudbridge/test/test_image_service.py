@@ -1,5 +1,7 @@
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.interfaces import MachineImageState
-from cloudbridge.cloud.interfaces.resources import Instance, MachineImage
+from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.interfaces.resources import MachineImage
 
 from cloudbridge.test import helpers
 from cloudbridge.test.helpers import ProviderTestBase
@@ -10,14 +12,19 @@ class CloudImageServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
 
+    @helpers.skipIfNoService(['compute.images'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(self.provider.compute.images._service_event_pattern,
+                         "provider.compute.images",
+                         "Event pattern for {} service should be '{}', "
+                         "but found '{}'.".format("images",
+                                                  "provider.compute.images",
+                                                  self.provider.compute.images.
+                                                  _service_event_pattern))
+
     @helpers.skipIfNoService(['compute.images', 'networking.networks',
                               'compute.instances'])
     def test_create_and_list_image(self):
-        """
-        Create a new image and check whether that image can be listed.
-        This covers waiting till the image is ready, checking that the image
-        label is the expected one and whether list_images is functional.
-        """
         instance_label = "cb-crudimage-{0}".format(helpers.get_uuid())
         img_inst_label = "cb-crudimage-{0}".format(helpers.get_uuid())
 
@@ -50,8 +57,8 @@ class CloudImageServiceTestCase(ProviderTestBase):
 
         def create_instance_from_image(img):
             img_instance = None
-            with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                    img_instance)):
+            with cb_helpers.cleanup_action(
+                    lambda: helpers.cleanup_test_resources(img_instance)):
                 img_instance = self.provider.compute.instances.create(
                     img_inst_label, img,
                     helpers.get_provider_test_data(self.provider, 'vm_type'),
@@ -80,7 +87,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
                                 "private ip should"
                                 " contain a valid value")
 
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance)):
             subnet = helpers.get_or_create_default_subnet(
                 self.provider)

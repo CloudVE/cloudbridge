@@ -6,7 +6,8 @@ import ast
 import os
 import re
 
-from setuptools import find_packages, setup
+from setuptools import find_packages
+from setuptools import setup
 
 # Cannot use "from cloudbridge import get_version" because that would try to
 # import the six package which may not be installed yet.
@@ -19,27 +20,35 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
             break
 
 REQS_BASE = [
-    'bunch>=1.0.1',
     'six>=1.11',
     'tenacity>=4.12.0,<=5.0',
     'cachetools>=2.1.0',
-    'deprecated>=1.2.3'
+    'deprecated>=1.2.3',
+    'pyeventsystem'
 ]
-REQS_AWS = ['boto3<1.8.0']
+REQS_AWS = [
+    'boto3>=1.9.86'
+]
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
-REQS_AZURE = ['msrest>=0.5.4,<0.6',
-              'msrestazure==0.5.0',
-              'azure-common==1.1.14',
-              'azure-mgmt-devtestlabs==2.2.0',
-              'azure-mgmt-resource==2.0.0',
-              'azure-mgmt-compute==4.0.1',
-              'azure-mgmt-network>=2.0.1,<=2.1',
-              'azure-mgmt-storage==2.0.0',
-              'azure-storage-blob==1.3.1',
-              'azure-cosmosdb-table==1.0.4',
-              'pysftp==0.2.9']
+REQS_AZURE = [
+    'msrest>=0.5.4,<0.6',
+    'msrestazure==0.5.0',
+    'azure-common==1.1.14',
+    'azure-mgmt-devtestlabs==2.2.0',
+    'azure-mgmt-resource==2.0.0',
+    'azure-mgmt-compute==4.0.1',
+    'azure-mgmt-network>=2.0.1,<=2.1',
+    'azure-mgmt-storage==2.0.0',
+    'azure-storage-blob==1.3.1',
+    'azure-cosmosdb-table==1.0.4',
+    'pysftp==0.2.9'
+]
+REQS_GCP = [
+    'google-api-python-client',
+    'oauth2client'
+]
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0,<=0.17',
     'python-novaclient>=7.0.0,<=11.0',
@@ -49,7 +58,7 @@ REQS_OPENSTACK = [
     'python-neutronclient>=6.0.0,<=6.9',
     'python-keystoneclient>=3.13.0,<=3.17'
 ]
-REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_OPENSTACK
+REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_GCP + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
@@ -92,7 +101,6 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Programming Language :: Python :: Implementation :: PyPy'],
+        'Programming Language :: Python :: Implementation :: CPython'],
     test_suite="test"
 )

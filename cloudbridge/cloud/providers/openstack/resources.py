@@ -5,6 +5,8 @@ import inspect
 import ipaddress
 import logging
 import os
+import re
+
 try:
     from urllib.parse import urlparse
     from urllib.parse import urljoin
@@ -14,26 +16,17 @@ except ImportError:  # python 2
 
 from keystoneclient.v3.regions import Region
 
-from neutronclient.common.exceptions import PortNotFoundClient
-
 import novaclient.exceptions as novaex
 
-from openstack.exceptions import HttpException
-from openstack.exceptions import NotFoundException
-from openstack.exceptions import ResourceNotFound
-
 import swiftclient
-from swiftclient.service import SwiftService, SwiftUploadObject
+from swiftclient.service import SwiftService
+from swiftclient.service import SwiftUploadObject
 from swiftclient.utils import generate_temp_url
 
-import cloudbridge.cloud.base.helpers as cb_helpers
 from cloudbridge.cloud.base.resources import BaseAttachmentInfo
 from cloudbridge.cloud.base.resources import BaseBucket
-from cloudbridge.cloud.base.resources import BaseBucketContainer
 from cloudbridge.cloud.base.resources import BaseBucketObject
 from cloudbridge.cloud.base.resources import BaseFloatingIP
-from cloudbridge.cloud.base.resources import BaseFloatingIPContainer
-from cloudbridge.cloud.base.resources import BaseGatewayContainer
 from cloudbridge.cloud.base.resources import BaseInstance
 from cloudbridge.cloud.base.resources import BaseInternetGateway
 from cloudbridge.cloud.base.resources import BaseKeyPair
@@ -46,11 +39,8 @@ from cloudbridge.cloud.base.resources import BaseSnapshot
 from cloudbridge.cloud.base.resources import BaseSubnet
 from cloudbridge.cloud.base.resources import BaseVMFirewall
 from cloudbridge.cloud.base.resources import BaseVMFirewallRule
-from cloudbridge.cloud.base.resources import BaseVMFirewallRuleContainer
 from cloudbridge.cloud.base.resources import BaseVMType
 from cloudbridge.cloud.base.resources import BaseVolume
-from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import InstanceState
 from cloudbridge.cloud.interfaces.resources import MachineImageState
@@ -60,7 +50,12 @@ from cloudbridge.cloud.interfaces.resources import SnapshotState
 from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VolumeState
-from cloudbridge.cloud.providers.openstack import helpers as oshelpers
+
+from .subservices import OpenStackBucketObjectSubService
+from .subservices import OpenStackFloatingIPSubService
+from .subservices import OpenStackGatewaySubService
+from .subservices import OpenStackSubnetSubService
+from .subservices import OpenStackVMFirewallRuleSubService
 
 ONE_GIG = 1048576000  # in bytes
 FIVE_GIG = ONE_GIG * 5  # in bytes
@@ -157,7 +152,8 @@ class OpenStackMachineImage(BaseMachineImage):
         log.debug("Refreshing OpenStack Machine Image")
         image = self._provider.compute.images.get(self.id)
         if image:
-            self._os_image = image._os_image  # pylint:disable=protected-access
+            # pylint:disable=protected-access
+            self._os_image = image._os_image
         else:
             # The image no longer exists and cannot be refreshed.
             # set the status to unknown
@@ -368,17 +364,6 @@ class OpenStackInstance(BaseInstance):
         """
         self._os_instance.reboot()
 
-    def delete(self):
-        """
-        Permanently delete this instance.
-        """
-        # delete the port we created when launching
-        # Assumption: it's the first interface in the list
-        iface_list = self._os_instance.interface_list()
-        if iface_list:
-            self._provider.neutron.delete_port(iface_list[0].port_id)
-        self._os_instance.delete()
-
     @property
     def image_id(self):
         """
@@ -461,9 +446,7 @@ class OpenStackInstance(BaseInstance):
 
     def _get_fip(self, floating_ip):
         """Get a floating IP object based on the supplied ID."""
-        return OpenStackFloatingIP(
-            self._provider,
-            self._provider.os_conn.network.get_ip(floating_ip))
+        return self._provider.networking._floating_ips.get(floating_ip)
 
     def add_floating_ip(self, floating_ip):
         """
@@ -665,12 +648,6 @@ class OpenStackVolume(BaseVolume):
         return self._provider.storage.snapshots.create(
             label, self, description=description)
 
-    def delete(self):
-        """
-        Delete this volume.
-        """
-        self._volume.delete()
-
     @property
     def state(self):
         return OpenStackVolume.VOLUME_STATE_MAP.get(
@@ -684,6 +661,7 @@ class OpenStackVolume(BaseVolume):
         vol = self._provider.storage.volumes.get(
             self.id)
         if vol:
+            # pylint:disable=protected-access
             self._volume = vol._volume  # pylint:disable=protected-access
         else:
             # The volume no longer exists and cannot be refreshed.
@@ -766,17 +744,12 @@ class OpenStackSnapshot(BaseSnapshot):
         snap = self._provider.storage.snapshots.get(
             self.id)
         if snap:
-            self._snapshot = snap._snapshot  # pylint:disable=protected-access
+            # pylint:disable=protected-access
+            self._snapshot = snap._snapshot
         else:
             # The snapshot no longer exists and cannot be refreshed.
             # set the status to unknown
             self._snapshot.status = 'unknown'
-
-    def delete(self):
-        """
-        Delete this snapshot.
-        """
-        self._snapshot.delete()
 
     def create_volume(self, placement, size=None, volume_type=None, iops=None):
         """
@@ -790,50 +763,6 @@ class OpenStackSnapshot(BaseSnapshot):
             snapshot_id=self._snapshot.id)
         cb_vol = OpenStackVolume(self._provider, os_vol)
         return cb_vol
-
-
-class OpenStackGatewayContainer(BaseGatewayContainer):
-    """For OpenStack, an internet gateway is a just an 'external' network."""
-
-    def __init__(self, provider, network):
-        super(OpenStackGatewayContainer, self).__init__(provider, network)
-
-    def _check_fip_connectivity(self, external_net):
-        # Due to current limitations in OpenStack:
-        # https://bugs.launchpad.net/neutron/+bug/1743480, it's not
-        # possible to differentiate between floating ip networks and provider
-        # external networks. Therefore, we systematically step through
-        # all available networks and perform an assignment test to infer valid
-        # floating ip nets.
-        dummy_router = self._provider.networking.routers.create(
-            label='cb-conn-test-router', network=self._network)
-        with cb_helpers.cleanup_action(lambda: dummy_router.delete()):
-            try:
-                dummy_router.attach_gateway(external_net)
-                return True
-            except Exception:
-                return False
-
-    def get_or_create_inet_gateway(self):
-        """For OS, inet gtw is any net that has `external` property set."""
-        external_nets = (n for n in self._provider.networking.networks
-                         if n.external)
-        for net in external_nets:
-            if self._check_fip_connectivity(net):
-                return OpenStackInternetGateway(self._provider, net)
-        return None
-
-    def delete(self, gateway):
-        log.debug("Deleting OpenStack Gateway: %s", gateway)
-        gateway.delete()
-
-    def list(self, limit=None, marker=None):
-        log.debug("OpenStack listing of all current internet gateways")
-        igl = [OpenStackInternetGateway(self._provider, n)
-               for n in self._provider.networking.networks
-               if n.external and self._check_fip_connectivity(n)]
-        return ClientPagedResultList(self._provider, igl, limit=limit,
-                                     marker=marker)
 
 
 class OpenStackNetwork(BaseNetwork):
@@ -854,7 +783,8 @@ class OpenStackNetwork(BaseNetwork):
     def __init__(self, provider, network):
         super(OpenStackNetwork, self).__init__(provider)
         self._network = network
-        self._gateway_service = OpenStackGatewayContainer(provider, self)
+        self._gateway_service = OpenStackGatewaySubService(provider, self)
+        self._subnet_svc = OpenStackSubnetSubService(provider, self)
 
     @property
     def id(self):
@@ -869,7 +799,7 @@ class OpenStackNetwork(BaseNetwork):
         return self._network.get('name', None)
 
     @label.setter
-    def label(self, value):  # pylint:disable=arguments-differ
+    def label(self, value):
         """
         Set the network label.
         """
@@ -894,26 +824,9 @@ class OpenStackNetwork(BaseNetwork):
         # OpenStack does not define a CIDR block for networks
         return ''
 
-    def delete(self):
-        if not self.external and self.id in str(
-                self._provider.neutron.list_networks()):
-            # If there are ports associated with the network, it won't delete
-            ports = self._provider.neutron.list_ports(
-                network_id=self.id).get('ports', [])
-            for port in ports:
-                try:
-                    self._provider.neutron.delete_port(port.get('id'))
-                except PortNotFoundClient:
-                    # Ports could have already been deleted if instances
-                    # are terminated etc. so exceptions can be safely ignored
-                    pass
-            self._provider.neutron.delete_network(self.id)
-
     @property
     def subnets(self):
-        subnets = (self._provider.neutron.list_subnets(network_id=self.id)
-                   .get('subnets', []))
-        return [OpenStackSubnet(self._provider, subnet) for subnet in subnets]
+        return self._subnet_svc
 
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
@@ -922,8 +835,8 @@ class OpenStackNetwork(BaseNetwork):
             # pylint:disable=protected-access
             self._network = network._network
         else:
-            # subnet no longer exists
-            self._network.state = NetworkState.UNKNOWN
+            # Network no longer exists
+            self._network = {}
 
     @property
     def gateways(self):
@@ -976,10 +889,6 @@ class OpenStackSubnet(BaseSubnet):
         """
         return None
 
-    def delete(self):
-        if self.id in str(self._provider.neutron.list_subnets()):
-            self._provider.neutron.delete_subnet(self.id)
-
     @property
     def state(self):
         return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \
@@ -994,33 +903,6 @@ class OpenStackSubnet(BaseSubnet):
         else:
             # subnet no longer exists
             self._state = SubnetState.UNKNOWN
-
-
-class OpenStackFloatingIPContainer(BaseFloatingIPContainer):
-
-    def __init__(self, provider, gateway):
-        super(OpenStackFloatingIPContainer, self).__init__(provider, gateway)
-
-    def get(self, fip_id):
-        try:
-            return OpenStackFloatingIP(
-                self._provider, self._provider.os_conn.network.get_ip(fip_id))
-        except (ResourceNotFound, NotFoundException):
-            log.debug("Floating IP %s not found.", fip_id)
-            return None
-
-    def list(self, limit=None, marker=None):
-        fips = [OpenStackFloatingIP(self._provider, fip)
-                for fip in self._provider.os_conn.network.ips(
-                    floating_network_id=self.gateway.id
-                )]
-        return ClientPagedResultList(self._provider, fips,
-                                     limit=limit, marker=marker)
-
-    def create(self):
-        return OpenStackFloatingIP(
-            self._provider, self._provider.os_conn.network.create_ip(
-                floating_network_id=self.gateway.id))
 
 
 class OpenStackFloatingIP(BaseFloatingIP):
@@ -1045,16 +927,17 @@ class OpenStackFloatingIP(BaseFloatingIP):
     def in_use(self):
         return bool(self._ip.port_id)
 
-    def delete(self):
-        self._ip.delete(self._provider.os_conn.session)
-
     def refresh(self):
         net = self._provider.networking.networks.get(
             self._ip.floating_network_id)
-        gw = net.gateways.get_or_create_inet_gateway()
+        gw = net.gateways.get_or_create()
         fip = gw.floating_ips.get(self.id)
         # pylint:disable=protected-access
         self._ip = fip._ip
+
+    @property
+    def _gateway_id(self):
+        return self._ip.floating_network_id
 
 
 class OpenStackRouter(BaseRouter):
@@ -1065,7 +948,7 @@ class OpenStackRouter(BaseRouter):
 
     @property
     def id(self):
-        return self._router.get('id', None)
+        return getattr(self._router, 'id', None)
 
     @property
     def name(self):
@@ -1073,7 +956,7 @@ class OpenStackRouter(BaseRouter):
 
     @property
     def label(self):
-        return self._router.get('name', None)
+        return self._router.name
 
     @label.setter
     def label(self, value):  # pylint:disable=arguments-differ
@@ -1081,65 +964,60 @@ class OpenStackRouter(BaseRouter):
         Set the router label.
         """
         self.assert_valid_resource_label(value)
-        self._provider.neutron.update_router(
-            self.id, {'router': {'name': value or ""}})
-        self.refresh()
+        self._router = self._provider.os_conn.update_router(self.id, value)
 
     def refresh(self):
-        self._router = self._provider.neutron.show_router(self.id)['router']
+        self._router = self._provider.os_conn.get_router(self.id)
 
     @property
     def state(self):
-        if self._router.get('external_gateway_info'):
+        if self._router.external_gateway_info:
             return RouterState.ATTACHED
         return RouterState.DETACHED
 
     @property
     def network_id(self):
-        if self.state == RouterState.ATTACHED:
-            return self._router.get('external_gateway_info', {}).get(
-                'network_id', None)
+        ports = self._provider.os_conn.list_ports(
+            filters={'device_id': self.id})
+        if ports:
+            return ports[0].network_id
         return None
 
-    def delete(self):
-        self._provider.neutron.delete_router(self.id)
-
     def attach_subnet(self, subnet):
-        router_interface = {'subnet_id': subnet.id}
-        ret = self._provider.neutron.add_interface_router(
-            self.id, router_interface)
+        ret = self._provider.os_conn.add_router_interface(
+            self._router.toDict(), subnet.id)
         if subnet.id in ret.get('subnet_ids', ""):
             return True
         return False
 
     def detach_subnet(self, subnet):
-        router_interface = {'subnet_id': subnet.id}
-        ret = self._provider.neutron.remove_interface_router(
-            self.id, router_interface)
-        if subnet.id in ret.get('subnet_ids', ""):
+        ret = self._provider.os_conn.remove_router_interface(
+            self._router.toDict(), subnet.id)
+        if not ret or subnet.id not in ret.get('subnet_ids', ""):
             return True
         return False
 
     @property
     def subnets(self):
-        # A router and a subnet are linked via a port, so traverse all ports
-        # to find a list of subnets associated with the current router.
+        # A router and a subnet are linked via a port, so traverse ports
+        # associated with the current router to find a list of subnets
+        # associated with it.
         subnets = []
-        for prt in self._provider.neutron.list_ports().get('ports'):
-            if prt.get('device_id') == self.id and \
-               prt.get('device_owner') == 'network:router_interface':
-                for fixed_ip in prt.get('fixed_ips'):
-                    subnets.append(self._provider.networking.subnets.get(
-                        fixed_ip.get('subnet_id')))
+        for port in self._provider.os_conn.list_ports(
+                filters={'device_id': self.id}):
+            for fixed_ip in port.fixed_ips:
+                subnets.append(self._provider.networking.subnets.get(
+                    fixed_ip.get('subnet_id')))
         return subnets
 
     def attach_gateway(self, gateway):
-        self._provider.neutron.add_gateway_router(
-            self.id, {'network_id': gateway.id})
+        self._provider.os_conn.update_router(
+            self.id, ext_gateway_net_id=gateway.id)
 
     def detach_gateway(self, gateway):
-        self._provider.neutron.remove_gateway_router(
-            self.id).get('router', self._router)
+        # TODO: OpenStack SDK Connection object doesn't appear to have a method
+        # for detaching/clearing the external gateway.
+        self._provider.neutron.remove_gateway_router(self.id)
 
 
 class OpenStackInternetGateway(BaseInternetGateway):
@@ -1158,7 +1036,7 @@ class OpenStackInternetGateway(BaseInternetGateway):
             # pylint:disable=protected-access
             gateway_net = gateway_net._network
         self._gateway_net = gateway_net
-        self._fips_container = OpenStackFloatingIPContainer(provider, self)
+        self._fips_container = OpenStackFloatingIPSubService(provider, self)
 
     @property
     def id(self):
@@ -1187,10 +1065,6 @@ class OpenStackInternetGateway(BaseInternetGateway):
         return self.GATEWAY_STATE_MAP.get(
             self._gateway_net.state, GatewayState.UNKNOWN)
 
-    def delete(self):
-        """Do nothing on openstack"""
-        pass
-
     @property
     def floating_ips(self):
         return self._fips_container
@@ -1203,19 +1077,54 @@ class OpenStackKeyPair(BaseKeyPair):
 
 
 class OpenStackVMFirewall(BaseVMFirewall):
+    _network_id_tag = "CB-auto-associated-network-id: "
 
     def __init__(self, provider, vm_firewall):
         super(OpenStackVMFirewall, self).__init__(provider, vm_firewall)
-        self._rule_svc = OpenStackVMFirewallRuleContainer(provider, self)
+        self._rule_svc = OpenStackVMFirewallRuleSubService(provider, self)
 
     @property
     def network_id(self):
         """
-        OpenStack does not associate a SG with a network so default to None.
+        OpenStack does not associate a fw with a network so extract from desc.
 
-        :return: Always return ``None``.
+        :return: The network ID supplied when this firewall was created or
+                 `None` if ID cannot be identified.
         """
-        return None
+        # Extracting networking ID from description
+        exp = ".*\\[" + self._network_id_tag + "([^\\]]*)\\].*"
+        matches = re.match(exp, self._description)
+        if matches:
+            return matches.group(1)
+        # We generally simulate a network being associated with a firewall;
+        # however, because of some networking specificity in Nectar, we must
+        # allow `None` return value as well in case an ID was not discovered.
+        else:
+            return None
+
+    @property
+    def _description(self):
+        return self._vm_firewall.description or ""
+
+    @property
+    def description(self):
+        desc_fragment = " [{}{}]".format(self._network_id_tag,
+                                         self.network_id)
+        desc = self._description
+        if desc:
+            return desc.replace(desc_fragment, "")
+        else:
+            return None
+
+    @description.setter
+    def description(self, value):
+        if not value:
+            value = ""
+        value += " [{}{}]".format(self._network_id_tag,
+                                  self.network_id)
+        self._provider.os_conn.network.update_security_group(
+            self.id, description=value)
+        self.refresh()
 
     @property
     def name(self):
@@ -1240,9 +1149,6 @@ class OpenStackVMFirewall(BaseVMFirewall):
     def rules(self):
         return self._rule_svc
 
-    def delete(self):
-        return self._vm_firewall.delete(self._provider.os_conn.session)
-
     def refresh(self):
         self._vm_firewall = self._provider.os_conn.network.get_security_group(
             self.id)
@@ -1253,55 +1159,6 @@ class OpenStackVMFirewall(BaseVMFirewall):
         json_rules = [r.to_json() for r in self.rules]
         js['rules'] = json_rules
         return js
-
-
-class OpenStackVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
-
-    def __init__(self, provider, firewall):
-        super(OpenStackVMFirewallRuleContainer, self).__init__(
-            provider, firewall)
-
-    def list(self, limit=None, marker=None):
-        # pylint:disable=protected-access
-        rules = [OpenStackVMFirewallRule(self.firewall, r)
-                 for r in self.firewall._vm_firewall.security_group_rules]
-        return ClientPagedResultList(self._provider, rules,
-                                     limit=limit, marker=marker)
-
-    def create(self,  direction, protocol=None, from_port=None,
-               to_port=None, cidr=None, src_dest_fw=None):
-        src_dest_fw_id = (src_dest_fw.id if isinstance(src_dest_fw,
-                                                       OpenStackVMFirewall)
-                          else src_dest_fw)
-
-        try:
-            if direction == TrafficDirection.INBOUND:
-                os_direction = 'ingress'
-            elif direction == TrafficDirection.OUTBOUND:
-                os_direction = 'egress'
-            else:
-                raise InvalidValueException("direction", direction)
-            # pylint:disable=protected-access
-            rule = self._provider.os_conn.network.create_security_group_rule(
-                security_group_id=self.firewall.id,
-                direction=os_direction,
-                port_range_max=to_port,
-                port_range_min=from_port,
-                protocol=protocol,
-                remote_ip_prefix=cidr,
-                remote_group_id=src_dest_fw_id)
-            self.firewall.refresh()
-            return OpenStackVMFirewallRule(self.firewall, rule.to_dict())
-        except HttpException as e:
-            self.firewall.refresh()
-            # 409=Conflict, raised for duplicate rule
-            if e.status_code == 409:
-                existing = self.find(direction=direction, protocol=protocol,
-                                     from_port=from_port, to_port=to_port,
-                                     cidr=cidr, src_dest_fw_id=src_dest_fw_id)
-                return existing[0]
-            else:
-                raise e
 
 
 class OpenStackVMFirewallRule(BaseVMFirewallRule):
@@ -1352,10 +1209,6 @@ class OpenStackVMFirewallRule(BaseVMFirewallRule):
         if fw_id:
             return self._provider.security.vm_firewalls.get(fw_id)
         return None
-
-    def delete(self):
-        self._provider.os_conn.network.delete_security_group_rule(self.id)
-        self.firewall.refresh()
 
 
 class OpenStackBucketObject(BaseBucketObject):
@@ -1477,7 +1330,8 @@ class OpenStackBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(OpenStackBucket, self).__init__(provider)
         self._bucket = bucket
-        self._object_container = OpenStackBucketContainer(provider, self)
+        self._object_container = OpenStackBucketObjectSubService(provider,
+                                                                 self)
 
     @property
     def id(self):
@@ -1490,57 +1344,3 @@ class OpenStackBucket(BaseBucket):
     @property
     def objects(self):
         return self._object_container
-
-    def delete(self, delete_contents=False):
-        self._provider.swift.delete_container(self.name)
-
-
-class OpenStackBucketContainer(BaseBucketContainer):
-
-    def __init__(self, provider, bucket):
-        super(OpenStackBucketContainer, self).__init__(provider, bucket)
-
-    def get(self, name):
-        """
-        Retrieve a given object from this bucket.
-        """
-        # Swift always returns a reference for the container first,
-        # followed by a list containing references to objects.
-        _, object_list = self._provider.swift.get_container(
-            self.bucket.name, prefix=name)
-        # Loop through list of objects looking for an exact name vs. a prefix
-        for obj in object_list:
-            if obj.get('name') == name:
-                return OpenStackBucketObject(self._provider,
-                                             self.bucket,
-                                             obj)
-        return None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-
-        :rtype: BucketObject
-        :return: List of all available BucketObjects within this bucket.
-        """
-        _, object_list = self._provider.swift.get_container(
-            self.bucket.name,
-            limit=oshelpers.os_result_limit(self._provider, limit),
-            marker=marker, prefix=prefix)
-        cb_objects = [OpenStackBucketObject(
-            self._provider, self.bucket, obj) for obj in object_list]
-
-        return oshelpers.to_server_paged_list(
-            self._provider,
-            cb_objects,
-            limit)
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
-
-    def create(self, object_name):
-        self._provider.swift.put_object(self.bucket.name, object_name, None)
-        return self.get(object_name)

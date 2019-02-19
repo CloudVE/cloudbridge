@@ -96,12 +96,14 @@ class BotoGenericService(object):
             if sr.resource.model.name == collection_model.resource.model.name)
         return getattr(self.boto_conn, resource_model.name)
 
-    def get(self, resource_id):
+    def get_raw(self, resource_id):
         """
         Returns a single resource.
 
         :type resource_id: ``str``
         :param resource_id: ID of the boto resource to fetch
+
+        :returns An unwrapped AWS resource
         """
         try:
             log.debug("Retrieving resource: %s with id: %s",
@@ -109,7 +111,7 @@ class BotoGenericService(object):
             obj = self.boto_resource(resource_id)
             obj.load()
             log.debug("Successfully Retrieved: %s", obj)
-            return self.cb_resource(self.provider, obj)
+            return obj
         except ClientError as exc:
             error_code = exc.response['Error']['Code']
             if any(status in error_code for status in
@@ -118,6 +120,21 @@ class BotoGenericService(object):
                 return None
             else:
                 raise exc
+
+    def get(self, resource_id):
+        """
+        Returns a single resource.
+
+        :type resource_id: ``str``
+        :param resource_id: ID of the boto resource to fetch
+
+        :returns A CloudBridge wrapped resource
+        """
+        aws_res = self.get_raw(resource_id)
+        if aws_res:
+            return self.cb_resource(self.provider, aws_res)
+        else:
+            return None
 
     def _get_list_operation(self):
         """

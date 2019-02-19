@@ -8,25 +8,58 @@ from azure.mgmt.compute.models import DiskCreateOption
 from msrestazure.azure_exceptions import CloudError
 
 import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.resources import ClientPagedResultList, \
-    ServerPagedResultList
-from cloudbridge.cloud.base.services import BaseBucketService, \
-    BaseComputeService, \
-    BaseImageService, BaseInstanceService, BaseKeyPairService, \
-    BaseNetworkService, BaseNetworkingService, BaseRegionService, \
-    BaseRouterService, BaseSecurityService, BaseSnapshotService, \
-    BaseStorageService, BaseSubnetService, BaseVMFirewallService, \
-    BaseVMTypeService, BaseVolumeService
-from cloudbridge.cloud.interfaces.exceptions import \
-    DuplicateResourceException, InvalidValueException
-from cloudbridge.cloud.interfaces.resources import MachineImage, \
-    Network, PlacementZone, Snapshot, Subnet, VMFirewall, VMType, Volume
+from cloudbridge.cloud.base.middleware import dispatch
+from cloudbridge.cloud.base.resources import ClientPagedResultList
+from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.cloud.base.services import BaseBucketObjectService
+from cloudbridge.cloud.base.services import BaseBucketService
+from cloudbridge.cloud.base.services import BaseComputeService
+from cloudbridge.cloud.base.services import BaseFloatingIPService
+from cloudbridge.cloud.base.services import BaseGatewayService
+from cloudbridge.cloud.base.services import BaseImageService
+from cloudbridge.cloud.base.services import BaseInstanceService
+from cloudbridge.cloud.base.services import BaseKeyPairService
+from cloudbridge.cloud.base.services import BaseNetworkService
+from cloudbridge.cloud.base.services import BaseNetworkingService
+from cloudbridge.cloud.base.services import BaseRegionService
+from cloudbridge.cloud.base.services import BaseRouterService
+from cloudbridge.cloud.base.services import BaseSecurityService
+from cloudbridge.cloud.base.services import BaseSnapshotService
+from cloudbridge.cloud.base.services import BaseStorageService
+from cloudbridge.cloud.base.services import BaseSubnetService
+from cloudbridge.cloud.base.services import BaseVMFirewallRuleService
+from cloudbridge.cloud.base.services import BaseVMFirewallService
+from cloudbridge.cloud.base.services import BaseVMTypeService
+from cloudbridge.cloud.base.services import BaseVolumeService
+from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
+from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
+from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.cloud.interfaces.resources import Network
+from cloudbridge.cloud.interfaces.resources import PlacementZone
+from cloudbridge.cloud.interfaces.resources import Snapshot
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
+from cloudbridge.cloud.interfaces.resources import VMFirewall
+from cloudbridge.cloud.interfaces.resources import VMType
+from cloudbridge.cloud.interfaces.resources import Volume
 
-from .resources import AzureBucket, \
-    AzureInstance, AzureKeyPair, \
-    AzureLaunchConfig, AzureMachineImage, AzureNetwork, \
-    AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet, \
-    AzureVMFirewall, AzureVMType, AzureVolume
+from .resources import AzureBucket
+from .resources import AzureBucketObject
+from .resources import AzureFloatingIP
+from .resources import AzureInstance
+from .resources import AzureInternetGateway
+from .resources import AzureKeyPair
+from .resources import AzureLaunchConfig
+from .resources import AzureMachineImage
+from .resources import AzureNetwork
+from .resources import AzureRegion
+from .resources import AzureRouter
+from .resources import AzureSnapshot
+from .resources import AzureSubnet
+from .resources import AzureVMFirewall
+from .resources import AzureVMFirewallRule
+from .resources import AzureVMType
+from .resources import AzureVolume
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +71,7 @@ class AzureSecurityService(BaseSecurityService):
         # Initialize provider services
         self._key_pairs = AzureKeyPairService(provider)
         self._vm_firewalls = AzureVMFirewallService(provider)
+        self._vm_firewall_rule_svc = AzureVMFirewallRuleService(provider)
 
     @property
     def key_pairs(self):
@@ -47,31 +81,43 @@ class AzureSecurityService(BaseSecurityService):
     def vm_firewalls(self):
         return self._vm_firewalls
 
+    @property
+    def _vm_firewall_rules(self):
+        return self._vm_firewall_rule_svc
+
 
 class AzureVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
         super(AzureVMFirewallService, self).__init__(provider)
 
-    def get(self, fw_id):
+    @dispatch(event="provider.security.vm_firewalls.get",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def get(self, vm_firewall_id):
         try:
-            fws = self.provider.azure_client.get_vm_firewall(fw_id)
+            fws = self.provider.azure_client.get_vm_firewall(vm_firewall_id)
             return AzureVMFirewall(self.provider, fws)
         except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
 
+    @dispatch(event="provider.security.vm_firewalls.list",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         fws = [AzureVMFirewall(self.provider, fw)
                for fw in self.provider.azure_client.list_vm_firewall()]
         return ClientPagedResultList(self.provider, fws, limit, marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    def create(self, label, network=None, description=None):
+    @dispatch(event="provider.security.vm_firewalls.create",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, network, description=None):
         AzureVMFirewall.assert_valid_resource_label(label)
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
+        net = network.id if isinstance(network, Network) else network
         parameters = {"location": self.provider.region_name,
-                      "tags": {'Label': label}}
+                      "tags": {'Label': label,
+                               'network_id': net}}
 
         if description:
             parameters['tags'].update(Description=description)
@@ -107,22 +153,94 @@ class AzureVMFirewallService(BaseVMFirewallService):
         cb_fw = AzureVMFirewall(self.provider, fw)
         return cb_fw
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['label']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+    @dispatch(event="provider.security.vm_firewalls.delete",
+              priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    def delete(self, vm_firewall):
+        fw_id = (vm_firewall.id if isinstance(vm_firewall, AzureVMFirewall)
+                 else vm_firewall)
+        self.provider.azure_client.delete_vm_firewall(fw_id)
 
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
 
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
+class AzureVMFirewallRuleService(BaseVMFirewallRuleService):
 
-    def delete(self, group_id):
-        self.provider.azure_client.delete_vm_firewall(group_id)
+    def __init__(self, provider):
+        super(AzureVMFirewallRuleService, self).__init__(provider)
+
+    @dispatch(event="provider.security.vm_firewall_rules.list",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def list(self, firewall, limit=None, marker=None):
+        # Filter out firewall rules with priority < 3500 because values
+        # between 3500 and 4096 are assumed to be owned by cloudbridge
+        # default rules.
+        # pylint:disable=protected-access
+        rules = [AzureVMFirewallRule(firewall, rule) for rule
+                 in firewall._vm_firewall.security_rules
+                 if rule.priority < 3500]
+        return ClientPagedResultList(self.provider, rules,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.security.vm_firewall_rules.create",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def create(self, firewall, direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        if protocol and from_port and to_port:
+            return self._create_rule(firewall, direction, protocol, from_port,
+                                     to_port, cidr)
+        elif src_dest_fw:
+            result = None
+            fw = (self.provider.security.vm_firewalls.get(src_dest_fw)
+                  if isinstance(src_dest_fw, str) else src_dest_fw)
+            for rule in fw.rules:
+                result = self._create_rule(
+                    rule.direction, rule.protocol, rule.from_port,
+                    rule.to_port, rule.cidr)
+            return result
+        else:
+            return None
+
+    def _create_rule(self, firewall, direction, protocol,
+                     from_port, to_port, cidr):
+
+        # If cidr is None, default values is set as 0.0.0.0/0
+        if not cidr:
+            cidr = '0.0.0.0/0'
+
+        count = len(firewall._vm_firewall.security_rules) + 1
+        rule_name = "cb-rule-" + str(count)
+        priority = 1000 + count
+        destination_port_range = str(from_port) + "-" + str(to_port)
+        source_port_range = '*'
+        destination_address_prefix = "*"
+        access = "Allow"
+        direction = ("Inbound" if direction == TrafficDirection.INBOUND
+                     else "Outbound")
+        parameters = {"priority": priority,
+                      "protocol": protocol,
+                      "source_port_range": source_port_range,
+                      "source_address_prefix": cidr,
+                      "destination_port_range": destination_port_range,
+                      "destination_address_prefix": destination_address_prefix,
+                      "access": access,
+                      "direction": direction}
+        result = self.provider.azure_client. \
+            create_vm_firewall_rule(firewall.id,
+                                    rule_name, parameters)
+        # pylint:disable=protected-access
+        firewall._vm_firewall.security_rules.append(result)
+        return AzureVMFirewallRule(firewall, result)
+
+    @dispatch(event="provider.security.vm_firewall_rules.delete",
+              priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    def delete(self, firewall, rule):
+        rule_id = rule.id if isinstance(rule, AzureVMFirewallRule) else rule
+        fw_name = firewall.name
+        self.provider.azure_client. \
+            delete_vm_firewall_rule(rule_id, fw_name)
+        for i, o in enumerate(firewall._vm_firewall.security_rules):
+            if o.id == rule_id:
+                # pylint:disable=protected-access
+                del firewall._vm_firewall.security_rules[i]
+                break
 
 
 class AzureKeyPairService(BaseKeyPairService):
@@ -131,6 +249,8 @@ class AzureKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(AzureKeyPairService, self).__init__(provider)
 
+    @dispatch(event="provider.security.key_pairs.get",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def get(self, key_pair_id):
         try:
             key_pair = self.provider.azure_client.\
@@ -140,9 +260,12 @@ class AzureKeyPairService(BaseKeyPairService):
                 return AzureKeyPair(self.provider, key_pair)
             return None
         except AzureException as error:
-            log.exception(error)
+            log.debug("KeyPair %s was not found.", key_pair_id)
+            log.debug(error)
             return None
 
+    @dispatch(event="provider.security.key_pairs.list",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         key_pairs, resume_marker = self.provider.azure_client.list_public_keys(
             AzureKeyPairService.PARTITION_KEY, marker=marker,
@@ -154,6 +277,8 @@ class AzureKeyPairService(BaseKeyPairService):
                                      supports_total=False,
                                      data=results)
 
+    @dispatch(event="provider.security.key_pairs.find",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -161,16 +286,17 @@ class AzureKeyPairService(BaseKeyPairService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
+    @dispatch(event="provider.security.key_pairs.create",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def create(self, name, public_key_material=None):
         AzureKeyPair.assert_valid_resource_name(name)
-
         key_pair = self.get(name)
 
         if key_pair:
@@ -193,58 +319,14 @@ class AzureKeyPairService(BaseKeyPairService):
         key_pair.material = private_key
         return key_pair
 
-
-class AzureBucketService(BaseBucketService):
-    def __init__(self, provider):
-        super(AzureBucketService, self).__init__(provider)
-
-    def get(self, bucket_id):
-        """
-        Returns a bucket given its ID. Returns ``None`` if the bucket
-        does not exist.
-        """
-        try:
-            bucket = self.provider.azure_client.get_container(bucket_id)
-            return AzureBucket(self.provider, bucket)
-        except AzureException as error:
-            log.exception(error)
-            return None
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
-    def list(self, limit=None, marker=None):
-        """
-        List all containers.
-        """
-        buckets, resume_marker = self.provider.azure_client.list_containers(
-            limit=limit or self.provider.config.default_result_limit,
-            marker=marker)
-        results = [AzureBucket(self.provider, bucket)
-                   for bucket in buckets]
-        return ServerPagedResultList(is_truncated=resume_marker,
-                                     marker=resume_marker,
-                                     supports_total=False,
-                                     data=results)
-
-    def create(self, name, location=None):
-        """
-        Create a new bucket.
-        """
-        AzureBucket.assert_valid_resource_name(name)
-        bucket = self.provider.azure_client.create_container(name)
-        return AzureBucket(self.provider, bucket)
+    @dispatch(event="provider.security.key_pairs.delete",
+              priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    def delete(self, key_pair):
+        key_pair = (key_pair if isinstance(key_pair, AzureKeyPair) else
+                    self.get(key_pair))
+        if key_pair:
+            # pylint:disable=protected-access
+            self.provider.azure_client.delete_public_key(key_pair._key_pair)
 
 
 class AzureStorageService(BaseStorageService):
@@ -255,6 +337,7 @@ class AzureStorageService(BaseStorageService):
         self._volume_svc = AzureVolumeService(self.provider)
         self._snapshot_svc = AzureSnapshotService(self.provider)
         self._bucket_svc = AzureBucketService(self.provider)
+        self._bucket_obj_svc = AzureBucketObjectService(self.provider)
 
     @property
     def volumes(self):
@@ -268,15 +351,18 @@ class AzureStorageService(BaseStorageService):
     def buckets(self):
         return self._bucket_svc
 
+    @property
+    def _bucket_objects(self):
+        return self._bucket_obj_svc
+
 
 class AzureVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(AzureVolumeService, self).__init__(provider)
 
+    @dispatch(event="provider.storage.volumes.get",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
-        """
-        Returns a volume given its id.
-        """
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
@@ -285,6 +371,8 @@ class AzureVolumeService(BaseVolumeService):
             log.exception(cloud_error)
             return None
 
+    @dispatch(event="provider.storage.volumes.find",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
         filters = ['label']
@@ -292,27 +380,24 @@ class AzureVolumeService(BaseVolumeService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
+    @dispatch(event="provider.storage.volumes.list",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        """
-        List all volumes.
-        """
         azure_vols = self.provider.azure_client.list_disks()
         cb_vols = [AzureVolume(self.provider, vol) for vol in azure_vols]
         return ClientPagedResultList(self.provider, cb_vols,
                                      limit=limit, marker=marker)
 
-    def create(self, label, size, zone=None, description=None,
-               snapshot=None):
-        """
-        Creates a new volume.
-        """
+    @dispatch(event="provider.storage.volumes.create",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, size, zone, snapshot=None, description=None):
         AzureVolume.assert_valid_resource_label(label)
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         tags = {'Label': label}
@@ -357,50 +442,56 @@ class AzureVolumeService(BaseVolumeService):
 
         return cb_vol
 
+    @dispatch(event="provider.storage.volumes.delete",
+              priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    def delete(self, volume_id):
+        vol_id = (volume_id.id if isinstance(volume_id, AzureVolume)
+                  else volume_id)
+        self.provider.azure_client.delete_disk(vol_id)
+
 
 class AzureSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(AzureSnapshotService, self).__init__(provider)
 
-    def get(self, ss_id):
-        """
-        Returns a snapshot given its id.
-        """
+    @dispatch(event="provider.storage.snapshots.get",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def get(self, snapshot_id):
         try:
-            snapshot = self.provider.azure_client.get_snapshot(ss_id)
+            snapshot = self.provider.azure_client.get_snapshot(snapshot_id)
             return AzureSnapshot(self.provider, snapshot)
         except (CloudError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
 
+    @dispatch(event="provider.storage.snapshots.find",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
-        filters = ['name', 'label']
+        filters = ['label']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
+    @dispatch(event="provider.storage.snapshots.list",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        """
-               List all snapshots.
-        """
         snaps = [AzureSnapshot(self.provider, obj)
                  for obj in
                  self.provider.azure_client.list_snapshots()]
         return ClientPagedResultList(self.provider, snaps, limit, marker)
 
+    @dispatch(event="provider.storage.snapshots.create",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
-        """
-        Creates a new snapshot of a given volume.
-        """
         AzureSnapshot.assert_valid_resource_label(label)
         snapshot_name = AzureSnapshot._generate_name_from_label(label,
                                                                 "cb-snap")
@@ -424,6 +515,104 @@ class AzureSnapshotService(BaseSnapshotService):
         azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,
                                                                 params)
         return AzureSnapshot(self.provider, azure_snap)
+
+    @dispatch(event="provider.storage.snapshots.delete",
+              priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    def delete(self, snapshot_id):
+        snap_id = (snapshot_id.id if isinstance(snapshot_id, AzureSnapshot)
+                   else snapshot_id)
+        self.provider.azure_client.delete_snapshot(snap_id)
+
+
+class AzureBucketService(BaseBucketService):
+    def __init__(self, provider):
+        super(AzureBucketService, self).__init__(provider)
+
+    @dispatch(event="provider.storage.buckets.get",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def get(self, bucket_id):
+        """
+        Returns a bucket given its ID. Returns ``None`` if the bucket
+        does not exist.
+        """
+        try:
+            bucket = self.provider.azure_client.get_container(bucket_id)
+            return AzureBucket(self.provider, bucket)
+        except AzureException as error:
+            log.exception(error)
+            return None
+
+    @dispatch(event="provider.storage.buckets.list",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
+        buckets = [AzureBucket(self.provider, bucket)
+                   for bucket
+                   in self.provider.azure_client.list_containers()[0]]
+        return ClientPagedResultList(self.provider, buckets,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.storage.buckets.create",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, location=None):
+        """
+        Create a new bucket.
+        """
+        AzureBucket.assert_valid_resource_name(name)
+        bucket = self.provider.azure_client.create_container(name)
+        return AzureBucket(self.provider, bucket)
+
+    @dispatch(event="provider.storage.buckets.delete",
+              priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    def delete(self, bucket):
+        """
+        Delete this bucket.
+        """
+        b_id = bucket.id if isinstance(bucket, AzureBucket) else bucket
+        self.provider.azure_client.delete_container(b_id)
+
+
+class AzureBucketObjectService(BaseBucketObjectService):
+    def __init__(self, provider):
+        super(AzureBucketObjectService, self).__init__(provider)
+
+    def get(self, bucket, object_id):
+        """
+        Retrieve a given object from this bucket.
+        """
+        try:
+            obj = self.provider.azure_client.get_blob(bucket.name,
+                                                      object_id)
+            return AzureBucketObject(self.provider, bucket, obj)
+        except AzureException as azureEx:
+            log.exception(azureEx)
+            return None
+
+    def list(self, bucket, limit=None, marker=None, prefix=None):
+        """
+        List all objects within this bucket.
+
+        :rtype: BucketObject
+        :return: List of all available BucketObjects within this bucket.
+        """
+        objects = [AzureBucketObject(self.provider, bucket, obj)
+                   for obj in
+                   self.provider.azure_client.list_blobs(
+                       bucket.name, prefix=prefix)]
+        return ClientPagedResultList(self.provider, objects,
+                                     limit=limit, marker=marker)
+
+    def find(self, bucket, **kwargs):
+        obj_list = [AzureBucketObject(self.provider, bucket, obj)
+                    for obj in
+                    self.provider.azure_client.list_blobs(bucket.name)]
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self.provider, list(matches))
+
+    def create(self, bucket, name):
+        self.provider.azure_client.create_blob_from_text(
+            bucket.name, name, '')
+        return self.get(bucket, name)
 
 
 class AzureComputeService(BaseComputeService):
@@ -451,16 +640,198 @@ class AzureComputeService(BaseComputeService):
         return self._region_svc
 
 
+class AzureImageService(BaseImageService):
+    def __init__(self, provider):
+        super(AzureImageService, self).__init__(provider)
+
+    def get(self, image_id):
+        """
+        Returns an Image given its id
+        """
+        try:
+            image = self.provider.azure_client.get_image(image_id)
+            return AzureMachineImage(self.provider, image)
+        except (CloudError, InvalidValueException) as cloud_error:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloud_error)
+            return None
+
+    def find(self, **kwargs):
+        obj_list = self
+        filters = ['label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+
+        # All kwargs should have been popped at this time.
+        if len(kwargs) > 0:
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
+
+        return ClientPagedResultList(self.provider,
+                                     matches if matches else [])
+
+    def list(self, filter_by_owner=True, limit=None, marker=None):
+        """
+        List all images.
+        """
+        azure_images = self.provider.azure_client.list_images()
+        azure_gallery_refs = self.provider.azure_client.list_gallery_refs() \
+            if not filter_by_owner else []
+        cb_images = [AzureMachineImage(self.provider, img)
+                     for img in azure_images + azure_gallery_refs]
+        return ClientPagedResultList(self.provider, cb_images,
+                                     limit=limit, marker=marker)
+
+
 class AzureInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(AzureInstanceService, self).__init__(provider)
 
-    def create(self, label, image, vm_type, subnet=None, zone=None,
+    def _resolve_launch_options(self, inst_name, subnet=None, zone_id=None,
+                                vm_firewalls=None):
+        if subnet:
+            # subnet's zone takes precedence
+            zone_id = subnet.zone.id
+        vm_firewall_id = None
+
+        if isinstance(vm_firewalls, list) and len(vm_firewalls) > 0:
+
+            if isinstance(vm_firewalls[0], VMFirewall):
+                vm_firewalls_ids = [fw.id for fw in vm_firewalls]
+                vm_firewall_id = vm_firewalls[0].resource_id
+            else:
+                vm_firewalls_ids = vm_firewalls
+                vm_firewall = self.provider.security.\
+                    vm_firewalls.get(vm_firewalls[0])
+                vm_firewall_id = vm_firewall.resource_id
+
+            if len(vm_firewalls) > 1:
+                new_fw = self.provider.security.vm_firewalls.\
+                    create(label='{0}-fw'.format(inst_name),
+                           description='Merge vm firewall {0}'.
+                           format(','.join(vm_firewalls_ids)))
+
+                for fw in vm_firewalls:
+                    new_fw.add_rule(src_dest_fw=fw)
+
+                vm_firewall_id = new_fw.resource_id
+
+        return subnet.resource_id, zone_id, vm_firewall_id
+
+    def _create_storage_profile(self, image, launch_config, instance_name,
+                                zone_id):
+
+        if image.is_gallery_image:
+            # pylint:disable=protected-access
+            reference = image._image.as_dict()
+            image_ref = {
+                'publisher': reference['publisher'],
+                'offer': reference['offer'],
+                'sku': reference['sku'],
+                'version': reference['version']
+            }
+        else:
+            image_ref = {
+                'id': image.resource_id
+            }
+
+        storage_profile = {
+            'image_reference': image_ref,
+            "os_disk": {
+                "name": instance_name + '_os_disk',
+                "create_option": DiskCreateOption.from_image
+            },
+        }
+
+        if launch_config:
+            data_disks, root_disk_size = self._process_block_device_mappings(
+                launch_config, instance_name, zone_id)
+            if data_disks:
+                storage_profile['data_disks'] = data_disks
+            if root_disk_size:
+                storage_profile['os_disk']['disk_size_gb'] = root_disk_size
+
+        return storage_profile
+
+    def _process_block_device_mappings(self, launch_config,
+                                       vm_name, zone=None):
+        """
+        Processes block device mapping information
+        and returns a Data disk dictionary list. If new volumes
+        are requested (source is None and destination is VOLUME), they will be
+        created and the relevant volume ids included in the mapping.
+        """
+        data_disks = []
+        root_disk_size = None
+
+        def append_disk(disk_def, device_no, delete_on_terminate):
+            # In azure, there is no option to specify terminate disks
+            # (similar to AWS delete_on_terminate) on VM delete.
+            # This method uses the azure tags functionality to store
+            # the  delete_on_terminate option when the virtual machine
+            # is deleted, we parse the tags and delete accordingly
+            disk_def['lun'] = device_no
+            disk_def['tags'] = {
+                'delete_on_terminate': delete_on_terminate
+            }
+            data_disks.append(disk_def)
+
+        for device_no, device in enumerate(launch_config.block_devices):
+            if device.is_volume:
+                if device.is_root:
+                    root_disk_size = device.size
+                else:
+                    # In azure, os disk automatically created,
+                    # we are ignoring the root disk, if specified
+                    if isinstance(device.source, Snapshot):
+                        snapshot_vol = device.source.create_volume()
+                        disk_def = {
+                            # pylint:disable=protected-access
+                            'name': snapshot_vol._volume.name,
+                            'create_option': DiskCreateOption.attach,
+                            'managed_disk': {
+                                'id': snapshot_vol.id
+                            }
+                        }
+                    elif isinstance(device.source, Volume):
+                        disk_def = {
+                            # pylint:disable=protected-access
+                            'name': device.source._volume.name,
+                            'create_option': DiskCreateOption.attach,
+                            'managed_disk': {
+                                'id': device.source.id
+                            }
+                        }
+                    elif isinstance(device.source, MachineImage):
+                        disk_def = {
+                            # pylint:disable=protected-access
+                            'name': device.source._volume.name,
+                            'create_option': DiskCreateOption.from_image,
+                            'source_resource_id': device.source.id
+                        }
+                    else:
+                        disk_def = {
+                            # pylint:disable=protected-access
+                            'create_option': DiskCreateOption.empty,
+                            'disk_size_gb': device.size
+                        }
+                    append_disk(disk_def, device_no,
+                                device.delete_on_terminate)
+            else:  # device is ephemeral
+                # in azure we cannot add the ephemeral disks explicitly
+                pass
+
+        return data_disks, root_disk_size
+
+    def create_launch_config(self):
+        return AzureLaunchConfig(self.provider)
+
+    @dispatch(event="provider.compute.instances.create",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
-
         AzureInstance.assert_valid_resource_label(label)
-
         instance_name = AzureInstance._generate_name_from_label(label,
                                                                 "cb-ins")
 
@@ -590,144 +961,8 @@ class AzureInstanceService(BaseInstanceService):
                 temp_key_pair.delete()
         return AzureInstance(self.provider, vm)
 
-    def _resolve_launch_options(self, inst_name, subnet=None, zone_id=None,
-                                vm_firewalls=None):
-        if subnet:
-            # subnet's zone takes precedence
-            zone_id = subnet.zone.id
-        vm_firewall_id = None
-
-        if isinstance(vm_firewalls, list) and len(vm_firewalls) > 0:
-
-            if isinstance(vm_firewalls[0], VMFirewall):
-                vm_firewalls_ids = [fw.id for fw in vm_firewalls]
-                vm_firewall_id = vm_firewalls[0].resource_id
-            else:
-                vm_firewalls_ids = vm_firewalls
-                vm_firewall = self.provider.security.\
-                    vm_firewalls.get(vm_firewalls[0])
-                vm_firewall_id = vm_firewall.resource_id
-
-            if len(vm_firewalls) > 1:
-                new_fw = self.provider.security.vm_firewalls.\
-                    create(label='{0}-fw'.format(inst_name),
-                           description='Merge vm firewall {0}'.
-                           format(','.join(vm_firewalls_ids)))
-
-                for fw in vm_firewalls:
-                    new_fw.add_rule(src_dest_fw=fw)
-
-                vm_firewall_id = new_fw.resource_id
-
-        return subnet.resource_id, zone_id, vm_firewall_id
-
-    def _create_storage_profile(self, image, launch_config, instance_name,
-                                zone_id):
-
-        if image.is_gallery_image:
-            reference = image._image.as_dict()
-            image_ref = {
-                'publisher': reference['publisher'],
-                'offer': reference['offer'],
-                'sku': reference['sku'],
-                'version': reference['version']
-            }
-        else:
-            image_ref = {
-                'id': image.resource_id
-            }
-
-        storage_profile = {
-            'image_reference': image_ref,
-            "os_disk": {
-                "name": instance_name + '_os_disk',
-                "create_option": DiskCreateOption.from_image
-            },
-        }
-
-        if launch_config:
-            data_disks, root_disk_size = self._process_block_device_mappings(
-                launch_config, instance_name, zone_id)
-            if data_disks:
-                storage_profile['data_disks'] = data_disks
-            if root_disk_size:
-                storage_profile['os_disk']['disk_size_gb'] = root_disk_size
-
-        return storage_profile
-
-    def _process_block_device_mappings(self, launch_config,
-                                       vm_name, zone=None):
-        """
-        Processes block device mapping information
-        and returns a Data disk dictionary list. If new volumes
-        are requested (source is None and destination is VOLUME), they will be
-        created and the relevant volume ids included in the mapping.
-        """
-        data_disks = []
-        root_disk_size = None
-
-        def append_disk(disk_def, device_no, delete_on_terminate):
-            # In azure, there is no option to specify terminate disks
-            # (similar to AWS delete_on_terminate) on VM delete.
-            # This method uses the azure tags functionality to store
-            # the  delete_on_terminate option when the virtual machine
-            # is deleted, we parse the tags and delete accordingly
-            disk_def['lun'] = device_no
-            disk_def['tags'] = {
-                'delete_on_terminate': delete_on_terminate
-            }
-            data_disks.append(disk_def)
-
-        for device_no, device in enumerate(launch_config.block_devices):
-            if device.is_volume:
-                if device.is_root:
-                    root_disk_size = device.size
-                else:
-                    # In azure, os disk automatically created,
-                    # we are ignoring the root disk, if specified
-                    if isinstance(device.source, Snapshot):
-                        snapshot_vol = device.source.create_volume()
-                        disk_def = {
-                            # pylint:disable=protected-access
-                            'name': snapshot_vol._volume.name,
-                            'create_option': DiskCreateOption.attach,
-                            'managed_disk': {
-                                'id': snapshot_vol.id
-                            }
-                        }
-                    elif isinstance(device.source, Volume):
-                        disk_def = {
-                            # pylint:disable=protected-access
-                            'name': device.source._volume.name,
-                            'create_option': DiskCreateOption.attach,
-                            'managed_disk': {
-                                'id': device.source.id
-                            }
-                        }
-                    elif isinstance(device.source, MachineImage):
-                        disk_def = {
-                            # pylint:disable=protected-access
-                            'name': device.source._volume.name,
-                            'create_option': DiskCreateOption.from_image,
-                            'source_resource_id': device.source.id
-                        }
-                    else:
-                        disk_def = {
-                            # pylint:disable=protected-access
-                            'create_option': DiskCreateOption.empty,
-                            'disk_size_gb': device.size
-                        }
-                    append_disk(disk_def, device_no,
-                                device.delete_on_terminate)
-            else:  # device is ephemeral
-                # in azure we cannot add the ephemeral disks explicitly
-                pass
-
-        return data_disks, root_disk_size
-
-    def create_launch_config(self):
-        return AzureLaunchConfig(self.provider)
-
+    @dispatch(event="provider.compute.instances.list",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         """
         List all instances.
@@ -737,6 +972,8 @@ class AzureInstanceService(BaseInstanceService):
         return ClientPagedResultList(self.provider, instances,
                                      limit=limit, marker=marker)
 
+    @dispatch(event="provider.compute.instances.get",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def get(self, instance_id):
         """
         Returns an instance given its id. Returns None
@@ -750,37 +987,8 @@ class AzureInstanceService(BaseInstanceService):
             log.exception(cloud_error)
             return None
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name', 'label']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
-
-class AzureImageService(BaseImageService):
-    def __init__(self, provider):
-        super(AzureImageService, self).__init__(provider)
-
-    def get(self, image_id):
-        """
-        Returns an Image given its id
-        """
-        try:
-            image = self.provider.azure_client.get_image(image_id)
-            return AzureMachineImage(self.provider, image)
-        except (CloudError, InvalidValueException) as cloud_error:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloud_error)
-            return None
-
+    @dispatch(event="provider.compute.instances.find",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
         filters = ['label']
@@ -788,24 +996,48 @@ class AzureImageService(BaseImageService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def list(self, filter_by_owner=True, limit=None, marker=None):
+    @dispatch(event="provider.compute.instances.delete",
+              priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    def delete(self, instance):
         """
-        List all images.
+        Permanently terminate this instance.
+        After deleting the VM. we are deleting the network interface
+        associated to the instance, and also removing OS disk and data disks
+        where tag with name 'delete_on_terminate' has value True.
         """
-        azure_images = self.provider.azure_client.list_images()
-        azure_gallery_refs = self.provider.azure_client.list_gallery_refs() \
-            if not filter_by_owner else []
-        cb_images = [AzureMachineImage(self.provider, img)
-                     for img in azure_images + azure_gallery_refs]
-        return ClientPagedResultList(self.provider, cb_images,
-                                     limit=limit, marker=marker)
+        ins = (instance if isinstance(instance, AzureInstance) else
+               self.get(instance))
+        if not instance:
+            return
+
+        # Remove IPs first to avoid a network interface conflict
+        # pylint:disable=protected-access
+        for public_ip_id in ins._public_ip_ids:
+            ins.remove_floating_ip(public_ip_id)
+        self.provider.azure_client.deallocate_vm(ins.id)
+        self.provider.azure_client.delete_vm(ins.id)
+        # pylint:disable=protected-access
+        for nic_id in ins._nic_ids:
+            self.provider.azure_client.delete_nic(nic_id)
+        # pylint:disable=protected-access
+        for data_disk in ins._vm.storage_profile.data_disks:
+            if data_disk.managed_disk:
+                # pylint:disable=protected-access
+                if ins._vm.tags.get('delete_on_terminate',
+                                    'False') == 'True':
+                    self.provider.azure_client. \
+                        delete_disk(data_disk.managed_disk.id)
+        # pylint:disable=protected-access
+        if ins._vm.storage_profile.os_disk.managed_disk:
+            self.provider.azure_client. \
+                delete_disk(ins._vm.storage_profile.os_disk.managed_disk.id)
 
 
 class AzureVMTypeService(BaseVMTypeService):
@@ -821,11 +1053,40 @@ class AzureVMTypeService(BaseVMTypeService):
         r = self.provider.azure_client.list_vm_types()
         return r
 
+    @dispatch(event="provider.compute.vm_types.list",
+              priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         vm_types = [AzureVMType(self.provider, vm_type)
                     for vm_type in self.instance_data]
         return ClientPagedResultList(self.provider, vm_types,
                                      limit=limit, marker=marker)
+
+
+class AzureRegionService(BaseRegionService):
+    def __init__(self, provider):
+        super(AzureRegionService, self).__init__(provider)
+
+    @dispatch(event="provider.compute.regions.get",
+              priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def get(self, region_id):
+        region = None
+        for azureRegion in self.provider.azure_client.list_locations():
+            if azureRegion.name == region_id:
+                region = AzureRegion(self.provider, azureRegion)
+                break
+        return region
+
+    @dispatch(event="provider.compute.regions.list",
+              priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
+        regions = [AzureRegion(self.provider, region)
+                   for region in self.provider.azure_client.list_locations()]
+        return ClientPagedResultList(self.provider, regions,
+                                     limit=limit, marker=marker)
+
+    @property
+    def current(self):
+        return self.get(self.provider.region_name)
 
 
 class AzureNetworkingService(BaseNetworkingService):
@@ -834,6 +1095,8 @@ class AzureNetworkingService(BaseNetworkingService):
         self._network_service = AzureNetworkService(self.provider)
         self._subnet_service = AzureSubnetService(self.provider)
         self._router_service = AzureRouterService(self.provider)
+        self._gateway_service = AzureGatewayService(self.provider)
+        self._floating_ip_service = AzureFloatingIPService(self.provider)
 
     @property
     def networks(self):
@@ -847,11 +1110,21 @@ class AzureNetworkingService(BaseNetworkingService):
     def routers(self):
         return self._router_service
 
+    @property
+    def _gateways(self):
+        return self._gateway_service
+
+    @property
+    def _floating_ips(self):
+        return self._floating_ip_service
+
 
 class AzureNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(AzureNetworkService, self).__init__(provider)
 
+    @dispatch(event="provider.networking.networks.get",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def get(self, network_id):
         try:
             network = self.provider.azure_client.get_network(network_id)
@@ -861,29 +1134,16 @@ class AzureNetworkService(BaseNetworkService):
             log.exception(cloud_error)
             return None
 
+    @dispatch(event="provider.networking.networks.list",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        """
-        List all networks.
-        """
         networks = [AzureNetwork(self.provider, network)
                     for network in self.provider.azure_client.list_networks()]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['label']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
-
-        return ClientPagedResultList(self.provider,
-                                     matches if matches else [])
-
+    @dispatch(event="provider.networking.networks.create",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def create(self, label, cidr_block):
         AzureNetwork.assert_valid_resource_label(label)
         params = {
@@ -901,67 +1161,18 @@ class AzureNetworkService(BaseNetworkService):
         cb_network = AzureNetwork(self.provider, az_network)
         return cb_network
 
-    def delete(self, network_id):
-        """
-        Delete an existing network.
-        """
-        self.provider.azure_client.delete_network(network_id)
-
-
-class AzureRegionService(BaseRegionService):
-    def __init__(self, provider):
-        super(AzureRegionService, self).__init__(provider)
-
-    def get(self, region_id):
-        region = None
-        for azureRegion in self.provider.azure_client.list_locations():
-            if azureRegion.name == region_id:
-                region = AzureRegion(self.provider, azureRegion)
-                break
-        return region
-
-    def list(self, limit=None, marker=None):
-        regions = [AzureRegion(self.provider, region)
-                   for region in self.provider.azure_client.list_locations()]
-        return ClientPagedResultList(self.provider, regions,
-                                     limit=limit, marker=marker)
-
-    @property
-    def current(self):
-        return self.get(self.provider.region_name)
+    @dispatch(event="provider.networking.networks.delete",
+              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    def delete(self, network):
+        net_id = network.id if isinstance(network, AzureNetwork) else network
+        if net_id:
+            self.provider.azure_client.delete_network(net_id)
 
 
 class AzureSubnetService(BaseSubnetService):
 
     def __init__(self, provider):
         super(AzureSubnetService, self).__init__(provider)
-
-    def get(self, subnet_id):
-        """
-         Azure does not provide an api to get the subnet directly by id.
-         It also requires the network id.
-         To make it consistent across the providers the following code
-         gets the specific code from the subnet list.
-
-        :param subnet_id:
-        :return:
-        """
-        try:
-            azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
-            return AzureSubnet(self.provider,
-                               azure_subnet) if azure_subnet else None
-        except (CloudError, InvalidValueException) as cloud_error:
-            # Azure raises the cloud error if the resource not available
-            log.exception(cloud_error)
-            return None
-
-    def list(self, network=None, limit=None, marker=None):
-        """
-        List subnets
-        """
-        return ClientPagedResultList(self.provider,
-                                     self._list_subnets(network),
-                                     limit=limit, marker=marker)
 
     def _list_subnets(self, network=None):
         result_list = []
@@ -985,6 +1196,33 @@ class AzureSubnetService(BaseSubnetService):
 
         return subnets
 
+    @dispatch(event="provider.networking.subnets.get",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def get(self, subnet_id):
+        """
+         Azure does not provide an api to get the subnet directly by id.
+         It also requires the network id.
+         To make it consistent across the providers the following code
+         gets the specific code from the subnet list.
+        """
+        try:
+            azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
+            return AzureSubnet(self.provider,
+                               azure_subnet) if azure_subnet else None
+        except (CloudError, InvalidValueException) as cloud_error:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloud_error)
+            return None
+
+    @dispatch(event="provider.networking.subnets.list",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def list(self, network=None, limit=None, marker=None):
+        return ClientPagedResultList(self.provider,
+                                     self._list_subnets(network),
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.networking.subnets.find",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def find(self, network=None, **kwargs):
         obj_list = self._list_subnets(network)
         filters = ['label']
@@ -993,13 +1231,12 @@ class AzureSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    def create(self, label, network, cidr_block, **kwargs):
-        """
-        Create subnet
-        """
-        # Although Subnet doesn't support labels, we use the parent Network's
-        # tags to track the subnet's labels
+    @dispatch(event="provider.networking.subnets.create",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    def create(self, label, network, cidr_block, zone):
         AzureSubnet.assert_valid_resource_label(label)
+        # Although Subnet doesn't support tags in Azure, we use the parent
+        # Network's tags to track its subnets' labels
         subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
 
         network_id = network.id \
@@ -1018,45 +1255,28 @@ class AzureSubnetService(BaseSubnetService):
         subnet.label = label
         return subnet
 
-    def get_or_create_default(self, zone):
-        default_cidr = '10.0.1.0/24'
-
-        # No provider-default Subnet exists, look for a library-default one
-        matches = self.find(label=AzureSubnet.CB_DEFAULT_SUBNET_LABEL)
-        if matches:
-            return matches[0]
-
-        # No provider-default Subnet exists, try to create it (net + subnets)
-        networks = self.provider.networking.networks.find(
-            label=AzureNetwork.CB_DEFAULT_NETWORK_LABEL)
-
-        if networks:
-            network = networks[0]
-        else:
-            network = self.provider.networking.networks.create(
-                AzureNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
-
-        subnet = self.create(AzureSubnet.CB_DEFAULT_SUBNET_LABEL, network,
-                             default_cidr)
-        return subnet
-
+    @dispatch(event="provider.networking.subnets.delete",
+              priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def delete(self, subnet):
-        subnet_id = subnet.id if isinstance(subnet, Subnet) else subnet
-        self.provider.azure_client.delete_subnet(subnet_id)
-        # Although Subnet doesn't support labels, we use the parent Network's
-        # tags to track the subnet's labels, thus that network-level tag must
-        # be deleted with the subnet
-        network = subnet.network
-        az_network = network._network
-        az_network.tags.pop(subnet.tag_name)
-        self._provider.azure_client.update_network_tags(
-            az_network.id, az_network)
+        sn = subnet if isinstance(subnet, AzureSubnet) else self.get(subnet)
+        if sn:
+            self.provider.azure_client.delete_subnet(sn.id)
+            # Although Subnet doesn't support labels, we use the parent
+            # Network's tags to track the subnet's labels, thus that
+            # network-level tag must be deleted with the subnet
+            net_id = sn.network_id
+            az_network = self.provider.azure_client.get_network(net_id)
+            az_network.tags.pop(sn.tag_name)
+            self.provider.azure_client.update_network_tags(
+                az_network.id, az_network)
 
 
 class AzureRouterService(BaseRouterService):
     def __init__(self, provider):
         super(AzureRouterService, self).__init__(provider)
 
+    @dispatch(event="provider.networking.routers.get",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def get(self, router_id):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
@@ -1066,6 +1286,8 @@ class AzureRouterService(BaseRouterService):
             log.exception(cloud_error)
             return None
 
+    @dispatch(event="provider.networking.routers.find",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
         filters = ['label']
@@ -1073,13 +1295,15 @@ class AzureRouterService(BaseRouterService):
 
         # All kwargs should have been popped at this time.
         if len(kwargs) > 0:
-            raise TypeError("Unrecognised parameters for search: %s."
-                            " Supported attributes: %s" % (kwargs,
-                                                           ", ".join(filters)))
+            raise InvalidParamException(
+                "Unrecognised parameters for search: %s. Supported "
+                "attributes: %s" % (kwargs, ", ".join(filters)))
 
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
+    @dispatch(event="provider.networking.routers.list",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         routes = [AzureRouter(self.provider, route)
                   for route in
@@ -1088,8 +1312,9 @@ class AzureRouterService(BaseRouterService):
                                      routes,
                                      limit=limit, marker=marker)
 
+    @dispatch(event="provider.networking.routers.create",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network):
-        AzureRouter.assert_valid_resource_label(label)
         router_name = AzureRouter._generate_name_from_label(label, "cb-router")
 
         parameters = {"location": self.provider.region_name,
@@ -1098,3 +1323,88 @@ class AzureRouterService(BaseRouterService):
         route = self.provider.azure_client. \
             create_route_table(router_name, parameters)
         return AzureRouter(self.provider, route)
+
+    @dispatch(event="provider.networking.routers.delete",
+              priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    def delete(self, router):
+        r = router if isinstance(router, AzureRouter) else self.get(router)
+        if r:
+            self.provider.azure_client.delete_route_table(r.name)
+
+
+class AzureGatewayService(BaseGatewayService):
+    def __init__(self, provider):
+        super(AzureGatewayService, self).__init__(provider)
+
+    # Azure doesn't have a notion of a route table or an internet
+    # gateway as OS and AWS so create placeholder objects of the
+    # AzureInternetGateway here.
+    # http://bit.ly/2BqGdVh
+    # Singleton returned by the list and get methods
+    def _gateway_singleton(self, network):
+        return AzureInternetGateway(self.provider, None, network)
+
+    @dispatch(event="provider.networking.gateways.get_or_create",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def get_or_create(self, network):
+        return self._gateway_singleton(network)
+
+    @dispatch(event="provider.networking.gateways.list",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def list(self, network, limit=None, marker=None):
+        gws = [self._gateway_singleton(network)]
+        return ClientPagedResultList(self.provider,
+                                     gws,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.networking.gateways.delete",
+              priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    def delete(self, network, gateway):
+        pass
+
+
+class AzureFloatingIPService(BaseFloatingIPService):
+
+    def __init__(self, provider):
+        super(AzureFloatingIPService, self).__init__(provider)
+
+    @dispatch(event="provider.networking.floating_ips.get",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def get(self, gateway, fip_id):
+        try:
+            az_ip = self.provider.azure_client.get_floating_ip(fip_id)
+        except (CloudError, InvalidValueException) as cloud_error:
+            # Azure raises the cloud error if the resource not available
+            log.exception(cloud_error)
+            return None
+        return AzureFloatingIP(self.provider, az_ip)
+
+    @dispatch(event="provider.networking.floating_ips.list",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def list(self, gateway, limit=None, marker=None):
+        floating_ips = [AzureFloatingIP(self.provider, floating_ip)
+                        for floating_ip in self.provider.azure_client.
+                        list_floating_ips()]
+        return ClientPagedResultList(self.provider, floating_ips,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.networking.floating_ips.create",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def create(self, gateway):
+        public_ip_parameters = {
+            'location': self.provider.azure_client.region_name,
+            'public_ip_allocation_method': 'Static'
+        }
+
+        public_ip_name = AzureFloatingIP._generate_name_from_label(
+            None, 'cb-fip-')
+
+        floating_ip = self.provider.azure_client.\
+            create_floating_ip(public_ip_name, public_ip_parameters)
+        return AzureFloatingIP(self.provider, floating_ip)
+
+    @dispatch(event="provider.networking.floating_ips.delete",
+              priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    def delete(self, gateway, fip):
+        fip_id = fip.id if isinstance(fip, AzureFloatingIP) else fip
+        self.provider.azure_client.delete_floating_ip(fip_id)

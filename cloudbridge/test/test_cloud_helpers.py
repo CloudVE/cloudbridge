@@ -80,25 +80,28 @@ class CloudHelpersTestCase(ProviderTestBase):
             results.data
 
     def test_type_validation(self):
-        """
-        Make sure internal type checking implementation properly sets types.
-        """
+        # Make sure internal type checking implementation properly sets types.
         self.provider.config['text_type_check'] = 'test-text'
+        # pylint:disable=protected-access
         config_value = self.provider._get_config_value('text_type_check', None)
         self.assertIsInstance(config_value, six.string_types)
 
+        # pylint:disable=protected-access
         env_value = self.provider._get_config_value(
             'some_config_value', get_env('MOTO_AMIS_PATH'))
         self.assertIsInstance(env_value, six.string_types)
 
+        # pylint:disable=protected-access
         none_value = self.provider._get_config_value(
             'some_config_value', get_env('MISSING_ENV', None))
         self.assertIsNone(none_value)
 
+        # pylint:disable=protected-access
         bool_value = self.provider._get_config_value(
             'some_config_value', get_env('MISSING_ENV', True))
         self.assertIsInstance(bool_value, bool)
 
+        # pylint:disable=protected-access
         int_value = self.provider._get_config_value(
             'default_result_limit', None)
         self.assertIsInstance(int_value, int)

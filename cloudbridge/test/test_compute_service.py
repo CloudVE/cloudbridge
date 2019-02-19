@@ -2,6 +2,8 @@ import ipaddress
 
 import six
 
+from cloudbridge.cloud.base import helpers as cb_helpers
+from cloudbridge.cloud.base.resources import BaseNetwork
 from cloudbridge.cloud.factory import ProviderList
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import InvalidConfigurationException
@@ -18,6 +20,18 @@ from cloudbridge.test.helpers import standard_interface_tests as sit
 class CloudComputeServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
+
+    @helpers.skipIfNoService(['compute.instances'])
+    def test_storage_services_event_pattern(self):
+        # pylint:disable=protected-access
+        self.assertEqual(
+            self.provider.compute.instances._service_event_pattern,
+            "provider.compute.instances",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("instances",
+                                     "provider.compute.instances",
+                                     self.provider.compute.instances.
+                                     _service_event_pattern))
 
     @helpers.skipIfNoService(['compute.instances', 'networking.networks'])
     def test_crud_instance(self):
@@ -77,13 +91,13 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         test_instance = None
         fw = None
         kp = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 test_instance, fw, kp)):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             kp = self.provider.security.key_pairs.create(name=label)
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
             test_instance = helpers.get_test_instance(self.provider,
                                                       label, key_pair=kp,
                                                       vm_firewalls=[fw],
@@ -230,7 +244,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
            label, 1,
            helpers.get_provider_test_data(self.provider,
                                           "placement"))
-        with helpers.cleanup_action(lambda: test_vol.delete()):
+        with cb_helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(label=label,
                                                  description=label)
@@ -241,7 +255,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     snap.wait_for([SnapshotState.UNKNOWN],
                                   terminal_states=[SnapshotState.ERROR])
 
-            with helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
+            with cb_helpers.cleanup_action(lambda: cleanup_snap(test_snap)):
                 test_snap.wait_till_ready()
 
                 lc = self.provider.compute.instances.create_launch_config()
@@ -276,21 +290,25 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     "vm_type")
                 vm_type = self.provider.compute.vm_types.find(
                     name=vm_type_name)[0]
-                for _ in range(vm_type.num_ephemeral_disks):
+                # Some providers, e.g. GCP, has a limit on total number of
+                # attached disks; it does not matter how many of them are
+                # ephemeral or persistent. So, wee keep in mind that we have
+                # attached 4 disks already, and add ephemeral disks accordingly
+                # to not exceed the limit.
+                for _ in range(vm_type.num_ephemeral_disks - 4):
                     lc.add_ephemeral_device()
 
                 subnet = helpers.get_or_create_default_subnet(
                     self.provider)
 
-                inst = helpers.create_test_instance(
-                    self.provider,
-                    label,
-                    subnet=subnet,
-                    launch_config=lc)
-
-                with helpers.cleanup_action(lambda:
-                                            helpers.delete_test_instance(
-                                                inst)):
+                inst = None
+                with cb_helpers.cleanup_action(
+                        lambda: helpers.delete_instance(inst)):
+                    inst = helpers.create_test_instance(
+                        self.provider,
+                        label,
+                        subnet=subnet,
+                        launch_config=lc)
                     try:
                         inst.wait_till_ready()
                     except WaitStateException as e:
@@ -309,19 +327,19 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         net = None
         test_inst = None
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 instance=test_inst, vm_firewall=fw, network=net)):
             net = self.provider.networking.networks.create(
-                label=label, cidr_block='10.0.0.0/16')
+                label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             cidr = '10.0.1.0/24'
-            subnet = net.create_subnet(label=label, cidr_block=cidr,
-                                       zone=helpers.get_provider_test_data(
-                                                    self.provider,
-                                                    'placement'))
+            subnet = net.subnets.create(label=label, cidr_block=cidr,
+                                        zone=helpers.get_provider_test_data(
+                                                     self.provider,
+                                                     'placement'))
             test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             # Check adding a VM firewall to a running instance
             test_inst.add_vm_firewall(fw)
@@ -341,26 +359,30 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
             # check floating ips
             router = self.provider.networking.routers.create(label, net)
-            gateway = net.gateways.get_or_create_inet_gateway()
+            gateway = net.gateways.get_or_create()
 
             def cleanup_router(router, gateway):
-                with helpers.cleanup_action(lambda: router.delete()):
-                    with helpers.cleanup_action(lambda: gateway.delete()):
+                with cb_helpers.cleanup_action(lambda: router.delete()):
+                    with cb_helpers.cleanup_action(lambda: gateway.delete()):
                         router.detach_subnet(subnet)
                         router.detach_gateway(gateway)
 
-            with helpers.cleanup_action(lambda: cleanup_router(router,
-                                                               gateway)):
+            with cb_helpers.cleanup_action(lambda: cleanup_router(router,
+                                                                  gateway)):
                 router.attach_subnet(subnet)
                 router.attach_gateway(gateway)
-                # check whether adding an elastic ip works
-                fip = gateway.floating_ips.create()
-                self.assertFalse(
-                    fip.in_use,
-                    "Newly created floating IP address should not be in use.")
+                fip = None
 
-                with helpers.cleanup_action(lambda: fip.delete()):
-                    with helpers.cleanup_action(
+                with cb_helpers.cleanup_action(
+                        lambda: helpers.cleanup_fip(fip)):
+                    # check whether adding an elastic ip works
+                    fip = gateway.floating_ips.create()
+                    self.assertFalse(
+                        fip.in_use,
+                        "Newly created floating IP %s should not be in use." %
+                        fip.public_ip)
+
+                    with cb_helpers.cleanup_action(
                             lambda: test_inst.remove_floating_ip(fip)):
                         test_inst.add_floating_ip(fip)
                         test_inst.refresh()
@@ -370,7 +392,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                         fip.refresh()
                         self.assertTrue(
                             fip.in_use,
-                            "Attached floating IP address should be in use.")
+                            "Attached floating IP %s address should be in use."
+                            % fip.public_ip)
                     test_inst.refresh()
                     test_inst.reboot()
                     test_inst.wait_till_ready()

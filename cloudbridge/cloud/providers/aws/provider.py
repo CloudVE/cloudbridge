@@ -3,17 +3,8 @@ import logging as log
 
 import boto3
 
-try:
-    # These are installed only for the case of a dev instance
-    import responses
-    from moto import mock_ec2
-    from moto import mock_s3
-except ImportError:
-    log.debug('[aws provider] moto library not available!')
-
 from cloudbridge.cloud.base import BaseCloudProvider
 from cloudbridge.cloud.base.helpers import get_env
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 from .services import AWSComputeService
 from .services import AWSNetworkingService
@@ -117,58 +108,3 @@ class AWSCloudProvider(BaseCloudProvider):
         '''Get an S3 resource object'''
         return self.session.resource(
             's3', region_name=self.region_name, **self.s3_cfg)
-
-
-class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
-
-    def __init__(self, config):
-        super(MockAWSCloudProvider, self).__init__(config)
-
-    def setUpMock(self):
-        """
-        Let Moto take over all socket communications
-        """
-        self.ec2mock = mock_ec2()
-        self.ec2mock.start()
-        self.s3mock = mock_s3()
-        self.s3mock.start()
-        responses.add(
-            responses.GET,
-            self.AWS_INSTANCE_DATA_DEFAULT_URL,
-            body=u"""
-[
-  {
-    "family": "General Purpose",
-    "enhanced_networking": false,
-    "vCPU": 1,
-    "generation": "current",
-    "ebs_iops": 0,
-    "network_performance": "Low",
-    "ebs_throughput": 0,
-    "vpc": {
-      "ips_per_eni": 2,
-      "max_enis": 2
-    },
-    "arch": [
-      "x86_64"
-    ],
-    "linux_virtualization_types": [
-        "HVM"
-    ],
-    "ebs_optimized": false,
-    "storage": null,
-    "max_bandwidth": 0,
-    "instance_type": "t2.nano",
-    "ECU": "variable",
-    "memory": 0.5,
-    "ebs_max_bandwidth": 0
-  }
-]
-""")
-
-    def tearDownMock(self):
-        """
-        Stop Moto intercepting all socket communications
-        """
-        self.s3mock.stop()
-        self.ec2mock.stop()

@@ -1,11 +1,11 @@
 Working with object storage
-==========================
+===========================
 Object storage provides a simple way to store and retrieve large amounts of
 unstructured data over HTTP. Object Storage is also referred to as Blob (Binary
 Large OBject) Storage by Azure, and Simple Storage Service (S3) by Amazon.
 
 Typically, you would store your objects within a Bucket, as it is known in
-AWS and GCE. A Bucket is also called a Container in OpenStack and Azure. In
+AWS and GCP. A Bucket is also called a Container in OpenStack and Azure. In
 CloudBridge, we use the term Bucket.
 
 Storing objects in a bucket
@@ -66,5 +66,5 @@ Once a provider is obtained, you can access the container as usual:
 .. code-block:: python
 
     bucket = provider.storage.buckets.get(container)
-    obj = bucket.create_object('my_object.txt')
+    obj = bucket.objects.create('my_object.txt')
     obj.upload_from_file(source)

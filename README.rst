@@ -1,6 +1,14 @@
-CloudBridge provides a simple layer of abstraction over different
+CloudBridge provides a consistent layer of abstraction over different
 Infrastructure-as-a-Service cloud providers, reducing or eliminating the need
 to write conditional code for each cloud.
+
+Documentation
+~~~~~~~~~~~~~
+Detailed documentation can be found at http://cloudbridge.cloudve.org.
+
+
+Build Status Tests
+~~~~~~~~~~~~~~~~~~
 
 .. image:: https://coveralls.io/repos/CloudVE/cloudbridge/badge.svg?branch=master&service=github
    :target: https://coveralls.io/github/CloudVE/cloudbridge?branch=master
@@ -14,53 +22,44 @@ to write conditional code for each cloud.
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
-.. image:: https://badge.waffle.io/CloudVE/cloudbridge.png?label=in%20progress&title=In%20Progress 
-   :target: https://waffle.io/CloudVE/cloudbridge?utm_source=badge
-   :alt: 'Waffle.io - Issues in progress'
-
 .. |aws-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1
               :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
+.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
               :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |aws-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
-              :target: https://travis-ci.org/CloudVE/cloudbridge
-
-.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
-             :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
-             :target: https://travis-ci.org/CloudVE/cloudbridge
-.. |os-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/9
-             :target: https://travis-ci.org/CloudVE/cloudbridge
 
 .. |azure-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2
-                :target: https://travis-ci.org/CloudVE/cloudbridge/branches
-.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
-                :target: https://travis-ci.org/CloudVE/cloudbridge/branches
-.. |azure-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
-                :target: https://travis-ci.org/CloudVE/cloudbridge/branches
+                :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
+                :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |gce-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/3
-              :target: https://travis-ci.org/CloudVE/cloudbridge/branches
-.. |gce-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/6
-              :target: https://travis-ci.org/CloudVE/cloudbridge/branches
-.. |gce-pypy| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/gce/9
-              :target: https://travis-ci.org/CloudVE/cloudbridge/branches
+.. |gcp-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
+              :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |gcp-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
+              :target: https://travis-ci.org/CloudVE/cloudbridge
 
+.. |mock-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
+              :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |mock-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/9
+              :target: https://travis-ci.org/CloudVE/cloudbridge
 
-Build Status Tests
-~~~~~~~~~~~~~~~~~~
+.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
+             :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/10
+             :target: https://travis-ci.org/CloudVE/cloudbridge
 
-+--------------------------+--------------+--------------+--------------+
-| **Provider/Environment** | py27         | py36         | pypy         |
-+--------------------------+--------------+--------------+--------------+
-| **AWS**                  | |aws-py27|   | |aws-py36|   | |aws-pypy|   |
-+--------------------------+--------------+--------------+--------------+
-| **OpenStack**            | |os-py27|    | |os-py36|    | |os-pypy|    |
-+--------------------------+--------------+--------------+--------------+
-| **Azure**                | |azure-py27| | |azure-py36| | |azure-py36| |
-+--------------------------+--------------+--------------+--------------+
-| **GCE (alpha)**          | |gce-py27|   | |gce-py36|   | |gce-pypy|   |
-+--------------------------+--------------+--------------+--------------+
++---------------------------+----------------+----------------+
+| **Provider/Environment**  | **Python 2.7** | **Python 3.6** |
++---------------------------+----------------+----------------+
+| **Amazon Web Services**   | |aws-py27|     | |aws-py36|     |
++---------------------------+----------------+----------------+
+| **Google Cloud Platform** | |gcp-py27|     | |gcp-py36|     |
++---------------------------+----------------+----------------+
+| **Microsoft Azure**       | |azure-py27|   | |azure-py36|   |
++---------------------------+----------------+----------------+
+| **OpenStack**             | |os-py27|      | |os-py36|      |
++---------------------------+----------------+----------------+
+| **Mock Provider**         | |mock-py27|    | |mock-py36|    |
++---------------------------+----------------+----------------+
 
 Installation
 ~~~~~~~~~~~~
@@ -89,7 +88,7 @@ exploring the API:
   print(provider.security.key_pairs.list())
 
 The exact same command (as well as any other CloudBridge method) will run with
-any of the supported providers: ``ProviderList.[AWS | AZURE | OPENSTACK]``!
+any of the supported providers: ``ProviderList.[AWS | AZURE | GCP | OPENSTACK]``!
 
 
 Citation
@@ -99,11 +98,6 @@ N. Goonasekera, A. Lonie, J. Taylor, and E. Afgan,
 "CloudBridge: a Simple Cross-Cloud Python Library,"
 presented at the Proceedings of the XSEDE16 Conference on Diversity, Big Data, and Science at Scale, Miami, USA, 2016.
 DOI: http://dx.doi.org/10.1145/2949550.2949648
-
-
-Documentation
-~~~~~~~~~~~~~
-Documentation can be found at https://cloudbridge.readthedocs.org.
 
 
 Quick Reference

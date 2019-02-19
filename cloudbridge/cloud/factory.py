@@ -14,8 +14,10 @@ log = logging.getLogger(__name__)
 
 class ProviderList(object):
     AWS = 'aws'
-    OPENSTACK = 'openstack'
     AZURE = 'azure'
+    GCP = 'gcp'
+    OPENSTACK = 'openstack'
+    MOCK = 'mock'
 
 
 class CloudProviderFactory(object):
@@ -47,19 +49,11 @@ class CloudProviderFactory(object):
         if isinstance(cls, type) and issubclass(cls, CloudProvider):
             if hasattr(cls, "PROVIDER_ID"):
                 provider_id = getattr(cls, "PROVIDER_ID")
-                if issubclass(cls, TestMockHelperMixin):
-                    if self.provider_list.get(provider_id, {}).get(
-                            'mock_class'):
-                        log.warning("Mock provider with id: %s is already "
-                                    "registered. Overriding with class: %s",
-                                    provider_id, cls)
-                    self.provider_list[provider_id]['mock_class'] = cls
-                else:
-                    if self.provider_list.get(provider_id, {}).get('class'):
-                        log.warning("Provider with id: %s is already "
-                                    "registered. Overriding with class: %s",
-                                    provider_id, cls)
-                    self.provider_list[provider_id]['class'] = cls
+                if self.provider_list.get(provider_id, {}).get('class'):
+                    log.warning("Provider with id: %s is already "
+                                "registered. Overriding with class: %s",
+                                provider_id, cls)
+                self.provider_list[provider_id]['class'] = cls
             else:
                 log.warning("Provider class: %s implements CloudProvider but"
                             " does not define PROVIDER_ID. Ignoring...", cls)
@@ -75,7 +69,10 @@ class CloudProviderFactory(object):
         """
         for _, modname, _ in pkgutil.iter_modules(providers.__path__):
             log.debug("Importing provider: %s", modname)
-            self._import_provider(modname)
+            try:
+                self._import_provider(modname)
+            except Exception as e:
+                log.warn("Could not import provider: %s", e)
 
     def _import_provider(self, module_name):
         """
@@ -101,8 +98,7 @@ class CloudProviderFactory(object):
         :rtype: dict
         :return: A dict of available providers and their implementations in the
                  following format::
-                 {'aws': {'class': aws.provider.AWSCloudProvider,
-                          'mock_class': aws.provider.MockAWSCloudProvider},
+                 {'aws': {'class': aws.provider.AWSCloudProvider},
                   'openstack': {'class': openstack.provider.OpenStackCloudProvi
                                          der}
                  }
@@ -123,10 +119,10 @@ class CloudProviderFactory(object):
         :param name: Cloud provider name: one of ``aws``, ``openstack``,
         ``azure``.
 
-        :type config: an object with required fields
-        :param config: This can be a Bunch or any other object whose fields can
-                       be accessed using dot notation. See specific provider
-                       implementation for the required fields.
+        :type config: :class:`dict`
+        :param config: A dictionary or an iterable of key/value pairs (as
+                       tuples or other iterables of length two). See specific
+                       provider implementation for the required fields.
 
         :return:  a concrete provider instance
         :rtype: ``object`` of :class:`.CloudProvider`
@@ -142,13 +138,9 @@ class CloudProviderFactory(object):
         log.debug("Created '%s' provider", name)
         return provider_class(config)
 
-    def get_provider_class(self, name, get_mock=False):
+    def get_provider_class(self, name):
         """
         Return a class for the requested provider.
-
-        :type get_mock: ``bool``
-        :param get_mock: If True, returns a mock version of the provider
-        if available, or the real version if not.
 
         :rtype: provider class or ``None``
         :return: A class corresponding to the requested provider or ``None``
@@ -157,24 +149,19 @@ class CloudProviderFactory(object):
         log.debug("Returning a class for the %s provider", name)
         impl = self.list_providers().get(name)
         if impl:
-            if get_mock and impl.get("mock_class"):
-                log.debug("param get_mock set to True, returning "
-                          "a mock version of the provider %s", name)
-                return impl["mock_class"]
-            else:
-                log.debug("Returning the real version of %s", name)
-                return impl["class"]
+            log.debug("Returning provider class for %s", name)
+            return impl["class"]
         else:
             log.debug("Provider with the name: %s not found", name)
             return None
 
-    def get_all_provider_classes(self, get_mock=False):
+    def get_all_provider_classes(self, ignore_mocks=False):
         """
         Returns a list of classes for all available provider implementations
 
-        :type get_mock: ``bool``
-        :param get_mock: If True, returns a mock version of the provider
-        if available, or the real version if not.
+        :type ignore_mocks: ``bool``
+        :param ignore_mocks: If True, does not return mock providers. Mock
+        providers are providers which implement the TestMockHelperMixin.
 
         :rtype: type ``class`` or ``None``
         :return: A list of all available provider classes or an empty list
@@ -182,10 +169,9 @@ class CloudProviderFactory(object):
         """
         all_providers = []
         for impl in self.list_providers().values():
-            if get_mock and impl.get("mock_class"):
-                log.debug("param get_mock set to True, appending "
-                          "a mock version of the provider %s", impl)
-                all_providers.append(impl["mock_class"])
+            if ignore_mocks:
+                if not issubclass(impl["class"], TestMockHelperMixin):
+                    all_providers.append(impl["class"])
             else:
                 all_providers.append(impl["class"])
         log.info("List of provider classes: %s", all_providers)

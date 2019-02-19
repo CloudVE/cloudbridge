@@ -5,7 +5,7 @@ for CloudBridge.
 
 
 1. We start off by creating a new folder for the provider within the
-``cloudbridge/cloud/providers`` folder. In this case: ``gce``. Further, install
+``cloudbridge/cloud/providers`` folder. In this case: ``gcp``. Further, install
 the native cloud provider Python library, here
 ``pip install google-api-python-client==1.4.2`` and a couple of its requirements
 ``oauth2client==1.5.2`` and ``pycrypto==2.6.1``.
@@ -20,21 +20,21 @@ add a class variable named ``PROVIDER_ID``.
     from cloudbridge.cloud.base import BaseCloudProvider
 
 
-    class GCECloudProvider(BaseCloudProvider):
+    class GCPCloudProvider(BaseCloudProvider):
 
-        PROVIDER_ID = 'gce'
+        PROVIDER_ID = 'gcp'
 
         def __init__(self, config):
-            super(GCECloudProvider, self).__init__(config)
+            super(GCPCloudProvider, self).__init__(config)
 
 
 
-3. Add an ``__init__.py`` to the ``cloudbridge/cloud/providers/gce`` folder
+3. Add an ``__init__.py`` to the ``cloudbridge/cloud/providers/gcp`` folder
 and export the provider.
 
 .. code-block:: python
 
-    from .provider import GCECloudProvider  # noqa
+    from .provider import GCPCloudProvider  # noqa
 
 .. tip ::
 
@@ -42,22 +42,22 @@ and export the provider.
 
 4. Next, we need to register the provider with the factory.
 This only requires that you register the provider's ID in the ``ProviderList``.
-Add GCE to the ``ProviderList`` class in ``cloudbridge/cloud/factory.py``.
+Add GCP to the ``ProviderList`` class in ``cloudbridge/cloud/factory.py``.
 
 
 5. Run the test suite. We will get the tests passing on py27 first.
 
 .. code-block:: bash
 
-    export CB_TEST_PROVIDER=gce
+    export CB_TEST_PROVIDER=gcp
     tox -e py27
 
 You should see the tests fail with the following message:
 
 .. code-block:: bash
 
-    TypeError: Can't instantiate abstract class GCECloudProvider with abstract
-    methods storage, compute, security, network
+    "TypeError: Can't instantiate abstract class GCPCloudProvider with abstract
+    methods storage, compute, security, network."
 
 6. Therefore, our next step is to implement these methods. We can start off by
 implementing these methods in ``provider.py`` and raising a
@@ -68,22 +68,22 @@ implementing these methods in ``provider.py`` and raising a
     @property
     def compute(self):
         raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+            "GCPCloudProvider does not implement this service")
 
     @property
     def network(self):
         raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+            "GCPCloudProvider does not implement this service")
 
     @property
     def security(self):
         raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+            "GCPCloudProvider does not implement this service")
 
     @property
     def storage(self):
         raise NotImplementedError(
-            "GCECloudProvider does not implement this service")
+            "GCPCloudProvider does not implement this service")
 
 
 Running the tests now will complain as much. We will next implement each
@@ -97,10 +97,10 @@ Service in turn.
     from cloudbridge.cloud.base.services import BaseSecurityService
 
 
-    class GCESecurityService(BaseSecurityService):
+    class GCPSecurityService(BaseSecurityService):
 
         def __init__(self, provider):
-            super(GCESecurityService, self).__init__(provider)
+            super(GCPSecurityService, self).__init__(provider)
 
 
 8. We can now return this new service from the security property in
@@ -109,8 +109,8 @@ Service in turn.
 .. code-block:: python
 
     def __init__(self, config):
-        super(GCECloudProvider, self).__init__(config)
-        self._security = GCESecurityService(self)
+        super(GCPCloudProvider, self).__init__(config)
+        self._security = GCPSecurityService(self)
 
     @property
     def security(self):
@@ -125,8 +125,8 @@ tests to fail:
 
 .. code-block:: bash
 
-    TypeError: Can't instantiate abstract class GCESecurityService with abstract
-    methods key_pairs, security_groups
+    "TypeError: Can't instantiate abstract class GCPSecurityService with abstract
+    methods key_pairs, security_groups."
 
 The Abstract Base Classes are doing their job and flagging all methods that
 need to be implemented.
@@ -142,14 +142,14 @@ next implement these services.
     from cloudbridge.cloud.base.services import BaseSecurityService
 
 
-    class GCESecurityService(BaseSecurityService):
+    class GCPSecurityService(BaseSecurityService):
 
         def __init__(self, provider):
-            super(GCESecurityService, self).__init__(provider)
+            super(GCPSecurityService, self).__init__(provider)
 
             # Initialize provider services
-            self._key_pairs = GCEKeyPairService(provider)
-            self._security_groups = GCESecurityGroupService(provider)
+            self._key_pairs = GCPKeyPairService(provider)
+            self._security_groups = GCPSecurityGroupService(provider)
 
         @property
         def key_pairs(self):
@@ -160,16 +160,16 @@ next implement these services.
             return self._security_groups
 
 
-    class GCEKeyPairService(BaseKeyPairService):
+    class GCPKeyPairService(BaseKeyPairService):
 
         def __init__(self, provider):
-            super(GCEKeyPairService, self).__init__(provider)
+            super(GCPKeyPairService, self).__init__(provider)
 
 
-    class GCESecurityGroupService(BaseSecurityGroupService):
+    class GCPSecurityGroupService(BaseSecurityGroupService):
 
         def __init__(self, provider):
-            super(GCESecurityGroupService, self).__init__(provider)
+            super(GCPSecurityGroupService, self).__init__(provider)
 
 .. tip ::
 
@@ -180,8 +180,8 @@ Once again, running the tests will complain of missing methods:
 
 .. code-block:: bash
 
-    TypeError: Can't instantiate abstract class GCEKeyPairService with abstract
-    methods create, find, get, list
+    "TypeError: Can't instantiate abstract class GCPKeyPairService with abstract
+    methods create, find, get, list."
 
 11. Keep implementing the methods till the security service works, and the
 tests pass.
@@ -200,8 +200,8 @@ dependencies.
 
 .. code-block:: python
 
-    gce_reqs = ['google-api-python-client==1.4.2']
-    full_reqs = base_reqs + aws_reqs + openstack_reqs + gce_reqs
+    gcp_reqs = ['google-api-python-client==1.4.2']
+    full_reqs = base_reqs + aws_reqs + openstack_reqs + gcp_reqs
 
 We will also register the provider in ``cloudbridge/cloud/factory.py``'s
 provider list.
@@ -212,7 +212,7 @@ provider list.
         AWS = 'aws'
         OPENSTACK = 'openstack'
         ...
-        GCE = 'gce'
+        GCP = 'gcp'
 
 .. tip ::
 
@@ -220,8 +220,8 @@ provider list.
 
 
 12. Thereafter, we create the actual connection through the sdk. In the case of
-GCE, we need a Compute API client object. We will make this connection
-available as a public property named ``gce_compute`` in the provider. We will
+GCP, we need a Compute API client object. We will make this connection
+available as a public property named ``gcp_compute`` in the provider. We will
 then lazily initialize this connection.
 
 A full implementation of the KeyPair service can now be made in a provider

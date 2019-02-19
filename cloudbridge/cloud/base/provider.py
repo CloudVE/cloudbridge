@@ -8,11 +8,14 @@ try:
 except ImportError:  # Python 2
     from ConfigParser import SafeConfigParser as ConfigParser
 
+from pyeventsystem.middleware import SimpleMiddlewareManager
+
 import six
 
-from cloudbridge.cloud.interfaces import CloudProvider
-from cloudbridge.cloud.interfaces.exceptions import ProviderConnectionException
-from cloudbridge.cloud.interfaces.resources import Configuration
+from ..base.middleware import ExceptionWrappingMiddleware
+from ..interfaces import CloudProvider
+from ..interfaces.exceptions import ProviderConnectionException
+from ..interfaces.resources import Configuration
 
 log = logging.getLogger(__name__)
 
@@ -80,11 +83,12 @@ class BaseConfiguration(Configuration):
 
 
 class BaseCloudProvider(CloudProvider):
-
     def __init__(self, config):
         self._config = BaseConfiguration(config)
         self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
+        self._middleware = SimpleMiddlewareManager()
+        self.add_required_middleware()
 
     @property
     def config(self):
@@ -93,6 +97,17 @@ class BaseCloudProvider(CloudProvider):
     @property
     def name(self):
         return str(self.__class__.__name__)
+
+    @property
+    def middleware(self):
+        return self._middleware
+
+    def add_required_middleware(self):
+        """
+        Adds common middleware that is essential for cloudbridge to function.
+        Any other extra middleware can be added through the provider factory.
+        """
+        self.middleware.add(ExceptionWrappingMiddleware())
 
     def authenticate(self):
         """

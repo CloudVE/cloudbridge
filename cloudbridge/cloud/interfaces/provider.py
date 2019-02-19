@@ -1,7 +1,9 @@
 """
 Specification for a provider interface
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 
 
 class CloudProvider(object):
@@ -18,10 +20,10 @@ class CloudProvider(object):
 
         :type config: :class:`dict`
         :param config: A dictionary object containing provider initialization
-                       values. Alternatively, this can be a Bunch or any other
-                       object whose fields can be accessed as members. See
-                       specific provider implementation for the required
-                       fields.
+                       values. Alternatively, this can be an iterable of
+                       key/value pairs (as tuples or other iterables of length
+                       two). See specific provider implementation for the
+                       required fields.
 
         :rtype: :class:`.CloudProvider`
         :return:  a concrete provider instance
@@ -53,6 +55,21 @@ class CloudProvider(object):
                   used to initialize the provider, as well as other global
                   configuration properties.
         """
+        pass
+
+    @abstractproperty
+    def middleware(self):
+        """
+        Returns the middleware manager associated with this provider. The
+        middleware manager can be used to add or remove middleware from
+        cloudbridge. Refer to pyeventsystem documentation for more information
+        on how the middleware manager works.
+
+        :rtype: :class:`.MiddlewareManager`
+        :return:  An object of class MiddlewareManager, which can be used to
+        add or remove middleware from cloudbridge.
+        """
+        pass
 
     @abstractmethod
     def authenticate(self):

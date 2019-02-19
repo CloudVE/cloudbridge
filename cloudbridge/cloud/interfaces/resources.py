@@ -1,7 +1,9 @@
 """
 Specifications for data objects exposed through a ``provider`` or ``service``.
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 from enum import Enum
 
 
@@ -31,7 +33,7 @@ class CloudResource(object):
 
     This interface has a  _provider property that can be used to access the
     provider associated with the resource, which is only intended for use by
-    subclasses. Every cloudbridge resource also has an id, a name and a
+    subclasses. Every CloudBridge resource also has an id, a name and a
     label property. The id property is a unique identifier for the resource.
     The name is a more user-friendly version of an id, suitable for
     display to an end-user. However, it cannot be used in place of id. See
@@ -58,11 +60,11 @@ class CloudResource(object):
         Get the resource identifier.
 
         The id property is used to uniquely identify the resource, and is an
-        opaque value which should not be interpreted by cloudbridge clients,
+        opaque value which should not be interpreted by CloudBridge clients,
         and is a value meaningful to the underlying cloud provider.
 
-        :rtype: ``str`` :return: ID for this resource as returned by the cloud
-        middleware.
+        :rtype: ``str``
+        :return: ID for this resource as returned by the cloud middleware.
         """
         pass
 
@@ -72,30 +74,32 @@ class CloudResource(object):
         Get the name id for the resource.
 
         The name property is typically a user-friendly id value for the
-        resource. The name is different from the id property in the
-        following ways:
-        1. The name property is often a more user-friendly value to
-           display to the user than the id property.
-        2. The name may sometimes be the same as the id, but should never
-           be used in place of the id.
-        3. The id is what will uniquely identify a resource, and will be used
-           internally by cloudbridge for all get operations etc.
-        4. All resources have a name.
-        5. The name is read-only.
-        6. However, the name may not necessarily be unique, which is the
-           reason why it should not be used for uniquely identifying a
-           resource.
+        resource. The name is different from the id property in the following
+        ways:
+
+         1. The name property is often a more user-friendly value to
+            display to the user than the id property.
+         2. The name may sometimes be the same as the id, but should never
+            be used in place of the id.
+         3. The id is what will uniquely identify a resource, and will be used
+            internally by CloudBridge for all get operations etc.
+         4. All resources have a name.
+         5. The name is read-only.
+         6. However, the name may not necessarily be unique, which is the
+            reason why it should not be used for uniquely identifying a
+            resource.
+
         Example:
-        The AWS machine image name maps to a cloudbridge name. It is not
-        editable and is a user friendly name such as 'Ubuntu 14.04' and
+        The AWS machine image name maps to a CloudBridge name. It is not
+        editable and is a user friendly name such as 'Ubuntu 18.04' and
         corresponds to the ami-name. It is distinct from the ami-id, which
-        maps to cloudbridge's id property. The ami-name cannot be edited, and
+        maps to CloudBridge's id property. The ami-name cannot be edited, and
         is set at creation time. It is not necessarily unique.
-        In Azure, the machine image's name corresponds to cloudbridge's name
+        In Azure, the machine image's name corresponds to CloudBridge's name
         property. In Azure, it also happens to be the same as the id property.
 
         The name property and the label property share the same character
-        restrictions. see :py:attr:`~LabeledCloudResource.label`
+        restrictions. See :py:attr:`~LabeledCloudResource.label`.
         """
         pass
 
@@ -119,6 +123,7 @@ class LabeledCloudResource(CloudResource):
         in the underlying cloud provider, or be simulated through tags/labels.
 
         The label property adheres to the following restrictions:
+
         * Must be at least 3 characters in length.
         * Cannot be longer than 63 characters.
         * May only contain ASCII characters comprising of lowercase letters,
@@ -127,18 +132,19 @@ class LabeledCloudResource(CloudResource):
           (i.e. cannot begin or end with a dash)
 
         Some resources may not support labels, in which case, a
-        NotImplementedError will be thrown.
+        ``NotImplementedError`` will be thrown.
 
         :rtype: ``str``
         :return: Label for this resource as returned by the cloud middleware.
-        :throws NotImplementedError if this resource does not support labels
+        :raise: ``NotImplementedError`` if this resource does not support
+                labels.
         """
         pass
 
 
 class Configuration(dict):
     """
-    Represents a cloudbridge configuration object
+    Represents a CloudBridge configuration object
     """
 
     @abstractproperty
@@ -460,7 +466,7 @@ class ResultList(list):
         """
         Indicate whether this ``ResultList`` supports server side paging.
 
-        If server side paging is not supported, the result will useclient side
+        If server side paging is not supported, the result will use client side
         paging and the data property provides direct access to all available
         data.
         """
@@ -505,6 +511,9 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
     def label(self, value):
         """
         Set the instance label.
+
+        :type value: ``str``
+        :param value: The value to set the label to.
         """
         pass
 
@@ -893,6 +902,9 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
     def label(self, value):
         """
         Set the resource label.
+
+        :type value: ``str``
+        :param value: The value to set the label to.
         """
         pass
 
@@ -949,36 +961,13 @@ class Network(ObjectLifeCycleMixin, LabeledCloudResource):
         """
         pass
 
-    @abstractmethod
-    def create_subnet(self, label, cidr_block, zone=None):
-        """
-        Create a new network subnet and associate it with this Network.
-
-        :type label: ``str``
-        :param label: The subnet label. The subnet name will be derived from
-                      this label.
-
-        :type cidr_block: ``str``
-        :param cidr_block: CIDR block within this Network to assign to the
-                           subnet.
-
-        :type zone: ``str``
-        :param zone: Placement zone where to create the subnet. Some providers
-                     may not support subnet zones, in which case the value is
-                     ignored.
-
-        :rtype: ``object`` of :class:`.Subnet`
-        :return:  A Subnet object
-        """
-        pass
-
     @abstractproperty
     def gateways(self):
         """
         Provides access to the internet gateways attached to this network.
 
-        :rtype: :class:`.GatewayContainer`
-        :return: A GatewayContainer object
+        :rtype: :class:`.GatewaySubService`
+        :return: A GatewaySubService object
         """
         pass
 
@@ -1011,6 +1000,9 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
     def label(self, value):
         """
         Set the resource label.
+
+        :type value: ``str``
+        :param value: The value to set the label to.
         """
         pass
 
@@ -1063,76 +1055,6 @@ class Subnet(ObjectLifeCycleMixin, LabeledCloudResource):
 
         :rtype: ``bool``
         :return: ``True`` if successful.
-        """
-        pass
-
-
-class FloatingIPContainer(PageableObjectMixin):
-    """
-    Base interface for a FloatingIP Service.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def get(self, fip_id):
-        """
-        Returns a FloatingIP given its ID or ``None`` if not found.
-
-        :type fip_id: ``str``
-        :param fip_id: The ID of the FloatingIP to retrieve.
-
-        :rtype: ``object`` of :class:`.FloatingIP`
-        :return: a FloatingIP object
-        """
-        pass
-
-    @abstractmethod
-    def list(self, limit=None, marker=None):
-        """
-        List floating (i.e., static) IP addresses.
-
-        :rtype: ``list`` of :class:`.FloatingIP`
-        :return: list of FloatingIP objects
-        """
-        pass
-
-    @abstractmethod
-    def find(self, **kwargs):
-        """
-        Searches for a FloatingIP by a given list of attributes.
-
-        Supported attributes: label, public_ip
-
-        Example:
-
-        .. code-block:: python
-
-            fip = provider.networking.gateways.get('id').floating_ips.find(
-                        public_ip='public_ip')
-
-
-        :rtype: List of ``object`` of :class:`.FloatingIP`
-        :return: A list of FloatingIP objects matching the supplied attributes.
-        """
-        pass
-
-    @abstractmethod
-    def create(self):
-        """
-        Allocate a new floating (i.e., static) IP address.
-
-        :rtype: ``object`` of :class:`.FloatingIP`
-        :return:  A FloatingIP object
-        """
-        pass
-
-    @abstractmethod
-    def delete(self, fip_id):
-        """
-        Delete an existing FloatingIP.
-
-        :type fip_id: ``str``
-        :param fip_id: The ID of the FloatingIP to be deleted.
         """
         pass
 
@@ -1230,6 +1152,9 @@ class Router(LabeledCloudResource):
     def label(self, value):
         """
         Set the resource label.
+
+        :type value: ``str``
+        :param value: The value to set the label to.
         """
         pass
 
@@ -1339,49 +1264,6 @@ class GatewayState(object):
     ERROR = "error"
 
 
-class GatewayContainer(PageableObjectMixin):
-    """
-    Manage internet gateway resources.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def get_or_create_inet_gateway(self):
-        """
-        Creates new or returns an existing internet gateway for a network.
-
-        The returned gateway object can subsequently be attached to a router to
-        provide internet routing to a network.
-
-        :type  name: ``str``
-        :param name: The gateway label.
-
-        :rtype: ``object``  of :class:`.InternetGateway` or ``None``
-        :return: an InternetGateway object of ``None`` if not found.
-        """
-        pass
-
-    @abstractmethod
-    def delete(self, gateway):
-        """
-        Delete a gateway.
-
-        :type gateway: :class:`.Gateway` object
-        :param gateway: Gateway object to delete.
-        """
-        pass
-
-    @abstractmethod
-    def list(self, limit=None, marker=None):
-        """
-        List all available internet gateways.
-
-        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
-        :return: Current list of internet gateways.
-        """
-        pass
-
-
 class Gateway(CloudResource):
     """
     Represents a gateway resource.
@@ -1411,8 +1293,8 @@ class Gateway(CloudResource):
         """
         Provides access to floating IPs connected to this internet gateway.
 
-        :rtype: :class:`.FloatingIPContainer`
-        :return: A FloatingIPContainer object
+        :rtype: :class:`.FloatingIPSubService`
+        :return: A FloatingIPSubService object
         """
         pass
 
@@ -2004,146 +1886,13 @@ class VMFirewall(LabeledCloudResource):
     @abstractproperty
     def rules(self):
         """
-        Get a container for the rules belonging to this VM firewall.
+        Get access to the rules belonging to this VM firewall.
 
         This object can be used for further operations on rules, such as get,
         list, create, etc.
 
-        :rtype: An object of :class:`.VMFirewallRuleContainer`
-        :return: A VMFirewallRuleContainer for further operations
-        """
-        pass
-
-
-class VMFirewallRuleContainer(PageableObjectMixin):
-    """
-    Base interface for Firewall rules.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def get(self, rule_id):
-        """
-        Return a firewall rule given its ID.
-
-        Returns ``None`` if the rule does not exist.
-
-        Example:
-
-        .. code-block:: python
-
-            fw = provider.security.vm_firewalls.get('my_fw_id')
-            rule = fw.rules.get('rule_id')
-            print(rule.id, rule.label)
-
-        :rtype: :class:`.FirewallRule`
-        :return:  a FirewallRule instance
-        """
-        pass
-
-    @abstractmethod
-    def list(self, limit=None, marker=None):
-        """
-        List all firewall rules associated with this firewall.
-
-        :rtype: ``list`` of :class:`.FirewallRule`
-        :return:  list of Firewall rule objects
-        """
-        pass
-
-    @abstractmethod
-    def create(self,  direction, protocol=None, from_port=None,
-               to_port=None, cidr=None, src_dest_fw=None):
-        """
-        Create a VM firewall rule.
-
-        If a matching rule already exists, return it.
-
-        Example:
-
-        .. code-block:: python
-            from cloudbridge.cloud.interfaces.resources import TrafficDirection
-
-            fw = provider.security.vm_firewalls.get('my_fw_id')
-            fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
-                            from_port=80, to_port=80, cidr='10.0.0.0/16')
-            fw.rules.create(TrafficDirection.INBOUND, src_dest_fw=fw)
-            fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
-
-        You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
-        ``from_port``, ``to_port``, ``cidr``. In other words, either
-        you are authorizing another group or you are authorizing some
-        IP-based rule.
-
-        :type direction: :class:``.TrafficDirection``
-        :param direction: Either ``TrafficDirection.INBOUND`` |
-                          ``TrafficDirection.OUTBOUND``
-
-        :type protocol: ``str``
-        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
-
-        :type from_port: ``int``
-        :param from_port: The beginning port number you are enabling.
-
-        :type to_port: ``int``
-        :param to_port: The ending port number you are enabling.
-
-        :type cidr: ``str`` or list of ``str``
-        :param cidr: The CIDR block you are providing access to.
-
-        :type src_dest_fw: :class:`.VMFirewall`
-        :param src_dest_fw: The VM firewall object which is the
-                            source/destination of the traffic, depending on
-                            whether it's ingress/egress traffic.
-
-        :rtype: :class:`.VMFirewallRule`
-        :return: Rule object if successful or ``None``.
-        """
-        pass
-
-    @abstractmethod
-    def find(self, **kwargs):
-        """
-        Find a firewall rule filtered by the given parameters.
-
-        :type label: str
-        :param label: The label of the VM firewall to retrieve.
-
-        :type protocol: ``str``
-        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
-
-        :type from_port: ``int``
-        :param from_port: The beginning port number you are enabling.
-
-        :type to_port: ``int``
-        :param to_port: The ending port number you are enabling.
-
-        :type cidr: ``str`` or list of ``str``
-        :param cidr: The CIDR block you are providing access to.
-
-        :type src_dest_fw: :class:`.VMFirewall`
-        :param src_dest_fw: The VM firewall object which is the
-                            source/destination of the traffic, depending on
-                            whether it's ingress/egress traffic.
-
-        :type src_dest_fw_id: :class:`.str`
-        :param src_dest_fw_id: The VM firewall id which is the
-                               source/destination of the traffic, depending on
-                               whether it's ingress/egress traffic.
-
-        :rtype: list of :class:`VMFirewallRule`
-        :return: A list of VMFirewall objects or an empty list if none
-                 found.
-        """
-        pass
-
-    @abstractmethod
-    def delete(self, rule_id):
-        """
-        Delete an existing VMFirewall rule.
-
-        :type rule_id: str
-        :param rule_id: The VM firewall rule to be deleted.
+        :rtype: An object of :class:`.VMFirewallRuleSubService`
+        :return: A VMFirewallRuleSubService for further operations
         """
         pass
 
@@ -2334,11 +2083,11 @@ class BucketObject(CloudResource):
     @abstractmethod
     def generate_url(self, expires_in):
         """
-        Generate a URL to this object.
+        Generate a signed URL to this object.
 
-        If the object is public, `expires_in` argument is not necessary, but if
-        the object is private, the lifetime of URL is set using `expires_in`
-        argument.
+        A signed URL associated with an object gives time-limited read access
+        to that specific object. Anyone in possession of the URL has the access
+        granted by the URL.
 
         :type expires_in: ``int``
         :param expires_in: Time to live of the generated URL in seconds.
@@ -2413,73 +2162,5 @@ class Bucket(CloudResource):
 
         :rtype: ``bool``
         :return: ``True`` if successful.
-        """
-        pass
-
-
-class BucketContainer(PageableObjectMixin):
-    """
-    A container service for objects within a bucket.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def get(self, name):
-        """
-        Retrieve a given object from this bucket.
-
-        :type name: ``str``
-        :param name: The identifier of the object to retrieve
-
-        :rtype: :class:``.BucketObject``
-        :return: The BucketObject or ``None`` if it cannot be found.
-        """
-        pass
-
-    @abstractmethod
-    # pylint:disable=arguments-differ
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List objects in this bucket.
-
-        :type limit: ``int``
-        :param limit: Maximum number of elements to return.
-
-        :type marker: ``int``
-        :param marker: Fetch results after this offset.
-
-        :type prefix: ``str``
-        :param prefix: Prefix criteria by which to filter listed objects.
-
-        :rtype: List of ``objects`` of :class:``.BucketObject``
-        :return: List of all available BucketObjects within this bucket.
-        """
-        pass
-
-    @abstractmethod
-    def find(self, **kwargs):
-        """
-        Search for an object by a given list of attributes.
-
-        Supported attributes: ``name``
-
-        :rtype: List of ``objects`` of :class:`.BucketObject`
-        :return: A list of BucketObjects matching the supplied attributes.
-
-        :type limit: ``int``
-        :param limit: Maximum number of elements to return.
-
-        :type marker: ``int``
-        :param marker: Fetch results after this offset.
-        """
-        pass
-
-    @abstractmethod
-    def create(self, name):
-        """
-        Create a new object within this bucket.
-
-        :rtype: :class:``.BucketObject``
-        :return: The newly created bucket object
         """
         pass

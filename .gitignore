@@ -59,6 +59,7 @@ target/
 *.DS_Store
 /venv/
 
+credentials.tar.gz
 bootstrap.py
 ISB-*
 launch.json

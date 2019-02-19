@@ -9,8 +9,10 @@ import uuid
 
 import tenacity
 
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.interfaces.exceptions \
     import InvalidNameException
+from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.resources import LabeledCloudResource
 from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.cloud.interfaces.resources import ResultList
@@ -100,7 +102,7 @@ def check_find_non_existent(test, service, obj):
         find_objs = service.find(label="random_imagined_obj_name", **args)
     else:
         find_objs = service.find(name="random_imagined_obj_name")
-    with test.assertRaises(TypeError):
+    with test.assertRaises(InvalidParamException):
         service.find(notaparameter="random_imagined_obj_name")
     test.assertTrue(
         len(find_objs) == 0,
@@ -117,7 +119,7 @@ def check_get(test, service, obj):
 
 def check_get_non_existent(test, service):
     # check get
-    get_objs = service.get(str(uuid.uuid4()))
+    get_objs = service.get('tmp-' + str(uuid.uuid4()))
     test.assertIsNone(
         get_objs,
         "Get non-existent object for %s returned unexpected objects: %s"
@@ -329,7 +331,7 @@ def check_crud(test, service, iface, label_prefix,
     """
 
     obj = None
-    with helpers.cleanup_action(lambda: cleanup_func(obj)):
+    with cb_helpers.cleanup_action(lambda: cleanup_func(obj)):
         label = "{0}-{1}".format(label_prefix, helpers.get_uuid())
         if not skip_name_check:
             check_create(test, service, iface, label_prefix,

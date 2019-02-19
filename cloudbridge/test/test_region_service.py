@@ -12,11 +12,19 @@ class CloudRegionServiceTestCase(ProviderTestBase):
     _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['compute.regions'])
+    def test_storage_services_event_pattern(self):
+        # pylint:disable=protected-access
+        self.assertEqual(
+            self.provider.compute.regions._service_event_pattern,
+            "provider.compute.regions",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("regions",
+                                     "provider.compute.regions",
+                                     self.provider.compute.regions.
+                                     _service_event_pattern))
+
+    @helpers.skipIfNoService(['compute.regions'])
     def test_get_and_list_regions(self):
-        """
-        Test whether the region listing methods work,
-        and whether zones are returned appropriately.
-        """
         regions = list(self.provider.compute.regions)
         sit.check_standard_behaviour(
             self, self.provider.compute.regions, regions[-1])
@@ -32,27 +40,18 @@ class CloudRegionServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.regions'])
     def test_regions_unique(self):
-        """
-        Regions should not return duplicate items
-        """
         regions = self.provider.compute.regions.list()
         unique_regions = set([region.id for region in regions])
         self.assertTrue(len(regions) == len(list(unique_regions)))
 
     @helpers.skipIfNoService(['compute.regions'])
     def test_current_region(self):
-        """
-        RegionService.current should return a valid region
-        """
         current_region = self.provider.compute.regions.current
         self.assertIsInstance(current_region, Region)
         self.assertTrue(current_region in self.provider.compute.regions)
 
     @helpers.skipIfNoService(['compute.regions'])
     def test_zones(self):
-        """
-        Test whether regions return the correct zone information
-        """
         zone_find_count = 0
         test_zone = helpers.get_provider_test_data(self.provider, "placement")
         for region in self.provider.compute.regions:

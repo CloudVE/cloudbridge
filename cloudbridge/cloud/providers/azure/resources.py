@@ -3,7 +3,6 @@ DataTypes used by this provider
 """
 import collections
 import logging
-from uuid import uuid4
 
 from azure.common import AzureException
 from azure.mgmt.devtestlabs.models import GalleryImageReference
@@ -13,20 +12,41 @@ from msrestazure.azure_exceptions import CloudError
 
 import pysftp
 
-import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.base.resources import BaseAttachmentInfo, \
-    BaseBucket, BaseBucketContainer, BaseBucketObject, BaseFloatingIP, \
-    BaseFloatingIPContainer, BaseGatewayContainer, BaseInstance, \
-    BaseInternetGateway, BaseKeyPair, BaseLaunchConfig, \
-    BaseMachineImage, BaseNetwork, BasePlacementZone, BaseRegion, BaseRouter, \
-    BaseSnapshot, BaseSubnet, BaseVMFirewall, BaseVMFirewallRule, \
-    BaseVMFirewallRuleContainer, BaseVMType, BaseVolume, ClientPagedResultList
-from cloudbridge.cloud.interfaces import InstanceState, VolumeState
-from cloudbridge.cloud.interfaces.resources import Instance, \
-    MachineImageState, NetworkState, RouterState, \
-    SnapshotState, SubnetState, TrafficDirection
+from cloudbridge.cloud.base.resources import BaseAttachmentInfo
+from cloudbridge.cloud.base.resources import BaseBucket
+from cloudbridge.cloud.base.resources import BaseBucketObject
+from cloudbridge.cloud.base.resources import BaseFloatingIP
+from cloudbridge.cloud.base.resources import BaseInstance
+from cloudbridge.cloud.base.resources import BaseInternetGateway
+from cloudbridge.cloud.base.resources import BaseKeyPair
+from cloudbridge.cloud.base.resources import BaseLaunchConfig
+from cloudbridge.cloud.base.resources import BaseMachineImage
+from cloudbridge.cloud.base.resources import BaseNetwork
+from cloudbridge.cloud.base.resources import BasePlacementZone
+from cloudbridge.cloud.base.resources import BaseRegion
+from cloudbridge.cloud.base.resources import BaseRouter
+from cloudbridge.cloud.base.resources import BaseSnapshot
+from cloudbridge.cloud.base.resources import BaseSubnet
+from cloudbridge.cloud.base.resources import BaseVMFirewall
+from cloudbridge.cloud.base.resources import BaseVMFirewallRule
+from cloudbridge.cloud.base.resources import BaseVMType
+from cloudbridge.cloud.base.resources import BaseVolume
+from cloudbridge.cloud.interfaces import InstanceState
+from cloudbridge.cloud.interfaces import VolumeState
+from cloudbridge.cloud.interfaces.resources import Instance
+from cloudbridge.cloud.interfaces.resources import MachineImageState
+from cloudbridge.cloud.interfaces.resources import NetworkState
+from cloudbridge.cloud.interfaces.resources import RouterState
+from cloudbridge.cloud.interfaces.resources import SnapshotState
+from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.cloud.interfaces.resources import TrafficDirection
 
 from . import helpers as azure_helpers
+from .subservices import AzureBucketObjectSubService
+from .subservices import AzureFloatingIPSubService
+from .subservices import AzureGatewaySubService
+from .subservices import AzureSubnetSubService
+from .subservices import AzureVMFirewallRuleSubService
 
 log = logging.getLogger(__name__)
 
@@ -36,11 +56,11 @@ class AzureVMFirewall(BaseVMFirewall):
         super(AzureVMFirewall, self).__init__(provider, vm_firewall)
         self._vm_firewall = vm_firewall
         self._vm_firewall.tags = self._vm_firewall.tags or {}
-        self._rule_container = AzureVMFirewallRuleContainer(provider, self)
+        self._rule_container = AzureVMFirewallRuleSubService(provider, self)
 
     @property
     def network_id(self):
-        return None
+        return self._vm_firewall.tags.get('network_id', None)
 
     @property
     def resource_id(self):
@@ -80,9 +100,6 @@ class AzureVMFirewall(BaseVMFirewall):
     def rules(self):
         return self._rule_container
 
-    def delete(self):
-        self._provider.azure_client.delete_vm_firewall(self.id)
-
     def refresh(self):
         """
         Refreshes the security group with tags if required.
@@ -103,70 +120,6 @@ class AzureVMFirewall(BaseVMFirewall):
         if js.get('network_id'):
             js.pop('network_id')  # Omit for consistency across cloud providers
         return js
-
-
-class AzureVMFirewallRuleContainer(BaseVMFirewallRuleContainer):
-
-    def __init__(self, provider, firewall):
-        super(AzureVMFirewallRuleContainer, self).__init__(provider, firewall)
-
-    def list(self, limit=None, marker=None):
-        # Filter out firewall rules with priority < 3500 because values
-        # between 3500 and 4096 are assumed to be owned by cloudbridge
-        # default rules.
-        # pylint:disable=protected-access
-        rules = [AzureVMFirewallRule(self.firewall, rule) for rule
-                 in self.firewall._vm_firewall.security_rules
-                 if rule.priority < 3500]
-        return ClientPagedResultList(self._provider, rules,
-                                     limit=limit, marker=marker)
-
-    def create(self, direction, protocol=None, from_port=None, to_port=None,
-               cidr=None, src_dest_fw=None):
-        if protocol and from_port and to_port:
-            return self._create_rule(direction, protocol, from_port,
-                                     to_port, cidr)
-        elif src_dest_fw:
-            result = None
-            fw = (self._provider.security.vm_firewalls.get(src_dest_fw)
-                  if isinstance(src_dest_fw, str) else src_dest_fw)
-            for rule in fw.rules:
-                result = self._create_rule(
-                    rule.direction, rule.protocol, rule.from_port,
-                    rule.to_port, rule.cidr)
-            return result
-        else:
-            return None
-
-    def _create_rule(self, direction, protocol, from_port, to_port, cidr):
-
-        # If cidr is None, default values is set as 0.0.0.0/0
-        if not cidr:
-            cidr = '0.0.0.0/0'
-
-        count = len(self.firewall._vm_firewall.security_rules) + 1
-        rule_name = "cb-rule-" + str(count)
-        priority = 1000 + count
-        destination_port_range = str(from_port) + "-" + str(to_port)
-        source_port_range = '*'
-        destination_address_prefix = "*"
-        access = "Allow"
-        direction = ("Inbound" if direction == TrafficDirection.INBOUND
-                     else "Outbound")
-        parameters = {"priority": priority,
-                      "protocol": protocol,
-                      "source_port_range": source_port_range,
-                      "source_address_prefix": cidr,
-                      "destination_port_range": destination_port_range,
-                      "destination_address_prefix": destination_address_prefix,
-                      "access": access,
-                      "direction": direction}
-        result = self._provider.azure_client. \
-            create_vm_firewall_rule(self.firewall.id,
-                                    rule_name, parameters)
-        # pylint:disable=protected-access
-        self.firewall._vm_firewall.security_rules.append(result)
-        return AzureVMFirewallRule(self.firewall, result)
 
 
 # Tuple for port range
@@ -221,15 +174,6 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
     @property
     def src_dest_fw(self):
         return self.firewall
-
-    def delete(self):
-        vm_firewall = self.firewall.name
-        self._provider.azure_client. \
-            delete_vm_firewall_rule(self.id, vm_firewall)
-        for i, o in enumerate(self.firewall._vm_firewall.security_rules):
-            if o.id == self.id:
-                del self.firewall._vm_firewall.security_rules[i]
-                break
 
 
 class AzureBucketObject(BaseBucketObject):
@@ -324,7 +268,7 @@ class AzureBucket(BaseBucket):
     def __init__(self, provider, bucket):
         super(AzureBucket, self).__init__(provider)
         self._bucket = bucket
-        self._object_container = AzureBucketContainer(provider, self)
+        self._object_container = AzureBucketObjectSubService(provider, self)
 
     @property
     def id(self):
@@ -337,12 +281,6 @@ class AzureBucket(BaseBucket):
         """
         return self._bucket.name
 
-    def delete(self, delete_contents=True):
-        """
-        Delete this bucket.
-        """
-        self._provider.azure_client.delete_container(self.name)
-
     def exists(self, name):
         """
         Determine if an object with given name exists in this bucket.
@@ -352,49 +290,6 @@ class AzureBucket(BaseBucket):
     @property
     def objects(self):
         return self._object_container
-
-
-class AzureBucketContainer(BaseBucketContainer):
-
-    def __init__(self, provider, bucket):
-        super(AzureBucketContainer, self).__init__(provider, bucket)
-
-    def get(self, key):
-        """
-        Retrieve a given object from this bucket.
-        """
-        try:
-            obj = self._provider.azure_client.get_blob(self.bucket.name,
-                                                       key)
-            return AzureBucketObject(self._provider, self.bucket, obj)
-        except AzureException as azureEx:
-            log.exception(azureEx)
-            return None
-
-    def list(self, limit=None, marker=None, prefix=None):
-        """
-        List all objects within this bucket.
-
-        :rtype: BucketObject
-        :return: List of all available BucketObjects within this bucket.
-        """
-        objects = [AzureBucketObject(self._provider, self.bucket, obj)
-                   for obj in
-                   self._provider.azure_client.list_blobs(
-                       self.bucket.name, prefix=prefix)]
-        return ClientPagedResultList(self._provider, objects,
-                                     limit=limit, marker=marker)
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
-
-    def create(self, name):
-        self._provider.azure_client.create_blob_from_text(
-            self.bucket.name, name, '')
-        return self.get(name)
 
 
 class AzureVolume(BaseVolume):
@@ -543,12 +438,6 @@ class AzureVolume(BaseVolume):
         return self._provider.storage.snapshots.create(label, self,
                                                        description)
 
-    def delete(self):
-        """
-        Delete this volume.
-        """
-        self._provider.azure_client.delete_disk(self.id)
-
     @property
     def state(self):
         return AzureVolume.VOLUME_STATE_MAP.get(
@@ -664,12 +553,6 @@ class AzureSnapshot(BaseSnapshot):
             # The snapshot no longer exists and cannot be refreshed.
             # set the state to unknown
             self._state = 'unknown'
-
-    def delete(self):
-        """
-        Delete this snapshot.
-        """
-        self._provider.azure_client.delete_snapshot(self.id)
 
     def create_volume(self, placement=None,
                       size=None, volume_type=None, iops=None):
@@ -822,28 +705,6 @@ class AzureMachineImage(BaseMachineImage):
                 self._state = "unknown"
 
 
-class AzureGatewayContainer(BaseGatewayContainer):
-    def __init__(self, provider, network):
-        super(AzureGatewayContainer, self).__init__(provider, network)
-        # Azure doesn't have a notion of a route table or an internet
-        # gateway as OS and AWS so create placeholder objects of the
-        # AzureInternetGateway here.
-        # http://bit.ly/2BqGdVh
-        # Singleton returned by the list method
-        self.gateway_singleton = AzureInternetGateway(self._provider, None,
-                                                      network)
-
-    def get_or_create_inet_gateway(self):
-        gateway = AzureInternetGateway(self._provider, None, self._network)
-        return gateway
-
-    def list(self, limit=None, marker=None):
-        return [self.gateway_singleton]
-
-    def delete(self, gateway):
-        pass
-
-
 class AzureNetwork(BaseNetwork):
     NETWORK_STATE_MAP = {
         'InProgress': NetworkState.PENDING,
@@ -856,7 +717,8 @@ class AzureNetwork(BaseNetwork):
         self._state = self._network.provisioning_state
         if not self._network.tags:
             self._network.tags = {}
-        self._gateway_service = AzureGatewayContainer(provider, self)
+        self._gateway_service = AzureGatewaySubService(provider, self)
+        self._subnet_svc = AzureSubnetSubService(provider, self)
 
     @property
     def id(self):
@@ -934,67 +796,18 @@ class AzureNetwork(BaseNetwork):
 
     @property
     def subnets(self):
-        """
-        List all the subnets in this network
-        :return:
-        """
-        return self._provider.networking.subnets.list(network=self.id)
-
-    def create_subnet(self, label, cidr_block, zone=None):
-        """
-        Create the subnet with cidr_block
-        :param cidr_block:
-        :param label:
-        :param zone:
-        :return:
-        """
-        return self._provider.networking.subnets. \
-            create(label=label, network=self.id, cidr_block=cidr_block)
+        return self._subnet_svc
 
     @property
     def gateways(self):
         return self._gateway_service
 
 
-class AzureFloatingIPContainer(BaseFloatingIPContainer):
-
-    def __init__(self, provider, gateway, network_id):
-        super(AzureFloatingIPContainer, self).__init__(provider, gateway)
-        self._network_id = network_id
-
-    def get(self, fip_id):
-        log.debug("Getting Azure Floating IP container with the id: %s",
-                  fip_id)
-        fip = [fip for fip in self if fip.id == fip_id]
-        return fip[0] if fip else None
-
-    def list(self, limit=None, marker=None):
-        floating_ips = [AzureFloatingIP(self._provider, floating_ip,
-                                        self._network_id)
-                        for floating_ip in self._provider.azure_client.
-                        list_floating_ips()]
-        return ClientPagedResultList(self._provider, floating_ips,
-                                     limit=limit, marker=marker)
-
-    def create(self):
-        public_ip_parameters = {
-            'location': self._provider.azure_client.region_name,
-            'public_ip_allocation_method': 'Static'
-        }
-
-        public_ip_name = 'cb-fip-' + uuid4().hex[:6]
-
-        floating_ip = self._provider.azure_client.\
-            create_floating_ip(public_ip_name, public_ip_parameters)
-        return AzureFloatingIP(self._provider, floating_ip, self._network_id)
-
-
 class AzureFloatingIP(BaseFloatingIP):
 
-    def __init__(self, provider, floating_ip, network_id):
+    def __init__(self, provider, floating_ip):
         super(AzureFloatingIP, self).__init__(provider)
         self._ip = floating_ip
-        self._network_id = network_id
 
     @property
     def id(self):
@@ -1021,16 +834,12 @@ class AzureFloatingIP(BaseFloatingIP):
     def in_use(self):
         return True if self._ip.ip_configuration else False
 
-    def delete(self):
-        """
-        Delete an existing floating ip.
-        """
-        self._provider.azure_client.delete_floating_ip(self.id)
-
     def refresh(self):
-        net = self._provider.networking.networks.get(self._network_id)
-        gw = net.gateways.get_or_create_inet_gateway()
-        fip = gw.floating_ips.get(self.id)
+        # Gateway is not needed as it doesn't exist in Azure, so just
+        # getting the Floating IP again from the client
+        # pylint:disable=protected-access
+        fip = self._provider.networking._floating_ips.get(None, self.id)
+        # pylint:disable=protected-access
         self._ip = fip._ip
 
 
@@ -1125,6 +934,7 @@ class AzureSubnet(BaseSubnet):
         # Although Subnet doesn't support labels, we use the parent Network's
         # tags to track the subnet's labels
         network = self.network
+        # pylint:disable=protected-access
         az_network = network._network
         return az_network.tags.get(self.tag_name, None)
 
@@ -1133,6 +943,7 @@ class AzureSubnet(BaseSubnet):
     def label(self, value):
         self.assert_valid_resource_label(value)
         network = self.network
+        # pylint:disable=protected-access
         az_network = network._network
         kwargs = {self.tag_name: value or ""}
         az_network.tags.update(**kwargs)
@@ -1163,9 +974,6 @@ class AzureSubnet(BaseSubnet):
     @property
     def network_id(self):
         return self._provider.azure_client.get_network_id_for_subnet(self.id)
-
-    def delete(self):
-        self._provider.azure_client.delete_subnet(self.id)
 
     @property
     def state(self):
@@ -1306,30 +1114,6 @@ class AzureInstance(BaseInstance):
         Reboot this instance (using the cloud middleware API).
         """
         self._provider.azure_client.restart_vm(self.id)
-
-    def delete(self):
-        """
-        Permanently terminate this instance.
-        After deleting the VM. we are deleting the network interface
-        associated to the instance, public ip addresses associated to
-        the instance and also removing OS disk and data disks where
-        tag with name 'delete_on_terminate' has value True.
-        """
-        self._provider.azure_client.deallocate_vm(self.id)
-        self._provider.azure_client.delete_vm(self.id)
-        for public_ip_id in self._public_ip_ids:
-            self._provider.azure_client.delete_floating_ip(public_ip_id)
-        for nic_id in self._nic_ids:
-            self._provider.azure_client.delete_nic(nic_id)
-        for data_disk in self._vm.storage_profile.data_disks:
-            if data_disk.managed_disk:
-                if self._vm.tags.get('delete_on_terminate',
-                                     'False') == 'True':
-                    self._provider.azure_client.\
-                        delete_disk(data_disk.managed_disk.id)
-        if self._vm.storage_profile.os_disk.managed_disk:
-            self._provider.azure_client. \
-                delete_disk(self._vm.storage_profile.os_disk.managed_disk.id)
 
     @property
     def image_id(self):
@@ -1625,9 +1409,6 @@ class AzureKeyPair(BaseKeyPair):
     def name(self):
         return self._key_pair.Name
 
-    def delete(self):
-        self._provider.azure_client.delete_public_key(self._key_pair)
-
 
 class AzureRouter(BaseRouter):
     def __init__(self, provider, route_table):
@@ -1684,9 +1465,6 @@ class AzureRouter(BaseRouter):
     def network_id(self):
         return None
 
-    def delete(self):
-        self._provider.azure_client.delete_route_table(self.name)
-
     def attach_subnet(self, subnet):
         self._provider.azure_client. \
             attach_subnet_to_route_table(subnet.id,
@@ -1720,8 +1498,7 @@ class AzureInternetGateway(BaseInternetGateway):
         self._network_id = gateway_net.id if isinstance(
             gateway_net, AzureNetwork) else gateway_net
         self._state = ''
-        self._fips_container = AzureFloatingIPContainer(
-            provider, self, self._network_id)
+        self._fips_container = AzureFloatingIPSubService(provider, self)
 
     @property
     def id(self):

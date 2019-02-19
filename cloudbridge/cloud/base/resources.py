@@ -12,21 +12,17 @@ import uuid
 
 import six
 
-import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.interfaces.exceptions \
-    import InvalidConfigurationException
+from cloudbridge.cloud.interfaces.exceptions import \
+    InvalidConfigurationException
 from cloudbridge.cloud.interfaces.exceptions import InvalidLabelException
 from cloudbridge.cloud.interfaces.exceptions import InvalidNameException
 from cloudbridge.cloud.interfaces.exceptions import WaitStateException
 from cloudbridge.cloud.interfaces.resources import AttachmentInfo
 from cloudbridge.cloud.interfaces.resources import Bucket
-from cloudbridge.cloud.interfaces.resources import BucketContainer
 from cloudbridge.cloud.interfaces.resources import BucketObject
 from cloudbridge.cloud.interfaces.resources import CloudResource
 from cloudbridge.cloud.interfaces.resources import FloatingIP
-from cloudbridge.cloud.interfaces.resources import FloatingIPContainer
 from cloudbridge.cloud.interfaces.resources import FloatingIpState
-from cloudbridge.cloud.interfaces.resources import GatewayContainer
 from cloudbridge.cloud.interfaces.resources import GatewayState
 from cloudbridge.cloud.interfaces.resources import Instance
 from cloudbridge.cloud.interfaces.resources import InstanceState
@@ -49,10 +45,11 @@ from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import SubnetState
 from cloudbridge.cloud.interfaces.resources import VMFirewall
 from cloudbridge.cloud.interfaces.resources import VMFirewallRule
-from cloudbridge.cloud.interfaces.resources import VMFirewallRuleContainer
 from cloudbridge.cloud.interfaces.resources import VMType
 from cloudbridge.cloud.interfaces.resources import Volume
 from cloudbridge.cloud.interfaces.resources import VolumeState
+
+from . import helpers as cb_helpers
 
 log = logging.getLogger(__name__)
 
@@ -86,8 +83,8 @@ class BaseCloudResource(CloudResource):
             raise InvalidLabelException(
                 u"Invalid label: %s. Label must be at least 3 characters long"
                 " and at most 63 characters. It must consist of lowercase"
-                " letters, numbers, or dashes. The label must not start or"
-                " end with a dash." % name)
+                " letters, numbers, or dashes. The label must start with a "
+                "letter and not end with a dash." % name)
 
     @staticmethod
     def assert_valid_resource_name(name):
@@ -265,12 +262,16 @@ class BasePageableObjectMixin(PageableObjectMixin):
     """
 
     def __iter__(self):
-        result_list = self.list()
+        for result in self.iter():
+            yield result
+
+    def iter(self, **kwargs):
+        result_list = self.list(**kwargs)
         if result_list.supports_server_paging:
             for result in result_list:
                 yield result
             while result_list.is_truncated:
-                result_list = self.list(marker=result_list.marker)
+                result_list = self.list(marker=result_list.marker, **kwargs)
                 for result in result_list:
                     yield result
         else:
@@ -318,6 +319,9 @@ class BaseInstance(BaseCloudResource, BaseObjectLifeCycleMixin, Instance):
             terminal_states=[InstanceState.DELETED, InstanceState.ERROR],
             timeout=timeout,
             interval=interval)
+
+    def delete(self):
+        self._provider.compute.instances.delete(self)
 
 
 class BaseLaunchConfig(LaunchConfig):
@@ -458,6 +462,12 @@ class BaseVolume(BaseCloudResource, BaseObjectLifeCycleMixin, Volume):
             timeout=timeout,
             interval=interval)
 
+    def delete(self):
+        """
+        Delete this volume.
+        """
+        return self._provider.storage.volumes.delete(self)
+
 
 class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
 
@@ -479,6 +489,12 @@ class BaseSnapshot(BaseCloudResource, BaseObjectLifeCycleMixin, Snapshot):
             terminal_states=[SnapshotState.ERROR],
             timeout=timeout,
             interval=interval)
+
+    def delete(self):
+        """
+        Delete this snapshot.
+        """
+        return self._provider.storage.snapshots.delete(self)
 
 
 class BaseKeyPair(BaseCloudResource, KeyPair):
@@ -518,15 +534,7 @@ class BaseKeyPair(BaseCloudResource, KeyPair):
         self._private_material = value
 
     def delete(self):
-        """
-        Delete this KeyPair.
-
-        :rtype: bool
-        :return: True if successful, otherwise False.
-        """
-        # This implementation assumes the `delete` method exists across
-        #  multiple providers.
-        self._key_pair.delete()
+        self._provider.security.key_pairs.delete(self)
 
 
 class BaseVMFirewall(BaseCloudResource, VMFirewall):
@@ -575,38 +583,7 @@ class BaseVMFirewall(BaseCloudResource, VMFirewall):
         """
         Delete this VM firewall.
         """
-        return self._vm_firewall.delete()
-
-
-class BaseVMFirewallRuleContainer(BasePageableObjectMixin,
-                                  VMFirewallRuleContainer):
-
-    def __init__(self, provider, firewall):
-        self.__provider = provider
-        self.firewall = firewall
-
-    @property
-    def _provider(self):
-        return self.__provider
-
-    def get(self, rule_id):
-        matches = [rule for rule in self if rule.id == rule_id]
-        if matches:
-            return matches[0]
-        else:
-            return None
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
-                   'cidr', 'src_dest_fw', 'src_dest_fw_id']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
-
-    def delete(self, rule_id):
-        rule = self.get(rule_id)
-        if rule:
-            rule.delete()
+        return self._provider.security.vm_firewalls.delete(self)
 
 
 class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
@@ -663,6 +640,9 @@ class BaseVMFirewallRule(BaseCloudResource, VMFirewallRule):
         js['src_dest_fw'] = self.src_dest_fw_id
         js['firewall'] = self.firewall.id
         return js
+
+    def delete(self):
+        self._provider.security._vm_firewall_rules.delete(self.firewall, self)
 
 
 class BasePlacementZone(BaseCloudResource, PlacementZone):
@@ -748,32 +728,37 @@ class BaseBucket(BaseCloudResource, Bucket):
                 # check from most to least likely mutables
                 self.name == other.name)
 
+    def delete(self):
+        """
+        Delete this bucket.
+        """
+        self._provider.storage.buckets.delete(self.id)
 
-class BaseBucketContainer(BasePageableObjectMixin, BucketContainer):
-
-    def __init__(self, provider, bucket):
-        self.__provider = provider
-        self.bucket = bucket
-
-    @property
-    def _provider(self):
-        return self.__provider
-
-
-class BaseGatewayContainer(GatewayContainer, BasePageableObjectMixin):
-
-    def __init__(self, provider, network):
-        self._network = network
-        self._provider = provider
+    # TODO: Discuss creating `create_object` method, or change docs
 
 
 class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
 
     CB_DEFAULT_NETWORK_LABEL = os.environ.get('CB_DEFAULT_NETWORK_LABEL',
                                               'cloudbridge-net')
+    CB_DEFAULT_IPV4RANGE = os.environ.get('CB_DEFAULT_IPV4RANGE',
+                                          u'10.0.0.0/16')
 
     def __init__(self, provider):
         super(BaseNetwork, self).__init__(provider)
+
+    @staticmethod
+    def cidr_blocks_overlap(block1, block2):
+        common_length = min(int(block1.split('/')[1]),
+                            int(block2.split('/')[1]))
+
+        p1 = [format(int(b), '08b') for b in block1.split('/')[0].split('.')]
+        prefix1 = ''.join(p1)[:common_length]
+
+        p2 = [format(int(b), '08b') for b in block2.split('/')[0].split('.')]
+        prefix2 = ''.join(p2)[:common_length]
+
+        return prefix1 == prefix2
 
     def wait_till_ready(self, timeout=None, interval=None):
         self.wait_for(
@@ -782,9 +767,8 @@ class BaseNetwork(BaseCloudResource, BaseObjectLifeCycleMixin, Network):
             timeout=timeout,
             interval=interval)
 
-    def create_subnet(self, label, cidr_block, zone=None):
-        return self._provider.networking.subnets.create(
-            label=label, network=self, cidr_block=cidr_block, zone=zone)
+    def delete(self):
+        self._provider.networking.networks.delete(self)
 
     def __eq__(self, other):
         return (isinstance(other, Network) and
@@ -797,6 +781,8 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
 
     CB_DEFAULT_SUBNET_LABEL = os.environ.get('CB_DEFAULT_SUBNET_LABEL',
                                              'cloudbridge-subnet')
+    CB_DEFAULT_SUBNET_IPV4RANGE = os.environ.get('CB_DEFAULT_SUBNET_IPV4RANGE',
+                                                 '10.0.0.0/24')
 
     def __init__(self, provider):
         super(BaseSubnet, self).__init__(provider)
@@ -818,27 +804,8 @@ class BaseSubnet(BaseCloudResource, BaseObjectLifeCycleMixin, Subnet):
             timeout=timeout,
             interval=interval)
 
-
-class BaseFloatingIPContainer(FloatingIPContainer, BasePageableObjectMixin):
-
-    def __init__(self, provider, gateway):
-        self.__provider = provider
-        self.gateway = gateway
-
-    @property
-    def _provider(self):
-        return self.__provider
-
-    def find(self, **kwargs):
-        obj_list = self
-        filters = ['name', 'public_ip']
-        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
-        return ClientPagedResultList(self._provider, list(matches))
-
-    def delete(self, fip_id):
-        floating_ip = self.get(fip_id)
-        if floating_ip:
-            floating_ip.delete()
+    def delete(self):
+        self._provider.networking.subnets.delete(self)
 
 
 class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
@@ -868,6 +835,12 @@ class BaseFloatingIP(BaseCloudResource, BaseObjectLifeCycleMixin, FloatingIP):
                 self._provider == other._provider and
                 self.id == other.id)
 
+    def delete(self):
+        # For OS where the gateway is necessary, we pass the gateway when
+        # deleting, for all others we pass None and it will be ignored
+        gw = getattr(self, '_gateway_id', None)
+        self._provider.networking._floating_ips.delete(gw, self.id)
+
 
 class BaseRouter(BaseCloudResource, Router):
 
@@ -882,6 +855,9 @@ class BaseRouter(BaseCloudResource, Router):
                 # pylint:disable=protected-access
                 self._provider == other._provider and
                 self.id == other.id)
+
+    def delete(self):
+        self._provider.networking.routers.delete(self)
 
 
 class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
@@ -906,3 +882,7 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
             terminal_states=[GatewayState.ERROR, GatewayState.UNKNOWN],
             timeout=timeout,
             interval=interval)
+
+    def delete(self):
+        return self._provider.networking._gateways.delete(self.network_id,
+                                                          self)

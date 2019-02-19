@@ -1,7 +1,9 @@
 """
 Specifications for services available through a provider
 """
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 
 from cloudbridge.cloud.interfaces.resources import PageableObjectMixin
 
@@ -360,6 +362,15 @@ class VolumeService(PageableObjectMixin, CloudService):
         """
         pass
 
+    def delete(self, volume):
+        """
+        Delete an existing volume.
+
+        :type volume: ``str`` or :class:`Volume`
+        :param volume: The object or ID of the volume to be deleted.
+        """
+        pass
+
 
 class SnapshotService(PageableObjectMixin, CloudService):
     """
@@ -368,7 +379,7 @@ class SnapshotService(PageableObjectMixin, CloudService):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get(self, volume_id):
+    def get(self, snapshot_id):
         """
         Returns a snapshot given its id.
 
@@ -417,6 +428,15 @@ class SnapshotService(PageableObjectMixin, CloudService):
 
         :rtype: ``object`` of :class:`.Snapshot`
         :return: a newly created Snapshot object.
+        """
+        pass
+
+    def delete(self, snapshot):
+        """
+        Delete an existing snapshot.
+
+        :type snapshot: ``str`` or :class:`Snapshot`
+        :param snapshot: The object or ID of the snapshot to be deleted.
         """
         pass
 
@@ -584,6 +604,28 @@ class NetworkingService(CloudService):
         """
         pass
 
+    @abstractproperty
+    def _floating_ips(self):
+        """
+        Provides access to floating ips for this provider.
+        This service is not iterable.
+
+        :rtype: :class:`.FloatingIPService`
+        :return: a FloatingIPService object
+        """
+        pass
+
+    @abstractproperty
+    def _gateways(self):
+        """
+        Provides access to internet gateways for this provider.
+        This service is not iterable.
+
+        :rtype: :class:`.GatewayService`
+        :return: a GatewayService object
+        """
+        pass
+
 
 class NetworkService(PageableObjectMixin, CloudService):
 
@@ -643,7 +685,7 @@ class NetworkService(PageableObjectMixin, CloudService):
                            subnets you create fall within this initially
                            specified range. Note that the block size should be
                            between a /16 netmask (65,536 IP addresses) and /28
-                           netmask (16 IP addresses). e.g. 10.0.0.0/16
+                           netmask (16 IP addresses), e.g. 10.0.0.0/16.
 
         :rtype: ``object`` of :class:`.Network`
         :return:  A Network object
@@ -651,12 +693,12 @@ class NetworkService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, network_id):
+    def delete(self, network):
         """
         Delete an existing Network.
 
-        :type network_id: ``str``
-        :param network_id: The ID of the network to be deleted.
+        :type network: ``str`` or :class:`.Network`
+        :param network: The object or id of the network to be deleted.
         """
         pass
 
@@ -699,7 +741,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         :param subnet_id: The ID of the subnet to retrieve.
 
         :rtype: ``object`` of :class:`.Subnet`
-        return: a Subnet object
+        :return: a Subnet object
         """
         pass
 
@@ -730,7 +772,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, network_id, cidr_block, zone):
+    def create(self, label, network, cidr_block, zone):
         """
         Create a new subnet within the supplied network.
 
@@ -945,6 +987,110 @@ class BucketService(PageableObjectMixin, CloudService):
         pass
 
 
+class BucketObjectService(CloudService):
+
+    """
+    The Bucket Object Service interface provides access to the underlying
+    object storage capabilities of this provider. This service is optional and
+    the :func:`CloudProvider.has_service()` method should be used to verify its
+    availability before using the service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, bucket, object_id):
+        """
+        Returns a bucket object given its ID and the ID of bucket containing
+        it. Returns ``None`` if the bucket object or bucket does not exist.
+        On some providers, such as AWS and OpenStack, the bucket id is the
+        same as its name.
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.storage.buckets.get('my_bucket_id')
+            # pylint:disable=protected-access
+            buck_obj = provider.storage._bucket_objects.get('my_object_id',
+                                                           bucket)
+            print(buck_obj.id, buck_obj.name)
+
+        :rtype: :class:`.BucketObject`
+        :return:  a BucketObject instance
+        """
+        pass
+
+    @abstractmethod
+    def find(self, bucket, **kwargs):
+        """
+        Searches for a bucket object in a bucket by a given list of attributes.
+
+        Supported attributes: name
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.storage.buckets.get('my_bucket_id')
+            # pylint:disable=protected-access
+            objs = provider.storage._bucket_objects.find(bucket,
+                                                        name='my_obj_name')
+            for buck_obj in objs:
+                print(buck_obj.id, buck_obj.name)
+
+        :rtype: :class:`.BucketObject`
+        :return:  a BucketObject instance
+        """
+        pass
+
+    @abstractmethod
+    def list(self, bucket, limit=None, marker=None):
+        """
+        List all bucket objects within a bucket.
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.storage.buckets.get('my_bucket_id')
+            # pylint:disable=protected-access
+            objs = provider.storage._bucket_objects.list(bucket)
+            for buck_obj in objs:
+                print(buck_obj.id, buck_obj.name)
+
+        :rtype: :class:`.BucketObject`
+        :return:  a BucketObject instance
+        """
+        pass
+
+    @abstractmethod
+    def create(self, bucket, object_name):
+        """
+        Create a new bucket object within a bucket.
+
+        Example:
+
+        .. code-block:: python
+
+            bucket = provider.storage.buckets.get('my_bucket_id')
+            # pylint:disable=protected-access
+            buck_obj = provider.storage._bucket_objects.create('my_name',
+                                                              bucket)
+            print(buck_obj.name)
+
+
+        :type object_name: str
+        :param object_name: The name of this bucket.
+
+        :type bucket: str
+        :param bucket: A bucket object.
+
+        :return:  a BucketObject instance
+        :rtype: ``object`` of :class:`.BucketObject`
+        """
+        pass
+
+
 class SecurityService(CloudService):
 
     """
@@ -994,6 +1140,17 @@ class SecurityService(CloudService):
 
         :rtype: :class:`.VMFirewallService`
         :return: a VMFirewallService object
+        """
+        pass
+
+    @abstractproperty
+    def _vm_firewall_rules(self):
+        """
+        Provides access to firewall (security group) rules for this provider.
+        This service is not iterable.
+
+        :rtype: :class:`.VMFirewallRuleService`
+        :return: a VMFirewallRuleService object
         """
         pass
 
@@ -1068,12 +1225,12 @@ class KeyPairService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, key_pair_id):
+    def delete(self, key_pair):
         """
-        Delete an existing VMFirewall.
+        Delete an existing keypair.
 
-        :type key_pair_id: str
-        :param key_pair_id: The id of the key pair to be deleted.
+        :type key_pair: ``str`` or :class:`.KeyPair`
+        :param key_pair: The object or id of the key pair to be deleted.
 
         :rtype: ``bool``
         :return:  ``True`` if the key does not exist, ``False`` otherwise. Note
@@ -1119,15 +1276,15 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, network_id, description=None):
+    def create(self, label, network, description=None):
         """
         Create a new VMFirewall.
 
         :type label: str
         :param label: The label for the new VM firewall.
 
-        :type  network_id: ``str``
-        :param network_id: Network ID under which to create the VM firewall.
+        :type  network: ``str``
+        :param network: Network ID under which to create the VM firewall.
 
         :type description: str
         :param description: The description of the new VM firewall.
@@ -1154,12 +1311,165 @@ class VMFirewallService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def delete(self, group_id):
+    def delete(self, vm_firewall):
         """
         Delete an existing VMFirewall.
 
-        :type group_id: str
-        :param group_id: The VM firewall ID to be deleted.
+        :type vm_firewall: ``str`` or :class:`.VMFirewall`
+        :param vm_firewall: The object or VM firewall ID to be deleted.
+        """
+        pass
+
+
+class VMFirewallRuleService(CloudService):
+    """
+    Base interface for Firewall rules.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, firewall, rule_id):
+        """
+        Return a firewall rule given its ID.
+
+        Returns ``None`` if the rule does not exist.
+
+        Example:
+
+        .. code-block:: python
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            rule = fw.rules.get('rule_id')
+            print(rule.id, rule.label)
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall to which the rule is attached
+
+        :type rule_id: str
+        :param rule_id: The ID of the desired firewall rule
+
+        :rtype: :class:`.FirewallRule`
+        :return:  a FirewallRule instance
+        """
+        pass
+
+    @abstractmethod
+    def list(self, firewall, limit=None, marker=None):
+        """
+        List all firewall rules associated with this firewall.
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall to which the rules are attached
+
+        :rtype: ``list`` of :class:`.FirewallRule`
+        :return:  list of Firewall rule objects
+        """
+        pass
+
+    @abstractmethod
+    def create(self, firewall,  direction, protocol=None, from_port=None,
+               to_port=None, cidr=None, src_dest_fw=None):
+        """
+        Create a VM firewall rule.
+
+        If a matching rule already exists, return it.
+
+        Example:
+
+        .. code-block:: python
+            from cloudbridge.cloud.interfaces.resources import TrafficDirection
+            from cloudbridge.cloud.interfaces.resources import BaseNetwork
+
+            fw = provider.security.vm_firewalls.get('my_fw_id')
+            fw.rules.create(TrafficDirection.INBOUND, protocol='tcp',
+                            from_port=80, to_port=80,
+                            cidr=BaseNetwork.CB_DEFAULT_IPV4RANGE)
+            fw.rules.create(TrafficDirection.INBOUND, src_dest_fw=fw)
+            fw.rules.create(TrafficDirection.OUTBOUND, src_dest_fw=fw)
+
+        You need to pass in either ``src_dest_fw`` OR ``protocol`` AND
+        ``from_port``, ``to_port``, ``cidr``. In other words, either
+        you are authorizing another group or you are authorizing some
+        IP-based rule.
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall to which the rule should be attached
+
+        :type direction: :class:``.TrafficDirection``
+        :param direction: Either ``TrafficDirection.INBOUND`` |
+                          ``TrafficDirection.OUTBOUND``
+
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+
+        :type from_port: ``int``
+        :param from_port: The beginning port number you are enabling.
+
+        :type to_port: ``int``
+        :param to_port: The ending port number you are enabling.
+
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
+
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
+
+        :rtype: :class:`.VMFirewallRule`
+        :return: Rule object if successful or ``None``.
+        """
+        pass
+
+    @abstractmethod
+    def find(self, firewall, **kwargs):
+        """
+        Find a firewall rule filtered by the given parameters.
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall in which to look for rules
+
+        :type label: str
+        :param label: The label of the VM firewall to retrieve.
+
+        :type protocol: ``str``
+        :param protocol: Either ``tcp`` | ``udp`` | ``icmp``.
+
+        :type from_port: ``int``
+        :param from_port: The beginning port number you are enabling.
+
+        :type to_port: ``int``
+        :param to_port: The ending port number you are enabling.
+
+        :type cidr: ``str`` or list of ``str``
+        :param cidr: The CIDR block you are providing access to.
+
+        :type src_dest_fw: :class:`.VMFirewall`
+        :param src_dest_fw: The VM firewall object which is the
+                            source/destination of the traffic, depending on
+                            whether it's ingress/egress traffic.
+
+        :type src_dest_fw_id: :class:`.str`
+        :param src_dest_fw_id: The VM firewall id which is the
+                               source/destination of the traffic, depending on
+                               whether it's ingress/egress traffic.
+
+        :rtype: list of :class:`VMFirewallRule`
+        :return: A list of VMFirewall objects or an empty list if none
+                 found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, firewall, rule_id):
+        """
+        Delete an existing VMFirewall rule.
+
+        :type firewall: ``VMFirewall``
+        :param firewall: The firewall to which the rule is attached
+
+        :type rule_id: str
+        :param rule_id: The VM firewall rule to be deleted.
         """
         pass
 
@@ -1198,7 +1508,7 @@ class VMTypeService(PageableObjectMixin, CloudService):
     @abstractmethod
     def find(self, **kwargs):
         """
-        Searches for an instance by a given list of attributes.
+        Searches for instances by a given list of attributes.
 
         Supported attributes: name
 
@@ -1257,5 +1567,138 @@ class RegionService(PageableObjectMixin, CloudService):
 
         :rtype: ``object`` of :class:`.Region`
         :return: a Region object
+        """
+        pass
+
+
+class GatewayService(CloudService):
+    """
+    Manage internet gateway resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_or_create(self, network):
+        """
+        Creates new or returns an existing internet gateway for a network.
+
+        The returned gateway object can subsequently be attached to a router to
+        provide internet routing to a network.
+
+        :type  network: ``Network``
+        :param network: The network to which the gateway should be attached.
+
+        :rtype: ``object``  of :class:`.InternetGateway` or ``None``
+        :return: an InternetGateway object of ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, network, gateway):
+        """
+        Delete a gateway.
+
+        :type  network: ``Network``
+        :param network: The network to which the gateway is attached.
+
+        :type gateway: :class:`.Gateway` object
+        :param gateway: Gateway object to delete.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, network, limit=None, marker=None):
+        """
+        List all available internet gateways.
+
+        :type  network: ``Network``
+        :param network: The network to which the gateway is attached.
+
+        :rtype: ``list`` of :class:`.InternetGateway` or ``None``
+        :return: Current list of internet gateways.
+        """
+        pass
+
+
+class FloatingIPService(CloudService):
+    """
+    Base interface for a FloatingIP Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, gateway, fip_id):
+        """
+        Returns a FloatingIP given its ID or ``None`` if not found.
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IP is attached
+
+        :type fip_id: ``str``
+        :param fip_id: The ID of the FloatingIP to retrieve.
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return: a FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def list(self, gateway, limit=None, marker=None):
+        """
+        List floating (i.e., static) IP addresses.
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IPs are attached
+
+        :rtype: ``list`` of :class:`.FloatingIP`
+        :return: list of FloatingIP objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, gateway, **kwargs):
+        """
+        Searches for a FloatingIP by a given list of attributes.
+
+        Supported attributes: name, public_ip
+
+        Example:
+
+        .. code-block:: python
+
+            fip = provider.networking.gateways.get('id').floating_ips.find(
+                        public_ip='public_ip')
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IPs are attached
+
+        :rtype: List of ``object`` of :class:`.FloatingIP`
+        :return: A list of FloatingIP objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, gateway):
+        """
+        Allocate a new floating (i.e., static) IP address.
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IP should be attached
+
+        :rtype: ``object`` of :class:`.FloatingIP`
+        :return:  A FloatingIP object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, gateway, fip):
+        """
+        Delete an existing FloatingIP.
+
+        :type gateway: ``Gateway``
+        :param gateway: The gateway to which the Floating IP is attached
+
+        :type fip: ``str``
+        :param fip: The FloatingIP to be deleted.
         """
         pass

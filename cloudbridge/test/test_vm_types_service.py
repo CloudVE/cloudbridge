@@ -10,6 +10,17 @@ class CloudVMTypesServiceTestCase(ProviderTestBase):
     _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['compute.vm_types'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(self.provider.compute.vm_types._service_event_pattern,
+                         "provider.compute.vm_types",
+                         "Event pattern for {} service should be '{}', "
+                         "but found '{}'.".format("vm_types",
+                                                  "provider.compute.vm_types",
+                                                  self.provider.compute.
+                                                  vm_types.
+                                                  _service_event_pattern))
+
+    @helpers.skipIfNoService(['compute.vm_types'])
     def test_vm_type_properties(self):
 
         for vm_type in self.provider.compute.vm_types:
@@ -63,11 +74,9 @@ class CloudVMTypesServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.vm_types'])
     def test_vm_types_standard(self):
-        """
-        Searching for an instance by name should return an
-        VMType object and searching for a non-existent
-        object should return an empty iterator
-        """
+        # Searching for an instance by name should return an
+        # VMType object and searching for a non-existent
+        # object should return an empty iterator
         vm_type_name = helpers.get_provider_test_data(
             self.provider,
             "vm_type")

@@ -49,7 +49,7 @@ Once we have all the desired pieces, we'll use them to launch an instance:
 .. code-block:: python
 
     inst = provider.compute.instances.create(
-        name='cloudbridge-vpc', image=img, vm_type=vm_type,
+        label='cloudbridge-vpc', image=img, vm_type=vm_type,
         subnet=subnet, zone=zone, key_pair=kp, vm_firewalls=[fw])
 
 Private networking
@@ -63,16 +63,16 @@ that subnet.
 .. code-block:: python
 
     net = self.provider.networking.networks.create(
-        name='my-network', cidr_block='10.0.0.0/16')
-    sn = net.create_subnet(name='my-subnet', cidr_block='10.0.0.0/28')
+        label='my-network', cidr_block='10.0.0.0/16')
+    sn = net.subnets.create(label='my-subnet', cidr_block='10.0.0.0/28')
     # make sure subnet has internet access
-    router = self.provider.networking.routers.create(network=net, name='my-router')
+    router = self.provider.networking.routers.create(label='my-router', network=net)
     router.attach_subnet(sn)
-    gateway = net.gateways.get_or_create_inet_gateway()
+    gateway = net.gateways.get_or_create()
     router.attach_gateway(gateway)
 
     inst = provider.compute.instances.create(
-        name='cloudbridge-vpc', image=img, vm_type=vm_type,
+        label='cloudbridge-vpc', image=img, vm_type=vm_type,
         subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
 
 For more information on how to create and setup a private network, take a look
@@ -94,7 +94,7 @@ refer to :class:`.LaunchConfig`.
     lc = provider.compute.instances.create_launch_config()
     lc.add_volume_device(source=img, size=11, is_root=True)
     inst = provider.compute.instances.create(
-        name='cloudbridge-bdm', image=img,  vm_type=vm_type,
+        label='cloudbridge-bdm', image=img,  vm_type=vm_type,
         launch_config=lc, key_pair=kp, vm_firewalls=[fw],
         subnet=subnet, zone=zone)
 

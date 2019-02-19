@@ -15,6 +15,27 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     _multiprocess_can_split_ = True
 
+    @helpers.skipIfNoService(['security.vm_firewalls'])
+    def test_storage_services_event_pattern(self):
+        self.assertEqual(
+            self.provider.security.key_pairs.
+            _service_event_pattern,
+            "provider.security.key_pairs",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("key_pairs",
+                                     "provider.security.key_pairs",
+                                     self.provider.security.
+                                     key_pairs.
+                                     _service_event_pattern))
+        self.assertEqual(
+            self.provider.security.vm_firewalls._service_event_pattern,
+            "provider.security.vm_firewalls",
+            "Event pattern for {} service should be '{}', "
+            "but found '{}'.".format("vm_firewalls",
+                                     "provider.security.vm_firewalls",
+                                     self.provider.security.vm_firewalls.
+                                     _service_event_pattern))
+
     @helpers.skipIfNoService(['security.key_pairs'])
     def test_crud_key_pair_service(self):
 
@@ -23,7 +44,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         def cleanup_kp(kp):
             if kp:
-                self.provider.security.key_pairs.delete(key_pair_id=kp.id)
+                self.provider.security.key_pairs.delete(kp.id)
 
         def extra_tests(kp):
             # Recreating existing keypair should raise an exception
@@ -38,7 +59,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
     def test_key_pair_properties(self):
         name = 'cb-kpprops-{0}'.format(helpers.get_uuid())
         kp = self.provider.security.key_pairs.create(name=name)
-        with helpers.cleanup_action(lambda: kp.delete()):
+        with cb_helpers.cleanup_action(lambda: kp.delete()):
             self.assertIsNotNone(
                 kp.material,
                 "KeyPair material is empty but it should not be.")
@@ -54,7 +75,7 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         public_key, _ = cb_helpers.generate_key_pair()
         kp = self.provider.security.key_pairs.create(
             name=name, public_key_material=public_key)
-        with helpers.cleanup_action(lambda: kp.delete()):
+        with cb_helpers.cleanup_action(lambda: kp.delete()):
             self.assertIsNone(kp.material, "Private KeyPair material should"
                               " be None when key is imported.")
 
@@ -66,14 +87,19 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
         def create_fw(label):
             return self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
         def cleanup_fw(fw):
             if fw:
                 fw.delete()
 
+        def network_id_test(fw):
+            # Checking that the network ID is returned correctly
+            self.assertEqual(fw.network_id, net.id)
+
         sit.check_crud(self, self.provider.security.vm_firewalls,
-                       VMFirewall, "cb-crudfw", create_fw, cleanup_fw)
+                       VMFirewall, "cb-crudfw", create_fw, cleanup_fw,
+                       extra_test_func=network_id_test)
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_vm_firewall_properties(self):
@@ -82,12 +108,12 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 vm_firewall=fw)):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             self.assertEqual(label, fw.description)
 
@@ -99,9 +125,9 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         net = subnet.network
 
         fw = None
-        with helpers.cleanup_action(lambda: fw.delete()):
+        with cb_helpers.cleanup_action(lambda: fw.delete()):
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             def create_fw_rule(label):
                 return fw.rules.create(
@@ -123,12 +149,12 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 vm_firewall=fw)):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             rule = fw.rules.create(
                 direction=TrafficDirection.INBOUND, protocol='tcp',
@@ -146,13 +172,13 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 vm_firewall=fw)):
 
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
+                label=label, description=label, network=net.id)
 
             rule = fw.rules.create(
                 direction=TrafficDirection.INBOUND, protocol='tcp',
@@ -170,22 +196,12 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
         fw = None
-        with helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
                 vm_firewall=fw)):
             subnet = helpers.get_or_create_default_subnet(self.provider)
             net = subnet.network
             fw = self.provider.security.vm_firewalls.create(
-                label=label, description=label, network_id=net.id)
-            rules = list(fw.rules)
-            self.assertTrue(
-                # TODO: This should be made consistent across all providers.
-                # Currently, OpenStack creates two rules, one for IPV6 and
-                # another for IPV4
-                len(rules) >= 1, "Expected a single VM firewall rule allowing"
-                " all outbound traffic. Got {0}.".format(rules))
-            self.assertEqual(
-                rules[0].direction, TrafficDirection.OUTBOUND,
-                "Expected rule to be outbound. Got {0}.".format(rules))
+                label=label, description=label, network=net.id)
             rule = fw.rules.create(
                 direction=TrafficDirection.INBOUND, src_dest_fw=fw,
                 protocol='tcp', from_port=1, to_port=65535)
