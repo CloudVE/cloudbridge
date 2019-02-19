@@ -307,7 +307,7 @@ class BaseSubnetService(
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
-    def get_or_create_default(self, zone):
+    def get_or_create_default(self):
         # Look for a CB-default subnet
         matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)
         if matches:
@@ -316,7 +316,7 @@ class BaseSubnetService(
         # No provider-default Subnet exists, try to create it (net + subnets)
         network = self.provider.networking.networks.get_or_create_default()
         subnet = self.create(BaseSubnet.CB_DEFAULT_SUBNET_LABEL, network,
-                             BaseSubnet.CB_DEFAULT_SUBNET_IPV4RANGE, zone)
+                             BaseSubnet.CB_DEFAULT_SUBNET_IPV4RANGE)
         return subnet
 
 

@@ -119,6 +119,29 @@ class CloudProvider(object):
         """
         pass
 
+    @abstractproperty
+    def region_name(self):
+        """
+        Returns the region that this provider is connected to.
+        All provider operations will take place within this region.
+
+        :rtype: ``str``
+        :return:  a zone id
+        """
+        pass
+
+    @abstractproperty
+    def zone_name(self):
+        """
+        Returns the placement zone that this provider is connected to.
+        All provider operations will take place within this zone. Placement
+        zone must be within the provider default region.
+
+        :rtype: ``str``
+        :return:  a zone id
+        """
+        pass
+
 #     @abstractproperty
 #     def account(self):
 #         """

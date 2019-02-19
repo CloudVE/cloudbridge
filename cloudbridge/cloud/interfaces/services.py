@@ -215,9 +215,8 @@ class InstanceService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, image, vm_type, subnet, zone=None,
-               key_pair=None, vm_firewalls=None, user_data=None,
-               launch_config=None,
+    def create(self, label, image, vm_type, subnet, key_pair=None,
+               vm_firewalls=None, user_data=None, launch_config=None,
                **kwargs):
         """
         Creates a new virtual machine instance.
@@ -244,14 +243,6 @@ class InstanceService(PageableObjectMixin, CloudService):
                        have proper subnet support and are not guaranteed to
                        work. Some providers (e.g. OpenStack) support a null
                        value but the behaviour is implementation specific.
-
-        :type  zone: ``Zone`` or ``str``
-        :param zone: The Zone or its id, where the instance should be placed.
-                     This parameter is provided for legacy compatibility (with
-                     classic networks).
-
-                     The subnet's placement zone will take precedence over this
-                     parameter, but in its absence, this value will be used.
 
         :type  key_pair: ``KeyPair`` or ``str``
         :param key_pair: The KeyPair object or its id, to set for the
@@ -335,7 +326,7 @@ class VolumeService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, size, zone, snapshot=None, description=None):
+    def create(self, label, size, snapshot=None, description=None):
         """
         Creates a new volume.
 
@@ -344,9 +335,6 @@ class VolumeService(PageableObjectMixin, CloudService):
 
         :type  size: ``int``
         :param size: The size of the volume (in GB).
-
-        :type  zone: ``str`` or :class:`.PlacementZone` object
-        :param zone: The availability zone in which the Volume will be created.
 
         :type  snapshot: ``str`` or :class:`.Snapshot` object
         :param snapshot: An optional reference to a snapshot from which this
@@ -772,7 +760,7 @@ class SubnetService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label, network, cidr_block, zone):
+    def create(self, label, network, cidr_block):
         """
         Create a new subnet within the supplied network.
 
@@ -786,17 +774,13 @@ class SubnetService(PageableObjectMixin, CloudService):
         :param cidr_block: CIDR block within the Network to assign to the
                            subnet.
 
-        :type zone: ``str``
-        :param zone: A placement zone for the subnet. Some providers
-                     may not support this, in which case the value is ignored.
-
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object
         """
         pass
 
     @abstractmethod
-    def get_or_create_default(self, zone):
+    def get_or_create_default(self):
         """
         Return a default subnet for the account or create one if not found.
         This provides a convenience method for obtaining a network if you
@@ -804,9 +788,6 @@ class SubnetService(PageableObjectMixin, CloudService):
 
         A default network is one marked as such by the provider or matches the
         default label used by this library (e.g., cloudbridge-net).
-
-        :type zone: :class:`.PlacementZone` object ``str``
-        :param zone: Placement zone where to look for the subnet.
 
         :rtype: ``object`` of :class:`.Subnet`
         :return: A Subnet object

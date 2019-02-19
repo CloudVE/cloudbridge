@@ -89,6 +89,19 @@ class BaseCloudProvider(CloudProvider):
         self._config_parser.read(CloudBridgeConfigLocations)
         self._middleware = SimpleMiddlewareManager()
         self.add_required_middleware()
+        self._region_name = None
+        self._zone_name = None
+
+    @property
+    def region_name(self):
+        return self._region_name
+
+    @property
+    def zone_name(self):
+        if not self._zone_name:
+            region = self.compute.regions.get(self.region_name)
+            self._zone_name = next(region.zones)
+        return self._zone_name
 
     @property
     def config(self):
@@ -152,7 +165,7 @@ class BaseCloudProvider(CloudProvider):
                  service_type)
         return False
 
-    def _get_config_value(self, key, default_value):
+    def _get_config_value(self, key, default_value=None):
         """
         A convenience method to extract a configuration value.
 

@@ -17,8 +17,7 @@ class CloudObjectLifeCycleTestCase(ProviderTestBase):
         test_vol = None
         with cb_helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol = self.provider.storage.volumes.create(
-                label, 1,
-                helpers.get_provider_test_data(self.provider, "placement"))
+                label, 1)
 
             # Waiting for an invalid timeout should raise an exception
             with self.assertRaises(AssertionError):

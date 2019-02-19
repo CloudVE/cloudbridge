@@ -9,7 +9,6 @@ from cloudbridge.cloud.interfaces.resources import SubnetState
 
 import test.helpers as helpers
 from test.helpers import ProviderTestBase
-from test.helpers import get_provider_test_data
 from test.helpers import standard_interface_tests as sit
 
 
@@ -91,9 +90,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
             cidr = '10.0.20.0/24'
             sn = net.subnets.create(
-                label=subnet_label, cidr_block=cidr,
-                zone=helpers.get_provider_test_data(self.provider,
-                                                    'placement'))
+                label=subnet_label, cidr_block=cidr)
             with cb_helpers.cleanup_action(lambda: helpers.cleanup_subnet(sn)):
                 self.assertTrue(
                     sn in net.subnets,
@@ -138,9 +135,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
         def create_subnet(label):
             return self.provider.networking.subnets.create(
-                label=label, network=net, cidr_block="10.0.10.0/24",
-                zone=helpers.get_provider_test_data(
-                    self.provider, 'placement'))
+                label=label, network=net, cidr_block="10.0.10.0/24")
 
         def cleanup_subnet(subnet):
             if subnet:
@@ -236,9 +231,7 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             router = self.provider.networking.routers.create(label=label,
                                                              network=net)
             cidr = '10.0.15.0/24'
-            sn = net.subnets.create(label=label, cidr_block=cidr,
-                                    zone=helpers.get_provider_test_data(
-                                        self.provider, 'placement'))
+            sn = net.subnets.create(label=label, cidr_block=cidr)
 
             # Check basic router properties
             sit.check_standard_behaviour(
@@ -275,6 +268,5 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['networking.networks'])
     def test_default_network(self):
-        subnet = self.provider.networking.subnets.get_or_create_default(
-            zone=get_provider_test_data(self.provider, 'placement'))
+        subnet = self.provider.networking.subnets.get_or_create_default()
         self.assertIsInstance(subnet, Subnet)

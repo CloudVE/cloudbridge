@@ -7,6 +7,7 @@ import uuid
 
 from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.factory import CloudProviderFactory
+from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces import InstanceState
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.resources import FloatingIpState
@@ -82,12 +83,14 @@ TEST_DATA_CONFIG = {
         "image": cb_helpers.get_env('CB_IMAGE_AWS', 'ami-aa2ea6d0'),
         "vm_type": cb_helpers.get_env('CB_VM_TYPE_AWS', 't2.nano'),
         "placement": cb_helpers.get_env('CB_PLACEMENT_AWS', 'us-east-1a'),
+        "placement_cfg_key": "aws_zone_name"
     },
     'OpenStackCloudProvider': {
         'image': cb_helpers.get_env('CB_IMAGE_OS',
                                     'c66bdfa1-62b1-43be-8964-e9ce208ac6a5'),
         "vm_type": cb_helpers.get_env('CB_VM_TYPE_OS', 'm1.tiny'),
         "placement": cb_helpers.get_env('CB_PLACEMENT_OS', 'nova'),
+        "placement_cfg_key": "os_zone_name"
     },
     'GCPCloudProvider': {
         'image': cb_helpers.get_env(
@@ -95,28 +98,32 @@ TEST_DATA_CONFIG = {
             'https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/'
             'global/images/ubuntu-1710-artful-v20180126'),
         'vm_type': cb_helpers.get_env('CB_VM_TYPE_GCP', 'f1-micro'),
-        'placement': cb_helpers.get_env('GCP_DEFAULT_ZONE', 'us-central1-a'),
+        'placement': cb_helpers.get_env('GCP_ZONE_NAME', 'us-central1-a'),
+        "placement_cfg_key": "gcp_zone_name"
     },
     "AzureCloudProvider": {
-        "placement":
-            cb_helpers.get_env('CB_PLACEMENT_AZURE', 'eastus'),
         "image":
             cb_helpers.get_env('CB_IMAGE_AZURE',
                                'Canonical:UbuntuServer:16.04.0-LTS:latest'),
-        "vm_type":
-            cb_helpers.get_env('CB_VM_TYPE_AZURE', 'Basic_A2'),
+        "vm_type": cb_helpers.get_env('CB_VM_TYPE_AZURE', 'Basic_A2'),
+        "placement": cb_helpers.get_env('CB_PLACEMENT_AZURE', 'eastus'),
+        "placement_cfg_key": "azure_zone_name"
     }
 }
 
 
 def get_provider_test_data(provider, key):
-    if "AWSCloudProvider" in provider.name:
+    provider_id = (provider.PROVIDER_ID if isinstance(provider, CloudProvider)
+                   else provider)
+    if "aws" == provider_id:
         return TEST_DATA_CONFIG.get("AWSCloudProvider").get(key)
-    elif "OpenStackCloudProvider" in provider.name:
+    if "mock" == provider_id:
+        return TEST_DATA_CONFIG.get("AWSCloudProvider").get(key)
+    elif "openstack" == provider_id:
         return TEST_DATA_CONFIG.get("OpenStackCloudProvider").get(key)
-    elif "GCPCloudProvider" in provider.name:
+    elif "gcp" == provider_id:
         return TEST_DATA_CONFIG.get("GCPCloudProvider").get(key)
-    elif "AzureCloudProvider" in provider.name:
+    elif "azure" == provider_id:
         return TEST_DATA_CONFIG.get("AzureCloudProvider").get(key)
     return None
 
@@ -125,8 +132,7 @@ def get_or_create_default_subnet(provider):
     """
     Return the default subnet to be used for tests
     """
-    return provider.networking.subnets.get_or_create_default(
-        zone=get_provider_test_data(provider, 'placement'))
+    return provider.networking.subnets.get_or_create_default()
 
 
 def cleanup_subnet(subnet):
@@ -185,7 +191,6 @@ def create_test_instance(
         instance_label, get_provider_test_data(provider, 'image'),
         get_provider_test_data(provider, 'vm_type'),
         subnet=subnet,
-        zone=get_provider_test_data(provider, 'placement'),
         key_pair=key_pair,
         vm_firewalls=vm_firewalls,
         launch_config=launch_config,
@@ -257,11 +262,16 @@ class ProviderTestBase(unittest.TestCase):
 
     def create_provider_instance(self):
         provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
+        zone_cfg_key = get_provider_test_data(provider_name,
+                                              'placement_cfg_key')
         factory = CloudProviderFactory()
         provider_class = factory.get_provider_class(provider_name)
-        config = {'default_wait_interval':
-                  self.get_provider_wait_interval(provider_class),
-                  'default_result_limit': 5}
+        config = {
+            'default_wait_interval': self.get_provider_wait_interval(
+                provider_class),
+            'default_result_limit': 5,
+            zone_cfg_key: get_provider_test_data(provider_name, 'placement')
+        }
         return provider_class(config)
 
     @property

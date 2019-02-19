@@ -740,7 +740,7 @@ class LaunchConfig(object):
         lc.add_block_device(...)
 
         inst = provider.compute.instances.create(
-            'MyVM', image, vm_type, subnet, zone, launch_config=lc)
+            'MyVM', image, vm_type, subnet, launch_config=lc)
     """
 
     @abstractmethod
@@ -1623,12 +1623,9 @@ class Snapshot(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
-    def create_volume(self, placement, size=None, volume_type=None, iops=None):
+    def create_volume(self, size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.
-
-        :type placement: ``str``
-        :param placement: The availability zone where to create the Volume.
 
         :type size: ``int``
         :param size: The size of the new volume, in GiB (optional). Defaults to
