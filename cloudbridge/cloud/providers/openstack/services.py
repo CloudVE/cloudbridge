@@ -47,7 +47,6 @@ from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import KeyPair
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
-from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import Subnet
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
@@ -409,15 +408,15 @@ class OpenStackVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, size, zone, snapshot=None, description=None):
+    def create(self, label, size, snapshot=None, description=None):
         OpenStackVolume.assert_valid_resource_label(label)
-        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+        zone_name = self.provider.zone_name
         snapshot_id = snapshot.id if isinstance(
             snapshot, OpenStackSnapshot) and snapshot else snapshot
 
         os_vol = self.provider.cinder.volumes.create(
             size, name=label, description=description,
-            availability_zone=zone_id, snapshot_id=snapshot_id)
+            availability_zone=zone_name, snapshot_id=snapshot_id)
         return OpenStackVolume(self.provider, os_vol)
 
     @dispatch(event="provider.storage.volumes.delete",
@@ -749,7 +748,7 @@ class OpenStackInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, image, vm_type, subnet, zone,
+    def create(self, label, image, vm_type, subnet,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         OpenStackInstance.assert_valid_resource_label(label)
@@ -766,7 +765,7 @@ class OpenStackInstanceService(BaseInstanceService):
             net_id = (self.provider.networking.subnets
                       .get(subnet_id).network_id
                       if subnet_id else None)
-        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+        zone_name = self.provider.zone_name
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
         bdm = None
@@ -822,7 +821,7 @@ class OpenStackInstanceService(BaseInstanceService):
             vm_size,
             min_count=1,
             max_count=1,
-            availability_zone=zone_id,
+            availability_zone=zone_name,
             key_name=key_pair_name,
             security_groups=sg_name_list,
             userdata=str(user_data) or None,
@@ -1080,8 +1079,7 @@ class OpenStackSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, network, cidr_block, zone):
-        """zone param is ignored."""
+    def create(self, label, network, cidr_block):
         OpenStackSubnet.assert_valid_resource_label(label)
         network_id = (network.id if isinstance(network, OpenStackNetwork)
                       else network)
@@ -1098,10 +1096,7 @@ class OpenStackSubnetService(BaseSubnetService):
         sn_id = subnet.id if isinstance(subnet, OpenStackSubnet) else subnet
         self.provider.neutron.delete_subnet(sn_id)
 
-    def get_or_create_default(self, zone):
-        """
-        Subnet zone is not supported by OpenStack and is thus ignored.
-        """
+    def get_or_create_default(self):
         try:
             sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)
             if sn:
@@ -1111,7 +1106,7 @@ class OpenStackSubnetService(BaseSubnetService):
             sn = self.provider.networking.subnets.create(
                 label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL,
                 cidr_block=OpenStackSubnet.CB_DEFAULT_SUBNET_IPV4RANGE,
-                network=net, zone=zone)
+                network=net)
             router = self.provider.networking.routers.get_or_create_default(
                 net)
             router.attach_subnet(sn)

@@ -554,13 +554,12 @@ class AzureSnapshot(BaseSnapshot):
             # set the state to unknown
             self._state = 'unknown'
 
-    def create_volume(self, placement=None,
-                      size=None, volume_type=None, iops=None):
+    def create_volume(self, size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.
         """
         return self._provider.storage.volumes. \
-            create(self.name, self.size, zone=placement, snapshot=self)
+            create(self.name, self.size, snapshot=self)
 
 
 class AzureMachineImage(BaseMachineImage):

@@ -36,22 +36,24 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         # Initialize cloud connection fields
         self.username = self._get_config_value(
-            'os_username', get_env('OS_USERNAME', None))
+            'os_username', get_env('OS_USERNAME'))
         self.password = self._get_config_value(
-            'os_password', get_env('OS_PASSWORD', None))
+            'os_password', get_env('OS_PASSWORD'))
         self.project_name = self._get_config_value(
-            'os_project_name', get_env('OS_PROJECT_NAME', None)
-            or get_env('OS_TENANT_NAME', None))
+            'os_project_name', get_env('OS_PROJECT_NAME')
+            or get_env('OS_TENANT_NAME'))
         self.auth_url = self._get_config_value(
-            'os_auth_url', get_env('OS_AUTH_URL', None))
-        self.region_name = self._get_config_value(
-            'os_region_name', get_env('OS_REGION_NAME', None))
+            'os_auth_url', get_env('OS_AUTH_URL'))
+        self._region_name = self._get_config_value(
+            'os_region_name', get_env('OS_REGION_NAME'))
+        self._zone_name = self._get_config_value(
+            'os_zone_name', get_env('OS_ZONE_NAME'))
         self.project_domain_name = self._get_config_value(
             'os_project_domain_name',
-            get_env('OS_PROJECT_DOMAIN_NAME', None))
+            get_env('OS_PROJECT_DOMAIN_NAME'))
         self.user_domain_name = self._get_config_value(
             'os_user_domain_name',
-            get_env('OS_USER_DOMAIN_NAME', None))
+            get_env('OS_USER_DOMAIN_NAME'))
 
         # Service connections, lazily initialized
         self._nova = None

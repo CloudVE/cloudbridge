@@ -221,12 +221,11 @@ class GCPCloudProvider(BaseCloudProvider):
         if self.credentials_file and not self.credentials_dict:
             with open(self.credentials_file) as creds_file:
                 self.credentials_dict = json.load(creds_file)
-        self.default_zone = self._get_config_value(
-            'gcp_default_zone',
-            os.environ.get('GCP_DEFAULT_ZONE') or 'us-central1-a')
-        self.region_name = self._get_config_value(
+        self._region_name = self._get_config_value(
             'gcp_region_name',
             os.environ.get('GCP_DEFAULT_REGION') or 'us-central1')
+        self._zone_name = self._get_config_value(
+            'gcp_zone_name', os.environ.get('GCP_ZONE_NAME'))
 
         if self.credentials_dict and 'project_id' in self.credentials_dict:
             self.project_name = self.credentials_dict['project_id']
@@ -281,7 +280,7 @@ class GCPCloudProvider(BaseCloudProvider):
                     self.gcp_compute,
                     project=self.project_name,
                     region=self.region_name,
-                    zone=self.default_zone)
+                    zone=self.zone_name)
         return self._compute_resources_cache
 
     @property

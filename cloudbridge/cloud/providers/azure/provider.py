@@ -30,17 +30,19 @@ class AzureCloudProvider(BaseCloudProvider):
         self.subscription_id = self._get_config_value(
             'azure_subscription_id', get_env('AZURE_SUBSCRIPTION_ID'))
         self.client_id = self._get_config_value(
-            'azure_client_id', get_env('AZURE_CLIENT_ID', None))
+            'azure_client_id', get_env('AZURE_CLIENT_ID'))
         self.secret = self._get_config_value(
-            'azure_secret', get_env('AZURE_SECRET', None))
+            'azure_secret', get_env('AZURE_SECRET'))
         self.tenant = self._get_config_value(
-            'azure_tenant', get_env('AZURE_TENANT', None))
+            'azure_tenant', get_env('AZURE_TENANT'))
 
         # optional config values
         self.access_token = self._get_config_value(
-            'azure_access_token', get_env('AZURE_ACCESS_TOKEN', None))
-        self.region_name = self._get_config_value(
+            'azure_access_token', get_env('AZURE_ACCESS_TOKEN'))
+        self._region_name = self._get_config_value(
             'azure_region_name', get_env('AZURE_REGION_NAME', 'eastus'))
+        self._zone_name = self._get_config_value(
+            'azure_zone_name', get_env('AZURE_ZONE_NAME'))
         self.resource_group = self._get_config_value(
             'azure_resource_group', get_env('AZURE_RESOURCE_GROUP',
                                             'cloudbridge'))
@@ -59,7 +61,7 @@ class AzureCloudProvider(BaseCloudProvider):
 
         self.vm_default_user_name = self._get_config_value(
                 'azure_vm_default_username', get_env(
-                    'AZURE_VM_DEFAULT_USERNAME', None)) \
+                    'AZURE_VM_DEFAULT_USERNAME')) \
             or self.__get_deprecated_username('cbuser')
 
         self.public_key_storage_table_name = self._get_config_value(
