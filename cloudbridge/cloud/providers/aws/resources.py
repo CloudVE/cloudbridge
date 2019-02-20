@@ -87,6 +87,7 @@ class AWSMachineImage(BaseMachineImage):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._ec2_image.create_tags(Tags=[{'Key': 'Name',
@@ -130,6 +131,7 @@ class AWSMachineImage(BaseMachineImage):
             # Ignore all exceptions when querying state
             return MachineImageState.UNKNOWN
 
+    @profile
     def refresh(self):
         self._ec2_image.reload()
 
@@ -251,6 +253,7 @@ class AWSInstance(BaseInstance):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._ec2_instance.create_tags(Tags=[{'Key': 'Name',
@@ -370,6 +373,7 @@ class AWSInstance(BaseInstance):
             # Ignore all exceptions when querying state
             return InstanceState.UNKNOWN
 
+    @profile
     def refresh(self):
         try:
             self._ec2_instance.reload()
@@ -421,6 +425,7 @@ class AWSVolume(BaseVolume):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
@@ -430,6 +435,7 @@ class AWSVolume(BaseVolume):
         return find_tag_value(self._volume.tags, 'Description')
 
     @description.setter
+    @profile
     def description(self, value):
         self._volume.create_tags(Tags=[{'Key': 'Description',
                                         'Value': value or ""}])
@@ -500,6 +506,7 @@ class AWSVolume(BaseVolume):
             # Ignore all exceptions when querying state
             return VolumeState.UNKNOWN
 
+    @profile
     def refresh(self):
         try:
             self._volume.reload()
@@ -544,6 +551,7 @@ class AWSSnapshot(BaseSnapshot):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._snapshot.create_tags(Tags=[{'Key': 'Name',
@@ -554,6 +562,7 @@ class AWSSnapshot(BaseSnapshot):
         return find_tag_value(self._snapshot.tags, 'Description')
 
     @description.setter
+    @profile
     def description(self, value):
         self._snapshot.create_tags(Tags=[{
             'Key': 'Description', 'Value': value or ""}])
@@ -581,6 +590,7 @@ class AWSSnapshot(BaseSnapshot):
             # Ignore all exceptions when querying state
             return SnapshotState.UNKNOWN
 
+    @profile
     def refresh(self):
         try:
             self._snapshot.reload()
@@ -629,6 +639,7 @@ class AWSVMFirewall(BaseVMFirewall):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
@@ -643,6 +654,7 @@ class AWSVMFirewall(BaseVMFirewall):
 
     @description.setter
     # pylint:disable=arguments-differ
+    @profile
     def description(self, value):
         self._vm_firewall.create_tags(Tags=[{'Key': 'Description',
                                              'Value': value or ""}])
@@ -655,6 +667,7 @@ class AWSVMFirewall(BaseVMFirewall):
     def rules(self):
         return self._rule_container
 
+    @profile
     def refresh(self):
         self._vm_firewall.reload()
 
@@ -798,6 +811,7 @@ class AWSBucketObject(BaseBucketObject):
             Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
             ExpiresIn=expires_in)
 
+    @profile
     def refresh(self):
         self._obj.load()
 
@@ -881,6 +895,7 @@ class AWSNetwork(BaseNetwork):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
@@ -912,6 +927,7 @@ class AWSNetwork(BaseNetwork):
     def subnets(self):
         return self._subnet_svc
 
+    @profile
     def refresh(self):
         try:
             self._vpc.reload()
@@ -958,6 +974,7 @@ class AWSSubnet(BaseSubnet):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
@@ -986,6 +1003,7 @@ class AWSSubnet(BaseSubnet):
             # Ignore all exceptions when querying state
             return SubnetState.UNKNOWN
 
+    @profile
     def refresh(self):
         try:
             self._subnet.reload()
@@ -1017,6 +1035,7 @@ class AWSFloatingIP(BaseFloatingIP):
     def in_use(self):
         return True if self._ip.association_id else False
 
+    @profile
     def refresh(self):
         self._ip.reload()
 
@@ -1041,11 +1060,13 @@ class AWSRouter(BaseRouter):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._route_table.create_tags(Tags=[{'Key': 'Name',
                                              'Value': value or ""}])
 
+    @profile
     def refresh(self):
         try:
             self._route_table.reload()
@@ -1111,6 +1132,7 @@ class AWSInternetGateway(BaseInternetGateway):
     def name(self):
         return find_tag_value(self._gateway.tags, 'Name')
 
+    @profile
     def refresh(self):
         try:
             self._gateway.reload()

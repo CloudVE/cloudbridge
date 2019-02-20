@@ -480,6 +480,7 @@ class GCPVMFirewall(BaseVMFirewall):
         return helpers.get_metadata_item_value(self._provider, tag_name)
 
     @label.setter
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         tag_name = "_".join(["firewall", self.name, "label"])
@@ -505,6 +506,7 @@ class GCPVMFirewall(BaseVMFirewall):
         return self._description
 
     @description.setter
+    @profile
     def description(self, value):
         # Change the description on all rules
         for fw in self._delegate.iter_firewalls(self._vm_firewall,
@@ -537,6 +539,7 @@ class GCPVMFirewall(BaseVMFirewall):
         js['rules'] = json_rules
         return js
 
+    @profile
     def refresh(self):
         fw = self._provider.security.vm_firewalls.get(self.id)
         # restore all internal state
@@ -709,6 +712,7 @@ class GCPMachineImage(BaseMachineImage):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         req = (self._provider
                    .gcp_compute
@@ -754,6 +758,7 @@ class GCPMachineImage(BaseMachineImage):
         return GCPMachineImage.IMAGE_STATE_MAP.get(
             self._gcp_image['status'], MachineImageState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
@@ -816,6 +821,7 @@ class GCPInstance(BaseInstance):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         req = (self._provider
                    .gcp_compute
@@ -1228,6 +1234,7 @@ class GCPInstance(BaseInstance):
         return GCPInstance.INSTANCE_STATE_MAP.get(
             self._gcp_instance['status'], InstanceState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
@@ -1296,6 +1303,7 @@ class GCPNetwork(BaseNetwork):
         return helpers.get_metadata_item_value(self._provider, tag_name)
 
     @label.setter
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         tag_name = "_".join(["network", self.name, "label"])
@@ -1329,6 +1337,7 @@ class GCPNetwork(BaseNetwork):
     def subnets(self):
         return self._subnet_svc
 
+    @profile
     def refresh(self):
         net = self._provider.networking.networks.get(self.id)
         if net:
@@ -1378,6 +1387,7 @@ class GCPFloatingIP(BaseFloatingIP):
     def in_use(self):
         return True if self._target_instance else False
 
+    @profile
     def refresh(self):
         # pylint:disable=protected-access
         fip = self._provider.networking._floating_ips.get(None, self.id)
@@ -1433,6 +1443,7 @@ class GCPRouter(BaseRouter):
         return helpers.get_metadata_item_value(self._provider, tag_name)
 
     @label.setter
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         tag_name = "_".join(["router", self.name, "label"])
@@ -1443,6 +1454,7 @@ class GCPRouter(BaseRouter):
         parsed_url = self._provider.parse_url(self.id)
         return parsed_url.parameters['region']
 
+    @profile
     def refresh(self):
         router = self._provider.networking.routers.get(self.id)
         if router:
@@ -1508,6 +1520,7 @@ class GCPInternetGateway(BaseInternetGateway):
     def name(self):
         return self._gateway['name']
 
+    @profile
     def refresh(self):
         pass
 
@@ -1550,6 +1563,7 @@ class GCPSubnet(BaseSubnet):
         return helpers.get_metadata_item_value(self._provider, tag_name)
 
     @label.setter
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         tag_name = "_".join(["subnet", self.name, "label"])
@@ -1586,6 +1600,7 @@ class GCPSubnet(BaseSubnet):
             return SubnetState.UNKNOWN
         return SubnetState.AVAILABLE
 
+    @profile
     def refresh(self):
         subnet = self._provider.networking.subnets.get(self.id)
         if subnet:
@@ -1626,6 +1641,7 @@ class GCPVolume(BaseVolume):
         return labels.get('cblabel', '') if labels else ''
 
     @label.setter
+    @profile
     def label(self, value):
         req = (self._provider
                    .gcp_compute
@@ -1645,6 +1661,7 @@ class GCPVolume(BaseVolume):
         return self._volume.get('description', '')
 
     @description.setter
+    @profile
     def description(self, value):
         req = (self._provider
                .gcp_compute
@@ -1769,6 +1786,7 @@ class GCPVolume(BaseVolume):
         return GCPVolume.VOLUME_STATE_MAP.get(
             self._volume.get('status'), VolumeState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this volume by re-querying the cloud provider
@@ -1812,6 +1830,7 @@ class GCPSnapshot(BaseSnapshot):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         req = (self._provider
                    .gcp_compute
@@ -1830,6 +1849,7 @@ class GCPSnapshot(BaseSnapshot):
         return self._snapshot.get('description', '')
 
     @description.setter
+    @profile
     def description(self, value):
         req = (self._provider
                .gcp_compute
@@ -1857,6 +1877,7 @@ class GCPSnapshot(BaseSnapshot):
         return GCPSnapshot.SNAPSHOT_STATE_MAP.get(
             self._snapshot.get('status'), SnapshotState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this snapshot by re-querying the cloud provider
@@ -1994,6 +2015,7 @@ class GCPBucketObject(BaseBucketObject):
                                               expiration,
                                               url_encoded_signature))
 
+    @profile
     def refresh(self):
         # pylint:disable=protected-access
         self._obj = self.bucket.objects.get(self.id)._obj

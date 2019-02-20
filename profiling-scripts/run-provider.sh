@@ -10,7 +10,7 @@
 ###############
 # Usage:
 ###############
-# sh run-all.sh
+# sh run-provider.sh [aws|azure|openstack|gcp|mock]
 ###############
 # Behavior:
 ###############

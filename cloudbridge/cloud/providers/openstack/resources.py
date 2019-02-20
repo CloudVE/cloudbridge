@@ -107,6 +107,7 @@ class OpenStackMachineImage(BaseMachineImage):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the image label.
@@ -144,6 +145,7 @@ class OpenStackMachineImage(BaseMachineImage):
         return OpenStackMachineImage.IMAGE_STATE_MAP.get(
             self._os_image.status, MachineImageState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
@@ -309,6 +311,7 @@ class OpenStackInstance(BaseInstance):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the instance label.
@@ -487,6 +490,7 @@ class OpenStackInstance(BaseInstance):
         return OpenStackInstance.INSTANCE_STATE_MAP.get(
             self._os_instance.status, InstanceState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
@@ -577,6 +581,7 @@ class OpenStackVolume(BaseVolume):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the volume label.
@@ -590,6 +595,7 @@ class OpenStackVolume(BaseVolume):
         return self._volume.description
 
     @description.setter
+    @profile
     def description(self, value):
         self._volume.description = value
         self._volume.update(description=value)
@@ -653,6 +659,7 @@ class OpenStackVolume(BaseVolume):
         return OpenStackVolume.VOLUME_STATE_MAP.get(
             self._volume.status, VolumeState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this volume by re-querying the cloud provider
@@ -702,6 +709,7 @@ class OpenStackSnapshot(BaseSnapshot):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the snapshot label.
@@ -715,6 +723,7 @@ class OpenStackSnapshot(BaseSnapshot):
         return self._snapshot.description
 
     @description.setter
+    @profile
     def description(self, value):
         self._snapshot.description = value
         self._snapshot.update(description=value)
@@ -736,6 +745,7 @@ class OpenStackSnapshot(BaseSnapshot):
         return OpenStackSnapshot.SNAPSHOT_STATE_MAP.get(
             self._snapshot.status, SnapshotState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this snapshot by re-querying the cloud provider
@@ -799,6 +809,7 @@ class OpenStackNetwork(BaseNetwork):
         return self._network.get('name', None)
 
     @label.setter
+    @profile
     def label(self, value):
         """
         Set the network label.
@@ -828,6 +839,7 @@ class OpenStackNetwork(BaseNetwork):
     def subnets(self):
         return self._subnet_svc
 
+    @profile
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
         network = self._provider.networking.networks.get(self.id)
@@ -863,6 +875,7 @@ class OpenStackSubnet(BaseSubnet):
         return self._subnet.get('name', None)
 
     @label.setter
+    @profile
     def label(self, value):  # pylint:disable=arguments-differ
         """
         Set the subnet label.
@@ -894,6 +907,7 @@ class OpenStackSubnet(BaseSubnet):
         return SubnetState.UNKNOWN if self._state == SubnetState.UNKNOWN \
              else SubnetState.AVAILABLE
 
+    @profile
     def refresh(self):
         subnet = self._provider.networking.subnets.get(self.id)
         if subnet:
@@ -927,6 +941,7 @@ class OpenStackFloatingIP(BaseFloatingIP):
     def in_use(self):
         return bool(self._ip.port_id)
 
+    @profile
     def refresh(self):
         net = self._provider.networking.networks.get(
             self._ip.floating_network_id)
@@ -959,6 +974,7 @@ class OpenStackRouter(BaseRouter):
         return self._router.name
 
     @label.setter
+    @profile
     def label(self, value):  # pylint:disable=arguments-differ
         """
         Set the router label.
@@ -966,6 +982,7 @@ class OpenStackRouter(BaseRouter):
         self.assert_valid_resource_label(value)
         self._router = self._provider.os_conn.update_router(self.id, value)
 
+    @profile
     def refresh(self):
         self._router = self._provider.os_conn.get_router(self.id)
 
@@ -1050,6 +1067,7 @@ class OpenStackInternetGateway(BaseInternetGateway):
     def network_id(self):
         return self._gateway_net.get('id')
 
+    @profile
     def refresh(self):
         """Refresh the state of this network by re-querying the provider."""
         network = self._provider.networking.networks.get(self.id)
@@ -1117,6 +1135,7 @@ class OpenStackVMFirewall(BaseVMFirewall):
             return None
 
     @description.setter
+    @profile
     def description(self, value):
         if not value:
             value = ""
@@ -1139,6 +1158,7 @@ class OpenStackVMFirewall(BaseVMFirewall):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._provider.os_conn.network.update_security_group(
@@ -1149,6 +1169,7 @@ class OpenStackVMFirewall(BaseVMFirewall):
     def rules(self):
         return self._rule_svc
 
+    @profile
     def refresh(self):
         self._vm_firewall = self._provider.os_conn.network.get_security_group(
             self.id)
@@ -1321,6 +1342,7 @@ class OpenStackBucketObject(BaseBucketObject):
         return urljoin(access_point, generate_temp_url(url_path, expires_in,
                                                        temp_url_key, 'GET'))
 
+    @profile
     def refresh(self):
         self._obj = self.cbcontainer.objects.get(self.id)._obj
 

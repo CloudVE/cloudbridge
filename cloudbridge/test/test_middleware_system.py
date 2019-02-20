@@ -10,7 +10,7 @@ from cloudbridge.cloud.interfaces.exceptions import CloudBridgeBaseException
 from cloudbridge.cloud.interfaces.exceptions import \
     InvalidConfigurationException
 
-from .helpers import skipIfPython
+from cloudbridge.test.helpers import skipIfPython
 
 
 class ExceptionWrappingMiddlewareTestCase(unittest.TestCase):

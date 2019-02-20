@@ -80,6 +80,7 @@ class BaseVMFirewallService(
 
     @dispatch(event="provider.security.vm_firewalls.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, **kwargs):
         obj_list = self
         filters = ['label']
@@ -109,6 +110,7 @@ class BaseVMFirewallRuleService(BasePageableObjectMixin,
 
     @dispatch(event="provider.security.vm_firewall_rules.get",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, firewall, rule_id):
         matches = [rule for rule in firewall.rules if rule.id == rule_id]
         if matches:
@@ -118,6 +120,7 @@ class BaseVMFirewallRuleService(BasePageableObjectMixin,
 
     @dispatch(event="provider.security.vm_firewall_rules.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, firewall, **kwargs):
         obj_list = firewall.rules
         filters = ['name', 'direction', 'protocol', 'from_port', 'to_port',
@@ -159,6 +162,7 @@ class BaseBucketService(
     # provider-specific querying for find method
     @dispatch(event="provider.storage.buckets.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -213,12 +217,14 @@ class BaseVMTypeService(
 
     @dispatch(event="provider.compute.vm_types.get",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, vm_type_id):
         vm_type = (t for t in self if t.id == vm_type_id)
         return next(vm_type, None)
 
     @dispatch(event="provider.compute.vm_types.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -235,6 +241,7 @@ class BaseRegionService(
 
     @dispatch(event="provider.compute.regions.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, **kwargs):
         obj_list = self
         filters = ['name']
@@ -260,6 +267,7 @@ class BaseNetworkService(
         return [subnet for subnet in self.provider.subnets
                 if subnet.network_id == self.id]
 
+    @profile
     def get_or_create_default(self):
         networks = self.provider.networking.networks.find(
             label=BaseNetwork.CB_DEFAULT_NETWORK_LABEL)
@@ -274,6 +282,7 @@ class BaseNetworkService(
 
     @dispatch(event="provider.networking.networks.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, **kwargs):
         obj_list = self
         filters = ['label']
@@ -298,6 +307,7 @@ class BaseSubnetService(
 
     @dispatch(event="provider.networking.subnets.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, network=None, **kwargs):
         if not network:
             obj_list = self
@@ -307,6 +317,7 @@ class BaseSubnetService(
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
+    @profile
     def get_or_create_default(self, zone):
         # Look for a CB-default subnet
         matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)
@@ -327,6 +338,7 @@ class BaseRouterService(
         super(BaseRouterService, self).__init__(provider)
         self._service_event_pattern += ".networking.routers"
 
+    @profile
     def get_or_create_default(self, network):
         net_id = network.id if isinstance(network, Network) else network
         routers = self.provider.networking.routers.find(
@@ -362,6 +374,7 @@ class BaseFloatingIPService(FloatingIPService, BaseCloudService):
 
     @dispatch(event="provider.networking.floating_ips.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, gateway, **kwargs):
         obj_list = gateway.floating_ips
         filters = ['name', 'public_ip']

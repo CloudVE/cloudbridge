@@ -18,7 +18,7 @@ else:
                                                          args.suite.split('_')]))
     case_name = case_name.replace("VmType", "VMType").replace("CloudCloud",
                                                               "Cloud")
-    if "interface" in mod_name or "cycle" in mod_name or "cloud" in mod_name:
+    if "interface" in mod_name or "cycle" in mod_name or "_cloud" in mod_name:
         mod_name = mod_name.replace("_service", "")
         case_name = case_name.replace("Service", "")
     print("{}.{}\n\n".format(mod_name, case_name))

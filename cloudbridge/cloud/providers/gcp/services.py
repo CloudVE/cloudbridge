@@ -90,6 +90,7 @@ class GCPKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.get",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, key_pair_id):
         """
         Returns a KeyPair given its ID.
@@ -102,6 +103,7 @@ class GCPKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.list",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         key_pairs = []
         for item in helpers.find_matching_metadata_items(
@@ -114,6 +116,7 @@ class GCPKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.find",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, **kwargs):
         """
         Searches for a key pair by a given list of attributes.
@@ -133,6 +136,7 @@ class GCPKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.create",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, name, public_key_material=None):
         GCPKeyPair.assert_valid_resource_name(name)
         private_key = None
@@ -159,6 +163,7 @@ class GCPKeyPairService(BaseKeyPairService):
 
     @dispatch(event="provider.security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, key_pair):
         key_pair = (key_pair if isinstance(key_pair, GCPKeyPair) else
                     self.get(key_pair))
@@ -175,6 +180,7 @@ class GCPVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.get",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, vm_firewall_id):
         tag, network_name = \
             self._delegate.get_tag_network_from_id(vm_firewall_id)
@@ -185,6 +191,7 @@ class GCPVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.list",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         vm_firewalls = []
         for tag, network_name in self._delegate.tag_networks:
@@ -197,6 +204,7 @@ class GCPVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, label, network, description=None):
         GCPVMFirewall.assert_valid_resource_label(label)
         network = (network if isinstance(network, GCPNetwork)
@@ -213,11 +221,13 @@ class GCPVMFirewallService(BaseVMFirewallService):
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, vm_firewall):
         fw_id = (vm_firewall.id if isinstance(vm_firewall, GCPVMFirewall)
                  else vm_firewall)
         return self._delegate.delete_tag_network_with_id(fw_id)
 
+    @profile
     def find_by_network_and_tags(self, network_name, tags):
         """
         Finds non-empty VM firewalls by network name and VM firewall names
@@ -243,6 +253,7 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
 
     @dispatch(event="provider.security.vm_firewall_rules.list",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, firewall, limit=None, marker=None):
         rules = []
         for fw in firewall.delegate.iter_firewalls(
@@ -270,6 +281,7 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
         else:
             return to_port
 
+    @profile
     def create_with_priority(self, firewall, direction, protocol, priority,
                              from_port=None, to_port=None, cidr=None,
                              src_dest_fw=None):
@@ -293,6 +305,7 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
 
     @dispatch(event="provider.security.vm_firewall_rules.create",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, firewall, direction, protocol, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
         return self.create_with_priority(firewall, direction, protocol,
@@ -301,6 +314,7 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
 
     @dispatch(event="provider.security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, firewall, rule):
         rule = (rule if isinstance(rule, GCPVMFirewallRule)
                 else self.get(firewall, rule))
@@ -326,12 +340,14 @@ class GCPVMTypeService(BaseVMTypeService):
 
     @dispatch(event="provider.compute.vm_types.get",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, vm_type_id):
         vm_type = self.provider.get_resource('machineTypes', vm_type_id)
         return GCPVMType(self.provider, vm_type) if vm_type else None
 
     @dispatch(event="provider.compute.vm_types.find",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, **kwargs):
         matched_inst_types = []
         for inst_type in self.instance_data:
@@ -350,6 +366,7 @@ class GCPVMTypeService(BaseVMTypeService):
 
     @dispatch(event="provider.compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         inst_types = [GCPVMType(self.provider, inst_type)
                       for inst_type in self.instance_data]
@@ -364,6 +381,7 @@ class GCPRegionService(BaseRegionService):
 
     @dispatch(event="provider.compute.regions.get",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, region_id):
         region = self.provider.get_resource('regions', region_id,
                                             region=region_id)
@@ -371,6 +389,7 @@ class GCPRegionService(BaseRegionService):
 
     @dispatch(event="provider.compute.regions.list",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         regions_response = (self.provider
@@ -413,6 +432,7 @@ class GCPImageService(BaseImageService):
                 self._public_images.append(
                     GCPMachineImage(self.provider, image))
 
+    @profile
     def get(self, image_id):
         """
         Returns an Image given its id
@@ -426,6 +446,7 @@ class GCPImageService(BaseImageService):
                 return public_image
         return None
 
+    @profile
     def find(self, limit=None, marker=None, **kwargs):
         """
         Searches for an image by a given list of attributes
@@ -443,6 +464,7 @@ class GCPImageService(BaseImageService):
         return ClientPagedResultList(self.provider, images,
                                      limit=limit, marker=marker)
 
+    @profile
     def list(self, limit=None, marker=None):
         """
         List all images.
@@ -467,6 +489,7 @@ class GCPInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, label, image, vm_type, subnet, zone=None,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
@@ -618,6 +641,7 @@ class GCPInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.get",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, instance_id):
         """
         Returns an instance given its name. Returns None
@@ -631,6 +655,7 @@ class GCPInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.find",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, limit=None, marker=None, **kwargs):
         """
         Searches for instances by instance label.
@@ -651,6 +676,7 @@ class GCPInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.list",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         """
         List all instances.
@@ -677,6 +703,7 @@ class GCPInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, instance):
         instance = (instance if isinstance(instance, GCPInstance) else
                     self.get(instance))
@@ -689,6 +716,7 @@ class GCPInstanceService(BaseInstanceService):
                      instance=instance.name)
              .execute())
 
+    @profile
     def create_launch_config(self):
         return GCPLaunchConfig(self.provider)
 
@@ -757,12 +785,14 @@ class GCPNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.get",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, network_id):
         network = self.provider.get_resource('networks', network_id)
         return GCPNetwork(self.provider, network) if network else None
 
     @dispatch(event="provider.networking.networks.find",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, limit=None, marker=None, **kwargs):
         """
         GCP networks are global. There is at most one network with a given
@@ -776,6 +806,7 @@ class GCPNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.list",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None, filter=None):
         # TODO: Decide whether we keep filter in 'list'
         networks = []
@@ -792,6 +823,7 @@ class GCPNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.create",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, label, cidr_block):
         """
         Creates an auto mode VPC network with default subnets. It is possible
@@ -813,6 +845,7 @@ class GCPNetworkService(BaseNetworkService):
         cb_net.label = label
         return cb_net
 
+    @profile
     def get_or_create_default(self):
         default_nets = self.provider.networking.networks.find(
             label=GCPNetwork.CB_DEFAULT_NETWORK_LABEL)
@@ -827,6 +860,7 @@ class GCPNetworkService(BaseNetworkService):
 
     @dispatch(event="provider.networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, network):
         # Accepts network object
         if isinstance(network, GCPNetwork):
@@ -858,6 +892,7 @@ class GCPRouterService(BaseRouterService):
 
     @dispatch(event="provider.networking.routers.get",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, router_id):
         router = self.provider.get_resource(
             'routers', router_id, region=self.provider.region_name)
@@ -865,6 +900,7 @@ class GCPRouterService(BaseRouterService):
 
     @dispatch(event="provider.networking.routers.find",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, limit=None, marker=None, **kwargs):
         obj_list = self
         filters = ['name', 'label']
@@ -874,6 +910,7 @@ class GCPRouterService(BaseRouterService):
 
     @dispatch(event="provider.networking.routers.list",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         region = self.provider.region_name
         max_result = limit if limit is not None and limit < 500 else 500
@@ -897,6 +934,7 @@ class GCPRouterService(BaseRouterService):
 
     @dispatch(event="provider.networking.routers.create",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, label, network):
         log.debug("Creating GCP Router Service with params "
                   "[label: %s network: %s]", label, network)
@@ -922,6 +960,7 @@ class GCPRouterService(BaseRouterService):
 
     @dispatch(event="provider.networking.routers.delete",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, router):
         r = router if isinstance(router, GCPRouter) else self.get(router)
         if r:
@@ -956,12 +995,14 @@ class GCPSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.get",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, subnet_id):
         subnet = self.provider.get_resource('subnetworks', subnet_id)
         return GCPSubnet(self.provider, subnet) if subnet else None
 
     @dispatch(event="provider.networking.subnets.list",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, network=None, zone=None, limit=None, marker=None):
         """
         If the zone is not given, we list all subnets in the default region.
@@ -990,6 +1031,7 @@ class GCPSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, label, network, cidr_block, zone):
         """
         GCP subnets are regional. The region is inferred from the zone;
@@ -1034,6 +1076,7 @@ class GCPSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.delete",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, subnet):
         sn = subnet if isinstance(subnet, GCPSubnet) else self.get(subnet)
         if not sn:
@@ -1052,6 +1095,7 @@ class GCPSubnetService(BaseSubnetService):
             log.warning('No label was found associated with this subnet '
                         '"{}" when deleted.'.format(sn.name))
 
+    @profile
     def get_or_create_default(self, zone):
         """
         Return an existing or create a new subnet for the supplied zone.
@@ -1151,12 +1195,14 @@ class GCPVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.get",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, volume_id):
         vol = self.provider.get_resource('disks', volume_id)
         return GCPVolume(self.provider, vol) if vol else None
 
     @dispatch(event="provider.storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, limit=None, marker=None, **kwargs):
         """
         Searches for a volume by a given list of attributes.
@@ -1191,6 +1237,7 @@ class GCPVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         """
         List all volumes.
@@ -1221,6 +1268,7 @@ class GCPVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, label, size, zone, snapshot=None, description=None):
         GCPVolume.assert_valid_resource_label(label)
         name = GCPVolume._generate_name_from_label(label, 'cb-vol')
@@ -1254,6 +1302,7 @@ class GCPVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, volume):
         volume = volume if isinstance(volume, GCPVolume) else self.get(volume)
         if volume:
@@ -1272,12 +1321,14 @@ class GCPSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.get",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, snapshot_id):
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
         return GCPSnapshot(self.provider, snapshot) if snapshot else None
 
     @dispatch(event="provider.storage.snapshots.find",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, limit=None, marker=None, **kwargs):
         label = kwargs.pop('label', None)
 
@@ -1308,6 +1359,7 @@ class GCPSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.list",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1328,6 +1380,7 @@ class GCPSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, label, volume, description=None):
         GCPSnapshot.assert_valid_resource_label(label)
         name = GCPSnapshot._generate_name_from_label(label, 'cbsnap')
@@ -1356,6 +1409,7 @@ class GCPSnapshotService(BaseSnapshotService):
 
     @dispatch(event="provider.storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, snapshot):
         snapshot = (snapshot if isinstance(snapshot, GCPSnapshot)
                     else self.get(snapshot))
@@ -1375,6 +1429,7 @@ class GCPBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.get",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, bucket_id):
         """
         Returns a bucket given its ID. Returns ``None`` if the bucket
@@ -1386,6 +1441,7 @@ class GCPBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.find",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @profile
     def find(self, limit=None, marker=None, **kwargs):
         name = kwargs.pop('name', None)
 
@@ -1401,6 +1457,7 @@ class GCPBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.list",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, limit=None, marker=None):
         """
         List all containers.
@@ -1425,6 +1482,7 @@ class GCPBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.create",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, name, location=None):
         GCPBucket.assert_valid_resource_name(name)
         body = {'name': name}
@@ -1452,6 +1510,7 @@ class GCPBucketService(BaseBucketService):
 
     @dispatch(event="provider.storage.buckets.delete",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, bucket):
         """
         Delete this bucket.
@@ -1474,6 +1533,7 @@ class GCPBucketObjectService(BaseBucketObjectService):
     def __init__(self, provider):
         super(GCPBucketObjectService, self).__init__(provider)
 
+    @profile
     def get(self, bucket, name):
         """
         Retrieve a given object from this bucket.
@@ -1482,6 +1542,7 @@ class GCPBucketObjectService(BaseBucketObjectService):
                                          bucket=bucket.name)
         return GCPBucketObject(self.provider, bucket, obj) if obj else None
 
+    @profile
     def list(self, bucket, limit=None, marker=None, prefix=None):
         """
         List all objects within this bucket.
@@ -1505,6 +1566,7 @@ class GCPBucketObjectService(BaseBucketObjectService):
                                      response.get('nextPageToken'),
                                      False, data=objects)
 
+    @profile
     def find(self, bucket, limit=None, marker=None, **kwargs):
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, bucket.objects)
@@ -1521,6 +1583,7 @@ class GCPBucketObjectService(BaseBucketObjectService):
                     .execute())
         return response
 
+    @profile
     def create(self, bucket, name):
         response = self._create_object_with_media_body(
                             bucket,
@@ -1546,16 +1609,19 @@ class GCPGatewayService(BaseGatewayService):
 
     @dispatch(event="provider.networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get_or_create(self, network):
         return self._default_internet_gateway
 
     @dispatch(event="provider.networking.gateways.delete",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, network, gateway):
         pass
 
     @dispatch(event="provider.networking.gateways.list",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, network, limit=None, marker=None):
         gws = [self._default_internet_gateway]
         return ClientPagedResultList(self._provider,
@@ -1570,6 +1636,7 @@ class GCPFloatingIPService(BaseFloatingIPService):
 
     @dispatch(event="provider.networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    @profile
     def get(self, gateway, floating_ip_id):
         fip = self.provider.get_resource('addresses', floating_ip_id)
         return (GCPFloatingIP(self.provider, fip)
@@ -1577,6 +1644,7 @@ class GCPFloatingIPService(BaseFloatingIPService):
 
     @dispatch(event="provider.networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    @profile
     def list(self, gateway, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1598,6 +1666,7 @@ class GCPFloatingIPService(BaseFloatingIPService):
 
     @dispatch(event="provider.networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    @profile
     def create(self, gateway):
         region_name = self.provider.region_name
         ip_name = 'ip-{0}'.format(uuid.uuid4())
@@ -1613,6 +1682,7 @@ class GCPFloatingIPService(BaseFloatingIPService):
 
     @dispatch(event="provider.networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
+    @profile
     def delete(self, gateway, fip):
         fip = (fip if isinstance(fip, GCPFloatingIP)
                else self.get(gateway, fip))

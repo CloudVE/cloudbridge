@@ -79,6 +79,7 @@ class AzureVMFirewall(BaseVMFirewall):
         return self._vm_firewall.tags.get('Label', None)
 
     @label.setter
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         self._vm_firewall.tags.update(Label=value or "")
@@ -90,6 +91,7 @@ class AzureVMFirewall(BaseVMFirewall):
         return self._vm_firewall.tags.get('Description')
 
     @description.setter
+    @profile
     def description(self, value):
         self._vm_firewall.tags.update(Description=value or "")
         self._provider.azure_client.\
@@ -100,6 +102,7 @@ class AzureVMFirewall(BaseVMFirewall):
     def rules(self):
         return self._rule_container
 
+    @profile
     def refresh(self):
         """
         Refreshes the security group with tags if required.
@@ -259,6 +262,7 @@ class AzureBucketObject(BaseBucketObject):
         return self._provider.azure_client.get_blob_url(
             self._container.id, self.id, expires_in)
 
+    @profile
     def refresh(self):
         self._key = self._provider.azure_client.get_blob(
             self._container.id, self._key.id)
@@ -349,6 +353,7 @@ class AzureVolume(BaseVolume):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the volume label.
@@ -364,6 +369,7 @@ class AzureVolume(BaseVolume):
         return self._volume.tags.get('Description', None)
 
     @description.setter
+    @profile
     def description(self, value):
         self._volume.tags.update(Description=value or "")
         self._provider.azure_client. \
@@ -443,6 +449,7 @@ class AzureVolume(BaseVolume):
         return AzureVolume.VOLUME_STATE_MAP.get(
             self._state, VolumeState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this volume by re-querying the cloud provider
@@ -501,6 +508,7 @@ class AzureSnapshot(BaseSnapshot):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the snapshot label.
@@ -516,6 +524,7 @@ class AzureSnapshot(BaseSnapshot):
         return self._snapshot.tags.get('Description', None)
 
     @description.setter
+    @profile
     def description(self, value):
         self._snapshot.tags.update(Description=value or "")
         self._provider.azure_client. \
@@ -539,6 +548,7 @@ class AzureSnapshot(BaseSnapshot):
         return AzureSnapshot.SNAPSHOT_STATE_MAP.get(
             self._state, SnapshotState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this snapshot by re-querying the cloud provider
@@ -617,6 +627,7 @@ class AzureMachineImage(BaseMachineImage):
             return self._image.tags.get('Label', None)
 
     @label.setter
+    @profile
     def label(self, value):
         """
         Set the image label when it is a private image.
@@ -642,6 +653,7 @@ class AzureMachineImage(BaseMachineImage):
             return self._image.tags.get('Description', None)
 
     @description.setter
+    @profile
     def description(self, value):
         """
         Set the image description.
@@ -690,6 +702,7 @@ class AzureMachineImage(BaseMachineImage):
         """
         return isinstance(self._image, GalleryImageReference)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
@@ -743,6 +756,7 @@ class AzureNetwork(BaseNetwork):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the network label.
@@ -765,6 +779,7 @@ class AzureNetwork(BaseNetwork):
         return AzureNetwork.NETWORK_STATE_MAP.get(
             self._state, NetworkState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this network by re-querying the cloud provider
@@ -834,6 +849,7 @@ class AzureFloatingIP(BaseFloatingIP):
     def in_use(self):
         return True if self._ip.ip_configuration else False
 
+    @profile
     def refresh(self):
         # Gateway is not needed as it doesn't exist in Azure, so just
         # getting the Floating IP again from the client
@@ -940,6 +956,7 @@ class AzureSubnet(BaseSubnet):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         self.assert_valid_resource_label(value)
         network = self.network
@@ -979,6 +996,7 @@ class AzureSubnet(BaseSubnet):
     def state(self):
         return self._SUBNET_STATE_MAP.get(self._state, NetworkState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this network by re-querying the cloud provider
@@ -1067,6 +1085,7 @@ class AzureInstance(BaseInstance):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the instance label.
@@ -1318,6 +1337,7 @@ class AzureInstance(BaseInstance):
         return AzureInstance.INSTANCE_STATE_MAP.get(
             self._state, InstanceState.UNKNOWN)
 
+    @profile
     def refresh(self):
         """
         Refreshes the state of this instance by re-querying the cloud provider
@@ -1440,6 +1460,7 @@ class AzureRouter(BaseRouter):
 
     @label.setter
     # pylint:disable=arguments-differ
+    @profile
     def label(self, value):
         """
         Set the router label.
@@ -1450,6 +1471,7 @@ class AzureRouter(BaseRouter):
             update_route_table_tags(self._route_table.name,
                                     self._route_table)
 
+    @profile
     def refresh(self):
         self._route_table = self._provider.azure_client. \
             get_route_table(self._route_table.name)
@@ -1508,6 +1530,7 @@ class AzureInternetGateway(BaseInternetGateway):
     def name(self):
         return "cb-gateway-wrapper"
 
+    @profile
     def refresh(self):
         pass
 
