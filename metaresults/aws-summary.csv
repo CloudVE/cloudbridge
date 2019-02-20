@@ -48,7 +48,7 @@ aws-compute,"find",1.08196,"return self.svc.find(filter_name='tag:Name', filter_
 aws-compute,"create",0.454137,"subnet = self.svc.create('create_subnet',VpcId=network_id,CidrBlock=cidr_block,AvailabilityZone=zone_name)",0.272957
 aws-compute,"create",0.454137,"subnet.label = label",0.181155
 aws-compute,"delete",0.340546,"sn._subnet.delete()",0.340544
-aws-compute,"get_or_create_default",1.11421,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")",0.3713587
+aws-compute,"get_or_create_default",1.11421,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + '*')",0.3713587
 aws-compute,"create",0.277115,"cb_router = self.svc.create('create_route_table', VpcId=network_id)",0.134758
 aws-compute,"create",0.277115,"cb_router.label = label",0.142343
 aws-compute,"delete",0.172383,"r._route_table.delete()",0.172379
@@ -57,11 +57,11 @@ aws-compute,"create",0.275631,"ip = self.provider.ec2_conn.meta.client.allocate_
 aws-compute,"delete",0.401777,"aws_fip = self.svc.get_raw(fip)",0.22485
 aws-compute,"delete",0.401777,"aws_fip.release()",0.176922
 aws-network,"find",0.442382,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.1474373
-aws-network,"label",0.854453,"self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])",0.1220413
+aws-network,"label",0.854453,"self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ''}])",0.1220413
 aws-network,"refresh",0.537054,"self._vpc.reload()",0.076718
-aws-network,"label",0.846852,"self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])",0.14111579999999999
+aws-network,"label",0.846852,"self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ''}])",0.14111579999999999
 aws-network,"refresh",0.068226,"self._subnet.reload()",0.068223
-aws-network,"label",0.500526,"self._route_table.create_tags(Tags=[{'Key': 'Name','Value': value or ""}])",0.1250908
+aws-network,"label",0.500526,"self._route_table.create_tags(Tags=[{'Key': 'Name','Value': value or ''}])",0.1250908
 aws-network,"refresh",0.247562,"self._route_table.reload()",0.0825193
 aws-network,"get",0.855001,"return self.svc.get(network_id)",0.1068751
 aws-network,"list",1.15518,"return self.svc.list(limit=limit, marker=marker)",0.14439760000000001
@@ -76,7 +76,7 @@ aws-network,"find",1.07916,"return self.svc.find(filter_name='tag:Name', filter_
 aws-network,"create",1.21166,"subnet = self.svc.create('create_subnet',VpcId=network_id,CidrBlock=cidr_block,AvailabilityZone=zone_name)",0.2319483
 aws-network,"create",1.21166,"subnet.label = label",0.17184470000000002
 aws-network,"delete",0.710526,"sn._subnet.delete()",0.236839
-aws-network,"get_or_create_default",1.00426,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")",0.33471470000000003
+aws-network,"get_or_create_default",1.00426,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + '*')",0.33471470000000003
 aws-network,"get",0.109509,"return self.svc.get(router_id)",0.0547545
 aws-network,"find",0.932473,"return self.svc.find(filter_name='tag:Name', filter_value=label)",0.466217
 aws-network,"list",1.45562,"return self.svc.list(limit=limit, marker=marker)",0.0661645
@@ -92,8 +92,8 @@ aws-network,"delete",0.887973,"aws_fip = self.svc.get_raw(fip)",0.262006
 aws-network,"delete",0.887973,"aws_fip.release()",0.181978
 aws-security,"get",0.000372,"matches = [rule for rule in firewall.rules if rule.id == rule_id]",0.0001845
 aws-security,"find",0.00508,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.001648
-aws-security,"label",1.37521,"self._vm_firewall.create_tags(Tags=[{'Key': 'Name','Value': value or ""}])",0.1527761
-aws-security,"description",1.30596,"self._vm_firewall.create_tags(Tags=[{'Key': 'Description','Value': value or ""}])",0.21765820000000002
+aws-security,"label",1.37521,"self._vm_firewall.create_tags(Tags=[{'Key': 'Name','Value': value or ''}])",0.1527761
+aws-security,"description",1.30596,"self._vm_firewall.create_tags(Tags=[{'Key': 'Description','Value': value or ''}])",0.21765820000000002
 aws-security,"refresh",1.25366,"self._vm_firewall.reload()",0.15670720000000002
 aws-security,"get",0.367371,"return self.svc.get(key_pair_id)",0.09183519999999999
 aws-security,"list",0.40985,"return self.svc.list(limit=limit, marker=marker)",0.08197
@@ -113,14 +113,14 @@ aws-security,"delete",1.13273,"firewall._vm_firewall.revoke_ingress(IpPermission
 aws-security,"delete",1.13273,"firewall.refresh()",0.166607
 aws-security,"get",0.567762,"return self.svc.get(network_id)",0.094627
 aws-security,"find",1.47682,"return self.svc.find(filter_name='tag:Name', filter_value=label)",0.2461202
-aws-security,"get_or_create_default",1.54118,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")",0.2568257
-aws-block_store,"label",0.476349,"self._ec2_instance.create_tags(Tags=[{'Key': 'Name','Value': value or ""}])",0.2381625
+aws-security,"get_or_create_default",1.54118,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + '*')",0.2568257
+aws-block_store,"label",0.476349,"self._ec2_instance.create_tags(Tags=[{'Key': 'Name','Value': value or ''}])",0.2381625
 aws-block_store,"refresh",14.523,"self._ec2_instance.reload()",0.14099170000000003
-aws-block_store,"label",1.35729,"self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])",0.12337039999999999
-aws-block_store,"description",0.104612,"self._volume.create_tags(Tags=[{'Key': 'Description','Value': value or ""}])",0.10461
+aws-block_store,"label",1.35729,"self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ''}])",0.12337039999999999
+aws-block_store,"description",0.104612,"self._volume.create_tags(Tags=[{'Key': 'Description','Value': value or ''}])",0.10461
 aws-block_store,"refresh",7.74737,"self._volume.reload()",0.11562510000000001
-aws-block_store,"label",0.799853,"self._snapshot.create_tags(Tags=[{'Key': 'Name','Value': value or ""}])",0.09994539999999999
-aws-block_store,"description",0.104892,"self._snapshot.create_tags(Tags=[{'Key': 'Description', 'Value': value or ""}])",0.10489
+aws-block_store,"label",0.799853,"self._snapshot.create_tags(Tags=[{'Key': 'Name','Value': value or ''}])",0.09994539999999999
+aws-block_store,"description",0.104892,"self._snapshot.create_tags(Tags=[{'Key': 'Description', 'Value': value or ''}])",0.10489
 aws-block_store,"refresh",5.26941,"self._snapshot.reload()",0.0878139
 aws-block_store,"get",0.163409,"return self.svc.get(volume_id)",0.0817045
 aws-block_store,"find",0.265743,"return self.svc.find(filter_name='tag:Name', filter_value=label)",0.1328425
@@ -135,15 +135,15 @@ aws-block_store,"delete",0.67235,"snapshot._snapshot.delete()",0.224111700000000
 aws-block_store,"create",3.15817,"inst = self.svc.create('create_instances',ImageId=image_id,MinCount=1,MaxCount=1,KeyName=key_pair_name,SecurityGroupIds=vm_firewall_ids or None,UserData=str(user_data) or None,InstanceType=vm_size,Placement=placement,BlockDeviceMappings=bdm,SubnetId=subnet_id",1.110423
 aws-block_store,"delete",0.615225,"aws_inst._ec2_instance.terminate()",0.3076095
 aws-block_store,"find",0.660379,"return self.svc.find(filter_name='tag:Name', filter_value=label)",0.3301755
-aws-block_store,"get_or_create_default",0.727776,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")",0.3638435
-aws-object_life_cycle,"label",0.115102,"self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])",0.115094
+aws-block_store,"get_or_create_default",0.727776,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + '*')",0.3638435
+aws-object_life_cycle,"label",0.115102,"self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ''}])",0.115094
 aws-object_life_cycle,"refresh",0.400173,"self._volume.reload()",0.080026
 aws-object_life_cycle,"create",9.84804,"cb_vol = self.svc.create('create_volume', Size=size,AvailabilityZone=zone_id,SnapshotId=snapshot_id)",4.321521
 aws-object_life_cycle,"create",9.84804,"cb_vol.wait_till_ready()",5.411356
 aws-object_life_cycle,"delete",0.104595,"volume._volume.delete()",0.104592
-aws-image,"label",0.541265,"self._ec2_image.create_tags(Tags=[{'Key': 'Name','Value': value or ""}])",0.1352742
+aws-image,"label",0.541265,"self._ec2_image.create_tags(Tags=[{'Key': 'Name','Value': value or ''}])",0.1352742
 aws-image,"refresh",2.61199,"self._ec2_image.reload()",0.11872680000000001
-aws-image,"label",0.436325,"self._ec2_instance.create_tags(Tags=[{'Key': 'Name','Value': value or ""}])",0.2181465
+aws-image,"label",0.436325,"self._ec2_instance.create_tags(Tags=[{'Key': 'Name','Value': value or ''}])",0.2181465
 aws-image,"refresh",9.5028,"self._ec2_instance.reload()",0.14618920000000002
 aws-image,"get",0.094928,"return self.svc.get(snapshot_id)",0.094928
 aws-image,"delete",0.584476,"snapshot._snapshot.delete()",0.584474
@@ -154,7 +154,7 @@ aws-image,"list",0.565674,"return self.svc.list(Owners=['self'] if filter_by_own
 aws-image,"create",4.28092,"inst = self.svc.create('create_instances',ImageId=image_id,MinCount=1,MaxCount=1,KeyName=key_pair_name,SecurityGroupIds=vm_firewall_ids or None,UserData=str(user_data) or None,InstanceType=vm_size,Placement=placement,BlockDeviceMappings=bdm,SubnetId=subnet_id",1.6989055
 aws-image,"delete",0.353906,"aws_inst._ec2_instance.terminate()",0.17695
 aws-image,"find",0.225429,"return self.svc.find(filter_name='tag:Name', filter_value=label)",0.225406
-aws-image,"get_or_create_default",0.284701,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + "*")",0.284614
+aws-image,"get_or_create_default",0.284701,"snl = self.find(label=AWSSubnet.CB_DEFAULT_SUBNET_LABEL + '*')",0.284614
 aws-object_store,"find",0.138302,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.046073300000000005
 aws-object_store,"get",0.323,"self.provider.s3_conn.meta.client.head_bucket(Bucket=bucket_id)",0.0381412
 aws-object_store,"list",0.801255,"return self.svc.list(limit=limit, marker=marker)",0.0667712
