@@ -1,0 +1,178 @@
+Test File,CB functon,Total Time (in s),Azure Operation,Time per hit
+gcp-region,"find",1.0209,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.340271
+gcp-region,"get",1.6338,"region = self.provider.get_resource('regions', region_id,region=region_id)",0.544577
+gcp-region,"list",5.60605,"regions_response = (self.provider.gcp_compute.regions().list(project=self.provider.project_name,maxResults=max_result,pageToken=marker)",0.5473260999999999
+gcp-vm_types,"get",0.536744,"vm_type = self.provider.get_resource('machineTypes', vm_type_id)",0.2683605
+gcp-vm_types,"find",1.11624,"for inst_type in self.instance_data:",0.0126736
+gcp-vm_types,"list",2.04614,"for inst_type in self.instance_data]",0.2272769
+gcp-image,"find",2.71797,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.717925
+gcp-image,"label",3.7366,"helpers.change_label(self, 'cblabel', value, '_gcp_image', req)",0.3329293
+gcp-image,"refresh",4.07836,"image = self._provider.compute.images.get(self.id)",0.5826174000000001
+gcp-image,"refresh",169.705,"inst = self._provider.compute.instances.get(self.id)",0.7678841
+gcp-image,"get",0.30929,"vm_type = self.provider.get_resource('machineTypes', vm_type_id)",0.154626
+gcp-image,"get",0.862251,"region = self.provider.get_resource('regions', region_id,region=region_id)",0.862218
+gcp-image,"get",4.66685,"image = self.provider.get_resource('images', image_id)",0.4658275
+gcp-image,"find",0.36834,"images = [image for image in self if image.label == label]",0.184122
+gcp-image,"list",41.9159,"for image in helpers.iter_all(self.provider.gcp_compute.images(),project=self.provider.project_name):",0.0876232
+gcp-image,"create",101.152,"self.provider.wait_for_operation(operation, zone=zone_name)",48.146288
+gcp-image,"get",170.308,"instance = self.provider.get_resource('instances', instance_id)",0.7636911
+gcp-image,"delete",1.58702,"(self._provider.gcp_compute.instances().delete(project=self.provider.project_name,zone=instance.zone_name,instance=instance.name)",0.771031
+gcp-image,"get",0.201059,"network = self.provider.get_resource('networks', network_id)",0.201018
+gcp-image,"list",0.186214,"response = (self.provider.gcp_compute.subnetworks().list(project=self.provider.project_name,region=region_name,filter=filter)",0.175627
+gcp-image,"get_or_create_default",3.67662,"for sn in self.find(label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL):",2.762018
+gcp-image,"get_or_create",2e-06,"return self._default_internet_gateway",2e-06
+gcp-image,"list",5.04476,"for ip in response.get('items', [])]",1.1555767
+gcp-object_life_cycle,"refresh",0.243625,"vol = self._provider.storage.volumes.get(self.id)",0.24362
+gcp-object_life_cycle,"get",0.6109,"vol = self.provider.get_resource('disks', volume_id)",0.3054295
+gcp-object_life_cycle,"create",2.06655,"zone = GCPPlacementZone(self.provider,self.provider.get_resource('zones', zone))",0.841996
+gcp-object_life_cycle,"create",2.06655,"operation = (self.provider.gcp_compute.disks().insert(project=self._provider.project_name,zone=zone_name,body=disk_body)",0.800621
+gcp-object_life_cycle,"delete",0.796799,"(self._provider.gcp_compute.disks().delete(project=self.provider.project_name,zone=volume.zone_name,disk=volume.name)",0.787826
+gcp-network,"find",14.1927,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.3653912000000004
+gcp-network,"find",2.69905,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.899653
+gcp-network,"label",49.5131,"helpers.modify_or_add_metadata_item(self._provider, tag_name, value)",7.073254700000001
+gcp-network,"refresh",1.34887,"net = self._provider.networking.networks.get(self.id)",0.26977
+gcp-network,"label",30.0907,"helpers.modify_or_add_metadata_item(self._provider, tag_name, value)",7.522643
+gcp-network,"refresh",0.267038,"router = self._provider.networking.routers.get(self.id)",0.267033
+gcp-network,"label",47.1401,"helpers.modify_or_add_metadata_item(self._provider, tag_name, value)",7.856645299999999
+gcp-network,"refresh",1.71609,"subnet = self._provider.networking.subnets.get(self.id)",0.4290182
+gcp-network,"get",1.97249,"region = self.provider.get_resource('regions', region_id,region=region_id)",0.657471
+gcp-network,"get",5.11899,"network = self.provider.get_resource('networks', network_id)",0.28436259999999997
+gcp-network,"find",7.44141,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.480431
+gcp-network,"list",2.17036,"response = (self.provider.gcp_compute.networks().list(project=self.provider.project_name,filter=filter)",0.265555
+gcp-network,"create",80.9144,"self.provider.wait_for_operation(response)",12.1994828
+gcp-network,"delete",108.333,"self.provider.wait_for_operation(response)",18.0924182
+gcp-network,"get",1.3876,"router = self.provider.get_resource('routers', router_id, region=self.provider.region_name)",0.3468828
+gcp-network,"find",1.33483,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.4449067
+gcp-network,"list",1.36571,"response = (self.provider.gcp_compute.routers().list(project=self.provider.project_name,region=region,maxResults=max_result,pageToken=marker)",0.219445
+gcp-network,"create",12.6716,"cb_router.label = label",9.206957
+gcp-network,"delete",8.02079,"if not helpers.remove_metadata_item(self.provider, tag_name):",7.288365
+gcp-network,"get",3.60639,"subnet = self.provider.get_resource('subnetworks', subnet_id)",0.4006979
+gcp-network,"list",4.15656,"response = (self.provider.gcp_compute.subnetworks().list(project=self.provider.project_name,region=region_name,filter=filter)",0.2349695
+gcp-network,"create",65.0219,"self.provider.wait_for_operation(response, region=region_name)",12.971618300000001
+gcp-network,"create",65.0219,"cb_subnet.label = label",7.2336717
+gcp-network,"delete",60.4918,"self.provider.wait_for_operation(response, region=sn.region_name)",12.288225
+gcp-network,"delete",60.4918,"if not helpers.remove_metadata_item(self._provider, tag_name):",6.8932343
+gcp-network,"get_or_create_default",10.1332,"for sn in self.find(label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL):",2.694851
+gcp-network,"get_or_create",5e-06,"return self._default_internet_gateway",1.7e-06
+gcp-network,"get",2.2592,"fip = self.provider.get_resource('addresses', floating_ip_id)",0.3765112
+gcp-network,"list",9.41386,"response = (self.provider.gcp_compute.addresses().list(project=self.provider.project_name,region=self.provider.region_name,maxResults=max_result,pageToken=marker)",0.4680614
+gcp-network,"list",9.41386,"for ip in response.get('items', [])]",0.8729533
+gcp-network,"create",7.33389,"self.provider.wait_for_operation(response, region=region_name)",2.389772
+gcp-network,"delete",8.18624,"self.provider.wait_for_operation(response,region=fip.region_name)",2.9466795
+gcp-block_store,"find",6.71368,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",3.356795
+gcp-block_store,"refresh",70.4152,"inst = self._provider.compute.instances.get(self.id)",0.3186115
+gcp-block_store,"label",5.71702,"helpers.change_label(self, 'cblabel', value, '_volume', req)",0.4682774
+gcp-block_store,"refresh",17.8227,"vol = self._provider.storage.volumes.get(self.id)",0.3126742
+gcp-block_store,"label",8.01128,"helpers.change_label(self, 'cblabel', value, '_snapshot', req)",0.34300840000000005
+gcp-block_store,"description",1.01982,"helpers.change_label(self, 'description', value, '_snapshot', req)",1.015623
+gcp-block_store,"refresh",4.29212,"snap = self._provider.storage.snapshots.get(self.id)",0.26825309999999997
+gcp-block_store,"get",0.493297,"vm_type = self.provider.get_resource('machineTypes', vm_type_id)",0.2466295
+gcp-block_store,"get",1.73786,"region = self.provider.get_resource('regions', region_id,region=region_id)",0.8689045
+gcp-block_store,"get",0.350549,"image = self.provider.get_resource('images', image_id)",0.1752545
+gcp-block_store,"create",99.9525,"self.provider.wait_for_operation(operation, zone=zone_name)",47.5503185
+gcp-block_store,"get",71.0745,"instance = self.provider.get_resource('instances', instance_id)",0.3187022
+gcp-block_store,"delete",1.4284,"(self._provider.gcp_compute.instances().delete(project=self.provider.project_name,zone=instance.zone_name,instance=instance.name)",0.6896505
+gcp-block_store,"list",0.512971,"response = (self.provider.gcp_compute.subnetworks().list(project=self.provider.project_name,region=region_name,filter=filter)",0.242102
+gcp-block_store,"get_or_create_default",8.58669,"for sn in self.find(label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL):",3.3886805
+gcp-block_store,"get",20.4031,"vol = self.provider.get_resource('disks', volume_id)",0.30912270000000003
+gcp-block_store,"find",0.365001,"response = (self.provider.gcp_compute.disks().list(project=self.provider.project_name,zone=self.provider.default_zone,filter=filtr,maxResults=max_result,pageToken=marker)",0.174063
+gcp-block_store,"list",0.680887,"response = (self.provider.gcp_compute.disks().list(project=self.provider.project_name,zone=self.provider.default_zone,maxResults=max_result,pageToken=marker)",0.16219
+gcp-block_store,"create",9.97485,"operation = (self.provider.gcp_compute.disks().insert(project=self._provider.project_name,zone=zone_name,body=disk_body)",0.9857015
+gcp-block_store,"delete",5.41758,"(self._provider.gcp_compute.disks().delete(project=self.provider.project_name,zone=volume.zone_name,disk=volume.name)",0.7654917
+gcp-block_store,"get",5.81179,"snapshot = self.provider.get_resource('snapshots', snapshot_id)",0.252671
+gcp-block_store,"find",0.869076,"response = (self.provider.gcp_compute.snapshots().list(project=self.provider.project_name,filter=filtr,maxResults=max_result,pageToken=marker)",0.212239
+gcp-block_store,"list",1.6972,"response = (self.provider.gcp_compute.snapshots().list(project=self.provider.project_name,maxResults=max_result,pageToken=marker)",0.1831836
+gcp-block_store,"create",36.8745,"self.provider.wait_for_operation(operation,zone=self.provider.default_zone)",11.1892087
+gcp-block_store,"delete",2.27445,"(self.provider.gcp_compute.snapshots().delete(project=self.provider.project_name,snapshot=snapshot.name)",0.7531183
+gcp-security,"find",8.39101,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.7969637
+gcp-security,"get",0.007167,"matches = [rule for rule in firewall.rules if rule.id == rule_id]",0.003583
+gcp-security,"find",0.125725,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.008958
+gcp-security,"find",16.0481,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.6746407999999997
+gcp-security,"label",66.1447,"helpers.modify_or_add_metadata_item(self._provider, tag_name, value)",7.3493803
+gcp-security,"refresh",0.243234,"fw = self._provider.security.vm_firewalls.get(self.id)",0.243228
+gcp-security,"get",1.11951,"for kp in self:",0.0447777
+gcp-security,"list",2.33161,"for item in helpers.find_matching_metadata_items(self.provider, GCPKeyPair.KP_TAG_REGEX):",0.039488
+gcp-security,"find",0.409439,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.13645829999999998
+gcp-security,"create",26.1585,"helpers.add_metadata_item(self.provider,GCPKeyPair.KP_TAG_PREFIX + name,metadata_value)",6.480796
+gcp-security,"delete",20.4335,"helpers.remove_metadata_item(self.provider, GCPKeyPair.KP_TAG_PREFIX + key_pair.name)",6.6376643
+gcp-security,"get",0.897284,"network = self.provider.networking.networks.get(network_name)",0.2964693
+gcp-security,"list",14.4078,"network = self.provider.networking.networks.get(network_name)",0.3128108
+gcp-security,"create",92.3823,"fw.label = label",7.3216765
+gcp-security,"create",92.3823,"self.provider.security._vm_firewall_rules.create_with_priority(fw, direction=TrafficDirection.OUTBOUND, protocol='tcp',priority=65534, cidr='0.0.0.0/0')",7.7093012000000005
+gcp-security,"delete",135.951,"return self._delegate.delete_tag_network_with_id(fw_id)",22.6584338
+gcp-security,"list",0.093306,"rule = GCPVMFirewallRule(firewall, fw['id'])",0.0014041
+gcp-security,"create_with_priority",95.6242,"if not firewall.delegate.add_firewall(firewall.name, direction, protocol, priority, port, cidr,src_dest_tag, firewall.description,firewall.network.name):",8.6757756
+gcp-security,"create",49.3686,"return self.create_with_priority(firewall, direction, protocol,1000, from_port, to_port, cidr,src_dest_fw)",9.873724800000002
+gcp-security,"delete",28.7511,"firewall.delegate.delete_firewall_id(rule._rule)",14.3753435
+gcp-security,"get",3.93347,"region = self.provider.get_resource('regions', region_id,region=region_id)",0.655553
+gcp-security,"get",19.1619,"network = self.provider.get_resource('networks', network_id)",0.31409509999999996
+gcp-security,"list",1.39911,"response = (self.provider.gcp_compute.subnetworks().list(project=self.provider.project_name,region=region_name,filter=filter)",0.2232175
+gcp-security,"get_or_create_default",20.1145,"for sn in self.find(label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL):",2.6868542
+gcp-compute,"find",0.024806,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.0123785
+gcp-compute,"find",7.99967,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.666503
+gcp-compute,"label",19.9587,"helpers.modify_or_add_metadata_item(self._provider, tag_name, value)",9.9793595
+gcp-compute,"label",13.8162,"helpers.change_label(self, 'cblabel', value, '_gcp_instance', req)",1.2352575
+gcp-compute,"refresh",242.841,"inst = self._provider.compute.instances.get(self.id)",0.33915229999999996
+gcp-compute,"label",7.31747,"helpers.modify_or_add_metadata_item(self._provider, tag_name, value)",7.317456
+gcp-compute,"refresh",0.258014,"net = self._provider.networking.networks.get(self.id)",0.25801
+gcp-compute,"refresh",3.00229,"fip = self._provider.networking._floating_ips.get(None, self.id)",0.8867195
+gcp-compute,"refresh",3.00229,"self._process_ip_users()",1.228844
+gcp-compute,"label",10.2169,"helpers.modify_or_add_metadata_item(self._provider, tag_name, value)",10.216885
+gcp-compute,"label",8.04666,"helpers.modify_or_add_metadata_item(self._provider, tag_name, value)",8.046653
+gcp-compute,"refresh",0.332845,"subnet = self._provider.networking.subnets.get(self.id)",0.33284
+gcp-compute,"refresh",9.10339,"vol = self._provider.storage.volumes.get(self.id)",0.3034416
+gcp-compute,"refresh",0.431264,"snap = self._provider.storage.snapshots.get(self.id)",0.431258
+gcp-compute,"get",0.230138,"for kp in self:",0.057531
+gcp-compute,"list",0.22026,"for item in helpers.find_matching_metadata_items(self.provider, GCPKeyPair.KP_TAG_REGEX):",0.0440216
+gcp-compute,"create",5.62269,"helpers.add_metadata_item(self.provider,GCPKeyPair.KP_TAG_PREFIX + name,metadata_value)",5.472093
+gcp-compute,"delete",7.70415,"helpers.remove_metadata_item(self.provider, GCPKeyPair.KP_TAG_PREFIX + key_pair.name)",7.46271
+gcp-compute,"create",36.3814,"fw.label = label",9.979389
+gcp-compute,"create",36.3814,"self.provider.security._vm_firewall_rules.create_with_priority(fw, direction=TrafficDirection.OUTBOUND, protocol='tcp',priority=65534, cidr='0.0.0.0/0')",7.9560575
+gcp-compute,"delete",28.846,"return self._delegate.delete_tag_network_with_id(fw_id)",14.422982
+gcp-compute,"find_by_network_and_tags",1.69472,"network = self.provider.networking.networks.get(net_name)",0.2806103
+gcp-compute,"list",0.015576,"rule = GCPVMFirewallRule(firewall, fw['id'])",0.0013603
+gcp-compute,"list",0.015576,"if rule.is_dummy_rule():",0.0009445
+gcp-compute,"create_with_priority",15.9121,"if not firewall.delegate.add_firewall(firewall.name, direction, protocol, priority, port, cidr,src_dest_tag, firewall.description,firewall.network.name):",7.9315115
+gcp-compute,"get",0.790459,"vm_type = self.provider.get_resource('machineTypes', vm_type_id)",0.1580734
+gcp-compute,"find",0.348102,"for inst_type in self.instance_data:",0.0059958
+gcp-compute,"get",1.44253,"region = self.provider.get_resource('regions', region_id,region=region_id)",0.3606095
+gcp-compute,"get",1.366,"image = self.provider.get_resource('images', image_id)",0.27317759999999996
+gcp-compute,"create",241.941,"self.provider.wait_for_operation(operation, zone=zone_name)",43.8655072
+gcp-compute,"get",245.431,"instance = self.provider.get_resource('instances', instance_id)",0.3385043
+gcp-compute,"find",0.38114,"instances = [instance for instance in self.list()",0.190512
+gcp-compute,"list",0.96113,"response = (self.provider.gcp_compute.instances().list(project=self.provider.project_name,zone=self.provider.default_zone,maxResults=max_result,pageToken=marker)",0.17113420000000001
+gcp-compute,"delete",2.73658,"(self._provider.gcp_compute.instances().delete(project=self.provider.project_name,zone=instance.zone_name,instance=instance.name)",0.6627378
+gcp-compute,"create_launch_config",2e-05,"return GCPLaunchConfig(self.provider)",1e-05
+gcp-compute,"get",3.9701,"network = self.provider.get_resource('networks', network_id)",0.28354640000000003
+gcp-compute,"create",22.9287,"self.provider.wait_for_operation(response)",13.926261
+gcp-compute,"delete",25.4765,"self.provider.wait_for_operation(response)",16.367108
+gcp-compute,"get",0.397005,"router = self.provider.get_resource('routers', router_id, region=self.provider.region_name)",0.396986
+gcp-compute,"create",13.7372,"cb_router.label = label",10.216949
+gcp-compute,"delete",10.9667,"if not helpers.remove_metadata_item(self.provider, tag_name):",10.348188
+gcp-compute,"get",0.672234,"subnet = self.provider.get_resource('subnetworks', subnet_id)",0.336107
+gcp-compute,"list",0.864771,"response = (self.provider.gcp_compute.subnetworks().list(project=self.provider.project_name,region=region_name,filter=filter)",0.2067292
+gcp-compute,"create",25.7981,"self.provider.wait_for_operation(response, region=region_name)",16.362161
+gcp-compute,"delete",22.513,"self.provider.wait_for_operation(response, region=sn.region_name)",14.504569
+gcp-compute,"get_or_create_default",9.36634,"for sn in self.find(label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL):",2.6787277
+gcp-compute,"get",14.5569,"vol = self.provider.get_resource('disks', volume_id)",0.3234672
+gcp-compute,"create",19.7516,"operation = (self.provider.gcp_compute.disks().insert(project=self._provider.project_name,zone=zone_name,body=disk_body)",0.9785919000000001
+gcp-compute,"delete",0.405631,"(self._provider.gcp_compute.disks().delete(project=self.provider.project_name,zone=volume.zone_name,disk=volume.name)",0.396718
+gcp-compute,"get",0.680198,"snapshot = self.provider.get_resource('snapshots', snapshot_id)",0.340077
+gcp-compute,"create",13.1326,"self.provider.wait_for_operation(operation,zone=self.provider.default_zone)",11.986182
+gcp-compute,"delete",1.00271,"(self.provider.gcp_compute.snapshots().delete(project=self.provider.project_name,snapshot=snapshot.name)",0.998101
+gcp-compute,"get_or_create",5e-06,"return self._default_internet_gateway",1.2e-06
+gcp-compute,"get",2.43989,"fip = self.provider.get_resource('addresses', floating_ip_id)",0.3464735
+gcp-compute,"get",2.43989,"return (GCPFloatingIP(self.provider, fip)if fip else None)",0.2634998
+gcp-compute,"list",18.3208,"for ip in response.get('items', [])]",0.9960869
+gcp-compute,"create",3.07852,"self.provider.wait_for_operation(response, region=region_name)",1.923116
+gcp-compute,"delete",4.11383,"self.provider.wait_for_operation(response,region=fip.region_name)",2.867653
+gcp-object_store,"get",2.37478,"bucket = self.provider.get_resource('buckets', bucket_id)",0.29682220000000004
+gcp-object_store,"find",0.342205,"buckets = [bucket for bucket in self if name in bucket.name]",0.1710355
+gcp-object_store,"list",0.978596,"response = (self.provider.gcp_storage.buckets().list(project=self.provider.project_name,maxResults=max_result,pageToken=marker)",0.15440179999999998
+gcp-object_store,"create",20.0851,"response = (self.provider.gcp_storage.buckets().insert(project=self.provider.project_name,body=body)",1.0442424000000001
+gcp-object_store,"create",20.0851,"time.sleep(2)",2.0037903
+gcp-object_store,"delete",17.3862,"time.sleep(2)",2.0049202
+gcp-object_store,"get",2.05451,"obj = self.provider.get_resource('objects', name,bucket=bucket.name)",0.5136145
+gcp-object_store,"list",3.30274,"response = (self.provider.gcp_storage.objects().list(bucket=bucket.name,prefix=prefix if prefix else '',maxResults=max_result,pageToken=marker)",0.2820595
+gcp-object_store,"find",0.399978,"matches = cb_helpers.generic_find(filters, kwargs, bucket.objects)",0.1332917
+gcp-object_store,"create",2.65239,"response = self._create_object_with_media_body(bucket,name,googleapiclient.http.MediaIoBaseUpload(io.BytesIO(b''), mimetype='plain/text'))",0.5304496

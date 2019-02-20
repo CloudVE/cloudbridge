@@ -1,0 +1,151 @@
+Test File,CB functon,Total Time (in s),Azure Operation,Time per hit
+azure-network,"find",0.487832,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.1625933
+azure-network,"get_or_create_default",4.13445,"matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)",1.3781467
+azure-network,"find",0.429782,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.14324
+azure-network,"label",94.4434,"self._provider.azure_client.update_network_tags(self.id, self._network)",31.481091
+azure-network,"refresh",1.50925,"get_network(self.id)",0.3017212
+azure-network,"label",190.776,"self._provider.azure_client.update_network_tags(az_network.id, az_network)",31.4934037
+azure-network,"refresh",1.06759,"self._subnet = self._provider.azure_client.get_subnet(self.id)",0.2667782
+azure-network,"label",94.3677,"self._provider.azure_client.update_route_table_tags(self._route_table.name,self._route_table)",31.4558273
+azure-network,"refresh",1.55898,"self._route_table = self._provider.azure_client.get_route_table(self._route_table.name)",0.25982120000000003
+azure-network,"get",0.14658,"for azureRegion in self.provider.azure_client.list_locations():",0.048835699999999996
+azure-network,"get",11.5771,"network = self.provider.azure_client.get_network(network_id)",0.251643
+azure-network,"list",5.74256,"for network in self.provider.azure_client.list_networks()]",0.3189895
+azure-network,"create",19.7348,"az_network = self.provider.azure_client.create_network(network_name,params)",4.580955
+azure-network,"get",0.302909,"azure_subnet = self.provider.azure_client.get_subnet(subnet_id)",0.1513695
+azure-network,"list",5.57723,"return ClientPagedResultList(self.provider,self._list_subnets(network),",0.5069793
+azure-network,"find",7.66637,"obj_list = self._list_subnets(network)",0.7793668
+azure-network,"find",7.66637,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.49832879999999996
+azure-network,"create",107.812,"subnet.label = label",31.8325883
+azure-network,"delete",127.148,"self.provider.azure_client.update_network_tags(az_network.id, az_network)",31.3743357
+azure-network,"get",0.518986,"route = self.provider.azure_client.get_route_table(router_id)",0.2594105
+azure-network,"find",0.478273,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.1594027
+azure-network,"list",1.44414,"self.provider.azure_client.list_route_tables()]",0.2406393
+azure-network,"create",11.9861,"route = self.provider.azure_client.create_route_table(router_name, parameters)",11.985961
+azure-network,"delete",11.1098,"self.provider.azure_client.delete_route_table(r.name)",11.109796
+azure-network,"get_or_create",0.000112,"return self._gateway_singleton(network)",3.73e-05
+azure-network,"get",0.710938,"az_ip = self.provider.azure_client.get_floating_ip(fip_id)",0.355326
+azure-network,"list",1.65222,"for floating_ip in self.provider.azure_client.",0.2359934
+azure-network,"create",10.0241,"create_floating_ip(public_ip_name, public_ip_parameters)",5.011959
+azure-network,"delete",22.1054,"self.provider.azure_client.delete_floating_ip(fip_id)",11.0526835
+azure-region,"find",0.30175,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.100563
+azure-region,"get",0.913141,"for azureRegion in self.provider.azure_client.list_locations():",0.014265100000000001
+azure-region,"list",3.0634,"for region in self.provider.azure_client.list_locations()]",0.218764
+azure-vm_types,"get",0.609344,"return next(vm_type, None)",0.304668
+azure-vm_types,"find",1.02121,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.2552765
+azure-vm_types,"list",12.4638,"for vm_type in self.instance_data]",0.3114998
+azure-block_store,"get_or_create_default",3.50781,"matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)",1.7539015
+azure-block_store,"label",2.28898,"self._provider.azure_client.update_disk_tags(self.id,self._volume.tags)",0.5721895
+azure-block_store,"refresh",19.3186,"self._volume = self._provider.azure_client.get_disk(self.id)",0.5519303000000001
+azure-block_store,"refresh",1.24565,"self._vm = self._provider.azure_client.get_vm(self.id)",0.3113205
+azure-block_store,"get",22.2458,"get_public_key(key_pair_id)",5.5614298
+azure-block_store,"create",22.6894,"key_pair = self.get(name)",11.004406
+azure-block_store,"delete",0.346711,"self.provider.azure_client.delete_public_key(key_pair._key_pair)",0.173352
+azure-block_store,"get",0.514181,"volume = self.provider.azure_client.get_disk(volume_id)",0.2570155
+azure-block_store,"find",0.346307,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.1154157
+azure-block_store,"list",1.02974,"cb_vols = [AzureVolume(self.provider, vol) for vol in azure_vols]",0.1711292
+azure-block_store,"create",161.33,"disk = self.provider.azure_client.create_empty_disk(disk_name,params)",31.251021
+azure-block_store,"delete",156.372,"self.provider.azure_client.delete_disk(vol_id)",31.274477
+azure-block_store,"create",1.55794,"azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,params)",0.7787935
+azure-block_store,"get",0.000192,"image = self.provider.azure_client.get_image(image_id)",7.85e-05
+azure-block_store,"create",326.251,"vm = self.provider.azure_client.create_vm(instance_name, params)",119.1385695
+azure-block_store,"delete",292.517,"self.provider.azure_client.deallocate_vm(ins.id)",77.0633715
+azure-block_store,"get",0.406326,"for azureRegion in self.provider.azure_client.list_locations():",0.0677025
+azure-block_store,"get",1.69307,"network = self.provider.azure_client.get_network(network_id)",0.28215270000000003
+azure-block_store,"list",1.44535,"for network in self.provider.azure_client.list_networks()]",0.722611
+azure-block_store,"find",3.43614,"obj_list = self._list_subnets(network)",1.138276
+azure-block_store,"find",3.43614,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.579757
+azure-object_life_cycle,"create",31.713,"disk = self.provider.azure_client.create_empty_disk(disk_name,params)",31.106427
+azure-object_life_cycle,"delete",30.589,"self.provider.azure_client.delete_disk(vol_id)",30.589013
+azure-image,"get_or_create_default",2.12995,"matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)",2.129945
+azure-image,"label",93.7213,"self._provider.azure_client.update_image_tags(self.id, self._image.tags)",31.2403667
+azure-image,"refresh",1.04684,"self._image = self._provider.azure_client.get_image(self.id)",0.2616148
+azure-image,"refresh",1.36268,"self._vm = self._provider.azure_client.get_vm(self.id)",0.3405805
+azure-image,"get",2.05943,"get_public_key(key_pair_id)",0.514834
+azure-image,"create",2.4564,"key_pair = self.get(name)",0.9094465
+azure-image,"delete",0.503087,"self.provider.azure_client.delete_public_key(key_pair._key_pair)",0.2515405
+azure-image,"get",0.75888,"image = self.provider.azure_client.get_image(image_id)",0.25286
+azure-image,"find",0.470769,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.1569043
+azure-image,"list",1.54248,"azure_images = self.provider.azure_client.list_images()",0.2570223
+azure-image,"create",302.637,"vm = self.provider.azure_client.create_vm(instance_name, params)",117.273825
+azure-image,"get",0.286981,"for azureRegion in self.provider.azure_client.list_locations():",0.0478053
+azure-image,"get",1.02779,"network = self.provider.azure_client.get_network(network_id)",0.2569168
+azure-image,"list",1.26517,"for network in self.provider.azure_client.list_networks()]",1.265074
+azure-image,"find",2.07273,"obj_list = self._list_subnets(network)",1.595752
+azure-compute,"get",0.231875,"return next(vm_type, None)",0.23187
+azure-compute,"find",4.52462,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",1.1311305
+azure-compute,"get_or_create_default",3.44313,"matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)",1.7215625
+azure-compute,"refresh",0.325217,"get_network(self.id)",0.32508
+azure-compute,"refresh",0.53395,"fip = self._provider.networking._floating_ips.get(None, self.id)",0.266972
+azure-compute,"label",31.7917,"self._provider.azure_client.update_network_tags(az_network.id, az_network)",31.51231
+azure-compute,"refresh",0.251713,"self._subnet = self._provider.azure_client.get_subnet(self.id)",0.251559
+azure-compute,"label",96.5834,"self._provider.azure_client.update_vm_tags(self.id, self._vm)",32.1943943
+azure-compute,"refresh",6.71618,"self._vm = self._provider.azure_client.get_vm(self.id)",0.3950295
+azure-compute,"refresh",0.57252,"self._route_table = self._provider.azure_client.get_route_table(self._route_table.name)",0.2862495
+azure-compute,"get",0.961534,"fws = self.provider.azure_client.get_vm_firewall(vm_firewall_id)",0.240359
+azure-compute,"create",165.88,"self.provider.azure_client.create_vm_firewall_rule(fw.id, rule_name, rule)",11.0583533
+azure-compute,"delete",25.2464,"self.provider.azure_client.delete_vm_firewall(fw_id)",12.623209
+azure-compute,"list",0.000324,"in firewall._vm_firewall.security_rules",4.9e-05
+azure-compute,"list",0.000324,"return ClientPagedResultList(self.provider, rules,limit=limit, marker=marker)",2.8e-05
+azure-compute,"get",7.34557,"get_public_key(key_pair_id)",1.2242423
+azure-compute,"create",7.94915,"key_pair = self.get(name)",2.2367842999999996
+azure-compute,"delete",0.703833,"self.provider.azure_client.delete_public_key(key_pair._key_pair)",0.2346067
+azure-compute,"create",32.9634,"disk = self.provider.azure_client.create_empty_disk(disk_name,params)",32.240191
+azure-compute,"delete",34.0238,"self.provider.azure_client.delete_disk(vol_id)",34.023747
+azure-compute,"create",0.594712,"azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,params)",0.594603
+azure-compute,"get",0.378508,"image = self.provider.azure_client.get_image(image_id)",0.0946095
+azure-compute,"create_launch_config",1.7e-05,"return AzureLaunchConfig(self.provider)",1.7e-05
+azure-compute,"create",506.829,"vm = self.provider.azure_client.create_vm(instance_name, params)",133.3950533
+azure-compute,"list",2.64084,"for inst in self.provider.azure_client.list_vm()]",0.528124
+azure-compute,"get",0.768687,"vm = self.provider.azure_client.get_vm(instance_id)",0.2561027
+azure-compute,"find",1.03678,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.345574
+azure-compute,"delete",490.461,"self.provider.azure_client.deallocate_vm(ins.id)",77.4570547
+azure-compute,"list",4.71943,"for vm_type in self.instance_data]",0.9438131999999999
+azure-compute,"get",0.618865,"for azureRegion in self.provider.azure_client.list_locations():",0.051555
+azure-compute,"get",2.6431,"network = self.provider.azure_client.get_network(network_id)",0.2936492
+azure-compute,"list",1.56939,"for network in self.provider.azure_client.list_networks()]",0.78464
+azure-compute,"create",4.99243,"az_network = self.provider.azure_client.create_network(network_name,params)",4.652478
+azure-compute,"list",0.199181,"return ClientPagedResultList(self.provider,self._list_subnets(network),",0.199134
+azure-compute,"find",3.42406,"obj_list = self._list_subnets(network)",1.054813
+azure-compute,"find",3.42406,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.6571795
+azure-compute,"create",35.753,"subnet.label = label",31.791675
+azure-compute,"delete",42.3776,"self.provider.azure_client.update_network_tags(az_network.id, az_network)",31.343171
+azure-compute,"create",11.6034,"route = self.provider.azure_client.create_route_table(router_name, parameters)",11.603289
+azure-compute,"delete",10.7982,"self.provider.azure_client.delete_route_table(r.name)",10.798151
+azure-compute,"get_or_create",3.6e-05,"return self._gateway_singleton(network)",3.6e-05
+azure-compute,"get",0.522689,"az_ip = self.provider.azure_client.get_floating_ip(fip_id)",0.26127
+azure-compute,"create",5.08459,"create_floating_ip(public_ip_name, public_ip_parameters)",5.084513
+azure-compute,"delete",10.7652,"self.provider.azure_client.delete_floating_ip(fip_id)",10.765237
+azure-object_store,"find",0.139937,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.0466237
+azure-object_store,"get",0.137179,"bucket = self.provider.azure_client.get_container(bucket_id)",0.068479
+azure-object_store,"list",0.378635,"in self.provider.azure_client.list_containers()[0]]",0.0630565
+azure-object_store,"create",8.72687,"bucket = self.provider.azure_client.create_container(name)",1.2466353000000001
+azure-object_store,"delete",0.418262,"self.provider.azure_client.delete_container(b_id)",0.0697077
+azure-object_store,"get",0.585543,"obj = self.provider.azure_client.get_blob(bucket.name,object_id)",0.0650164
+azure-object_store,"list",0.574927,"self.provider.azure_client.list_blobs(bucket.name, prefix=prefix)]",0.0638283
+azure-object_store,"find",0.20334,"self.provider.azure_client.list_blobs(bucket.name)]",0.06735830000000001
+azure-object_store,"create",0.680332,"self.provider.azure_client.create_blob_from_text(bucket.name, name, '')",0.07003419999999999
+azure-object_store,"create",0.680332,"return self.get(bucket, name)",0.06602519999999999
+azure-security,"find",0.553877,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.184608
+azure-security,"get",0.000267,"matches = [rule for rule in firewall.rules if rule.id == rule_id]",0.000132
+azure-security,"find",0.0011,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.000349
+azure-security,"get_or_create_default",9.13897,"matches = self.find(label=BaseSubnet.CB_DEFAULT_SUBNET_LABEL)",1.5231585
+azure-security,"label",67.5466,"self._provider.azure_client.update_vm_firewall_tags(self.id, self._vm_firewall.tags)",22.5154703
+azure-security,"refresh",0.177344,"self._vm_firewall = self._provider.azure_client.get_vm_firewall(self.id)",0.177332
+azure-security,"get",0.726115,"fws = self.provider.azure_client.get_vm_firewall(vm_firewall_id)",0.24195570000000002
+azure-security,"list",1.84706,"for fw in self.provider.azure_client.list_vm_firewall()]",0.2638251
+azure-security,"create",491.5,"self.provider.azure_client.create_vm_firewall_rule(fw.id, rule_name, rule)",11.0229718
+azure-security,"delete",179.261,"self.provider.azure_client.delete_vm_firewall(fw_id)",29.876882300000002
+azure-security,"list",0.001076,"in firewall._vm_firewall.security_rules",4.41e-05
+azure-security,"list",0.001076,"return ClientPagedResultList(self.provider, rules,limit=limit, marker=marker)",2.43e-05
+azure-security,"create",55.53,"return self._create_rule(firewall, direction, protocol, from_port,to_port, cidr)",11.105994800000001
+azure-security,"delete",32.3408,"self.provider.azure_client.delete_vm_firewall_rule(rule_id, fw_name)",10.780235300000001
+azure-security,"get",6.12568,"get_public_key(key_pair_id)",0.4545498
+azure-security,"list",0.751486,"key_pairs, resume_marker = self.provider.azure_client.list_public_keys(AzureKeyPairService.PARTITION_KEY, marker=marker,limit=limit or self.provider.config.default_result_limit)",0.1252105
+azure-security,"find",0.263378,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.0877593
+azure-security,"create",6.12621,"key_pair = self.get(name)",1.3122882
+azure-security,"delete",0.527011,"self.provider.azure_client.delete_public_key(key_pair._key_pair)",0.13285829999999998
+azure-security,"get",4.61747,"network = self.provider.azure_client.get_network(network_id)",0.25649489999999997
+azure-security,"list",4.32446,"for network in self.provider.azure_client.list_networks()]",0.7207015
+azure-security,"find",9.07843,"obj_list = self._list_subnets(network)",0.9671823
+azure-security,"find",9.07843,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.5458405

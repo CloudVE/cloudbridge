@@ -1,0 +1,130 @@
+Test File,CB functon,Total Time (in s),Azure Operation,Time per hit
+openstack-image,"find",2.64646,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.646438
+openstack-image,"find",2.11504,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.115016
+openstack-image,"create",4.28762,"vm_size = vm_type.id ifisinstance(vm_type, VMType) elseself.provider.compute.vm_types.find(name=vm_type)[0].id",2.657546
+openstack-image,"list",2.63619,"for obj in self.provider.nova.flavors.list(limit=oshelpers.os_result_limit(self.provider, limit),marker=marker)]",0.958565
+openstack-image,"list",2.07967,"self.provider.neutron.list_subnets().get('subnets', [])]",2.079607
+openstack-image,"get_or_create_default",2.16612,"sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)",2.166111
+openstack-block_store,"find",6.40756,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",3.2037525
+openstack-block_store,"find",4.34049,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.170212
+openstack-block_store,"label",2.34762,"self._volume.update(name=value or "")",0.7824757
+openstack-block_store,"refresh",9.45032,"vol = self._provider.storage.volumes.get(self.id)",0.6750008000000001
+openstack-block_store,"label",5.35269,"self._snapshot.update(name=value or "")",0.7646144
+openstack-block_store,"description",0.712808,"self._snapshot.update(description=value)",0.712806
+openstack-block_store,"refresh",12.7251,"snap = self._provider.storage.snapshots.get(self.id)",0.7069255999999999
+openstack-block_store,"get",11.5862,"return OpenStackVolume(self.provider, self.provider.cinder.volumes.get(volume_id))",0.7241276
+openstack-block_store,"find",1.36465,"for vol in self.provider.cinder.volumes.list(search_opts=search_opts,limit=oshelpers.os_result_limit(self.provider),marker=None)]",0.6822415
+openstack-block_store,"list",2.72456,"for vol in self.provider.cinder.volumes.list(limit=oshelpers.os_result_limit(self.provider, limit),marker=marker)]",0.681078
+openstack-block_store,"create",9.03154,"os_vol = self.provider.cinder.volumes.create(size, name=label, description=description,availability_zone=zone_id, snapshot_id=snapshot_id)",1.7000125
+openstack-block_store,"delete",3.39346,"volume._volume.delete()",0.6786901999999999
+openstack-block_store,"get",14.9996,"return OpenStackSnapshot(self.provider,self.provider.cinder.volume_snapshots.get(snapshot_id))",0.6817806999999999
+openstack-block_store,"find",2.53401,"snap in self.provider.cinder.volume_snapshots.list(search_opts)",0.6334145
+openstack-block_store,"list",7.15303,"snap in self.provider.cinder.volume_snapshots.list(search_opts={'limit': oshelpers.os_result_limit(self.provider,limit),'marker': marker})]",0.8940514
+openstack-block_store,"create",2.36279,"os_snap = self.provider.cinder.volume_snapshots.create(volume_id, name=label,description=description)",0.7874536999999999
+openstack-block_store,"delete",1.84625,"s._snapshot.delete()",0.615416
+openstack-block_store,"create",10.4945,"vm_size = vm_type.id ifisinstance(vm_type, VMType) elseself.provider.compute.vm_types.find(name=vm_type)[0].id",3.215337
+openstack-block_store,"list",6.38628,"for obj in self.provider.nova.flavors.list(limit=oshelpers.os_result_limit(self.provider, limit),marker=marker)]",1.1134688000000001
+openstack-block_store,"list",4.29626,"self.provider.neutron.list_subnets().get('subnets', [])]",2.148071
+openstack-block_store,"get_or_create_default",4.40069,"sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)",2.20034
+openstack-security,"find",0.725505,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.241814
+openstack-security,"get",0.00037,"matches = [rule for rule in firewall.rules if rule.id == rule_id]",0.000183
+openstack-security,"find",0.012727,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.003158
+openstack-security,"find",12.5242,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.0873318
+openstack-security,"label",2.3219,"self._provider.os_conn.network.update_security_group(self.id, name=value or "")",0.3693437
+openstack-security,"label",2.3219,"self.refresh()",0.40454429999999997
+openstack-security,"refresh",4.68369,"self._vm_firewall = self._provider.os_conn.network.get_security_group(self.id)",0.3602706
+openstack-security,"get",2.56556,"return OpenStackKeyPair(self.provider, self.provider.nova.keypairs.get(key_pair_id))",0.6413698000000001
+openstack-security,"list",2.89585,"keypairs = self.provider.nova.keypairs.list()",0.7239032
+openstack-security,"find",7.93536,"keypairs = self.provider.nova.keypairs.findall(name=name)",1.322501
+openstack-security,"create",8.52707,"existing_kp = self.find(name=name)",1.6390805
+openstack-security,"delete",2.28191,"keypair._key_pair.delete()",0.588098
+openstack-security,"get",2.59937,"return OpenStackVMFirewall(self.provider,self.provider.os_conn.network.get_security_group(vm_firewall_id))",0.3713216
+openstack-security,"list",2.56676,"for fw in self.provider.os_conn.network.security_groups()]",0.3666417
+openstack-security,"create",13.7187,"sg = self.provider.os_conn.network.create_security_group(",1.4904081999999998
+openstack-security,"create",13.7187,"sg = self.provider.os_conn.network.create_security_group(name=label, description=description)",0.7959677
+openstack-security,"delete",2.45924,"fw._vm_firewall.delete(self.provider.os_conn.session)",0.4098708
+openstack-security,"list",0.407367,"for r in firewall._vm_firewall.security_group_rules]",0.0254294
+openstack-security,"create",4.02541,"rule = self.provider.os_conn.network.create_security_group_rule(security_group_id=firewall.id,direction=os_direction,port_range_max=to_port,port_range_min=from_port,protocol=protocol,remote_ip_prefix=cidr,remote_group_id=src_dest_fw_id)",0.38879440000000004
+openstack-security,"create",4.02541,"firewall.refresh()",0.3478202
+openstack-security,"delete",3.07443,"self.provider.os_conn.network.delete_security_group_rule(rule_id)",0.4140928
+openstack-security,"delete",3.07443,"firewall.refresh()",0.3545065
+openstack-security,"get",2.39136,"return next(network, None)",0.3985573
+openstack-security,"list",2.31848,"for network in self.provider.neutron.list_networks()",0.3862967
+openstack-security,"list",12.466,"self.provider.neutron.list_subnets().get('subnets', [])]",2.0776206999999998
+openstack-security,"get_or_create_default",12.5863,"sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)",2.0977092
+openstack-object_life_cycle,"refresh",0.726248,"vol = self._provider.storage.volumes.get(self.id)",0.726215
+openstack-object_life_cycle,"get",0.683317,"return OpenStackVolume(self.provider, self.provider.cinder.volumes.get(volume_id))",0.683316
+openstack-object_life_cycle,"create",2.18261,"os_vol = self.provider.cinder.volumes.create(",0.884819
+openstack-object_life_cycle,"create",2.18261,"os_vol = self.provider.cinder.volumes.create(size, name=label, description=description,availability_zone=zone_id, snapshot_id=snapshot_id)",1.297753
+openstack-object_life_cycle,"delete",0.582492,"volume._volume.delete()",0.582489
+openstack-object_store,"get",2.72294,"_, container_list = self.provider.swift.get_account(prefix=bucket_id)",0.34033159999999996
+openstack-object_store,"find",0.492138,"_, container_list = self.provider.swift.get_account()",0.246004
+openstack-object_store,"list",1.16921,"_, container_list = self.provider.swift.get_account(limit=oshelpers.os_result_limit(self.provider, limit),marker=marker)",0.292194
+openstack-object_store,"create",18.2557,"self.provider.swift.head_container(name)",1.9332747
+openstack-object_store,"delete",2.01567,"self.provider.swift.delete_container(b_id)",0.3359418
+openstack-object_store,"get",3.30085,"_, object_list = self.provider.swift.get_container(bucket.name, prefix=name)",0.3667368
+openstack-object_store,"list",3.40633,"_, object_list = self.provider.swift.get_container(bucket.name,limit=oshelpers.os_result_limit(self.provider, limit),marker=marker, prefix=prefix)",0.378384
+openstack-object_store,"find",1.02383,"_, obj_list = self.provider.swift.get_container(bucket.name)",0.340547
+openstack-object_store,"create",3.81699,"self.provider.swift.put_object(bucket.name, object_name, None)",0.42060159999999996
+openstack-object_store,"create",3.81699,"return self.get(bucket, object_name)",0.3427972
+openstack-region,"find",2.66103,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.8869833
+openstack-region,"get",6.92382,"return next(region, None)",2.3079277
+openstack-region,"list",30.1199,"for region in self.provider.keystone.regions.list()]",1.802213
+openstack-network,"find",6.84073,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",1.1400933
+openstack-network,"find",0.816709,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.27221270000000003
+openstack-network,"label",8.22129,"self._provider.neutron.update_network(self.id, {'network': {'name': value or ""}})",0.7662584
+openstack-network,"label",8.22129,"self.refresh()",0.4081776
+openstack-network,"refresh",10.9466,"network = self._provider.networking.networks.get(self.id)",0.4054251
+openstack-network,"label",2.07589,"self._provider.neutron.update_subnet(self.id, {'subnet': {'name': value or ""}})",0.691892
+openstack-network,"refresh",1.53474,"subnet = self._provider.networking.subnets.get(self.id)",0.3836815
+openstack-network,"label",3.2712,"self._router = self._provider.os_conn.update_router(self.id, value)",1.0903383
+openstack-network,"refresh",0.416022,"self._router = self._provider.os_conn.get_router(self.id)",0.416022
+openstack-network,"get",14.0636,"return next(network, None)",0.4018138
+openstack-network,"list",17.2713,"for network in self.provider.neutron.list_networks()",0.4015416
+openstack-network,"find",0.717092,"for network in self.provider.neutron.list_networks(name=label)",0.358454
+openstack-network,"create",13.9178,"network = self.provider.neutron.create_network({'network': net_info})",2.3192858
+openstack-network,"create",13.9178,"cb_net.label = label",1.1600835
+openstack-network,"delete",6.85171,"self.provider.neutron.delete_network(network.id)",0.9932185
+openstack-network,"get",2.73474,"return next(subnet, None)",0.3906737
+openstack-network,"list",14.0561,"self.provider.neutron.list_subnets().get('subnets', [])]",0.5855981
+openstack-network,"create",1.94209,"subnet = (self.provider.neutron.create_subnet({'subnet': subnet_info})",0.6472823000000001
+openstack-network,"delete",4.72856,"self.provider.neutron.delete_subnet(sn_id)",1.5761817
+openstack-network,"get_or_create_default",6.17932,"sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)",2.0597663
+openstack-network,"get",0.663701,"router = self.provider.os_conn.get_router(router_id)",0.3318325
+openstack-network,"list",2.31206,"routers = self.provider.os_conn.list_routers()",0.3852643
+openstack-network,"find",0.732479,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",0.244137
+openstack-network,"create",6.82445,"router = self.provider.os_conn.create_router(name=label)",1.706094
+openstack-network,"delete",7.86342,"self.provider.os_conn.delete_router(r_id)",1.965841
+openstack-network,"get_or_create",19.2371,"if self._check_fip_connectivity(network, net):",6.006757
+openstack-network,"delete",6e-06,"pass",2e-06
+openstack-network,"get",0.813398,"return OpenStackFloatingIP(self.provider,self.provider.os_conn.network.get_ip(fip_id))",0.4066795
+openstack-network,"list",2.5718,"for fip in self.provider.os_conn.network.ips(floating_network_id=gateway.id",0.3673303
+openstack-network,"create",3.19342,"return OpenStackFloatingIP(self.provider, self.provider.os_conn.network.create_ip(floating_network_id=gateway.id))",1.570958
+openstack-network,"delete",2.34663,"os_ip.delete(self._provider.os_conn.session)",0.831011
+openstack-compute,"find",9.72766,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",2.4318847999999997
+openstack-compute,"find",3.56473,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",1.7823335
+openstack-compute,"label",1.24232,"self._provider.neutron.update_network(self.id, {'network': {'name': value or ""}})",0.832175
+openstack-compute,"refresh",1.343,"network = self._provider.networking.networks.get(self.id)",0.4476647
+openstack-compute,"find",2.4398,"keypairs = self.provider.nova.keypairs.findall(name=name)",2.439732
+openstack-compute,"create",3.09715,"existing_kp = self.find(name=name)",2.450763
+openstack-compute,"delete",0.510433,"keypair._key_pair.delete()",0.510429
+openstack-compute,"create",2.07037,"sg = self.provider.os_conn.network.create_security_group(",1.260211
+openstack-compute,"create",2.07037,"sg = self.provider.os_conn.network.create_security_group(name=label, description=description)",0.81011
+openstack-compute,"delete",0.36989,"fw._vm_firewall.delete(self.provider.os_conn.session)",0.369886
+openstack-compute,"get",3.02151,"return OpenStackMachineImage(self.provider, self.provider.os_conn.image.get_image(image_id))",3.021456
+openstack-compute,"create_launch_config",7e-06,"return BaseLaunchConfig(self.provider)",7e-06
+openstack-compute,"create",13.802,"vm_size = vm_type.id ifisinstance(vm_type, VMType) elseself.provider.compute.vm_types.find(name=vm_type)[0].id",2.3333912999999997
+openstack-compute,"list",9.66376,"for obj in self.provider.nova.flavors.list(limit=oshelpers.os_result_limit(self.provider, limit),marker=marker)]",0.9748665
+openstack-compute,"get",1.72135,"return next(network, None)",0.4303332
+openstack-compute,"list",1.69941,"for network in self.provider.neutron.list_networks()",0.4247395
+openstack-compute,"create",3.46815,"network = self.provider.neutron.create_network({'network': net_info})",2.22577
+openstack-compute,"create",3.46815,"cb_net.label = label",1.242335
+openstack-compute,"delete",4.68956,"self.provider.neutron.delete_port(port.get('id'))",0.9211325
+openstack-compute,"delete",4.68956,"self.provider.neutron.delete_network(network.id)",2.047921
+openstack-compute,"list",3.89371,"self.provider.neutron.list_subnets().get('subnets', [])]",1.2978257
+openstack-compute,"create",0.560666,"subnet = (self.provider.neutron.create_subnet({'subnet': subnet_info})",0.560631
+openstack-compute,"delete",0.3819,"self.provider.neutron.delete_subnet(sn_id)",0.381896
+openstack-compute,"get_or_create_default",3.58635,"sn = self.find(label=OpenStackSubnet.CB_DEFAULT_SUBNET_LABEL)",1.7931695
+openstack-vm_types,"get",1.84087,"return next(vm_type, None)",0.92043
+openstack-vm_types,"find",5.54775,"matches = cb_helpers.generic_find(filters, kwargs, obj_list)",1.3869145
+openstack-vm_types,"list",15.6285,"for obj in self.provider.nova.flavors.list(limit=oshelpers.os_result_limit(self.provider, limit),marker=marker)]",0.8368631
