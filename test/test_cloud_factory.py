@@ -1,7 +1,10 @@
 import unittest
 
+from pyeventsystem.middleware import intercept
+
 from cloudbridge.cloud import factory
 from cloudbridge.cloud import interfaces
+from cloudbridge.cloud.base import helpers as cb_helpers
 from cloudbridge.cloud.factory import CloudProviderFactory
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 from cloudbridge.cloud.interfaces.provider import CloudProvider
@@ -85,3 +88,19 @@ class CloudFactoryTestCase(unittest.TestCase):
         factory.register_provider_class(DummyClass)
         self.assertTrue(DummyClass not in
                         factory.get_all_provider_classes())
+
+    def test_middleware_inherited(self):
+        return_str = "hello world"
+        class SomeDummyClass(object):
+
+            @intercept(event_pattern="*", priority=2499)
+            def return_hello_world(self, event_args, *args, **kwargs):
+                return return_str
+
+        factory = CloudProviderFactory()
+        some_obj = SomeDummyClass()
+        factory.middleware.add(some_obj)
+        provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
+        prov = factory.create_provider(provider_name, {})
+        # Any dispatched event should be intercepted and return the string
+        self.assertEqual(prov.storage.volumes.get("anything"), return_str)
