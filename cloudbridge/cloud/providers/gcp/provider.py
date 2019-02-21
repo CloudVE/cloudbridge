@@ -196,7 +196,7 @@ class GCPCloudProvider(BaseCloudProvider):
 
     PROVIDER_ID = 'gcp'
 
-    def __init__(self, config, middleware_manager=[]):
+    def __init__(self, config, middleware_manager=None):
         super(GCPCloudProvider, self).__init__(config, middleware_manager)
 
         # Disable warnings about file_cache not being available when using

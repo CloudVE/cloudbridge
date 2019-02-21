@@ -31,7 +31,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     PROVIDER_ID = 'openstack'
 
-    def __init__(self, config, middleware_manager=[]):
+    def __init__(self, config, middleware_manager=None):
         super(OpenStackCloudProvider, self).__init__(config,
                                                      middleware_manager)
 
