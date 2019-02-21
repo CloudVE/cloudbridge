@@ -8,8 +8,6 @@ try:
 except ImportError:  # Python 2
     from ConfigParser import SafeConfigParser as ConfigParser
 
-from pyeventsystem.middleware import SimpleMiddlewareManager
-
 import six
 
 from ..base.middleware import ExceptionWrappingMiddleware
@@ -83,13 +81,11 @@ class BaseConfiguration(Configuration):
 
 
 class BaseCloudProvider(CloudProvider):
-    def __init__(self, config, middleware_list=[]):
+    def __init__(self, config, middleware_manager=None):
         self._config = BaseConfiguration(config)
         self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
-        self._middleware = SimpleMiddlewareManager()
-        for each_middleware in middleware_list:
-            self._middleware.add(each_middleware)
+        self._middleware = middleware_manager.generate_simple_manager()
         self.add_required_middleware()
 
     @property

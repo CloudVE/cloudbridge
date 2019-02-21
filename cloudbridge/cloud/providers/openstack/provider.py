@@ -31,8 +31,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     PROVIDER_ID = 'openstack'
 
-    def __init__(self, config, middleware_list=[]):
-        super(OpenStackCloudProvider, self).__init__(config, middleware_list)
+    def __init__(self, config, middleware_manager=[]):
+        super(OpenStackCloudProvider, self).__init__(config, middleware_manager)
 
         # Initialize cloud connection fields
         self.username = self._get_config_value(

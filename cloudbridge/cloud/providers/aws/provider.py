@@ -17,8 +17,8 @@ class AWSCloudProvider(BaseCloudProvider):
     PROVIDER_ID = 'aws'
     AWS_INSTANCE_DATA_DEFAULT_URL = "http://cloudve.org/cb-aws-vmtypes.json"
 
-    def __init__(self, config, middleware_list=[]):
-        super(AWSCloudProvider, self).__init__(config, middleware_list)
+    def __init__(self, config, middleware_manager=None):
+        super(AWSCloudProvider, self).__init__(config, middleware_manager)
 
         # Initialize cloud connection fields
         # These are passed as-is to Boto

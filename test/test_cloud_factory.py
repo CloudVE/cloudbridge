@@ -90,17 +90,75 @@ class CloudFactoryTestCase(unittest.TestCase):
                         factory.get_all_provider_classes())
 
     def test_middleware_inherited(self):
-        return_str = "hello world"
+        start_count = 10
+
         class SomeDummyClass(object):
+            count = start_count
 
             @intercept(event_pattern="*", priority=2499)
-            def return_hello_world(self, event_args, *args, **kwargs):
-                return return_str
+            def return_incremented(self, event_args, *args, **kwargs):
+                self.count += 1
+                return self.count
 
         factory = CloudProviderFactory()
         some_obj = SomeDummyClass()
-        factory.add_middleware(some_obj)
+        factory.middleware.add(some_obj)
         provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
-        prov = factory.create_provider(provider_name, {})
-        # Any dispatched event should be intercepted and return the string
-        self.assertEqual(prov.storage.volumes.get("anything"), return_str)
+        first_prov = factory.create_provider(provider_name, {})
+        # Any dispatched event should be intercepted and increment the count
+        first_prov.storage.volumes.get("anything")
+        self.assertEqual(first_prov.networking.networks.get("anything"),
+                         start_count + 2)
+        second_prov = factory.create_provider(provider_name, {})
+        # This count should be independent of the previous one
+        self.assertEqual(second_prov.networking.networks.get("anything"),
+                         start_count + 3)
+
+    def test_middleware_inherited_constructor(self):
+        start_count = 10
+        increment = 2
+
+        class SomeDummyClass(object):
+            count = start_count
+
+            @intercept(event_pattern="*", priority=2499)
+            def return_incremented(self, event_args, *args, **kwargs):
+                self.count += 1
+                return self.count
+
+        factory = CloudProviderFactory()
+        factory.middleware.add_constructor(SomeDummyClass)
+        provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
+        first_prov = factory.create_provider(provider_name, {})
+        # Any dispatched event should be intercepted and increment the count
+        first_prov.storage.volumes.get("anything")
+        self.assertEqual(first_prov.networking.networks.get("anything"),
+                         start_count + 2)
+        second_prov = factory.create_provider(provider_name, {})
+        # This count should be independent of the previous one
+        self.assertEqual(second_prov.networking.networks.get("anything"),
+                         start_count + 1)
+
+        class SomeDummyClassWithArgs(object):
+            def __init__(self, start, increment):
+                self.count = start
+                self.increment = increment
+
+            @intercept(event_pattern="*", priority=2499)
+            def return_incremented(self, event_args, *args, **kwargs):
+                self.count += self.increment
+                return self.count
+
+        factory = CloudProviderFactory()
+        factory.middleware.add_constructor(SomeDummyClassWithArgs,
+                                           start_count, increment)
+        provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
+        first_prov = factory.create_provider(provider_name, {})
+        # Any dispatched event should be intercepted and increment the count
+        first_prov.storage.volumes.get("anything")
+        self.assertEqual(first_prov.networking.networks.get("anything"),
+                         start_count + 2*increment)
+        second_prov = factory.create_provider(provider_name, {})
+        # This count should be independent of the previous one
+        self.assertEqual(second_prov.networking.networks.get("anything"),
+                         start_count + increment)

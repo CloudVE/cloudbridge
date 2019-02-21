@@ -4,12 +4,37 @@ import logging
 import pkgutil
 from collections import defaultdict
 
+from pyeventsystem.middleware import SimpleMiddlewareManager
+
 from cloudbridge.cloud import providers
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
 
 
 log = logging.getLogger(__name__)
+
+
+# Todo: Move to pyeventsystem if we're keeping this logic
+class ParentMiddlewareManager(SimpleMiddlewareManager):
+
+    def __init__(self, event_manager=None):
+        super(ParentMiddlewareManager, self).__init__(event_manager)
+        self.middleware_constructors = []
+
+    def add_constructor(self, middleware_class, *args):
+        self.middleware_constructors.append((middleware_class, args))
+
+    def remove_constructor(self, middleware_class, *args):
+        self.middleware_constructors.remove((middleware_class, args))
+
+    def generate_simple_manager(self):
+        new_manager = SimpleMiddlewareManager()
+        for middleware in self.middleware_list:
+            new_manager.add(middleware)
+        for constructor, args in self.middleware_constructors:
+            m = constructor(*args)
+            new_manager.add(m)
+        return new_manager
 
 
 class ProviderList(object):
@@ -27,16 +52,13 @@ class CloudProviderFactory(object):
     """
 
     def __init__(self):
-        self._middleware = []
+        self._middleware = ParentMiddlewareManager()
         self.provider_list = defaultdict(dict)
         log.debug("Providers List: %s", self.provider_list)
 
     @property
-    def added_middleware(self):
+    def middleware(self):
         return self._middleware
-
-    def add_middleware(self, middleware):
-        self._middleware.append(middleware)
 
     def register_provider_class(self, cls):
         """
@@ -144,7 +166,7 @@ class CloudProviderFactory(object):
                 'A provider with name {0} could not be'
                 ' found'.format(name))
         log.debug("Created '%s' provider", name)
-        return provider_class(config, self.added_middleware)
+        return provider_class(config, self.middleware)
 
     def get_provider_class(self, name):
         """
