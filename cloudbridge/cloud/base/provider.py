@@ -2,12 +2,13 @@
 import functools
 import logging
 import os
-from copy import deepcopy
 from os.path import expanduser
 try:
     from configparser import ConfigParser
 except ImportError:  # Python 2
     from ConfigParser import SafeConfigParser as ConfigParser
+
+from pyeventsystem.middleware import SimpleMiddlewareManager
 
 import six
 
@@ -82,12 +83,13 @@ class BaseConfiguration(Configuration):
 
 
 class BaseCloudProvider(CloudProvider):
-    def __init__(self, config, factory):
-        self._factory = factory
+    def __init__(self, config, middleware_list=[]):
         self._config = BaseConfiguration(config)
         self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
-        self._middleware = deepcopy(factory.middleware)
+        self._middleware = SimpleMiddlewareManager()
+        for each_middleware in middleware_list:
+            self._middleware.add(each_middleware)
         self.add_required_middleware()
 
     @property

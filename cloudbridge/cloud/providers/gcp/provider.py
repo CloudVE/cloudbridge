@@ -196,8 +196,8 @@ class GCPCloudProvider(BaseCloudProvider):
 
     PROVIDER_ID = 'gcp'
 
-    def __init__(self, config, factory):
-        super(GCPCloudProvider, self).__init__(config, factory)
+    def __init__(self, config, middleware_list=[]):
+        super(GCPCloudProvider, self).__init__(config, middleware_list)
 
         # Disable warnings about file_cache not being available when using
         # oauth2client >= 4.0.0.

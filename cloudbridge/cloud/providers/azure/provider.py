@@ -23,8 +23,8 @@ log = logging.getLogger(__name__)
 class AzureCloudProvider(BaseCloudProvider):
     PROVIDER_ID = 'azure'
 
-    def __init__(self, config, factory):
-        super(AzureCloudProvider, self).__init__(config, factory)
+    def __init__(self, config, middleware_list=[]):
+        super(AzureCloudProvider, self).__init__(config, middleware_list)
 
         # mandatory config values
         self.subscription_id = self._get_config_value(

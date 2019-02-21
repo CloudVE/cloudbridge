@@ -99,7 +99,7 @@ class CloudFactoryTestCase(unittest.TestCase):
 
         factory = CloudProviderFactory()
         some_obj = SomeDummyClass()
-        factory.middleware.add(some_obj)
+        factory.add_middleware(some_obj)
         provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
         prov = factory.create_provider(provider_name, {})
         # Any dispatched event should be intercepted and return the string

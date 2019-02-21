@@ -4,8 +4,6 @@ import logging
 import pkgutil
 from collections import defaultdict
 
-from pyeventsystem.middleware import SimpleMiddlewareManager
-
 from cloudbridge.cloud import providers
 from cloudbridge.cloud.interfaces import CloudProvider
 from cloudbridge.cloud.interfaces import TestMockHelperMixin
@@ -29,13 +27,16 @@ class CloudProviderFactory(object):
     """
 
     def __init__(self):
-        self._middleware = SimpleMiddlewareManager()
+        self._middleware = []
         self.provider_list = defaultdict(dict)
         log.debug("Providers List: %s", self.provider_list)
 
     @property
-    def middleware(self):
+    def added_middleware(self):
         return self._middleware
+
+    def add_middleware(self, middleware):
+        self._middleware.append(middleware)
 
     def register_provider_class(self, cls):
         """
@@ -143,7 +144,7 @@ class CloudProviderFactory(object):
                 'A provider with name {0} could not be'
                 ' found'.format(name))
         log.debug("Created '%s' provider", name)
-        return provider_class(config, self)
+        return provider_class(config, self.added_middleware)
 
     def get_provider_class(self, name):
         """

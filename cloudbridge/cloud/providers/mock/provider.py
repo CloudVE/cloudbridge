@@ -25,9 +25,9 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
     """
     PROVIDER_ID = 'mock'
 
-    def __init__(self, config, factory):
+    def __init__(self, config, middleware_list=[]):
         self.setUpMock()
-        super(MockAWSCloudProvider, self).__init__(config, factory)
+        super(MockAWSCloudProvider, self).__init__(config, middleware_list)
 
     def setUpMock(self):
         """
