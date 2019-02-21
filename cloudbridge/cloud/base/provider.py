@@ -85,7 +85,7 @@ class BaseCloudProvider(CloudProvider):
         self._config = BaseConfiguration(config)
         self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
-        self._middleware = middleware_manager.generate_simple_manager()
+        self._middleware = middleware_manager
         self.add_required_middleware()
 
     @property

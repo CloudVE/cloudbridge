@@ -193,7 +193,8 @@ class CloudProviderFactory(object):
                 'A provider with name {0} could not be'
                 ' found'.format(name))
         log.debug("Created '%s' provider", name)
-        return provider_class(config, self.middleware)
+        return provider_class(config,
+                              self.middleware.generate_simple_manager())
 
     def get_provider_class(self, name):
         """
