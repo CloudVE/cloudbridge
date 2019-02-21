@@ -9,6 +9,7 @@ from botocore.utils import merge_dicts
 
 from cloudbridge.cloud.base.resources import ClientPagedResultList
 from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.cloud.interfaces.exceptions import ProviderInternalException
 
 
 def trim_empty_params(params_dict):
@@ -241,22 +242,34 @@ class BotoGenericService(object):
             return ClientPagedResultList(self.provider, results,
                                          limit=limit, marker=marker)
 
-    def find(self, filter_name, filter_value, limit=None, marker=None,
+    def find(self, filter_names, filter_values, limit=None, marker=None,
              **kwargs):
         """
         Return a list of resources by filter.
 
-        :type filter_name: ``str``
-        :param filter_name: Name of the filter to use
+        :type filter_names: ``list`` of ``str``
+        :param filter_names: Names of the filters to use
 
-        :type filter_value: ``str``
-        :param filter_value: Value to filter with
+        :type filter_values: ``list`` of ``str``
+        :param filter_values: Values to filter with
         """
+        if isinstance(filter_names, list) and isinstance(filter_values, list):
+            n = len(filter_names)
+            filters = []
+            if len(filter_values) == n:
+                for i in range(n):
+                    filters.append({'Name': filter_names[i],
+                                    'Values': [filter_values[i]]})
+            else:
+                message = "When using multiple filters, the number of filter" \
+                          " names and values must match"
+                raise ProviderInternalException(message)
+
+        else:
+            filters = [{'Name': filter_names,
+                        'Values': [filter_values]}]
         collection = self.boto_collection
-        collection = collection.filter(Filters=[{
-            'Name': filter_name,
-            'Values': [filter_value]
-            }])
+        collection = collection.filter(Filters=filters)
         if kwargs:
             collection = collection.filter(**kwargs)
         return self.list(limit=limit, marker=marker, collection=collection)

@@ -100,7 +100,8 @@ class BaseCloudProvider(CloudProvider):
     def zone_name(self):
         if not self._zone_name:
             region = self.compute.regions.get(self.region_name)
-            self._zone_name = next(region.zones)
+            # TODO: Default zone
+            self._zone_name = next(iter(region.zones))
         return self._zone_name
 
     @property

@@ -341,12 +341,16 @@ class AWSVolumeService(BaseVolumeService):
                 "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Volume Service %s", label)
-        return self.svc.find(filter_name='tag:Name', filter_value=label)
+        return self.svc.find(filter_names=['tag:Name', 'availability-zone'],
+                             filter_values=[label,
+                                            self.provider.zone_name.name])
 
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        return self.svc.list(limit=limit, marker=marker)
+        return self.svc.find(filter_names='availability-zone',
+                             filter_values=self.provider.zone_name.name,
+                             limit=limit, marker=marker)
 
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
@@ -791,12 +795,16 @@ class AWSInstanceService(BaseInstanceService):
                 "Unrecognised parameters for search: %s. Supported "
                 "attributes: %s" % (kwargs, 'label'))
 
-        return self.svc.find(filter_name='tag:Name', filter_value=label)
+        return self.svc.find(filter_names=['tag:Name', 'availability-zone'],
+                             filter_values=[label,
+                                            self.provider.zone_name.name])
 
     @dispatch(event="provider.compute.instances.list",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        return self.svc.list(limit=limit, marker=marker)
+        return self.svc.find(filter_names='availability-zone',
+                             filter_values=self.provider.zone_name.name,
+                             limit=limit, marker=marker)
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
@@ -999,11 +1007,14 @@ class AWSSubnetService(BaseSubnetService):
     def list(self, network=None, limit=None, marker=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         if network_id:
-            return self.svc.find(
-                filter_name='vpc-id', filter_value=network_id,
-                limit=limit, marker=marker)
+            return self.svc.find(filter_names=['vpc-id', 'availability-zone'],
+                                 filter_values=[network_id,
+                                                self.provider.zone_name.name],
+                                 limit=limit, marker=marker)
         else:
-            return self.svc.list(limit=limit, marker=marker)
+            return self.svc.find(filter_names='availability-zone',
+                                 filter_values=self.provider.zone_name.name,
+                                 limit=limit, marker=marker)
 
     @dispatch(event="provider.networking.subnets.find",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
@@ -1017,7 +1028,9 @@ class AWSSubnetService(BaseSubnetService):
                 "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Subnet Service %s", label)
-        return self.svc.find(filter_name='tag:Name', filter_value=label)
+        return self.svc.find(filter_names=['tag:Name', 'availability-zone'],
+                             filter_values=[label,
+                                            self.provider.zone_name.name])
 
     @dispatch(event="provider.networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
