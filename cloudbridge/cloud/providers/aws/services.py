@@ -124,7 +124,7 @@ class AWSKeyPairService(BaseKeyPairService):
                 "attributes: %s" % (kwargs, 'name'))
 
         log.debug("Searching for Key Pair %s", name)
-        return self.svc.find(filter_name='key-name', filter_value=name)
+        return self.svc.find(filters={'key-name': name})
 
     @dispatch(event="provider.security.key_pairs.create",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
@@ -199,8 +199,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
             raise InvalidParamException(
                 "Unrecognised parameters for search: %s. Supported "
                 "attributes: %s" % (kwargs, 'label'))
-        return self.svc.find(filter_name='tag:Name',
-                             filter_value=label)
+        return self.svc.find(filters={'tag:Name': label})
 
     @dispatch(event="provider.security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
@@ -341,16 +340,16 @@ class AWSVolumeService(BaseVolumeService):
                 "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Volume Service %s", label)
-        return self.svc.find(filter_names=['tag:Name', 'availability-zone'],
-                             filter_values=[label,
-                                            self.provider.zone_name.name])
+        return self.svc.find(
+            filters={'tag:Name': label,
+                     'availability-zone': self.provider.zone_name})
 
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        return self.svc.find(filter_names='availability-zone',
-                             filter_values=self.provider.zone_name.name,
-                             limit=limit, marker=marker)
+        return self.svc.find(
+            filters={'availability-zone': self.provider.zone_name},
+            limit=limit, marker=marker)
 
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
@@ -401,8 +400,7 @@ class AWSSnapshotService(BaseSnapshotService):
         obj_list = []
         if label:
             log.debug("Searching for AWS Snapshot with label %s", label)
-            obj_list.extend(self.svc.find(filter_name='tag:Name',
-                                          filter_value=label,
+            obj_list.extend(self.svc.find(filters={'tag:Name': label},
                                           OwnerIds=['self']))
         else:
             obj_list = list(self)
@@ -626,10 +624,10 @@ class AWSImageService(BaseImageService):
         if label:
             log.debug("Searching for AWS Image Service %s", label)
             obj_list = []
-            obj_list.extend(self.svc.find(filter_name='name',
-                                          filter_value=label, **extra_args))
-            obj_list.extend(self.svc.find(filter_name='tag:Name',
-                                          filter_value=label, **extra_args))
+            obj_list.extend(
+                self.svc.find(filters={'name': label}, **extra_args))
+            obj_list.extend(
+                self.svc.find(filters={'tag:Name': label}, **extra_args))
             return obj_list
         else:
             return []
@@ -795,16 +793,16 @@ class AWSInstanceService(BaseInstanceService):
                 "Unrecognised parameters for search: %s. Supported "
                 "attributes: %s" % (kwargs, 'label'))
 
-        return self.svc.find(filter_names=['tag:Name', 'availability-zone'],
-                             filter_values=[label,
-                                            self.provider.zone_name.name])
+        return self.svc.find(
+            filters={'tag:Name': label,
+                     'availability-zone': self.provider.zone_name})
 
     @dispatch(event="provider.compute.instances.list",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        return self.svc.find(filter_names='availability-zone',
-                             filter_values=self.provider.zone_name.name,
-                             limit=limit, marker=marker)
+        return self.svc.find(
+            filters={'availability-zone': self.provider.zone_name},
+            limit=limit, marker=marker)
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
@@ -945,7 +943,7 @@ class AWSNetworkService(BaseNetworkService):
                 "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Network Service %s", label)
-        return self.svc.find(filter_name='tag:Name', filter_value=label)
+        return self.svc.find(filters={'tag:Name': label})
 
     @dispatch(event="provider.networking.networks.create",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
@@ -1007,14 +1005,14 @@ class AWSSubnetService(BaseSubnetService):
     def list(self, network=None, limit=None, marker=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
         if network_id:
-            return self.svc.find(filter_names=['vpc-id', 'availability-zone'],
-                                 filter_values=[network_id,
-                                                self.provider.zone_name.name],
-                                 limit=limit, marker=marker)
+            return self.svc.find(
+                filters={'vpc-id': network_id,
+                         'availability-zone': self.provider.zone_name},
+                limit=limit, marker=marker)
         else:
-            return self.svc.find(filter_names='availability-zone',
-                                 filter_values=self.provider.zone_name.name,
-                                 limit=limit, marker=marker)
+            return self.svc.find(
+                filters={'availability-zone': self.provider.zone_name},
+                limit=limit, marker=marker)
 
     @dispatch(event="provider.networking.subnets.find",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
@@ -1028,9 +1026,9 @@ class AWSSubnetService(BaseSubnetService):
                 "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Subnet Service %s", label)
-        return self.svc.find(filter_names=['tag:Name', 'availability-zone'],
-                             filter_values=[label,
-                                            self.provider.zone_name.name])
+        return self.svc.find(
+            filters={'tag:Name': label,
+                     'availability-zone': self.provider.zone_name})
 
     @dispatch(event="provider.networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
@@ -1184,7 +1182,7 @@ class AWSRouterService(BaseRouterService):
                 "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for AWS Router Service %s", label)
-        return self.svc.find(filter_name='tag:Name', filter_value=label)
+        return self.svc.find(filters={'tag:Name': label})
 
     @dispatch(event="provider.networking.routers.list",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
@@ -1226,8 +1224,7 @@ class AWSGatewayService(BaseGatewayService):
         # Don't filter by label because it may conflict with at least the
         # default VPC that most accounts have but that network is typically
         # without a name.
-        gtw = self.svc.find(filter_name='attachment.vpc-id',
-                            filter_value=network_id)
+        gtw = self.svc.find(filters={'attachment.vpc-id': network_id})
         if gtw:
             return gtw[0]  # There can be only one gtw attached to a VPC
         # Gateway does not exist so create one and attach to the supplied net
