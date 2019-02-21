@@ -162,3 +162,23 @@ class CloudFactoryTestCase(unittest.TestCase):
         # This count should be independent of the previous one
         self.assertEqual(second_prov.networking.networks.get("anything"),
                          start_count + increment)
+
+    def test_middleware_inherited_events(self):
+
+        class SomeDummyClass(object):
+
+            @intercept(event_pattern="*", priority=2499)
+            def return_goodbye(self, event_args, *args, **kwargs):
+                return "goodbye"
+
+        def return_hello(event_args, *args, **kwargs):
+            return "hello"
+
+        factory = CloudProviderFactory()
+        factory.middleware.add(SomeDummyClass())
+        factory.middleware.events.intercept("*", 2490, return_hello)
+        provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
+        prov = factory.create_provider(provider_name, {})
+        # Any dispatched event should be intercepted and return "hello" instead
+        self.assertEqual(prov.networking.networks.get("anything"),
+                         "hello")

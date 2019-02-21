@@ -4,6 +4,8 @@ import logging
 import pkgutil
 from collections import defaultdict
 
+from pyeventsystem.interfaces import Middleware
+from pyeventsystem.middleware import AutoDiscoveredMiddleware
 from pyeventsystem.middleware import SimpleMiddlewareManager
 
 from cloudbridge.cloud import providers
@@ -34,7 +36,32 @@ class ParentMiddlewareManager(SimpleMiddlewareManager):
         for constructor, args in self.middleware_constructors:
             m = constructor(*args)
             new_manager.add(m)
+        for handler in self.get_subscribed_handlers():
+            new_handler = handler.__class__(handler.event_pattern,
+                                            handler.priority,
+                                            handler.callback)
+            new_manager.events.subscribe(new_handler)
         return new_manager
+
+    # Removing install step from add. Since this manager is meant to create
+    # other managers rather than run. This will also simplify separating
+    # handlers added through middleware from those subscribed directly
+    def add(self, middleware):
+        if isinstance(middleware, Middleware):
+            m = middleware
+        else:
+            m = AutoDiscoveredMiddleware(middleware)
+        self.middleware_list.append(m)
+        return m
+
+    def get_subscribed_handlers(self):
+        handlers = []
+        # Todo: Expose this better in pyeventsystem library
+        event_dict = self.events._SimpleEventDispatcher__events
+        for key in event_dict.keys():
+            for handler in event_dict[key]:
+                handlers.append(handler)
+        return handlers
 
 
 class ProviderList(object):
