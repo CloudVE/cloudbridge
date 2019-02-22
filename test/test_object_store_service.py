@@ -24,22 +24,26 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage._bucket_objects', 'storage.buckets'])
     def test_storage_services_event_pattern(self):
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "storage.buckets"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.storage.buckets._service_event_pattern,
-            "provider.storage.buckets",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("buckets",
-                                     "provider.storage.buckets",
+                                     expected_event,
                                      self.provider.storage.buckets.
                                      _service_event_pattern))
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "storage._bucket_objects"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.storage._bucket_objects._service_event_pattern,
-            "provider.storage._bucket_objects",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("bucket_objects",
-                                     "provider.storage._bucket_objects",
+                                     expected_event,
                                      self.provider.storage._bucket_objects.
                                      _service_event_pattern))
 

@@ -11,11 +11,13 @@ class CloudVMTypeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.vm_types'])
     def test_storage_services_event_pattern(self):
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "compute.vm_types"))
         self.assertEqual(self.provider.compute.vm_types._service_event_pattern,
-                         "provider.compute.vm_types",
+                         expected_event,
                          "Event pattern for {} service should be '{}', "
                          "but found '{}'.".format("vm_types",
-                                                  "provider.compute.vm_types",
+                                                  expected_event,
                                                   self.provider.compute.
                                                   vm_types.
                                                   _service_event_pattern))

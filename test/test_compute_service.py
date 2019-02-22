@@ -23,13 +23,15 @@ class CloudComputeServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.instances'])
     def test_storage_services_event_pattern(self):
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "compute.instances"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.compute.instances._service_event_pattern,
-            "provider.compute.instances",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("instances",
-                                     "provider.compute.instances",
+                                     expected_event,
                                      self.provider.compute.instances.
                                      _service_event_pattern))
 

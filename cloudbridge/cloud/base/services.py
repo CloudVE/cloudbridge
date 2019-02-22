@@ -43,7 +43,7 @@ class BaseCloudService(CloudService):
     STANDARD_EVENT_PRIORITY = 2500
 
     def __init__(self, provider):
-        self._service_event_pattern = "provider"
+        self._service_event_pattern = provider.PROVIDER_ID
         self._provider = provider
         # discover and register all middleware
         provider.middleware.add(self)
@@ -78,7 +78,7 @@ class BaseVMFirewallService(
         super(BaseVMFirewallService, self).__init__(provider)
         self._service_event_pattern += ".security.vm_firewalls"
 
-    @dispatch(event="provider.security.vm_firewalls.find",
+    @dispatch(event="*.security.vm_firewalls.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
@@ -107,7 +107,7 @@ class BaseVMFirewallRuleService(BasePageableObjectMixin,
     def provider(self):
         return self._provider
 
-    @dispatch(event="provider.security.vm_firewall_rules.get",
+    @dispatch(event="*.security.vm_firewall_rules.get",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def get(self, firewall, rule_id):
         matches = [rule for rule in firewall.rules if rule.id == rule_id]
@@ -116,7 +116,7 @@ class BaseVMFirewallRuleService(BasePageableObjectMixin,
         else:
             return None
 
-    @dispatch(event="provider.security.vm_firewall_rules.find",
+    @dispatch(event="*.security.vm_firewall_rules.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, firewall, **kwargs):
         obj_list = firewall.rules
@@ -157,7 +157,7 @@ class BaseBucketService(
 
     # Generic find will be used for providers where we have not implemented
     # provider-specific querying for find method
-    @dispatch(event="provider.storage.buckets.find",
+    @dispatch(event="*.storage.buckets.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
@@ -211,13 +211,13 @@ class BaseVMTypeService(
         super(BaseVMTypeService, self).__init__(provider)
         self._service_event_pattern += ".compute.vm_types"
 
-    @dispatch(event="provider.compute.vm_types.get",
+    @dispatch(event="*.compute.vm_types.get",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def get(self, vm_type_id):
         vm_type = (t for t in self if t.id == vm_type_id)
         return next(vm_type, None)
 
-    @dispatch(event="provider.compute.vm_types.find",
+    @dispatch(event="*.compute.vm_types.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
@@ -233,7 +233,7 @@ class BaseRegionService(
         super(BaseRegionService, self).__init__(provider)
         self._service_event_pattern += ".compute.regions"
 
-    @dispatch(event="provider.compute.regions.find",
+    @dispatch(event="*.compute.regions.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
@@ -272,7 +272,7 @@ class BaseNetworkService(
             return self.provider.networking.networks.create(
                 BaseNetwork.CB_DEFAULT_NETWORK_LABEL, '10.0.0.0/16')
 
-    @dispatch(event="provider.networking.networks.find",
+    @dispatch(event="*.networking.networks.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
@@ -296,7 +296,7 @@ class BaseSubnetService(
         super(BaseSubnetService, self).__init__(provider)
         self._service_event_pattern += ".networking.subnets"
 
-    @dispatch(event="provider.networking.subnets.find",
+    @dispatch(event="*.networking.subnets.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, network=None, **kwargs):
         if not network:
@@ -360,7 +360,7 @@ class BaseFloatingIPService(FloatingIPService, BaseCloudService):
     def provider(self):
         return self._provider
 
-    @dispatch(event="provider.networking.floating_ips.find",
+    @dispatch(event="*.networking.floating_ips.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
     def find(self, gateway, **kwargs):
         obj_list = gateway.floating_ips

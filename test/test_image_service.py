@@ -14,11 +14,13 @@ class CloudImageServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.images'])
     def test_storage_services_event_pattern(self):
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "compute.images"))
         self.assertEqual(self.provider.compute.images._service_event_pattern,
-                         "provider.compute.images",
+                         expected_event,
                          "Event pattern for {} service should be '{}', "
                          "but found '{}'.".format("images",
-                                                  "provider.compute.images",
+                                                  expected_event,
                                                   self.provider.compute.images.
                                                   _service_event_pattern))
 
