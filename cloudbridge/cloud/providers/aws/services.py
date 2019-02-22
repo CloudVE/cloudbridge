@@ -103,18 +103,18 @@ class AWSKeyPairService(BaseKeyPairService):
                                   cb_resource=AWSKeyPair,
                                   boto_collection_name='key_pairs')
 
-    @dispatch(event="aws.security.key_pairs.get",
+    @dispatch(event="security.key_pairs.get",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def get(self, key_pair_id):
         log.debug("Getting Key Pair Service %s", key_pair_id)
         return self.svc.get(key_pair_id)
 
-    @dispatch(event="aws.security.key_pairs.list",
+    @dispatch(event="security.key_pairs.list",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    @dispatch(event="aws.security.key_pairs.find",
+    @dispatch(event="security.key_pairs.find",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         name = kwargs.pop('name', None)
@@ -128,7 +128,7 @@ class AWSKeyPairService(BaseKeyPairService):
         log.debug("Searching for Key Pair %s", name)
         return self.svc.find(filter_name='key-name', filter_value=name)
 
-    @dispatch(event="aws.security.key_pairs.create",
+    @dispatch(event="security.key_pairs.create",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def create(self, name, public_key_material=None):
         AWSKeyPair.assert_valid_resource_name(name)
@@ -147,7 +147,7 @@ class AWSKeyPairService(BaseKeyPairService):
             else:
                 raise e
 
-    @dispatch(event="aws.security.key_pairs.delete",
+    @dispatch(event="security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def delete(self, key_pair):
         key_pair = (key_pair if isinstance(key_pair, AWSKeyPair) else
@@ -165,19 +165,19 @@ class AWSVMFirewallService(BaseVMFirewallService):
                                   cb_resource=AWSVMFirewall,
                                   boto_collection_name='security_groups')
 
-    @dispatch(event="aws.security.vm_firewalls.get",
+    @dispatch(event="security.vm_firewalls.get",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def get(self, vm_firewall_id):
         log.debug("Getting Firewall Service with the id: %s", vm_firewall_id)
         return self.svc.get(vm_firewall_id)
 
-    @dispatch(event="aws.security.vm_firewalls.list",
+    @dispatch(event="security.vm_firewalls.list",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    @dispatch(event="aws.security.vm_firewalls.create",
+    @dispatch(event="security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
         AWSVMFirewall.assert_valid_resource_label(label)
@@ -190,7 +190,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
         obj.description = description
         return obj
 
-    @dispatch(event="aws.security.vm_firewalls.find",
+    @dispatch(event="security.vm_firewalls.find",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         # Filter by name or label
@@ -204,7 +204,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
         return self.svc.find(filter_name='tag:Name',
                              filter_value=label)
 
-    @dispatch(event="aws.security.vm_firewalls.delete",
+    @dispatch(event="security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def delete(self, vm_firewall):
         firewall = (vm_firewall if isinstance(vm_firewall, AWSVMFirewall)
@@ -219,7 +219,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
     def __init__(self, provider):
         super(AWSVMFirewallRuleService, self).__init__(provider)
 
-    @dispatch(event="aws.security.vm_firewall_rules.list",
+    @dispatch(event="security.vm_firewall_rules.list",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def list(self, firewall, limit=None, marker=None):
         # pylint:disable=protected-access
@@ -234,7 +234,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
         return ClientPagedResultList(self.provider, rules,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="aws.security.vm_firewall_rules.create",
+    @dispatch(event="security.vm_firewall_rules.create",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall,  direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
@@ -268,7 +268,7 @@ class AWSVMFirewallRuleService(BaseVMFirewallRuleService):
             else:
                 raise ec2e
 
-    @dispatch(event="aws.security.vm_firewall_rules.delete",
+    @dispatch(event="security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
         # pylint:disable=protected-access
@@ -326,12 +326,12 @@ class AWSVolumeService(BaseVolumeService):
                                   cb_resource=AWSVolume,
                                   boto_collection_name='volumes')
 
-    @dispatch(event="aws.storage.volumes.get",
+    @dispatch(event="storage.volumes.get",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
         return self.svc.get(volume_id)
 
-    @dispatch(event="aws.storage.volumes.find",
+    @dispatch(event="storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
@@ -345,12 +345,12 @@ class AWSVolumeService(BaseVolumeService):
         log.debug("Searching for AWS Volume Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    @dispatch(event="aws.storage.volumes.list",
+    @dispatch(event="storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    @dispatch(event="aws.storage.volumes.create",
+    @dispatch(event="storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, zone, snapshot=None, description=None):
         AWSVolume.assert_valid_resource_label(label)
@@ -368,7 +368,7 @@ class AWSVolumeService(BaseVolumeService):
             cb_vol.description = description
         return cb_vol
 
-    @dispatch(event="aws.storage.volumes.delete",
+    @dispatch(event="storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def delete(self, vol):
         volume = vol if isinstance(vol, AWSVolume) else self.get(vol)
@@ -385,12 +385,12 @@ class AWSSnapshotService(BaseSnapshotService):
                                   cb_resource=AWSSnapshot,
                                   boto_collection_name='snapshots')
 
-    @dispatch(event="aws.storage.snapshots.get",
+    @dispatch(event="storage.snapshots.get",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def get(self, snapshot_id):
         return self.svc.get(snapshot_id)
 
-    @dispatch(event="aws.storage.snapshots.find",
+    @dispatch(event="storage.snapshots.find",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         # Filter by description or label
@@ -407,13 +407,13 @@ class AWSSnapshotService(BaseSnapshotService):
         filters = ['label']
         return cb_helpers.generic_find(filters, kwargs, obj_list)
 
-    @dispatch(event="aws.storage.snapshots.list",
+    @dispatch(event="storage.snapshots.list",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker,
                              OwnerIds=['self'])
 
-    @dispatch(event="aws.storage.snapshots.create",
+    @dispatch(event="storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
         AWSSnapshot.assert_valid_resource_label(label)
@@ -427,7 +427,7 @@ class AWSSnapshotService(BaseSnapshotService):
             cb_snap.description = description
         return cb_snap
 
-    @dispatch(event="aws.storage.snapshots.delete",
+    @dispatch(event="storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def delete(self, snapshot):
         snapshot = (snapshot if isinstance(snapshot, AWSSnapshot) else
@@ -445,7 +445,7 @@ class AWSBucketService(BaseBucketService):
                                  cb_resource=AWSBucket,
                                  boto_collection_name='buckets')
 
-    @dispatch(event="aws.storage.buckets.get",
+    @dispatch(event="storage.buckets.get",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def get(self, bucket_id):
         """
@@ -475,12 +475,12 @@ class AWSBucketService(BaseBucketService):
         # For all other responses, it's assumed that the bucket does not exist.
         return None
 
-    @dispatch(event="aws.storage.buckets.list",
+    @dispatch(event="storage.buckets.list",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    @dispatch(event="aws.storage.buckets.create",
+    @dispatch(event="storage.buckets.create",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def create(self, name, location=None):
         AWSBucket.assert_valid_resource_name(name)
@@ -515,7 +515,7 @@ class AWSBucketService(BaseBucketService):
                 else:
                     raise
 
-    @dispatch(event="aws.storage.buckets.delete",
+    @dispatch(event="storage.buckets.delete",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def delete(self, bucket):
         b = bucket if isinstance(bucket, AWSBucket) else self.get(bucket)
@@ -731,7 +731,7 @@ class AWSInstanceService(BaseInstanceService):
     def create_launch_config(self):
         return AWSLaunchConfig(self.provider)
 
-    @dispatch(event="aws.compute.instances.create",
+    @dispatch(event="compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def create(self, label, image, vm_type, subnet, zone,
                key_pair=None, vm_firewalls=None, user_data=None,
@@ -777,12 +777,12 @@ class AWSInstanceService(BaseInstanceService):
         raise ValueError(
             'Expected a single object response, got a list: %s' % inst)
 
-    @dispatch(event="aws.compute.instances.get",
+    @dispatch(event="compute.instances.get",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def get(self, instance_id):
         return self.svc.get(instance_id)
 
-    @dispatch(event="aws.compute.instances.find",
+    @dispatch(event="compute.instances.find",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
@@ -795,12 +795,12 @@ class AWSInstanceService(BaseInstanceService):
 
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    @dispatch(event="aws.compute.instances.list",
+    @dispatch(event="compute.instances.list",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    @dispatch(event="aws.compute.instances.delete",
+    @dispatch(event="compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def delete(self, instance):
         aws_inst = (instance if isinstance(instance, AWSInstance) else
@@ -838,7 +838,7 @@ class AWSVMTypeService(BaseVMTypeService):
         return [vm_type for vm_type in vm_types_list
                 if vm_type.get('pricing', {}).get(self.provider.region_name)]
 
-    @dispatch(event="aws.compute.vm_types.list",
+    @dispatch(event="compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         vm_types = [AWSVMType(self.provider, vm_type)
@@ -852,7 +852,7 @@ class AWSRegionService(BaseRegionService):
     def __init__(self, provider):
         super(AWSRegionService, self).__init__(provider)
 
-    @dispatch(event="aws.compute.regions.get",
+    @dispatch(event="compute.regions.get",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def get(self, region_id):
         log.debug("Getting AWS Region Service with the id: %s",
@@ -863,7 +863,7 @@ class AWSRegionService(BaseRegionService):
         else:
             return None
 
-    @dispatch(event="aws.compute.regions.list",
+    @dispatch(event="compute.regions.list",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         regions = [
@@ -917,17 +917,17 @@ class AWSNetworkService(BaseNetworkService):
                                   cb_resource=AWSNetwork,
                                   boto_collection_name='vpcs')
 
-    @dispatch(event="aws.networking.networks.get",
+    @dispatch(event="networking.networks.get",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def get(self, network_id):
         return self.svc.get(network_id)
 
-    @dispatch(event="aws.networking.networks.list",
+    @dispatch(event="networking.networks.list",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    @dispatch(event="aws.networking.networks.find",
+    @dispatch(event="networking.networks.find",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
@@ -941,7 +941,7 @@ class AWSNetworkService(BaseNetworkService):
         log.debug("Searching for AWS Network Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    @dispatch(event="aws.networking.networks.create",
+    @dispatch(event="networking.networks.create",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def create(self, label, cidr_block):
         AWSNetwork.assert_valid_resource_label(label)
@@ -953,7 +953,7 @@ class AWSNetworkService(BaseNetworkService):
             cb_net.label = label
         return cb_net
 
-    @dispatch(event="aws.networking.networks.delete",
+    @dispatch(event="networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def delete(self, network):
         network = (network if isinstance(network, AWSNetwork)
@@ -991,12 +991,12 @@ class AWSSubnetService(BaseSubnetService):
                                   cb_resource=AWSSubnet,
                                   boto_collection_name='subnets')
 
-    @dispatch(event="aws.networking.subnets.get",
+    @dispatch(event="networking.subnets.get",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def get(self, subnet_id):
         return self.svc.get(subnet_id)
 
-    @dispatch(event="aws.networking.subnets.list",
+    @dispatch(event="networking.subnets.list",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def list(self, network=None, limit=None, marker=None):
         network_id = network.id if isinstance(network, AWSNetwork) else network
@@ -1007,7 +1007,7 @@ class AWSSubnetService(BaseSubnetService):
         else:
             return self.svc.list(limit=limit, marker=marker)
 
-    @dispatch(event="aws.networking.subnets.find",
+    @dispatch(event="networking.subnets.find",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def find(self, network=None, **kwargs):
         label = kwargs.pop('label', None)
@@ -1021,7 +1021,7 @@ class AWSSubnetService(BaseSubnetService):
         log.debug("Searching for AWS Subnet Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    @dispatch(event="aws.networking.subnets.create",
+    @dispatch(event="networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, cidr_block, zone):
         AWSSubnet.assert_valid_resource_label(label)
@@ -1038,7 +1038,7 @@ class AWSSubnetService(BaseSubnetService):
             subnet.label = label
         return subnet
 
-    @dispatch(event="aws.networking.subnets.delete",
+    @dispatch(event="networking.subnets.delete",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def delete(self, subnet):
         sn = subnet if isinstance(subnet, AWSSubnet) else self.get(subnet)
@@ -1159,12 +1159,12 @@ class AWSRouterService(BaseRouterService):
                                   cb_resource=AWSRouter,
                                   boto_collection_name='route_tables')
 
-    @dispatch(event="aws.networking.routers.get",
+    @dispatch(event="networking.routers.get",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def get(self, router_id):
         return self.svc.get(router_id)
 
-    @dispatch(event="aws.networking.routers.find",
+    @dispatch(event="networking.routers.find",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
@@ -1178,12 +1178,12 @@ class AWSRouterService(BaseRouterService):
         log.debug("Searching for AWS Router Service %s", label)
         return self.svc.find(filter_name='tag:Name', filter_value=label)
 
-    @dispatch(event="aws.networking.routers.list",
+    @dispatch(event="networking.routers.list",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         return self.svc.list(limit=limit, marker=marker)
 
-    @dispatch(event="aws.networking.routers.create",
+    @dispatch(event="networking.routers.create",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network):
         network_id = network.id if isinstance(network, AWSNetwork) else network
@@ -1193,7 +1193,7 @@ class AWSRouterService(BaseRouterService):
             cb_router.label = label
         return cb_router
 
-    @dispatch(event="aws.networking.routers.delete",
+    @dispatch(event="networking.routers.delete",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def delete(self, router):
         r = router if isinstance(router, AWSRouter) else self.get(router)
@@ -1210,7 +1210,7 @@ class AWSGatewayService(BaseGatewayService):
                                   cb_resource=AWSInternetGateway,
                                   boto_collection_name='internet_gateways')
 
-    @dispatch(event="aws.networking.gateways.get_or_create",
+    @dispatch(event="networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def get_or_create(self, network):
         network_id = network.id if isinstance(
@@ -1231,7 +1231,7 @@ class AWSGatewayService(BaseGatewayService):
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 
-    @dispatch(event="aws.networking.gateways.delete",
+    @dispatch(event="networking.gateways.delete",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def delete(self, network, gateway):
         gw = (gateway if isinstance(gateway, AWSInternetGateway)
@@ -1245,7 +1245,7 @@ class AWSGatewayService(BaseGatewayService):
         # pylint:disable=protected-access
         gw._gateway.delete()
 
-    @dispatch(event="aws.networking.gateways.list",
+    @dispatch(event="networking.gateways.list",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def list(self, network, limit=None, marker=None):
         log.debug("Listing current AWS internet gateways for net %s.",
@@ -1262,18 +1262,18 @@ class AWSFloatingIPService(BaseFloatingIPService):
                                   cb_resource=AWSFloatingIP,
                                   boto_collection_name='vpc_addresses')
 
-    @dispatch(event="aws.networking.floating_ips.get",
+    @dispatch(event="networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, fip_id):
         log.debug("Getting AWS Floating IP Service with the id: %s", fip_id)
         return self.svc.get(fip_id)
 
-    @dispatch(event="aws.networking.floating_ips.list",
+    @dispatch(event="networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
         return self.svc.list(limit, marker)
 
-    @dispatch(event="aws.networking.floating_ips.create",
+    @dispatch(event="networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
         log.debug("Creating a floating IP under gateway %s", gateway)
@@ -1283,7 +1283,7 @@ class AWSFloatingIPService(BaseFloatingIPService):
             self.provider,
             self.provider.ec2_conn.VpcAddress(ip.get('AllocationId')))
 
-    @dispatch(event="aws.networking.floating_ips.delete",
+    @dispatch(event="networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         if isinstance(fip, AWSFloatingIP):

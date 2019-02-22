@@ -4,6 +4,7 @@ import logging
 import pkgutil
 from collections import defaultdict
 
+from pyeventsystem.events import SimpleEventDispatcher
 from pyeventsystem.interfaces import Middleware
 from pyeventsystem.middleware import AutoDiscoveredMiddleware
 from pyeventsystem.middleware import SimpleMiddlewareManager
@@ -17,51 +18,189 @@ log = logging.getLogger(__name__)
 
 
 # Todo: Move to pyeventsystem if we're keeping this logic
-class ParentMiddlewareManager(SimpleMiddlewareManager):
+class ParentMiddlewareGenerator(SimpleMiddlewareManager):
 
     def __init__(self, event_manager=None):
-        super(ParentMiddlewareManager, self).__init__(event_manager)
+        super(ParentMiddlewareGenerator, self).__init__(event_manager)
         self.middleware_constructors = []
 
-    def add_constructor(self, middleware_class, *args):
-        self.middleware_constructors.append((middleware_class, args))
+    def add_middleware_class(self, middleware_class, *args, **kwargs):
+        self.middleware_constructors.append((middleware_class, args, kwargs))
 
-    def remove_constructor(self, middleware_class, *args):
-        self.middleware_constructors.remove((middleware_class, args))
+    def remove_middleware_class(self, middleware_class, *args, **kwargs):
+        self.middleware_constructors.remove((middleware_class, args, kwargs))
 
-    def generate_simple_manager(self):
-        new_manager = SimpleMiddlewareManager()
-        for middleware in self.middleware_list:
-            new_manager.add(middleware)
-        for constructor, args in self.middleware_constructors:
-            m = constructor(*args)
-            new_manager.add(m)
-        for handler in self.get_subscribed_handlers():
-            new_handler = handler.__class__(handler.event_pattern,
-                                            handler.priority,
-                                            handler.callback)
-            new_manager.events.subscribe(new_handler)
-        return new_manager
-
-    # Removing install step from add. Since this manager is meant to create
-    # other managers rather than run. This will also simplify separating
-    # handlers added through middleware from those subscribed directly
-    def add(self, middleware):
-        if isinstance(middleware, Middleware):
-            m = middleware
-        else:
-            m = AutoDiscoveredMiddleware(middleware)
-        self.middleware_list.append(m)
-        return m
-
-    def get_subscribed_handlers(self):
-        handlers = []
+    def get_directly_subscribed_handlers(self):
+        all_handlers = []
         # Todo: Expose this better in pyeventsystem library
         event_dict = self.events._SimpleEventDispatcher__events
         for key in event_dict.keys():
-            for handler in event_dict[key]:
-                handlers.append(handler)
-        return handlers
+            for h in event_dict[key]:
+                all_handlers.append((h,
+                                     h.event_pattern,
+                                     h.priority,
+                                     h.callback))
+        middleware_handlers = []
+        for m in self.middleware_list:
+            obj = (m.obj_to_discover if isinstance(m, AutoDiscoveredMiddleware)
+                   else m)
+            handlers = m.discover_handlers(obj)
+            for h in handlers:
+                middleware_handlers.append((h.event_pattern, h.priority,
+                                            h.callback))
+        direct_subs = [h for h, e, p, c in all_handlers
+                       if (e, p, c) not in middleware_handlers]
+        return direct_subs
+
+    def generate_child_manager(self, namespace=None):
+        event_dispatcher = None
+        if namespace:
+            event_dispatcher = NamespacedEventDispatcher(namespace)
+        manager = ChildMiddlewareManager(self, event_dispatcher)
+        manager.inherit_handlers()
+        return manager
+
+
+# TODO: Move to pyeventsystem if we're keeping
+class NamespacedEventDispatcher(SimpleEventDispatcher):
+
+    def __init__(self, namespace):
+        super(NamespacedEventDispatcher, self).__init__()
+        self._namespace = namespace
+
+    @property
+    def namespace(self):
+        return self._namespace
+
+    def get_handlers_for_event(self, event):
+        event = ".".join((self._namespace, event))
+        return self.get_handlers_for_event_direct(event)
+
+    def _create_handler_cache(self, event):
+        event = ".".join((self._namespace, event))
+        return self._create_handler_cache_direct(event)
+
+    def _invalidate_cache(self, event_pattern):
+        event_pattern = ".".join((self._namespace, event_pattern))
+        return self._invalidate_cache_direct(event_pattern)
+
+    def dispatch(self, sender, event, *args, **kwargs):
+        event = ".".join((self._namespace, event))
+        return self.dispatch_direct(sender, event, *args, **kwargs)
+
+    def observe(self, event_pattern, priority, callback):
+        event_pattern = ".".join((self._namespace, event_pattern))
+        return self.observe_direct(event_pattern, priority, callback)
+
+    def intercept(self, event_pattern, priority, callback):
+        event_pattern = ".".join((self._namespace, event_pattern))
+        return self.intercept_direct(event_pattern, priority, callback)
+
+    def implement(self, event_pattern, priority, callback):
+        event_pattern = ".".join((self._namespace, event_pattern))
+        return self.implement_direct(event_pattern, priority, callback)
+
+    def observe_direct(self, event_pattern, priority, callback):
+        return super(NamespacedEventDispatcher, self).observe(event_pattern,
+                                                              priority,
+                                                              callback)
+
+    def intercept_direct(self, event_pattern, priority, callback):
+        return super(NamespacedEventDispatcher, self).intercept(event_pattern,
+                                                                priority,
+                                                                callback)
+
+    def implement_direct(self, event_pattern, priority, callback):
+        return super(NamespacedEventDispatcher, self).implement(event_pattern,
+                                                                priority,
+                                                                callback)
+
+    def dispatch_direct(self, sender, event, *args, **kwargs):
+        return super(NamespacedEventDispatcher, self).dispatch(sender, event,
+                                                               *args, **kwargs)
+
+    def get_handlers_for_event_direct(self, event):
+        return super(NamespacedEventDispatcher, self).get_handlers_for_event(
+            event)
+
+    def _create_handler_cache_direct(self, event):
+        return super(NamespacedEventDispatcher, self)._create_handler_cache(
+            event)
+
+    def _invalidate_cache_direct(self, event_pattern):
+        return super(NamespacedEventDispatcher, self)._invalidate_cache(
+            event_pattern)
+
+
+# TODO: Move to pyeventsystem if we're keeping
+class ChildMiddlewareManager(SimpleMiddlewareManager):
+
+    def __init__(self, parent_manager, event_manager=None):
+        super(ChildMiddlewareManager, self).__init__(event_manager)
+        self._parent_manager = parent_manager
+        self._inherited = {}
+
+    def inherit_handlers(self):
+        self.remove_inherited_handlers()
+        middleware_list = []
+        for middleware in self._parent_manager.middleware_list:
+            added = self.add_direct(middleware)
+            middleware_list.append(added)
+        for constructor, args, kwargs in (self._parent_manager
+                                              .middleware_constructors):
+            m = constructor(*args, **kwargs)
+            added = self.add_direct(m)
+            middleware_list.append(added)
+        self._inherited['middleware_list'] = middleware_list
+        handler_list = []
+        for handler in self._parent_manager.get_directly_subscribed_handlers():
+            new_handler = handler.__class__(handler.event_pattern,
+                                            handler.priority,
+                                            handler.callback)
+            handler_list.append(new_handler)
+            self.events.subscribe(new_handler)
+        self._inherited['handler_list'] = handler_list
+
+    def remove_inherited_handlers(self):
+        for m in self._inherited.get("middleware_list", []):
+            self.remove(m)
+
+        for h in self._inherited.get("handler_list", []):
+            self.events.unsubscribe(h)
+
+        self._inherited = {}
+
+    @property
+    def parent_manager(self):
+        return self._parent_manager
+
+    def add_direct(self, middleware):
+        return super(ChildMiddlewareManager, self).add(middleware)
+
+    def add(self, middleware):
+        if isinstance(middleware, Middleware):
+            m = middleware
+            m.events = self.events
+            discovered_handlers = m.discover_handlers(m)
+        else:
+            m = AutoDiscoveredMiddleware(middleware)
+            m.events = self.events
+            discovered_handlers = m.discover_handlers(m.obj_to_discover)
+
+        # Rewrap handlers with namespaced event pattern if the event dispatcher
+        # is namespaced
+        if isinstance(self.events, NamespacedEventDispatcher):
+            for handler in discovered_handlers:
+                event_pattern = ".".join((self.events.namespace,
+                                         handler.event_pattern))
+                new_handler = handler.__class__(event_pattern,
+                                                handler.priority,
+                                                handler.callback)
+                discovered_handlers.remove(handler)
+                discovered_handlers.append(new_handler)
+        m.add_handlers(discovered_handlers)
+        self.middleware_list.append(m)
+        return m
 
 
 class ProviderList(object):
@@ -79,7 +218,7 @@ class CloudProviderFactory(object):
     """
 
     def __init__(self):
-        self._middleware = ParentMiddlewareManager()
+        self._middleware = ParentMiddlewareGenerator()
         self.provider_list = defaultdict(dict)
         log.debug("Providers List: %s", self.provider_list)
 
@@ -193,8 +332,9 @@ class CloudProviderFactory(object):
                 'A provider with name {0} could not be'
                 ' found'.format(name))
         log.debug("Created '%s' provider", name)
+        namespaced_middleware = self.middleware.generate_child_manager(name)
         return provider_class(config,
-                              self.middleware.generate_simple_manager())
+                              namespaced_middleware)
 
     def get_provider_class(self, name):
         """

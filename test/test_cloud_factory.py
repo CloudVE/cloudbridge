@@ -127,7 +127,7 @@ class CloudFactoryTestCase(unittest.TestCase):
                 return self.count
 
         factory = CloudProviderFactory()
-        factory.middleware.add_constructor(SomeDummyClass)
+        factory.middleware.add_middleware_class(SomeDummyClass)
         provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
         first_prov = factory.create_provider(provider_name, {})
         # Any dispatched event should be intercepted and increment the count
@@ -140,7 +140,7 @@ class CloudFactoryTestCase(unittest.TestCase):
                          start_count + 1)
 
         class SomeDummyClassWithArgs(object):
-            def __init__(self, start, increment):
+            def __init__(self, start, increment=1):
                 self.count = start
                 self.increment = increment
 
@@ -150,8 +150,9 @@ class CloudFactoryTestCase(unittest.TestCase):
                 return self.count
 
         factory = CloudProviderFactory()
-        factory.middleware.add_constructor(SomeDummyClassWithArgs,
-                                           start_count, increment)
+        factory.middleware.add_middleware_class(SomeDummyClassWithArgs,
+                                                start_count,
+                                                increment=increment)
         provider_name = cb_helpers.get_env("CB_TEST_PROVIDER", "aws")
         first_prov = factory.create_provider(provider_name, {})
         # Any dispatched event should be intercepted and increment the count
