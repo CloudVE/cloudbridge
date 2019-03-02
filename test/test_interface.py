@@ -64,7 +64,12 @@ class CloudInterfaceTestCase(ProviderTestBase):
 
     def test_provider_zone_in_region(self):
         cloned_config = self.provider.config.copy()
-        cloned_config['zone_name'] = None
+        # Just a simpler way set zone to null for any provider
+        # instead of doing it individually for each provider
+        cloned_config['aws_zone_name'] = None
+        cloned_config['azure_zone_name'] = None
+        cloned_config['gcp_zone_name'] = None
+        cloned_config['openstack_zone_name'] = None
         cloned_provider = CloudProviderFactory().create_provider(
                 self.provider.PROVIDER_ID, cloned_config)
         region = cloned_provider.compute.regions.get(
@@ -75,7 +80,12 @@ class CloudInterfaceTestCase(ProviderTestBase):
 
     def test_provider_always_has_zone(self):
         cloned_config = self.provider.config.copy()
-        cloned_config['zone_name'] = None
+        # Just a simpler way set zone to null for any provider
+        # instead of doing it individually for each provider
+        cloned_config['aws_zone_name'] = None
+        cloned_config['azure_zone_name'] = None
+        cloned_config['gcp_zone_name'] = None
+        cloned_config['openstack_zone_name'] = None
         cloned_provider = CloudProviderFactory().create_provider(
                 self.provider.PROVIDER_ID, cloned_config)
         self.assertIsNotNone(cloned_provider.zone_name)
