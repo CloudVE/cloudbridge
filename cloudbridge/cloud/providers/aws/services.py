@@ -671,12 +671,12 @@ class AWSInstanceService(BaseInstanceService):
         if subnet:
             # subnet's zone takes precedence
             zone_id = subnet.zone.id
-        if isinstance(vm_firewalls, list) and isinstance(
+        if vm_firewalls and isinstance(vm_firewalls, list) and isinstance(
                 vm_firewalls[0], VMFirewall):
             vm_firewall_ids = [fw.id for fw in vm_firewalls]
         else:
             vm_firewall_ids = vm_firewalls
-        return subnet.id, zone_id, vm_firewall_ids
+        return subnet.id if subnet else None, zone_id, vm_firewall_ids
 
     def _process_block_device_mappings(self, launch_config):
         """
