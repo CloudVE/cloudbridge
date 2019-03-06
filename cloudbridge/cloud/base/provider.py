@@ -2,6 +2,7 @@
 import functools
 import logging
 import os
+from copy import copy
 from os.path import expanduser
 try:
     from configparser import ConfigParser
@@ -116,6 +117,12 @@ class BaseCloudProvider(CloudProvider):
     @property
     def middleware(self):
         return self._middleware
+
+    def generate_provider_with_zone(self, zone_name):
+        new_prov = copy(self)
+        # pylint:disable=protected-access
+        new_prov._zone_name = zone_name
+        return new_prov
 
     def add_required_middleware(self):
         """
