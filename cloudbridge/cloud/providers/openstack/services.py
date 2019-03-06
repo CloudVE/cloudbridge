@@ -367,11 +367,19 @@ class OpenStackVolumeService(BaseVolumeService):
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
         try:
-            return OpenStackVolume(
-                self.provider, self.provider.cinder.volumes.get(volume_id))
+            os_vol = self.provider.cinder.volumes.get(volume_id)
         except CinderNotFound:
             log.debug("Volume %s was not found.", volume_id)
             return None
+        if os_vol.availability_zone != self.provider.zone_name:
+            log.debug("Volume %s was found in availability zone '%s' while the"
+                      " OpenStack provider is in zone '%s'",
+                      volume_id,
+                      os_vol.availability_zone,
+                      self.provider.zone_name)
+            return None
+        else:
+            return OpenStackVolume(self.provider, os_vol)
 
     @dispatch(event="provider.storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
@@ -385,7 +393,8 @@ class OpenStackVolumeService(BaseVolumeService):
                 "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for an OpenStack Volume with the label %s", label)
-        search_opts = {'name': label}
+        search_opts = {'name': label,
+                       'availability_zone': self.provider.zone_name}
         cb_vols = [
             OpenStackVolume(self.provider, vol)
             for vol in self.provider.cinder.volumes.list(
@@ -398,9 +407,11 @@ class OpenStackVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
+        search_opts = {'availability_zone': self.provider.zone_name}
         cb_vols = [
             OpenStackVolume(self.provider, vol)
             for vol in self.provider.cinder.volumes.list(
+                search_opts=search_opts,
                 limit=oshelpers.os_result_limit(self.provider, limit),
                 marker=marker)]
 
@@ -840,7 +851,8 @@ class OpenStackInstanceService(BaseInstanceService):
                 "Unrecognised parameters for search: %s. Supported "
                 "attributes: %s" % (kwargs, 'label'))
 
-        search_opts = {'name': label}
+        search_opts = {'name': label,
+                       'availability_zone': self.provider.zone_name}
         cb_insts = [
             OpenStackInstance(self.provider, inst)
             for inst in self.provider.nova.servers.list(
@@ -855,9 +867,11 @@ class OpenStackInstanceService(BaseInstanceService):
         """
         List all instances.
         """
+        search_opts = {'availability_zone': self.provider.zone_name}
         cb_insts = [
             OpenStackInstance(self.provider, inst)
             for inst in self.provider.nova.servers.list(
+                search_opts=search_opts,
                 limit=oshelpers.os_result_limit(self.provider, limit),
                 marker=marker)]
         return oshelpers.to_server_paged_list(self.provider, cb_insts, limit)
@@ -870,10 +884,19 @@ class OpenStackInstanceService(BaseInstanceService):
         """
         try:
             os_instance = self.provider.nova.servers.get(instance_id)
-            return OpenStackInstance(self.provider, os_instance)
         except NovaNotFound:
             log.debug("Instance %s was not found.", instance_id)
             return None
+        if (getattr(os_instance,
+                    'OS-EXT-AZ:availability_zone', "")
+                != self.provider.zone_name):
+            log.debug("Instance %s was found in availability zone '%s' while "
+                      "the OpenStack provider is in zone '%s'",
+                      instance_id,
+                      getattr(os_instance, 'OS-EXT-AZ:availability_zone', ""),
+                      self.provider.zone_name)
+            return None
+        return OpenStackInstance(self.provider, os_instance)
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
@@ -997,27 +1020,22 @@ class OpenStackNetworkService(BaseNetworkService):
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
                     for network in self.provider.neutron.list_networks()
-                    .get('networks') if network]
+                    .get('networks') if network
+                    # If there are no availability zones, keep the network
+                    # in the results list
+                    and (not network.get('availability_zones')
+                         or self.provider.zone_name
+                         in network.get('availability_zones'))]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
     @dispatch(event="provider.networking.networks.find",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
-        label = kwargs.pop('label', None)
-
-        # All kwargs should have been popped at this time.
-        if len(kwargs) > 0:
-            raise InvalidParamException(
-                "Unrecognised parameters for search: %s. Supported "
-                "attributes: %s" % (kwargs, 'label'))
-
-        log.debug("Searching for OpenStack Network with label: %s", label)
-        networks = [OpenStackNetwork(self.provider, network)
-                    for network in self.provider.neutron.list_networks(
-                        name=label)
-                    .get('networks') if network]
-        return ClientPagedResultList(self.provider, networks)
+        obj_list = self
+        filters = ['label']
+        matches = cb_helpers.generic_find(filters, kwargs, obj_list)
+        return ClientPagedResultList(self._provider, list(matches))
 
     @dispatch(event="provider.networking.networks.create",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
@@ -1026,8 +1044,6 @@ class OpenStackNetworkService(BaseNetworkService):
         net_info = {'name': label or ""}
         network = self.provider.neutron.create_network({'network': net_info})
         cb_net = OpenStackNetwork(self.provider, network.get('network'))
-        if label:
-            cb_net.label = label
         return cb_net
 
     @dispatch(event="provider.networking.networks.delete",
@@ -1125,15 +1141,25 @@ class OpenStackRouterService(BaseRouterService):
     @dispatch(event="provider.networking.routers.get",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def get(self, router_id):
-        log.debug("Getting OpenStack Router with the id: %s", router_id)
         router = self.provider.os_conn.get_router(router_id)
-        return OpenStackRouter(self.provider, router) if router else None
+        if not router:
+            log.debug("Router %s was not found.", router_id)
+            return None
+        elif self.provider.zone_name not in router.availability_zones:
+            log.debug("Router %s was found in availability zone '%s' while the"
+                      " OpenStack provider is in zone '%s'",
+                      router_id,
+                      router.availability_zones,
+                      self.provider.zone_name)
+            return None
+        return OpenStackRouter(self.provider, router)
 
     @dispatch(event="provider.networking.routers.list",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         routers = self.provider.os_conn.list_routers()
-        os_routers = [OpenStackRouter(self.provider, r) for r in routers]
+        os_routers = [OpenStackRouter(self.provider, r) for r in routers
+                      if self.provider.zone_name in r.availability_zones]
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
 
