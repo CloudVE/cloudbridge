@@ -842,11 +842,46 @@ class AWSVMTypeService(BaseVMTypeService):
         return [vm_type for vm_type in vm_types_list
                 if vm_type.get('pricing', {}).get(self.provider.region_name)]
 
+    @dispatch(event="provider.compute.vm_types.get",
+              priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def get(self, vm_type_id):
+        vm_type = (AWSVMType(self.provider, vm_type)
+                   for vm_type in self.instance_data
+                   if vm_type['instance_type'] == vm_type_id)
+        return next(vm_type, None)
+
+    @cachetools.cached(cachetools.TTLCache(maxsize=1, ttl=24 * 3600))
+    def _list_vm_types_in_zone(self, zone_name):
+        result = (self.provider.ec2_conn.meta.client
+                      .describe_reserved_instances_offerings(
+                          AvailabilityZone=zone_name))
+        ids = list(set(offering.get('InstanceType') for offering
+                       in result.get('ReservedInstancesOfferings')))
+        while result.get('NextToken'):
+            result = (self.provider.ec2_conn.meta.client
+                          .describe_reserved_instances_offerings(
+                              AvailabilityZone=zone_name,
+                              NextToken=result.get('NextToken')))
+            for offering in result.get('ReservedInstancesOfferings'):
+                vm_type_id = offering.get('InstanceType')
+                if vm_type_id not in ids:
+                    ids.append(vm_type_id)
+        # Removing instances that we don't have information about from the
+        # json file. eg: r5.metal, m5d.metal, z1d.metal
+        vm_types = [self.get(type_id) for type_id in ids
+                    if self.get(type_id)]
+        return vm_types
+
     @dispatch(event="provider.compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        vm_types = [AWSVMType(self.provider, vm_type)
-                    for vm_type in self.instance_data]
+        # Using only filtering by region for `mock` because
+        # `describe_reserved_instances_offerings` is not yet implemented
+        if self.provider.zone_name and self.provider.PROVIDER_ID != 'mock':
+            vm_types = self._list_vm_types_in_zone(self.provider.zone_name)
+        else:
+            vm_types = [AWSVMType(self.provider, vm_type)
+                        for vm_type in self.instance_data]
         return ClientPagedResultList(self.provider, vm_types,
                                      limit=limit, marker=marker)
 
