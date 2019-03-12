@@ -32,9 +32,9 @@ from cloudbridge.base.services import BaseVMFirewallRuleService
 from cloudbridge.base.services import BaseVMFirewallService
 from cloudbridge.base.services import BaseVMTypeService
 from cloudbridge.base.services import BaseVolumeService
+from cloudbridge.interfaces.exceptions import DifferentZoneException
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
-from cloudbridge.interfaces.exceptions import \
-    InvalidConfigurationException
+from cloudbridge.interfaces.exceptions import InvalidConfigurationException
 from cloudbridge.interfaces.exceptions import InvalidParamException
 from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.resources import KeyPair
@@ -326,7 +326,18 @@ class AWSVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.get",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
-        return self.svc.get(volume_id)
+        cb_vol = self.svc.get(volume_id)
+        if cb_vol:
+            # pylint:disable=protected-access
+            vol_zone = cb_vol._volume.availability_zone
+            if vol_zone == self.provider.zone_name:
+                return cb_vol
+            else:
+                msg = ("Volume with id '{}' was found in availability zone "
+                       "'{}' while the AWS provider is in zone '{}'"
+                       .format(volume_id, vol_zone,
+                               self.provider.zone_name))
+                raise DifferentZoneException(msg)
 
     @dispatch(event="provider.storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
@@ -372,7 +383,12 @@ class AWSVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def delete(self, vol):
-        volume = vol if isinstance(vol, AWSVolume) else self.get(vol)
+        # pylint:disable=protected-access
+        if (isinstance(vol, AWSVolume)
+                and vol._volume.availability_zone == self.provider.zone_name):
+            volume = vol
+        else:
+            volume = self.get(vol)
         if volume:
             # pylint:disable=protected-access
             volume._volume.delete()
@@ -780,7 +796,19 @@ class AWSInstanceService(BaseInstanceService):
     @dispatch(event="provider.compute.instances.get",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def get(self, instance_id):
-        return self.svc.get(instance_id)
+        cb_ins = self.svc.get(instance_id)
+        if cb_ins:
+            # pylint:disable=protected-access
+            ins_zone = cb_ins._ec2_instance.placement.get('AvailabilityZone',
+                                                          '')
+            if ins_zone == self.provider.zone_name:
+                return cb_ins
+            else:
+                msg = ("Instance with id '{}' was found in availability zone "
+                       "'{}' while the AWS provider is in zone '{}'"
+                       .format(instance_id, ins_zone,
+                               self.provider.zone_name))
+                raise DifferentZoneException(msg)
 
     @dispatch(event="provider.compute.instances.find",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
@@ -807,8 +835,15 @@ class AWSInstanceService(BaseInstanceService):
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def delete(self, instance):
-        aws_inst = (instance if isinstance(instance, AWSInstance) else
-                    self.get(instance))
+        # pylint:disable=protected-access
+        if (isinstance(instance, AWSInstance)
+            and instance._ec2_instance
+                        .placement
+                        .get('AvailabilityZone',
+                             '') == self.provider.zone_name):
+                aws_inst = instance
+        else:
+            aws_inst = self.get(instance)
         if aws_inst:
             # pylint:disable=protected-access
             aws_inst._ec2_instance.terminate()

@@ -102,3 +102,11 @@ class InvalidParamException(InvalidNameException):
 
     def __init__(self, msg):
         super(InvalidParamException, self).__init__(msg)
+
+
+class DifferentZoneException(CloudBridgeBaseException):
+    """
+    Marker interface for any attempt to interact with any resource that
+    resides in a different zone than that of the provider object.
+    """
+    pass
