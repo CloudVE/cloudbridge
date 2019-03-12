@@ -22,25 +22,26 @@ class AWSCloudProvider(BaseCloudProvider):
 
         # Initialize cloud connection fields
         # These are passed as-is to Boto
-        self.region_name = self._get_config_value('aws_region_name',
-                                                  'us-east-1')
+        self._region_name = self._get_config_value('aws_region_name',
+                                                   'us-east-1')
+        self._zone_name = self._get_config_value('aws_zone_name')
         self.session_cfg = {
             'aws_access_key_id': self._get_config_value(
-                'aws_access_key', get_env('AWS_ACCESS_KEY', None)),
+                'aws_access_key', get_env('AWS_ACCESS_KEY')),
             'aws_secret_access_key': self._get_config_value(
-                'aws_secret_key', get_env('AWS_SECRET_KEY', None)),
+                'aws_secret_key', get_env('AWS_SECRET_KEY')),
             'aws_session_token': self._get_config_value(
                 'aws_session_token', None)
         }
         self.ec2_cfg = {
             'use_ssl': self._get_config_value('ec2_is_secure', True),
             'verify': self._get_config_value('ec2_validate_certs', True),
-            'endpoint_url': self._get_config_value('ec2_endpoint_url', None)
+            'endpoint_url': self._get_config_value('ec2_endpoint_url')
         }
         self.s3_cfg = {
             'use_ssl': self._get_config_value('s3_is_secure', True),
             'verify': self._get_config_value('s3_validate_certs', True),
-            'endpoint_url': self._get_config_value('s3_endpoint_url', None)
+            'endpoint_url': self._get_config_value('s3_endpoint_url')
         }
 
         # service connections, lazily initialized

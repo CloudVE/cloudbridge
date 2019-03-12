@@ -590,12 +590,11 @@ class AWSSnapshot(BaseSnapshot):
             # set the status to unknown
             self._unknown_state = True
 
-    def create_volume(self, placement, size=None, volume_type=None, iops=None):
+    def create_volume(self, size=None, volume_type=None, iops=None):
         label = "from-snap-{0}".format(self.label or self.id)
         cb_vol = self._provider.storage.volumes.create(
             label=label,
             size=size,
-            zone=placement,
             snapshot=self.id)
         cb_vol.wait_till_ready()
         return cb_vol

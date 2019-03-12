@@ -1870,7 +1870,7 @@ class GCPSnapshot(BaseSnapshot):
             # snapshot no longer exists
             self._snapshot['status'] = SnapshotState.UNKNOWN
 
-    def create_volume(self, placement, size=None, volume_type=None, iops=None):
+    def create_volume(self, size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.
 
@@ -1882,9 +1882,7 @@ class GCPSnapshot(BaseSnapshot):
                 'pd-ssd'.
             iops: Not supported by GCP.
         """
-        zone_name = placement
-        if isinstance(placement, GCPPlacementZone):
-            zone_name = placement.name
+        zone_name = self._provider.zone_name
         vol_type = 'zones/{0}/diskTypes/{1}'.format(
             zone_name,
             'pd-standard' if (volume_type != 'pd-standard' or

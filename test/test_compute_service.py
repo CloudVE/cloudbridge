@@ -241,9 +241,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                 " not stable enough yet")
 
         test_vol = self.provider.storage.volumes.create(
-           label, 1,
-           helpers.get_provider_test_data(self.provider,
-                                          "placement"))
+           label, 1)
         with cb_helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(label=label,
@@ -332,10 +330,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             net = self.provider.networking.networks.create(
                 label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
             cidr = '10.0.1.0/24'
-            subnet = net.subnets.create(label=label, cidr_block=cidr,
-                                        zone=helpers.get_provider_test_data(
-                                                     self.provider,
-                                                     'placement'))
+            subnet = net.subnets.create(label=label, cidr_block=cidr)
             test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
             fw = self.provider.security.vm_firewalls.create(

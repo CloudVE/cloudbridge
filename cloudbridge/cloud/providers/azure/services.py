@@ -36,7 +36,6 @@ from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
 from cloudbridge.cloud.interfaces.exceptions import InvalidValueException
 from cloudbridge.cloud.interfaces.resources import MachineImage
 from cloudbridge.cloud.interfaces.resources import Network
-from cloudbridge.cloud.interfaces.resources import PlacementZone
 from cloudbridge.cloud.interfaces.resources import Snapshot
 from cloudbridge.cloud.interfaces.resources import TrafficDirection
 from cloudbridge.cloud.interfaces.resources import VMFirewall
@@ -397,12 +396,12 @@ class AzureVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, size, zone, snapshot=None, description=None):
+    def create(self, label, size, snapshot=None, description=None):
         AzureVolume.assert_valid_resource_label(label)
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         tags = {'Label': label}
 
-        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+        zone_name = self.provider.zone_name
         snapshot = (self.provider.storage.snapshots.get(snapshot)
                     if snapshot and isinstance(snapshot, str) else snapshot)
 
@@ -411,8 +410,7 @@ class AzureVolumeService(BaseVolumeService):
 
         if snapshot:
             params = {
-                'location':
-                    zone_id or self.provider.azure_client.region_name,
+                'location': zone_name,
                 'creation_data': {
                     'create_option': DiskCreateOption.copy,
                     'source_uri': snapshot.resource_id
@@ -425,8 +423,7 @@ class AzureVolumeService(BaseVolumeService):
 
         else:
             params = {
-                'location':
-                    zone_id or self.provider.region_name,
+                'location': zone_name,
                 'disk_size_gb': size,
                 'creation_data': {
                     'create_option': DiskCreateOption.empty
@@ -718,8 +715,7 @@ class AzureInstanceService(BaseInstanceService):
 
         return subnet.resource_id, zone_id, vm_firewall_id
 
-    def _create_storage_profile(self, image, launch_config, instance_name,
-                                zone_id):
+    def _create_storage_profile(self, image, launch_config, instance_name):
 
         if image.is_gallery_image:
             # pylint:disable=protected-access
@@ -745,7 +741,7 @@ class AzureInstanceService(BaseInstanceService):
 
         if launch_config:
             data_disks, root_disk_size = self._process_block_device_mappings(
-                launch_config, instance_name, zone_id)
+                launch_config)
             if data_disks:
                 storage_profile['data_disks'] = data_disks
             if root_disk_size:
@@ -753,8 +749,7 @@ class AzureInstanceService(BaseInstanceService):
 
         return storage_profile
 
-    def _process_block_device_mappings(self, launch_config,
-                                       vm_name, zone=None):
+    def _process_block_device_mappings(self, launch_config):
         """
         Processes block device mapping information
         and returns a Data disk dictionary list. If new volumes
@@ -828,7 +823,7 @@ class AzureInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, image, vm_type, subnet, zone,
+    def create(self, label, image, vm_type, subnet,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         AzureInstance.assert_valid_resource_label(label)
@@ -844,24 +839,20 @@ class AzureInstanceService(BaseInstanceService):
         instance_size = vm_type.id if \
             isinstance(vm_type, VMType) else vm_type
 
-        if not subnet:
-            # Azure has only a single zone per region; use the current one
-            zone = self.provider.compute.regions.get(
-                self.provider.region_name).zones[0]
-            subnet = self.provider.networking.subnets.get_or_create_default(
-                zone)
+        if subnet:
+            subnet = (subnet if isinstance(subnet, AzureSubnet) else
+                      self.provider.networking.subnets.get(subnet))
         else:
-            subnet = (self.provider.networking.subnets.get(subnet)
-                      if isinstance(subnet, str) else subnet)
+            subnet = self.provider.networking.subnets.get_or_create_default()
 
-        zone_id = zone.id if isinstance(zone, PlacementZone) else zone
+        zone_name = self.provider.zone_name
 
         subnet_id, zone_id, vm_firewall_id = \
             self._resolve_launch_options(instance_name,
-                                         subnet, zone_id, vm_firewalls)
+                                         subnet, zone_name, vm_firewalls)
 
         storage_profile = self._create_storage_profile(image, launch_config,
-                                                       instance_name, zone_id)
+                                                       instance_name)
 
         nic_params = {
             'location': self.provider.region_name,
@@ -906,7 +897,7 @@ class AzureInstanceService(BaseInstanceService):
             temp_key_pair = key_pair
 
         params = {
-            'location': zone_id or self.provider.region_name,
+            'location': zone_id,
             'os_profile': {
                 'admin_username': self.provider.vm_default_user_name,
                 'computer_name': instance_name,
@@ -1233,7 +1224,7 @@ class AzureSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, network, cidr_block, zone):
+    def create(self, label, network, cidr_block):
         AzureSubnet.assert_valid_resource_label(label)
         # Although Subnet doesn't support tags in Azure, we use the parent
         # Network's tags to track its subnets' labels

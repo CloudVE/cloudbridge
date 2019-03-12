@@ -159,10 +159,10 @@ class BaseSubnetSubService(SubnetSubService, BasePageableObjectMixin):
         return self._provider.networking.subnets.find(network=self.network,
                                                       **kwargs)
 
-    def create(self, label, cidr_block, zone):
+    def create(self, label, cidr_block):
         return self._provider.networking.subnets.create(label,
                                                         self.network,
-                                                        cidr_block, zone)
+                                                        cidr_block)
 
     def delete(self, subnet):
         return self._provider.networking.subnets.delete(subnet)

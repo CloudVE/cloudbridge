@@ -62,9 +62,7 @@ class CloudImageServiceTestCase(ProviderTestBase):
                 img_instance = self.provider.compute.instances.create(
                     img_inst_label, img,
                     helpers.get_provider_test_data(self.provider, 'vm_type'),
-                    subnet=subnet,
-                    zone=helpers.get_provider_test_data(
-                        self.provider, 'placement'))
+                    subnet=subnet)
                 img_instance.wait_till_ready()
                 self.assertIsInstance(img_instance, Instance)
                 self.assertEqual(

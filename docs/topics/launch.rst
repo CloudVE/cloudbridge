@@ -23,12 +23,11 @@ In addition, CloudBridge instances must be launched into a private subnet.
 While it is possible to create complex network configurations as shown in the
 `Private networking`_ section, if you don't particularly care in which subnet
 the instance is launched, CloudBridge provides a convenience function to
-quickly obtain a default subnet for use. We just need to supply a zone to use.
+quickly obtain a default subnet for use.
 
 .. code-block:: python
 
-    zone = provider.compute.regions.get(provider.region_name).zones[0]
-    subnet = provider.networking.subnets.get_or_create_default(zone)
+    subnet = provider.networking.subnets.get_or_create_default()
 
 When launching an instance, you can also specify several optional arguments
 such as the firewall (aka security group), a key pair, or instance user data.
@@ -44,13 +43,15 @@ if you don't have those resources under your account, take a look at the
 
 Launch an instance
 ------------------
-Once we have all the desired pieces, we'll use them to launch an instance:
+Once we have all the desired pieces, we'll use them to launch an instance.
+Note that the instance is launched in the provider's default region and zone,
+and can be overridden by changing the provider config.
 
 .. code-block:: python
 
     inst = provider.compute.instances.create(
         label='cloudbridge-vpc', image=img, vm_type=vm_type,
-        subnet=subnet, zone=zone, key_pair=kp, vm_firewalls=[fw])
+        subnet=subnet, key_pair=kp, vm_firewalls=[fw])
 
 Private networking
 ~~~~~~~~~~~~~~~~~~
@@ -73,7 +74,7 @@ that subnet.
 
     inst = provider.compute.instances.create(
         label='cloudbridge-vpc', image=img, vm_type=vm_type,
-        subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
+        subnet=sn, key_pair=kp, vm_firewalls=[fw])
 
 For more information on how to create and setup a private network, take a look
 at `Networking <./networking.html>`_.
@@ -96,7 +97,7 @@ refer to :class:`.LaunchConfig`.
     inst = provider.compute.instances.create(
         label='cloudbridge-bdm', image=img,  vm_type=vm_type,
         launch_config=lc, key_pair=kp, vm_firewalls=[fw],
-        subnet=subnet, zone=zone)
+        subnet=subnet)
 
 where ``img`` is the :class:`.Image` object to use for the root volume.
 

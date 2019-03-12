@@ -370,7 +370,7 @@ class SubnetSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def create(self, label, cidr_block, zone):
+    def create(self, label, cidr_block):
         """
         Create a new subnet within the network holding this subservice.
 
@@ -380,10 +380,6 @@ class SubnetSubService(PageableObjectMixin):
         :type cidr_block: ``str``
         :param cidr_block: CIDR block within the Network to assign to the
                            subnet.
-
-        :type zone: ``str``
-        :param zone: A placement zone for the subnet. Some providers
-                     may not support this, in which case the value is ignored.
 
         :rtype: ``object`` of :class:`.Subnet`
         :return:  A Subnet object

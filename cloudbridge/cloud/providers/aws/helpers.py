@@ -241,22 +241,19 @@ class BotoGenericService(object):
             return ClientPagedResultList(self.provider, results,
                                          limit=limit, marker=marker)
 
-    def find(self, filter_name, filter_value, limit=None, marker=None,
+    def find(self, filters, limit=None, marker=None,
              **kwargs):
         """
         Return a list of resources by filter.
 
-        :type filter_name: ``str``
-        :param filter_name: Name of the filter to use
-
-        :type filter_value: ``str``
-        :param filter_value: Value to filter with
+        :type filters: A ``dict`` of filters
+        :param filters: A list of filters, where the dict key is the filter
+            name and the value is the value to filter by.
         """
+        boto_filters = [{'Name': key, 'Values': [value]}
+                        for key, value in filters.items()]
         collection = self.boto_collection
-        collection = collection.filter(Filters=[{
-            'Name': filter_name,
-            'Values': [filter_value]
-            }])
+        collection = collection.filter(Filters=boto_filters)
         if kwargs:
             collection = collection.filter(**kwargs)
         return self.list(limit=limit, marker=marker, collection=collection)

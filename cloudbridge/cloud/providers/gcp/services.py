@@ -47,7 +47,6 @@ from .resources import GCPKeyPair
 from .resources import GCPLaunchConfig
 from .resources import GCPMachineImage
 from .resources import GCPNetwork
-from .resources import GCPPlacementZone
 from .resources import GCPRegion
 from .resources import GCPRouter
 from .resources import GCPSnapshot
@@ -320,7 +319,7 @@ class GCPVMTypeService(BaseVMTypeService):
                         .gcp_compute
                         .machineTypes()
                         .list(project=self.provider.project_name,
-                              zone=self.provider.default_zone)
+                              zone=self.provider.zone_name)
                         .execute())
         return response['items']
 
@@ -467,20 +466,14 @@ class GCPInstanceService(BaseInstanceService):
 
     @dispatch(event="provider.compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, image, vm_type, subnet, zone=None,
+    def create(self, label, image, vm_type, subnet,
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         """
         Creates a new virtual machine instance.
         """
         GCPInstance.assert_valid_resource_name(label)
-        zone_name = self.provider.default_zone
-        if zone:
-            if not isinstance(zone, GCPPlacementZone):
-                zone = GCPPlacementZone(
-                    self.provider,
-                    self.provider.get_resource('zones', zone))
-            zone_name = zone.name
+        zone_name = self.provider.zone_name
         if not isinstance(vm_type, GCPVMType):
             vm_type = self.provider.compute.vm_types.get(vm_type)
 
@@ -500,7 +493,7 @@ class GCPInstanceService(BaseInstanceService):
                     volume_name = 'disk-{0}'.format(uuid.uuid4())
                     volume_size = disk.size if disk.size else 1
                     volume = self.provider.storage.volumes.create(
-                        volume_name, volume_size, zone)
+                        volume_name, volume_size)
                     volume.wait_till_ready()
                     source_field = 'source'
                     source_value = volume.id
@@ -516,7 +509,7 @@ class GCPInstanceService(BaseInstanceService):
                     source_field = 'source'
                     source_value = disk.source.id
                 elif isinstance(disk.source, GCPSnapshot):
-                    volume = disk.source.create_volume(zone, size=disk.size)
+                    volume = disk.source.create_volume(size=disk.size)
                     volume.wait_till_ready()
                     source_field = 'source'
                     source_value = volume.id
@@ -662,7 +655,7 @@ class GCPInstanceService(BaseInstanceService):
                         .gcp_compute
                         .instances()
                         .list(project=self.provider.project_name,
-                              zone=self.provider.default_zone,
+                              zone=self.provider.zone_name,
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
@@ -962,19 +955,13 @@ class GCPSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.list",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def list(self, network=None, zone=None, limit=None, marker=None):
-        """
-        If the zone is not given, we list all subnets in the default region.
-        """
+    def list(self, network=None, limit=None, marker=None):
         filter = None
         if network is not None:
             network = (network if isinstance(network, GCPNetwork)
                        else self.provider.networking.networks.get(network))
             filter = 'network eq %s' % network.resource_url
-        if zone:
-            region_name = self._zone_to_region(zone)
-        else:
-            region_name = self.provider.region_name
+        region_name = self.provider.region_name
         subnets = []
         response = (self.provider
                         .gcp_compute
@@ -990,19 +977,14 @@ class GCPSubnetService(BaseSubnetService):
 
     @dispatch(event="provider.networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, network, cidr_block, zone):
+    def create(self, label, network, cidr_block):
         """
-        GCP subnets are regional. The region is inferred from the zone;
-        otherwise, the default region, as set in the
+        GCP subnets are regional. The default region, as set in the
         provider, is used.
-
-        If a subnet with overlapping IP range exists already, we return that
-        instead of creating a new subnet. In this case, other parameters, i.e.
-        the name and the zone, are ignored.
         """
         GCPSubnet.assert_valid_resource_label(label)
         name = GCPSubnet._generate_name_from_label(label, 'cbsubnet')
-        region_name = self._zone_to_region(zone)
+        region_name = self.provider.region_name
 #         for subnet in self.iter(network=network):
 #            if BaseNetwork.cidr_blocks_overlap(subnet.cidr_block, cidr_block):
 #                 if subnet.region_name != region_name:
@@ -1052,22 +1034,19 @@ class GCPSubnetService(BaseSubnetService):
             log.warning('No label was found associated with this subnet '
                         '"{}" when deleted.'.format(sn.name))
 
-    def get_or_create_default(self, zone):
+    def get_or_create_default(self):
         """
-        Return an existing or create a new subnet for the supplied zone.
+        Return an existing or create a new subnet in the provider default zone.
 
         In GCP, subnets are a regional resource so a single subnet can services
-        an entire region. The supplied zone parameter is used to derive the
-        parent region under which the default subnet then exists.
+        an entire region.
         """
-        # In case the supplied zone param is `None`, resort to the default one
-        region = self._zone_to_region(zone or self.provider.default_zone,
-                                      return_name_only=False)
+        region_name = self.provider.region_name
         # Check if a default subnet already exists for the given region/zone
         for sn in self.find(label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL):
-            if sn.region == region.id:
+            if sn.region_name == region_name:
                 return sn
-        # No default subnet in the supplied zone. Look for a default network,
+        # No default subnet in the current zone. Look for a default network,
         # then create a subnet whose address space does not overlap with any
         # other existing subnets. If there are existing subnets, this process
         # largely assumes the subnet address spaces are contiguous when it
@@ -1089,31 +1068,12 @@ class GCPSubnetService(BaseSubnetService):
             cidr_block = "{}/{}".format(next_sn_address, max_sn_ipa.prefixlen)
         sn = self.provider.networking.subnets.create(
                 label=GCPSubnet.CB_DEFAULT_SUBNET_LABEL,
-                cidr_block=cidr_block, network=net, zone=zone)
+                cidr_block=cidr_block, network=net)
         router = self.provider.networking.routers.get_or_create_default(net)
         router.attach_subnet(sn)
         gateway = net.gateways.get_or_create()
         router.attach_gateway(gateway)
         return sn
-
-    def _zone_to_region(self, zone, return_name_only=True):
-        """
-        Given a GCP zone, return parent region.
-
-        Supplied `zone` param can be a `str` or `GCPPlacementZone`.
-
-        If ``return_name_only`` is set, return the region name as a string;
-        otherwise, return a GCPRegion object.
-        """
-        region_name = self.provider.region_name
-        if zone:
-            if isinstance(zone, GCPPlacementZone):
-                region_name = zone.region_name
-            else:
-                region_name = zone[:-2]
-        if return_name_only:
-            return region_name
-        return self.provider.compute.regions.get(region_name)
 
 
 class GCPStorageService(BaseStorageService):
@@ -1175,7 +1135,7 @@ class GCPVolumeService(BaseVolumeService):
                         .gcp_compute
                         .disks()
                         .list(project=self.provider.project_name,
-                              zone=self.provider.default_zone,
+                              zone=self.provider.zone_name,
                               filter=filtr,
                               maxResults=max_result,
                               pageToken=marker)
@@ -1206,7 +1166,7 @@ class GCPVolumeService(BaseVolumeService):
                         .gcp_compute
                         .disks()
                         .list(project=self.provider.project_name,
-                              zone=self.provider.default_zone,
+                              zone=self.provider.zone_name,
                               maxResults=max_result,
                               pageToken=marker)
                         .execute())
@@ -1221,14 +1181,10 @@ class GCPVolumeService(BaseVolumeService):
 
     @dispatch(event="provider.storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
-    def create(self, label, size, zone, snapshot=None, description=None):
+    def create(self, label, size, snapshot=None, description=None):
         GCPVolume.assert_valid_resource_label(label)
         name = GCPVolume._generate_name_from_label(label, 'cb-vol')
-        if not isinstance(zone, GCPPlacementZone):
-            zone = GCPPlacementZone(
-                self.provider,
-                self.provider.get_resource('zones', zone))
-        zone_name = zone.name
+        zone_name = self.provider.zone_name
         snapshot_id = snapshot.id if isinstance(
             snapshot, GCPSnapshot) and snapshot else snapshot
         labels = {'cblabel': label}
@@ -1344,13 +1300,13 @@ class GCPSnapshotService(BaseSnapshotService):
                          .disks()
                          .createSnapshot(
                              project=self.provider.project_name,
-                             zone=self.provider.default_zone,
+                             zone=self.provider.zone_name,
                              disk=volume_name, body=snapshot_body)
                          .execute())
         if 'zone' not in operation:
             return None
         self.provider.wait_for_operation(operation,
-                                         zone=self.provider.default_zone)
+                                         zone=self.provider.zone_name)
         cb_snap = self.get(name)
         return cb_snap
 

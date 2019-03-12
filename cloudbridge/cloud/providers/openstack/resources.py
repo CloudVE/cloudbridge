@@ -751,7 +751,7 @@ class OpenStackSnapshot(BaseSnapshot):
             # set the status to unknown
             self._snapshot.status = 'unknown'
 
-    def create_volume(self, placement, size=None, volume_type=None, iops=None):
+    def create_volume(self, size=None, volume_type=None, iops=None):
         """
         Create a new Volume from this Snapshot.
         """
@@ -759,7 +759,7 @@ class OpenStackSnapshot(BaseSnapshot):
         self.assert_valid_resource_label(vol_label)
         size = size if size else self._snapshot.size
         os_vol = self._provider.cinder.volumes.create(
-            size, name=vol_label, availability_zone=placement,
+            size, name=vol_label, availability_zone=self._provider.zone_name,
             snapshot_id=self._snapshot.id)
         cb_vol = OpenStackVolume(self._provider, os_vol)
         return cb_vol
