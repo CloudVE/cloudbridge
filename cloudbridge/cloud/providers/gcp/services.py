@@ -87,7 +87,7 @@ class GCPKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(GCPKeyPairService, self).__init__(provider)
 
-    @dispatch(event="provider.security.key_pairs.get",
+    @dispatch(event="security.key_pairs.get",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def get(self, key_pair_id):
         """
@@ -99,7 +99,7 @@ class GCPKeyPairService(BaseKeyPairService):
         else:
             return None
 
-    @dispatch(event="provider.security.key_pairs.list",
+    @dispatch(event="security.key_pairs.list",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         key_pairs = []
@@ -111,7 +111,7 @@ class GCPKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, key_pairs,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.security.key_pairs.find",
+    @dispatch(event="security.key_pairs.find",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         """
@@ -130,7 +130,7 @@ class GCPKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider,
                                      matches if matches else [])
 
-    @dispatch(event="provider.security.key_pairs.create",
+    @dispatch(event="security.key_pairs.create",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def create(self, name, public_key_material=None):
         GCPKeyPair.assert_valid_resource_name(name)
@@ -156,7 +156,7 @@ class GCPKeyPairService(BaseKeyPairService):
                         'A KeyPair with name {0} already exists'.format(name))
             raise
 
-    @dispatch(event="provider.security.key_pairs.delete",
+    @dispatch(event="security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def delete(self, key_pair):
         key_pair = (key_pair if isinstance(key_pair, GCPKeyPair) else
@@ -172,7 +172,7 @@ class GCPVMFirewallService(BaseVMFirewallService):
         super(GCPVMFirewallService, self).__init__(provider)
         self._delegate = GCPFirewallsDelegate(provider)
 
-    @dispatch(event="provider.security.vm_firewalls.get",
+    @dispatch(event="security.vm_firewalls.get",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def get(self, vm_firewall_id):
         tag, network_name = \
@@ -182,7 +182,7 @@ class GCPVMFirewallService(BaseVMFirewallService):
         network = self.provider.networking.networks.get(network_name)
         return GCPVMFirewall(self._delegate, tag, network)
 
-    @dispatch(event="provider.security.vm_firewalls.list",
+    @dispatch(event="security.vm_firewalls.list",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         vm_firewalls = []
@@ -194,7 +194,7 @@ class GCPVMFirewallService(BaseVMFirewallService):
         return ClientPagedResultList(self.provider, vm_firewalls,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.security.vm_firewalls.create",
+    @dispatch(event="security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
         GCPVMFirewall.assert_valid_resource_label(label)
@@ -210,7 +210,7 @@ class GCPVMFirewallService(BaseVMFirewallService):
             priority=65534, cidr='0.0.0.0/0')
         return fw
 
-    @dispatch(event="provider.security.vm_firewalls.delete",
+    @dispatch(event="security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def delete(self, vm_firewall):
         fw_id = (vm_firewall.id if isinstance(vm_firewall, GCPVMFirewall)
@@ -240,7 +240,7 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
         super(GCPVMFirewallRuleService, self).__init__(provider)
         self._dummy_rule = None
 
-    @dispatch(event="provider.security.vm_firewall_rules.list",
+    @dispatch(event="security.vm_firewall_rules.list",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def list(self, firewall, limit=None, marker=None):
         rules = []
@@ -290,7 +290,7 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
             return None
         return rules[0]
 
-    @dispatch(event="provider.security.vm_firewall_rules.create",
+    @dispatch(event="security.vm_firewall_rules.create",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall, direction, protocol, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
@@ -298,7 +298,7 @@ class GCPVMFirewallRuleService(BaseVMFirewallRuleService):
                                          1000, from_port, to_port, cidr,
                                          src_dest_fw)
 
-    @dispatch(event="provider.security.vm_firewall_rules.delete",
+    @dispatch(event="security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
         rule = (rule if isinstance(rule, GCPVMFirewallRule)
@@ -323,13 +323,13 @@ class GCPVMTypeService(BaseVMTypeService):
                         .execute())
         return response['items']
 
-    @dispatch(event="provider.compute.vm_types.get",
+    @dispatch(event="compute.vm_types.get",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def get(self, vm_type_id):
         vm_type = self.provider.get_resource('machineTypes', vm_type_id)
         return GCPVMType(self.provider, vm_type) if vm_type else None
 
-    @dispatch(event="provider.compute.vm_types.find",
+    @dispatch(event="compute.vm_types.find",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         matched_inst_types = []
@@ -347,7 +347,7 @@ class GCPVMTypeService(BaseVMTypeService):
                     GCPVMType(self.provider, inst_type))
         return matched_inst_types
 
-    @dispatch(event="provider.compute.vm_types.list",
+    @dispatch(event="compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         inst_types = [GCPVMType(self.provider, inst_type)
@@ -361,14 +361,14 @@ class GCPRegionService(BaseRegionService):
     def __init__(self, provider):
         super(GCPRegionService, self).__init__(provider)
 
-    @dispatch(event="provider.compute.regions.get",
+    @dispatch(event="compute.regions.get",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def get(self, region_id):
         region = self.provider.get_resource('regions', region_id,
                                             region=region_id)
         return GCPRegion(self.provider, region) if region else None
 
-    @dispatch(event="provider.compute.regions.list",
+    @dispatch(event="compute.regions.list",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
@@ -464,7 +464,7 @@ class GCPInstanceService(BaseInstanceService):
     def __init__(self, provider):
         super(GCPInstanceService, self).__init__(provider)
 
-    @dispatch(event="provider.compute.instances.create",
+    @dispatch(event="compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def create(self, label, image, vm_type, subnet,
                key_pair=None, vm_firewalls=None, user_data=None,
@@ -609,7 +609,7 @@ class GCPInstanceService(BaseInstanceService):
         cb_inst = self.get(instance_id)
         return cb_inst
 
-    @dispatch(event="provider.compute.instances.get",
+    @dispatch(event="compute.instances.get",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def get(self, instance_id):
         """
@@ -622,7 +622,7 @@ class GCPInstanceService(BaseInstanceService):
         instance = self.provider.get_resource('instances', instance_id)
         return GCPInstance(self.provider, instance) if instance else None
 
-    @dispatch(event="provider.compute.instances.find",
+    @dispatch(event="compute.instances.find",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def find(self, limit=None, marker=None, **kwargs):
         """
@@ -642,7 +642,7 @@ class GCPInstanceService(BaseInstanceService):
         return ClientPagedResultList(self.provider, instances,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.compute.instances.list",
+    @dispatch(event="compute.instances.list",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         """
@@ -668,7 +668,7 @@ class GCPInstanceService(BaseInstanceService):
                                      response.get('nextPageToken'),
                                      False, data=instances)
 
-    @dispatch(event="provider.compute.instances.delete",
+    @dispatch(event="compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def delete(self, instance):
         instance = (instance if isinstance(instance, GCPInstance) else
@@ -748,13 +748,13 @@ class GCPNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(GCPNetworkService, self).__init__(provider)
 
-    @dispatch(event="provider.networking.networks.get",
+    @dispatch(event="networking.networks.get",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def get(self, network_id):
         network = self.provider.get_resource('networks', network_id)
         return GCPNetwork(self.provider, network) if network else None
 
-    @dispatch(event="provider.networking.networks.find",
+    @dispatch(event="networking.networks.find",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def find(self, limit=None, marker=None, **kwargs):
         """
@@ -767,7 +767,7 @@ class GCPNetworkService(BaseNetworkService):
         return ClientPagedResultList(self._provider, list(matches),
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.networking.networks.list",
+    @dispatch(event="networking.networks.list",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None, filter=None):
         # TODO: Decide whether we keep filter in 'list'
@@ -783,7 +783,7 @@ class GCPNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.networking.networks.create",
+    @dispatch(event="networking.networks.create",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def create(self, label, cidr_block):
         """
@@ -818,7 +818,7 @@ class GCPNetworkService(BaseNetworkService):
                 label=GCPNetwork.CB_DEFAULT_NETWORK_LABEL,
                 cidr_block=GCPNetwork.CB_DEFAULT_IPV4RANGE)
 
-    @dispatch(event="provider.networking.networks.delete",
+    @dispatch(event="networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def delete(self, network):
         # Accepts network object
@@ -849,14 +849,14 @@ class GCPRouterService(BaseRouterService):
     def __init__(self, provider):
         super(GCPRouterService, self).__init__(provider)
 
-    @dispatch(event="provider.networking.routers.get",
+    @dispatch(event="networking.routers.get",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def get(self, router_id):
         router = self.provider.get_resource(
             'routers', router_id, region=self.provider.region_name)
         return GCPRouter(self.provider, router) if router else None
 
-    @dispatch(event="provider.networking.routers.find",
+    @dispatch(event="networking.routers.find",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def find(self, limit=None, marker=None, **kwargs):
         obj_list = self
@@ -865,7 +865,7 @@ class GCPRouterService(BaseRouterService):
         return ClientPagedResultList(self._provider, list(matches),
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.networking.routers.list",
+    @dispatch(event="networking.routers.list",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         region = self.provider.region_name
@@ -888,7 +888,7 @@ class GCPRouterService(BaseRouterService):
                                      response.get('nextPageToken'),
                                      False, data=routers)
 
-    @dispatch(event="provider.networking.routers.create",
+    @dispatch(event="networking.routers.create",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network):
         log.debug("Creating GCP Router Service with params "
@@ -913,7 +913,7 @@ class GCPRouterService(BaseRouterService):
         cb_router.label = label
         return cb_router
 
-    @dispatch(event="provider.networking.routers.delete",
+    @dispatch(event="networking.routers.delete",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def delete(self, router):
         r = router if isinstance(router, GCPRouter) else self.get(router)
@@ -947,13 +947,13 @@ class GCPSubnetService(BaseSubnetService):
     def __init__(self, provider):
         super(GCPSubnetService, self).__init__(provider)
 
-    @dispatch(event="provider.networking.subnets.get",
+    @dispatch(event="networking.subnets.get",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def get(self, subnet_id):
         subnet = self.provider.get_resource('subnetworks', subnet_id)
         return GCPSubnet(self.provider, subnet) if subnet else None
 
-    @dispatch(event="provider.networking.subnets.list",
+    @dispatch(event="networking.subnets.list",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def list(self, network=None, limit=None, marker=None):
         filter = None
@@ -975,7 +975,7 @@ class GCPSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.networking.subnets.create",
+    @dispatch(event="networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, cidr_block):
         """
@@ -1014,7 +1014,7 @@ class GCPSubnetService(BaseSubnetService):
         cb_subnet.label = label
         return cb_subnet
 
-    @dispatch(event="provider.networking.subnets.delete",
+    @dispatch(event="networking.subnets.delete",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def delete(self, subnet):
         sn = subnet if isinstance(subnet, GCPSubnet) else self.get(subnet)
@@ -1109,13 +1109,13 @@ class GCPVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(GCPVolumeService, self).__init__(provider)
 
-    @dispatch(event="provider.storage.volumes.get",
+    @dispatch(event="storage.volumes.get",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
         vol = self.provider.get_resource('disks', volume_id)
         return GCPVolume(self.provider, vol) if vol else None
 
-    @dispatch(event="provider.storage.volumes.find",
+    @dispatch(event="storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def find(self, limit=None, marker=None, **kwargs):
         """
@@ -1149,7 +1149,7 @@ class GCPVolumeService(BaseVolumeService):
                                      response.get('nextPageToken'),
                                      False, data=gcp_vols)
 
-    @dispatch(event="provider.storage.volumes.list",
+    @dispatch(event="storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         """
@@ -1179,7 +1179,7 @@ class GCPVolumeService(BaseVolumeService):
                                      response.get('nextPageToken'),
                                      False, data=gcp_vols)
 
-    @dispatch(event="provider.storage.volumes.create",
+    @dispatch(event="storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, snapshot=None, description=None):
         GCPVolume.assert_valid_resource_label(label)
@@ -1208,7 +1208,7 @@ class GCPVolumeService(BaseVolumeService):
         cb_vol = self.get(operation.get('targetLink'))
         return cb_vol
 
-    @dispatch(event="provider.storage.volumes.delete",
+    @dispatch(event="storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def delete(self, volume):
         volume = volume if isinstance(volume, GCPVolume) else self.get(volume)
@@ -1226,13 +1226,13 @@ class GCPSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(GCPSnapshotService, self).__init__(provider)
 
-    @dispatch(event="provider.storage.snapshots.get",
+    @dispatch(event="storage.snapshots.get",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def get(self, snapshot_id):
         snapshot = self.provider.get_resource('snapshots', snapshot_id)
         return GCPSnapshot(self.provider, snapshot) if snapshot else None
 
-    @dispatch(event="provider.storage.snapshots.find",
+    @dispatch(event="storage.snapshots.find",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def find(self, limit=None, marker=None, **kwargs):
         label = kwargs.pop('label', None)
@@ -1262,7 +1262,7 @@ class GCPSnapshotService(BaseSnapshotService):
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
-    @dispatch(event="provider.storage.snapshots.list",
+    @dispatch(event="storage.snapshots.list",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
@@ -1282,7 +1282,7 @@ class GCPSnapshotService(BaseSnapshotService):
                                      response.get('nextPageToken'),
                                      False, data=snapshots)
 
-    @dispatch(event="provider.storage.snapshots.create",
+    @dispatch(event="storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
         GCPSnapshot.assert_valid_resource_label(label)
@@ -1310,7 +1310,7 @@ class GCPSnapshotService(BaseSnapshotService):
         cb_snap = self.get(name)
         return cb_snap
 
-    @dispatch(event="provider.storage.snapshots.delete",
+    @dispatch(event="storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def delete(self, snapshot):
         snapshot = (snapshot if isinstance(snapshot, GCPSnapshot)
@@ -1329,7 +1329,7 @@ class GCPBucketService(BaseBucketService):
     def __init__(self, provider):
         super(GCPBucketService, self).__init__(provider)
 
-    @dispatch(event="provider.storage.buckets.get",
+    @dispatch(event="storage.buckets.get",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def get(self, bucket_id):
         """
@@ -1340,7 +1340,7 @@ class GCPBucketService(BaseBucketService):
         bucket = self.provider.get_resource('buckets', bucket_id)
         return GCPBucket(self.provider, bucket) if bucket else None
 
-    @dispatch(event="provider.storage.buckets.find",
+    @dispatch(event="storage.buckets.find",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def find(self, limit=None, marker=None, **kwargs):
         name = kwargs.pop('name', None)
@@ -1355,7 +1355,7 @@ class GCPBucketService(BaseBucketService):
         return ClientPagedResultList(self.provider, buckets, limit=limit,
                                      marker=marker)
 
-    @dispatch(event="provider.storage.buckets.list",
+    @dispatch(event="storage.buckets.list",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         """
@@ -1379,7 +1379,7 @@ class GCPBucketService(BaseBucketService):
                                      response.get('nextPageToken'),
                                      False, data=buckets)
 
-    @dispatch(event="provider.storage.buckets.create",
+    @dispatch(event="storage.buckets.create",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def create(self, name, location=None):
         GCPBucket.assert_valid_resource_name(name)
@@ -1406,7 +1406,7 @@ class GCPBucketService(BaseBucketService):
             else:
                 raise
 
-    @dispatch(event="provider.storage.buckets.delete",
+    @dispatch(event="storage.buckets.delete",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def delete(self, bucket):
         """
@@ -1500,17 +1500,17 @@ class GCPGatewayService(BaseGatewayService):
                     GCPGatewayService._DEFAULT_GATEWAY_NAME),
              'name': GCPGatewayService._DEFAULT_GATEWAY_NAME})
 
-    @dispatch(event="provider.networking.gateways.get_or_create",
+    @dispatch(event="networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def get_or_create(self, network):
         return self._default_internet_gateway
 
-    @dispatch(event="provider.networking.gateways.delete",
+    @dispatch(event="networking.gateways.delete",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def delete(self, network, gateway):
         pass
 
-    @dispatch(event="provider.networking.gateways.list",
+    @dispatch(event="networking.gateways.list",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def list(self, network, limit=None, marker=None):
         gws = [self._default_internet_gateway]
@@ -1524,14 +1524,14 @@ class GCPFloatingIPService(BaseFloatingIPService):
     def __init__(self, provider):
         super(GCPFloatingIPService, self).__init__(provider)
 
-    @dispatch(event="provider.networking.floating_ips.get",
+    @dispatch(event="networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, floating_ip_id):
         fip = self.provider.get_resource('addresses', floating_ip_id)
         return (GCPFloatingIP(self.provider, fip)
                 if fip else None)
 
-    @dispatch(event="provider.networking.floating_ips.list",
+    @dispatch(event="networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
@@ -1552,7 +1552,7 @@ class GCPFloatingIPService(BaseFloatingIPService):
                                      response.get('nextPageToken'),
                                      False, data=ips)
 
-    @dispatch(event="provider.networking.floating_ips.create",
+    @dispatch(event="networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
         region_name = self.provider.region_name
@@ -1567,7 +1567,7 @@ class GCPFloatingIPService(BaseFloatingIPService):
         self.provider.wait_for_operation(response, region=region_name)
         return self.get(gateway, ip_name)
 
-    @dispatch(event="provider.networking.floating_ips.delete",
+    @dispatch(event="networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         fip = (fip if isinstance(fip, GCPFloatingIP)

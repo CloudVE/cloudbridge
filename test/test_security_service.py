@@ -17,22 +17,25 @@ class CloudSecurityServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['security.vm_firewalls'])
     def test_storage_services_event_pattern(self):
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "security.key_pairs"))
         self.assertEqual(
-            self.provider.security.key_pairs.
-            _service_event_pattern,
-            "provider.security.key_pairs",
+            self.provider.security.key_pairs._service_event_pattern,
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("key_pairs",
-                                     "provider.security.key_pairs",
+                                     expected_event,
                                      self.provider.security.
                                      key_pairs.
                                      _service_event_pattern))
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "security.vm_firewalls"))
         self.assertEqual(
             self.provider.security.vm_firewalls._service_event_pattern,
-            "provider.security.vm_firewalls",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("vm_firewalls",
-                                     "provider.security.vm_firewalls",
+                                     expected_event,
                                      self.provider.security.vm_firewalls.
                                      _service_event_pattern))
 

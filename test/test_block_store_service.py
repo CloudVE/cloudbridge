@@ -22,22 +22,26 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['storage.volumes', 'storage.volumes'])
     def test_storage_services_event_pattern(self):
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "storage.volumes"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.storage.volumes._service_event_pattern,
-            "provider.storage.volumes",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("volumes",
-                                     "provider.storage.volumes",
+                                     expected_event,
                                      self.provider.storage.volumes.
                                      _service_event_pattern))
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "storage.snapshots"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.storage.snapshots._service_event_pattern,
-            "provider.storage.snapshots",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("snapshots",
-                                     "provider.storage.snapshots",
+                                     expected_event,
                                      self.provider.storage.snapshots.
                                      _service_event_pattern))
 

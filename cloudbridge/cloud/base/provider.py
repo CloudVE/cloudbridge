@@ -83,11 +83,11 @@ class BaseConfiguration(Configuration):
 
 
 class BaseCloudProvider(CloudProvider):
-    def __init__(self, config):
+    def __init__(self, config, middleware_manager=None):
         self._config = BaseConfiguration(config)
         self._config_parser = ConfigParser()
         self._config_parser.read(CloudBridgeConfigLocations)
-        self._middleware = SimpleMiddlewareManager()
+        self._middleware = middleware_manager or SimpleMiddlewareManager()
         self.add_required_middleware()
         self._region_name = None
         self._zone_name = None

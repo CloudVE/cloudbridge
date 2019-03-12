@@ -13,13 +13,15 @@ class CloudRegionServiceTestCase(ProviderTestBase):
 
     @helpers.skipIfNoService(['compute.regions'])
     def test_storage_services_event_pattern(self):
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "compute.regions"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.compute.regions._service_event_pattern,
-            "provider.compute.regions",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("regions",
-                                     "provider.compute.regions",
+                                     expected_event,
                                      self.provider.compute.regions.
                                      _service_event_pattern))
 

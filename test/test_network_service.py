@@ -20,31 +20,37 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
                               'networking.networks',
                               'networking.routers'])
     def test_storage_services_event_pattern(self):
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "networking.networks"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.networks._service_event_pattern,
-            "provider.networking.networks",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("networks",
-                                     "provider.networking.networks",
+                                     expected_event,
                                      self.provider.networking.networks.
                                      _service_event_pattern))
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "networking.subnets"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.subnets._service_event_pattern,
-            "provider.networking.subnets",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("subnets",
-                                     "provider.networking.subnets",
+                                     expected_event,
                                      self.provider.networking.subnets.
                                      _service_event_pattern))
+        expected_event = ".".join((self.provider.PROVIDER_ID,
+                                   "networking.routers"))
         # pylint:disable=protected-access
         self.assertEqual(
             self.provider.networking.routers._service_event_pattern,
-            "provider.networking.routers",
+            expected_event,
             "Event pattern for {} service should be '{}', "
             "but found '{}'.".format("routers",
-                                     "provider.networking.routers",
+                                     expected_event,
                                      self.provider.networking.routers.
                                      _service_event_pattern))
 

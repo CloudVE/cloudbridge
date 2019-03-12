@@ -133,7 +133,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
     def __init__(self, provider):
         super(OpenStackKeyPairService, self).__init__(provider)
 
-    @dispatch(event="provider.security.key_pairs.get",
+    @dispatch(event="security.key_pairs.get",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def get(self, key_pair_id):
         """
@@ -147,7 +147,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
             log.debug("KeyPair %s was not found.", key_pair_id)
             return None
 
-    @dispatch(event="provider.security.key_pairs.list",
+    @dispatch(event="security.key_pairs.list",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         """
@@ -164,7 +164,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
         return ClientPagedResultList(self.provider, results,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.security.key_pairs.find",
+    @dispatch(event="security.key_pairs.find",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         name = kwargs.pop('name', None)
@@ -181,7 +181,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
         log.debug("Searching for %s in: %s", name, keypairs)
         return ClientPagedResultList(self.provider, results)
 
-    @dispatch(event="provider.security.key_pairs.create",
+    @dispatch(event="security.key_pairs.create",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def create(self, name, public_key_material=None):
         OpenStackKeyPair.assert_valid_resource_name(name)
@@ -200,7 +200,7 @@ class OpenStackKeyPairService(BaseKeyPairService):
         cb_kp.material = private_key
         return cb_kp
 
-    @dispatch(event="provider.security.key_pairs.delete",
+    @dispatch(event="security.key_pairs.delete",
               priority=BaseKeyPairService.STANDARD_EVENT_PRIORITY)
     def delete(self, key_pair):
         keypair = (key_pair if isinstance(key_pair, OpenStackKeyPair)
@@ -215,7 +215,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
     def __init__(self, provider):
         super(OpenStackVMFirewallService, self).__init__(provider)
 
-    @dispatch(event="provider.security.vm_firewalls.get",
+    @dispatch(event="security.vm_firewalls.get",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def get(self, vm_firewall_id):
         try:
@@ -227,7 +227,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
             log.debug("Firewall %s not found.", vm_firewall_id)
             return None
 
-    @dispatch(event="provider.security.vm_firewalls.list",
+    @dispatch(event="security.vm_firewalls.list",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         firewalls = [
@@ -238,7 +238,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
                                      limit=limit, marker=marker)
 
     @cb_helpers.deprecated_alias(network_id='network')
-    @dispatch(event="provider.security.vm_firewalls.create",
+    @dispatch(event="security.vm_firewalls.create",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
         OpenStackVMFirewall.assert_valid_resource_label(label)
@@ -259,7 +259,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
             return OpenStackVMFirewall(self.provider, sg)
         return None
 
-    @dispatch(event="provider.security.vm_firewalls.delete",
+    @dispatch(event="security.vm_firewalls.delete",
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def delete(self, vm_firewall):
         fw = (vm_firewall if isinstance(vm_firewall, OpenStackVMFirewall)
@@ -274,7 +274,7 @@ class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
     def __init__(self, provider):
         super(OpenStackVMFirewallRuleService, self).__init__(provider)
 
-    @dispatch(event="provider.security.vm_firewall_rules.list",
+    @dispatch(event="security.vm_firewall_rules.list",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def list(self, firewall, limit=None, marker=None):
         # pylint:disable=protected-access
@@ -283,7 +283,7 @@ class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
         return ClientPagedResultList(self.provider, rules,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.security.vm_firewall_rules.create",
+    @dispatch(event="security.vm_firewall_rules.create",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def create(self, firewall, direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
@@ -321,7 +321,7 @@ class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
             else:
                 raise e
 
-    @dispatch(event="provider.security.vm_firewall_rules.delete",
+    @dispatch(event="security.vm_firewall_rules.delete",
               priority=BaseVMFirewallRuleService.STANDARD_EVENT_PRIORITY)
     def delete(self, firewall, rule):
         rule_id = (rule.id if isinstance(rule, OpenStackVMFirewallRule)
@@ -363,7 +363,7 @@ class OpenStackVolumeService(BaseVolumeService):
     def __init__(self, provider):
         super(OpenStackVolumeService, self).__init__(provider)
 
-    @dispatch(event="provider.storage.volumes.get",
+    @dispatch(event="storage.volumes.get",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
         try:
@@ -381,7 +381,7 @@ class OpenStackVolumeService(BaseVolumeService):
         else:
             return OpenStackVolume(self.provider, os_vol)
 
-    @dispatch(event="provider.storage.volumes.find",
+    @dispatch(event="storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
@@ -404,7 +404,7 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols)
 
-    @dispatch(event="provider.storage.volumes.list",
+    @dispatch(event="storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         search_opts = {'availability_zone': self.provider.zone_name}
@@ -417,7 +417,7 @@ class OpenStackVolumeService(BaseVolumeService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
-    @dispatch(event="provider.storage.volumes.create",
+    @dispatch(event="storage.volumes.create",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, snapshot=None, description=None):
         OpenStackVolume.assert_valid_resource_label(label)
@@ -430,7 +430,7 @@ class OpenStackVolumeService(BaseVolumeService):
             availability_zone=zone_name, snapshot_id=snapshot_id)
         return OpenStackVolume(self.provider, os_vol)
 
-    @dispatch(event="provider.storage.volumes.delete",
+    @dispatch(event="storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def delete(self, volume):
         volume = (volume if isinstance(volume, OpenStackVolume)
@@ -445,7 +445,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
     def __init__(self, provider):
         super(OpenStackSnapshotService, self).__init__(provider)
 
-    @dispatch(event="provider.storage.snapshots.get",
+    @dispatch(event="storage.snapshots.get",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def get(self, snapshot_id):
         try:
@@ -456,7 +456,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
             log.debug("Snapshot %s was not found.", snapshot_id)
             return None
 
-    @dispatch(event="provider.storage.snapshots.find",
+    @dispatch(event="storage.snapshots.find",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
@@ -479,7 +479,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
 
         return oshelpers.to_server_paged_list(self.provider, cb_snaps)
 
-    @dispatch(event="provider.storage.snapshots.list",
+    @dispatch(event="storage.snapshots.list",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         cb_snaps = [
@@ -490,7 +490,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
                              'marker': marker})]
         return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
 
-    @dispatch(event="provider.storage.snapshots.create",
+    @dispatch(event="storage.snapshots.create",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
         OpenStackSnapshot.assert_valid_resource_label(label)
@@ -502,7 +502,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
             description=description)
         return OpenStackSnapshot(self.provider, os_snap)
 
-    @dispatch(event="provider.storage.snapshots.delete",
+    @dispatch(event="storage.snapshots.delete",
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def delete(self, snapshot):
         s = (snapshot if isinstance(snapshot, OpenStackSnapshot) else
@@ -517,7 +517,7 @@ class OpenStackBucketService(BaseBucketService):
     def __init__(self, provider):
         super(OpenStackBucketService, self).__init__(provider)
 
-    @dispatch(event="provider.storage.buckets.get",
+    @dispatch(event="storage.buckets.get",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def get(self, bucket_id):
         """
@@ -534,7 +534,7 @@ class OpenStackBucketService(BaseBucketService):
             log.debug("Bucket %s was not found.", bucket_id)
             return None
 
-    @dispatch(event="provider.storage.buckets.find",
+    @dispatch(event="storage.buckets.find",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         name = kwargs.pop('name', None)
@@ -550,7 +550,7 @@ class OpenStackBucketService(BaseBucketService):
                       if name in c.get("name")]
         return oshelpers.to_server_paged_list(self.provider, cb_buckets)
 
-    @dispatch(event="provider.storage.buckets.list",
+    @dispatch(event="storage.buckets.list",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         _, container_list = self.provider.swift.get_account(
@@ -560,7 +560,7 @@ class OpenStackBucketService(BaseBucketService):
                       for c in container_list]
         return oshelpers.to_server_paged_list(self.provider, cb_buckets, limit)
 
-    @dispatch(event="provider.storage.buckets.create",
+    @dispatch(event="storage.buckets.create",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def create(self, name, location=None):
         OpenStackBucket.assert_valid_resource_name(name)
@@ -573,7 +573,7 @@ class OpenStackBucketService(BaseBucketService):
             self.provider.swift.put_container(name)
             return self.get(name)
 
-    @dispatch(event="provider.storage.buckets.delete",
+    @dispatch(event="storage.buckets.delete",
               priority=BaseBucketService.STANDARD_EVENT_PRIORITY)
     def delete(self, bucket):
         b_id = bucket.id if isinstance(bucket, OpenStackBucket) else bucket
@@ -757,7 +757,7 @@ class OpenStackInstanceService(BaseInstanceService):
     def create_launch_config(self):
         return BaseLaunchConfig(self.provider)
 
-    @dispatch(event="provider.compute.instances.create",
+    @dispatch(event="compute.instances.create",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def create(self, label, image, vm_type, subnet,
                key_pair=None, vm_firewalls=None, user_data=None,
@@ -840,7 +840,7 @@ class OpenStackInstanceService(BaseInstanceService):
             nics=nics)
         return OpenStackInstance(self.provider, os_instance)
 
-    @dispatch(event="provider.compute.instances.find",
+    @dispatch(event="compute.instances.find",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         label = kwargs.pop('label', None)
@@ -861,7 +861,7 @@ class OpenStackInstanceService(BaseInstanceService):
                 marker=None)]
         return oshelpers.to_server_paged_list(self.provider, cb_insts)
 
-    @dispatch(event="provider.compute.instances.list",
+    @dispatch(event="compute.instances.list",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         """
@@ -876,7 +876,7 @@ class OpenStackInstanceService(BaseInstanceService):
                 marker=marker)]
         return oshelpers.to_server_paged_list(self.provider, cb_insts, limit)
 
-    @dispatch(event="provider.compute.instances.get",
+    @dispatch(event="compute.instances.get",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def get(self, instance_id):
         """
@@ -898,7 +898,7 @@ class OpenStackInstanceService(BaseInstanceService):
             return None
         return OpenStackInstance(self.provider, os_instance)
 
-    @dispatch(event="provider.compute.instances.delete",
+    @dispatch(event="compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def delete(self, instance):
         ins = (instance if isinstance(instance, OpenStackInstance) else
@@ -919,7 +919,7 @@ class OpenStackVMTypeService(BaseVMTypeService):
     def __init__(self, provider):
         super(OpenStackVMTypeService, self).__init__(provider)
 
-    @dispatch(event="provider.compute.vm_types.list",
+    @dispatch(event="compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         cb_itypes = [
@@ -936,14 +936,14 @@ class OpenStackRegionService(BaseRegionService):
     def __init__(self, provider):
         super(OpenStackRegionService, self).__init__(provider)
 
-    @dispatch(event="provider.compute.regions.get",
+    @dispatch(event="compute.regions.get",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def get(self, region_id):
         log.debug("Getting OpenStack Region with the id: %s", region_id)
         region = (r for r in self if r.id == region_id)
         return next(region, None)
 
-    @dispatch(event="provider.compute.regions.list",
+    @dispatch(event="compute.regions.list",
               priority=BaseRegionService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         # pylint:disable=protected-access
@@ -1009,13 +1009,13 @@ class OpenStackNetworkService(BaseNetworkService):
     def __init__(self, provider):
         super(OpenStackNetworkService, self).__init__(provider)
 
-    @dispatch(event="provider.networking.networks.get",
+    @dispatch(event="networking.networks.get",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def get(self, network_id):
         network = (n for n in self if n.id == network_id)
         return next(network, None)
 
-    @dispatch(event="provider.networking.networks.list",
+    @dispatch(event="networking.networks.list",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         networks = [OpenStackNetwork(self.provider, network)
@@ -1029,7 +1029,7 @@ class OpenStackNetworkService(BaseNetworkService):
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.networking.networks.find",
+    @dispatch(event="networking.networks.find",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
@@ -1037,7 +1037,7 @@ class OpenStackNetworkService(BaseNetworkService):
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
-    @dispatch(event="provider.networking.networks.create",
+    @dispatch(event="networking.networks.create",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def create(self, label, cidr_block):
         OpenStackNetwork.assert_valid_resource_label(label)
@@ -1046,7 +1046,7 @@ class OpenStackNetworkService(BaseNetworkService):
         cb_net = OpenStackNetwork(self.provider, network.get('network'))
         return cb_net
 
-    @dispatch(event="provider.networking.networks.delete",
+    @dispatch(event="networking.networks.delete",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def delete(self, network):
         network = (network if isinstance(network, OpenStackNetwork) else
@@ -1073,13 +1073,13 @@ class OpenStackSubnetService(BaseSubnetService):
     def __init__(self, provider):
         super(OpenStackSubnetService, self).__init__(provider)
 
-    @dispatch(event="provider.networking.subnets.get",
+    @dispatch(event="networking.subnets.get",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def get(self, subnet_id):
         subnet = (s for s in self if s.id == subnet_id)
         return next(subnet, None)
 
-    @dispatch(event="provider.networking.subnets.list",
+    @dispatch(event="networking.subnets.list",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def list(self, network=None, limit=None, marker=None):
         if network:
@@ -1093,7 +1093,7 @@ class OpenStackSubnetService(BaseSubnetService):
         return ClientPagedResultList(self.provider, subnets,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.networking.subnets.create",
+    @dispatch(event="networking.subnets.create",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, cidr_block):
         OpenStackSubnet.assert_valid_resource_label(label)
@@ -1106,7 +1106,7 @@ class OpenStackSubnetService(BaseSubnetService):
         cb_subnet = OpenStackSubnet(self.provider, subnet)
         return cb_subnet
 
-    @dispatch(event="provider.networking.subnets.delete",
+    @dispatch(event="networking.subnets.delete",
               priority=BaseSubnetService.STANDARD_EVENT_PRIORITY)
     def delete(self, subnet):
         sn_id = subnet.id if isinstance(subnet, OpenStackSubnet) else subnet
@@ -1138,7 +1138,7 @@ class OpenStackRouterService(BaseRouterService):
     def __init__(self, provider):
         super(OpenStackRouterService, self).__init__(provider)
 
-    @dispatch(event="provider.networking.routers.get",
+    @dispatch(event="networking.routers.get",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def get(self, router_id):
         router = self.provider.os_conn.get_router(router_id)
@@ -1154,7 +1154,7 @@ class OpenStackRouterService(BaseRouterService):
             return None
         return OpenStackRouter(self.provider, router)
 
-    @dispatch(event="provider.networking.routers.list",
+    @dispatch(event="networking.routers.list",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         routers = self.provider.os_conn.list_routers()
@@ -1163,7 +1163,7 @@ class OpenStackRouterService(BaseRouterService):
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
 
-    @dispatch(event="provider.networking.routers.find",
+    @dispatch(event="networking.routers.find",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         obj_list = self
@@ -1171,14 +1171,14 @@ class OpenStackRouterService(BaseRouterService):
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
 
-    @dispatch(event="provider.networking.routers.create",
+    @dispatch(event="networking.routers.create",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network):
         """Parameter ``network`` is not used by OpenStack."""
         router = self.provider.os_conn.create_router(name=label)
         return OpenStackRouter(self.provider, router)
 
-    @dispatch(event="provider.networking.routers.delete",
+    @dispatch(event="networking.routers.delete",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def delete(self, router):
         r_id = router.id if isinstance(router, OpenStackRouter) else router
@@ -1207,7 +1207,7 @@ class OpenStackGatewayService(BaseGatewayService):
             except Exception:
                 return False
 
-    @dispatch(event="provider.networking.gateways.get_or_create",
+    @dispatch(event="networking.gateways.get_or_create",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def get_or_create(self, network):
         """For OS, inet gtw is any net that has `external` property set."""
@@ -1218,12 +1218,12 @@ class OpenStackGatewayService(BaseGatewayService):
                 return OpenStackInternetGateway(self._provider, net)
         return None
 
-    @dispatch(event="provider.networking.gateways.delete",
+    @dispatch(event="networking.gateways.delete",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def delete(self, network, gateway):
         pass
 
-    @dispatch(event="provider.networking.gateways.list",
+    @dispatch(event="networking.gateways.list",
               priority=BaseGatewayService.STANDARD_EVENT_PRIORITY)
     def list(self, network, limit=None, marker=None):
         log.debug("OpenStack listing of all current internet gateways")
@@ -1239,7 +1239,7 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
     def __init__(self, provider):
         super(OpenStackFloatingIPService, self).__init__(provider)
 
-    @dispatch(event="provider.networking.floating_ips.get",
+    @dispatch(event="networking.floating_ips.get",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def get(self, gateway, fip_id):
         try:
@@ -1250,7 +1250,7 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
             log.debug("Floating IP %s not found.", fip_id)
             return None
 
-    @dispatch(event="provider.networking.floating_ips.list",
+    @dispatch(event="networking.floating_ips.list",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def list(self, gateway, limit=None, marker=None):
         fips = [OpenStackFloatingIP(self.provider, fip)
@@ -1260,14 +1260,14 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
         return ClientPagedResultList(self.provider, fips,
                                      limit=limit, marker=marker)
 
-    @dispatch(event="provider.networking.floating_ips.create",
+    @dispatch(event="networking.floating_ips.create",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def create(self, gateway):
         return OpenStackFloatingIP(
             self.provider, self.provider.os_conn.network.create_ip(
                 floating_network_id=gateway.id))
 
-    @dispatch(event="provider.networking.floating_ips.delete",
+    @dispatch(event="networking.floating_ips.delete",
               priority=BaseFloatingIPService.STANDARD_EVENT_PRIORITY)
     def delete(self, gateway, fip):
         if isinstance(fip, OpenStackFloatingIP):
