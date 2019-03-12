@@ -555,6 +555,7 @@ class GCPInstanceService(BaseInstanceService):
         # The boot disk must be the first disk attached to the instance.
         disks.insert(0, boot_disk)
 
+        # pylint:disable=protected-access
         config = {
             'name': GCPInstance._generate_name_from_label(label, 'cb-inst'),
             'machineType': vm_type.resource_url,
@@ -791,6 +792,7 @@ class GCPNetworkService(BaseNetworkService):
         to add additional subnets later.
         """
         GCPNetwork.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         name = GCPNetwork._generate_name_from_label(label, 'cbnet')
         body = {'name': name}
         # This results in a custom mode network
@@ -894,6 +896,7 @@ class GCPRouterService(BaseRouterService):
         log.debug("Creating GCP Router Service with params "
                   "[label: %s network: %s]", label, network)
         GCPRouter.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         name = GCPRouter._generate_name_from_label(label, 'cb-router')
 
         if not isinstance(network, GCPNetwork):
@@ -983,6 +986,7 @@ class GCPSubnetService(BaseSubnetService):
         provider, is used.
         """
         GCPSubnet.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         name = GCPSubnet._generate_name_from_label(label, 'cbsubnet')
         region_name = self.provider.region_name
 #         for subnet in self.iter(network=network):
@@ -1183,6 +1187,7 @@ class GCPVolumeService(BaseVolumeService):
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, snapshot=None, description=None):
         GCPVolume.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         name = GCPVolume._generate_name_from_label(label, 'cb-vol')
         zone_name = self.provider.zone_name
         snapshot_id = snapshot.id if isinstance(
@@ -1286,6 +1291,7 @@ class GCPSnapshotService(BaseSnapshotService):
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
         GCPSnapshot.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         name = GCPSnapshot._generate_name_from_label(label, 'cbsnap')
         volume_name = volume.name if isinstance(volume, GCPVolume) else volume
         labels = {'cblabel': label}

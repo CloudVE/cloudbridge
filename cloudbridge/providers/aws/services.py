@@ -179,6 +179,7 @@ class AWSVMFirewallService(BaseVMFirewallService):
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
         AWSVMFirewall.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         name = AWSVMFirewall._generate_name_from_label(label, 'cb-fw')
         network_id = network.id if isinstance(network, Network) else network
         obj = self.svc.create('create_security_group', GroupName=name,

@@ -112,6 +112,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
               priority=BaseVMFirewallService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network, description=None):
         AzureVMFirewall.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         name = AzureVMFirewall._generate_name_from_label(label, "cb-fw")
         net = network.id if isinstance(network, Network) else network
         parameters = {"location": self.provider.region_name,
@@ -398,6 +399,7 @@ class AzureVolumeService(BaseVolumeService):
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, snapshot=None, description=None):
         AzureVolume.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         disk_name = AzureVolume._generate_name_from_label(label, "cb-vol")
         tags = {'Label': label}
 
@@ -490,6 +492,7 @@ class AzureSnapshotService(BaseSnapshotService):
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def create(self, label, volume, description=None):
         AzureSnapshot.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         snapshot_name = AzureSnapshot._generate_name_from_label(label,
                                                                 "cb-snap")
         tags = {'Label': label}
@@ -827,6 +830,7 @@ class AzureInstanceService(BaseInstanceService):
                key_pair=None, vm_firewalls=None, user_data=None,
                launch_config=None, **kwargs):
         AzureInstance.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         instance_name = AzureInstance._generate_name_from_label(label,
                                                                 "cb-ins")
 
@@ -1145,6 +1149,7 @@ class AzureNetworkService(BaseNetworkService):
             'tags': {'Label': label}
         }
 
+        # pylint:disable=protected-access
         network_name = AzureNetwork._generate_name_from_label(label, 'cb-net')
 
         az_network = self.provider.azure_client.create_network(network_name,
@@ -1228,6 +1233,7 @@ class AzureSubnetService(BaseSubnetService):
         AzureSubnet.assert_valid_resource_label(label)
         # Although Subnet doesn't support tags in Azure, we use the parent
         # Network's tags to track its subnets' labels
+        # pylint:disable=protected-access
         subnet_name = AzureSubnet._generate_name_from_label(label, "cb-sn")
 
         network_id = network.id \
@@ -1306,6 +1312,7 @@ class AzureRouterService(BaseRouterService):
     @dispatch(event="provider.networking.routers.create",
               priority=BaseRouterService.STANDARD_EVENT_PRIORITY)
     def create(self, label, network):
+        # pylint:disable=protected-access
         router_name = AzureRouter._generate_name_from_label(label, "cb-router")
 
         parameters = {"location": self.provider.region_name,
@@ -1387,6 +1394,7 @@ class AzureFloatingIPService(BaseFloatingIPService):
             'public_ip_allocation_method': 'Static'
         }
 
+        # pylint:disable=protected-access
         public_ip_name = AzureFloatingIP._generate_name_from_label(
             None, 'cb-fip-')
 

@@ -806,6 +806,7 @@ class OpenStackInstanceService(BaseInstanceService):
             port_def = {
                 "port": {
                     "admin_state_up": True,
+                    # pylint:disable=protected-access
                     "name": OpenStackInstance._generate_name_from_label(
                         label, 'cb-port'),
                     "network_id": net_id,

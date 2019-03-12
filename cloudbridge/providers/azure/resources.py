@@ -1182,6 +1182,7 @@ class AzureInstance(BaseInstance):
         """
 
         self.assert_valid_resource_label(label)
+        # pylint:disable=protected-access
         name = self._generate_name_from_label(label, 'cb-img')
 
         if not self._state == 'VM generalized':
