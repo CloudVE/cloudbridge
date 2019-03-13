@@ -2,9 +2,9 @@ import itertools
 
 import six
 
-from cloudbridge.cloud.base.helpers import get_env
-from cloudbridge.cloud.base.resources import ClientPagedResultList
-from cloudbridge.cloud.base.resources import ServerPagedResultList
+from cloudbridge.base.helpers import get_env
+from cloudbridge.base.resources import ClientPagedResultList
+from cloudbridge.base.resources import ServerPagedResultList
 
 from test.helpers import ProviderTestBase
 

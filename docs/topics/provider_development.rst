@@ -17,7 +17,7 @@ add a class variable named ``PROVIDER_ID``.
 
 .. code-block:: python
 
-    from cloudbridge.cloud.base import BaseCloudProvider
+    from cloudbridge.base import BaseCloudProvider
 
 
     class GCPCloudProvider(BaseCloudProvider):
@@ -94,7 +94,7 @@ Service in turn.
 
 .. code-block:: python
 
-    from cloudbridge.cloud.base.services import BaseSecurityService
+    from cloudbridge.base.services import BaseSecurityService
 
 
     class GCPSecurityService(BaseSecurityService):
@@ -137,9 +137,9 @@ next implement these services.
 
 .. code-block:: python
 
-    from cloudbridge.cloud.base.services import BaseKeyPairService
-    from cloudbridge.cloud.base.services import BaseSecurityGroupService
-    from cloudbridge.cloud.base.services import BaseSecurityService
+    from cloudbridge.base.services import BaseKeyPairService
+    from cloudbridge.base.services import BaseSecurityGroupService
+    from cloudbridge.base.services import BaseSecurityService
 
 
     class GCPSecurityService(BaseSecurityService):

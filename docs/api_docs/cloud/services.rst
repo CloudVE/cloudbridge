@@ -5,95 +5,95 @@ Services
 
 CloudService
 ---------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.CloudService
+.. autoclass:: cloudbridge.interfaces.services.CloudService
     :members:
 
 ComputeService
 --------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.ComputeService
+.. autoclass:: cloudbridge.interfaces.services.ComputeService
     :members:
 
 InstanceService
 ---------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.InstanceService
+.. autoclass:: cloudbridge.interfaces.services.InstanceService
     :members:
 
 VolumeService
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.VolumeService
+.. autoclass:: cloudbridge.interfaces.services.VolumeService
     :members:
 
 SnapshotService
 ---------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.SnapshotService
+.. autoclass:: cloudbridge.interfaces.services.SnapshotService
     :members:
 
 StorageService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.StorageService
+.. autoclass:: cloudbridge.interfaces.services.StorageService
     :members:
 
 ImageService
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.ImageService
+.. autoclass:: cloudbridge.interfaces.services.ImageService
     :members:
 
 NetworkingService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.NetworkingService
+.. autoclass:: cloudbridge.interfaces.services.NetworkingService
     :members:
 
 NetworkService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.NetworkService
+.. autoclass:: cloudbridge.interfaces.services.NetworkService
     :members:
 
 SubnetService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.SubnetService
+.. autoclass:: cloudbridge.interfaces.services.SubnetService
     :members:
 
 FloatingIPService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.FloatingIPSubService
+.. autoclass:: cloudbridge.interfaces.resources.FloatingIPSubService
     :members:
 
 RouterService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.RouterService
+.. autoclass:: cloudbridge.interfaces.services.RouterService
     :members:
 
 GatewayService
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.GatewaySubService
+.. autoclass:: cloudbridge.interfaces.resources.GatewaySubService
     :members:
 
 BucketService
 ---------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.BucketService
+.. autoclass:: cloudbridge.interfaces.services.BucketService
     :members:
 
 SecurityService
 ---------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.SecurityService
+.. autoclass:: cloudbridge.interfaces.services.SecurityService
     :members:
 
 KeyPairService
 --------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.KeyPairService
+.. autoclass:: cloudbridge.interfaces.services.KeyPairService
     :members:
 
 VMFirewallService
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.VMFirewallService
+.. autoclass:: cloudbridge.interfaces.services.VMFirewallService
     :members:
 
 VMTypeService
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.VMTypeService
+.. autoclass:: cloudbridge.interfaces.services.VMTypeService
     :members:
 
 RegionService
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.services.RegionService
+.. autoclass:: cloudbridge.interfaces.services.RegionService
     :members:

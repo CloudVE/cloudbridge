@@ -1,6 +1,6 @@
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.interfaces import VolumeState
-from cloudbridge.cloud.interfaces.exceptions import WaitStateException
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.interfaces import VolumeState
+from cloudbridge.interfaces.exceptions import WaitStateException
 
 from test import helpers
 from test.helpers import ProviderTestBase

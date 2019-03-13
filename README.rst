@@ -82,7 +82,7 @@ exploring the API:
 
 .. code-block:: python
 
-  from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+  from cloudbridge.factory import CloudProviderFactory, ProviderList
 
   provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
   print(provider.security.key_pairs.list())

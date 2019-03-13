@@ -5,14 +5,14 @@ import sys
 import unittest
 import uuid
 
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.factory import CloudProviderFactory
-from cloudbridge.cloud.interfaces import CloudProvider
-from cloudbridge.cloud.interfaces import InstanceState
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
-from cloudbridge.cloud.interfaces.resources import FloatingIpState
-from cloudbridge.cloud.interfaces.resources import NetworkState
-from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.factory import CloudProviderFactory
+from cloudbridge.interfaces import CloudProvider
+from cloudbridge.interfaces import InstanceState
+from cloudbridge.interfaces import TestMockHelperMixin
+from cloudbridge.interfaces.resources import FloatingIpState
+from cloudbridge.interfaces.resources import NetworkState
+from cloudbridge.interfaces.resources import SubnetState
 
 
 def parse_bool(val):

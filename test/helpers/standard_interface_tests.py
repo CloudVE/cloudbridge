@@ -9,14 +9,14 @@ import uuid
 
 import tenacity
 
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.interfaces.exceptions \
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.interfaces.exceptions \
     import InvalidNameException
-from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
-from cloudbridge.cloud.interfaces.resources import LabeledCloudResource
-from cloudbridge.cloud.interfaces.resources import ObjectLifeCycleMixin
-from cloudbridge.cloud.interfaces.resources import ResultList
-from cloudbridge.cloud.providers.aws.services import AWSImageService
+from cloudbridge.interfaces.exceptions import InvalidParamException
+from cloudbridge.interfaces.resources import LabeledCloudResource
+from cloudbridge.interfaces.resources import ObjectLifeCycleMixin
+from cloudbridge.interfaces.resources import ResultList
+from cloudbridge.providers.aws.services import AWSImageService
 
 import test.helpers as helpers
 

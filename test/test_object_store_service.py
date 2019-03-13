@@ -7,11 +7,11 @@ from unittest import skip
 
 import requests
 
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
-from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
-from cloudbridge.cloud.interfaces.resources import Bucket
-from cloudbridge.cloud.interfaces.resources import BucketObject
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.interfaces.provider import TestMockHelperMixin
+from cloudbridge.interfaces.resources import Bucket
+from cloudbridge.interfaces.resources import BucketObject
 
 from test import helpers
 from test.helpers import ProviderTestBase

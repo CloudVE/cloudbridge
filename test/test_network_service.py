@@ -1,11 +1,11 @@
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.base.resources import BaseNetwork
-from cloudbridge.cloud.interfaces.resources import FloatingIP
-from cloudbridge.cloud.interfaces.resources import Network
-from cloudbridge.cloud.interfaces.resources import NetworkState
-from cloudbridge.cloud.interfaces.resources import RouterState
-from cloudbridge.cloud.interfaces.resources import Subnet
-from cloudbridge.cloud.interfaces.resources import SubnetState
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.base.resources import BaseNetwork
+from cloudbridge.interfaces.resources import FloatingIP
+from cloudbridge.interfaces.resources import Network
+from cloudbridge.interfaces.resources import NetworkState
+from cloudbridge.interfaces.resources import RouterState
+from cloudbridge.interfaces.resources import Subnet
+from cloudbridge.interfaces.resources import SubnetState
 
 import test.helpers as helpers
 from test.helpers import ProviderTestBase

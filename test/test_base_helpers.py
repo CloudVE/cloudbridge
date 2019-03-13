@@ -1,7 +1,7 @@
 import unittest
 
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.interfaces.exceptions import InvalidParamException
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.interfaces.exceptions import InvalidParamException
 
 
 class BaseHelpersTestCase(unittest.TestCase):

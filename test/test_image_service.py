@@ -1,7 +1,7 @@
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.interfaces import MachineImageState
-from cloudbridge.cloud.interfaces.resources import Instance
-from cloudbridge.cloud.interfaces.resources import MachineImage
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.interfaces import MachineImageState
+from cloudbridge.interfaces.resources import Instance
+from cloudbridge.interfaces.resources import MachineImage
 
 from test import helpers
 from test.helpers import ProviderTestBase

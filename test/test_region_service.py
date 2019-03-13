@@ -1,6 +1,6 @@
 import six
 
-from cloudbridge.cloud.interfaces import Region
+from cloudbridge.interfaces import Region
 
 from test import helpers
 from test.helpers import ProviderTestBase

@@ -18,7 +18,7 @@ look like the following.
 
 .. code-block:: python
 
-	from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+	from cloudbridge.factory import CloudProviderFactory, ProviderList
 
 	provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
 	print(provider.compute.instances.list())

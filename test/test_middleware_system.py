@@ -4,10 +4,10 @@ from pyeventsystem.events import SimpleEventDispatcher
 from pyeventsystem.middleware import SimpleMiddlewareManager
 from pyeventsystem.middleware import implement
 
-from cloudbridge.cloud.base.middleware import EventDebugLoggingMiddleware
-from cloudbridge.cloud.base.middleware import ExceptionWrappingMiddleware
-from cloudbridge.cloud.interfaces.exceptions import CloudBridgeBaseException
-from cloudbridge.cloud.interfaces.exceptions import \
+from cloudbridge.base.middleware import EventDebugLoggingMiddleware
+from cloudbridge.base.middleware import ExceptionWrappingMiddleware
+from cloudbridge.interfaces.exceptions import CloudBridgeBaseException
+from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
 
 from .helpers import skipIfPython
@@ -82,7 +82,7 @@ class EventDebugLoggingMiddlewareTestCase(unittest.TestCase):
         some_obj = SomeDummyClass()
         manager.add(some_obj)
 
-        with self.assertLogs('cloudbridge.cloud.base.middleware',
+        with self.assertLogs('cloudbridge.base.middleware',
                              level='DEBUG') as cm:
             dispatcher.dispatch(self, EVENT_NAME,
                                 "named_param", keyword_param="hello")

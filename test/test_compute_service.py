@@ -2,15 +2,15 @@ import ipaddress
 
 import six
 
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.base.resources import BaseNetwork
-from cloudbridge.cloud.factory import ProviderList
-from cloudbridge.cloud.interfaces import InstanceState
-from cloudbridge.cloud.interfaces import InvalidConfigurationException
-from cloudbridge.cloud.interfaces.exceptions import WaitStateException
-from cloudbridge.cloud.interfaces.resources import Instance
-from cloudbridge.cloud.interfaces.resources import SnapshotState
-from cloudbridge.cloud.interfaces.resources import VMType
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.base.resources import BaseNetwork
+from cloudbridge.factory import ProviderList
+from cloudbridge.interfaces import InstanceState
+from cloudbridge.interfaces import InvalidConfigurationException
+from cloudbridge.interfaces.exceptions import WaitStateException
+from cloudbridge.interfaces.resources import Instance
+from cloudbridge.interfaces.resources import SnapshotState
+from cloudbridge.interfaces.resources import VMType
 
 from test import helpers
 from test.helpers import ProviderTestBase

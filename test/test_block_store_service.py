@@ -2,14 +2,14 @@ import time
 
 import six
 
-from cloudbridge.cloud.base import helpers as cb_helpers
-from cloudbridge.cloud.factory import ProviderList
-from cloudbridge.cloud.interfaces import SnapshotState
-from cloudbridge.cloud.interfaces import VolumeState
-from cloudbridge.cloud.interfaces.provider import TestMockHelperMixin
-from cloudbridge.cloud.interfaces.resources import AttachmentInfo
-from cloudbridge.cloud.interfaces.resources import Snapshot
-from cloudbridge.cloud.interfaces.resources import Volume
+from cloudbridge.base import helpers as cb_helpers
+from cloudbridge.factory import ProviderList
+from cloudbridge.interfaces import SnapshotState
+from cloudbridge.interfaces import VolumeState
+from cloudbridge.interfaces.provider import TestMockHelperMixin
+from cloudbridge.interfaces.resources import AttachmentInfo
+from cloudbridge.interfaces.resources import Snapshot
+from cloudbridge.interfaces.resources import Volume
 
 from test import helpers
 from test.helpers import ProviderTestBase

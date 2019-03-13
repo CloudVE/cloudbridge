@@ -1,10 +1,10 @@
 """Test cloudbridge.security modules."""
-import cloudbridge.cloud.base.helpers as cb_helpers
-from cloudbridge.cloud.interfaces.exceptions import DuplicateResourceException
-from cloudbridge.cloud.interfaces.resources import KeyPair
-from cloudbridge.cloud.interfaces.resources import TrafficDirection
-from cloudbridge.cloud.interfaces.resources import VMFirewall
-from cloudbridge.cloud.interfaces.resources import VMFirewallRule
+import cloudbridge.base.helpers as cb_helpers
+from cloudbridge.interfaces.exceptions import DuplicateResourceException
+from cloudbridge.interfaces.resources import KeyPair
+from cloudbridge.interfaces.resources import TrafficDirection
+from cloudbridge.interfaces.resources import VMFirewall
+from cloudbridge.interfaces.resources import VMFirewallRule
 
 from test import helpers
 from test.helpers import ProviderTestBase

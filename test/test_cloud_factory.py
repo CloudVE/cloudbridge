@@ -1,11 +1,10 @@
 import unittest
 
-from cloudbridge.cloud import factory
-from cloudbridge.cloud import interfaces
-from cloudbridge.cloud.factory import CloudProviderFactory
-from cloudbridge.cloud.interfaces import TestMockHelperMixin
-from cloudbridge.cloud.interfaces.provider import CloudProvider
-from cloudbridge.cloud.providers.aws import AWSCloudProvider
+from cloudbridge import factory, interfaces
+from cloudbridge.factory import CloudProviderFactory
+from cloudbridge.interfaces import TestMockHelperMixin
+from cloudbridge.interfaces.provider import CloudProvider
+from cloudbridge.providers.aws import AWSCloudProvider
 
 
 class CloudFactoryTestCase(unittest.TestCase):

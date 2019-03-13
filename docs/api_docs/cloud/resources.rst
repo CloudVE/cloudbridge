@@ -5,166 +5,166 @@ Resources
 
 CloudServiceType
 ------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.CloudServiceType
+.. autoclass:: cloudbridge.interfaces.resources.CloudServiceType
     :members:
 
 CloudResource
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.CloudResource
+.. autoclass:: cloudbridge.interfaces.resources.CloudResource
     :members:
 
 Configuration
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Configuration
+.. autoclass:: cloudbridge.interfaces.resources.Configuration
     :members:
 
 ObjectLifeCycleMixin
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.ObjectLifeCycleMixin
+.. autoclass:: cloudbridge.interfaces.resources.ObjectLifeCycleMixin
     :members:
 
 PageableObjectMixin
 --------------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.PageableObjectMixin
+.. autoclass:: cloudbridge.interfaces.resources.PageableObjectMixin
     :members:
 
 ResultList
 ----------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.ResultList
+.. autoclass:: cloudbridge.interfaces.resources.ResultList
     :members:
 
 InstanceState
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.InstanceState
+.. autoclass:: cloudbridge.interfaces.resources.InstanceState
     :members:
 
 Instance
 --------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Instance
+.. autoclass:: cloudbridge.interfaces.resources.Instance
     :members:
 
 MachineImageState
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.MachineImageState
+.. autoclass:: cloudbridge.interfaces.resources.MachineImageState
     :members:
 
 LaunchConfig
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.LaunchConfig
+.. autoclass:: cloudbridge.interfaces.resources.LaunchConfig
     :members:
 
 MachineImage
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.MachineImage
+.. autoclass:: cloudbridge.interfaces.resources.MachineImage
     :members:
 
 NetworkState
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.NetworkState
+.. autoclass:: cloudbridge.interfaces.resources.NetworkState
     :members:
 
 Network
 -------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Network
+.. autoclass:: cloudbridge.interfaces.resources.Network
     :members:
 
 SubnetState
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.SubnetState
+.. autoclass:: cloudbridge.interfaces.resources.SubnetState
     :members:
 
 Subnet
 ------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Subnet
+.. autoclass:: cloudbridge.interfaces.resources.Subnet
     :members:
 
 FloatingIP
 ----------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.FloatingIP
+.. autoclass:: cloudbridge.interfaces.resources.FloatingIP
     :members:
 
 RouterState
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.RouterState
+.. autoclass:: cloudbridge.interfaces.resources.RouterState
     :members:
 
 Router
 ------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Router
+.. autoclass:: cloudbridge.interfaces.resources.Router
     :members:
 
 Gateway
 --------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Gateway
+.. autoclass:: cloudbridge.interfaces.resources.Gateway
     :members:
 
 InternetGateway
 ---------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.InternetGateway
+.. autoclass:: cloudbridge.interfaces.resources.InternetGateway
     :members:
 
 VolumeState
 -----------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.VolumeState
+.. autoclass:: cloudbridge.interfaces.resources.VolumeState
     :members:
 
 Volume
 ------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Volume
+.. autoclass:: cloudbridge.interfaces.resources.Volume
     :members:
 
 SnapshotState
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.SnapshotState
+.. autoclass:: cloudbridge.interfaces.resources.SnapshotState
     :members:
 
 Snapshot
 --------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Snapshot
+.. autoclass:: cloudbridge.interfaces.resources.Snapshot
     :members:
 
 KeyPair
 -------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.KeyPair
+.. autoclass:: cloudbridge.interfaces.resources.KeyPair
     :members:
 
 Region
 ------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Region
+.. autoclass:: cloudbridge.interfaces.resources.Region
     :members:
 
 PlacementZone
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.PlacementZone
+.. autoclass:: cloudbridge.interfaces.resources.PlacementZone
     :members:
 
 VMType
 ------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.VMType
+.. autoclass:: cloudbridge.interfaces.resources.VMType
     :members:
 
 VMFirewall
 -------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.VMFirewall
+.. autoclass:: cloudbridge.interfaces.resources.VMFirewall
     :members:
 
 VMFirewallRule
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.VMFirewallRule
+.. autoclass:: cloudbridge.interfaces.resources.VMFirewallRule
     :members:
     :undoc-members:
 
 TrafficDirection
 -----------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.TrafficDirection
+.. autoclass:: cloudbridge.interfaces.resources.TrafficDirection
     :members:
 
 BucketObject
 ---------------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.BucketObject
+.. autoclass:: cloudbridge.interfaces.resources.BucketObject
     :members:
 
 Bucket
 ---------
-.. autoclass:: cloudbridge.cloud.interfaces.resources.Bucket
+.. autoclass:: cloudbridge.interfaces.resources.Bucket
     :members:

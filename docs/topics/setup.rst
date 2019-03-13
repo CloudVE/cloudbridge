@@ -21,7 +21,7 @@ will override environment values.
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     ## For AWS
     config = {'aws_access_key' : '<your_access_key>',
@@ -268,7 +268,7 @@ OPENSTACK):
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
 
@@ -313,7 +313,7 @@ Once the file is created, you can create a connection as follows, replacing
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, {})
 
