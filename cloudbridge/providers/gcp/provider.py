@@ -245,6 +245,12 @@ class GCPCloudProvider(BaseCloudProvider):
         self._networking = GCPNetworkingService(self)
         self._storage = GCPStorageService(self)
 
+    # Override base class implementation because it will cause
+    # an infinite loop
+    @property
+    def zone_name(self):
+        return self._zone_name
+
     @property
     def compute(self):
         return self._compute
