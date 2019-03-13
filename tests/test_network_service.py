@@ -7,9 +7,9 @@ from cloudbridge.interfaces.resources import RouterState
 from cloudbridge.interfaces.resources import Subnet
 from cloudbridge.interfaces.resources import SubnetState
 
-import test.helpers as helpers
-from test.helpers import ProviderTestBase
-from test.helpers import standard_interface_tests as sit
+import tests.helpers as helpers
+from tests.helpers import ProviderTestBase
+from tests.helpers import standard_interface_tests as sit
 
 
 class CloudNetworkServiceTestCase(ProviderTestBase):

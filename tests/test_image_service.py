@@ -3,9 +3,9 @@ from cloudbridge.interfaces import MachineImageState
 from cloudbridge.interfaces.resources import Instance
 from cloudbridge.interfaces.resources import MachineImage
 
-from test import helpers
-from test.helpers import ProviderTestBase
-from test.helpers import standard_interface_tests as sit
+from tests import helpers
+from tests.helpers import ProviderTestBase
+from tests.helpers import standard_interface_tests as sit
 
 
 class CloudImageServiceTestCase(ProviderTestBase):

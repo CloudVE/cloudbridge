@@ -6,7 +6,7 @@ from cloudbridge.factory import CloudProviderFactory
 from cloudbridge.interfaces import TestMockHelperMixin
 from cloudbridge.interfaces.exceptions import ProviderConnectionException
 
-from test.helpers import ProviderTestBase
+from tests.helpers import ProviderTestBase
 
 
 class CloudInterfaceTestCase(ProviderTestBase):

@@ -18,7 +18,7 @@ from cloudbridge.interfaces.resources import ObjectLifeCycleMixin
 from cloudbridge.interfaces.resources import ResultList
 from cloudbridge.providers.aws.services import AWSImageService
 
-import test.helpers as helpers
+import tests.helpers as helpers
 
 
 def check_repr(test, obj):

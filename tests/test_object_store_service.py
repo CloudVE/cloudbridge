@@ -13,9 +13,9 @@ from cloudbridge.interfaces.provider import TestMockHelperMixin
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
 
-from test import helpers
-from test.helpers import ProviderTestBase
-from test.helpers import standard_interface_tests as sit
+from tests import helpers
+from tests.helpers import ProviderTestBase
+from tests.helpers import standard_interface_tests as sit
 
 
 class CloudObjectStoreServiceTestCase(ProviderTestBase):

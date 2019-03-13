@@ -11,9 +11,9 @@ from cloudbridge.interfaces.resources import AttachmentInfo
 from cloudbridge.interfaces.resources import Snapshot
 from cloudbridge.interfaces.resources import Volume
 
-from test import helpers
-from test.helpers import ProviderTestBase
-from test.helpers import standard_interface_tests as sit
+from tests import helpers
+from tests.helpers import ProviderTestBase
+from tests.helpers import standard_interface_tests as sit
 
 
 class CloudBlockStoreServiceTestCase(ProviderTestBase):
