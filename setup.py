@@ -24,10 +24,10 @@ REQS_BASE = [
     'tenacity>=4.12.0,<=5.0',
     'cachetools>=2.1.0',
     'deprecated>=1.2.3',
-    'pyeventsystem'
+    'pyeventsystem<2'
 ]
 REQS_AWS = [
-    'boto3>=1.9.86'
+    'boto3>=1.9.86,<=1.9.114'
 ]
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
@@ -46,8 +46,8 @@ REQS_AZURE = [
     'pysftp==0.2.9'
 ]
 REQS_GCP = [
-    'google-api-python-client',
-    'oauth2client'
+    'google-api-python-client<=1.7.8',
+    'oauth2client<=4.1.3'
 ]
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0,<=0.17',

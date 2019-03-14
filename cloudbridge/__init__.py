@@ -2,7 +2,7 @@
 import logging
 
 # Current version of the library
-__version__ = '1.0.2'
+__version__ = '2.0.0'
 
 
 def get_version():
