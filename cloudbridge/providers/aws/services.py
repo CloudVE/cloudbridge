@@ -838,11 +838,11 @@ class AWSInstanceService(BaseInstanceService):
     def delete(self, instance):
         # pylint:disable=protected-access
         if (isinstance(instance, AWSInstance)
-            and instance._ec2_instance
-                        .placement
-                        .get('AvailabilityZone',
-                             '') == self.provider.zone_name):
-                aws_inst = instance
+                and instance._ec2_instance
+                            .placement
+                            .get('AvailabilityZone',
+                                 '') == self.provider.zone_name):
+            aws_inst = instance
         else:
             aws_inst = self.get(instance)
         if aws_inst:
