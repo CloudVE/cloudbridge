@@ -5,30 +5,30 @@ Exceptions
 
 CloudBridgeBaseException
 ------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.exceptions.CloudBridgeBaseException
+.. autoclass:: cloudbridge.interfaces.exceptions.CloudBridgeBaseException
     :members:
 
 WaitStateException
 ------------------
-.. autoclass:: cloudbridge.cloud.interfaces.exceptions.WaitStateException
+.. autoclass:: cloudbridge.interfaces.exceptions.WaitStateException
     :members:
 
 InvalidConfigurationException
 -----------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.exceptions.InvalidConfigurationException
+.. autoclass:: cloudbridge.interfaces.exceptions.InvalidConfigurationException
     :members:
 
 ProviderConnectionException
 -----------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.exceptions.ProviderConnectionException
+.. autoclass:: cloudbridge.interfaces.exceptions.ProviderConnectionException
     :members:
 
 InvalidLabelException
 -----------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.exceptions.InvalidLabelException
+.. autoclass:: cloudbridge.interfaces.exceptions.InvalidLabelException
     :members:
 
 InvalidValueException
 -----------------------------
-.. autoclass:: cloudbridge.cloud.interfaces.exceptions.InvalidValueException
+.. autoclass:: cloudbridge.interfaces.exceptions.InvalidValueException
     :members:

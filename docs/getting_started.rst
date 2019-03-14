@@ -28,7 +28,7 @@ AWS:
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     config = {'aws_access_key': 'AKIAJW2XCYO4AF55XFEQ',
               'aws_secret_key': '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'}
@@ -39,7 +39,7 @@ OpenStack (with Keystone authentication v2):
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     config = {'os_username': 'username',
               'os_password': 'password',
@@ -54,7 +54,7 @@ OpenStack (with Keystone authentication v3):
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     config = {'os_username': 'username',
               'os_password': 'password',
@@ -70,7 +70,7 @@ Azure:
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     config = {'azure_subscription_id': 'REPLACE WITH ACTUAL VALUE',
               'azure_client_id': 'REPLACE WITH ACTUAL VALUE',
@@ -83,7 +83,7 @@ Google Compute Cloud:
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     config = {'gcp_project_name': 'project name',
               'gcp_service_creds_file': 'service_file.json',
@@ -147,7 +147,7 @@ a private network.
 
 .. code-block:: python
 
-    from cloudbridge.cloud.interfaces.resources import TrafficDirection
+    from cloudbridge.interfaces.resources import TrafficDirection
     fw = provider.security.vm_firewalls.create(
         label='cb-firewall', description='A VM firewall used by
         CloudBridge', network=net)
@@ -269,7 +269,7 @@ To wrap things up, let's clean up all the resources we have created
 
 .. code-block:: python
 
-    from cloudbridge.cloud.interfaces import InstanceState
+    from cloudbridge.interfaces import InstanceState
     inst.delete()
     inst.wait_for([InstanceState.DELETED, InstanceState.UNKNOWN],
                    terminal_states=[InstanceState.ERROR])  # Blocking call

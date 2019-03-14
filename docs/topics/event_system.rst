@@ -69,7 +69,7 @@ wishes to extend the chain of handlers with their own code:
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     provider = CloudProviderFactory().create_provider(ProviderList.FIRST, {})
     id = 'thisIsAnID'
@@ -81,7 +81,7 @@ can do so without modifying CloudBridge code:
 
 .. code-block:: python
 
-    from cloudbridge.cloud.factory import CloudProviderFactory, ProviderList
+    from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, {})
 

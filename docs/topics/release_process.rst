@@ -39,7 +39,7 @@ Release Process
 
 .. code-block:: bash
 
-   git tag -a v1.0.0 -m "Release 1.0.0"
+   git tag -a v2.0.0 -m "Release 2.0.0"
    git push
    git push --tags
 

@@ -48,10 +48,10 @@ against a specific infrastructure, say aws, use a command like this:
 Specific test cases
 ~~~~~~~~~~~~~~~~~~~~
 You can run a specific test case, as follows:
-``tox -- test/test_image_service.py:CloudImageServiceTestCase.test_create_and_list_imag``
+``tox -- tests/test_image_service.py:CloudImageServiceTestCase.test_create_and_list_imag``
 
 It can also be restricted to a particular environment as follows:
-``tox -e "py27-aws" -- test/test_cloud_factory.py:CloudFactoryTestCase``
+``tox -e "py27-aws" -- tests/test_cloud_factory.py:CloudFactoryTestCase``
 
 See nosetest documentation for other parameters that can be passed in.
 
@@ -63,7 +63,7 @@ environment variable prior to running the tests, or they will default to
 ``CB_TEST_PROVIDER=aws``.
 
 You can also run a specific test case, as follows:
-``python setup.py test -s test.test_cloud_factory.CloudFactoryTestCase``
+``python setup.py test -s tests.test_cloud_factory.CloudFactoryTestCase``
 
 Using a mock provider
 ~~~~~~~~~~~~~~~~~~~~~
