@@ -1,4 +1,4 @@
-2.0.0 - March 13, 2019 (sha 8b37715a7ff3f079155f2808ca42e4e81dd8c1da)
+2.0.0 - March 13, 2019 (sha 10e28a0d07251af4a424fcbf11435fa4d52e5277)
 ---------------------------------------------------------------------
 
 * This is a major release which contains many improvements and some breaking
