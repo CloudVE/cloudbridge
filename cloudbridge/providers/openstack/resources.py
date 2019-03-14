@@ -383,6 +383,10 @@ class OpenStackInstance(BaseInstance):
         return getattr(self._os_instance, 'OS-EXT-AZ:availability_zone', None)
 
     @property
+    def zone_name(self):
+        return self.zone_id
+
+    @property
     def subnet_id(self):
         """
         Extract (one) subnet id associated with this instance.
@@ -605,6 +609,10 @@ class OpenStackVolume(BaseVolume):
     @property
     def zone_id(self):
         return self._volume.availability_zone
+
+    @property
+    def zone_name(self):
+        return self.zone_id
 
     @property
     def source(self):

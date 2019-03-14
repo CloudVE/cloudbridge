@@ -40,8 +40,8 @@ from cloudbridge.base.services import BaseVMFirewallRuleService
 from cloudbridge.base.services import BaseVMFirewallService
 from cloudbridge.base.services import BaseVMTypeService
 from cloudbridge.base.services import BaseVolumeService
-from cloudbridge.interfaces.exceptions \
-    import DuplicateResourceException
+from cloudbridge.interfaces.exceptions import DifferentZoneException
+from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import InvalidParamException
 from cloudbridge.interfaces.exceptions import InvalidValueException
 from cloudbridge.interfaces.resources import KeyPair
@@ -372,12 +372,11 @@ class OpenStackVolumeService(BaseVolumeService):
             log.debug("Volume %s was not found.", volume_id)
             return None
         if os_vol.availability_zone != self.provider.zone_name:
-            log.debug("Volume %s was found in availability zone '%s' while the"
-                      " OpenStack provider is in zone '%s'",
-                      volume_id,
-                      os_vol.availability_zone,
-                      self.provider.zone_name)
-            return None
+            msg = ("Volume with id '{}' was found in availability zone "
+                   "'{}' while the OpenStack provider is in zone '{}'"
+                   .format(volume_id, os_vol.availability_zone,
+                           self.provider.zone_name))
+            raise DifferentZoneException(msg)
         else:
             return OpenStackVolume(self.provider, os_vol)
 
@@ -433,8 +432,11 @@ class OpenStackVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def delete(self, volume):
-        volume = (volume if isinstance(volume, OpenStackVolume)
-                  else self.get(volume))
+        if isinstance(volume, OpenStackVolume):
+            if volume.zone_name != self.provider.zone_name:
+                volume = self.get(volume.id)
+        else:
+            volume = self.get(volume)
         if volume:
             # pylint:disable=protected-access
             volume._volume.delete()
@@ -888,22 +890,23 @@ class OpenStackInstanceService(BaseInstanceService):
         except NovaNotFound:
             log.debug("Instance %s was not found.", instance_id)
             return None
-        if (getattr(os_instance,
-                    'OS-EXT-AZ:availability_zone', "")
-                != self.provider.zone_name):
-            log.debug("Instance %s was found in availability zone '%s' while "
-                      "the OpenStack provider is in zone '%s'",
-                      instance_id,
-                      getattr(os_instance, 'OS-EXT-AZ:availability_zone', ""),
-                      self.provider.zone_name)
-            return None
+        ins_zone = getattr(os_instance, 'OS-EXT-AZ:availability_zone', "")
+        if ins_zone != self.provider.zone_name:
+            msg = ("Instance with id '{}' was found in availability zone "
+                   "'{}' while the OpenStack provider is in zone '{}'"
+                   .format(instance_id, ins_zone,
+                           self.provider.zone_name))
+            raise DifferentZoneException(msg)
         return OpenStackInstance(self.provider, os_instance)
 
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def delete(self, instance):
-        ins = (instance if isinstance(instance, OpenStackInstance) else
-               self.get(instance))
+        if isinstance(instance, OpenStackInstance):
+            if instance.zone_name != self.provider.zone_name:
+                ins = self.get(instance.id)
+        else:
+            ins = self.get(instance)
         if ins:
             # pylint:disable=protected-access
             os_instance = ins._os_instance
