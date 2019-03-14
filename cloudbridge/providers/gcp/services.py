@@ -31,6 +31,7 @@ from cloudbridge.base.services import BaseVMFirewallRuleService
 from cloudbridge.base.services import BaseVMFirewallService
 from cloudbridge.base.services import BaseVMTypeService
 from cloudbridge.base.services import BaseVolumeService
+from cloudbridge.interfaces.exceptions import DifferentZoneException
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import InvalidParamException
 from cloudbridge.interfaces.resources import TrafficDirection
@@ -621,7 +622,20 @@ class GCPInstanceService(BaseInstanceService):
         as its id.
         """
         instance = self.provider.get_resource('instances', instance_id)
-        return GCPInstance(self.provider, instance) if instance else None
+        if not instance:
+            return None
+        else:
+            ins_zone = (self.provider
+                            .parse_url(instance.get('zone'))
+                            .parameters['zone'])
+            if ins_zone != self.provider.zone_name:
+                msg = ("Instance with id '{}' was found in availability zone "
+                       "'{}' while the GCP provider is in zone '{}'"
+                       .format(instance_id, ins_zone,
+                               self.provider.zone_name))
+                raise DifferentZoneException(msg)
+            else:
+                return GCPInstance(self.provider, instance)
 
     @dispatch(event="provider.compute.instances.find",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
@@ -672,8 +686,11 @@ class GCPInstanceService(BaseInstanceService):
     @dispatch(event="provider.compute.instances.delete",
               priority=BaseInstanceService.STANDARD_EVENT_PRIORITY)
     def delete(self, instance):
-        instance = (instance if isinstance(instance, GCPInstance) else
-                    self.get(instance))
+        if isinstance(instance, GCPInstance):
+            if instance.zone_name != self.provider.zone_name:
+                instance = self.get(instance.id)
+        else:
+            instance = self.get(instance)
         if instance:
             (self._provider
              .gcp_compute
@@ -1117,7 +1134,17 @@ class GCPVolumeService(BaseVolumeService):
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
         vol = self.provider.get_resource('disks', volume_id)
-        return GCPVolume(self.provider, vol) if vol else None
+        if not vol:
+            return None
+        vol_zone = self.provider.parse_url(vol.get('zone')).parameters['zone']
+        if vol_zone == self.provider.zone_name:
+            return GCPVolume(self.provider, vol)
+        else:
+            msg = ("Volume with id '{}' was found in availability zone "
+                   "'{}' while the GCP provider is in zone '{}'"
+                   .format(volume_id, vol_zone,
+                           self.provider.zone_name))
+            raise DifferentZoneException(msg)
 
     @dispatch(event="provider.storage.volumes.find",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
@@ -1216,7 +1243,11 @@ class GCPVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def delete(self, volume):
-        volume = volume if isinstance(volume, GCPVolume) else self.get(volume)
+        if isinstance(volume, GCPVolume):
+            if volume.zone_name != self.provider.zone_name:
+                volume = self.get(volume.id)
+        else:
+            volume = self.get(volume)
         if volume:
             (self._provider.gcp_compute
                            .disks()
