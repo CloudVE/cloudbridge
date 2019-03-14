@@ -10,8 +10,8 @@ Detailed documentation can be found at http://cloudbridge.cloudve.org.
 Build Status Tests
 ~~~~~~~~~~~~~~~~~~
 
-.. image:: https://coveralls.io/repos/CloudVE/cloudbridge/badge.svg?branch=master&service=github
-   :target: https://coveralls.io/github/CloudVE/cloudbridge?branch=master
+.. image:: https://codecov.io/gh/CloudVE/cloudbridge/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/CloudVE/cloudbridge
    :alt: Code Coverage
 
 .. image:: https://img.shields.io/pypi/v/cloudbridge.svg
