@@ -1053,8 +1053,9 @@ class GCPSubnetService(BaseSubnetService):
         # does the calculations (e.g., 10.0.0.0/24, 10.0.1.0/24).
         cidr_block = GCPSubnet.CB_DEFAULT_SUBNET_IPV4RANGE
         net = self.provider.networking.networks.get_or_create_default()
-        if list(net.subnets):
-            max_sn = list(net.subnets)[0]
+        subnet_list = list(net.subnets)
+        if subnet_list:
+            max_sn = subnet_list[0]
             # Find the maximum address subnet address space within the network
             for esn in net.subnets:
                 if (ipaddress.ip_network(esn.cidr_block) >
