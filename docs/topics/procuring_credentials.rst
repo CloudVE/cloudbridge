@@ -199,6 +199,13 @@ through a variable containing the JSON dictionary itself.
       "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/service-name%40my-project.iam.gserviceaccount.com"
     }
 
+To pass in the values as a properly escaped multi-line environment variable, use
+the following:
+
+.. code-block:: shell
+
+    export GCP_SERVICE_CREDS_DICT=`cat ~/path/to/gcp-creds.json`
+
 
 .. Comments for documentation authors:
 .. When uploading pictures, process them using sips, as follows:
