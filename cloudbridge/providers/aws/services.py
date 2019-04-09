@@ -468,7 +468,8 @@ class AWSBucketService(BaseBucketService):
             # sub-folder-when-i-have-no-permissions-on-listing-fo
             if e.response['Error']['Code'] == "403":
                 log.warning("AWS Bucket %s already exists but user doesn't "
-                            "have enough permissions to access the bucket",
+                            "have enough permissions to list its contents."
+                            "Other operations may be available.",
                             bucket_id)
                 return AWSBucket(self.provider,
                                  self.provider.s3_conn.Bucket(bucket_id))
