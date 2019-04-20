@@ -41,6 +41,8 @@ from cloudbridge.base.services import BaseVMFirewallService
 from cloudbridge.base.services import BaseVMTypeService
 from cloudbridge.base.services import BaseVolumeService
 from cloudbridge.interfaces.exceptions \
+    import CloudBridgeBaseException
+from cloudbridge.interfaces.exceptions \
     import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import InvalidParamException
 from cloudbridge.interfaces.exceptions import InvalidValueException
@@ -764,10 +766,14 @@ class OpenStackInstanceService(BaseInstanceService):
                launch_config=None, **kwargs):
         OpenStackInstance.assert_valid_resource_label(label)
         image_id = image.id if isinstance(image, MachineImage) else image
-        vm_size = vm_type.id if \
-            isinstance(vm_type, VMType) else \
-            self.provider.compute.vm_types.find(
-                name=vm_type)[0].id
+        if isinstance(vm_type, VMType):
+            vm_size = vm_type.id
+        else:
+            vm_type_obj = self.provider.compute.vm_types.find(name=vm_type)
+            if not vm_type_obj:
+                raise CloudBridgeBaseException(
+                    "Could not find vm type with name {0}".format(vm_type))
+            vm_size = vm_type_obj[0].id
         if isinstance(subnet, Subnet):
             subnet_id = subnet.id
             net_id = subnet.network_id
