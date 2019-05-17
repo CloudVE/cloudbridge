@@ -55,6 +55,10 @@ will override environment values.
         "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/service-name%40my-project.iam.gserviceaccount.com"
     }
     config = {'gcp_service_creds_dict': gcp_creds}
+    # A third alternative is to use a GCP credentials object provided by the GCP python
+    # sdk. This is for advanced usage scenarios.
+    # e.g. credentials = AccessTokenCredentials(access_token, "MyAgent/1.0", None)
+    config = {'gcp_credentials_obj': credentials}
     provider = CloudProviderFactory().create_provider(ProviderList.GCP, config)
 
 
@@ -126,7 +130,7 @@ Azure
 | aws_zone_name                       | Default zone name. If not specified, defaults to first   |
 |                                     | zone in default region. If specified, must match default |
 |                                     | region.                                                  |
-+-------------------------------------+--------------------------------------------------------------+
++-------------------------------------+----------------------------------------------------------+
 | azure_resource_group                | Azure resource group to use. Default is ``cloudbridge``. |
 +-------------------------------------+----------------------------------------------------------+
 | azure_storage_account               | Azure storage account to use. Note that this value must  |
@@ -142,19 +146,26 @@ Azure
 GCP
 ~~~
 
-+-------------------------+----------------------------------------------------------+
-| Variable                | Description                                              |
-+=========================+==========================================================+
-| gcp_region_name         | Default region to use for the current session. Default   |
-|                         | is ``us-central1``.                                      |
-+-------------------------+----------------------------------------------------------+
-| gcp_zone_name           | Default zone name. If not specified, defaults to first   |
-|                         | zone in default region. If specified, must match default |
-|                         | region.                                                  |
-+-------------------------+----------------------------------------------------------+
-| gcp_vm_default_username | System user name for which supplied key pair will be     |
-|                         | placed.                                                  |
-+-------------------------+----------------------------------------------------------+
++-------------------------+------------------------------------------------------------------------+
+| Variable                | Description                                                            |
++=========================+========================================================================+
+| gcp_region_name         | Default region to use for the current session. Default is              |
+|                         | ``us-central1``.                                                       |
++-------------------------+------------------------------------------------------------------------+
+| gcp_zone_name           | Default zone name. If not specified, defaults to first zone in         |
+|                         | default region. If specified, must match default region.               |
++-------------------------+------------------------------------------------------------------------+
+| gcp_vm_default_username | System user name for which supplied key pair will be placed.           |
++-------------------------+------------------------------------------------------------------------+
+| gcp_credentials_obj     | Provided to support advanced usage scenarios where an alternative      |
+|                         | authentication mechanism is required for GCP. This object replaces     |
+|                         | `GCP_SERVICE_CREDS_DICT` and is directly passed to the underlying      |
+|                         | python sdk's build method as                                           |
+|                         | ``discovery.build('storage', 'v1', credentials=gcp_credentials_obj)``. |
+|                         | You can pass in a manually constructed credentials object such as      |
+|                         | ``creds = AccessTokenCredentials(access_token, "MyAgent/1.0", None)``. |
+|                         | Refer to the GCP python sdk for available options.                     |
++-------------------------+------------------------------------------------------------------------+
 
 
 Providing access credentials through environment variables
