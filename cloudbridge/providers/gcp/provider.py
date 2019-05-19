@@ -211,6 +211,7 @@ class GCPCloudProvider(BaseCloudProvider):
         self.credentials_dict = self._get_config_value(
                 'gcp_service_creds_dict',
                 json.loads(os.getenv('GCP_SERVICE_CREDS_DICT', '{}')))
+        self.credentials_obj = self._get_config_value('gcp_credentials_obj')
         self.vm_default_user_name = self._get_config_value(
             'gcp_vm_default_username',
             os.getenv('GCP_VM_DEFAULT_USERNAME', "cbuser"))
@@ -235,7 +236,6 @@ class GCPCloudProvider(BaseCloudProvider):
         # service connections, lazily initialized
         self._gcp_compute = None
         self._gcp_storage = None
-        self._credentials_cache = None
         self._compute_resources_cache = None
         self._storage_resources_cache = None
 
@@ -297,15 +297,15 @@ class GCPCloudProvider(BaseCloudProvider):
 
     @property
     def _credentials(self):
-        if not self._credentials_cache:
+        if not self.credentials_obj:
             if self.credentials_dict:
-                self._credentials_cache = (
+                self.credentials_obj = (
                         ServiceAccountCredentials.from_json_keyfile_dict(
                                 self.credentials_dict))
             else:
-                self._credentials_cache = (
+                self.credentials_obj = (
                         GoogleCredentials.get_application_default())
-        return self._credentials_cache
+        return self.credentials_obj
 
     def sign_blob(self, string_to_sign):
         return self._credentials.sign_blob(string_to_sign)[1]
