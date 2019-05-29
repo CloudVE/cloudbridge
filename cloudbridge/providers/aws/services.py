@@ -756,18 +756,20 @@ class AWSInstanceService(BaseInstanceService):
             self._resolve_launch_options(subnet, zone_name, vm_firewalls)
 
         placement = {'AvailabilityZone': zone_id} if zone_id else None
-        inst = self.svc.create('create_instances',
-                               ImageId=image_id,
-                               MinCount=1,
-                               MaxCount=1,
-                               KeyName=key_pair_name,
-                               SecurityGroupIds=vm_firewall_ids or None,
-                               UserData=str(user_data) or None,
-                               InstanceType=vm_size,
-                               Placement=placement,
-                               BlockDeviceMappings=bdm,
-                               SubnetId=subnet_id
-                               )
+        inst = self.svc.create(
+            'create_instances',
+            ImageId=image_id,
+            MinCount=1,
+            MaxCount=1,
+            KeyName=key_pair_name,
+            SecurityGroupIds=vm_firewall_ids or None,
+            UserData=str(user_data) or None,
+            InstanceType=vm_size,
+            Placement=placement,
+            BlockDeviceMappings=bdm,
+            SubnetId=subnet_id,
+            IamInstanceProfile=kwargs.pop('iam_instance_profile', None)
+        )
         if inst and len(inst) == 1:
             # Wait until the resource exists
             # pylint:disable=protected-access

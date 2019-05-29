@@ -562,6 +562,10 @@ class GCPInstanceService(BaseInstanceService):
             'networkInterfaces': [network_interface]
         }
 
+        service_accounts = kwargs.pop('service_accounts', None)
+        if service_accounts:
+            config['serviceAccounts'] = service_accounts
+
         if vm_firewalls and isinstance(vm_firewalls, list):
             vm_firewall_names = []
             if isinstance(vm_firewalls[0], VMFirewall):
