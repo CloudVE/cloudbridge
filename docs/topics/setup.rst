@@ -56,9 +56,9 @@ will override environment values.
     }
     config = {'gcp_service_creds_dict': gcp_creds}
     # A third alternative is to use a GCP credentials object provided by the GCP python
-    # sdk. This is for advanced usage scenarios.
-    # e.g. credentials = AccessTokenCredentials(access_token, "MyAgent/1.0", None)
-    config = {'gcp_credentials_obj': credentials}
+    # sdk. Using this option, the `project_id` shall also be provided via the 
+    # `config` dictionary.
+    config = {'gcp_credentials_obj': credentials, 'project_id': '<project_id>'}
     provider = CloudProviderFactory().create_provider(ProviderList.GCP, config)
 
 
