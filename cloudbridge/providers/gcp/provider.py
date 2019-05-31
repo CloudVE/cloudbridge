@@ -230,6 +230,8 @@ class GCPCloudProvider(BaseCloudProvider):
 
         if self.credentials_dict and 'project_id' in self.credentials_dict:
             self.project_name = self.credentials_dict['project_id']
+        elif self._get_config_value("project_id"):
+            self.project_name = self._get_config_value("project_id")
         else:
             self.project_name = os.environ.get('GCP_PROJECT_NAME')
 
