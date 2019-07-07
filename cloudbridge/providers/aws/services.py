@@ -826,21 +826,23 @@ class AWSVMTypeService(BaseVMTypeService):
     @cachetools.cached(cachetools.TTLCache(maxsize=1, ttl=24*3600))
     def instance_data(self):
         """
-        Fetch info about the available instances.
+        Fetch info about the available VM types.
 
         To update this information, update the file pointed to by the
-        ``provider.AWS_INSTANCE_DATA_DEFAULT_URL`` above. The content for this
-        file should be obtained from this repo:
+        ``provider.AWS_INSTANCE_DATA_DEFAULT_URL``. The content for this
+        file can be obtained from this repo:
         https://github.com/powdahound/ec2instances.info (in particular, this
         file: https://raw.githubusercontent.com/powdahound/ec2instances.info/
         master/www/instances.json).
+
+        However, by default, we use a version of that information where
+        instances are separated into availability zones and each zone contains
+        only the instances actually available in the given zone. The source
+        is here: https://github.com/CloudVE/aws-instance-types
         """
         url = "https://raw.githubusercontent.com/CloudVE/aws-instance-types" \
               "/master/vmtypes/{}.json".format(self.provider.zone_name)
         r = requests.get(url)
-        # Some instances are only available in certain regions. Use pricing
-        # info to determine and filter out instance types that are not
-        # available in the current region
         vm_types_list = list(r.json())
         if vm_types_list:
             return vm_types_list
@@ -853,7 +855,8 @@ class AWSVMTypeService(BaseVMTypeService):
             # available in the current region
             vm_types_list = r.json()
             return [vm_type for vm_type in vm_types_list
-                    if vm_type.get('pricing', {}).get(self.provider.region_name)]
+                    if vm_type.get(
+                        'pricing', {}).get(self.provider.region_name)]
 
     @dispatch(event="provider.compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
