@@ -167,6 +167,54 @@ GCP
 |                         | Refer to the GCP python sdk for available options.                     |
 +-------------------------+------------------------------------------------------------------------+
 
+OpenStack
+~~~~~~~~~
+
++-------------------------+--------------------------------------------------------------+
+| Variable                | Description                                                  |
++=========================+==============================================================+
+| os_auth_url             | Required. OpenStack authentication endpoint.                 |
+|                         | eg: https://my-openstack.com:5000/v3                         |
++-------------------------+--------------------------------------------------------------+
+| os_username             | Required. Username for authentication.                       |
++-------------------------+--------------------------------------------------------------+
+| os_password             | Required. password for authentication.                       |
++-------------------------+--------------------------------------------------------------+
+| os_project_name         | Required. The project in which to manage resources.          |
++-------------------------+--------------------------------------------------------------+
+| os_region_name          | Required. Region in which to manage resources.               |
++-------------------------+--------------------------------------------------------------+
+| os_zone_name            | Default Availability Zone in which to manage resources.      |
+|                         | If not provided, will default to the first available zone    |
+|                         | in the region. This zone will be the default for all services|
+|                         | unless overwritten by service-specific zone configs          |
++-------------------------+--------------------------------------------------------------+
+| os_compute_zone_name    | Default Availability Zone for Compute servies.               |
+|                         | If not provided, will default to `os_zone_name`              |
++-------------------------+--------------------------------------------------------------+
+| os_networking_zone_name | Default Availability Zone for Networking servies.            |
+|                         | If not provided, will default to `os_zone_name`              |
++-------------------------+--------------------------------------------------------------+
+| os_security_zone_name   | Default Availability Zone for Security servies.              |
+|                         | If not provided, will default to `os_zone_name`              |
++-------------------------+--------------------------------------------------------------+
+| os_storage_zone_name    | Default Availability Zone for Storage servies.               |
+|                         | If not provided, will default to `os_zone_name`              |
++-------------------------+--------------------------------------------------------------+
+| nova_service_name       | Service name for the NOVA client.                            |
++-------------------------+--------------------------------------------------------------+
+| os_auth_token           | Authentication token, if applicable.                         |
++-------------------------+--------------------------------------------------------------+
+| os_compute_api_version  | Compute API version, if applicable.                          |
++-------------------------+--------------------------------------------------------------+
+| os_volume_api_version   | Volume API version, if applicable.                           |
++-------------------------+--------------------------------------------------------------+
+| os_storage_url          | Storage endpoint URL, if applicable                          |
++-------------------------+--------------------------------------------------------------+
+| os_project_domain_name  | Project domain name for authentication.                      |
++-------------------------+--------------------------------------------------------------+
+| os_user_domain_name     | User domain name for authentication.                         |
++-------------------------+--------------------------------------------------------------+
 
 Providing access credentials through environment variables
 ----------------------------------------------------------
@@ -260,7 +308,15 @@ OpenStack
 +------------------------+-----------+
 | OS_REGION_NAME         | ✔         |
 +------------------------+-----------+
-| OS_ZONE_NAME           |           |
+| OS_ZONE_NAME           | ✔         |
++------------------------+-----------+
+| OS_COMPUTE_ZONE_NAME   |           |
++------------------------+-----------+
+| OS_NETWORKING_ZONE_NAME|           |
++------------------------+-----------+
+| OS_SECURITY_ZONE_NAME  |           |
++------------------------+-----------+
+| OS_STORAGE_ZONE_NAME   |           |
 +------------------------+-----------+
 | NOVA_SERVICE_NAME      |           |
 +------------------------+-----------+
@@ -271,6 +327,10 @@ OpenStack
 | OS_VOLUME_API_VERSION  |           |
 +------------------------+-----------+
 | OS_STORAGE_URL         |           |
++------------------------+-----------+
+| OS_PROJECT_DOMAIN_NAME |           |
++------------------------+-----------+
+| OS_USER_DOMAIN_NAME    |           |
 +------------------------+-----------+
 
 Once the environment variables are set, you can create a connection as follows,

@@ -373,12 +373,12 @@ class OpenStackVolumeService(BaseVolumeService):
         except CinderNotFound:
             log.debug("Volume %s was not found.", volume_id)
             return None
-        if os_vol.availability_zone != self.provider.zone_name:
+        if os_vol.availability_zone != self.provider.service_zone_name(self):
             log.debug("Volume %s was found in availability zone '%s' while the"
                       " OpenStack provider is in zone '%s'",
                       volume_id,
                       os_vol.availability_zone,
-                      self.provider.zone_name)
+                      self.provider.service_zone_name(self))
             return None
         else:
             return OpenStackVolume(self.provider, os_vol)
@@ -396,7 +396,8 @@ class OpenStackVolumeService(BaseVolumeService):
 
         log.debug("Searching for an OpenStack Volume with the label %s", label)
         search_opts = {'name': label,
-                       'availability_zone': self.provider.zone_name}
+                       'availability_zone':
+                           self.provider.service_zone_name(self)}
         cb_vols = [
             OpenStackVolume(self.provider, vol)
             for vol in self.provider.cinder.volumes.list(
@@ -409,7 +410,8 @@ class OpenStackVolumeService(BaseVolumeService):
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        search_opts = {'availability_zone': self.provider.zone_name}
+        search_opts = {'availability_zone': self.provider
+                                                .service_zone_name(self)}
         cb_vols = [
             OpenStackVolume(self.provider, vol)
             for vol in self.provider.cinder.volumes.list(
@@ -423,7 +425,7 @@ class OpenStackVolumeService(BaseVolumeService):
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def create(self, label, size, snapshot=None, description=None):
         OpenStackVolume.assert_valid_resource_label(label)
-        zone_name = self.provider.zone_name
+        zone_name = self.provider.service_zone_name(self)
         snapshot_id = snapshot.id if isinstance(
             snapshot, OpenStackSnapshot) and snapshot else snapshot
 
@@ -782,7 +784,7 @@ class OpenStackInstanceService(BaseInstanceService):
             net_id = (self.provider.networking.subnets
                       .get(subnet_id).network_id
                       if subnet_id else None)
-        zone_name = self.provider.zone_name
+        zone_name = self.provider.service_zone_name(self)
         key_pair_name = key_pair.name if \
             isinstance(key_pair, KeyPair) else key_pair
         bdm = None
@@ -858,7 +860,8 @@ class OpenStackInstanceService(BaseInstanceService):
                 "attributes: %s" % (kwargs, 'label'))
 
         search_opts = {'name': label,
-                       'availability_zone': self.provider.zone_name}
+                       'availability_zone': self.provider
+                                                .service_zone_name(self)}
         cb_insts = [
             OpenStackInstance(self.provider, inst)
             for inst in self.provider.nova.servers.list(
@@ -873,7 +876,8 @@ class OpenStackInstanceService(BaseInstanceService):
         """
         List all instances.
         """
-        search_opts = {'availability_zone': self.provider.zone_name}
+        search_opts = {'availability_zone': self.provider
+                                                .service_zone_name(self)}
         cb_insts = [
             OpenStackInstance(self.provider, inst)
             for inst in self.provider.nova.servers.list(
@@ -895,12 +899,12 @@ class OpenStackInstanceService(BaseInstanceService):
             return None
         if (getattr(os_instance,
                     'OS-EXT-AZ:availability_zone', "")
-                != self.provider.zone_name):
+                != self.provider.service_zone_name(self)):
             log.debug("Instance %s was found in availability zone '%s' while "
                       "the OpenStack provider is in zone '%s'",
                       instance_id,
                       getattr(os_instance, 'OS-EXT-AZ:availability_zone', ""),
-                      self.provider.zone_name)
+                      self.provider.service_zone_name(self))
             return None
         return OpenStackInstance(self.provider, os_instance)
 
@@ -1030,7 +1034,7 @@ class OpenStackNetworkService(BaseNetworkService):
                     # If there are no availability zones, keep the network
                     # in the results list
                     and (not network.get('availability_zones')
-                         or self.provider.zone_name
+                         or self.provider.service_zone_name(self)
                          in network.get('availability_zones'))]
         return ClientPagedResultList(self.provider, networks,
                                      limit=limit, marker=marker)
@@ -1151,12 +1155,13 @@ class OpenStackRouterService(BaseRouterService):
         if not router:
             log.debug("Router %s was not found.", router_id)
             return None
-        elif self.provider.zone_name not in router.availability_zones:
+        elif self.provider.service_zone_name(self) \
+                not in router.availability_zones:
             log.debug("Router %s was found in availability zone '%s' while the"
                       " OpenStack provider is in zone '%s'",
                       router_id,
                       router.availability_zones,
-                      self.provider.zone_name)
+                      self.provider.service_zone_name(self))
             return None
         return OpenStackRouter(self.provider, router)
 
@@ -1165,7 +1170,8 @@ class OpenStackRouterService(BaseRouterService):
     def list(self, limit=None, marker=None):
         routers = self.provider.os_conn.list_routers()
         os_routers = [OpenStackRouter(self.provider, r) for r in routers
-                      if self.provider.zone_name in r.availability_zones]
+                      if self.provider.service_zone_name(self)
+                      in r.availability_zones]
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
 
