@@ -222,7 +222,7 @@ class VMFirewallRuleSubService(PageableObjectMixin):
         pass
 
     @abstractmethod
-    def create(self,  direction, protocol=None, from_port=None,
+    def create(self, direction, protocol=None, from_port=None,
                to_port=None, cidr=None, src_dest_fw=None):
         """
         Create a VM firewall rule.
@@ -393,5 +393,87 @@ class SubnetSubService(PageableObjectMixin):
 
         :type subnet_id: ``str``
         :param subnet_id: The ID of the Subnet to be deleted.
+        """
+        pass
+
+
+class DnsRecordSubService(PageableObjectMixin):
+    """
+    Base interface for a Dns Record Service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, record_id):
+        """
+        Returns a Dns Record given its ID or ``None`` if not found.
+
+        :type record_id: ``str``
+        :param record_id: The ID of the DnsRecord to retrieve.
+
+        :rtype: ``object`` of :class:`.DnsRecord`
+        :return: a DnsRecord object
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List Dns Records within the Dns Zone holding this subservice.
+
+        :rtype: ``list`` of :class:`.DnsRecord`
+        :return: list of DnsRecord objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, **kwargs):
+        """
+        Searches for a DnsRecord by a given list of attributes.
+
+        Supported attributes: label
+
+        Example:
+
+        .. code-block:: python
+
+            subnet = provider.networking.dns.host_zones.get('id').records.find(
+                        label='my-label')
+
+
+        :rtype: List of ``object`` of :class:`.DnsRecord`
+        :return: A list of DnsRecord objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, label, type, data, ttl=None):
+        """
+        Create a new DnsRecord within the Dns Zone holding this subservice.
+
+        :type label: ``str``
+        :param label: The record label.
+
+        :type type: ``str``
+        :param type: The DnsRecord type. (e.g. A, CNAME, MX etc)
+
+        :type data: ``str``
+        :param data: The corresponding value for the record.
+
+        :type data: ``int``
+        :param data: The ttl (in seconds) for thisrecord.
+
+        :rtype: ``object`` of :class:`.DnsRecord`
+        :return:  A DnsRecord object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, record_id):
+        """
+        Delete an existing DnsRecord.
+
+        :type record_id: ``str``
+        :param record_id: The ID of the DnsRecord to be deleted.
         """
         pass
