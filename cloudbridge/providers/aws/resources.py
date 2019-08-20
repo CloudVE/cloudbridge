@@ -10,6 +10,8 @@ from botocore.exceptions import ClientError
 from cloudbridge.base.resources import BaseAttachmentInfo
 from cloudbridge.base.resources import BaseBucket
 from cloudbridge.base.resources import BaseBucketObject
+from cloudbridge.base.resources import BaseDnsRecord
+from cloudbridge.base.resources import BaseDnsZone
 from cloudbridge.base.resources import BaseFloatingIP
 from cloudbridge.base.resources import BaseInstance
 from cloudbridge.base.resources import BaseInternetGateway
@@ -38,6 +40,7 @@ from cloudbridge.interfaces.resources import VolumeState
 from .helpers import find_tag_value
 from .helpers import trim_empty_params
 from .subservices import AWSBucketObjectSubService
+from .subservices import AWSDnsRecordSubService
 from .subservices import AWSFloatingIPSubService
 from .subservices import AWSGatewaySubService
 from .subservices import AWSSubnetSubService
@@ -1138,3 +1141,60 @@ class AWSLaunchConfig(BaseLaunchConfig):
 
     def __init__(self, provider):
         super(AWSLaunchConfig, self).__init__(provider)
+
+
+class AWSDnsZone(BaseDnsZone):
+
+    def __init__(self, provider, dns_zone):
+        super(AWSDnsZone, self).__init__(provider)
+        self._dns_zone = dns_zone
+        self._dns_record_container = AWSDnsRecordSubService(provider, self)
+
+    @property
+    def id(self):
+        return self._dns_zone.get('Id')
+
+    @property
+    def name(self):
+        return self._dns_zone.get('Name')
+
+    @property
+    def records(self):
+        return self._dns_record_container
+
+
+class AWSDnsRecord(BaseDnsRecord):
+
+    def __init__(self, provider, dns_zone, dns_record):
+        super(AWSDnsRecord, self).__init__(provider)
+        self._dns_zone = dns_zone
+        self._dns_rec = dns_record
+
+    @property
+    def id(self):
+        return self._dns_rec.get('Name') + ":" + self._dns_rec.get('Type')
+
+    @property
+    def name(self):
+        return self._dns_rec.get('Name')
+
+    @property
+    def zone_id(self):
+        return self._dns_zone.id
+
+    @property
+    def type(self):
+        return self._dns_rec.get('Type')
+
+    @property
+    def data(self):
+        # We support only one value per record type
+        return self._dns_rec.get('ResourceRecords')[0].get('Value')
+
+    @property
+    def ttl(self):
+        return self._dns_rec.get('TTL')
+
+    def delete(self):
+        # pylint:disable=protected-access
+        return self._provider.dns._records.delete(self._dns_zone, self)

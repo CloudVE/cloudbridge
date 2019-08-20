@@ -9,6 +9,9 @@ from cloudbridge.interfaces.services import BucketObjectService
 from cloudbridge.interfaces.services import BucketService
 from cloudbridge.interfaces.services import CloudService
 from cloudbridge.interfaces.services import ComputeService
+from cloudbridge.interfaces.services import DnsRecordService
+from cloudbridge.interfaces.services import DnsService
+from cloudbridge.interfaces.services import DnsZoneService
 from cloudbridge.interfaces.services import FloatingIPService
 from cloudbridge.interfaces.services import GatewayService
 from cloudbridge.interfaces.services import ImageService
@@ -343,22 +346,12 @@ class BaseGatewayService(GatewayService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseGatewayService, self).__init__(provider)
-        self._provider = provider
-
-    @property
-    def provider(self):
-        return self._provider
 
 
 class BaseFloatingIPService(FloatingIPService, BaseCloudService):
 
     def __init__(self, provider):
         super(BaseFloatingIPService, self).__init__(provider)
-        self._provider = provider
-
-    @property
-    def provider(self):
-        return self._provider
 
     @dispatch(event="provider.networking.floating_ips.find",
               priority=BaseCloudService.STANDARD_EVENT_PRIORITY)
@@ -367,3 +360,23 @@ class BaseFloatingIPService(FloatingIPService, BaseCloudService):
         filters = ['name', 'public_ip']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self._provider, list(matches))
+
+
+class BaseDnsService(DnsService, BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseDnsService, self).__init__(provider)
+
+
+class BaseDnsZoneService(BasePageableObjectMixin, DnsZoneService,
+                         BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseDnsZoneService, self).__init__(provider)
+
+
+class BaseDnsRecordService(BasePageableObjectMixin, DnsRecordService,
+                           BaseCloudService):
+
+    def __init__(self, provider):
+        super(BaseDnsRecordService, self).__init__(provider)

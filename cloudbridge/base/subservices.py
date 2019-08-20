@@ -1,6 +1,7 @@
 import logging
 
 from cloudbridge.interfaces.subservices import BucketObjectSubService
+from cloudbridge.interfaces.subservices import DnsRecordSubService
 from cloudbridge.interfaces.subservices import FloatingIPSubService
 from cloudbridge.interfaces.subservices import GatewaySubService
 from cloudbridge.interfaces.subservices import SubnetSubService
@@ -166,3 +167,36 @@ class BaseSubnetSubService(SubnetSubService, BasePageableObjectMixin):
 
     def delete(self, subnet):
         return self._provider.networking.subnets.delete(subnet)
+
+
+class BaseDnsRecordSubService(DnsRecordSubService, BasePageableObjectMixin):
+
+    def __init__(self, provider, dns_zone):
+        self.__provider = provider
+        self.dns_zone = dns_zone
+
+    @property
+    def _provider(self):
+        return self.__provider
+
+    def get(self, rec_id):
+        # pylint:disable=protected-access
+        return self._provider.dns._records.get(self.dns_zone, rec_id)
+
+    def list(self, limit=None, marker=None):
+        # pylint:disable=protected-access
+        return self._provider.dns._records.list(
+            dns_zone=self.dns_zone, limit=limit, marker=marker)
+
+    def find(self, **kwargs):
+        # pylint:disable=protected-access
+        return self._provider.dns._records.find(
+            dns_zone=self.dns_zone, **kwargs)
+
+    def create(self, name, type, data, ttl=None):
+        # pylint:disable=protected-access
+        return self._provider.dns._records.create(
+            self.dns_zone, name, type, data, ttl)
+
+    def delete(self, rec):
+        return self._provider.dns._records.delete(self.dns_zone, rec)
