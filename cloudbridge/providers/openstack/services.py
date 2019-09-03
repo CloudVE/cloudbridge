@@ -82,6 +82,10 @@ class OpenStackSecurityService(BaseSecurityService):
     def __init__(self, provider):
         super(OpenStackSecurityService, self).__init__(provider)
 
+        # pylint:disable=protected-access
+        self.security_zone_name = self.provider._get_config_value(
+            'os_security_zone_name', cb_helpers.get_env(
+                'OS_SECURITY_ZONE_NAME', self.provider.zone_name))
         # Initialize provider services
         self._key_pairs = OpenStackKeyPairService(provider)
         self._vm_firewalls = OpenStackVMFirewallService(provider)
@@ -337,6 +341,10 @@ class OpenStackStorageService(BaseStorageService):
     def __init__(self, provider):
         super(OpenStackStorageService, self).__init__(provider)
 
+        # pylint:disable=protected-access
+        self.storage_zone_name = self.provider._get_config_value(
+            'os_storage_zone_name', cb_helpers.get_env(
+                'OS_STORAGE_ZONE_NAME', self.provider.zone_name))
         # Initialize provider services
         self._volume_svc = OpenStackVolumeService(self.provider)
         self._snapshot_svc = OpenStackSnapshotService(self.provider)
@@ -641,6 +649,10 @@ class OpenStackComputeService(BaseComputeService):
 
     def __init__(self, provider):
         super(OpenStackComputeService, self).__init__(provider)
+        # pylint:disable=protected-access
+        self.compute_zone_name = self.provider._get_config_value(
+            'os_compute_zone_name', cb_helpers.get_env(
+                'OS_COMPUTE_ZONE_NAME', self.provider.zone_name))
         self._vm_type_svc = OpenStackVMTypeService(self.provider)
         self._instance_svc = OpenStackInstanceService(self.provider)
         self._region_svc = OpenStackRegionService(self.provider)
@@ -1018,6 +1030,11 @@ class OpenStackNetworkService(BaseNetworkService):
 
     def __init__(self, provider):
         super(OpenStackNetworkService, self).__init__(provider)
+
+        # pylint:disable=protected-access
+        self.networking_zone_name = self.provider._get_config_value(
+            'os_networking_zone_name', cb_helpers.get_env(
+                'OS_NETWORKING_ZONE_NAME', self.provider.zone_name))
 
     @dispatch(event="provider.networking.networks.get",
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
