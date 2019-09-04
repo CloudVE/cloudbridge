@@ -649,14 +649,18 @@ class OpenStackComputeService(BaseComputeService):
 
     def __init__(self, provider):
         super(OpenStackComputeService, self).__init__(provider)
-        # pylint:disable=protected-access
-        self.service_zone_name = self.provider._get_config_value(
-            'os_compute_zone_name', cb_helpers.get_env(
-                'OS_COMPUTE_ZONE_NAME', self.provider.zone_name))
         self._vm_type_svc = OpenStackVMTypeService(self.provider)
         self._instance_svc = OpenStackInstanceService(self.provider)
         self._region_svc = OpenStackRegionService(self.provider)
         self._images_svc = OpenStackImageService(self.provider)
+        # Region service must be defined before invoking the following
+        # pylint:disable=protected-access
+        self.service_zone_name = self.provider._get_config_value(
+            'os_compute_zone_name',
+            cb_helpers.get_env(
+                'OS_COMPUTE_ZONE_NAME',
+                self.provider._zone_name or
+                self.regions.current.default_zone.name))
 
     @property
     def images(self):

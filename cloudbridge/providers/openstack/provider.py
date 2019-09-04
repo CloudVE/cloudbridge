@@ -321,14 +321,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
                                      session=self._keystone_session,
                                      region_name=self.region_name)
 
-    @property
-    def zone_name(self):
-        if not self._zone_name:
-            region = self.compute.regions.get(self.region_name)
-            zone = next(iter(region.zones))
-            self._zone_name = zone.name if zone else None
-        return self._zone_name
-
     def service_zone_name(self, service):
         service_name = service._service_event_pattern
         if ("networking" in service_name and

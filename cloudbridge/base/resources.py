@@ -674,6 +674,10 @@ class BaseRegion(BaseCloudResource, Region):
         js['zones'] = [z.id for z in self.zones]
         return js
 
+    @property
+    def default_zone(self):
+        return next(iter(self.zones))
+
 
 class BaseBucketObject(BaseCloudResource, BucketObject):
 
