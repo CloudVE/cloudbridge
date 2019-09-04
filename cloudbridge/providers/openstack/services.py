@@ -83,7 +83,7 @@ class OpenStackSecurityService(BaseSecurityService):
         super(OpenStackSecurityService, self).__init__(provider)
 
         # pylint:disable=protected-access
-        self.security_zone_name = self.provider._get_config_value(
+        self.service_zone_name = self.provider._get_config_value(
             'os_security_zone_name', cb_helpers.get_env(
                 'OS_SECURITY_ZONE_NAME', self.provider.zone_name))
         # Initialize provider services
@@ -342,7 +342,7 @@ class OpenStackStorageService(BaseStorageService):
         super(OpenStackStorageService, self).__init__(provider)
 
         # pylint:disable=protected-access
-        self.storage_zone_name = self.provider._get_config_value(
+        self.service_zone_name = self.provider._get_config_value(
             'os_storage_zone_name', cb_helpers.get_env(
                 'OS_STORAGE_ZONE_NAME', self.provider.zone_name))
         # Initialize provider services
@@ -650,7 +650,7 @@ class OpenStackComputeService(BaseComputeService):
     def __init__(self, provider):
         super(OpenStackComputeService, self).__init__(provider)
         # pylint:disable=protected-access
-        self.compute_zone_name = self.provider._get_config_value(
+        self.service_zone_name = self.provider._get_config_value(
             'os_compute_zone_name', cb_helpers.get_env(
                 'OS_COMPUTE_ZONE_NAME', self.provider.zone_name))
         self._vm_type_svc = OpenStackVMTypeService(self.provider)
@@ -1032,7 +1032,7 @@ class OpenStackNetworkService(BaseNetworkService):
         super(OpenStackNetworkService, self).__init__(provider)
 
         # pylint:disable=protected-access
-        self.networking_zone_name = self.provider._get_config_value(
+        self.service_zone_name = self.provider._get_config_value(
             'os_networking_zone_name', cb_helpers.get_env(
                 'OS_NETWORKING_ZONE_NAME', self.provider.zone_name))
 

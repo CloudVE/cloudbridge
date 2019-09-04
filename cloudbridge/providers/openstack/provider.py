@@ -332,13 +332,13 @@ class OpenStackCloudProvider(BaseCloudProvider):
     def service_zone_name(self, service):
         service_name = service._service_event_pattern
         if ("networking" in service_name and
-                self.networking.networking_zone_name):
-            return self._networking_zone_name
-        elif "security" in service_name and self.security.security_zone_name:
-            return self._security_zone_name
-        elif "compute" in service_name and self.compute.compute_zone_name:
-            return self._compute_zone_name
-        elif "storage" in service_name and self.storage.storage_zone_name:
-            return self._storage_zone_name
+                self.service.service_zone_name):
+            return self.service.service_zone_name
+        elif "security" in service_name and self.service.service_zone_name:
+            return self.service.service_zone_name
+        elif "compute" in service_name and self.service.service_zone_name:
+            return self.service.service_zone_name
+        elif "storage" in service_name and self.service.service_zone_name:
+            return self.service.service_zone_name
         else:
             return self.zone_name
