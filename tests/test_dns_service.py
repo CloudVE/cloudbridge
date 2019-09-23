@@ -1,5 +1,6 @@
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.interfaces.resources import DnsRecord
+from cloudbridge.interfaces.resources import DnsRecordType
 from cloudbridge.interfaces.resources import DnsZone
 
 from tests import helpers
@@ -16,7 +17,7 @@ class CloudDnsServiceTestCase(ProviderTestBase):
 
         def create_dns_zone(name):
             if name:
-                name = name + ".com"
+                name = name + ".com."
             return self.provider.dns.host_zones.create(name)
 
         def cleanup_dns_zone(dns_zone):
@@ -30,7 +31,7 @@ class CloudDnsServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['dns.host_zones'])
     def test_crud_dns_record(self):
         test_zone = None
-        zone_name = "cb-dnsrec-{0}.com".format(helpers.get_uuid())
+        zone_name = "cb-dnsrec-{0}.com.".format(helpers.get_uuid())
 
         def create_dns_rec(name):
             if name:
@@ -38,7 +39,7 @@ class CloudDnsServiceTestCase(ProviderTestBase):
             else:
                 name = zone_name
             return test_zone.records.create(
-                name, 'A', data='10.1.1.1')
+                name, DnsRecordType.A, data='10.1.1.1')
 
         def cleanup_dns_rec(dns_rec):
             if dns_rec:
@@ -53,7 +54,7 @@ class CloudDnsServiceTestCase(ProviderTestBase):
     @helpers.skipIfNoService(['dns.host_zones'])
     def test_dns_record_properties(self):
         test_zone = None
-        zone_name = "cb-recprop-{0}.com".format(helpers.get_uuid())
+        zone_name = "cb-recprop-{0}.com.".format(helpers.get_uuid())
 
         with cb_helpers.cleanup_action(lambda: test_zone.delete()):
             test_zone = self.provider.dns.host_zones.create(zone_name)
@@ -62,8 +63,8 @@ class CloudDnsServiceTestCase(ProviderTestBase):
             with cb_helpers.cleanup_action(lambda: test_rec.delete()):
                 zone_name = "subdomain." + zone_name
                 test_rec = test_zone.records.create(
-                    zone_name, 'CNAME', data='hello.com', ttl=500)
+                    zone_name, DnsRecordType.CNAME, data='hello.com.', ttl=500)
                 self.assertEqual(test_rec.zone_id, test_zone.id)
-                self.assertEqual(test_rec.type, 'CNAME')
-                self.assertEqual(test_rec.data, 'hello.com')
+                self.assertEqual(test_rec.type, DnsRecordType.CNAME)
+                self.assertEqual(test_rec.data, 'hello.com.')
                 self.assertEqual(test_rec.ttl, 500)
