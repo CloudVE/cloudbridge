@@ -1388,7 +1388,7 @@ class AWSDnsRecordService(BaseDnsRecordService):
 
     def get(self, dns_zone, rec_id):
         try:
-            if ":" in rec_id:
+            if rec_id and ":" in rec_id:
                 rec_name, rec_type = rec_id.split(":")
                 response = self.provider.dns.client.list_resource_record_sets(
                     HostedZoneId=dns_zone.id,

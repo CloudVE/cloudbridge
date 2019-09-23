@@ -1334,40 +1334,23 @@ class DnsZone(CloudResource):
         pass
 
 
-class RecordType(object):
+class DnsRecordType(object):
     """
     DNS record types.
     """
     A = 'A'
     AAAA = 'AAAA'
-    AFSDB = 'A'
-    ALIAS = 'ALIAS'
-    CERT = 'CERT'
     CNAME = 'CNAME'
-    DNAME = 'DNAME'
-    DNSKEY = 'DNSKEY'
-    DS = 'DS'
-    GEO = 'GEO'
-    HINFO = 'HINFO'
-    KEY = 'KEY'
-    LOC = 'LOC'
     MX = 'MX'
     NAPTR = 'NAPTR'
     NS = 'NS'
-    NSEC = 'NSEC'
-    OPENPGPKEY = 'OPENPGPKEY'
     PTR = 'PTR'
-    REDIRECT = 'REDIRECT'
-    RP = 'RP'
-    RRSIG = 'RRSIG'
     SOA = 'SOA'
     SPF = 'SPF'
     SRV = 'SRV'
     SSHFP = 'SSHFP'
     TLSA = 'TLSA'
     TXT = 'TXT'
-    URL = 'URL'
-    WKS = 'WKS'
 
 
 class DnsRecord(CloudResource):

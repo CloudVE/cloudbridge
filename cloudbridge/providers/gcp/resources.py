@@ -18,6 +18,8 @@ import googleapiclient
 from cloudbridge.base.resources import BaseAttachmentInfo
 from cloudbridge.base.resources import BaseBucket
 from cloudbridge.base.resources import BaseBucketObject
+from cloudbridge.base.resources import BaseDnsRecord
+from cloudbridge.base.resources import BaseDnsZone
 from cloudbridge.base.resources import BaseFloatingIP
 from cloudbridge.base.resources import BaseInstance
 from cloudbridge.base.resources import BaseInternetGateway
@@ -46,6 +48,7 @@ from cloudbridge.interfaces.resources import VolumeState
 
 from . import helpers
 from .subservices import GCPBucketObjectSubService
+from .subservices import GCPDnsRecordSubService
 from .subservices import GCPFloatingIPSubService
 from .subservices import GCPGatewaySubService
 from .subservices import GCPSubnetSubService
@@ -2024,3 +2027,60 @@ class GCPLaunchConfig(BaseLaunchConfig):
 
     def __init__(self, provider):
         super(GCPLaunchConfig, self).__init__(provider)
+
+
+class GCPDnsZone(BaseDnsZone):
+
+    def __init__(self, provider, dns_zone):
+        super(GCPDnsZone, self).__init__(provider)
+        self._dns_zone = dns_zone
+        self._dns_record_container = GCPDnsRecordSubService(provider, self)
+
+    @property
+    def id(self):
+        return self._dns_zone.get('name')
+
+    @property
+    def name(self):
+        return self._dns_zone.get('dnsName')
+
+    @property
+    def records(self):
+        return self._dns_record_container
+
+
+class GCPDnsRecord(BaseDnsRecord):
+
+    def __init__(self, provider, dns_zone, dns_record):
+        super(GCPDnsRecord, self).__init__(provider)
+        self._dns_zone = dns_zone
+        self._dns_rec = dns_record
+
+    @property
+    def id(self):
+        return self._dns_rec.get('name') + ":" + self._dns_rec.get('type')
+
+    @property
+    def name(self):
+        return self._dns_rec.get('name')
+
+    @property
+    def zone_id(self):
+        return self._dns_zone.id
+
+    @property
+    def type(self):
+        return self._dns_rec.get('type')
+
+    @property
+    def data(self):
+        # We support only one value per record type
+        return self._dns_rec.get('rrdatas')[0]
+
+    @property
+    def ttl(self):
+        return self._dns_rec.get('ttl')
+
+    def delete(self):
+        # pylint:disable=protected-access
+        return self._provider.dns._records.delete(self._dns_zone, self)
