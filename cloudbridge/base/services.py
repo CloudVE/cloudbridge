@@ -4,6 +4,7 @@ Base implementation for services available through a provider
 import logging
 
 from cloudbridge.interfaces.exceptions import InvalidParamException
+from cloudbridge.interfaces.resources import DnsRecordType
 from cloudbridge.interfaces.resources import Network
 from cloudbridge.interfaces.services import BucketObjectService
 from cloudbridge.interfaces.services import BucketService
@@ -380,3 +381,11 @@ class BaseDnsRecordService(BasePageableObjectMixin, DnsRecordService,
 
     def __init__(self, provider):
         super(BaseDnsRecordService, self).__init__(provider)
+
+    def _get_fully_qualified_dns(self, name):
+        # Add a trailing dot to fully qualify
+        return name + '.' if not name.endswith('.') else name
+
+    def _standardize_record(self, value, type):
+        return (self._get_fully_qualified_dns(value)
+                if type in (DnsRecordType.CNAME, DnsRecordType.MX) else value)

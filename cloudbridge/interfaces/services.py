@@ -1012,10 +1012,13 @@ class DnsRecordService(CloudService):
         :param type: The DnsRecord type. (e.g. A, CNAME, MX etc)
 
         :type data: ``str``
-        :param data: The corresponding value for the record.
+        :param data: The corresponding value for the record. The relevant
+                     values must be fully qualified (e.g. CNAMEs). If the
+                     trailing dot is omitted, it will be automatically
+                     added and thus assumed to be fully qualified.
 
         :type data: ``int``
-        :param data: The ttl (in seconds) for thisrecord.
+        :param data: The ttl (in seconds) for this record.
 
         :rtype: ``object`` of :class:`.DnsRecord`
         :return:  A DnsRecord object

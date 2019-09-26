@@ -75,7 +75,7 @@ class InvalidLabelException(InvalidNameException):
 class InvalidValueException(CloudBridgeBaseException):
     """
     Marker interface for any attempt to set an invalid value on a CloudBridge
-    resource.An example would be setting an unrecognised value for the
+    resource. An example would be setting an unrecognised value for the
     direction of a firewall rule other than TrafficDirection.INBOUND or
     TrafficDirection.OUTBOUND.
     """

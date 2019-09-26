@@ -36,7 +36,6 @@ from cloudbridge.base.services import BaseVMTypeService
 from cloudbridge.base.services import BaseVolumeService
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import InvalidParamException
-from cloudbridge.interfaces.resources import DnsRecordType
 from cloudbridge.interfaces.resources import TrafficDirection
 from cloudbridge.interfaces.resources import VMFirewall
 from cloudbridge.providers.gcp import helpers
@@ -1713,14 +1712,6 @@ class GCPDnsRecordService(BaseDnsRecordService):
 
     def __init__(self, provider):
         super(GCPDnsRecordService, self).__init__(provider)
-
-    def _get_fully_qualified_dns(self, name):
-        # Add a trailing dot to fully qualify
-        return name + '.' if not name.endswith('.') else name
-
-    def _standardize_record(self, value, type):
-        return (self._get_fully_qualified_dns(value)
-                if type in (DnsRecordType.CNAME, DnsRecordType.MX) else value)
 
     def _to_resource_records(self, data, rec_type):
         """

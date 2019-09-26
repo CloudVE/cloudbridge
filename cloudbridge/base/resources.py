@@ -915,11 +915,12 @@ class BaseDnsZone(BaseCloudResource, DnsZone):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseDnsZone.is_valid_resource_name(name):
-            log.debug("InvalidLabelException raised on %s", name,
+            log.debug("InvalidNameException raised on %s", name,
                       exc_info=True)
-            raise InvalidLabelException(
-                u"Invalid object name: %s. Name must match criteria defined "
-                "in: https://stackoverflow.com/q/10306690/10971151" % name)
+            raise InvalidNameException(
+                u"Invalid object name: %s. Name must be fully qualified "
+                u"(ending with a .) and match criteria defined "
+                u"in: https://stackoverflow.com/q/10306690/10971151" % name)
 
     def delete(self):
         return self._provider.dns.host_zones.delete(self.id)
@@ -929,7 +930,7 @@ class BaseDnsRecord(BaseCloudResource, DnsRecord):
 
     CB_NAME_PATTERN = re.compile(
         r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]"
-        r"[a-z0-9-]{0,61}[a-z0-9]$")
+        r"[a-z0-9-]{0,61}[a-z0-9]\.?$")
 
     def __init__(self, provider):
         super(BaseDnsRecord, self).__init__(provider)
@@ -951,8 +952,9 @@ class BaseDnsRecord(BaseCloudResource, DnsRecord):
     @staticmethod
     def assert_valid_resource_name(name):
         if not BaseDnsRecord.is_valid_resource_name(name):
-            log.debug("InvalidLabelException raised on %s", name,
+            log.debug("InvalidNameException raised on %s", name,
                       exc_info=True)
-            raise InvalidLabelException(
-                u"Invalid object name: %s. Name must match criteria defined "
-                "in: https://stackoverflow.com/q/10306690/10971151" % name)
+            raise InvalidNameException(
+                u"Invalid object name: %s. Name must be fully qualified "
+                u"(ending with a .) and match criteria defined "
+                u"in: https://stackoverflow.com/q/10306690/10971151" % name)
