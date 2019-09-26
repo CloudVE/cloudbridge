@@ -1719,12 +1719,19 @@ class GCPDnsRecordService(BaseDnsRecordService):
         return name + '.' if not name.endswith('.') else name
 
     def _standardize_record(self, value, type):
+        return (self._get_fully_qualified_dns(value)
+                if type in (DnsRecordType.CNAME, DnsRecordType.MX) else value)
+
+    def _to_resource_records(self, data, rec_type):
         """
         Converts a record to what GCP expects. For example, GCP
         expects a fully qualified name for all CNAME records.
         """
-        return (self._get_fully_qualified_dns(value)
-                if type == DnsRecordType.CNAME else value)
+        if isinstance(data, list):
+            records = data
+        else:
+            records = [data]
+        return [self._standardize_record(r, rec_type) for r in records]
 
     def get(self, dns_zone, rec_id):
         if rec_id and ":" in rec_id:
@@ -1782,9 +1789,7 @@ class GCPDnsRecordService(BaseDnsRecordService):
                     'name': self._get_fully_qualified_dns(name),
                     'type': type,
                     'ttl': ttl,
-                    'rrdatas': [
-                        self._standardize_record(data, type)
-                    ]
+                    'rrdatas': self._to_resource_records(data, type)
                 }
             ]
         }
@@ -1810,9 +1815,8 @@ class GCPDnsRecordService(BaseDnsRecordService):
                         'name': self._get_fully_qualified_dns(rec.name),
                         'type': rec.type,
                         'ttl': rec.ttl,
-                        'rrdatas': [
-                            self._standardize_record(rec.data, rec.type)
-                        ]
+                        'rrdatas': self._to_resource_records(
+                            rec.data, rec.type)
                     }
                 ]
             }

@@ -2074,8 +2074,7 @@ class GCPDnsRecord(BaseDnsRecord):
 
     @property
     def data(self):
-        # We support only one value per record type
-        return self._dns_rec.get('rrdatas')[0]
+        return self._dns_rec.get('rrdatas')
 
     @property
     def ttl(self):

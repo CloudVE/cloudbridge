@@ -1188,8 +1188,8 @@ class AWSDnsRecord(BaseDnsRecord):
 
     @property
     def data(self):
-        # We support only one value per record type
-        return self._dns_rec.get('ResourceRecords')[0].get('Value')
+        return [rec.get('Value') for rec in
+                self._dns_rec.get('ResourceRecords')]
 
     @property
     def ttl(self):

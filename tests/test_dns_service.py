@@ -66,5 +66,16 @@ class CloudDnsServiceTestCase(ProviderTestBase):
                     zone_name, DnsRecordType.CNAME, data='hello.com.', ttl=500)
                 self.assertEqual(test_rec.zone_id, test_zone.id)
                 self.assertEqual(test_rec.type, DnsRecordType.CNAME)
-                self.assertEqual(test_rec.data, 'hello.com.')
+                self.assertEqual(test_rec.data, ['hello.com.'])
                 self.assertEqual(test_rec.ttl, 500)
+
+            # Check setting data array
+            test_rec2 = None
+            with cb_helpers.cleanup_action(lambda: test_rec2.delete()):
+                MX_DATA = ['10 mx1.hello.com.', '20 mx2.hello.com.']
+                test_rec2 = test_zone.records.create(
+                    zone_name, DnsRecordType.MX, data=MX_DATA, ttl=300)
+                self.assertEqual(test_rec2.zone_id, test_zone.id)
+                self.assertEqual(test_rec2.type, DnsRecordType.MX)
+                self.assertSetEqual(set(test_rec2.data), set(MX_DATA))
+                self.assertEqual(test_rec2.ttl, 300)

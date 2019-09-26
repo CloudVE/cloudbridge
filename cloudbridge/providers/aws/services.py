@@ -1393,8 +1393,7 @@ class AWSDnsRecordService(BaseDnsRecordService):
                 response = self.provider.dns.client.list_resource_record_sets(
                     HostedZoneId=dns_zone.id,
                     StartRecordName=rec_name,
-                    StartRecordType=rec_type,
-                    MaxItems='1')
+                    StartRecordType=rec_type)
                 return AWSDnsRecord(self.provider, dns_zone,
                                     response.get('ResourceRecordSets')[0])
             else:
@@ -1429,6 +1428,13 @@ class AWSDnsRecordService(BaseDnsRecordService):
         return ClientPagedResultList(self.provider, list(matches),
                                      limit=None, marker=None)
 
+    def _to_resource_records(self, data):
+        if isinstance(data, list):
+            records = data
+        else:
+            records = [data]
+        return [{'Value': r} for r in records]
+
     def create(self, dns_zone, name, type, data, ttl=None):
         AWSDnsRecord.assert_valid_resource_name(name)
 
@@ -1441,9 +1447,7 @@ class AWSDnsRecordService(BaseDnsRecordService):
                         'Name': name,
                         'Type': type,
                         'TTL': ttl or 300,
-                        'ResourceRecords': [{
-                            'Value': data
-                        }]
+                        'ResourceRecords': self._to_resource_records(data)
                     })
                 }]
             }
@@ -1466,9 +1470,8 @@ class AWSDnsRecordService(BaseDnsRecordService):
                         'Name': rec_name,
                         'Type': rec_type,
                         'TTL': record.ttl,
-                        'ResourceRecords': [{
-                            'Value': record.data
-                        }]
+                        'ResourceRecords': self._to_resource_records(
+                            record.data)
                     }
                 }]
             })
