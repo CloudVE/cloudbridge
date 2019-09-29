@@ -1669,13 +1669,13 @@ class GCPDnsZoneService(BaseDnsZoneService):
 
     @dispatch(event="provider.dns.host_zones.create",
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
-    def create(self, name):
+    def create(self, name, admin_email):
         GCPDnsZone.assert_valid_resource_name(name)
         body = {
             'kind': 'dns#managedZone',
             'name': cb_helpers.to_resource_name(name),
             'dnsName':  self._get_fully_qualified_dns(name),
-            'description': name,
+            'description': 'admin_email=' + admin_email,
             'visibility': 'public'
         }
         try:

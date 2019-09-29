@@ -1365,11 +1365,15 @@ class AWSDnsZoneService(BaseDnsZoneService):
 
     @dispatch(event="provider.dns.host_zones.create",
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
-    def create(self, name):
+    def create(self, name, admin_email):
         AWSDnsZone.assert_valid_resource_name(name)
 
         response = self.provider.dns.client.create_hosted_zone(
-            Name=name, CallerReference=uuid.uuid4().hex)
+            Name=name, CallerReference=uuid.uuid4().hex,
+            HostedZoneConfig={
+                'Comment': 'admin_email=' + admin_email
+            }
+        )
         return AWSDnsZone(self.provider, response.get('HostedZone'))
 
     @dispatch(event="provider.dns.host_zones.delete",

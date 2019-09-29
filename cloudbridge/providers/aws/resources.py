@@ -1160,7 +1160,15 @@ class AWSDnsZone(BaseDnsZone):
 
     @property
     def admin_email(self):
-        return self._dns_zone.get('Name')
+        comment = self._dns_zone.get('Config', {}).get('Comment')
+        if comment:
+            email_field = comment.split(",")[0].split("=")
+            if email_field[0] == "admin_email":
+                return email_field[1]
+            else:
+                return None
+        else:
+            return None
 
     @property
     def records(self):

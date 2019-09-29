@@ -2045,6 +2045,18 @@ class GCPDnsZone(BaseDnsZone):
         return self._dns_zone.get('dnsName')
 
     @property
+    def admin_email(self):
+        comment = self._dns_zone.get('description')
+        if comment:
+            email_field = comment.split(",")[0].split("=")
+            if email_field[0] == "admin_email":
+                return email_field[1]
+            else:
+                return None
+        else:
+            return None
+
+    @property
     def records(self):
         return self._dns_record_container
 
