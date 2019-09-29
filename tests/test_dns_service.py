@@ -18,15 +18,19 @@ class CloudDnsServiceTestCase(ProviderTestBase):
         def create_dns_zone(name):
             if name:
                 name = name + ".com."
-            return self.provider.dns.host_zones.create(name)
+            return self.provider.dns.host_zones.create(
+                name, "admin@cloudve.org")
 
         def cleanup_dns_zone(dns_zone):
             if dns_zone:
                 dns_zone.delete()
 
+        def test_zone_props(dns_zone):
+            self.assertEqual(dns_zone.admin_email, "admin@cloudve.org")
+
         sit.check_crud(self, self.provider.dns.host_zones, DnsZone,
                        "cb-crudzone", create_dns_zone, cleanup_dns_zone,
-                       skip_name_check=True)
+                       skip_name_check=True, extra_test_func=test_zone_props)
 
     @helpers.skipIfNoService(['dns.host_zones'])
     def test_create_dns_zones_not_fully_qualified(self):
@@ -35,7 +39,8 @@ class CloudDnsServiceTestCase(ProviderTestBase):
         with cb_helpers.cleanup_action(lambda: test_zone.delete()):
             # If zone name is not fully qualified, it should automatically be
             # handled
-            test_zone = self.provider.dns.host_zones.create(zone_name)
+            test_zone = self.provider.dns.host_zones.create(
+                zone_name, "admin@cloudve.org")
 
     @helpers.skipIfNoService(['dns.host_zones'])
     def test_crud_dns_record(self):
@@ -55,7 +60,8 @@ class CloudDnsServiceTestCase(ProviderTestBase):
                 dns_rec.delete()
 
         with cb_helpers.cleanup_action(lambda: test_zone.delete()):
-            test_zone = self.provider.dns.host_zones.create(zone_name)
+            test_zone = self.provider.dns.host_zones.create(
+                zone_name, "admin@cloudve.org")
             sit.check_crud(self, test_zone.records, DnsRecord,
                            "cb-dnsrec", create_dns_rec,
                            cleanup_dns_rec, skip_name_check=True)
@@ -66,7 +72,8 @@ class CloudDnsServiceTestCase(ProviderTestBase):
         zone_name = "cb-recprop-{0}.com.".format(helpers.get_uuid())
 
         with cb_helpers.cleanup_action(lambda: test_zone.delete()):
-            test_zone = self.provider.dns.host_zones.create(zone_name)
+            test_zone = self.provider.dns.host_zones.create(
+                zone_name, "admin@cloudve.org")
             test_rec = None
 
             with cb_helpers.cleanup_action(lambda: test_rec.delete()):
@@ -95,7 +102,8 @@ class CloudDnsServiceTestCase(ProviderTestBase):
         root_zone_name = "cb-recprop-{0}.com.".format(helpers.get_uuid())
 
         with cb_helpers.cleanup_action(lambda: test_zone.delete()):
-            test_zone = self.provider.dns.host_zones.create(root_zone_name)
+            test_zone = self.provider.dns.host_zones.create(
+                root_zone_name, "admin@cloudve.org")
             test_rec = None
 
             with cb_helpers.cleanup_action(lambda: test_rec.delete()):

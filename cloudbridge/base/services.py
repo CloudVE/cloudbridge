@@ -375,6 +375,10 @@ class BaseDnsZoneService(BasePageableObjectMixin, DnsZoneService,
     def __init__(self, provider):
         super(BaseDnsZoneService, self).__init__(provider)
 
+    def _get_fully_qualified_dns(self, name):
+        # Add a trailing dot to fully qualify
+        return name + '.' if not name.endswith('.') else name
+
 
 class BaseDnsRecordService(BasePageableObjectMixin, DnsRecordService,
                            BaseCloudService):

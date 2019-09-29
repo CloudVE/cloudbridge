@@ -1159,6 +1159,10 @@ class AWSDnsZone(BaseDnsZone):
         return self._dns_zone.get('Name')
 
     @property
+    def admin_email(self):
+        return self._dns_zone.get('Name')
+
+    @property
     def records(self):
         return self._dns_record_container
 

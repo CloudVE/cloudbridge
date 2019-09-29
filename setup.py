@@ -50,7 +50,7 @@ REQS_GCP = [
     'oauth2client<=4.1.3'
 ]
 REQS_OPENSTACK = [
-    'openstacksdk>=0.12.0,<=0.17',
+    'openstacksdk>=0.12.0',
     'python-novaclient>=7.0.0,<=11.0',
     'python-glanceclient>=2.5.0,<=2.12',
     'python-cinderclient>=1.9.0,<=4.0',

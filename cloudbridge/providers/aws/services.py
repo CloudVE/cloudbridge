@@ -1335,7 +1335,7 @@ class AWSDnsZoneService(BaseDnsZoneService):
         super(AWSDnsZoneService, self).__init__(provider)
 
     @dispatch(event="provider.dns.host_zones.get",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def get(self, dns_zone_id):
         try:
             dns_zone = self.provider.dns.client.get_hosted_zone(Id=dns_zone_id)
@@ -1344,7 +1344,7 @@ class AWSDnsZoneService(BaseDnsZoneService):
             return None
 
     @dispatch(event="provider.dns.host_zones.list",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         response = self.provider.dns.client.list_hosted_zones(
             **trim_empty_params({'MaxItems': limit, 'Marker': marker}))
@@ -1356,7 +1356,7 @@ class AWSDnsZoneService(BaseDnsZoneService):
                                      data=cb_objs)
 
     @dispatch(event="provider.dns.host_zones.find",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, self)
@@ -1364,7 +1364,7 @@ class AWSDnsZoneService(BaseDnsZoneService):
                                      limit=None, marker=None)
 
     @dispatch(event="provider.dns.host_zones.create",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def create(self, name):
         AWSDnsZone.assert_valid_resource_name(name)
 
@@ -1373,7 +1373,7 @@ class AWSDnsZoneService(BaseDnsZoneService):
         return AWSDnsZone(self.provider, response.get('HostedZone'))
 
     @dispatch(event="provider.dns.host_zones.delete",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def delete(self, dns_zone):
         dns_zone = (dns_zone if isinstance(dns_zone, AWSDnsZone)
                     else self.get(dns_zone))

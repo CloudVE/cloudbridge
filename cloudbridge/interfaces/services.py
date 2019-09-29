@@ -948,12 +948,15 @@ class DnsZoneService(PageableObjectMixin, CloudService):
         pass
 
     @abstractmethod
-    def create(self, label):
+    def create(self, label, admin_email):
         """
         Create a new host zone.
 
         :type label: ``str``
         :param label: A host zone label.
+
+        :type admin_email: ``str``
+        :param admin_email: Email address of this zone's administrator.
 
         :rtype: ``object`` of :class:`.DnsZone`
         :return:  A DnsZone object

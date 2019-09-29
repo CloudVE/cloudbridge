@@ -1632,14 +1632,14 @@ class GCPDnsZoneService(BaseDnsZoneService):
         super(GCPDnsZoneService, self).__init__(provider)
 
     @dispatch(event="provider.dns.host_zones.get",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def get(self, dns_zone_id):
         dns_zone = self.provider.get_resource(
             'managedZones', dns_zone_id, project=self._provider.project_name)
         return GCPDnsZone(self.provider, dns_zone) if dns_zone else None
 
     @dispatch(event="provider.dns.host_zones.list",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         max_result = limit if limit is not None and limit < 500 else 500
         response = (self.provider
@@ -1660,7 +1660,7 @@ class GCPDnsZoneService(BaseDnsZoneService):
                                      False, data=dns_zones)
 
     @dispatch(event="provider.dns.host_zones.find",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def find(self, **kwargs):
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, self)
@@ -1668,13 +1668,13 @@ class GCPDnsZoneService(BaseDnsZoneService):
                                      limit=None, marker=None)
 
     @dispatch(event="provider.dns.host_zones.create",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def create(self, name):
         GCPDnsZone.assert_valid_resource_name(name)
         body = {
             'kind': 'dns#managedZone',
             'name': cb_helpers.to_resource_name(name),
-            'dnsName':  name + '.' if not name.endswith('.') else name,
+            'dnsName':  self._get_fully_qualified_dns(name),
             'description': name,
             'visibility': 'public'
         }
@@ -1695,7 +1695,7 @@ class GCPDnsZoneService(BaseDnsZoneService):
                 raise
 
     @dispatch(event="provider.dns.host_zones.delete",
-              priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def delete(self, dns_zone):
         zone = (dns_zone if isinstance(dns_zone, GCPDnsZone)
                 else self.get(dns_zone))

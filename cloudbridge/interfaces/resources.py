@@ -1316,6 +1316,18 @@ class DnsZone(CloudResource):
     """
     __metaclass__ = ABCMeta
 
+    @property
+    def admin_email(self):
+        """
+        Email address of this zone's administrator. Some cloud providers do not
+        support this field, and therefore, it may be stored in an extra field
+        such as description or not supported at all. (This field is mandatory
+        in OpenStack)
+
+        :return: Administrator's email as a string
+        """
+        pass
+
     @abstractmethod
     def delete(self):
         """
@@ -1342,14 +1354,11 @@ class DnsRecordType(object):
     AAAA = 'AAAA'
     CNAME = 'CNAME'
     MX = 'MX'
-    NAPTR = 'NAPTR'
     NS = 'NS'
     PTR = 'PTR'
-    SOA = 'SOA'
     SPF = 'SPF'
     SRV = 'SRV'
     SSHFP = 'SSHFP'
-    TLSA = 'TLSA'
     TXT = 'TXT'
 
 
