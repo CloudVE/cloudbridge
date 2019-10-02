@@ -77,15 +77,13 @@ after_script:
            DOCS_REGEX='(\.rst$)|(^(docs))/'
            FILES_IN_CHANGESET="`git diff --name-only $TRAVIS_COMMIT_RANGE`"
            echo "$FILES_IN_CHANGESET" | grep -qvE "$DOCS_REGEX|(^(cloudbridge/cloud/providers))" && {
-              coveralls &
-              codecov &
-              wait
+              coveralls; codecov;
            } || {
               echo "Only docs and providers were updated. Not running coverage."
            }
            ;;
         *)
            echo "Build triggered through API or CRON job. Running regardless of changes"
-           coveralls & codecov & wait
+           coveralls; codecov;
            ;;
       esac
