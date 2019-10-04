@@ -88,6 +88,10 @@ class OpenStackSecurityService(BaseSecurityService):
     def __init__(self, provider):
         super(OpenStackSecurityService, self).__init__(provider)
 
+        # pylint:disable=protected-access
+        self.service_zone_name = self.provider._get_config_value(
+            'os_security_zone_name', cb_helpers.get_env(
+                'OS_SECURITY_ZONE_NAME', self.provider.zone_name))
         # Initialize provider services
         self._key_pairs = OpenStackKeyPairService(provider)
         self._vm_firewalls = OpenStackVMFirewallService(provider)
@@ -343,6 +347,10 @@ class OpenStackStorageService(BaseStorageService):
     def __init__(self, provider):
         super(OpenStackStorageService, self).__init__(provider)
 
+        # pylint:disable=protected-access
+        self.service_zone_name = self.provider._get_config_value(
+            'os_storage_zone_name', cb_helpers.get_env(
+                'OS_STORAGE_ZONE_NAME', self.provider.zone_name))
         # Initialize provider services
         self._volume_svc = OpenStackVolumeService(self.provider)
         self._snapshot_svc = OpenStackSnapshotService(self.provider)
@@ -651,6 +659,14 @@ class OpenStackComputeService(BaseComputeService):
         self._instance_svc = OpenStackInstanceService(self.provider)
         self._region_svc = OpenStackRegionService(self.provider)
         self._images_svc = OpenStackImageService(self.provider)
+        # Region service must be defined before invoking the following
+        # pylint:disable=protected-access
+        self.service_zone_name = self.provider._get_config_value(
+            'os_compute_zone_name',
+            cb_helpers.get_env(
+                'OS_COMPUTE_ZONE_NAME',
+                self.provider._zone_name or
+                self.regions.current.default_zone.name))
 
     @property
     def images(self):
@@ -993,6 +1009,10 @@ class OpenStackNetworkingService(BaseNetworkingService):
 
     def __init__(self, provider):
         super(OpenStackNetworkingService, self).__init__(provider)
+        # pylint:disable=protected-access
+        self.service_zone_name = self.provider._get_config_value(
+            'os_networking_zone_name', cb_helpers.get_env(
+                'OS_NETWORKING_ZONE_NAME', self.provider.zone_name))
         self._network_service = OpenStackNetworkService(self.provider)
         self._subnet_service = OpenStackSubnetService(self.provider)
         self._router_service = OpenStackRouterService(self.provider)

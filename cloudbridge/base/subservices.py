@@ -143,7 +143,7 @@ class BaseSubnetSubService(SubnetSubService, BasePageableObjectMixin):
         return self.__provider
 
     def get(self, subnet_id):
-        sn = self._provider.networking.subnets.get(self.network, subnet_id)
+        sn = self._provider.networking.subnets.get(subnet_id)
         if sn.network_id != self.network.id:
             log.warning("The SubnetSubService nested in the network '{}' "
                         "returned subnet '{}' which is attached to another "

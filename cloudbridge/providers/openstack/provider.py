@@ -49,18 +49,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
             'os_region_name', get_env('OS_REGION_NAME'))
         self._zone_name = self._get_config_value(
             'os_zone_name', get_env('OS_ZONE_NAME'))
-        self._compute_zone_name = self._get_config_value(
-            'os_compute_zone_name', get_env('OS_COMPUTE_ZONE_NAME',
-                                            self.zone_name))
-        self._networking_zone_name = self._get_config_value(
-            'os_networking_zone_name', get_env('OS_NETWORKING_ZONE_NAME',
-                                               self.zone_name))
-        self._security_zone_name = self._get_config_value(
-            'os_security_zone_name', get_env('OS_SECURITY_ZONE_NAME',
-                                             self.zone_name))
-        self._storage_zone_name = self._get_config_value(
-            'os_storage_zone_name', get_env('OS_STORAGE_ZONE_NAME',
-                                            self.zone_name))
         self.project_domain_name = self._get_config_value(
             'os_project_domain_name',
             get_env('OS_PROJECT_DOMAIN_NAME'))
@@ -319,8 +307,8 @@ class OpenStackCloudProvider(BaseCloudProvider):
         :return: A Swift client connection using the auth credentials held by
             the OpenStackCloudProvider instance
         """
-        clean_options = self._clean_options(options,
-                                            swift_client.Connection.__init__)
+        clean_options = self._clean_options(
+            options, swift_client.Connection.__init__)
         storage_url = self._get_config_value(
             'os_storage_url', get_env('OS_STORAGE_URL', None))
         auth_token = self._get_config_value(
@@ -339,23 +327,15 @@ class OpenStackCloudProvider(BaseCloudProvider):
                                      session=self._keystone_session,
                                      region_name=self.region_name)
 
-    @property
-    def zone_name(self):
-        if not self._zone_name:
-            region = self.compute.regions.get(self.region_name)
-            zone = next(iter(region.zones))
-            self._zone_name = zone.name if zone else None
-        return self._zone_name
-
     def service_zone_name(self, service):
         service_name = service._service_event_pattern
-        if "networking" in service_name and self._networking_zone_name:
-            return self._networking_zone_name
-        elif "security" in service_name and self._security_zone_name:
-            return self._security_zone_name
-        elif "compute" in service_name and self._compute_zone_name:
-            return self._compute_zone_name
-        elif "storage" in service_name and self._storage_zone_name:
-            return self._storage_zone_name
+        if "networking" in service_name and self.networking.service_zone_name:
+            return self.networking.service_zone_name
+        elif "security" in service_name and self.security.service_zone_name:
+            return self.security.service_zone_name
+        elif "compute" in service_name and self.compute.service_zone_name:
+            return self.compute.service_zone_name
+        elif "storage" in service_name and self.storage.service_zone_name:
+            return self.storage.service_zone_name
         else:
             return self.zone_name

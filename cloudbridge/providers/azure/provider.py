@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from deprecation import deprecated
+from deprecated import deprecated
 
 from msrestazure.azure_exceptions import CloudError
 

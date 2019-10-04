@@ -7,6 +7,8 @@ This includes:
 """
 import uuid
 
+from six.moves.urllib.parse import quote_plus
+
 import tenacity
 
 from cloudbridge.base import helpers as cb_helpers
@@ -40,6 +42,7 @@ def check_json(test, obj):
 def check_obj_properties(test, obj):
     test.assertEqual(obj, obj, "Object should be equal to itself")
     test.assertFalse(obj != obj, "Object inequality should be false")
+    check_obj_id(test, obj)
     check_obj_name(test, obj)
     check_obj_label(test, obj)
 
@@ -140,6 +143,17 @@ def check_delete(test, service, obj, perform_delete=False):
         len(found_objs) == 0,
         "Object %s in service %s should have been deleted but still exists."
         % (found_objs, type(service).__name__))
+
+
+def check_obj_id(test, obj):
+    id_property = getattr(type(obj), 'id', None)
+    test.assertIsInstance(id_property, property)
+    test.assertIsNone(id_property.fset, "Id should not have a setter")
+    # Non-url safe characters trip up djcloudbridge or anything that needs to
+    # use the ID in a url so make sure ids do not contain them
+    test.assertEqual(quote_plus(obj.id), obj.id,
+                     "IDs should only contain URL friendly chars that do not "
+                     "require encoding but contains: %s" % (obj.id,))
 
 
 def check_obj_name(test, obj):
