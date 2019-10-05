@@ -1338,7 +1338,8 @@ class AWSDnsZoneService(BaseDnsZoneService):
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
     def get(self, dns_zone_id):
         try:
-            dns_zone = self.provider.dns.client.get_hosted_zone(Id=dns_zone_id)
+            dns_zone = self.provider.dns.client.get_hosted_zone(
+                Id=AWSDnsZone.unescape_zone_id(dns_zone_id))
             return AWSDnsZone(self.provider, dns_zone.get('HostedZone'))
         except self.provider.dns.client.exceptions.NoSuchHostedZone:
             return None
@@ -1382,7 +1383,7 @@ class AWSDnsZoneService(BaseDnsZoneService):
         dns_zone = (dns_zone if isinstance(dns_zone, AWSDnsZone)
                     else self.get(dns_zone))
         if dns_zone:
-            self.provider.dns.client.delete_hosted_zone(Id=dns_zone.id)
+            self.provider.dns.client.delete_hosted_zone(Id=dns_zone.aws_id)
 
 
 class AWSDnsRecordService(BaseDnsRecordService):
@@ -1395,7 +1396,7 @@ class AWSDnsRecordService(BaseDnsRecordService):
             if rec_id and ":" in rec_id:
                 rec_name, rec_type = rec_id.split(":")
                 response = self.provider.dns.client.list_resource_record_sets(
-                    HostedZoneId=dns_zone.id,
+                    HostedZoneId=dns_zone.aws_id,
                     StartRecordName=rec_name,
                     StartRecordType=rec_type)
                 return AWSDnsRecord(self.provider, dns_zone,
@@ -1414,7 +1415,7 @@ class AWSDnsRecordService(BaseDnsRecordService):
     def list(self, dns_zone, limit=None, marker=None):
         response = self.provider.dns.client.list_resource_record_sets(
             **trim_empty_params({
-                'HostedZoneId': dns_zone.id,
+                'HostedZoneId': dns_zone.aws_id,
                 'MaxItems': limit,
                 'StartRecordIdentifier': marker
             })
@@ -1444,7 +1445,7 @@ class AWSDnsRecordService(BaseDnsRecordService):
         AWSDnsRecord.assert_valid_resource_name(name)
 
         response = self.provider.dns.client.change_resource_record_sets(
-            HostedZoneId=dns_zone.id,
+            HostedZoneId=dns_zone.aws_id,
             ChangeBatch={
                 'Changes': [{
                     'Action': 'CREATE',
@@ -1468,7 +1469,7 @@ class AWSDnsRecordService(BaseDnsRecordService):
 
         rec_name, rec_type = rec_id.split(":")
         response = self.provider.dns.client.change_resource_record_sets(
-            HostedZoneId=dns_zone.id,
+            HostedZoneId=dns_zone.aws_id,
             ChangeBatch={
                 'Changes': [{
                     'Action': 'DELETE',

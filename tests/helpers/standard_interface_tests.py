@@ -7,8 +7,6 @@ This includes:
 """
 import uuid
 
-from six.moves.urllib.parse import quote_plus
-
 import tenacity
 
 from cloudbridge.base import helpers as cb_helpers
@@ -149,11 +147,10 @@ def check_obj_id(test, obj):
     id_property = getattr(type(obj), 'id', None)
     test.assertIsInstance(id_property, property)
     test.assertIsNone(id_property.fset, "Id should not have a setter")
-    # Non-url safe characters trip up djcloudbridge or anything that needs to
-    # use the ID in a url so make sure ids do not contain them
-    test.assertEqual(quote_plus(obj.id), obj.id,
-                     "IDs should only contain URL friendly chars that do not "
-                     "require encoding but contains: %s" % (obj.id,))
+    # Some delimiter characters can trip up djcloudbridge url reversing
+    # so make sure ids do not contain them
+    test.assertTrue("/" not in obj.id,
+                    "IDs should not contain slash but is: %s" % (obj.id,))
 
 
 def check_obj_name(test, obj):

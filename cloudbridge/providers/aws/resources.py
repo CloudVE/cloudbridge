@@ -1152,7 +1152,20 @@ class AWSDnsZone(BaseDnsZone):
 
     @property
     def id(self):
+        # The ID contains a slash, do not allow this
+        return self.escape_zone_id(self.aws_id)
+
+    @property
+    def aws_id(self):
         return self._dns_zone.get('Id')
+
+    @staticmethod
+    def escape_zone_id(value):
+        return value.replace("/", "-") if value else None
+
+    @staticmethod
+    def unescape_zone_id(value):
+        return value.replace("-", "/") if value else None
 
     @property
     def name(self):
