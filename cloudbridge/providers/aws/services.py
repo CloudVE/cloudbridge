@@ -1343,6 +1343,14 @@ class AWSDnsZoneService(BaseDnsZoneService):
             return AWSDnsZone(self.provider, dns_zone.get('HostedZone'))
         except self.provider.dns.client.exceptions.NoSuchHostedZone:
             return None
+        except ClientError as exc:
+            error_code = exc.response['Error']['Code']
+            if any(status in error_code for status in
+                   ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
+                log.debug("Object not found: %s", dns_zone_id)
+                return None
+            else:
+                raise exc
 
     @dispatch(event="provider.dns.host_zones.list",
               priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
@@ -1459,9 +1467,12 @@ class AWSDnsRecordService(BaseDnsRecordService):
                 }]
             }
         )
-        waiter = self.provider.dns.client.get_waiter(
-            'resource_record_sets_changed')
-        waiter.wait(Id=response.get('ChangeInfo').get('Id'))
+        # FIXME: Since Moto's implementation of route53 doesn't support
+        # waiting, this is skipped for mock tests.
+        if not self.provider.PROVIDER_ID == 'mock':
+            waiter = self.provider.dns.client.get_waiter(
+                'resource_record_sets_changed')
+            waiter.wait(Id=response.get('ChangeInfo').get('Id'))
         return self.get(dns_zone, name + ":" + type)
 
     def delete(self, dns_zone, record):
@@ -1482,6 +1493,9 @@ class AWSDnsRecordService(BaseDnsRecordService):
                     }
                 }]
             })
-        waiter = self.provider.dns.client.get_waiter(
-            'resource_record_sets_changed')
-        waiter.wait(Id=response.get('ChangeInfo').get('Id'))
+        # FIXME: Since Moto's implementation of route53 doesn't support
+        # waiting, this is skipped for mock tests.
+        if not self.provider.PROVIDER_ID == 'mock':
+            waiter = self.provider.dns.client.get_waiter(
+                'resource_record_sets_changed')
+            waiter.wait(Id=response.get('ChangeInfo').get('Id'))
