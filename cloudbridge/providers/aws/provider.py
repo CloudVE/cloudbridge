@@ -7,6 +7,7 @@ from cloudbridge.base import BaseCloudProvider
 from cloudbridge.base.helpers import get_env
 
 from .services import AWSComputeService
+from .services import AWSDnsService
 from .services import AWSNetworkingService
 from .services import AWSSecurityService
 from .services import AWSStorageService
@@ -55,6 +56,7 @@ class AWSCloudProvider(BaseCloudProvider):
         self._networking = AWSNetworkingService(self)
         self._security = AWSSecurityService(self)
         self._storage = AWSStorageService(self)
+        self._dns = AWSDnsService(self)
 
     @property
     def session(self):
@@ -93,6 +95,10 @@ class AWSCloudProvider(BaseCloudProvider):
     @property
     def storage(self):
         return self._storage
+
+    @property
+    def dns(self):
+        return self._dns
 
     def _connect_ec2(self):
         """

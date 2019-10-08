@@ -24,6 +24,7 @@ class CloudServiceType(object):
     SECURITY = 'security'
     VOLUME = 'storage.volumes'
     BUCKET = 'storage.buckets'
+    DNS = 'dns'
 
 
 class CloudResource(object):
@@ -1304,6 +1305,111 @@ class InternetGateway(ObjectLifeCycleMixin, Gateway):
     Represents an Internet gateway resource.
     """
     __metaclass__ = ABCMeta
+
+
+class DnsZone(CloudResource):
+    """
+    Represents a dns host zone.
+
+    A host zone represents a top level domain (e.g. cloudve.org) in which
+    multiple dns records (e.g. A, CNAME. MX etc.) are contained.
+    """
+    __metaclass__ = ABCMeta
+
+    @property
+    def admin_email(self):
+        """
+        Email address of this zone's administrator. Some cloud providers do not
+        support this field, and therefore, it may be stored in an extra field
+        such as description or not supported at all. (This field is mandatory
+        in OpenStack)
+
+        :return: Administrator's email as a string
+        """
+        pass
+
+    @abstractmethod
+    def delete(self):
+        """
+        Delete this zone.
+        """
+        pass
+
+    @abstractproperty
+    def records(self):
+        """
+        List of DNS records in this zone.
+
+        :rtype: ``list`` of :class:`.DnsRecord` objects
+        :return: A list of DnsRecords associated with this zone.
+        """
+        pass
+
+
+class DnsRecordType(object):
+    """
+    DNS record types.
+    """
+    A = 'A'
+    AAAA = 'AAAA'
+    CNAME = 'CNAME'
+    MX = 'MX'
+    NS = 'NS'
+    PTR = 'PTR'
+    SPF = 'SPF'
+    SRV = 'SRV'
+    SSHFP = 'SSHFP'
+    TXT = 'TXT'
+
+
+class DnsRecord(CloudResource):
+    """
+    Represents a dns record.
+
+    A dns record belongs to a host zone and can contain
+    records of varous types such as A, CNAME. MX etc.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def zone_id(self):
+        """
+        The containing zone for this dns record
+
+        :rtype: ``str``
+        :return: The ID of the zone for this dns record
+        """
+        pass
+
+    @abstractproperty
+    def type(self):
+        """
+        Dns Record type which could be A, CNAME, MX, AAAA, PTR
+
+        :rtype: ``DnsRecordType``
+        :return: An enum representing the DNS record type.
+        """
+        pass
+
+    @abstractproperty
+    def data(self):
+        """
+        Dns Record data
+
+        :rtype: ``str``
+        :return: A string containing this DNS record's data.
+        """
+        pass
+
+    @abstractproperty
+    def ttl(self):
+        """
+        ttl for this record
+
+        :rtype: ``int``
+        :return: The ttl (in seconds) for this record.
+        """
+        pass
 
 
 class AttachmentInfo(object):

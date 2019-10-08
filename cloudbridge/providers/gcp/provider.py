@@ -19,6 +19,7 @@ from cloudbridge.base import BaseCloudProvider
 from cloudbridge.interfaces.exceptions import ProviderConnectionException
 
 from .services import GCPComputeService
+from .services import GCPDnsService
 from .services import GCPNetworkingService
 from .services import GCPSecurityService
 from .services import GCPStorageService
@@ -236,14 +237,17 @@ class GCPCloudProvider(BaseCloudProvider):
         # service connections, lazily initialized
         self._gcp_compute = None
         self._gcp_storage = None
+        self._gcp_dns = None
         self._compute_resources_cache = None
         self._storage_resources_cache = None
+        self._dns_resources_cache = None
 
         # Initialize provider services
         self._compute = GCPComputeService(self)
         self._security = GCPSecurityService(self)
         self._networking = GCPNetworkingService(self)
         self._storage = GCPStorageService(self)
+        self._dns = GCPDnsService(self)
 
     # Override base class implementation because it will cause
     # an infinite loop
@@ -268,6 +272,10 @@ class GCPCloudProvider(BaseCloudProvider):
         return self._storage
 
     @property
+    def dns(self):
+        return self._dns
+
+    @property
     def gcp_compute(self):
         if not self._gcp_compute:
             self._gcp_compute = self._connect_gcp_compute()
@@ -278,6 +286,12 @@ class GCPCloudProvider(BaseCloudProvider):
         if not self._gcp_storage:
             self._gcp_storage = self._connect_gcp_storage()
         return self._gcp_storage
+
+    @property
+    def gcp_dns(self):
+        if not self._gcp_dns:
+            self._gcp_dns = self._connect_gcp_dns()
+        return self._gcp_dns
 
     @property
     def _compute_resources(self):
@@ -294,6 +308,14 @@ class GCPCloudProvider(BaseCloudProvider):
         if not self._storage_resources_cache:
             self._storage_resources_cache = GCPResources(self.gcp_storage)
         return self._storage_resources_cache
+
+    @property
+    def _dns_resources(self):
+        if not self._dns_resources_cache:
+            self._dns_resources_cache = GCPResources(
+                self.gcp_dns,
+                project=self.project_name)
+        return self._dns_resources_cache
 
     @property
     def _credentials(self):
@@ -320,6 +342,10 @@ class GCPCloudProvider(BaseCloudProvider):
 
     def _connect_gcp_compute(self):
         return discovery.build('compute', 'v1', credentials=self._credentials,
+                               cache_discovery=False)
+
+    def _connect_gcp_dns(self):
+        return discovery.build('dns', 'v1', credentials=self._credentials,
                                cache_discovery=False)
 
     def wait_for_operation(self, operation, region=None, zone=None):
@@ -353,6 +379,8 @@ class GCPCloudProvider(BaseCloudProvider):
             self._compute_resources.get_resource_url_with_default(
                 resource, url_or_name, **kwargs) or
             self._storage_resources.get_resource_url_with_default(
+                resource, url_or_name, **kwargs) or
+            self._dns_resources.get_resource_url_with_default(
                 resource, url_or_name, **kwargs))
         if resource_url is None:
             return None

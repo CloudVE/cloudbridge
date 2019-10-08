@@ -14,6 +14,9 @@ from cloudbridge.base.resources import ServerPagedResultList
 from cloudbridge.base.services import BaseBucketObjectService
 from cloudbridge.base.services import BaseBucketService
 from cloudbridge.base.services import BaseComputeService
+from cloudbridge.base.services import BaseDnsRecordService
+from cloudbridge.base.services import BaseDnsService
+from cloudbridge.base.services import BaseDnsZoneService
 from cloudbridge.base.services import BaseFloatingIPService
 from cloudbridge.base.services import BaseGatewayService
 from cloudbridge.base.services import BaseImageService
@@ -39,6 +42,8 @@ from cloudbridge.providers.gcp import helpers
 
 from .resources import GCPBucket
 from .resources import GCPBucketObject
+from .resources import GCPDnsRecord
+from .resources import GCPDnsZone
 from .resources import GCPFirewallsDelegate
 from .resources import GCPFloatingIP
 from .resources import GCPInstance
@@ -1601,3 +1606,215 @@ class GCPFloatingIPService(BaseFloatingIPService):
                     .execute())
         self.provider.wait_for_operation(response,
                                          region=fip.region_name)
+
+
+class GCPDnsService(BaseDnsService):
+
+    def __init__(self, provider):
+        super(GCPDnsService, self).__init__(provider)
+
+        # Initialize provider services
+        self._zone_svc = GCPDnsZoneService(self.provider)
+        self._record_svc = GCPDnsRecordService(self.provider)
+
+    @property
+    def host_zones(self):
+        return self._zone_svc
+
+    @property
+    def _records(self):
+        return self._record_svc
+
+
+class GCPDnsZoneService(BaseDnsZoneService):
+
+    def __init__(self, provider):
+        super(GCPDnsZoneService, self).__init__(provider)
+
+    @dispatch(event="provider.dns.host_zones.get",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def get(self, dns_zone_id):
+        dns_zone = self.provider.get_resource(
+            'managedZones', dns_zone_id, project=self._provider.project_name)
+        return GCPDnsZone(self.provider, dns_zone) if dns_zone else None
+
+    @dispatch(event="provider.dns.host_zones.list",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gcp_dns
+                        .managedZones()
+                        .list(project=self.provider.project_name,
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        dns_zones = []
+        for dns_zone in response.get('managedZones', []):
+            dns_zones.append(GCPDnsZone(self.provider, dns_zone))
+        if len(dns_zones) > max_result:
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(dns_zones))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=dns_zones)
+
+    @dispatch(event="provider.dns.host_zones.find",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, self)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    @dispatch(event="provider.dns.host_zones.create",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, admin_email):
+        GCPDnsZone.assert_valid_resource_name(name)
+        body = {
+            'kind': 'dns#managedZone',
+            'name': cb_helpers.to_resource_name(name),
+            'dnsName':  self._get_fully_qualified_dns(name),
+            'description': 'admin_email=' + admin_email,
+            'visibility': 'public'
+        }
+        try:
+            response = (self.provider
+                            .gcp_dns
+                            .managedZones()
+                            .create(project=self.provider.project_name,
+                                    body=body)
+                            .execute())
+            return GCPDnsZone(self.provider, response)
+        except googleapiclient.errors.HttpError as http_error:
+            # 409 = conflict
+            if http_error.resp.status in [409]:
+                raise DuplicateResourceException(
+                    'DNS Zone already exists with name {0}'.format(name))
+            else:
+                raise
+
+    @dispatch(event="provider.dns.host_zones.delete",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def delete(self, dns_zone):
+        zone = (dns_zone if isinstance(dns_zone, GCPDnsZone)
+                else self.get(dns_zone))
+        if zone:
+            (self.provider
+                 .gcp_dns
+                 .managedZones()
+                 .delete(project=self.provider.project_name,
+                         managedZone=zone.id)
+                 .execute())
+
+
+class GCPDnsRecordService(BaseDnsRecordService):
+
+    def __init__(self, provider):
+        super(GCPDnsRecordService, self).__init__(provider)
+
+    def _to_resource_records(self, data, rec_type):
+        """
+        Converts a record to what GCP expects. For example, GCP
+        expects a fully qualified name for all CNAME records.
+        """
+        if isinstance(data, list):
+            records = data
+        else:
+            records = [data]
+        return [self._standardize_record(r, rec_type) for r in records]
+
+    def get(self, dns_zone, rec_id):
+        if rec_id and ":" in rec_id:
+            rec_name, rec_type = rec_id.split(":")
+            response = (self.provider
+                        .gcp_dns
+                        .resourceRecordSets()
+                        .list(project=self.provider.project_name,
+                              managedZone=dns_zone.id,
+                              name=self._get_fully_qualified_dns(rec_name),
+                              type=rec_type)
+                        .execute())
+            if len(response.get('rrsets', [])) > 1:
+                log.warning('Expected at most %d results; got %d',
+                            1, len(response.get('items', [])))
+            for rec in response.get('rrsets', []):
+                return GCPDnsRecord(self.provider, dns_zone, rec)
+            return None
+        else:
+            return None
+
+    def list(self, dns_zone, limit=None, marker=None, rec_id=None):
+        max_result = limit if limit is not None and limit < 500 else 500
+        response = (self.provider
+                        .gcp_dns
+                        .resourceRecordSets()
+                        .list(project=self.provider.project_name,
+                              managedZone=dns_zone.id,
+                              maxResults=max_result,
+                              pageToken=marker)
+                        .execute())
+        records = []
+        for rec in response.get('rrsets', []):
+            records.append(GCPDnsRecord(self.provider, dns_zone, rec))
+        if len(records) > max_result:
+            log.warning('Expected at most %d results; got %d',
+                        max_result, len(records))
+        return ServerPagedResultList('nextPageToken' in response,
+                                     response.get('nextPageToken'),
+                                     False, data=records)
+
+    def find(self, dns_zone, **kwargs):
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, dns_zone.records)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    def create(self, dns_zone, name, type, data, ttl=None):
+        GCPDnsZone.assert_valid_resource_name(name)
+        body = {
+            'kind': 'dns#change',
+            "additions": [
+                {
+                    'kind': 'dns#resourceRecordSet',
+                    'name': self._get_fully_qualified_dns(name),
+                    'type': type,
+                    'ttl': ttl,
+                    'rrdatas': self._to_resource_records(data, type)
+                }
+            ]
+        }
+        (self.provider
+             .gcp_dns
+             .changes()
+             .create(project=self.provider.project_name,
+                     managedZone=dns_zone.id,
+                     body=body)
+             .execute())
+        rec_id = name + ":" + type
+        return self.get(dns_zone, rec_id)
+
+    def delete(self, dns_zone, record):
+        rec = record if isinstance(record, GCPDnsRecord) else self.get(record)
+
+        if rec:
+            body = {
+                'kind': 'dns#change',
+                "deletions": [
+                    {
+                        'kind': 'dns#resourceRecordSet',
+                        'name': self._get_fully_qualified_dns(rec.name),
+                        'type': rec.type,
+                        'ttl': rec.ttl,
+                        'rrdatas': self._to_resource_records(
+                            rec.data, rec.type)
+                    }
+                ]
+            }
+            (self.provider
+                 .gcp_dns
+                 .changes()
+                 .create(project=self.provider.project_name,
+                         managedZone=dns_zone.id,
+                         body=body)
+                 .execute())

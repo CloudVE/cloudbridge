@@ -2,6 +2,7 @@
 import ipaddress
 import logging
 import string
+import uuid
 
 from botocore.exceptions import ClientError
 
@@ -12,9 +13,13 @@ import requests
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
 from cloudbridge.base.resources import ClientPagedResultList
+from cloudbridge.base.resources import ServerPagedResultList
 from cloudbridge.base.services import BaseBucketObjectService
 from cloudbridge.base.services import BaseBucketService
 from cloudbridge.base.services import BaseComputeService
+from cloudbridge.base.services import BaseDnsRecordService
+from cloudbridge.base.services import BaseDnsService
+from cloudbridge.base.services import BaseDnsZoneService
 from cloudbridge.base.services import BaseFloatingIPService
 from cloudbridge.base.services import BaseGatewayService
 from cloudbridge.base.services import BaseImageService
@@ -51,6 +56,8 @@ from .helpers import BotoS3Service
 from .helpers import trim_empty_params
 from .resources import AWSBucket
 from .resources import AWSBucketObject
+from .resources import AWSDnsRecord
+from .resources import AWSDnsZone
 from .resources import AWSFloatingIP
 from .resources import AWSInstance
 from .resources import AWSInternetGateway
@@ -1300,3 +1307,195 @@ class AWSFloatingIPService(BaseFloatingIPService):
         else:
             aws_fip = self.svc.get_raw(fip)
         aws_fip.release()
+
+
+class AWSDnsService(BaseDnsService):
+
+    def __init__(self, provider):
+        super(AWSDnsService, self).__init__(provider)
+        self.client = self._provider.session.client(
+            'route53', region_name=self._provider.region_name)
+
+        # Initialize provider services
+        self._zone_svc = AWSDnsZoneService(self.provider)
+        self._record_svc = AWSDnsRecordService(self.provider)
+
+    @property
+    def host_zones(self):
+        return self._zone_svc
+
+    @property
+    def _records(self):
+        return self._record_svc
+
+
+class AWSDnsZoneService(BaseDnsZoneService):
+
+    def __init__(self, provider):
+        super(AWSDnsZoneService, self).__init__(provider)
+
+    @dispatch(event="provider.dns.host_zones.get",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def get(self, dns_zone_id):
+        try:
+            dns_zone = self.provider.dns.client.get_hosted_zone(
+                Id=AWSDnsZone.unescape_zone_id(dns_zone_id))
+            return AWSDnsZone(self.provider, dns_zone.get('HostedZone'))
+        except self.provider.dns.client.exceptions.NoSuchHostedZone:
+            return None
+        except ClientError as exc:
+            error_code = exc.response['Error']['Code']
+            if any(status in error_code for status in
+                   ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
+                log.debug("Object not found: %s", dns_zone_id)
+                return None
+            else:
+                raise exc
+
+    @dispatch(event="provider.dns.host_zones.list",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
+        response = self.provider.dns.client.list_hosted_zones(
+            **trim_empty_params({'MaxItems': limit, 'Marker': marker}))
+        cb_objs = [AWSDnsZone(self.provider, zone)
+                   for zone in response.get('HostedZones')]
+        return ServerPagedResultList(is_truncated=response.get('IsTruncated'),
+                                     marker=response.get('NextMarker'),
+                                     supports_total=False,
+                                     data=cb_objs)
+
+    @dispatch(event="provider.dns.host_zones.find",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, self)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    @dispatch(event="provider.dns.host_zones.create",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, admin_email):
+        AWSDnsZone.assert_valid_resource_name(name)
+
+        response = self.provider.dns.client.create_hosted_zone(
+            Name=name, CallerReference=uuid.uuid4().hex,
+            HostedZoneConfig={
+                'Comment': 'admin_email=' + admin_email
+            }
+        )
+        return AWSDnsZone(self.provider, response.get('HostedZone'))
+
+    @dispatch(event="provider.dns.host_zones.delete",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def delete(self, dns_zone):
+        dns_zone = (dns_zone if isinstance(dns_zone, AWSDnsZone)
+                    else self.get(dns_zone))
+        if dns_zone:
+            self.provider.dns.client.delete_hosted_zone(Id=dns_zone.aws_id)
+
+
+class AWSDnsRecordService(BaseDnsRecordService):
+
+    def __init__(self, provider):
+        super(AWSDnsRecordService, self).__init__(provider)
+
+    def get(self, dns_zone, rec_id):
+        try:
+            if rec_id and ":" in rec_id:
+                rec_name, rec_type = rec_id.split(":")
+                response = self.provider.dns.client.list_resource_record_sets(
+                    HostedZoneId=dns_zone.aws_id,
+                    StartRecordName=rec_name,
+                    StartRecordType=rec_type)
+                return AWSDnsRecord(self.provider, dns_zone,
+                                    response.get('ResourceRecordSets')[0])
+            else:
+                return None
+        except ClientError as exc:
+            error_code = exc.response['Error']['Code']
+            if any(status in error_code for status in
+                   ('NotFound', 'InvalidParameterValue', 'Malformed', '404')):
+                log.debug("Object not found: %s", rec_id)
+                return None
+            else:
+                raise exc
+
+    def list(self, dns_zone, limit=None, marker=None):
+        response = self.provider.dns.client.list_resource_record_sets(
+            **trim_empty_params({
+                'HostedZoneId': dns_zone.aws_id,
+                'MaxItems': limit,
+                'StartRecordIdentifier': marker
+            })
+        )
+        cb_objs = [AWSDnsRecord(self.provider, dns_zone, rec)
+                   for rec in response.get('ResourceRecordSets')]
+        return ServerPagedResultList(
+            is_truncated=response.get('IsTruncated'),
+            marker=response.get('NextRecordIdentifier'),
+            supports_total=False, data=cb_objs)
+
+    def find(self, dns_zone, **kwargs):
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, dns_zone.records)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    def _to_resource_records(self, data, rec_type):
+        if isinstance(data, list):
+            records = data
+        else:
+            records = [data]
+        return [{'Value': self._standardize_record(r, rec_type)}
+                for r in records]
+
+    def create(self, dns_zone, name, type, data, ttl=None):
+        AWSDnsRecord.assert_valid_resource_name(name)
+
+        response = self.provider.dns.client.change_resource_record_sets(
+            HostedZoneId=dns_zone.aws_id,
+            ChangeBatch={
+                'Changes': [{
+                    'Action': 'CREATE',
+                    'ResourceRecordSet': trim_empty_params({
+                        'Name': name,
+                        'Type': type,
+                        'TTL': ttl or 300,
+                        'ResourceRecords': self._to_resource_records(
+                            data, type)
+                    })
+                }]
+            }
+        )
+        # FIXME: Since Moto's implementation of route53 doesn't support
+        # waiting, this is skipped for mock tests.
+        if not self.provider.PROVIDER_ID == 'mock':
+            waiter = self.provider.dns.client.get_waiter(
+                'resource_record_sets_changed')
+            waiter.wait(Id=response.get('ChangeInfo').get('Id'))
+        return self.get(dns_zone, name + ":" + type)
+
+    def delete(self, dns_zone, record):
+        rec_id = record.id if isinstance(record, AWSDnsRecord) else record
+
+        rec_name, rec_type = rec_id.split(":")
+        response = self.provider.dns.client.change_resource_record_sets(
+            HostedZoneId=dns_zone.aws_id,
+            ChangeBatch={
+                'Changes': [{
+                    'Action': 'DELETE',
+                    'ResourceRecordSet': {
+                        'Name': rec_name,
+                        'Type': rec_type,
+                        'TTL': record.ttl,
+                        'ResourceRecords': self._to_resource_records(
+                            record.data, rec_type)
+                    }
+                }]
+            })
+        # FIXME: Since Moto's implementation of route53 doesn't support
+        # waiting, this is skipped for mock tests.
+        if not self.provider.PROVIDER_ID == 'mock':
+            waiter = self.provider.dns.client.get_waiter(
+                'resource_record_sets_changed')
+            waiter.wait(Id=response.get('ChangeInfo').get('Id'))

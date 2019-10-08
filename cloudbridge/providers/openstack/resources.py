@@ -26,6 +26,8 @@ from swiftclient.utils import generate_temp_url
 from cloudbridge.base.resources import BaseAttachmentInfo
 from cloudbridge.base.resources import BaseBucket
 from cloudbridge.base.resources import BaseBucketObject
+from cloudbridge.base.resources import BaseDnsRecord
+from cloudbridge.base.resources import BaseDnsZone
 from cloudbridge.base.resources import BaseFloatingIP
 from cloudbridge.base.resources import BaseInstance
 from cloudbridge.base.resources import BaseInternetGateway
@@ -52,6 +54,7 @@ from cloudbridge.interfaces.resources import TrafficDirection
 from cloudbridge.interfaces.resources import VolumeState
 
 from .subservices import OpenStackBucketObjectSubService
+from .subservices import OpenStackDnsRecordSubService
 from .subservices import OpenStackFloatingIPSubService
 from .subservices import OpenStackGatewaySubService
 from .subservices import OpenStackSubnetSubService
@@ -1344,3 +1347,64 @@ class OpenStackBucket(BaseBucket):
     @property
     def objects(self):
         return self._object_container
+
+
+class OpenStackDnsZone(BaseDnsZone):
+
+    def __init__(self, provider, dns_zone):
+        super(OpenStackDnsZone, self).__init__(provider)
+        self._dns_zone = dns_zone
+        self._dns_record_container = OpenStackDnsRecordSubService(
+            provider, self)
+
+    @property
+    def id(self):
+        return self._dns_zone.id
+
+    @property
+    def name(self):
+        return self._dns_zone.name
+
+    @property
+    def admin_email(self):
+        return self._dns_zone.email
+
+    @property
+    def records(self):
+        return self._dns_record_container
+
+
+class OpenStackDnsRecord(BaseDnsRecord):
+
+    def __init__(self, provider, dns_zone, dns_record):
+        super(OpenStackDnsRecord, self).__init__(provider)
+        self._dns_zone = dns_zone
+        self._dns_rec = dns_record
+
+    @property
+    def id(self):
+        return self._dns_rec.id
+
+    @property
+    def name(self):
+        return self._dns_rec.name
+
+    @property
+    def zone_id(self):
+        return self._dns_zone.id
+
+    @property
+    def type(self):
+        return self._dns_rec.type
+
+    @property
+    def data(self):
+        return self._dns_rec.records
+
+    @property
+    def ttl(self):
+        return self._dns_rec.ttl
+
+    def delete(self):
+        # pylint:disable=protected-access
+        return self._provider.dns._records.delete(self._dns_zone, self)

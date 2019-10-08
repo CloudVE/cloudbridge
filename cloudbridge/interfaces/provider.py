@@ -232,6 +232,25 @@ class CloudProvider(object):
         """
         pass
 
+    @abstractproperty
+    def dns(self):
+        """
+        Provides access to all DNS related services.
+
+        Example:
+
+        .. code-block:: python
+
+            if provider.has_service(CloudServiceType.DNS):
+               print("Provider supports DNS services")
+               dns_zones = provider.dns.host_zones.list()
+               print(dns_zones)
+
+        :rtype: :class:`.DnsService`
+        :return: a DNS service object
+        """
+        pass
+
 
 class TestMockHelperMixin(object):
     """

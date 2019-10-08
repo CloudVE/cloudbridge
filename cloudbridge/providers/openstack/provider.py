@@ -21,6 +21,7 @@ from cloudbridge.base import BaseCloudProvider
 from cloudbridge.base.helpers import get_env
 
 from .services import OpenStackComputeService
+from .services import OpenStackDnsService
 from .services import OpenStackNetworkingService
 from .services import OpenStackSecurityService
 from .services import OpenStackStorageService
@@ -72,6 +73,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self._networking = OpenStackNetworkingService(self)
         self._security = OpenStackSecurityService(self)
         self._storage = OpenStackStorageService(self)
+        self._dns = OpenStackDnsService(self)
 
     @property
     def nova(self):
@@ -183,6 +185,10 @@ class OpenStackCloudProvider(BaseCloudProvider):
     @property
     def storage(self):
         return self._storage
+
+    @property
+    def dns(self):
+        return self._dns
 
     def _connect_nova(self):
         return self._connect_nova_region(self.region_name)

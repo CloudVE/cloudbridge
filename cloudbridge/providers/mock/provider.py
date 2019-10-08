@@ -7,6 +7,7 @@
     See notes below.
 """
 from moto import mock_ec2
+from moto import mock_route53
 from moto import mock_s3
 
 import responses
@@ -37,6 +38,8 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         self.ec2mock.start()
         self.s3mock = mock_s3()
         self.s3mock.start()
+        self.route53mock = mock_route53()
+        self.route53mock.start()
         responses.add(
             responses.GET,
             self.AWS_INSTANCE_DATA_DEFAULT_URL,
@@ -98,3 +101,4 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         """
         self.s3mock.stop()
         self.ec2mock.stop()
+        self.route53mock.stop()

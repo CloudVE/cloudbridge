@@ -1,6 +1,7 @@
 import logging
 
 from cloudbridge.base.subservices import BaseBucketObjectSubService
+from cloudbridge.base.subservices import BaseDnsRecordSubService
 from cloudbridge.base.subservices import BaseFloatingIPSubService
 from cloudbridge.base.subservices import BaseGatewaySubService
 from cloudbridge.base.subservices import BaseSubnetSubService
@@ -37,3 +38,9 @@ class GCPSubnetSubService(BaseSubnetSubService):
 
     def __init__(self, provider, network):
         super(GCPSubnetSubService, self).__init__(provider, network)
+
+
+class GCPDnsRecordSubService(BaseDnsRecordSubService):
+
+    def __init__(self, provider, dns_zone):
+        super(GCPDnsRecordSubService, self).__init__(provider, dns_zone)

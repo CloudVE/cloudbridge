@@ -10,6 +10,7 @@ from neutronclient.common.exceptions import PortNotFoundClient
 
 from novaclient.exceptions import NotFound as NovaNotFound
 
+from openstack.exceptions import BadRequestException
 from openstack.exceptions import HttpException
 from openstack.exceptions import NotFoundException
 from openstack.exceptions import ResourceNotFound
@@ -23,6 +24,9 @@ from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.services import BaseBucketObjectService
 from cloudbridge.base.services import BaseBucketService
 from cloudbridge.base.services import BaseComputeService
+from cloudbridge.base.services import BaseDnsRecordService
+from cloudbridge.base.services import BaseDnsService
+from cloudbridge.base.services import BaseDnsZoneService
 from cloudbridge.base.services import BaseFloatingIPService
 from cloudbridge.base.services import BaseGatewayService
 from cloudbridge.base.services import BaseImageService
@@ -59,6 +63,8 @@ from cloudbridge.interfaces.resources import Volume
 from . import helpers as oshelpers
 from .resources import OpenStackBucket
 from .resources import OpenStackBucketObject
+from .resources import OpenStackDnsRecord
+from .resources import OpenStackDnsZone
 from .resources import OpenStackFloatingIP
 from .resources import OpenStackInstance
 from .resources import OpenStackInternetGateway
@@ -1312,3 +1318,127 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
                 log.debug("Floating IP %s not found.", fip)
                 return True
         os_ip.delete(self._provider.os_conn.session)
+
+
+class OpenStackDnsService(BaseDnsService):
+
+    def __init__(self, provider):
+        super(OpenStackDnsService, self).__init__(provider)
+
+        # Initialize provider services
+        self._zone_svc = OpenStackDnsZoneService(self.provider)
+        self._record_svc = OpenStackDnsRecordService(self.provider)
+
+    @property
+    def host_zones(self):
+        return self._zone_svc
+
+    @property
+    def _records(self):
+        return self._record_svc
+
+
+class OpenStackDnsZoneService(BaseDnsZoneService):
+
+    def __init__(self, provider):
+        super(OpenStackDnsZoneService, self).__init__(provider)
+
+    @dispatch(event="provider.dns.host_zones.get",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def get(self, dns_zone_id):
+        try:
+            return OpenStackDnsZone(
+                self.provider,
+                self.provider.os_conn.dns.get_zone(dns_zone_id))
+        except (ResourceNotFound, NotFoundException, BadRequestException):
+            log.debug("Dns Zone %s not found.", dns_zone_id)
+            return None
+
+    @dispatch(event="provider.dns.host_zones.list",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def list(self, limit=None, marker=None):
+        zones = [OpenStackDnsZone(self.provider, zone)
+                 for zone in self.provider.os_conn.dns.zones()]
+        return ClientPagedResultList(self.provider, zones,
+                                     limit=limit, marker=marker)
+
+    @dispatch(event="provider.dns.host_zones.find",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def find(self, **kwargs):
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, self)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    @dispatch(event="provider.dns.host_zones.create",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def create(self, name, admin_email):
+        OpenStackDnsZone.assert_valid_resource_name(name)
+
+        return OpenStackDnsZone(
+            self.provider, self.provider.os_conn.dns.create_zone(
+                name=self._get_fully_qualified_dns(name),
+                email=admin_email, ttl=3600))
+
+    @dispatch(event="provider.dns.host_zones.delete",
+              priority=BaseDnsZoneService.STANDARD_EVENT_PRIORITY)
+    def delete(self, dns_zone):
+        zone_id = (dns_zone.id if isinstance(dns_zone, OpenStackDnsZone)
+                   else dns_zone)
+        if zone_id:
+            self.provider.os_conn.dns.delete_zone(zone_id)
+
+
+class OpenStackDnsRecordService(BaseDnsRecordService):
+
+    def __init__(self, provider):
+        super(OpenStackDnsRecordService, self).__init__(provider)
+
+    def _to_resource_records(self, data, rec_type):
+        """
+        Converts a record to what OpenStack expects. For example,
+        OpenStack expects a fully qualified name for all CNAME records.
+        """
+        if isinstance(data, list):
+            records = data
+        else:
+            records = [data]
+        return [self._standardize_record(r, rec_type) for r in records]
+
+    def get(self, dns_zone, rec_id):
+        try:
+            return OpenStackDnsRecord(
+                self.provider, dns_zone,
+                self.provider.os_conn.dns.get_recordset(rec_id, dns_zone.id))
+        except (ResourceNotFound, NotFoundException, BadRequestException):
+            log.debug("Dns Record %s not found.", rec_id)
+            return None
+
+    def list(self, dns_zone, limit=None, marker=None):
+        recs = [OpenStackDnsRecord(self.provider, dns_zone, rec)
+                for rec in self.provider.os_conn.dns.recordsets(dns_zone.id)]
+        return ClientPagedResultList(self.provider, recs,
+                                     limit=limit, marker=marker)
+
+    def find(self, dns_zone, **kwargs):
+        filters = ['name']
+        matches = cb_helpers.generic_find(filters, kwargs, dns_zone.records)
+        return ClientPagedResultList(self.provider, list(matches),
+                                     limit=None, marker=None)
+
+    def create(self, dns_zone, name, type, data, ttl=None):
+        OpenStackDnsZone.assert_valid_resource_name(name)
+
+        return OpenStackDnsRecord(
+            self.provider, dns_zone,
+            self.provider.os_conn.dns.create_recordset(
+                zone=dns_zone.id, name=name, type=type,
+                records=self._to_resource_records(data, type),
+                ttl=ttl or 3600))
+
+    def delete(self, dns_zone, record):
+        rec_id = (record.id if isinstance(record, OpenStackDnsRecord)
+                  else record)
+        if rec_id:
+            self.provider.os_conn.dns.delete_recordset(
+                rec_id, zone=dns_zone.id)

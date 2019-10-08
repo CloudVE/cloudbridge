@@ -10,7 +10,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization as crypt_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from deprecation import deprecated
+from deprecated import deprecated
 
 import six
 
@@ -165,3 +165,19 @@ def rename_kwargs(func_name, kwargs, aliases):
                        details='{} is deprecated, use {} instead'.format(
                            alias, new))(lambda: None)()
             kwargs[new] = kwargs.pop(alias)
+
+
+NON_ALPHA_NUM = re.compile(r"[^A-Za-z0-9]+")
+
+
+def to_resource_name(value, replace_with="-"):
+    """
+    Converts a given string to a valid resource name by stripping
+    all characters that are not alphanumeric.
+
+    :param value: the value to strip
+    :param replace_with: the value to replace mismatching characters with
+    :return: a string with all mismatching characters removed.
+    """
+    val = re.sub(NON_ALPHA_NUM, replace_with, value)
+    return val.strip("-")

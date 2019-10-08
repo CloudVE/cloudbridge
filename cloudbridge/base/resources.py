@@ -21,6 +21,8 @@ from cloudbridge.interfaces.resources import AttachmentInfo
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
 from cloudbridge.interfaces.resources import CloudResource
+from cloudbridge.interfaces.resources import DnsRecord
+from cloudbridge.interfaces.resources import DnsZone
 from cloudbridge.interfaces.resources import FloatingIP
 from cloudbridge.interfaces.resources import FloatingIpState
 from cloudbridge.interfaces.resources import GatewayState
@@ -872,7 +874,6 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
 
     def __init__(self, provider):
         super(BaseInternetGateway, self).__init__(provider)
-        self.__provider = provider
 
     def __eq__(self, other):
         return (isinstance(other, InternetGateway) and
@@ -890,3 +891,74 @@ class BaseInternetGateway(BaseCloudResource, BaseObjectLifeCycleMixin,
     def delete(self):
         return self._provider.networking._gateways.delete(self.network_id,
                                                           self)
+
+
+class BaseDnsZone(BaseCloudResource, DnsZone):
+
+    CB_NAME_PATTERN = re.compile(
+        r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]"
+        r"[a-z0-9-]{0,61}[a-z0-9]\.?$")
+
+    def __init__(self, provider):
+        super(BaseDnsZone, self).__init__(provider)
+
+    def __eq__(self, other):
+        return (isinstance(other, BaseDnsZone) and
+                # pylint:disable=protected-access
+                self._provider == other._provider and
+                self.id == other.id)
+
+    @staticmethod
+    def is_valid_resource_name(name):
+        if not name:
+            return False
+        else:
+            return (True if BaseDnsZone.CB_NAME_PATTERN.match(name)
+                    else False)
+
+    @staticmethod
+    def assert_valid_resource_name(name):
+        if not BaseDnsZone.is_valid_resource_name(name):
+            log.debug("InvalidNameException raised on %s", name,
+                      exc_info=True)
+            raise InvalidNameException(
+                u"Invalid object name: %s. Name must be fully qualified "
+                u"(ending with a .) and match criteria defined "
+                u"in: https://stackoverflow.com/q/10306690/10971151" % name)
+
+    def delete(self):
+        return self._provider.dns.host_zones.delete(self.id)
+
+
+class BaseDnsRecord(BaseCloudResource, DnsRecord):
+
+    CB_NAME_PATTERN = re.compile(
+        r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]"
+        r"[a-z0-9-]{0,61}[a-z0-9]\.?$")
+
+    def __init__(self, provider):
+        super(BaseDnsRecord, self).__init__(provider)
+
+    def __eq__(self, other):
+        return (isinstance(other, BaseDnsRecord) and
+                # pylint:disable=protected-access
+                self._provider == other._provider and
+                self.id == other.id)
+
+    @staticmethod
+    def is_valid_resource_name(name):
+        if not name:
+            return False
+        else:
+            return (True if BaseDnsRecord.CB_NAME_PATTERN.match(name)
+                    else False)
+
+    @staticmethod
+    def assert_valid_resource_name(name):
+        if not BaseDnsRecord.is_valid_resource_name(name):
+            log.debug("InvalidNameException raised on %s", name,
+                      exc_info=True)
+            raise InvalidNameException(
+                u"Invalid object name: %s. Name must be fully qualified "
+                u"(ending with a .) and match criteria defined "
+                u"in: https://stackoverflow.com/q/10306690/10971151" % name)

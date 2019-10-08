@@ -873,6 +873,162 @@ class RouterService(PageableObjectMixin, CloudService):
         pass
 
 
+class DnsService(CloudService):
+    """
+    Base service interface for DNS.
+
+    This service offers a collection of DNS services that in turn
+    provide access to DNS resources.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def host_zones(self):
+        """
+        Provides access to all dns zones.
+
+        :rtype: :class:`.DnsZoneService`
+        :return: a Dns Host Zone service
+        """
+        pass
+
+    @abstractproperty
+    def _records(self):
+        """
+        Provides access to dns records for this service.
+        This service is not iterable.
+
+        :rtype: :class:`.DnsRecordSubService`
+        :return: a DnsRecordSubService object
+        """
+        pass
+
+
+class DnsZoneService(PageableObjectMixin, CloudService):
+    """
+    Manage DNS Zone actions and resources. This service is optional and
+    the :func:`CloudProvider.has_service()` method should be used to verify its
+    availability before using the service.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, dns_zone_id):
+        """
+        Returns a DnsZone object given its ID.
+
+        :type dns_zone_id: ``str``
+        :param dns_zone_id: The ID of the host zone to retrieve.
+
+        :rtype: ``object``  of :class:`.DnsZone` or ``None``
+        :return: a DnsZone object of ``None`` if not found.
+        """
+        pass
+
+    @abstractmethod
+    def list(self, limit=None, marker=None):
+        """
+        List all host zones.
+
+        :rtype: ``list`` of :class:`.DnsZone`
+        :return: list of DnsZone objects
+        """
+        pass
+
+    @abstractmethod
+    def find(self, **kwargs):
+        """
+        Searches for a host zone by a given list of attributes.
+
+        Supported attributes: label
+
+        :rtype: List of ``object`` of :class:`.DnsZone`
+        :return: A list of Dns Zone objects matching the supplied attributes.
+        """
+        pass
+
+    @abstractmethod
+    def create(self, label, admin_email):
+        """
+        Create a new host zone.
+
+        :type label: ``str``
+        :param label: A host zone label.
+
+        :type admin_email: ``str``
+        :param admin_email: Email address of this zone's administrator.
+
+        :rtype: ``object`` of :class:`.DnsZone`
+        :return:  A DnsZone object
+        """
+        pass
+
+    @abstractmethod
+    def delete(self, dns_zone):
+        """
+        Delete an existing DnsHostZone.
+
+        :type dns_zone: :class:`.DnsZone` object or ``str``
+        :param dns_zone: DnsZone object or ID of the host zone to delete.
+        """
+        pass
+
+
+class DnsRecordService(CloudService):
+
+    """
+    The Dns Record Service interface provides access to the records belonging
+    to a Dns Zone.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get(self, dns_zone, rec_id):
+        """
+        Returns a record given its ID and the dns_zone containing
+        it. Returns ``None`` if the record does not exist.
+
+        :rtype: :class:`.DnsRecord`
+        :return:  a DnsRecord instance
+        """
+        pass
+
+    @abstractmethod
+    def list(self, dns_zone, limit=None, marker=None):
+        """
+        List all records within a dns zone.
+
+        :rtype: :class:`.DnsRecord`
+        :return:  a DnsRecord instance
+        """
+        pass
+
+    @abstractmethod
+    def create(self, dns_zone, name, type, data, ttl=None):
+        """
+        Create a new record within a zone.
+
+        :type name: ``str``
+        :param name: The record name.
+
+        :type type: ``str``
+        :param type: The DnsRecord type. (e.g. A, CNAME, MX etc)
+
+        :type data: ``str``
+        :param data: The corresponding value for the record. The relevant
+                     values must be fully qualified (e.g. CNAMEs). If the
+                     trailing dot is omitted, it will be automatically
+                     added and thus assumed to be fully qualified.
+
+        :type data: ``int``
+        :param data: The ttl (in seconds) for this record.
+
+        :rtype: ``object`` of :class:`.DnsRecord`
+        :return:  A DnsRecord object
+        """
+        pass
+
+
 class BucketService(PageableObjectMixin, CloudService):
 
     """
