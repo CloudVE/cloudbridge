@@ -23,7 +23,7 @@ REQS_BASE = [
     'six>=1.11',
     'tenacity>=4.12.0,<=5.0',
     'cachetools>=2.1.0',
-    'deprecated>=1.2.3',
+    'deprecation>=2.0.7',
     'pyeventsystem<2'
 ]
 REQS_AWS = [

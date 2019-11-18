@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from deprecated import deprecated
+from deprecation import deprecated
 
 from msrestazure.azure_exceptions import CloudError
 
@@ -108,6 +108,10 @@ class AzureCloudProvider(BaseCloudProvider):
     @property
     def storage(self):
         return self._storage
+
+    @property
+    def dns(self):
+        raise NotImplementedError()
 
     @property
     def azure_client(self):
