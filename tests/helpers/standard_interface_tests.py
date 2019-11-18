@@ -147,10 +147,6 @@ def check_obj_id(test, obj):
     id_property = getattr(type(obj), 'id', None)
     test.assertIsInstance(id_property, property)
     test.assertIsNone(id_property.fset, "Id should not have a setter")
-    # Some delimiter characters can trip up djcloudbridge url reversing
-    # so make sure ids do not contain them
-    test.assertTrue("/" not in obj.id,
-                    "IDs should not contain slash but is: %s" % (obj.id,))
 
 
 def check_obj_name(test, obj):
