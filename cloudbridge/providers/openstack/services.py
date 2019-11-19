@@ -278,7 +278,7 @@ class OpenStackVMFirewallService(BaseVMFirewallService):
               else self.get(vm_firewall))
         if fw:
             # pylint:disable=protected-access
-            fw._vm_firewall.delete(self.provider.os_conn.session)
+            fw._vm_firewall.delete(self.provider.os_conn.network)
 
 
 class OpenStackVMFirewallRuleService(BaseVMFirewallRuleService):
@@ -1317,7 +1317,7 @@ class OpenStackFloatingIPService(BaseFloatingIPService):
             except (ResourceNotFound, NotFoundException):
                 log.debug("Floating IP %s not found.", fip)
                 return True
-        os_ip.delete(self._provider.os_conn.session)
+        os_ip.delete(self._provider.os_conn.network)
 
 
 class OpenStackDnsService(BaseDnsService):

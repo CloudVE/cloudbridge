@@ -140,7 +140,7 @@ class OpenStackMachineImage(BaseMachineImage):
         """
         Delete this image
         """
-        self._os_image.delete(self._provider.os_conn.session)
+        self._os_image.delete(self._provider.os_conn.image)
 
     @property
     def state(self):
