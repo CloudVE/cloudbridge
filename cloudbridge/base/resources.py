@@ -165,8 +165,9 @@ class BaseObjectLifeCycleMixin(ObjectLifeCycleMixin):
                 time.sleep(interval)
                 if time.time() > end_time:
                     raise WaitStateException(
-                        "Waited too long for object: {0} to become ready. It's"
-                        " still in state: {1}".format(self, self.state))
+                        "Waited too long for object: {0} to reach a desired"
+                        "state: {1}. It's still in state: {2}".format(
+                            self, target_states, self.state))
             self.refresh()
         log.debug("Object: %s successfully reached target state: %s",
                   self, self.state)

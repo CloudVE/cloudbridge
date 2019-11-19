@@ -2,8 +2,6 @@
 
 import inspect
 
-from cinderclient import client as cinder_client
-
 from keystoneauth1 import session
 
 from keystoneclient import client as keystone_client
@@ -59,8 +57,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
         # Service connections, lazily initialized
         self._nova = None
         self._keystone = None
-        self._glance = None
-        self._cinder = None
         self._swift = None
         self._neutron = None
         self._os_conn = None
@@ -139,18 +135,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
             user_domain_name=self.user_domain_name,
             project_domain_name=self.project_domain_name
         )
-
-#     @property
-#     def glance(self):
-#         if not self._glance:
-#             self._glance = self._connect_glance()
-#         return self._glance
-
-    @property
-    def cinder(self):
-        if not self._cinder:
-            self._cinder = self._connect_cinder()
-        return self._cinder
 
     @property
     def swift(self):
@@ -236,29 +220,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
                 region_name=self.region_name)
             keystone.authenticate()
             return keystone
-
-    def _connect_cinder(self):
-        """Get an OpenStack Cinder (block storage) client object."""
-        api_version = self._get_config_value(
-            'os_volume_api_version',
-            get_env('OS_VOLUME_API_VERSION', 2))
-
-        return cinder_client.Client(api_version,
-                                    auth_url=self.auth_url,
-                                    session=self._keystone_session,
-                                    region_name=self.region_name)
-
-#     def _connect_glance(self):
-#         """
-#         Get an OpenStack Glance (VM images) client object for the given
-#         cloud.
-#         """
-#         api_version = self._get_config_value(
-#             'os_image_api_version',
-#             os.environ.get('OS_IMAGE_API_VERSION', 1))
-#
-#         return glance_client.Client(version=api_version,
-#                                     session=self.keystone.session)
 
     @staticmethod
     def _clean_options(options, method_to_match):

@@ -3,8 +3,6 @@ Services implemented by the OpenStack provider.
 """
 import logging
 
-from cinderclient.exceptions import NotFound as CinderNotFound
-
 from neutronclient.common.exceptions import NeutronClientException
 from neutronclient.common.exceptions import PortNotFoundClient
 
@@ -383,8 +381,8 @@ class OpenStackVolumeService(BaseVolumeService):
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def get(self, volume_id):
         try:
-            os_vol = self.provider.cinder.volumes.get(volume_id)
-        except CinderNotFound:
+            os_vol = self.provider.os_conn.block_storage.get_volume(volume_id)
+        except (NotFoundException, ResourceNotFound):
             log.debug("Volume %s was not found.", volume_id)
             return None
         if os_vol.availability_zone != self.provider.service_zone_name(self):
@@ -409,30 +407,24 @@ class OpenStackVolumeService(BaseVolumeService):
                 "attributes: %s" % (kwargs, 'label'))
 
         log.debug("Searching for an OpenStack Volume with the label %s", label)
-        search_opts = {'name': label,
-                       'availability_zone':
-                           self.provider.service_zone_name(self)}
         cb_vols = [
             OpenStackVolume(self.provider, vol)
-            for vol in self.provider.cinder.volumes.list(
-                search_opts=search_opts,
+            for vol in self.provider.os_conn.block_storage.volumes(
+                name=label,
                 limit=oshelpers.os_result_limit(self.provider),
-                marker=None)]
-
+                marker=None)
+            if vol.availability_zone == self.provider.service_zone_name(self)]
         return oshelpers.to_server_paged_list(self.provider, cb_vols)
 
     @dispatch(event="provider.storage.volumes.list",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        search_opts = {'availability_zone': self.provider
-                                                .service_zone_name(self)}
         cb_vols = [
             OpenStackVolume(self.provider, vol)
-            for vol in self.provider.cinder.volumes.list(
-                search_opts=search_opts,
+            for vol in self.provider.os_conn.block_storage.volumes(
                 limit=oshelpers.os_result_limit(self.provider, limit),
-                marker=marker)]
-
+                marker=marker)
+            if vol.availability_zone == self.provider.service_zone_name(self)]
         return oshelpers.to_server_paged_list(self.provider, cb_vols, limit)
 
     @dispatch(event="provider.storage.volumes.create",
@@ -443,19 +435,19 @@ class OpenStackVolumeService(BaseVolumeService):
         snapshot_id = snapshot.id if isinstance(
             snapshot, OpenStackSnapshot) and snapshot else snapshot
 
-        os_vol = self.provider.cinder.volumes.create(
-            size, name=label, description=description,
+        os_vol = self.provider.os_conn.block_storage.create_volume(
+            size=size, name=label, description=description,
             availability_zone=zone_name, snapshot_id=snapshot_id)
         return OpenStackVolume(self.provider, os_vol)
 
     @dispatch(event="provider.storage.volumes.delete",
               priority=BaseVolumeService.STANDARD_EVENT_PRIORITY)
     def delete(self, volume):
-        volume = (volume if isinstance(volume, OpenStackVolume)
-                  else self.get(volume))
-        if volume:
+        vol = (volume if isinstance(volume, OpenStackVolume)
+               else self.get(volume))
+        if vol:
             # pylint:disable=protected-access
-            volume._volume.delete()
+            self.provider.os_conn.block_storage.delete_volume(vol._volume)
 
 
 class OpenStackSnapshotService(BaseSnapshotService):
@@ -469,8 +461,8 @@ class OpenStackSnapshotService(BaseSnapshotService):
         try:
             return OpenStackSnapshot(
                 self.provider,
-                self.provider.cinder.volume_snapshots.get(snapshot_id))
-        except CinderNotFound:
+                self.provider.os_conn.block_storage.get_snapshot(snapshot_id))
+        except (NotFoundException, ResourceNotFound):
             log.debug("Snapshot %s was not found.", snapshot_id)
             return None
 
@@ -492,7 +484,8 @@ class OpenStackSnapshotService(BaseSnapshotService):
                   "params: %s", search_opts)
         cb_snaps = [
             OpenStackSnapshot(self.provider, snap) for
-            snap in self.provider.cinder.volume_snapshots.list(search_opts)
+            snap in self.provider.os_conn.block_storage.snapshots(
+                **search_opts)
             if snap.name == label]
 
         return oshelpers.to_server_paged_list(self.provider, cb_snaps)
@@ -501,11 +494,11 @@ class OpenStackSnapshotService(BaseSnapshotService):
               priority=BaseSnapshotService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
         cb_snaps = [
-            OpenStackSnapshot(self.provider, snap) for
-            snap in self.provider.cinder.volume_snapshots.list(
-                search_opts={'limit': oshelpers.os_result_limit(self.provider,
-                                                                limit),
-                             'marker': marker})]
+            OpenStackSnapshot(self.provider, snap)
+            for snap in self.provider.os_conn.block_storage.snapshots(
+                limit=oshelpers.os_result_limit(self.provider, limit),
+                marker=marker)
+        ]
         return oshelpers.to_server_paged_list(self.provider, cb_snaps, limit)
 
     @dispatch(event="provider.storage.snapshots.create",
@@ -515,8 +508,8 @@ class OpenStackSnapshotService(BaseSnapshotService):
         volume_id = (volume.id if isinstance(volume, OpenStackVolume)
                      else volume)
 
-        os_snap = self.provider.cinder.volume_snapshots.create(
-            volume_id, name=label,
+        os_snap = self.provider.os_conn.block_storage.create_snapshot(
+            volume_id=volume_id, name=label,
             description=description)
         return OpenStackSnapshot(self.provider, os_snap)
 
@@ -527,7 +520,7 @@ class OpenStackSnapshotService(BaseSnapshotService):
              self.get(snapshot))
         if s:
             # pylint:disable=protected-access
-            s._snapshot.delete()
+            self.provider.os_conn.block_storage.delete_snapshot(s._snapshot)
 
 
 class OpenStackBucketService(BaseBucketService):
