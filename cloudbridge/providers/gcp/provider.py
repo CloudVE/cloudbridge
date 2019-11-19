@@ -105,8 +105,9 @@ class GCPResources(object):
         # }
         # pylint:disable=protected-access
         desc = connection._resourceDesc
-        self._root_url = desc['rootUrl']
-        self._service_path = desc['servicePath']
+        self.RESOURCE_REGEX = re.compile(
+            r"(https://.*\.googleapis\.com/{0})(.*)".format(
+                desc['servicePath']))
         self._resources = {}
 
         # We will not mutate self._desc; it's OK to use items() in Python 2.x.
@@ -153,10 +154,9 @@ class GCPResources(object):
              'subnetwork': 'testsubnet-2'}
         """
         url = url.strip()
-        if url.startswith(self._root_url):
-            url = url[len(self._root_url):]
-        if url.startswith(self._service_path):
-            url = url[len(self._service_path):]
+        m = self.RESOURCE_REGEX.match(url)
+        if m:
+            url = m.group(2)
 
         for resource, desc in self._resources.items():
             m = re.match(desc['pattern'], url)
@@ -176,7 +176,7 @@ class GCPResources(object):
         the resource URL with default project, region, zone values.
         """
         # If url_or_name is a valid GCP resource URL, then parse it.
-        if url_or_name.startswith(self._root_url):
+        if self.RESOURCE_REGEX.match(url_or_name):
             return self.parse_url(url_or_name)
         # Otherwise, construct resource URL with default values.
         if resource not in self._resources:
