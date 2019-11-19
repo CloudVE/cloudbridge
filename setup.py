@@ -52,7 +52,6 @@ REQS_GCP = [
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0',
     'python-novaclient>=7.0.0',
-    'python-glanceclient>=2.5.0',
     'python-swiftclient>=3.2.0',
     'python-neutronclient>=6.0.0',
     'python-keystoneclient>=3.13.0'
