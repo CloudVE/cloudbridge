@@ -586,7 +586,7 @@ class OpenStackVolume(BaseVolume):
         """
         self.assert_valid_resource_label(value)
         self._volume.name = value
-        self._volume.update(name=value or "")
+        self._volume.commit(self._provider.os_conn.block_storage)
 
     @property
     def description(self):
@@ -595,7 +595,7 @@ class OpenStackVolume(BaseVolume):
     @description.setter
     def description(self, value):
         self._volume.description = value
-        self._volume.update(description=value)
+        self._volume.commit(self._provider.os_conn.block_storage)
 
     @property
     def size(self):
@@ -634,13 +634,16 @@ class OpenStackVolume(BaseVolume):
         instance_id = instance.id if isinstance(
             instance,
             OpenStackInstance) else instance
-        self._volume.attach(instance_id, device)
+        self._provider.os_conn.compute.create_volume_attachment(
+            server=instance_id, volume_id=self.id, device=device)
 
     def detach(self, force=False):
         """
         Detach this volume from an instance.
         """
-        self._volume.detach()
+        for attachment in self._volume.attachments:
+            self._provider.os_conn.compute.delete_volume_attachment(
+                attachment['id'], attachment['server_id'])
 
     def create_snapshot(self, label, description=None):
         """
@@ -711,7 +714,7 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         self.assert_valid_resource_label(value)
         self._snapshot.name = value
-        self._snapshot.update(name=value or "")
+        self._snapshot.commit(self._provider.os_conn.block_storage)
 
     @property
     def description(self):
@@ -720,7 +723,7 @@ class OpenStackSnapshot(BaseSnapshot):
     @description.setter
     def description(self, value):
         self._snapshot.description = value
-        self._snapshot.update(description=value)
+        self._snapshot.commit(self._provider.os_conn.block_storage)
 
     @property
     def size(self):
@@ -758,12 +761,12 @@ class OpenStackSnapshot(BaseSnapshot):
         """
         Create a new Volume from this Snapshot.
         """
-        vol_label = "from-snap-{0}".format(self.id or self.label)
+        vol_label = "from-snap-{0}".format(self.label or self.id)
         self.assert_valid_resource_label(vol_label)
         size = size if size else self._snapshot.size
-        os_vol = self._provider.cinder.volumes.create(
-            size, name=vol_label, availability_zone=self._provider.zone_name,
-            snapshot_id=self._snapshot.id)
+        os_vol = self._provider.os_conn.block_storage.create_volume(
+            size=size, name=vol_label, snapshot_id=self._snapshot.id,
+            availability_zone=self._provider.zone_name)
         cb_vol = OpenStackVolume(self._provider, os_vol)
         return cb_vol
 

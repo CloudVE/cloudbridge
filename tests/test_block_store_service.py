@@ -131,7 +131,8 @@ class CloudBlockStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(test_vol.attachments.instance_id,
                                  test_instance.id)
                 if (self.provider.PROVIDER_ID != 'azure' and
-                        self.provider.PROVIDER_ID != 'gcp'):
+                        self.provider.PROVIDER_ID != 'gcp' and
+                        self.provider.PROVIDER_ID != 'openstack'):
                     self.assertEqual(test_vol.attachments.device,
                                      "/dev/sda2")
                 test_vol.detach()

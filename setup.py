@@ -51,12 +51,11 @@ REQS_GCP = [
 ]
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0',
-    'python-novaclient>=7.0.0,<=11.0',
-    'python-glanceclient>=2.5.0,<=2.12',
-    'python-cinderclient>=1.9.0,<=4.0',
-    'python-swiftclient>=3.2.0,<=3.6',
-    'python-neutronclient>=6.0.0,<=6.9',
-    'python-keystoneclient>=3.13.0,<=3.17'
+    'python-novaclient>=7.0.0',
+    'python-glanceclient>=2.5.0',
+    'python-swiftclient>=3.2.0',
+    'python-neutronclient>=6.0.0',
+    'python-keystoneclient>=3.13.0'
 ]
 REQS_FULL = REQS_BASE + REQS_AWS + REQS_AZURE + REQS_GCP + REQS_OPENSTACK
 # httpretty is required with/for moto 1.0.0 or AWS tests fail

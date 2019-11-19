@@ -2,8 +2,6 @@
 
 import inspect
 
-from cinderclient import client as cinder_client
-
 from keystoneauth1 import session
 
 from keystoneclient import client as keystone_client
@@ -60,7 +58,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
         self._nova = None
         self._keystone = None
         self._glance = None
-        self._cinder = None
         self._swift = None
         self._neutron = None
         self._os_conn = None
@@ -147,12 +144,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
 #         return self._glance
 
     @property
-    def cinder(self):
-        if not self._cinder:
-            self._cinder = self._connect_cinder()
-        return self._cinder
-
-    @property
     def swift(self):
         if not self._swift:
             self._swift = self._connect_swift()
@@ -236,17 +227,6 @@ class OpenStackCloudProvider(BaseCloudProvider):
                 region_name=self.region_name)
             keystone.authenticate()
             return keystone
-
-    def _connect_cinder(self):
-        """Get an OpenStack Cinder (block storage) client object."""
-        api_version = self._get_config_value(
-            'os_volume_api_version',
-            get_env('OS_VOLUME_API_VERSION', 2))
-
-        return cinder_client.Client(api_version,
-                                    auth_url=self.auth_url,
-                                    session=self._keystone_session,
-                                    region_name=self.region_name)
 
 #     def _connect_glance(self):
 #         """
