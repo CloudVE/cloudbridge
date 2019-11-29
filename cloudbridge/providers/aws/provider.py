@@ -3,6 +3,8 @@ import logging as log
 
 import boto3
 
+from botocore.client import Config
+
 from cloudbridge.base import BaseCloudProvider
 from cloudbridge.base.helpers import get_env
 
@@ -42,7 +44,10 @@ class AWSCloudProvider(BaseCloudProvider):
         self.s3_cfg = {
             'use_ssl': self._get_config_value('s3_is_secure', True),
             'verify': self._get_config_value('s3_validate_certs', True),
-            'endpoint_url': self._get_config_value('s3_endpoint_url')
+            'endpoint_url': self._get_config_value('s3_endpoint_url'),
+            'config': Config(
+                signature_version=self._get_config_value(
+                    's3_signature_version', 's3v4'))
         }
 
         # service connections, lazily initialized
