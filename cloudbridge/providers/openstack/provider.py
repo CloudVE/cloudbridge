@@ -290,13 +290,29 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
     def service_zone_name(self, service):
         service_name = service._service_event_pattern
-        if "networking" in service_name and self.networking.service_zone_name:
-            return self.networking.service_zone_name
-        elif "security" in service_name and self.security.service_zone_name:
-            return self.security.service_zone_name
-        elif "compute" in service_name and self.compute.service_zone_name:
-            return self.compute.service_zone_name
-        elif "storage" in service_name and self.storage.service_zone_name:
-            return self.storage.service_zone_name
-        else:
+        if "networking" in service_name:
+            if self.networking.service_zone_name:
+                return self.networking.service_zone_name
+            elif isinstance(self.zone_name, dict) and self.zone_name.get("networking_zone"):
+                return self.zone_name.get("networking_zone")
+        elif "security" in service_name:
+            if self.security.service_zone_name:
+                return self.security.service_zone_name
+            elif isinstance(self.zone_name, dict) and self.zone_name.get("security_zone"):
+                return self.zone_name.get("security_zone")
+        elif "compute" in service_name:
+            if self.compute.service_zone_name:
+                return self.compute.service_zone_name
+            elif isinstance(self.zone_name, dict) and self.zone_name.get("compute_zone"):
+                return self.zone_name.get("compute_zone")
+        elif "storage" in service_name:
+            if self.storage.service_zone_name:
+                return self.storage.service_zone_name
+            elif isinstance(self.zone_name, dict) and self.zone_name.get("storage_zone"):
+                return self.zone_name.get("storage_zone")
+        elif isinstance(self.zone_name, dict) and self.zone_name.get("default_zone"):
+                return self.zone_name.get("default_zone")
+        elif isinstance(self.zone_name, str):
             return self.zone_name
+        else:
+            return None
