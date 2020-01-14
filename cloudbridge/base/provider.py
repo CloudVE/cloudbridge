@@ -1,4 +1,5 @@
 """Base implementation of a provider interface."""
+import ast
 import functools
 import logging
 import os
@@ -102,7 +103,15 @@ class BaseCloudProvider(CloudProvider):
             region = self.compute.regions.current
             zone = region.default_zone
             self._zone_name = zone.name if zone else None
-        return self._zone_name
+            return self._zone_name
+        else:
+            try:
+                zone_dict = ast.literal_eval(self._zone_name)
+                if isinstance(zone_dict, dict):
+                    return zone_dict
+            except (ValueError, SyntaxError):
+                pass
+            return self._zone_name
 
     @property
     def config(self):
