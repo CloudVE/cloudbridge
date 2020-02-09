@@ -11,16 +11,6 @@ matrix:
   allow_failures:
   - os: osx
   include:
-  - python: 2.7
-    env: TOX_ENV=py27-aws
-  - python: 2.7
-    env: TOX_ENV=py27-azure
-  - python: 2.7
-    env: TOX_ENV=py27-gcp
-  - python: 2.7
-    env: TOX_ENV=py27-mock
-  - python: 2.7
-    env: TOX_ENV=py27-openstack
   - python: 3.6
     env: TOX_ENV=py36-aws
   - python: 3.6
