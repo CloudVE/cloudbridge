@@ -22,44 +22,34 @@ Build Status Tests
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
-.. |aws-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1
-              :target: https://travis-ci.org/CloudVE/cloudbridge
 .. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/6
               :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |azure-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2
-                :target: https://travis-ci.org/CloudVE/cloudbridge
 .. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/7
                 :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |gcp-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
-              :target: https://travis-ci.org/CloudVE/cloudbridge
 .. |gcp-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/8
               :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |mock-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
-              :target: https://travis-ci.org/CloudVE/cloudbridge
 .. |mock-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/9
               :target: https://travis-ci.org/CloudVE/cloudbridge
 
-.. |os-py27| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
-             :target: https://travis-ci.org/CloudVE/cloudbridge
 .. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/10
              :target: https://travis-ci.org/CloudVE/cloudbridge
 
-+---------------------------+----------------+----------------+
-| **Provider/Environment**  | **Python 2.7** | **Python 3.6** |
-+---------------------------+----------------+----------------+
-| **Amazon Web Services**   | |aws-py27|     | |aws-py36|     |
-+---------------------------+----------------+----------------+
-| **Google Cloud Platform** | |gcp-py27|     | |gcp-py36|     |
-+---------------------------+----------------+----------------+
-| **Microsoft Azure**       | |azure-py27|   | |azure-py36|   |
-+---------------------------+----------------+----------------+
-| **OpenStack**             | |os-py27|      | |os-py36|      |
-+---------------------------+----------------+----------------+
-| **Mock Provider**         | |mock-py27|    | |mock-py36|    |
-+---------------------------+----------------+----------------+
++---------------------------+----------------+
+| **Provider/Environment**  | **Python 3.6** |
++---------------------------+----------------+
+| **Amazon Web Services**   | |aws-py36|     |
++---------------------------+----------------+
+| **Google Cloud Platform** | |gcp-py36|     |
++---------------------------+----------------+
+| **Microsoft Azure**       | |azure-py36|   |
++---------------------------+----------------+
+| **OpenStack**             | |os-py36|      |
++---------------------------+----------------+
+| **Mock Provider**         | |mock-py36|    |
++---------------------------+----------------+
 
 Installation
 ~~~~~~~~~~~~
