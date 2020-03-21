@@ -965,6 +965,8 @@ class AWSNetworkService(BaseNetworkService):
         cb_net.wait_till_ready()
         if label:
             cb_net.label = label
+        self.provider.ec2_conn.meta.client.modify_vpc_attribute(
+            VpcId=cb_net.id, EnableDnsHostnames=True)
         return cb_net
 
     @dispatch(event="provider.networking.networks.delete",
