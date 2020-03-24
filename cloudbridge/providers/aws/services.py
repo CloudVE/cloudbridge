@@ -840,23 +840,20 @@ class AWSVMTypeService(BaseVMTypeService):
         only the instances actually available in the given zone. The source
         is here: https://github.com/CloudVE/aws-instance-types
         """
-        url = "https://raw.githubusercontent.com/CloudVE/aws-instance-types" \
-              "/master/vmtypes/{}.json".format(self.provider.zone_name)
+
+        url = "https://aws-vm-types.s3.us-east-1."\
+              "amazonaws.com/{}.json".format(self.provider.zone_name)
         r = requests.get(url)
         vm_types_list = list(r.json())
         if vm_types_list:
             return vm_types_list
         else:
-            r = requests.get(self.provider.config.get(
-                "aws_instance_info_url",
-                self.provider.AWS_INSTANCE_DATA_DEFAULT_URL))
-            # Some instances are only available in certain regions. Use pricing
-            # info to determine and filter out instance types that are not
-            # available in the current region
-            vm_types_list = r.json()
-            return [vm_type for vm_type in vm_types_list
-                    if vm_type.get(
-                        'pricing', {}).get(self.provider.region_name)]
+            url = "https://raw.github.com/CloudVE/aws-instance-types" \
+                  "/master/vmtypes/{}.json".format(self.provider.zone_name)
+            r = requests.get(url)
+            vm_types_list = list(r.json())
+            if vm_types_list:
+                return vm_types_list
 
     @dispatch(event="provider.compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
