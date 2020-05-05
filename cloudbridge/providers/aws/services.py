@@ -1161,10 +1161,6 @@ class AWSSubnetService(BaseSubnetService):
                 # gateway. See note above about why this is commented
                 # default_router.attach_subnet(sn)
                 default_sn = sn
-        # No specific zone was supplied; return the last created subnet
-        # The list was originally reversed to have the last subnet be in zone a
-        if not default_sn:
-            default_sn = sn
         return default_sn
 
 
