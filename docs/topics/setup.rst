@@ -67,6 +67,7 @@ will override environment values.
               'os_password': '<your password>',
               'os_auth_url': '<auth url>,
               'os_user_domain_name': '<user_domain_name>',
+              'os_project_domain_id': '<project_domain_id>',
               'os_project_domain_name': '<project_domain_name>',
               'os_project_name': '<project_name>')
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK, config)
@@ -211,6 +212,8 @@ OpenStack
 +-------------------------+--------------------------------------------------------------+
 | os_storage_url          | Storage endpoint URL, if applicable                          |
 +-------------------------+--------------------------------------------------------------+
+| os_project_domain_id    | Project domain id for authentication.                      |
++-------------------------+--------------------------------------------------------------+
 | os_project_domain_name  | Project domain name for authentication.                      |
 +-------------------------+--------------------------------------------------------------+
 | os_user_domain_name     | User domain name for authentication.                         |
@@ -328,6 +331,8 @@ OpenStack
 +------------------------+-----------+
 | OS_STORAGE_URL         |           |
 +------------------------+-----------+
+| OS_PROJECT_DOMAIN_ID   |           |
++------------------------+-----------+
 | OS_PROJECT_DOMAIN_NAME |           |
 +------------------------+-----------+
 | OS_USER_DOMAIN_NAME    |           |
@@ -376,6 +381,7 @@ OpenStack clouds).
     os_password: password
     os_auth_url: auth url
     os_user_domain_name: user domain name
+    os_project_domain_id: project domain id
     os_project_domain_name: project domain name
     os_project_name: project name
 

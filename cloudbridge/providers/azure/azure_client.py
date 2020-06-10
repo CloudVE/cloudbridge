@@ -193,10 +193,10 @@ class AzureClient(object):
                     storage_account)
                 raise WaitStateException(
                     "Waited too long for storage account: {0} to "
-                    "become ready.".format(
+                    "become ready. It's currently in state: {1}".format(
                         storage_account,
-                        self.get_storage_account(storage_account).
-                        provisioning_state))
+                        self.get_storage_account(
+                            storage_account).provisioning_state))
 
             self._access_key_result = self.storage_client.storage_accounts. \
                 list_keys(self.resource_group, storage_account)
