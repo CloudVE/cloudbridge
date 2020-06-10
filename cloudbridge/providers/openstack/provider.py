@@ -47,6 +47,9 @@ class OpenStackCloudProvider(BaseCloudProvider):
             'os_region_name', get_env('OS_REGION_NAME'))
         self._zone_name = self._get_config_value(
             'os_zone_name', get_env('OS_ZONE_NAME'))
+        self.project_domain_id = self._get_config_value(
+            'os_project_domain_id',
+            get_env('OS_PROJECT_DOMAIN_ID'))
         self.project_domain_name = self._get_config_value(
             'os_project_domain_name',
             get_env('OS_PROJECT_DOMAIN_NAME'))
@@ -113,6 +116,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
                                username=self.username,
                                password=self.password,
                                user_domain_name=self.user_domain_name,
+                               project_domain_id=self.project_domain_id,
                                project_domain_name=self.project_domain_name,
                                project_name=self.project_name)
             self._cached_keystone_session = session.Session(auth=auth)
@@ -133,6 +137,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             username=self.username,
             password=self.password,
             user_domain_name=self.user_domain_name,
+            project_domain_id=self.project_domain_id,
             project_domain_name=self.project_domain_name
         )
 
