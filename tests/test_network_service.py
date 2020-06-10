@@ -249,8 +249,8 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
 
                 self.assertTrue(
                     len(router.subnets) == 0,
-                    "No subnet should be attached to router {1}".format(
-                        sn, router)
+                    "No subnet should be attached to router {0} but subnet {1}"
+                    " is currently attached to it.".format(router, sn)
                 )
                 router.attach_subnet(sn)
                 self.assertTrue(
