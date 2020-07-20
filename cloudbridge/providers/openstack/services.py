@@ -737,7 +737,6 @@ class OpenStackInstanceService(BaseInstanceService):
                 bdm_dict['destination_type'] = 'volume'
 
                 if device.is_root:
-                    bdm_dict['device_name'] = '/dev/sda'
                     bdm_dict['boot_index'] = 0
 
                 if isinstance(device.source, Snapshot):
