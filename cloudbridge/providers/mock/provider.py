@@ -91,6 +91,110 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
     "ECU": "variable",
     "memory": 0.5,
     "ebs_max_bandwidth": 0
+  },
+  {
+    "family": "General Purpose",
+    "enhanced_networking": false,
+    "vCPU": 96,
+    "generation": "current",
+    "ebs_iops": 80000.0,
+    "network_performance": "25 Gigabit",
+    "ebs_throughput": 1750.0,
+    "vpc": {
+      "ips_per_eni": 50,
+      "max_enis": 15
+    },
+    "arch": [
+      "x86_64"
+    ],
+    "linux_virtualization_types": [
+        "HVM"
+    ],
+    "ebs_optimized": false,
+    "storage": null,
+    "max_bandwidth": 0,
+    "instance_type": "m5.24xlarge",
+    "ECU": 345.0,
+    "memory": 384.0,
+    "ebs_max_bandwidth": 14000.0
+  },
+  {
+    "family": "General Purpose",
+    "enhanced_networking": false,
+    "vCPU": 96,
+    "generation": "current",
+    "ebs_iops": 80000.0,
+    "network_performance": "25 Gigabit",
+    "ebs_throughput": 1750.0,
+    "vpc": {
+      "ips_per_eni": 50,
+      "max_enis": 15
+    },
+    "arch": [
+      "x86_64"
+    ],
+    "linux_virtualization_types": [
+        "HVM"
+    ],
+    "ebs_optimized": false,
+    "storage": null,
+    "max_bandwidth": 0,
+    "instance_type": "m5.24xlarge",
+    "ECU": 345.0,
+    "memory": 384.0,
+    "ebs_max_bandwidth": 14000.0
+  },
+  {
+    "family": "Memory optimized",
+    "enhanced_networking": false,
+    "vCPU": 96,
+    "generation": "current",
+    "ebs_iops": 80000.0,
+    "network_performance": "25 Gigabit",
+    "ebs_throughput": 1750.0,
+    "vpc": {
+      "ips_per_eni": 50,
+      "max_enis": 15
+    },
+    "arch": [
+      "x86_64"
+    ],
+    "linux_virtualization_types": [
+        "HVM"
+    ],
+    "ebs_optimized": false,
+    "storage": null,
+    "max_bandwidth": 0,
+    "instance_type": "r5.24xlarge",
+    "ECU": 347.0,
+    "memory": 768.0,
+    "ebs_max_bandwidth": 14000.0
+  },
+  {
+    "family": "Memory optimized",
+    "enhanced_networking": false,
+    "vCPU": 96,
+    "generation": "current",
+    "ebs_iops": 80000.0,
+    "network_performance": "25 Gigabit",
+    "ebs_throughput": 1750.0,
+    "vpc": {
+      "ips_per_eni": 50,
+      "max_enis": 15
+    },
+    "arch": [
+      "x86_64"
+    ],
+    "linux_virtualization_types": [
+        "HVM"
+    ],
+    "ebs_optimized": false,
+    "storage": null,
+    "max_bandwidth": 0,
+    "instance_type": "r5d.24xlarge",
+    "ECU": 347.0,
+    "memory": 768.0,
+    "ebs_max_bandwidth": 14000.0
   }
 ]
 """)
