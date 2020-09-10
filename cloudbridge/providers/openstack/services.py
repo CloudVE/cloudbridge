@@ -934,7 +934,11 @@ class OpenStackInstanceService(BaseInstanceService):
             # Assumption: it's the first interface in the list
             iface_list = os_instance.interface_list()
             if iface_list:
-                self.provider.neutron.delete_port(iface_list[0].port_id)
+                with cb_helpers.cleanup_action(
+                        lambda: self.provider.neutron.delete_port(
+                            iface_list[0].port_id)):
+                    # Ignore errors if port can't be deleted
+                    pass
             os_instance.delete()
 
 
