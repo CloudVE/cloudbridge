@@ -22,20 +22,20 @@ Build Status Tests
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
-.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1
-              :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1?use_travis_com=yes
+              :target: https://travis-ci.com/CloudVE/cloudbridge
 
-.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2
-                :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2?use_travis_com=yes
+                :target: https://travis-ci.com/CloudVE/cloudbridge
 
-.. |gcp-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3
-              :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |gcp-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3?use_travis_com=yes
+              :target: https://travis-ci.com/CloudVE/cloudbridge
 
-.. |mock-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4
-              :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |mock-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4?use_travis_com=yes
+              :target: https://travis-ci.com/CloudVE/cloudbridge
 
-.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5
-             :target: https://travis-ci.org/CloudVE/cloudbridge
+.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5?use_travis_com=yes
+             :target: https://travis-ci.com/CloudVE/cloudbridge
 
 +---------------------------+----------------+
 | **Provider/Environment**  | **Python 3.6** |
