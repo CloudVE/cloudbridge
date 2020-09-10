@@ -96,7 +96,7 @@ TEST_DATA_CONFIG = {
         'image': cb_helpers.get_env(
             'CB_IMAGE_GCP',
             'https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/'
-            'global/images/ubuntu-1710-artful-v20180126'),
+            'global/images/ubuntu-1804-bionic-v20200908'),
         'vm_type': cb_helpers.get_env('CB_VM_TYPE_GCP', 'f1-micro'),
         'placement': cb_helpers.get_env('GCP_ZONE_NAME', 'us-central1-a'),
         "placement_cfg_key": "gcp_zone_name"
