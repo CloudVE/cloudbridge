@@ -6,10 +6,6 @@ import uuid
 
 from botocore.exceptions import ClientError
 
-import cachetools
-
-import requests
-
 import tenacity
 
 import cloudbridge.base.helpers as cb_helpers
@@ -866,6 +862,7 @@ class AWSVMTypeService(BaseVMTypeService):
         next_token = vmt_list_resp.get("NextToken")
         vmt_list_names = [x.get("InstanceType")
                           for x in vmt_list_resp.get('InstanceTypeOfferings')]
+        # describe_instance_types call can get at most 100 types per request
         chunks = [vmt_list_names[x:x + 100]
                   for x in range(0, len(vmt_list_names), 100)]
         raw_types = []
