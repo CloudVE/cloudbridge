@@ -206,8 +206,7 @@ class AWSVMType(BaseVMType):
         ram = self._inst_dict.get('MemoryInfo')
         if ram:
             mib = ram.get('SizeInMiB', 0)
-            if mib:
-                return mib / 1024
+            return mib / 1024
         return 0
 
     @property

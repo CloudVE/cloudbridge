@@ -858,7 +858,7 @@ class AWSVMTypeService(BaseVMTypeService):
             LocationType='availability-zone',
             Filters=[{'Name': 'location',
                       'Values': [self.provider.zone_name]}],
-            **trim_empty_params({'MaxRestuls': limit, 'NextToken': marker}))
+            **trim_empty_params({'MaxResults': limit, 'NextToken': marker}))
         next_token = vmt_list_resp.get("NextToken")
         vmt_list_names = [x.get("InstanceType")
                           for x in vmt_list_resp.get('InstanceTypeOfferings')]
