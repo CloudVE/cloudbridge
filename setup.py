@@ -22,7 +22,6 @@ with open(os.path.join('cloudbridge', '__init__.py')) as f:
 REQS_BASE = [
     'six>=1.11',
     'tenacity>=6.0',
-    'cachetools>=2.1.0',
     'deprecation>=2.0.7',
     'pyeventsystem<2'
 ]
