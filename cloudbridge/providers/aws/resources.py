@@ -224,7 +224,11 @@ class AWSVMType(BaseVMType):
     def num_ephemeral_disks(self):
         storage = self._inst_dict.get('InstanceStorageInfo')
         if storage:
-            return storage.get("Disks", {}).get("Count", 0)
+            disks = storage.get("Disks", [])
+            count = 0
+            for disk in disks:
+                count += disk.get("Count", 0)
+            return count
         return 0
 
     @property
