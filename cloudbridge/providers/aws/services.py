@@ -842,13 +842,13 @@ class AWSVMTypeService(BaseVMTypeService):
         try:
             t = self.provider.ec2_conn.meta.client.describe_instance_types(
                 InstanceTypes=[vm_type]).get('InstanceTypes')[0]
+            return AWSVMType(self.provider, t)
         except ClientError as e:
             if 'InvalidInstanceType' in e.response.get('Error',
                                                        {}).get('Code'):
                 return None
             else:
                 raise e
-        return AWSVMType(self.provider, t)
 
     @dispatch(event="provider.compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
