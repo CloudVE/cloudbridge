@@ -180,7 +180,7 @@ class AWSVMType(BaseVMType):
 
     @property
     def id(self):
-        return str(self._inst_dict['instance_type'])
+        return str(self._inst_dict.get('InstanceType'))
 
     @property
     def name(self):
@@ -188,18 +188,27 @@ class AWSVMType(BaseVMType):
 
     @property
     def family(self):
-        return self._inst_dict.get('family')
+        # Limited to whether CurrentGeneration or not
+        curr = self._inst_dict.get('CurrentGeneration')
+        if curr:
+            return 'CurrentGeneration'
+        return None
 
     @property
     def vcpus(self):
-        vcpus = self._inst_dict.get('vCPU')
-        if vcpus == 'N/A':
-            return None
-        return vcpus
+        vcpus = self._inst_dict.get('VCpuInfo')
+        if vcpus:
+            return vcpus.get('DefaultVCpus', 0)
+        return 0
 
     @property
     def ram(self):
-        return self._inst_dict.get('memory')
+        ram = self._inst_dict.get('MemoryInfo')
+        if ram:
+            mib = ram.get('SizeInMiB', 0)
+            if mib:
+                return mib / 1024
+        return 0
 
     @property
     def size_root_disk(self):
@@ -207,24 +216,22 @@ class AWSVMType(BaseVMType):
 
     @property
     def size_ephemeral_disks(self):
-        storage = self._inst_dict.get('storage')
+        storage = self._inst_dict.get('InstanceStorageInfo')
         if storage:
-            return storage.get('size') * storage.get("devices")
-        else:
-            return 0
+            return storage.get('TotalSizeInGB', 0)
+        return 0
 
     @property
     def num_ephemeral_disks(self):
-        storage = self._inst_dict.get('storage')
+        storage = self._inst_dict.get('InstanceStorageInfo')
         if storage:
-            return storage.get("devices")
-        else:
-            return 0
+            return storage.get("Disks", {}).get("Count", 0)
+        return 0
 
     @property
     def extra_data(self):
         return {key: val for key, val in self._inst_dict.items()
-                if key not in ["instance_type", "family", "vCPU", "memory"]}
+                if key not in ["InstanceType", "VCpuInfo", "MemoryInfo"]}
 
 
 class AWSInstance(BaseInstance):
