@@ -829,36 +829,44 @@ class AWSVMTypeService(BaseVMTypeService):
     def __init__(self, provider):
         super(AWSVMTypeService, self).__init__(provider)
 
-    @property
-    @cachetools.cached(cachetools.TTLCache(maxsize=1, ttl=24*3600))
-    def instance_data(self):
-        """
-        Fetch info about the available instances.
-
-        To update this information, update the file pointed to by the
-        ``provider.AWS_INSTANCE_DATA_DEFAULT_URL`` above. The content for this
-        file should be obtained from this repo:
-        https://github.com/powdahound/ec2instances.info (in particular, this
-        file: https://raw.githubusercontent.com/powdahound/ec2instances.info/
-        master/www/instances.json).
-        """
-        r = requests.get(self.provider.config.get(
-            "aws_instance_info_url",
-            self.provider.AWS_INSTANCE_DATA_DEFAULT_URL))
-        # Some instances are only available in certain regions. Use pricing
-        # info to determine and filter out instance types that are not
-        # available in the current region
-        vm_types_list = r.json()
-        return [vm_type for vm_type in vm_types_list
-                if vm_type.get('pricing', {}).get(self.provider.region_name)]
+    @dispatch(event="provider.compute.vm_types.get",
+              priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
+    def get(self, vm_type):
+        try:
+            t = self.provider.ec2_conn.meta.client.describe_instance_types(
+                InstanceTypes=[vm_type]).get('InstanceTypes')[0]
+        except ClientError as e:
+            if 'InvalidInstanceType' in e.response.get('Error',
+                                                       {}).get('Code'):
+                return None
+            else:
+                raise e
+        return AWSVMType(self.provider, t)
 
     @dispatch(event="provider.compute.vm_types.list",
               priority=BaseVMTypeService.STANDARD_EVENT_PRIORITY)
     def list(self, limit=None, marker=None):
-        vm_types = [AWSVMType(self.provider, vm_type)
-                    for vm_type in self.instance_data]
-        return ClientPagedResultList(self.provider, vm_types,
-                                     limit=limit, marker=marker)
+        client = self.provider.ec2_conn.meta.client
+        vmt_list_resp = client.describe_instance_type_offerings(
+            LocationType='availability-zone',
+            Filters=[{'Name': 'location',
+                      'Values': [self.provider.zone_name]}],
+            **trim_empty_params({'MaxRestuls': limit, 'NextToken': marker}))
+        next_token = vmt_list_resp.get("NextToken")
+        vmt_list_names = [x.get("InstanceType")
+                          for x in vmt_list_resp.get('InstanceTypeOfferings')]
+        chunks = [vmt_list_names[x:x + 100]
+                  for x in range(0, len(vmt_list_names), 100)]
+        raw_types = []
+        for chunk in chunks:
+            raw_chunk = client.describe_instance_types(
+                InstanceTypes=chunk).get('InstanceTypes')
+            raw_types.extend(raw_chunk)
+        cb_types = [AWSVMType(self.provider, t) for t in raw_types]
+        return ServerPagedResultList(is_truncated=bool(next_token),
+                                     marker=next_token,
+                                     supports_total=False,
+                                     data=cb_types)
 
 
 class AWSRegionService(BaseRegionService):
