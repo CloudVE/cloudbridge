@@ -934,7 +934,7 @@ class BaseDnsZone(BaseCloudResource, DnsZone):
 class BaseDnsRecord(BaseCloudResource, DnsRecord):
 
     CB_NAME_PATTERN = re.compile(
-        r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]"
+        r"^(?:\*\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]"
         r"[a-z0-9-]{0,61}[a-z0-9]\.?$")
 
     def __init__(self, provider):
