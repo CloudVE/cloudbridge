@@ -67,6 +67,20 @@ class CloudDnsServiceTestCase(ProviderTestBase):
                            cleanup_dns_rec, skip_name_check=True)
 
     @helpers.skipIfNoService(['dns.host_zones'])
+    def test_create_wildcard_dns_record(self):
+        test_zone = None
+        zone_name = "cb-dnswild-{0}.com.".format(helpers.get_uuid())
+
+        with cb_helpers.cleanup_action(lambda: test_zone.delete()):
+            test_zone = self.provider.dns.host_zones.create(
+                zone_name, "admin@cloudve.org")
+            test_rec = None
+            with cb_helpers.cleanup_action(lambda: test_rec.delete()):
+                test_rec = test_zone.records.create(
+                    "*.cb-wildcard." + zone_name, DnsRecordType.A,
+                    data='10.1.1.1')
+
+    @helpers.skipIfNoService(['dns.host_zones'])
     def test_dns_record_properties(self):
         test_zone = None
         zone_name = "cb-recprop-{0}.com.".format(helpers.get_uuid())
