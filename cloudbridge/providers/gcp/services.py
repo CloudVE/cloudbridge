@@ -1771,7 +1771,7 @@ class GCPDnsRecordService(BaseDnsRecordService):
                                      limit=None, marker=None)
 
     def create(self, dns_zone, name, type, data, ttl=None):
-        GCPDnsZone.assert_valid_resource_name(name)
+        GCPDnsRecord.assert_valid_resource_name(name)
         body = {
             'kind': 'dns#change',
             "additions": [
