@@ -1423,7 +1423,7 @@ class OpenStackDnsRecordService(BaseDnsRecordService):
                                      limit=None, marker=None)
 
     def create(self, dns_zone, name, type, data, ttl=None):
-        OpenStackDnsZone.assert_valid_resource_name(name)
+        OpenStackDnsRecord.assert_valid_resource_name(name)
 
         return OpenStackDnsRecord(
             self.provider, dns_zone,
