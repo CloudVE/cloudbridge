@@ -449,7 +449,7 @@ class OpenStackInstance(BaseInstance):
 
     def _get_fip(self, floating_ip):
         """Get a floating IP object based on the supplied ID."""
-        return self._provider.networking._floating_ips.get(floating_ip)
+        return self._provider.networking._floating_ips.get(None, floating_ip)
 
     def add_floating_ip(self, floating_ip):
         """
