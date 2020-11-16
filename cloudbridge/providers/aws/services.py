@@ -782,7 +782,16 @@ class AWSInstanceService(BaseInstanceService):
             # pylint:disable=protected-access
             inst[0]._wait_till_exists()
             # Tag the instance w/ the name
-            inst[0].label = label
+            try:
+                inst[0].label = label
+            except Exception:
+                # It's possible for the label setter to fail, because EC2
+                # endpoints have a delay in syncing, and the instance may not
+                # yet be visible if a different endpoint is hit. To compensate,
+                # we retry in both the label setter, and raise here again just
+                # in case the label setter fails for any other reason.
+                inst[0].delete()
+                raise
             return inst[0]
         raise ValueError(
             'Expected a single object response, got a list: %s' % inst)

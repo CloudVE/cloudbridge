@@ -7,6 +7,8 @@ import logging
 
 from botocore.exceptions import ClientError
 
+import tenacity
+
 from cloudbridge.base.resources import BaseAttachmentInfo
 from cloudbridge.base.resources import BaseBucket
 from cloudbridge.base.resources import BaseBucketObject
@@ -88,12 +90,19 @@ class AWSMachineImage(BaseMachineImage):
         """
         return find_tag_value(self._ec2_image.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._ec2_image.create_tags(Tags=[{'Key': 'Name',
+                                           'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._ec2_image.create_tags(Tags=[{'Key': 'Name',
-                                           'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def description(self):
@@ -252,12 +261,19 @@ class AWSInstance(BaseInstance):
         """
         return find_tag_value(self._ec2_instance.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._ec2_instance.create_tags(Tags=[{'Key': 'Name',
+                                              'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._ec2_instance.create_tags(Tags=[{'Key': 'Name',
-                                              'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def public_ips(self):
@@ -422,11 +438,18 @@ class AWSVolume(BaseVolume):
         except ClientError as e:
             log.warn("Cannot get label for volume {0}: {1}".format(self.id, e))
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def description(self):
@@ -545,12 +568,19 @@ class AWSSnapshot(BaseSnapshot):
         except ClientError as e:
             log.warn("Cannot get label for snap {0}: {1}".format(self.id, e))
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._snapshot.create_tags(Tags=[{'Key': 'Name',
+                                          'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._snapshot.create_tags(Tags=[{'Key': 'Name',
-                                          'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def description(self):
@@ -629,12 +659,19 @@ class AWSVMFirewall(BaseVMFirewall):
         except ClientError:
             return None
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
+                                             'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
-                                             'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def description(self):
@@ -881,11 +918,18 @@ class AWSNetwork(BaseNetwork):
     def label(self):
         return find_tag_value(self._vpc.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def external(self):
@@ -958,11 +1002,18 @@ class AWSSubnet(BaseSubnet):
     def label(self):
         return find_tag_value(self._subnet.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def cidr_block(self):
@@ -1041,12 +1092,19 @@ class AWSRouter(BaseRouter):
     def label(self):
         return find_tag_value(self._route_table.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._route_table.create_tags(Tags=[{'Key': 'Name',
+                                             'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._route_table.create_tags(Tags=[{'Key': 'Name',
-                                             'Value': value or ""}])
+        self._set_label(value)
 
     def refresh(self):
         try:
