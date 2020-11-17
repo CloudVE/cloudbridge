@@ -1136,10 +1136,22 @@ class AWSRouter(BaseRouter):
     def network_id(self):
         return self._route_table.vpc_id
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(Exception),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _wait_till_subnet_attached(self, subnet_id):
+        self.refresh()
+        association = [a for a in self._route_table.associations
+                       if a.subnet_id == subnet_id]
+        if not association:
+            raise Exception(
+                f"Subnet {subnet_id} not attached to route table {self.id}")
+
     def attach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         self._route_table.associate_with_subnet(SubnetId=subnet_id)
-        self.refresh()
+        self._wait_till_subnet_attached(subnet_id)
 
     def detach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
