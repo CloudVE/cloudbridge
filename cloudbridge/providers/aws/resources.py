@@ -495,12 +495,22 @@ class AWSVolume(BaseVolume):
             for a in self._volume.attachments
         ][0] if self._volume.attachments else None
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(Exception),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _wait_till_volume_attached(self, instance_id):
+        if not self.attachments.instance_id == instance_id:
+            raise Exception(f"Volume {self.id} is not yet attached to"
+                            f"instance {instance_id}")
+
     def attach(self, instance, device):
         instance_id = instance.id if isinstance(
             instance,
             AWSInstance) else instance
         self._volume.attach_to_instance(InstanceId=instance_id,
                                         Device=device)
+        self._wait_till_volume_attached(instance_id)
 
     def detach(self, force=False):
         a = self.attachments
