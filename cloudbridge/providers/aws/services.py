@@ -858,10 +858,19 @@ class AWSVMTypeService(BaseVMTypeService):
             LocationType='availability-zone',
             Filters=[{'Name': 'location',
                       'Values': [self.provider.zone_name]}],
-            **trim_empty_params({'MaxResults': limit, 'NextToken': marker}))
-        next_token = vmt_list_resp.get("NextToken")
+            # MaxResults is set to max value (1000) and client-side pagination is used
+            **trim_empty_params({'MaxResults': 1000, 'NextToken': None}))
+        consolidated_list = vmt_list_resp.get('InstanceTypeOfferings')
+        while vmt_list_resp.get("NextToken"):
+            vmt_list_resp = client.describe_instance_type_offerings(
+                LocationType='availability-zone',
+                Filters=[{'Name': 'location',
+                          'Values': [self.provider.zone_name]}],
+                **trim_empty_params({'MaxResults': 1000, 'NextToken': vmt_list_resp.get("NextToken")}))
+            consolidated_list.extend(vmt_list_resp.get('InstanceTypeOfferings'))
+        
         vmt_list_names = [x.get("InstanceType")
-                          for x in vmt_list_resp.get('InstanceTypeOfferings')]
+                          for x in consolidated_list]
         # describe_instance_types call can get at most 100 types per request
         chunks = [vmt_list_names[x:x + 100]
                   for x in range(0, len(vmt_list_names), 100)]
@@ -871,10 +880,8 @@ class AWSVMTypeService(BaseVMTypeService):
                 InstanceTypes=chunk).get('InstanceTypes')
             raw_types.extend(raw_chunk)
         cb_types = [AWSVMType(self.provider, t) for t in raw_types]
-        return ServerPagedResultList(is_truncated=bool(next_token),
-                                     marker=next_token,
-                                     supports_total=False,
-                                     data=cb_types)
+        return ClientPagedResultList(self.provider, cb_types,
+                                     limit=limit, marker=marker)
 
 
 class AWSRegionService(BaseRegionService):
