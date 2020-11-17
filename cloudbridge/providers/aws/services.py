@@ -858,20 +858,23 @@ class AWSVMTypeService(BaseVMTypeService):
             LocationType='availability-zone',
             Filters=[{'Name': 'location',
                       'Values': [self.provider.zone_name]}],
-            # MaxResults is set to max value (1000) and client-side pagination is used
+            # MaxResults is set to max value (1000)
+            # and client-side pagination is used
             **trim_empty_params({'MaxResults': 1000, 'NextToken': None}))
-        consolidated_list = vmt_list_resp.get('InstanceTypeOfferings')
+        vmt_list = vmt_list_resp.get('InstanceTypeOfferings')
         while vmt_list_resp.get("NextToken"):
             vmt_list_resp = client.describe_instance_type_offerings(
                 LocationType='availability-zone',
                 Filters=[{'Name': 'location',
                           'Values': [self.provider.zone_name]}],
-                **trim_empty_params({'MaxResults': 1000, 'NextToken': vmt_list_resp.get("NextToken")}))
-            consolidated_list.extend(vmt_list_resp.get('InstanceTypeOfferings'))
-        
+                **trim_empty_params(
+                    {'MaxResults': 1000,
+                     'NextToken': vmt_list_resp.get("NextToken")}))
+            vmt_list.extend(vmt_list_resp.get('InstanceTypeOfferings'))
+
         vmt_list_names = [x.get("InstanceType")
-                          for x in consolidated_list]
-        # describe_instance_types call can get at most 100 types per request
+                          for x in vmt_list]
+        # describe_instance_types call can get at most 100 types at once
         chunks = [vmt_list_names[x:x + 100]
                   for x in range(0, len(vmt_list_names), 100)]
         raw_types = []
