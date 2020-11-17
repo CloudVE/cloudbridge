@@ -327,6 +327,14 @@ class AWSInstance(BaseInstance):
     def key_pair_id(self):
         return self._ec2_instance.key_name
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _wait_for_image(self, image):
+        self._provider.ec2_conn.meta.client.get_waiter('image_exists').wait(
+            ImageIds=[image.id])
+
     def create_image(self, label):
         self.assert_valid_resource_label(label)
         name = self._generate_name_from_label(label, 'cb-img')
@@ -334,8 +342,7 @@ class AWSInstance(BaseInstance):
         image = AWSMachineImage(self._provider,
                                 self._ec2_instance.create_image(Name=name))
         # Wait for the image to exist
-        self._provider.ec2_conn.meta.client.get_waiter('image_exists').wait(
-            ImageIds=[image.id])
+        self._wait_for_image(image)
         # Add image label
         image.label = label
         # Return the image
@@ -967,9 +974,16 @@ class AWSNetwork(BaseNetwork):
             # set the status to unknown
             self._unknown_state = True
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _wait_for_vpc(self):
         self._provider.ec2_conn.meta.client.get_waiter('vpc_available').wait(
             VpcIds=[self.id])
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self._wait_for_vpc()
         self.refresh()
 
     @property
