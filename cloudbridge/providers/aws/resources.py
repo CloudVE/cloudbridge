@@ -408,6 +408,8 @@ class AWSInstance(BaseInstance):
     # pylint:disable=unused-argument
     def _wait_till_exists(self, timeout=None, interval=None):
         self._ec2_instance.wait_until_exists()
+        # refresh again to make sure instance status is in sync
+        self._ec2_instance.reload()
 
 
 class AWSVolume(BaseVolume):
