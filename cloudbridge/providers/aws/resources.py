@@ -502,6 +502,7 @@ class AWSVolume(BaseVolume):
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
     def _wait_till_volume_attached(self, instance_id):
+        self.refresh()
         if not self.attachments.instance_id == instance_id:
             raise Exception(f"Volume {self.id} is not yet attached to"
                             f"instance {instance_id}")
