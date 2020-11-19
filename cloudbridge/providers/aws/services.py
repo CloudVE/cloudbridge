@@ -10,6 +10,8 @@ import cachetools
 
 import requests
 
+import tenacity
+
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
 from cloudbridge.base.resources import ClientPagedResultList
@@ -782,7 +784,16 @@ class AWSInstanceService(BaseInstanceService):
             # pylint:disable=protected-access
             inst[0]._wait_till_exists()
             # Tag the instance w/ the name
-            inst[0].label = label
+            try:
+                inst[0].label = label
+            except Exception:
+                # It's possible for the label setter to fail, because EC2
+                # endpoints have a delay in syncing, and the instance may not
+                # yet be visible if a different endpoint is hit. To compensate,
+                # we retry in both the label setter, and raise here again just
+                # in case the label setter fails for any other reason.
+                inst[0].delete()
+                raise
             return inst[0]
         raise ValueError(
             'Expected a single object response, got a list: %s' % inst)
@@ -1237,10 +1248,18 @@ class AWSGatewayService(BaseGatewayService):
             return gtw[0]  # There can be only one gtw attached to a VPC
         # Gateway does not exist so create one and attach to the supplied net
         cb_gateway = self.svc.create('create_internet_gateway')
-        cb_gateway._gateway.create_tags(
-            Tags=[{'Key': 'Name',
-                   'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
-                   }])
+
+        @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                        retry=tenacity.retry_if_exception_type(ClientError),
+                        wait=tenacity.wait_fixed(5),
+                        reraise=True)
+        def _set_tag(gateway):
+            gateway._gateway.create_tags(
+                Tags=[{'Key': 'Name',
+                       'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                       }])
+
+        _set_tag(cb_gateway)
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 

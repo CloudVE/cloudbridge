@@ -7,6 +7,8 @@ import logging
 
 from botocore.exceptions import ClientError
 
+import tenacity
+
 from cloudbridge.base.resources import BaseAttachmentInfo
 from cloudbridge.base.resources import BaseBucket
 from cloudbridge.base.resources import BaseBucketObject
@@ -88,12 +90,19 @@ class AWSMachineImage(BaseMachineImage):
         """
         return find_tag_value(self._ec2_image.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._ec2_image.create_tags(Tags=[{'Key': 'Name',
+                                           'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._ec2_image.create_tags(Tags=[{'Key': 'Name',
-                                           'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def description(self):
@@ -252,12 +261,19 @@ class AWSInstance(BaseInstance):
         """
         return find_tag_value(self._ec2_instance.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._ec2_instance.create_tags(Tags=[{'Key': 'Name',
+                                              'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._ec2_instance.create_tags(Tags=[{'Key': 'Name',
-                                              'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def public_ips(self):
@@ -311,6 +327,14 @@ class AWSInstance(BaseInstance):
     def key_pair_id(self):
         return self._ec2_instance.key_name
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _wait_for_image(self, image):
+        self._provider.ec2_conn.meta.client.get_waiter('image_exists').wait(
+            ImageIds=[image.id])
+
     def create_image(self, label):
         self.assert_valid_resource_label(label)
         name = self._generate_name_from_label(label, 'cb-img')
@@ -318,8 +342,7 @@ class AWSInstance(BaseInstance):
         image = AWSMachineImage(self._provider,
                                 self._ec2_instance.create_image(Name=name))
         # Wait for the image to exist
-        self._provider.ec2_conn.meta.client.get_waiter('image_exists').wait(
-            ImageIds=[image.id])
+        self._wait_for_image(image)
         # Add image label
         image.label = label
         # Return the image
@@ -385,6 +408,8 @@ class AWSInstance(BaseInstance):
     # pylint:disable=unused-argument
     def _wait_till_exists(self, timeout=None, interval=None):
         self._ec2_instance.wait_until_exists()
+        # refresh again to make sure instance status is in sync
+        self._ec2_instance.reload()
 
 
 class AWSVolume(BaseVolume):
@@ -422,11 +447,18 @@ class AWSVolume(BaseVolume):
         except ClientError as e:
             log.warn("Cannot get label for volume {0}: {1}".format(self.id, e))
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._volume.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def description(self):
@@ -465,12 +497,23 @@ class AWSVolume(BaseVolume):
             for a in self._volume.attachments
         ][0] if self._volume.attachments else None
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(Exception),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _wait_till_volume_attached(self, instance_id):
+        self.refresh()
+        if not self.attachments.instance_id == instance_id:
+            raise Exception(f"Volume {self.id} is not yet attached to"
+                            f"instance {instance_id}")
+
     def attach(self, instance, device):
         instance_id = instance.id if isinstance(
             instance,
             AWSInstance) else instance
         self._volume.attach_to_instance(InstanceId=instance_id,
                                         Device=device)
+        self._wait_till_volume_attached(instance_id)
 
     def detach(self, force=False):
         a = self.attachments
@@ -545,12 +588,19 @@ class AWSSnapshot(BaseSnapshot):
         except ClientError as e:
             log.warn("Cannot get label for snap {0}: {1}".format(self.id, e))
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._snapshot.create_tags(Tags=[{'Key': 'Name',
+                                          'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._snapshot.create_tags(Tags=[{'Key': 'Name',
-                                          'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def description(self):
@@ -629,12 +679,19 @@ class AWSVMFirewall(BaseVMFirewall):
         except ClientError:
             return None
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
+                                             'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._vm_firewall.create_tags(Tags=[{'Key': 'Name',
-                                             'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def description(self):
@@ -881,11 +938,18 @@ class AWSNetwork(BaseNetwork):
     def label(self):
         return find_tag_value(self._vpc.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._vpc.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def external(self):
@@ -923,9 +987,16 @@ class AWSNetwork(BaseNetwork):
             # set the status to unknown
             self._unknown_state = True
 
-    def wait_till_ready(self, timeout=None, interval=None):
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _wait_for_vpc(self):
         self._provider.ec2_conn.meta.client.get_waiter('vpc_available').wait(
             VpcIds=[self.id])
+
+    def wait_till_ready(self, timeout=None, interval=None):
+        self._wait_for_vpc()
         self.refresh()
 
     @property
@@ -958,11 +1029,18 @@ class AWSSubnet(BaseSubnet):
     def label(self):
         return find_tag_value(self._subnet.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._subnet.create_tags(Tags=[{'Key': 'Name', 'Value': value or ""}])
+        self._set_label(value)
 
     @property
     def cidr_block(self):
@@ -1041,12 +1119,19 @@ class AWSRouter(BaseRouter):
     def label(self):
         return find_tag_value(self._route_table.tags, 'Name')
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(ClientError),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _set_label(self, value):
+        self._route_table.create_tags(Tags=[{'Key': 'Name',
+                                             'Value': value or ""}])
+
     @label.setter
     # pylint:disable=arguments-differ
     def label(self, value):
         self.assert_valid_resource_label(value)
-        self._route_table.create_tags(Tags=[{'Key': 'Name',
-                                             'Value': value or ""}])
+        self._set_label(value)
 
     def refresh(self):
         try:
@@ -1064,10 +1149,22 @@ class AWSRouter(BaseRouter):
     def network_id(self):
         return self._route_table.vpc_id
 
+    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+                    retry=tenacity.retry_if_exception_type(Exception),
+                    wait=tenacity.wait_fixed(5),
+                    reraise=True)
+    def _wait_till_subnet_attached(self, subnet_id):
+        self.refresh()
+        association = [a for a in self._route_table.associations
+                       if a.subnet_id == subnet_id]
+        if not association:
+            raise Exception(
+                f"Subnet {subnet_id} not attached to route table {self.id}")
+
     def attach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
         self._route_table.associate_with_subnet(SubnetId=subnet_id)
-        self.refresh()
+        self._wait_till_subnet_attached(subnet_id)
 
     def detach_subnet(self, subnet):
         subnet_id = subnet.id if isinstance(subnet, AWSSubnet) else subnet
