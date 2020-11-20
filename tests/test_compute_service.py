@@ -395,3 +395,22 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     self.assertNotIn(
                         fip.public_ip,
                         test_inst.public_ips + test_inst.private_ips)
+
+                    with cb_helpers.cleanup_action(
+                            lambda: test_inst.remove_floating_ip(fip.id)):
+                        test_inst.add_floating_ip(fip.id)
+                        test_inst.refresh()
+                        # On Devstack, FloatingIP is listed under private_ips.
+                        self.assertIn(fip.public_ip, test_inst.public_ips +
+                                      test_inst.private_ips)
+                        fip.refresh()
+                        self.assertTrue(
+                            fip.in_use,
+                            "Attached floating IP %s address should be in use."
+                            % fip.public_ip)
+                    test_inst.refresh()
+                    test_inst.reboot()
+                    test_inst.wait_till_ready()
+                    self.assertNotIn(
+                        fip.public_ip,
+                        test_inst.public_ips + test_inst.private_ips)
