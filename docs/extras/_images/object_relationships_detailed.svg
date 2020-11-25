@@ -1442,7 +1442,7 @@
        x="370.54593"
        stroke-linecap="null"
        stroke-linejoin="null"
-       style="font-size:18.3663px;line-height:0%;font-family:Sans-serif;text-anchor:middle;fill:#000000;stroke-width:0;stroke-dasharray:none">zones</text>
+       style="font-size:18.3663px;line-height:0%;font-family:Sans-serif;text-anchor:middle;fill:#000000;stroke-width:0;stroke-dasharray:none">host_zones</text>
   </a>
   <a
      xlink:href="../api_docs/cloud/resources.html#dnszone"

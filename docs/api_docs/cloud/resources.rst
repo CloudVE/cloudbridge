@@ -168,3 +168,14 @@ Bucket
 ---------
 .. autoclass:: cloudbridge.interfaces.resources.Bucket
     :members:
+
+DnsZone
+---------
+.. autoclass:: cloudbridge.interfaces.resources.DnsZone
+    :members:
+
+
+DnsRecord
+---------
+.. autoclass:: cloudbridge.interfaces.resources.DnsRecord
+    :members:
