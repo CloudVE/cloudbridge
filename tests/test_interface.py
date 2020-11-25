@@ -71,7 +71,7 @@ class CloudInterfaceTestCase(ProviderTestBase):
         cloned_config['aws_zone_name'] = None
         cloned_config['azure_zone_name'] = None
         cloned_config['gcp_zone_name'] = None
-        cloned_config['openstack_zone_name'] = None
+        cloned_config['os_zone_name'] = None
         cloned_provider = CloudProviderFactory().create_provider(
                 self.provider.PROVIDER_ID, cloned_config)
         region = cloned_provider.compute.regions.get(
@@ -89,7 +89,7 @@ class CloudInterfaceTestCase(ProviderTestBase):
         cloned_config['aws_zone_name'] = None
         cloned_config['azure_zone_name'] = None
         cloned_config['gcp_zone_name'] = None
-        cloned_config['openstack_zone_name'] = None
+        cloned_config['os_zone_name'] = None
         cloned_provider = CloudProviderFactory().create_provider(
                 self.provider.PROVIDER_ID, cloned_config)
         # FIXME: GCP always requires a zone, so skip for now

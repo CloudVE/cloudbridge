@@ -97,3 +97,18 @@ RegionService
 -------------
 .. autoclass:: cloudbridge.interfaces.services.RegionService
     :members:
+
+DnsService
+-------------
+.. autoclass:: cloudbridge.interfaces.services.DnsService
+    :members:
+
+DnsZoneService
+-------------
+.. autoclass:: cloudbridge.interfaces.services.DnsZoneService
+    :members:
+
+DnsRecordService
+-------------
+.. autoclass:: cloudbridge.interfaces.services.DnsRecordService
+    :members:

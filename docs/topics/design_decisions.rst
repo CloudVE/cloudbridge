@@ -120,6 +120,8 @@ Resource identification, naming, and labeling
   should be alphanumeric characters or dashes only. Names or labels should
   not begin or end with a dash, or have consecutive dashes.
 
+.. _single-zone-provider:
+
 Make providers single zone
 ---------------------------
 
