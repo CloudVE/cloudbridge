@@ -2,10 +2,12 @@ import unittest
 
 import cloudbridge
 from cloudbridge import interfaces
+from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.factory import CloudProviderFactory
 from cloudbridge.interfaces import TestMockHelperMixin
 from cloudbridge.interfaces.exceptions import ProviderConnectionException
 
+from tests import helpers
 from tests.helpers import ProviderTestBase
 
 
@@ -93,3 +95,14 @@ class CloudInterfaceTestCase(ProviderTestBase):
         # FIXME: GCP always requires a zone, so skip for now
         if self.provider.PROVIDER_ID != 'gcp':
             self.assertIsNotNone(cloned_provider.zone_name)
+
+    def test_clone_provider_zone(self):
+        for zone in list(self.provider.compute.regions.current.zones)[:2]:
+            cloned_provider = self.provider.clone(zone=zone)
+            test_vol = None
+            # Currently, volumes are the cheapest object that's actually
+            # cross-zonal for all providers
+            with cb_helpers.cleanup_action(lambda: test_vol.delete()):
+                label = "cb-attachvol-{0}".format(helpers.get_uuid())
+                test_vol = cloned_provider.storage.volumes.create(label, 1)
+                self.assertEqual(test_vol.zone_id, zone.id)

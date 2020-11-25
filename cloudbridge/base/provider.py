@@ -147,6 +147,14 @@ class BaseCloudProvider(CloudProvider):
             raise ProviderConnectionException(
                 "Authentication with cloud provider failed: %s" % (e,))
 
+    def clone(self, zone=None):
+        cloned_config = self.config.copy()
+        cloned_provider = self.__class__(cloned_config)
+        if zone:
+            # pylint:disable=protected-access
+            cloned_provider._zone_name = zone.name
+        return cloned_provider
+
     def _deepgetattr(self, obj, attr):
         """Recurses through an attribute chain to get the ultimate value."""
         return functools.reduce(getattr, attr.split('.'), obj)

@@ -72,6 +72,35 @@ class CloudProvider(object):
         pass
 
     @abstractmethod
+    def clone(self, zone=None):
+        """
+        Create a clone of this provider. An optional `zone` parameter can be
+        used to clone the provider to use a different zone.
+        As each cloudbridge provider is restricted to a particular zone,
+        this is useful when performing cross-zonal operations.
+
+        Example:
+
+        .. code-block:: python
+
+            # list instances in all availability zones
+            all_instances = []
+            for zone in provider.compute.regions.current.zones:
+                new_provider = provider.clone(zone=zone)
+                all_instances.append(list(new_provider.compute.instances))
+            print(all_instances)
+
+        :param zone: Changes the provider's zone to the requested
+                     AvailabilityZone
+        :type zone: :class:`.PlacementZone` object
+
+        :rtype: :class:`.CloudProvider`
+        :return:  A clone of the CloudProvider, with zone changed to the
+                  requested zone.
+        """
+        pass
+
+    @abstractmethod
     def authenticate(self):
         """
         Checks whether a provider can be successfully authenticated with the
