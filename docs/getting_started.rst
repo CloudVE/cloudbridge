@@ -19,10 +19,10 @@ Create a provider
 -----------------
 To start, you will need to create a reference to a provider object. The
 provider object identifies the cloud you want to work with and supplies your
-credentials. The following two code snippets setup a necessary provider object,
-for AWS and OpenStack. For the details on other providers, take a look at the
-`Setup page <topics/setup.html>`_. The remainder of the code is the same for
-either provider.
+credentials. Each provider instance is tied to a particular zone.
+Refer to the `Setup page <topics/setup.html>`_ for more details information on
+provider configuration. One a provider instance is created, the remainder of
+the code is the same for any provider.
 
 AWS:
 
@@ -31,7 +31,8 @@ AWS:
     from cloudbridge.factory import CloudProviderFactory, ProviderList
 
     config = {'aws_access_key': 'AKIAJW2XCYO4AF55XFEQ',
-              'aws_secret_key': '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'}
+              'aws_secret_key': 'duBG5EHH5eD9H/wgqF+nNKB1xRjISTVs9L/EsTWA',
+              'aws_zone_name': 'us-east-1a'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
     image_id = 'ami-aa2ea6d0'  # Ubuntu 16.04 (HVM)
 
@@ -45,7 +46,8 @@ OpenStack (with Keystone authentication v2):
               'os_password': 'password',
               'os_auth_url': 'authentication URL',
               'os_region_name': 'region name',
-              'os_project_name': 'project name'}
+              'os_project_name': 'project name',
+              'os_zone_name': 'zone_name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
     image_id = 'c1f4b7bc-a563-4feb-b439-a2e071d861aa'  # Ubuntu 14.04 @ NeCTAR
@@ -61,7 +63,8 @@ OpenStack (with Keystone authentication v3):
               'os_auth_url': 'authentication URL',
               'os_project_name': 'project name',
               'os_project_domain_name': 'project domain name',
-              'os_user_domain_name': 'domain name'}
+              'os_user_domain_name': 'domain name',
+              'os_zone_name': 'zone_name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
     image_id = '470d2fba-d20b-47b0-a89a-ab725cd09f8b'  # Ubuntu 18.04@Jetstream
@@ -75,7 +78,8 @@ Azure:
     config = {'azure_subscription_id': 'REPLACE WITH ACTUAL VALUE',
               'azure_client_id': 'REPLACE WITH ACTUAL VALUE',
               'azure_secret': 'REPLACE WITH ACTUAL VALUE',
-              'azure_tenant': ' REPLACE WITH ACTUAL VALUE'}
+              'azure_tenant': ' REPLACE WITH ACTUAL VALUE',
+              'azure_zone_name': 'zone_name'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
     image_id = 'Canonical:UbuntuServer:16.04.0-LTS:latest'  # Ubuntu 16.04
 
@@ -130,9 +134,8 @@ attaching an internet gateway to the subnet via a router.
 
     net = provider.networking.networks.create(cidr_block='10.0.0.0/16',
                                               label='cb-network')
-    zone = provider.compute.regions.get(provider.region_name).zones[0]
     sn = net.subnets.create(
-        cidr_block='10.0.0.0/28', label='cb-subnet', zone=zone)
+        cidr_block='10.0.0.0/28', label='cb-subnet')
     router = provider.networking.routers.create(network=net, label='cb-router')
     router.attach_subnet(sn)
     gateway = net.gateways.get_or_create()
@@ -167,7 +170,7 @@ also add the network interface as a launch argument.
                       key=lambda x: x.vcpus*x.ram)[0]
     inst = provider.compute.instances.create(
         image=img, vm_type=vm_type, label='cb-instance',
-        subnet=sn, zone=zone, key_pair=kp, vm_firewalls=[fw])
+        subnet=sn, key_pair=kp, vm_firewalls=[fw])
     # Wait until ready
     inst.wait_till_ready()  # This is a blocking call
     # Show instance state
