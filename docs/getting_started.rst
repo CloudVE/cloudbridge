@@ -21,7 +21,7 @@ To start, you will need to create a reference to a provider object. The
 provider object identifies the cloud you want to work with and supplies your
 credentials. Each provider instance is tied to a particular zone.
 Refer to the `Setup page <topics/setup.html>`_ for more details information on
-provider configuration. One a provider instance is created, the remainder of
+provider configuration. Once a provider instance is created, the remainder of
 the code is the same for any provider.
 
 AWS:
@@ -34,7 +34,7 @@ AWS:
               'aws_secret_key': 'duBG5EHH5eD9H/wgqF+nNKB1xRjISTVs9L/EsTWA',
               'aws_zone_name': 'us-east-1a'}
     provider = CloudProviderFactory().create_provider(ProviderList.AWS, config)
-    image_id = 'ami-aa2ea6d0'  # Ubuntu 16.04 (HVM)
+    image_id = 'ami-0885b1f6bd170450c'  # Ubuntu 20.04 (HVM)
 
 OpenStack (with Keystone authentication v2):
 
@@ -67,7 +67,7 @@ OpenStack (with Keystone authentication v3):
               'os_zone_name': 'zone_name'}
     provider = CloudProviderFactory().create_provider(ProviderList.OPENSTACK,
                                                       config)
-    image_id = '470d2fba-d20b-47b0-a89a-ab725cd09f8b'  # Ubuntu 18.04@Jetstream
+    image_id = '46794408-6a80-44b1-bf5a-405127753f43'  # Ubuntu 20.04@Jetstream
 
 Azure:
 
