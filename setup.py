@@ -26,7 +26,7 @@ REQS_BASE = [
     'pyeventsystem<2'
 ]
 REQS_AWS = [
-    'boto3>=1.9.86'
+    'boto3>=1.9.86,<1.17'
 ]
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
@@ -49,11 +49,11 @@ REQS_GCP = [
     'oauth2client<4.2'
 ]
 REQS_OPENSTACK = [
-    'openstacksdk>=0.12.0',
-    'python-novaclient>=7.0.0',
-    'python-swiftclient>=3.2.0',
-    'python-neutronclient>=6.0.0',
-    'python-keystoneclient>=3.13.0'
+    'openstacksdk>=0.12.0,<0.53',
+    'python-novaclient>=7.0.0,<17.3',
+    'python-swiftclient>=3.2.0,<3.11',
+    'python-neutronclient>=6.0.0,<7.3',
+    'python-keystoneclient>=3.13.0,<4.2'
 ]
 REQS_SIMPLE = REQS_BASE + REQS_AWS + REQS_GCP + REQS_OPENSTACK
 REQS_AZURE = REQS_SIMPLE + REQS_AZURE
