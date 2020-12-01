@@ -169,7 +169,7 @@ def change_label(resource, key, value, res_att, request):
     # The casting needs to be done for all labels, as to support both
     # description and label setting
     labels[key] = str(value)
-    for k in labels.keys():
+    for k in list(labels):
         labels[str(k)] = str(labels.pop(k))
 
     request_body = {

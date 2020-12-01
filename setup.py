@@ -45,8 +45,8 @@ REQS_AZURE = [
     'pysftp==0.2.9'
 ]
 REQS_GCP = [
-    'google-api-python-client<=1.7.8',
-    'oauth2client<=4.1.3'
+    'google-api-python-client>=1.7.8,<1.13',
+    'oauth2client<4.2'
 ]
 REQS_OPENSTACK = [
     'openstacksdk>=0.12.0',
