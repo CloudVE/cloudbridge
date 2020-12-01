@@ -1,3 +1,19 @@
+2.1.0 - December 1, 2020 (sha a5c3af8ebc5be3ed44db34ebba097848f17305fb)
+---------------------------------------------------------------------
+
+* This release introduces the DNS service, which is a top level service for managing DNS zones and records.
+* Support for using the newly added AWS instance type offerings API. This removes the dependency on a static machine
+  type list, and returns up-to-date information on instance type availability.
+* The default package no longer bundles Azure, as the Azure python libraries are very large and affects docker
+  container size when using cloudbridge. To install with Azure, use `pip install cloudbridge[full]` or
+  `pip install cloudbridge[azure]`.
+* A convenience method for cloning providers in different zones has been added, which helps with multi-zone operations.
+* Support for specifying s3 signature version for the AWS provider.
+* Miscellaneous bug fixes and error handling improvements.
+* Support for python<3 dropped.
+* No major backward incompatible changes (apart from Azure not being bundled by default)
+
+
 2.0.0 - March 13, 2019 (sha 10e28a0d07251af4a424fcbf11435fa4d52e5277)
 ---------------------------------------------------------------------
 
