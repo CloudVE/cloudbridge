@@ -72,7 +72,7 @@ class CloudProviderFactory(object):
             try:
                 self._import_provider(modname)
             except Exception as e:
-                log.warn("Could not import provider: %s", e)
+                log.debug("Could not import provider: %s", e)
 
     def _import_provider(self, module_name):
         """
