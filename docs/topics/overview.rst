@@ -17,3 +17,4 @@ Introductions to all the key parts of CloudBridge you'll need to know:
     Using object storage <object_storage.rst>
     Resource types and mapping <resource_types_and_mapping.rst>
     Troubleshooting <troubleshooting.rst>
+    FAQ <faq.rst>
