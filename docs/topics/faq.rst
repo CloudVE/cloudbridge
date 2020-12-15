@@ -11,11 +11,11 @@ FAQ
 
     .. code-block:: python
 
-    all_instances = []
-    for zone in provider.compute.regions.current.zones:
-        new_provider = provider.clone(zone=zone)
-        all_instances.append(list(new_provider.compute.instances))
-    print(all_instances)
+        all_instances = []
+        for zone in provider.compute.regions.current.zones:
+            new_provider = provider.clone(zone=zone)
+            all_instances.append(list(new_provider.compute.instances))
+        print(all_instances)
 
 
 2. Cleaning up resources/left over resources
@@ -35,32 +35,32 @@ FAQ
 
     .. code-block:: python
 
-    from cloudbridge.base import helpers as cb_helpers
-    import tenacity
+        from cloudbridge.base import helpers as cb_helpers
+        import tenacity
 
-    def does_instance_or_volume_still_exist(inst, vol):
-        return provider.compute.instances.get(inst.id) or
-               provider.storage.volumes.get(vol.id)
+        def does_instance_or_volume_still_exist(inst, vol):
+            return provider.compute.instances.get(inst.id) or
+                   provider.storage.volumes.get(vol.id)
 
-    def detach_and_delete(inst, vol)
-        with cb_helpers.cleanup_action(lambda: inst.delete()):
-            vol.detach()
-            vol.wait_for(
-                [VolumeState.AVAILABLE],
-                terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
-            vol.delete()
-            self.wait_for([VolumeState.UNKNOWN, VolumeState.ERROR])
+        def detach_and_delete(inst, vol)
+            with cb_helpers.cleanup_action(lambda: inst.delete()):
+                vol.detach()
+                vol.wait_for(
+                    [VolumeState.AVAILABLE],
+                    terminal_states=[VolumeState.ERROR, VolumeState.DELETED])
+                vol.delete()
+                self.wait_for([VolumeState.UNKNOWN, VolumeState.ERROR])
 
-    def delete_my_instance_and_attached_volume(provider, instance, vol):
-        retryer = tenacity.Retrying(
-            stop=tenacity.stop_after_delay(300),
-            retry=tenacity.retry_if_result(does_instance_or_volume_still_exist(instance, vol),
-            wait=tenacity.wait_fixed(5))
+        def delete_my_instance_and_attached_volume(provider, instance, vol):
+            retryer = tenacity.Retrying(
+                stop=tenacity.stop_after_delay(300),
+                retry=tenacity.retry_if_result(does_instance_or_volume_still_exist(instance, vol),
+                wait=tenacity.wait_fixed(5))
 
-        retryer(detach_and_delete, instance, vol)
+            retryer(detach_and_delete, instance, vol)
 
-    # invoke with the instance and vol you want to delete
-    delete_my_instance_and_attached_volume(my_inst, my_vol)
+        # invoke with the instance and vol you want to delete
+        delete_my_instance_and_attached_volume(my_inst, my_vol)
 
 
    The code above attempts to first detach and then delete the volume.
