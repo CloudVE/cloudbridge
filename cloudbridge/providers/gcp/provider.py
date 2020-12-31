@@ -12,8 +12,14 @@ from string import Template
 import googleapiclient
 from googleapiclient import discovery
 
+import google_auth_httplib2
+import httplib2
+
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
+
+from google.auth.credentials import with_scopes_if_required
+from google.oauth2.service_account import Credentials
 
 from cloudbridge.base import BaseCloudProvider
 from cloudbridge.interfaces.exceptions import ProviderConnectionException
@@ -26,6 +32,7 @@ from .services import GCPStorageService
 
 log = logging.getLogger(__name__)
 
+CLOUD_SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
 
 class GCPResourceUrl(object):
 
@@ -336,17 +343,33 @@ class GCPCloudProvider(BaseCloudProvider):
     def client_id(self):
         return self._credentials.service_account_email
 
+    def _get_build_request(self):
+        credentials = Credentials.from_service_account_info(self.credentials_dict)
+        credentials=with_scopes_if_required(credentials, list(CLOUD_SCOPES))
+        # FROM: https://github.com/googleapis/google-api-python-client/blob/master/docs/thread_safety.md
+        # Create a new Http() object for every request
+        def build_request(http, *args, **kwargs):
+          new_http = google_auth_httplib2.AuthorizedHttp(credentials, http=httplib2.Http())
+          return googleapiclient.http.HttpRequest(new_http, *args, **kwargs)
+        return build_request
+
     def _connect_gcp_storage(self):
         return discovery.build('storage', 'v1', credentials=self._credentials,
-                               cache_discovery=False)
+                               cache_discovery=False,
+                               requestBuilder=self._get_build_request()
+                               )
 
     def _connect_gcp_compute(self):
         return discovery.build('compute', 'v1', credentials=self._credentials,
-                               cache_discovery=False)
+                               cache_discovery=False,
+                               requestBuilder=self._get_build_request()
+                               )
 
     def _connect_gcp_dns(self):
         return discovery.build('dns', 'v1', credentials=self._credentials,
-                               cache_discovery=False)
+                               cache_discovery=False,
+                               requestBuilder=self._get_build_request()
+                               )
 
     def wait_for_operation(self, operation, region=None, zone=None):
         args = {'project': self.project_name, 'operation': operation['name']}
