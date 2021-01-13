@@ -345,7 +345,7 @@ class GCPCloudProvider(BaseCloudProvider):
 
     def _get_build_request(self):
         credentials = Credentials.from_service_account_info(self.credentials_dict)
-        credentials=with_scopes_if_required(credentials, list(CLOUD_SCOPES))
+        credentials = with_scopes_if_required(credentials, list(CLOUD_SCOPES))
         # FROM: https://github.com/googleapis/google-api-python-client/blob/master/docs/thread_safety.md
         # Create a new Http() object for every request
         def build_request(http, *args, **kwargs):
