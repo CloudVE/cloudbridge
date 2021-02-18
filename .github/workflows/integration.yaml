@@ -45,6 +45,7 @@ jobs:
     # Set the type of machine to run on
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.8']
         cloud-provider: ['aws', 'azure', 'gcp', 'mock', 'openstack']
