@@ -9,16 +9,18 @@ import re
 import time
 from string import Template
 
+import google_auth_httplib2
+
 import googleapiclient
 from googleapiclient import discovery
 
-import google_auth_httplib2
 import httplib2
 
 from oauth2client.client import GoogleCredentials
 from oauth2client.service_account import ServiceAccountCredentials
 
 from google.auth.credentials import with_scopes_if_required
+
 from google.oauth2.service_account import Credentials
 
 from cloudbridge.base import BaseCloudProvider
@@ -33,6 +35,7 @@ from .services import GCPStorageService
 log = logging.getLogger(__name__)
 
 CLOUD_SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
+
 
 class GCPResourceUrl(object):
 
@@ -201,7 +204,6 @@ class GCPResources(object):
 
 
 class GCPCloudProvider(BaseCloudProvider):
-
     PROVIDER_ID = 'gcp'
 
     def __init__(self, config):
@@ -210,15 +212,15 @@ class GCPCloudProvider(BaseCloudProvider):
         # Disable warnings about file_cache not being available when using
         # oauth2client >= 4.0.0.
         logging.getLogger('googleapiclient.discovery_cache').setLevel(
-                logging.ERROR)
+            logging.ERROR)
 
         # Initialize cloud connection fields
         self.credentials_file = self._get_config_value(
-                'gcp_service_creds_file',
-                os.getenv('GCP_SERVICE_CREDS_FILE'))
+            'gcp_service_creds_file',
+            os.getenv('GCP_SERVICE_CREDS_FILE'))
         self.credentials_dict = self._get_config_value(
-                'gcp_service_creds_dict',
-                json.loads(os.getenv('GCP_SERVICE_CREDS_DICT', '{}')))
+            'gcp_service_creds_dict',
+            json.loads(os.getenv('GCP_SERVICE_CREDS_DICT', '{}')))
         self.credentials_obj = self._get_config_value('gcp_credentials_obj')
         self.vm_default_user_name = self._get_config_value(
             'gcp_vm_default_username',
@@ -304,10 +306,10 @@ class GCPCloudProvider(BaseCloudProvider):
     def _compute_resources(self):
         if not self._compute_resources_cache:
             self._compute_resources_cache = GCPResources(
-                    self.gcp_compute,
-                    project=self.project_name,
-                    region=self.region_name,
-                    zone=self.zone_name)
+                self.gcp_compute,
+                project=self.project_name,
+                region=self.region_name,
+                zone=self.zone_name)
         return self._compute_resources_cache
 
     @property
@@ -329,11 +331,11 @@ class GCPCloudProvider(BaseCloudProvider):
         if not self.credentials_obj:
             if self.credentials_dict:
                 self.credentials_obj = (
-                        ServiceAccountCredentials.from_json_keyfile_dict(
-                                self.credentials_dict))
+                    ServiceAccountCredentials.from_json_keyfile_dict(
+                        self.credentials_dict))
             else:
                 self.credentials_obj = (
-                        GoogleCredentials.get_application_default())
+                    GoogleCredentials.get_application_default())
         return self.credentials_obj
 
     def sign_blob(self, string_to_sign):
@@ -344,13 +346,18 @@ class GCPCloudProvider(BaseCloudProvider):
         return self._credentials.service_account_email
 
     def _get_build_request(self):
-        credentials = Credentials.from_service_account_info(self.credentials_dict)
+        credentials = Credentials.from_service_account_info(
+            self.credentials_dict)
         credentials = with_scopes_if_required(credentials, list(CLOUD_SCOPES))
-        # FROM: https://github.com/googleapis/google-api-python-client/blob/master/docs/thread_safety.md
+
+        # FROM: https://github.com/googleapis/google-api-python-client/blob/
+        # master/docs/thread_safety.md
         # Create a new Http() object for every request
         def build_request(http, *args, **kwargs):
-          new_http = google_auth_httplib2.AuthorizedHttp(credentials, http=httplib2.Http())
-          return googleapiclient.http.HttpRequest(new_http, *args, **kwargs)
+            new_http = google_auth_httplib2.AuthorizedHttp(
+                credentials, http=httplib2.Http())
+            return googleapiclient.http.HttpRequest(new_http, *args, **kwargs)
+
         return build_request
 
     def _connect_gcp_storage(self):
@@ -399,12 +406,12 @@ class GCPCloudProvider(BaseCloudProvider):
         if not url_or_name:
             return None
         resource_url = (
-            self._compute_resources.get_resource_url_with_default(
-                resource, url_or_name, **kwargs) or
-            self._storage_resources.get_resource_url_with_default(
-                resource, url_or_name, **kwargs) or
-            self._dns_resources.get_resource_url_with_default(
-                resource, url_or_name, **kwargs))
+                self._compute_resources.get_resource_url_with_default(
+                    resource, url_or_name, **kwargs) or
+                self._storage_resources.get_resource_url_with_default(
+                    resource, url_or_name, **kwargs) or
+                self._dns_resources.get_resource_url_with_default(
+                    resource, url_or_name, **kwargs))
         if resource_url is None:
             return None
         try:

@@ -10,8 +10,6 @@ from moto import mock_ec2
 from moto import mock_route53
 from moto import mock_s3
 
-import responses
-
 from ..aws import AWSCloudProvider
 from ...interfaces.provider import TestMockHelperMixin
 
