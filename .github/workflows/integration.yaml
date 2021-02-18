@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.cache/pip
-          key: pip-cache-${{ matrix.python-version }}-${{ hashFiles('**/setup.py', '**/requirements.txt') }}
+          key: pip-cache-${{ matrix.python-version }}-lint
 
       - name: Install required packages
         run: pip install tox
