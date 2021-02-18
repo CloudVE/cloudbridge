@@ -6,9 +6,36 @@ on: [push, pull_request]
 jobs:
   # Set the job key. The key is displayed as the job name
   # when a job name is not provided
+  lint:
+    name: Lint code
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.8' ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+           python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dir
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ matrix.python-version }}-${{ hashFiles('**/setup.py', '**/requirements.txt') }}
+
+      - name: Install required packages
+        run: pip install tox
+
+      - name: Run tox
+        run: tox -e lint
+
   integration:
     # Name the Job
     name: Run mock integration tests
+    needs: lint
     # Set the type of machine to run on
     runs-on: ubuntu-latest
     strategy:
