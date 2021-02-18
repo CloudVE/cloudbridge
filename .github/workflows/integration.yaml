@@ -41,7 +41,7 @@ jobs:
 
   integration:
     # Name the Job
-    name: Run mock integration tests
+    name: Per-cloud integration tests
     needs: lint
     # Set the type of machine to run on
     runs-on: ubuntu-latest
