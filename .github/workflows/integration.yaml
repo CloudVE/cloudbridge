@@ -35,6 +35,34 @@ jobs:
 
       - name: Run tox
         run: tox -e ${{ matrix.python-version }}-${{ cloud-provider }}
+        env:
+          PYTHONUNBUFFERED: "True"
+          # aws
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          # azure
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_SECRET: ${{ secrets.AZURE_SECRET }}
+          AZURE_TENANT: ${{ secrets.AZURE_TENANT }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+          CB_IMAGE_AZURE: ${{ secrets.CB_IMAGE_AZURE }}
+          CB_VM_TYPE_AZURE: ${{ secrets.CB_VM_TYPE_AZURE }}
+          # gcp
+          GCP_SERVICE_CREDS_DICT: ${{ secrets.GCP_SERVICE_CREDS_DICT }}
+          CB_IMAGE_GCP: ${{ secrets.CB_IMAGE_GCP }}
+          # openstack
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+          OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+          OS_TENANT_NAME: ${{ secrets.OS_TENANT_NAME }}
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+          CB_IMAGE_OS: ${{ secrets.CB_IMAGE_OS }}
+          CB_PLACEMENT_OS: ${{ secrets.CB_PLACEMENT_OS }}
 
       - name: Coveralls
         uses: coverallsapp/github-action@master
