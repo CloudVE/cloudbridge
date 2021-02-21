@@ -408,9 +408,3 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                             fip.in_use,
                             "Attached floating IP %s address should be in use."
                             % fip.public_ip)
-                    test_inst.refresh()
-                    test_inst.reboot()
-                    test_inst.wait_till_ready()
-                    self.assertNotIn(
-                        fip.public_ip,
-                        test_inst.public_ips + test_inst.private_ips)
