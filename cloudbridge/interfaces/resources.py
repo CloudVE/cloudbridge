@@ -573,6 +573,26 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         pass
 
     @abstractmethod
+    def start(self):
+        """
+        Start this instance (using the cloud middleware API)
+
+        :rtype: ``bool``
+        :return: ``True`` if the starting was successful; ``False`` otherwise.
+        """
+        pass
+
+    @abstractmethod
+    def stop(self):
+        """
+        Stop this instance (using the cloud middleware API)
+
+        :rtype: ``bool``
+        :return: ``True`` if the stopping was successful; ``False`` otherwise.
+        """
+        pass
+
+    @abstractmethod
     def delete(self):
         """
         Permanently delete this instance.

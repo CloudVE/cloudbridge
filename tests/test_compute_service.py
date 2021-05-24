@@ -391,6 +391,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                             % fip.public_ip)
                     test_inst.refresh()
                     test_inst.reboot()
+                    test_inst.stop()
+                    test_inst.start()
                     test_inst.wait_till_ready()
                     self.assertNotIn(
                         fip.public_ip,

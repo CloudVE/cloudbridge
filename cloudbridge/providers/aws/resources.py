@@ -5,9 +5,8 @@ import hashlib
 import inspect
 import logging
 
-from botocore.exceptions import ClientError
-
 import tenacity
+from botocore.exceptions import ClientError
 
 from cloudbridge.base.resources import BaseAttachmentInfo
 from cloudbridge.base.resources import BaseBucket
@@ -38,7 +37,6 @@ from cloudbridge.interfaces.resources import RouterState
 from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import SubnetState
 from cloudbridge.interfaces.resources import VolumeState
-
 from .helpers import find_tag_value
 from .helpers import trim_empty_params
 from .subservices import AWSBucketObjectSubService
@@ -306,6 +304,12 @@ class AWSInstance(BaseInstance):
 
     def reboot(self):
         self._ec2_instance.reboot()
+
+    def start(self):
+        self._ec2_instance.start()
+
+    def stop(self):
+        self._ec2_instance.stop()
 
     @property
     def image_id(self):
