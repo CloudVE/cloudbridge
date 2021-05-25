@@ -18,7 +18,6 @@ from tests.helpers import standard_interface_tests as sit
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
-
     _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['compute.instances'])
@@ -119,10 +118,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             if test_instance.public_ips:
                 self.assertTrue(
                     test_instance.public_ips[0], "public ip should contain a"
-                    " valid value if a list of public_ips exist")
+                                                 " valid value if a list of public_ips exist")
             self.assertIsInstance(test_instance.private_ips, list)
             self.assertTrue(test_instance.private_ips[0], "private ip should"
-                            " contain a valid value")
+                                                          " contain a valid value")
             self.assertEqual(
                 test_instance.key_pair_id,
                 kp.id)
@@ -188,8 +187,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # block_devices should be empty so far
         self.assertListEqual(
             lc.block_devices, [], "No block devices should have been"
-            " added to mappings list since the configuration was"
-            " invalid")
+                                  " added to mappings list since the configuration was"
+                                  " invalid")
 
         # Add a new volume
         lc.add_volume_device(size=1, delete_on_terminate=True)
@@ -241,7 +240,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                 " not stable enough yet")
 
         test_vol = self.provider.storage.volumes.create(
-           label, 1)
+            label, 1)
         with cb_helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(label=label,
@@ -341,7 +340,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 fw in test_inst.vm_firewalls, "Expected VM firewall '%s'"
-                " to be among instance vm_firewalls: [%s]" %
+                                              " to be among instance vm_firewalls: [%s]" %
                 (fw, test_inst.vm_firewalls))
 
             # Check removing a VM firewall from a running instance
@@ -349,7 +348,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 fw not in test_inst.vm_firewalls, "Expected VM firewall"
-                " '%s' to be removed from instance vm_firewalls: [%s]" %
+                                                  " '%s' to be removed from instance vm_firewalls: [%s]" %
                 (fw, test_inst.vm_firewalls))
 
             # check floating ips
@@ -431,21 +430,29 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                                   subnet=subnet)
 
             # check whether stopping aws instance works
-            test_inst.stop()
+            resp = test_inst.stop()
             test_inst.wait_for([InstanceState.STOPPED])
             test_inst.refresh()
             self.assertTrue(
                 test_inst.state == InstanceState.STOPPED,
-                "Instance.state must be stopped when refreshing after a "
+                "Instance state must be stopped when refreshing after a "
                 "stopped but got %s"
                 % test_inst.state)
 
+            self.assertTrue(resp,
+                            "Response from method was suppose to be True but got False"
+                            )
+
             # check whether starting aws instance works
-            test_inst.start()
+            resp = test_inst.start()
             test_inst.wait_for([InstanceState.RUNNING])
             test_inst.refresh()
             self.assertTrue(
                 test_inst.state == InstanceState.RUNNING,
-                "Instance.state must be running when refreshing after a "
+                "Instance state must be running when refreshing after a "
                 "starting but got %s"
                 % test_inst.state)
+
+            self.assertTrue(resp,
+                            "Response from method was suppose to be True but got False"
+                            )
