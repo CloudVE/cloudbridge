@@ -5,8 +5,9 @@ import hashlib
 import inspect
 import logging
 
-import tenacity
 from botocore.exceptions import ClientError
+
+import tenacity
 
 from cloudbridge.base.resources import BaseAttachmentInfo
 from cloudbridge.base.resources import BaseBucket

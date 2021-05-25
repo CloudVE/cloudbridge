@@ -410,3 +410,42 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                             fip.in_use,
                             "Attached floating IP %s address should be in use."
                             % fip.public_ip)
+
+    @helpers.skipIfNoService(['compute.instances', 'networking.networks',
+                              'security.vm_firewalls'])
+    def test_instance_start_stop_methods(self):
+        label = "cb-instmethods-{0}".format(helpers.get_uuid())
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        net = None
+        test_inst = None
+        fw = None
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                instance=test_inst, vm_firewall=fw, network=net)):
+            net = self.provider.networking.networks.create(
+                label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
+            cidr = '10.0.1.0/24'
+            subnet = net.subnets.create(label=label, cidr_block=cidr)
+            test_inst = helpers.get_test_instance(self.provider, label,
+                                                  subnet=subnet)
+
+            # check whether stopping aws instance works
+            test_inst.stop()
+            test_inst.wait_for([InstanceState.STOPPED])
+            test_inst.refresh()
+            self.assertTrue(
+                test_inst.state == InstanceState.STOPPED,
+                "Instance.state must be stopped when refreshing after a "
+                "stopped but got %s"
+                % test_inst.state)
+
+            # check whether starting aws instance works
+            test_inst.start()
+            test_inst.wait_for([InstanceState.RUNNING])
+            test_inst.refresh()
+            self.assertTrue(
+                test_inst.state == InstanceState.RUNNING,
+                "Instance.state must be running when refreshing after a "
+                "starting but got %s"
+                % test_inst.state)
