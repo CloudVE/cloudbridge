@@ -416,8 +416,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         label = "cb-instmethods-{0}".format(helpers.get_uuid())
 
         if self.provider.PROVIDER_ID != ProviderList.AWS:
-            raise self.skipTest("Not running BDM tests because OpenStack is"
-                                " not stable enough yet")
+            raise self.skipTest(f"Instance start/stop methods not implemented for provider: {self.provider.PROVIDER_ID}")
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
