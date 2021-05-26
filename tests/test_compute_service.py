@@ -415,17 +415,17 @@ class CloudComputeServiceTestCase(ProviderTestBase):
     def test_instance_start_stop_methods(self):
         label = "cb-instmethods-{0}".format(helpers.get_uuid())
 
+        if self.provider.PROVIDER_ID != ProviderList.AWS:
+            raise self.skipTest("Not running BDM tests because OpenStack is"
+                                " not stable enough yet")
+
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
-        net = None
+        subnet = None
         test_inst = None
-        fw = None
         with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
-                instance=test_inst, vm_firewall=fw, network=net)):
-            net = self.provider.networking.networks.create(
-                label=label, cidr_block=BaseNetwork.CB_DEFAULT_IPV4RANGE)
-            cidr = '10.0.1.0/24'
-            subnet = net.subnets.create(label=label, cidr_block=cidr)
+                instance=test_inst)):
+            subnet = helpers.get_or_create_default_subnet(self.provider)
             test_inst = helpers.get_test_instance(self.provider, label,
                                                   subnet=subnet)
 
