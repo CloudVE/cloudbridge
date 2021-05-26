@@ -38,7 +38,6 @@ from cloudbridge.interfaces.resources import RouterState
 from cloudbridge.interfaces.resources import SnapshotState
 from cloudbridge.interfaces.resources import SubnetState
 from cloudbridge.interfaces.resources import VolumeState
-
 from .helpers import find_tag_value
 from .helpers import trim_empty_params
 from .subservices import AWSBucketObjectSubService
@@ -52,7 +51,6 @@ log = logging.getLogger(__name__)
 
 
 class AWSMachineImage(BaseMachineImage):
-
     IMAGE_STATE_MAP = {
         'pending': MachineImageState.PENDING,
         'transient': MachineImageState.PENDING,
@@ -238,7 +236,6 @@ class AWSVMType(BaseVMType):
 
 
 class AWSInstance(BaseInstance):
-
     # ref:
     # http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html
     INSTANCE_STATE_MAP = {
@@ -306,6 +303,22 @@ class AWSInstance(BaseInstance):
 
     def reboot(self):
         self._ec2_instance.reboot()
+
+    def start(self):
+        response = self._ec2_instance.start()
+        states = ['pending', 'running']
+        if response['StartingInstances'][0]['CurrentState']['Name'] in states:
+            return True
+        else:
+            return False
+
+    def stop(self):
+        response = self._ec2_instance.stop()
+        states = ['stopping', 'stopped']
+        if response['StoppingInstances'][0]['CurrentState']['Name'] in states:
+            return True
+        else:
+            return False
 
     @property
     def image_id(self):
@@ -423,7 +436,6 @@ class AWSInstance(BaseInstance):
 
 
 class AWSVolume(BaseVolume):
-
     # Ref:
     # http://docs.aws.amazon.com/AWSEC2/latest/CommandLineReference/
     # ApiReference-cmd-DescribeVolumes.html
@@ -567,7 +579,6 @@ class AWSVolume(BaseVolume):
 
 
 class AWSSnapshot(BaseSnapshot):
-
     # Ref: http://docs.aws.amazon.com/AWSEC2/latest/CommandLineReference/
     # ApiReference-cmd-DescribeSnapshots.html
     SNAPSHOT_STATE_MAP = {
@@ -805,7 +816,6 @@ class AWSVMFirewallRule(BaseVMFirewallRule):
 
 
 class AWSBucketObject(BaseBucketObject):
-
     class BucketObjIterator():
         CHUNK_SIZE = 4096
 
@@ -921,7 +931,6 @@ class AWSRegion(BaseRegion):
 
 
 class AWSNetwork(BaseNetwork):
-
     # Ref:
     # docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeVpcs.html
     _NETWORK_STATE_MAP = {
@@ -1015,7 +1024,6 @@ class AWSNetwork(BaseNetwork):
 
 
 class AWSSubnet(BaseSubnet):
-
     # http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeSubnets.html
     _SUBNET_STATE_MAP = {
         'pending': SubnetState.PENDING,

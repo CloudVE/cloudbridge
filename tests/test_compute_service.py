@@ -18,7 +18,6 @@ from tests.helpers import standard_interface_tests as sit
 
 
 class CloudComputeServiceTestCase(ProviderTestBase):
-
     _multiprocess_can_split_ = True
 
     @helpers.skipIfNoService(['compute.instances'])
@@ -121,8 +120,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                     test_instance.public_ips[0], "public ip should contain a"
                     " valid value if a list of public_ips exist")
             self.assertIsInstance(test_instance.private_ips, list)
-            self.assertTrue(test_instance.private_ips[0], "private ip should"
-                            " contain a valid value")
+            self.assertTrue(test_instance.private_ips[0],
+                            "private ip should contain a valid value")
             self.assertEqual(
                 test_instance.key_pair_id,
                 kp.id)
@@ -188,8 +187,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # block_devices should be empty so far
         self.assertListEqual(
             lc.block_devices, [], "No block devices should have been"
-            " added to mappings list since the configuration was"
-            " invalid")
+            " added to mappings list since the configuration was invalid")
 
         # Add a new volume
         lc.add_volume_device(size=1, delete_on_terminate=True)
@@ -241,7 +239,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                                 " not stable enough yet")
 
         test_vol = self.provider.storage.volumes.create(
-           label, 1)
+            label, 1)
         with cb_helpers.cleanup_action(lambda: test_vol.delete()):
             test_vol.wait_till_ready()
             test_snap = test_vol.create_snapshot(label=label,
@@ -408,3 +406,48 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                             fip.in_use,
                             "Attached floating IP %s address should be in use."
                             % fip.public_ip)
+
+    @helpers.skipIfNoService(['compute.instances', 'networking.networks',
+                              'security.vm_firewalls'])
+    def test_instance_start_stop_methods(self):
+        label = "cb-instmethods-{0}".format(helpers.get_uuid())
+
+        if self.provider.PROVIDER_ID != ProviderList.AWS:
+            raise self.skipTest(f"Instance start/stop methods not implemented"
+                                f"for provider: {self.provider.PROVIDER_ID}")
+
+        # Declare these variables and late binding will allow
+        # the cleanup method access to the most current values
+        subnet = None
+        test_inst = None
+        with cb_helpers.cleanup_action(lambda: helpers.cleanup_test_resources(
+                instance=test_inst)):
+            subnet = helpers.get_or_create_default_subnet(self.provider)
+            test_inst = helpers.get_test_instance(self.provider, label,
+                                                  subnet=subnet)
+
+            # check whether stopping aws instance works
+            resp = test_inst.stop()
+            test_inst.wait_for([InstanceState.STOPPED])
+            test_inst.refresh()
+            self.assertTrue(
+                test_inst.state == InstanceState.STOPPED,
+                "Instance state must be stopped when refreshing after a "
+                "'stop' operation but got %s"
+                % test_inst.state)
+
+            self.assertTrue(resp, "Response from method was suppose to be"
+                            + " True but got False")
+
+            # check whether starting aws instance works
+            resp = test_inst.start()
+            test_inst.wait_for([InstanceState.RUNNING])
+            test_inst.refresh()
+            self.assertTrue(
+                test_inst.state == InstanceState.RUNNING,
+                "Instance state must be running when refreshing after a "
+                "'start' operation but got %s"
+                % test_inst.state)
+
+            self.assertTrue(resp, "Response from method was suppose to be"
+                            + " True but got False")
