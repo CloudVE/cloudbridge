@@ -118,10 +118,10 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             if test_instance.public_ips:
                 self.assertTrue(
                     test_instance.public_ips[0], "public ip should contain a"
-                                                 " valid value if a list of public_ips exist")
+                    " valid value if a list of public_ips exist")
             self.assertIsInstance(test_instance.private_ips, list)
-            self.assertTrue(test_instance.private_ips[0], "private ip should"
-                                                          " contain a valid value")
+            self.assertTrue(test_instance.private_ips[0],
+                            "private ip should contain a valid value")
             self.assertEqual(
                 test_instance.key_pair_id,
                 kp.id)
@@ -187,8 +187,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         # block_devices should be empty so far
         self.assertListEqual(
             lc.block_devices, [], "No block devices should have been"
-                                  " added to mappings list since the configuration was"
-                                  " invalid")
+            " added to mappings list since the configuration was invalid")
 
         # Add a new volume
         lc.add_volume_device(size=1, delete_on_terminate=True)
@@ -340,7 +339,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 fw in test_inst.vm_firewalls, "Expected VM firewall '%s'"
-                                              " to be among instance vm_firewalls: [%s]" %
+                " to be among instance vm_firewalls: [%s]" %
                 (fw, test_inst.vm_firewalls))
 
             # Check removing a VM firewall from a running instance
@@ -348,7 +347,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             test_inst.refresh()
             self.assertTrue(
                 fw not in test_inst.vm_firewalls, "Expected VM firewall"
-                                                  " '%s' to be removed from instance vm_firewalls: [%s]" %
+                " '%s' to be removed from instance vm_firewalls: [%s]" %
                 (fw, test_inst.vm_firewalls))
 
             # check floating ips
@@ -416,7 +415,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
         label = "cb-instmethods-{0}".format(helpers.get_uuid())
 
         if self.provider.PROVIDER_ID != ProviderList.AWS:
-            raise self.skipTest(f"Instance start/stop methods not implemented for provider: {self.provider.PROVIDER_ID}")
+            raise self.skipTest(f"Instance start/stop methods not implemented"
+                                f"for provider: {self.provider.PROVIDER_ID}")
 
         # Declare these variables and late binding will allow
         # the cleanup method access to the most current values
@@ -438,9 +438,8 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "stopped but got %s"
                 % test_inst.state)
 
-            self.assertTrue(resp,
-                            "Response from method was suppose to be True but got False"
-                            )
+            self.assertTrue(resp, "Response from method was suppose to be"
+                            + " True but got False")
 
             # check whether starting aws instance works
             resp = test_inst.start()
@@ -452,6 +451,5 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                 "starting but got %s"
                 % test_inst.state)
 
-            self.assertTrue(resp,
-                            "Response from method was suppose to be True but got False"
-                            )
+            self.assertTrue(resp, "Response from method was suppose to be"
+                            + " True but got False")

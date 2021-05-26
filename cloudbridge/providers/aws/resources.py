@@ -306,14 +306,16 @@ class AWSInstance(BaseInstance):
 
     def start(self):
         response = self._ec2_instance.start()
-        if response['StartingInstances'][0]['CurrentState']['Name'] in ['pending', 'running']:
+        states = ['pending', 'running']
+        if response['StartingInstances'][0]['CurrentState']['Name'] in states:
             return True
         else:
             return False
 
     def stop(self):
         response = self._ec2_instance.stop()
-        if response['StoppingInstances'][0]['CurrentState']['Name'] in ['stopping', 'stopped']:
+        states = ['stopping', 'stopped']
+        if response['StoppingInstances'][0]['CurrentState']['Name'] in states:
             return True
         else:
             return False
