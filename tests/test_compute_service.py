@@ -389,8 +389,6 @@ class CloudComputeServiceTestCase(ProviderTestBase):
                             % fip.public_ip)
                     test_inst.refresh()
                     test_inst.reboot()
-                    test_inst.stop()
-                    test_inst.start()
                     test_inst.wait_till_ready()
                     self.assertNotIn(
                         fip.public_ip,
@@ -435,7 +433,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 test_inst.state == InstanceState.STOPPED,
                 "Instance state must be stopped when refreshing after a "
-                "stopped but got %s"
+                "'stop' operation but got %s"
                 % test_inst.state)
 
             self.assertTrue(resp, "Response from method was suppose to be"
@@ -448,7 +446,7 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertTrue(
                 test_inst.state == InstanceState.RUNNING,
                 "Instance state must be running when refreshing after a "
-                "starting but got %s"
+                "'start' operation but got %s"
                 % test_inst.state)
 
             self.assertTrue(resp, "Response from method was suppose to be"
