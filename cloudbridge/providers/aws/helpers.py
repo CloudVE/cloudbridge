@@ -1,5 +1,5 @@
 """A set of AWS-specific helper methods used by the framework."""
-import logging as log
+import logging
 
 from boto3.resources.params import create_request_parameters
 
@@ -9,6 +9,9 @@ from botocore.utils import merge_dicts
 
 from cloudbridge.base.resources import ClientPagedResultList
 from cloudbridge.base.resources import ServerPagedResultList
+
+
+log = logging.getLogger(__name__)
 
 
 def trim_empty_params(params_dict):

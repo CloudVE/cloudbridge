@@ -1,5 +1,5 @@
 """Provider implementation based on boto library for AWS-compatible clouds."""
-import logging as log
+import logging
 
 import boto3
 
@@ -13,6 +13,9 @@ from .services import AWSDnsService
 from .services import AWSNetworkingService
 from .services import AWSSecurityService
 from .services import AWSStorageService
+
+
+log = logging.getLogger(__name__)
 
 
 class AWSCloudProvider(BaseCloudProvider):
