@@ -9,7 +9,7 @@ Detailed documentation can be found at http://cloudbridge.cloudve.org.
 
 Build Status Tests
 ~~~~~~~~~~~~~~~~~~
-.. image:: https://github.com/CloudVE/cloudbridge/workflows/Integration/badge.svg
+.. image:: https://github.com/CloudVE/cloudbridge/actions/workflows/integration.yaml/badge.svg
    :target: https://github.com/CloudVE/cloudbridge/actions/
    :alt: Integration Tests
 
