@@ -334,9 +334,6 @@ class GCPCloudProvider(BaseCloudProvider):
                 self.credentials_obj, _ = google.auth.default()
         return self.credentials_obj
 
-    def sign_blob(self, string_to_sign):
-        return self._credentials.sign_blob(string_to_sign)[1]
-
     @property
     def client_id(self):
         return self._credentials.service_account_email
