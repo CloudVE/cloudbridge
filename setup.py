@@ -47,11 +47,11 @@ REQS_GCP = [
     'google-api-python-client>=2.0,<2.22.0'
 ]
 REQS_OPENSTACK = [
-    'openstacksdk>=0.12.0,<0.53',
-    'python-novaclient>=7.0.0,<17.3',
-    'python-swiftclient>=3.2.0,<3.11',
-    'python-neutronclient>=6.0.0,<7.3',
-    'python-keystoneclient>=3.13.0,<4.2'
+    'openstacksdk>=0.12.0,<0.60',
+    'python-novaclient>=7.0.0,<17.7',
+    'python-swiftclient>=3.2.0,<3.13',
+    'python-neutronclient>=6.0.0,<7.7',
+    'python-keystoneclient>=3.13.0,<4.4'
 ]
 REQS_SIMPLE = REQS_BASE + REQS_AWS + REQS_GCP + REQS_OPENSTACK
 REQS_AZURE = REQS_SIMPLE + REQS_AZURE
