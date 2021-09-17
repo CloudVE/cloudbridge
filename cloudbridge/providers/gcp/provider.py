@@ -9,15 +9,13 @@ import re
 import time
 from string import Template
 
+import google.auth
 import google_auth_httplib2
 
 import googleapiclient
 from googleapiclient import discovery
 
 import httplib2
-
-from oauth2client.client import GoogleCredentials
-from oauth2client.service_account import ServiceAccountCredentials
 
 from google.auth.credentials import with_scopes_if_required
 
@@ -330,12 +328,10 @@ class GCPCloudProvider(BaseCloudProvider):
     def _credentials(self):
         if not self.credentials_obj:
             if self.credentials_dict:
-                self.credentials_obj = (
-                    ServiceAccountCredentials.from_json_keyfile_dict(
-                        self.credentials_dict))
+                self.credentials_obj = Credentials.from_service_account_info(
+                    self.credentials_dict)
             else:
-                self.credentials_obj = (
-                    GoogleCredentials.get_application_default())
+                self.credentials_obj, _ = google.auth.default()
         return self.credentials_obj
 
     def sign_blob(self, string_to_sign):
@@ -346,9 +342,8 @@ class GCPCloudProvider(BaseCloudProvider):
         return self._credentials.service_account_email
 
     def _get_build_request(self):
-        credentials = Credentials.from_service_account_info(
-            self.credentials_dict)
-        credentials = with_scopes_if_required(credentials, list(CLOUD_SCOPES))
+        credentials = with_scopes_if_required(
+            self._credentials, list(CLOUD_SCOPES))
 
         # FROM: https://github.com/googleapis/google-api-python-client/blob/
         # master/docs/thread_safety.md
