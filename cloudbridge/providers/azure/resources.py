@@ -177,25 +177,25 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
 
 
 class AzureBucketObject(BaseBucketObject):
-    def __init__(self, provider, container, key):
+    def __init__(self, provider, container, blob_client):
         super(AzureBucketObject, self).__init__(provider)
         self._container = container
-        self._key = key
+        self._blob_client = blob_client
 
     @property
     def id(self):
-        return self._key.name
+        return self._blob_client.blob_name
 
     @property
     def name(self):
-        return self._key.name
+        return self._blob_client.blob_name
 
     @property
     def size(self):
         """
         Get this object's size.
         """
-        return self._key.properties.content_length
+        return self._blob_client.get_blob_properties().content_length
 
     @property
     def last_modified(self):
@@ -203,7 +203,7 @@ class AzureBucketObject(BaseBucketObject):
         """
         Get the date and time this object was last modified.
         """
-        return self._key.properties.last_modified. \
+        return self._blob_client.get_blob_properties().last_modified. \
             strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):
@@ -211,11 +211,7 @@ class AzureBucketObject(BaseBucketObject):
         Returns this object's content as an
         iterable.
         """
-        content_stream = self._provider.azure_client. \
-            get_blob_content(self._container.id, self._key.name)
-        if content_stream:
-            content_stream.seek(0)
-        return content_stream
+        return self._blob_client.download_blob.chunks()
 
     def upload(self, data):
         """
@@ -235,8 +231,8 @@ class AzureBucketObject(BaseBucketObject):
         Store the contents of the file pointed by the "path" variable.
         """
         try:
-            self._provider.azure_client.create_blob_from_file(
-                self._container.id, self.id, path)
+            with open(path, "rb") as stream:
+                self._blob_client.upload_blob(stream, overwrite=True)
             return True
         except AzureException as azureEx:
             log.exception(azureEx)
@@ -249,19 +245,16 @@ class AzureBucketObject(BaseBucketObject):
         :rtype: bool
         :return: True if successful
         """
-        self._provider.azure_client.delete_blob(self._container.id,
-                                                self.id)
+        self._blob_client.delete_blob()
 
     def generate_url(self, expires_in):
         """
         Generate a URL to this object.
         """
-        return self._provider.azure_client.get_blob_url(
-            self._container.id, self.id, expires_in)
+        return self._provider.azure_client.get_blob_url(self._container, self._blob_client, expires_in)
 
     def refresh(self):
-        self._key = self._provider.azure_client.get_blob(
-            self._container.id, self._key.id)
+        pass
 
 
 class AzureBucket(BaseBucket):
@@ -272,14 +265,14 @@ class AzureBucket(BaseBucket):
 
     @property
     def id(self):
-        return self._bucket.name
+        return self._bucket.container_name
 
     @property
     def name(self):
         """
         Get this bucket's name.
         """
-        return self._bucket.name
+        return self._bucket.container_name
 
     def exists(self, name):
         """

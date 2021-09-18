@@ -31,14 +31,14 @@ REQS_AWS = [
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
 REQS_AZURE = [
-    'msrest>=0.6.0,<2.0.0',
     'msrestazure==0.6.4',
+    'azure-identity==1.6.1',
     'azure-common==1.1.27',
     'azure-mgmt-devtestlabs==9.0.0',
     'azure-mgmt-resource==19.0.0',
     'azure-mgmt-compute==23.0.0',
     'azure-mgmt-network==19.0.0',
-    'azure-mgmt-storage==18.0.0',
+    'azure-mgmt-storage==19.0.0',
     'azure-storage-blob==12.8.1',
     'azure-cosmosdb-table==1.0.6',
     'pysftp==0.2.9'

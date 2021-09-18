@@ -577,8 +577,8 @@ class AzureBucketObjectService(BaseBucketObjectService):
         Retrieve a given object from this bucket.
         """
         try:
-            obj = self.provider.azure_client.get_blob(bucket.name,
-                                                      object_id)
+            # pylint:disable=protected-access
+            obj = bucket._bucket.get_blob_client(object_id)
             return AzureBucketObject(self.provider, bucket, obj)
         except AzureException as azureEx:
             log.exception(azureEx)
@@ -593,23 +593,22 @@ class AzureBucketObjectService(BaseBucketObjectService):
         """
         objects = [AzureBucketObject(self.provider, bucket, obj)
                    for obj in
-                   self.provider.azure_client.list_blobs(
-                       bucket.name, prefix=prefix)]
+                   bucket._bucket.list_blobs(name_starts_with=prefix)]
         return ClientPagedResultList(self.provider, objects,
                                      limit=limit, marker=marker)
 
     def find(self, bucket, **kwargs):
         obj_list = [AzureBucketObject(self.provider, bucket, obj)
                     for obj in
-                    self.provider.azure_client.list_blobs(bucket.name)]
+                    bucket._bucket.list_blobs()]
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self.provider, list(matches))
 
     def create(self, bucket, name):
-        self.provider.azure_client.create_blob_from_text(
-            bucket.name, name, '')
-        return self.get(bucket, name)
+        blob_client = bucket._bucket.get_blob_client(name)
+        blob_client.upload_blob('')
+        return AzureBucketObject(self.provider, bucket, blob_client)
 
 
 class AzureComputeService(BaseComputeService):
