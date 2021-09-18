@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import sys
-import traceback
 from contextlib import contextmanager
 
 from cryptography.hazmat.backends import default_backend
@@ -105,12 +104,12 @@ def cleanup_action(cleanup_func):
         ex_class, ex_val, ex_traceback = sys.exc_info()
         try:
             cleanup_func()
-        except Exception as e:
+        except Exception:
             log.exception("Error during exception cleanup: ")
         six.reraise(ex_class, ex_val, ex_traceback)
     try:
         cleanup_func()
-    except Exception as e:
+    except Exception:
         log.exception("Error during exception cleanup: ")
 
 

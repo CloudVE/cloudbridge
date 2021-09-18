@@ -251,7 +251,8 @@ class AzureBucketObject(BaseBucketObject):
         """
         Generate a URL to this object.
         """
-        return self._provider.azure_client.get_blob_url(self._container, self._blob_client, expires_in)
+        return self._provider.azure_client.get_blob_url(
+            self._container, self._blob_client, expires_in)
 
     def refresh(self):
         pass
