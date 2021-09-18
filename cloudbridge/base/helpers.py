@@ -1,5 +1,6 @@
 import fnmatch
 import functools
+import logging
 import os
 import re
 import sys
@@ -17,6 +18,8 @@ import six
 import cloudbridge
 
 from ..interfaces.exceptions import InvalidParamException
+
+log = logging.getLogger(__name__)
 
 
 def generate_key_pair():
@@ -103,14 +106,12 @@ def cleanup_action(cleanup_func):
         try:
             cleanup_func()
         except Exception as e:
-            print("Error during exception cleanup: {0}".format(e))
-            traceback.print_exc()
+            log.exception("Error during exception cleanup: ")
         six.reraise(ex_class, ex_val, ex_traceback)
     try:
         cleanup_func()
     except Exception as e:
-        print("Error during cleanup: {0}".format(e))
-        traceback.print_exc()
+        log.exception("Error during exception cleanup: ")
 
 
 def get_env(varname, default_value=None):
