@@ -1,6 +1,5 @@
 import datetime
 import logging
-from io import BytesIO
 
 import tenacity
 from cloudbridge.interfaces.exceptions import (DuplicateResourceException,
@@ -303,7 +302,7 @@ class AzureClient(object):
     # Create a storage account. To prevent a race condition, try
     # to get or create at least twice
     @tenacity.retry(stop=tenacity.stop.stop_after_attempt(2),
-                    retry=tenacity.retry.retry_if_exception_type(HttpResponseError),
+                    retry=tenacity.retry_if_exception_type(HttpResponseError),
                     reraise=True)
     def _get_or_create_storage_account(self):
         if self._storage_account:
@@ -677,7 +676,7 @@ class AzureClient(object):
         return False
 
     @tenacity.retry(stop=tenacity.stop.stop_after_attempt(5),
-                    retry=tenacity.retry.retry_if_exception(__if_subnet_in_use),
+                    retry=tenacity.retry_if_exception(__if_subnet_in_use),
                     wait=tenacity.wait.wait_fixed(5),
                     reraise=True)
     def delete_subnet(self, subnet_id):
