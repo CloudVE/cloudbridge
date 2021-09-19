@@ -21,7 +21,8 @@ from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
-from azure.storage.blob import BlobSasPermissions, BlobServiceClient
+from azure.storage.blob import (BlobSasPermissions, BlobServiceClient,
+                                generate_blob_sas)
 
 from . import helpers as azure_helpers
 
@@ -281,6 +282,9 @@ class AzureClient(object):
                 self.public_key_storage_table_name)
         return self._table_service
 
+    def blob_client(self, container_name, blob_name):
+        return self.blob_service.get_blob_client(container=container_name, blob=blob_name)
+
     def get_resource_group(self, name):
         return self.resource_client.resource_groups.get(name)
 
@@ -403,7 +407,7 @@ class AzureClient(object):
     def delete_vm_firewall_rule(self, fw_rule_id, vm_firewall):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RULE_RESOURCE_ID,
                                              fw_rule_id)
-        name = url_params.get(VM_FIREWALL_RULE_NAME)
+        name = url_params.get(VM_FIREWALL_RULE_NAME, "")
         return self.network_management_client.security_rules. \
             begin_delete(self.resource_group, vm_firewall, name).result()
 
@@ -416,14 +420,13 @@ class AzureClient(object):
     def create_container(self, container_name):
         try:
             return self.blob_service.create_container(container_name)
-        except AzureConflictHttpError as cloud_error:
-            if cloud_error.error_code == "ContainerAlreadyExists":
-                msg = "The given Bucket name '%s' already exists. Please " \
-                      "use the `get` or `find` method to get a reference to " \
-                      "an existing Bucket, or specify a new Bucket name to " \
-                      "create.\nNote that in Azure, Buckets are contained " \
-                      "in Storage Accounts." % container_name
-                raise DuplicateResourceException(msg)
+        except ResourceExistsError:
+            msg = "The given Bucket name '%s' already exists. Please " \
+                    "use the `get` or `find` method to get a reference to " \
+                    "an existing Bucket, or specify a new Bucket name to " \
+                    "create.\nNote that in Azure, Buckets are contained " \
+                    "in Storage Accounts." % container_name
+            raise DuplicateResourceException(msg)
 
     def get_container(self, container_name):
         return self.blob_service.get_container_client(container_name)
@@ -431,37 +434,48 @@ class AzureClient(object):
     def delete_container(self, container_name):
         self.blob_service.delete_container(container_name)
 
-    def list_blobs(self, container_name, prefix=None):
-        return self.blob_service.list_blobs(container_name, prefix=prefix)
+    def list_blobs(self, container_name, prefix=None, include=None):
+        container_client = self.get_container(container_name)
+        return container_client.list_blobs(name_starts_with=prefix, include=include)
+
+    
+    def upload_blob(self, container_name, blob_name, data, length=None):
+        blob_client = self.blob_client(container_name, blob_name)
+        blob_client.upload_blob(data=data, length=length)
 
     def get_blob(self, container_name, blob_name):
-        return self.blob_service.get_blob_properties(container_name, blob_name)
+        blob_client = self.blob_client(container_name, blob_name)
+        return blob_client.get_blob_properties(container_name, blob_name)
 
-    def create_blob_from_text(self, container_name, blob_name, text):
-        self.blob_service.create_blob_from_text(container_name,
-                                                blob_name, text)
+    def create_blob_from_text(self, container_name, blob_name, text, length=None):
+        self.upload_blob(container_name, blob_name, text, length)
 
-    def create_blob_from_file(self, container_name, blob_name, file_path):
-        self.blob_service.create_blob_from_path(container_name,
-                                                blob_name, file_path)
+    def create_blob_from_file(self, container_name, blob_name, file_path, length=None):
+        with open(file_path, 'rb') as data:
+            self.upload_blob(container_name, blob_name, data, length)
 
-    def delete_blob(self, container_name, blob_name):
-        self.blob_service.delete_blob(container_name, blob_name)
+    def delete_blob(self, container_name, blob_name, delete_snapshots="include"):
+        blob_client = self.blob_client(container_name, blob_name)
+        blob_client.delete_blob(delete_snapshots)
 
     def get_blob_url(self, container_name, blob_name, expiry_time):
         expiry_date = datetime.datetime.utcnow() + datetime.timedelta(
             seconds=expiry_time)
-        sas = self.blob_service.generate_blob_shared_access_signature(
-            container_name, blob_name, permission=BlobSasPermissions.READ,
-            expiry=expiry_date)
-        return self.blob_service.make_blob_url(container_name, blob_name,
-                                               sas_token=sas)
+        sas = generate_blob_sas(
+            self.storage_account, container_name, blob_name, 
+            permission=BlobSasPermissions(read=True), expiry=expiry_date
+        )
+        url = (
+            f"https://{self.storage_account}.blob.core.windows.net/"
+            f"{container_name}/{blob_name}?{sas}"
+        )
+
+        return url
 
     def get_blob_content(self, container_name, blob_name):
-        out_stream = BytesIO()
-        self.blob_service.get_blob_to_stream(container_name,
-                                             blob_name, out_stream)
-        return out_stream
+        blob_client = self.blob_client(container_name, blob_name)
+        out_stream = blob_client.download_blob()
+        return out_stream.readall()
 
     def create_empty_disk(self, disk_name, params):
         return self.compute_client.disks.begin_create_or_update(
@@ -500,7 +514,7 @@ class AzureClient(object):
         return self.compute_client.disks.begin_update(
             self.resource_group,
             disk_name,
-            {'tags': tags}
+            {'tags': tags} #type: ignore
         ).wait()
 
     def list_snapshots(self):
@@ -535,7 +549,7 @@ class AzureClient(object):
         return self.compute_client.snapshots.begin_update(
             self.resource_group,
             snapshot_name,
-            {'tags': tags}
+            {'tags': tags} #type: ignore
         ).wait()
 
     def is_gallery_image(self, image_id):
