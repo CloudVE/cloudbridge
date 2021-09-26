@@ -6,9 +6,7 @@ from cloudbridge.interfaces.exceptions import (DuplicateResourceException,
                                                InvalidLabelException,
                                                ProviderConnectionException,
                                                WaitStateException)
-from msrestazure.azure_exceptions import CloudError
 
-from azure.common import AzureConflictHttpError
 from azure.core.exceptions import (ClientAuthenticationError,
                                    HttpResponseError, ResourceExistsError,
                                    ResourceNotFoundError)
@@ -312,7 +310,6 @@ class AzureClient(object):
                 self._storage_account = \
                     self.get_storage_account(self.storage_account)
             except HttpResponseError as cloud_error:
-                
                 if isinstance(cloud_error, ResourceNotFoundError):
                     storage_account_params = {
                         'sku': {
@@ -325,7 +322,7 @@ class AzureClient(object):
                         self._storage_account = \
                             self.create_storage_account(self.storage_account,
                                                         storage_account_params)
-                    except CloudError as cloud_error2:  # pragma: no cover
+                    except HttpResponseError as cloud_error2:  # pragma: no cover
                         if isinstance(cloud_error2, ClientAuthenticationError):
                             mess = 'The following error was returned by ' \
                                    'Azure:\n%s\n\nThis is likely because the' \
@@ -437,7 +434,6 @@ class AzureClient(object):
         container_client = self.get_container(container_name)
         return container_client.list_blobs(name_starts_with=prefix, include=include)
 
-    
     def upload_blob(self, container_name, blob_name, data, length=None):
         blob_client = self.blob_client(container_name, blob_name)
         blob_client.upload_blob(data=data, length=length)
@@ -446,7 +442,8 @@ class AzureClient(object):
         blob_client = self.blob_client(container_name, blob_name)
         return blob_client.get_blob_properties(container_name, blob_name)
 
-    def create_blob_from_text(self, container_name, blob_name, text, length=None):
+    def create_blob_from_text(self, container_name, blob_name, text):
+        length = len(text.encode())
         self.upload_blob(container_name, blob_name, text, length)
 
     def create_blob_from_file(self, container_name, blob_name, file_path, length=None):
@@ -461,7 +458,7 @@ class AzureClient(object):
         expiry_date = datetime.datetime.utcnow() + datetime.timedelta(
             seconds=expiry_time)
         sas = generate_blob_sas(
-            self.storage_account, container_name, blob_name, 
+            self.storage_account, container_name, blob_name,
             permission=BlobSasPermissions(read=True), expiry=expiry_date
         )
         url = (
@@ -470,11 +467,6 @@ class AzureClient(object):
         )
 
         return url
-
-    def get_blob_content(self, container_name, blob_name):
-        blob_client = self.blob_client(container_name, blob_name)
-        out_stream = blob_client.download_blob()
-        return out_stream.readall()
 
     def create_empty_disk(self, disk_name, params):
         return self.compute_client.disks.begin_create_or_update(
@@ -513,7 +505,7 @@ class AzureClient(object):
         return self.compute_client.disks.begin_update(
             self.resource_group,
             disk_name,
-            {'tags': tags} #type: ignore
+            {'tags': tags}  # type: ignore
         ).wait()
 
     def list_snapshots(self):
@@ -548,7 +540,7 @@ class AzureClient(object):
         return self.compute_client.snapshots.begin_update(
             self.resource_group,
             snapshot_name,
-            {'tags': tags} #type: ignore
+            {'tags': tags}  # type: ignore
         ).wait()
 
     def is_gallery_image(self, image_id):
@@ -670,8 +662,8 @@ class AzureClient(object):
 
     def __if_subnet_in_use(e):
         # return True if the CloudError exception is due to subnet being in use
-        if isinstance(e, CloudError):
-            if e.error.error == "InUseSubnetCannotBeDeleted":
+        if isinstance(e, HttpResponseError):
+            if "InUseSubnetCannotBeDeleted" in e.message:
                 return True
         return False
 
@@ -693,7 +685,7 @@ class AzureClient(object):
                     subnet_name
                 )
             result_delete.wait()
-        except CloudError as cloud_error:
+        except HttpResponseError as cloud_error:
             log.exception(cloud_error.message)
             raise cloud_error
 
@@ -880,7 +872,7 @@ class AzureClient(object):
                  self.resource_group,
                  network_name,
                  subnet_name,
-                 subnet_info) #type: ignore
+                 subnet_info)  # type: ignore
             subnet_info = result_create.result()
 
         return subnet_info
@@ -905,7 +897,7 @@ class AzureClient(object):
                  self.resource_group,
                  network_name,
                  subnet_name,
-                 subnet_info) #type: ignore
+                 subnet_info)  # type: ignore
             subnet_info = result_create.result()
 
         return subnet_info
