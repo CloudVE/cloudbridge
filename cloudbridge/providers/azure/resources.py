@@ -4,49 +4,31 @@ DataTypes used by this provider
 import collections
 import logging
 
+import pysftp
+from cloudbridge.base.resources import (BaseAttachmentInfo, BaseBucket,
+                                        BaseBucketObject, BaseFloatingIP,
+                                        BaseInstance, BaseInternetGateway,
+                                        BaseKeyPair, BaseLaunchConfig,
+                                        BaseMachineImage, BaseNetwork,
+                                        BasePlacementZone, BaseRegion,
+                                        BaseRouter, BaseSnapshot, BaseSubnet,
+                                        BaseVMFirewall, BaseVMFirewallRule,
+                                        BaseVMType, BaseVolume)
+from cloudbridge.interfaces import InstanceState, VolumeState
+from cloudbridge.interfaces.resources import (Instance, MachineImageState,
+                                              NetworkState, RouterState,
+                                              SnapshotState, SubnetState,
+                                              TrafficDirection)
+
 from azure.common import AzureException
+from azure.core.exceptions import HttpResponseError
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
 
-from msrestazure.azure_exceptions import CloudError
-
-import pysftp
-
-from cloudbridge.base.resources import BaseAttachmentInfo
-from cloudbridge.base.resources import BaseBucket
-from cloudbridge.base.resources import BaseBucketObject
-from cloudbridge.base.resources import BaseFloatingIP
-from cloudbridge.base.resources import BaseInstance
-from cloudbridge.base.resources import BaseInternetGateway
-from cloudbridge.base.resources import BaseKeyPair
-from cloudbridge.base.resources import BaseLaunchConfig
-from cloudbridge.base.resources import BaseMachineImage
-from cloudbridge.base.resources import BaseNetwork
-from cloudbridge.base.resources import BasePlacementZone
-from cloudbridge.base.resources import BaseRegion
-from cloudbridge.base.resources import BaseRouter
-from cloudbridge.base.resources import BaseSnapshot
-from cloudbridge.base.resources import BaseSubnet
-from cloudbridge.base.resources import BaseVMFirewall
-from cloudbridge.base.resources import BaseVMFirewallRule
-from cloudbridge.base.resources import BaseVMType
-from cloudbridge.base.resources import BaseVolume
-from cloudbridge.interfaces import InstanceState
-from cloudbridge.interfaces import VolumeState
-from cloudbridge.interfaces.resources import Instance
-from cloudbridge.interfaces.resources import MachineImageState
-from cloudbridge.interfaces.resources import NetworkState
-from cloudbridge.interfaces.resources import RouterState
-from cloudbridge.interfaces.resources import SnapshotState
-from cloudbridge.interfaces.resources import SubnetState
-from cloudbridge.interfaces.resources import TrafficDirection
-
 from . import helpers as azure_helpers
-from .subservices import AzureBucketObjectSubService
-from .subservices import AzureFloatingIPSubService
-from .subservices import AzureGatewaySubService
-from .subservices import AzureSubnetSubService
-from .subservices import AzureVMFirewallRuleSubService
+from .subservices import (AzureBucketObjectSubService,
+                          AzureFloatingIPSubService, AzureGatewaySubService,
+                          AzureSubnetSubService, AzureVMFirewallRuleSubService)
 
 log = logging.getLogger(__name__)
 
@@ -109,7 +91,7 @@ class AzureVMFirewall(BaseVMFirewall):
                 get_vm_firewall(self.id)
             if not self._vm_firewall.tags:
                 self._vm_firewall.tags = {}
-        except (CloudError, ValueError) as cloud_error:
+        except (HttpResponseError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The security group no longer exists and cannot be refreshed.
 
@@ -446,7 +428,7 @@ class AzureVolume(BaseVolume):
             self._volume = self._provider.azure_client. \
                 get_disk(self.id)
             self._update_state()
-        except (CloudError, ValueError) as cloud_error:
+        except (HttpResponseError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The volume no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -542,7 +524,7 @@ class AzureSnapshot(BaseSnapshot):
             self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.id)
             self._state = self._snapshot.provisioning_state
-        except (CloudError, ValueError) as cloud_error:
+        except (HttpResponseError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The snapshot no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -692,7 +674,7 @@ class AzureMachineImage(BaseMachineImage):
             try:
                 self._image = self._provider.azure_client.get_image(self.id)
                 self._state = self._image.provisioning_state
-            except CloudError as cloud_error:
+            except HttpResponseError as cloud_error:
                 log.exception(cloud_error.message)
                 # image no longer exists
                 self._state = "unknown"
@@ -767,7 +749,7 @@ class AzureNetwork(BaseNetwork):
             self._network = self._provider.azure_client.\
                 get_network(self.id)
             self._state = self._network.provisioning_state
-        except (CloudError, ValueError) as cloud_error:
+        except (HttpResponseError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The network no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -981,7 +963,7 @@ class AzureSubnet(BaseSubnet):
             self._subnet = self._provider.azure_client. \
                 get_subnet(self.id)
             self._state = self._subnet.provisioning_state
-        except (CloudError, ValueError) as cloud_error:
+        except (HttpResponseError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The subnet no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -1321,7 +1303,7 @@ class AzureInstance(BaseInstance):
             if not self._vm.tags:
                 self._vm.tags = {}
             self._update_state()
-        except (CloudError, ValueError) as cloud_error:
+        except (HttpResponseError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The volume no longer exists and cannot be refreshed.
             # set the state to unknown

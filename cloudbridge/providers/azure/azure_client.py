@@ -1,27 +1,25 @@
 import datetime
 import logging
-from io import BytesIO
 
-from azure.common import AzureConflictHttpError
-from azure.identity import ClientSecretCredential
+import tenacity
+from cloudbridge.interfaces.exceptions import (DuplicateResourceException,
+                                               InvalidLabelException,
+                                               ProviderConnectionException,
+                                               WaitStateException)
+
+from azure.core.exceptions import (ClientAuthenticationError,
+                                   HttpResponseError, ResourceExistsError,
+                                   ResourceNotFoundError)
 from azure.cosmosdb.table.tableservice import TableService
+from azure.identity import ClientSecretCredential
 from azure.mgmt.compute import ComputeManagementClient
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.subscriptions import SubscriptionClient
 from azure.mgmt.storage import StorageManagementClient
-from azure.storage.blob import BlobSasPermissions
-from azure.storage.blob import BlobServiceClient
-
-from msrestazure.azure_exceptions import CloudError
-
-import tenacity
-
-from cloudbridge.interfaces.exceptions import DuplicateResourceException
-from cloudbridge.interfaces.exceptions import InvalidLabelException
-from cloudbridge.interfaces.exceptions import ProviderConnectionException
-from cloudbridge.interfaces.exceptions import WaitStateException
+from azure.storage.blob import (BlobSasPermissions, BlobServiceClient,
+                                generate_blob_sas)
 
 from . import helpers as azure_helpers
 
@@ -180,7 +178,7 @@ class AzureClient(object):
         log.debug("azure subscription : %s", self.subscription_id)
 
     @property
-    @tenacity.retry(stop=tenacity.stop_after_attempt(5), reraise=True)
+    @tenacity.retry(stop=tenacity.stop.stop_after_attempt(5), reraise=True)
     def access_key_result(self):
         if not self._access_key_result:
             storage_account = self.storage_account
@@ -281,6 +279,9 @@ class AzureClient(object):
                 self.public_key_storage_table_name)
         return self._table_service
 
+    def blob_client(self, container_name, blob_name):
+        return self.blob_service.get_blob_client(container=container_name, blob=blob_name)
+
     def get_resource_group(self, name):
         return self.resource_client.resource_groups.get(name)
 
@@ -294,12 +295,12 @@ class AzureClient(object):
 
     def create_storage_account(self, name, params):
         return self.storage_client.storage_accounts. \
-            create(self.resource_group, name.lower(), params).result()
+            begin_create(self.resource_group, name.lower(), params).result()
 
     # Create a storage account. To prevent a race condition, try
     # to get or create at least twice
-    @tenacity.retry(stop=tenacity.stop_after_attempt(2),
-                    retry=tenacity.retry_if_exception_type(CloudError),
+    @tenacity.retry(stop=tenacity.stop.stop_after_attempt(2),
+                    retry=tenacity.retry_if_exception_type(HttpResponseError),
                     reraise=True)
     def _get_or_create_storage_account(self):
         if self._storage_account:
@@ -308,8 +309,8 @@ class AzureClient(object):
             try:
                 self._storage_account = \
                     self.get_storage_account(self.storage_account)
-            except CloudError as cloud_error:
-                if cloud_error.error.error == "ResourceNotFound":
+            except HttpResponseError as cloud_error:
+                if isinstance(cloud_error, ResourceNotFoundError):
                     storage_account_params = {
                         'sku': {
                             'name': 'Standard_LRS'
@@ -321,8 +322,8 @@ class AzureClient(object):
                         self._storage_account = \
                             self.create_storage_account(self.storage_account,
                                                         storage_account_params)
-                    except CloudError as cloud_error2:  # pragma: no cover
-                        if cloud_error2.error.error == "AuthorizationFailed":
+                    except HttpResponseError as cloud_error2:  # pragma: no cover
+                        if isinstance(cloud_error2, ClientAuthenticationError):
                             mess = 'The following error was returned by ' \
                                    'Azure:\n%s\n\nThis is likely because the' \
                                    ' Role associated with the provided ' \
@@ -338,8 +339,7 @@ class AzureClient(object):
                                    'access-control/overview\n' % cloud_error2
                             raise ProviderConnectionException(mess)
 
-                        elif cloud_error2.error.error == \
-                                "StorageAccountAlreadyTaken":
+                        elif isinstance(cloud_error2, ResourceExistsError):
                             mess = 'The following error was ' \
                                    'returned by Azure:\n%s\n\n' \
                                    'Note that Storage Account names must be ' \
@@ -371,7 +371,7 @@ class AzureClient(object):
     def update_vm_firewall_tags(self, fw_id, tags):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
                                              fw_id)
-        name = url_params.get(VM_FIREWALL_NAME)
+        name = url_params.get(VM_FIREWALL_NAME, "")
         return self.network_management_client.network_security_groups. \
             begin_create_or_update(self.resource_group, name,
                                    {'tags': tags,
@@ -380,14 +380,14 @@ class AzureClient(object):
     def get_vm_firewall(self, fw_id):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
                                              fw_id)
-        fw_name = url_params.get(VM_FIREWALL_NAME)
+        fw_name = url_params.get(VM_FIREWALL_NAME, "")
         return self.network_management_client.network_security_groups. \
             get(self.resource_group, fw_name)
 
     def delete_vm_firewall(self, fw_id):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
                                              fw_id)
-        name = url_params.get(VM_FIREWALL_NAME)
+        name = url_params.get(VM_FIREWALL_NAME, "")
         self.network_management_client \
             .network_security_groups.begin_delete(self.resource_group, name).wait()
 
@@ -395,7 +395,7 @@ class AzureClient(object):
                                 rule_name, parameters):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RESOURCE_ID,
                                              fw_id)
-        vm_firewall_name = url_params.get(VM_FIREWALL_NAME)
+        vm_firewall_name = url_params.get(VM_FIREWALL_NAME, "")
         return self.network_management_client.security_rules. \
             begin_create_or_update(self.resource_group, vm_firewall_name,
                                    rule_name, parameters).result()
@@ -403,7 +403,7 @@ class AzureClient(object):
     def delete_vm_firewall_rule(self, fw_rule_id, vm_firewall):
         url_params = azure_helpers.parse_url(VM_FIREWALL_RULE_RESOURCE_ID,
                                              fw_rule_id)
-        name = url_params.get(VM_FIREWALL_RULE_NAME)
+        name = url_params.get(VM_FIREWALL_RULE_NAME, "")
         return self.network_management_client.security_rules. \
             begin_delete(self.resource_group, vm_firewall, name).result()
 
@@ -416,14 +416,13 @@ class AzureClient(object):
     def create_container(self, container_name):
         try:
             return self.blob_service.create_container(container_name)
-        except AzureConflictHttpError as cloud_error:
-            if cloud_error.error_code == "ContainerAlreadyExists":
-                msg = "The given Bucket name '%s' already exists. Please " \
-                      "use the `get` or `find` method to get a reference to " \
-                      "an existing Bucket, or specify a new Bucket name to " \
-                      "create.\nNote that in Azure, Buckets are contained " \
-                      "in Storage Accounts." % container_name
-                raise DuplicateResourceException(msg)
+        except ResourceExistsError:
+            msg = "The given Bucket name '%s' already exists. Please " \
+                    "use the `get` or `find` method to get a reference to " \
+                    "an existing Bucket, or specify a new Bucket name to " \
+                    "create.\nNote that in Azure, Buckets are contained " \
+                    "in Storage Accounts." % container_name
+            raise DuplicateResourceException(msg)
 
     def get_container(self, container_name):
         return self.blob_service.get_container_client(container_name)
@@ -431,37 +430,43 @@ class AzureClient(object):
     def delete_container(self, container_name):
         self.blob_service.delete_container(container_name)
 
-    def list_blobs(self, container_name, prefix=None):
-        return self.blob_service.list_blobs(container_name, prefix=prefix)
+    def list_blobs(self, container_name, prefix=None, include=None):
+        container_client = self.get_container(container_name)
+        return container_client.list_blobs(name_starts_with=prefix, include=include)
+
+    def upload_blob(self, container_name, blob_name, data, length=None):
+        blob_client = self.blob_client(container_name, blob_name)
+        blob_client.upload_blob(data=data, length=length)
 
     def get_blob(self, container_name, blob_name):
-        return self.blob_service.get_blob_properties(container_name, blob_name)
+        blob_client = self.blob_client(container_name, blob_name)
+        return blob_client.get_blob_properties(container_name, blob_name)
 
     def create_blob_from_text(self, container_name, blob_name, text):
-        self.blob_service.create_blob_from_text(container_name,
-                                                blob_name, text)
+        length = len(text.encode())
+        self.upload_blob(container_name, blob_name, text, length)
 
-    def create_blob_from_file(self, container_name, blob_name, file_path):
-        self.blob_service.create_blob_from_path(container_name,
-                                                blob_name, file_path)
+    def create_blob_from_file(self, container_name, blob_name, file_path, length=None):
+        with open(file_path, 'rb') as data:
+            self.upload_blob(container_name, blob_name, data, length)
 
-    def delete_blob(self, container_name, blob_name):
-        self.blob_service.delete_blob(container_name, blob_name)
+    def delete_blob(self, container_name, blob_name, delete_snapshots="include"):
+        blob_client = self.blob_client(container_name, blob_name)
+        blob_client.delete_blob(delete_snapshots)
 
     def get_blob_url(self, container_name, blob_name, expiry_time):
         expiry_date = datetime.datetime.utcnow() + datetime.timedelta(
             seconds=expiry_time)
-        sas = self.blob_service.generate_blob_shared_access_signature(
-            container_name, blob_name, permission=BlobSasPermissions.READ,
-            expiry=expiry_date)
-        return self.blob_service.make_blob_url(container_name, blob_name,
-                                               sas_token=sas)
+        sas = generate_blob_sas(
+            self.storage_account, container_name, blob_name,
+            permission=BlobSasPermissions(read=True), expiry=expiry_date
+        )
+        url = (
+            f"https://{self.storage_account}.blob.core.windows.net/"
+            f"{container_name}/{blob_name}?{sas}"
+        )
 
-    def get_blob_content(self, container_name, blob_name):
-        out_stream = BytesIO()
-        self.blob_service.get_blob_to_stream(container_name,
-                                             blob_name, out_stream)
-        return out_stream
+        return url
 
     def create_empty_disk(self, disk_name, params):
         return self.compute_client.disks.begin_create_or_update(
@@ -480,7 +485,7 @@ class AzureClient(object):
     def get_disk(self, disk_id):
         url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
                                              disk_id)
-        disk_name = url_params.get(VOLUME_NAME)
+        disk_name = url_params.get(VOLUME_NAME, "")
         return self.compute_client.disks.get(self.resource_group, disk_name)
 
     def list_disks(self):
@@ -490,17 +495,17 @@ class AzureClient(object):
     def delete_disk(self, disk_id):
         url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
                                              disk_id)
-        disk_name = url_params.get(VOLUME_NAME)
+        disk_name = url_params.get(VOLUME_NAME, "")
         self.compute_client.disks.begin_delete(self.resource_group, disk_name).wait()
 
     def update_disk_tags(self, disk_id, tags):
         url_params = azure_helpers.parse_url(VOLUME_RESOURCE_ID,
                                              disk_id)
-        disk_name = url_params.get(VOLUME_NAME)
+        disk_name = url_params.get(VOLUME_NAME, "")
         return self.compute_client.disks.begin_update(
             self.resource_group,
             disk_name,
-            {'tags': tags}
+            {'tags': tags}  # type: ignore
         ).wait()
 
     def list_snapshots(self):
@@ -510,7 +515,7 @@ class AzureClient(object):
     def get_snapshot(self, snapshot_id):
         url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
                                              snapshot_id)
-        snapshot_name = url_params.get(SNAPSHOT_NAME)
+        snapshot_name = url_params.get(SNAPSHOT_NAME, "")
         return self.compute_client.snapshots.get(self.resource_group,
                                                  snapshot_name)
 
@@ -524,18 +529,18 @@ class AzureClient(object):
     def delete_snapshot(self, snapshot_id):
         url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
                                              snapshot_id)
-        snapshot_name = url_params.get(SNAPSHOT_NAME)
+        snapshot_name = url_params.get(SNAPSHOT_NAME, "")
         self.compute_client.snapshots.begin_delete(self.resource_group,
                                                    snapshot_name).wait()
 
     def update_snapshot_tags(self, snapshot_id, tags):
         url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
                                              snapshot_id)
-        snapshot_name = url_params.get(SNAPSHOT_NAME)
+        snapshot_name = url_params.get(SNAPSHOT_NAME, "")
         return self.compute_client.snapshots.begin_update(
             self.resource_group,
             snapshot_name,
-            {'tags': tags}
+            {'tags': tags}  # type: ignore
         ).wait()
 
     def is_gallery_image(self, image_id):
@@ -552,7 +557,7 @@ class AzureClient(object):
         url_params = azure_helpers.parse_url(IMAGE_RESOURCE_ID,
                                              image_id)
         if not self.is_gallery_image(image_id):
-            name = url_params.get(IMAGE_NAME)
+            name = url_params.get(IMAGE_NAME, "")
             self.compute_client.images.begin_delete(self.resource_group, name).wait()
 
     def list_images(self):
@@ -572,7 +577,7 @@ class AzureClient(object):
                                          sku=url_params['sku'],
                                          version=url_params['version'])
         else:
-            name = url_params.get(IMAGE_NAME)
+            name = url_params.get(IMAGE_NAME, "")
             return self.compute_client.images.get(self.resource_group, name)
 
     def update_image_tags(self, image_id, tags):
@@ -581,7 +586,7 @@ class AzureClient(object):
         if self.is_gallery_image(image_id):
             return True
         else:
-            name = url_params.get(IMAGE_NAME)
+            name = url_params.get(IMAGE_NAME, "")
             return self.compute_client.images. \
                 begin_create_or_update(self.resource_group, name,
                                        {
@@ -600,7 +605,7 @@ class AzureClient(object):
     def get_network(self, network_id):
         url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID,
                                              network_id)
-        network_name = url_params.get(NETWORK_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
         return self.network_management_client.virtual_networks.get(
             self.resource_group, network_name)
 
@@ -610,13 +615,13 @@ class AzureClient(object):
 
     def delete_network(self, network_id):
         url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-        network_name = url_params.get(NETWORK_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
         return self.network_management_client.virtual_networks. \
             begin_delete(self.resource_group, network_name).wait()
 
     def update_network_tags(self, network_id, tags):
         url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-        network_name = url_params.get(NETWORK_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
         return self.network_management_client.virtual_networks. \
             begin_create_or_update(self.resource_group, network_name, tags).result()
 
@@ -629,21 +634,21 @@ class AzureClient(object):
 
     def list_subnets(self, network_id):
         url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-        network_name = url_params.get(NETWORK_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
         return self.network_management_client.subnets. \
             list(self.resource_group, network_name)
 
     def get_subnet(self, subnet_id):
         url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID,
                                              subnet_id)
-        network_name = url_params.get(NETWORK_NAME)
-        subnet_name = url_params.get(SUBNET_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
+        subnet_name = url_params.get(SUBNET_NAME, "")
         return self.network_management_client.subnets. \
             get(self.resource_group, network_name, subnet_name)
 
     def create_subnet(self, network_id, subnet_name, params):
         url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
-        network_name = url_params.get(NETWORK_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
         result_create = self.network_management_client \
             .subnets.begin_create_or_update(
                 self.resource_group,
@@ -657,20 +662,20 @@ class AzureClient(object):
 
     def __if_subnet_in_use(e):
         # return True if the CloudError exception is due to subnet being in use
-        if isinstance(e, CloudError):
-            if e.error.error == "InUseSubnetCannotBeDeleted":
+        if isinstance(e, HttpResponseError):
+            if "InUseSubnetCannotBeDeleted" in e.message:
                 return True
         return False
 
-    @tenacity.retry(stop=tenacity.stop_after_attempt(5),
+    @tenacity.retry(stop=tenacity.stop.stop_after_attempt(5),
                     retry=tenacity.retry_if_exception(__if_subnet_in_use),
-                    wait=tenacity.wait_fixed(5),
+                    wait=tenacity.wait.wait_fixed(5),
                     reraise=True)
     def delete_subnet(self, subnet_id):
         url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID,
                                              subnet_id)
-        network_name = url_params.get(NETWORK_NAME)
-        subnet_name = url_params.get(SUBNET_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
+        subnet_name = url_params.get(SUBNET_NAME, "")
 
         try:
             result_delete = self.network_management_client \
@@ -680,7 +685,7 @@ class AzureClient(object):
                     subnet_name
                 )
             result_delete.wait()
-        except CloudError as cloud_error:
+        except HttpResponseError as cloud_error:
             log.exception(cloud_error.message)
             raise cloud_error
 
@@ -692,14 +697,14 @@ class AzureClient(object):
     def get_floating_ip(self, public_ip_id):
         url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
                                              public_ip_id)
-        public_ip_name = url_params.get(PUBLIC_IP_NAME)
+        public_ip_name = url_params.get(PUBLIC_IP_NAME, "")
         return self.network_management_client. \
             public_ip_addresses.get(self.resource_group, public_ip_name)
 
     def delete_floating_ip(self, public_ip_id):
         url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
                                              public_ip_id)
-        public_ip_name = url_params.get(PUBLIC_IP_NAME)
+        public_ip_name = url_params.get(PUBLIC_IP_NAME, "")
         self.network_management_client. \
             public_ip_addresses.begin_delete(self.resource_group,
                                              public_ip_name).wait()
@@ -707,7 +712,7 @@ class AzureClient(object):
     def update_fip_tags(self, fip_id, tags):
         url_params = azure_helpers.parse_url(PUBLIC_IP_RESOURCE_ID,
                                              fip_id)
-        fip_name = url_params.get(PUBLIC_IP_NAME)
+        fip_name = url_params.get(PUBLIC_IP_NAME, "")
         self.network_management_client.public_ip_addresses. \
             begin_create_or_update(self.resource_group, fip_name, tags).result()
 
@@ -723,21 +728,21 @@ class AzureClient(object):
     def restart_vm(self, vm_id):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
-        vm_name = url_params.get(VM_NAME)
+        vm_name = url_params.get(VM_NAME, "")
         return self.compute_client.virtual_machines.begin_restart(
             self.resource_group, vm_name).wait()
 
     def delete_vm(self, vm_id):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
-        vm_name = url_params.get(VM_NAME)
+        vm_name = url_params.get(VM_NAME, "")
         return self.compute_client.virtual_machines.begin_delete(
             self.resource_group, vm_name).wait()
 
     def get_vm(self, vm_id):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
-        vm_name = url_params.get(VM_NAME)
+        vm_name = url_params.get(VM_NAME, "")
         return self.compute_client.virtual_machines.get(
             self.resource_group,
             vm_name,
@@ -751,56 +756,56 @@ class AzureClient(object):
     def update_vm(self, vm_id, params):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
-        vm_name = url_params.get(VM_NAME)
+        vm_name = url_params.get(VM_NAME, "")
         return self.compute_client.virtual_machines. \
             begin_create_or_update(self.resource_group, vm_name, params).wait()
 
     def deallocate_vm(self, vm_id):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
-        vm_name = url_params.get(VM_NAME)
+        vm_name = url_params.get(VM_NAME, "")
         self.compute_client. \
             virtual_machines.begin_deallocate(self.resource_group, vm_name).wait()
 
     def generalize_vm(self, vm_id):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
-        vm_name = url_params.get(VM_NAME)
+        vm_name = url_params.get(VM_NAME, "")
         self.compute_client.virtual_machines. \
             generalize(self.resource_group, vm_name)
 
     def start_vm(self, vm_id):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
-        vm_name = url_params.get(VM_NAME)
+        vm_name = url_params.get(VM_NAME, "")
         self.compute_client.virtual_machines. \
             begin_start(self.resource_group, vm_name).wait()
 
     def update_vm_tags(self, vm_id, tags):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)
-        vm_name = url_params.get(VM_NAME)
+        vm_name = url_params.get(VM_NAME, "")
         self.compute_client.virtual_machines. \
             begin_create_or_update(self.resource_group, vm_name, tags).result()
 
     def delete_nic(self, nic_id):
         nic_params = azure_helpers.\
             parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
-        nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+        nic_name = nic_params.get(NETWORK_INTERFACE_NAME, "")
         self.network_management_client. \
             network_interfaces.begin_delete(self.resource_group, nic_name).wait()
 
     def get_nic(self, nic_id):
         nic_params = azure_helpers.\
             parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
-        nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+        nic_name = nic_params.get(NETWORK_INTERFACE_NAME, "")
         return self.network_management_client. \
             network_interfaces.get(self.resource_group, nic_name)
 
     def update_nic(self, nic_id, params):
         nic_params = azure_helpers.\
             parse_url(NETWORK_INTERFACE_RESOURCE_ID, nic_id)
-        nic_name = nic_params.get(NETWORK_INTERFACE_NAME)
+        nic_name = nic_params.get(NETWORK_INTERFACE_NAME, "")
         async_nic_creation = self.network_management_client. \
             network_interfaces.begin_create_or_update(
                 self.resource_group,
@@ -849,8 +854,8 @@ class AzureClient(object):
     def attach_subnet_to_route_table(self, subnet_id, route_table_id):
         url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID,
                                              subnet_id)
-        network_name = url_params.get(NETWORK_NAME)
-        subnet_name = url_params.get(SUBNET_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
+        subnet_name = url_params.get(SUBNET_NAME, "")
 
         subnet_info = self.network_management_client.subnets.get(
             self.resource_group,
@@ -867,7 +872,7 @@ class AzureClient(object):
                  self.resource_group,
                  network_name,
                  subnet_name,
-                 subnet_info)
+                 subnet_info)  # type: ignore
             subnet_info = result_create.result()
 
         return subnet_info
@@ -875,8 +880,8 @@ class AzureClient(object):
     def detach_subnet_to_route_table(self, subnet_id, route_table_id):
         url_params = azure_helpers.parse_url(SUBNET_RESOURCE_ID,
                                              subnet_id)
-        network_name = url_params.get(NETWORK_NAME)
-        subnet_name = url_params.get(SUBNET_NAME)
+        network_name = url_params.get(NETWORK_NAME, "")
+        subnet_name = url_params.get(SUBNET_NAME, "")
 
         subnet_info = self.network_management_client.subnets.get(
             self.resource_group,
@@ -892,7 +897,7 @@ class AzureClient(object):
                  self.resource_group,
                  network_name,
                  subnet_name,
-                 subnet_info)
+                 subnet_info)  # type: ignore
             subnet_info = result_create.result()
 
         return subnet_info
@@ -904,7 +909,7 @@ class AzureClient(object):
     def get_route_table(self, router_id):
         url_params = azure_helpers.parse_url(ROUTER_RESOURCE_ID,
                                              router_id)
-        router_name = url_params.get(ROUTER_NAME)
+        router_name = url_params.get(ROUTER_NAME, "")
         return self.network_management_client. \
             route_tables.get(self.resource_group, router_name)
 
