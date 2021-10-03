@@ -79,6 +79,7 @@ Azure:
               'azure_client_id': 'REPLACE WITH ACTUAL VALUE',
               'azure_secret': 'REPLACE WITH ACTUAL VALUE',
               'azure_tenant': ' REPLACE WITH ACTUAL VALUE',
+              'azure_resource_group': 'REPLACE WITH ACTUAL VALUE',
               'azure_zone_name': 'zone_name'}
     provider = CloudProviderFactory().create_provider(ProviderList.AZURE, config)
     image_id = 'Canonical:UbuntuServer:16.04.0-LTS:latest'  # Ubuntu 16.04
