@@ -248,14 +248,26 @@ class AzureBucket(BaseBucket):
 
     @property
     def id(self):
-        return self._bucket.name
+        try:
+            name = self._bucket.name
+        except AttributeError:
+            name = self._bucket.container_name
+        return name
 
     @property
     def name(self):
         """
         Get this bucket's name.
+
+        Due to changes in the Azure API, we can either received a
+        Container or a ContainerClient, Container has a name, but
+        the ContainerClient has a container_name
         """
-        return self._bucket.name
+        try:
+            name = self._bucket.name
+        except AttributeError:
+            name = self._bucket.container_name
+        return name
 
     def exists(self, name):
         """
@@ -266,6 +278,7 @@ class AzureBucket(BaseBucket):
     @property
     def objects(self):
         return self._object_container
+
 
 
 class AzureVolume(BaseVolume):
