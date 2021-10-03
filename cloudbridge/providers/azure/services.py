@@ -2,63 +2,40 @@ import base64
 import logging
 import uuid
 
+import cloudbridge.base.helpers as cb_helpers
+from cloudbridge.base.middleware import dispatch
+from cloudbridge.base.resources import (ClientPagedResultList,
+                                        ServerPagedResultList)
+from cloudbridge.base.services import (BaseBucketObjectService,
+                                       BaseBucketService, BaseComputeService,
+                                       BaseFloatingIPService,
+                                       BaseGatewayService, BaseImageService,
+                                       BaseInstanceService, BaseKeyPairService,
+                                       BaseNetworkingService,
+                                       BaseNetworkService, BaseRegionService,
+                                       BaseRouterService, BaseSecurityService,
+                                       BaseSnapshotService, BaseStorageService,
+                                       BaseSubnetService,
+                                       BaseVMFirewallRuleService,
+                                       BaseVMFirewallService,
+                                       BaseVMTypeService, BaseVolumeService)
+from cloudbridge.interfaces.exceptions import (DuplicateResourceException,
+                                               InvalidParamException,
+                                               InvalidValueException)
+from cloudbridge.interfaces.resources import (MachineImage, Network, Snapshot,
+                                              TrafficDirection, VMFirewall,
+                                              VMType, Volume)
+from msrestazure.azure_exceptions import CloudError
+
 from azure.common import AzureException
 from azure.mgmt.compute.models import DiskCreateOption
 
-from msrestazure.azure_exceptions import CloudError
-
-import cloudbridge.base.helpers as cb_helpers
-from cloudbridge.base.middleware import dispatch
-from cloudbridge.base.resources import ClientPagedResultList
-from cloudbridge.base.resources import ServerPagedResultList
-from cloudbridge.base.services import BaseBucketObjectService
-from cloudbridge.base.services import BaseBucketService
-from cloudbridge.base.services import BaseComputeService
-from cloudbridge.base.services import BaseFloatingIPService
-from cloudbridge.base.services import BaseGatewayService
-from cloudbridge.base.services import BaseImageService
-from cloudbridge.base.services import BaseInstanceService
-from cloudbridge.base.services import BaseKeyPairService
-from cloudbridge.base.services import BaseNetworkService
-from cloudbridge.base.services import BaseNetworkingService
-from cloudbridge.base.services import BaseRegionService
-from cloudbridge.base.services import BaseRouterService
-from cloudbridge.base.services import BaseSecurityService
-from cloudbridge.base.services import BaseSnapshotService
-from cloudbridge.base.services import BaseStorageService
-from cloudbridge.base.services import BaseSubnetService
-from cloudbridge.base.services import BaseVMFirewallRuleService
-from cloudbridge.base.services import BaseVMFirewallService
-from cloudbridge.base.services import BaseVMTypeService
-from cloudbridge.base.services import BaseVolumeService
-from cloudbridge.interfaces.exceptions import DuplicateResourceException
-from cloudbridge.interfaces.exceptions import InvalidParamException
-from cloudbridge.interfaces.exceptions import InvalidValueException
-from cloudbridge.interfaces.resources import MachineImage
-from cloudbridge.interfaces.resources import Network
-from cloudbridge.interfaces.resources import Snapshot
-from cloudbridge.interfaces.resources import TrafficDirection
-from cloudbridge.interfaces.resources import VMFirewall
-from cloudbridge.interfaces.resources import VMType
-from cloudbridge.interfaces.resources import Volume
-
-from .resources import AzureBucket
-from .resources import AzureBucketObject
-from .resources import AzureFloatingIP
-from .resources import AzureInstance
-from .resources import AzureInternetGateway
-from .resources import AzureKeyPair
-from .resources import AzureLaunchConfig
-from .resources import AzureMachineImage
-from .resources import AzureNetwork
-from .resources import AzureRegion
-from .resources import AzureRouter
-from .resources import AzureSnapshot
-from .resources import AzureSubnet
-from .resources import AzureVMFirewall
-from .resources import AzureVMFirewallRule
-from .resources import AzureVMType
-from .resources import AzureVolume
+from .resources import (AzureBucket, AzureBucketObject, AzureFloatingIP,
+                        AzureInstance, AzureInternetGateway, AzureKeyPair,
+                        AzureLaunchConfig, AzureMachineImage, AzureNetwork,
+                        AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet,
+                        AzureVMFirewall, AzureVMFirewallRule, AzureVMType,
+                        AzureVolume)
 
 log = logging.getLogger(__name__)
 
@@ -544,7 +521,7 @@ class AzureBucketService(BaseBucketService):
     def list(self, limit=None, marker=None):
         buckets = [AzureBucket(self.provider, bucket)
                    for bucket
-                   in self.provider.azure_client.list_containers()[0]]
+                   in self.provider.azure_client.list_containers()]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 

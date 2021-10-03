@@ -1,9 +1,7 @@
 """
 Specifications for services available through a provider
 """
-from abc import ABCMeta
-from abc import abstractmethod
-from abc import abstractproperty
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 from cloudbridge.interfaces.resources import PageableObjectMixin
 
@@ -1181,7 +1179,7 @@ class BucketObjectService(CloudService):
         pass
 
     @abstractmethod
-    def list(self, bucket, limit=None, marker=None):
+    def list(self, bucket, prefix=None, limit=None, marker=None):
         """
         List all bucket objects within a bucket.
 
