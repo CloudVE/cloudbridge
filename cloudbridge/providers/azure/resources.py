@@ -248,14 +248,14 @@ class AzureBucket(BaseBucket):
 
     @property
     def id(self):
-        return self._bucket.container_name
+        return self._bucket.name
 
     @property
     def name(self):
         """
         Get this bucket's name.
         """
-        return self._bucket.container_name
+        return self._bucket.name
 
     def exists(self, name):
         """

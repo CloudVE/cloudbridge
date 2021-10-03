@@ -408,10 +408,10 @@ class AzureClient(object):
             begin_delete(self.resource_group, vm_firewall, name).result()
 
     def list_containers(self, prefix=None, limit=None, marker=None):
-        results = self.blob_service.list_containers(prefix=prefix,
-                                                    num_results=limit,
+        results = self.blob_service.list_containers(name_starts_with=prefix,
+                                                    results_per_page=limit,
                                                     marker=marker)
-        return (results.items, results.next_marker)
+        return results
 
     def create_container(self, container_name):
         try:
