@@ -526,11 +526,12 @@ class AzureClient(object):
         return self.compute_client.snapshots.get(self.resource_group,
                                                  snapshot_name)
 
-    def create_snapshot(self, snapshot_name, params):
+    def create_snapshot(self, snapshot_name, volume, params):
         return self.compute_client.snapshots.begin_create_or_update(
             self.resource_group,
             snapshot_name,
-            params
+            volume,
+            params=params
         ).result()
 
     def delete_snapshot(self, snapshot_id):

@@ -164,7 +164,6 @@ class AzureBucketObject(BaseBucketObject):
         super(AzureBucketObject, self).__init__(provider)
         self._container = container
         self._blob_client = blob_client
-        breakpoint()
         if isinstance(self._blob_client, BlobProperties):
             self._blob_properties = blob_client
         else:

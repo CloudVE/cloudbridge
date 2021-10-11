@@ -476,18 +476,13 @@ class AzureSnapshotService(BaseSnapshotService):
         volume = (self.provider.storage.volumes.get(volume)
                   if isinstance(volume, str) else volume)
 
-        params = {
-            'location': self.provider.azure_client.region_name,
-            'creation_data': {
-                'create_option': DiskCreateOption.copy,
-                'source_uri': volume.resource_id
-            },
-            'disk_size_gb': volume.size,
-            'tags': tags
-        }
+        # We need to pass the Disk Object to create the snapshot
+        volume = volume._volume
 
-        azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,
-                                                                params)
+        azure_snap = self.provider.azure_client.create_snapshot(
+            snapshot_name,volume, tags
+        )
+
         return AzureSnapshot(self.provider, azure_snap)
 
     @dispatch(event="provider.storage.snapshots.delete",
