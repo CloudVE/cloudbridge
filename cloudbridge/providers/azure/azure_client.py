@@ -436,7 +436,7 @@ class AzureClient(object):
 
     def upload_blob(self, container_name, blob_name, data, length=None):
         blob_client = self.blob_client(container_name, blob_name)
-        blob_client.upload_blob(data=data, length=length)
+        blob_client.upload_blob(data=data, length=length, overwrite=True)
 
     def get_blob(self, container_name, blob_name):
         blob_client = self.blob_client(container_name, blob_name)
@@ -455,11 +455,18 @@ class AzureClient(object):
         blob_client.delete_blob(delete_snapshots)
 
     def get_blob_url(self, container_name, blob_name, expiry_time):
-        expiry_date = datetime.datetime.utcnow() + datetime.timedelta(
+        now = datetime.datetime.utcnow()
+        expiry = now + datetime.timedelta(
             seconds=expiry_time)
+        blob_name = blob_name.name
+        container_name = container_name.name
+        delegation_key = self.blob_service.get_user_delegation_key(
+            key_start_time=now, key_expiry_time=expiry
+        )
         sas = generate_blob_sas(
             self.storage_account, container_name, blob_name,
-            permission=BlobSasPermissions(read=True), expiry=expiry_date
+            permission=BlobSasPermissions(read=True), expiry=expiry,
+            user_delegation_key=delegation_key
         )
         url = (
             f"https://{self.storage_account}.blob.core.windows.net/"
