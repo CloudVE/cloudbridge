@@ -480,7 +480,7 @@ class AzureSnapshotService(BaseSnapshotService):
         volume = volume._volume
 
         azure_snap = self.provider.azure_client.create_snapshot(
-            snapshot_name,volume, tags
+            snapshot_name, volume, tags
         )
 
         return AzureSnapshot(self.provider, azure_snap)

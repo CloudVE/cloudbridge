@@ -169,7 +169,6 @@ class AzureBucketObject(BaseBucketObject):
         else:
             self._blob_properties = self._blob_client.get_blob_properties()
 
-
     @property
     def id(self):
         return self._blob_properties.name
@@ -285,6 +284,7 @@ class AzureBucket(BaseBucket):
     @property
     def objects(self):
         return self._object_container
+
 
 class AzureVolume(BaseVolume):
     VOLUME_STATE_MAP = {
