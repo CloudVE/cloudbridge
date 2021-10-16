@@ -443,12 +443,16 @@ class AzureClient(object):
         return blob_client.get_blob_properties(container_name, blob_name)
 
     def create_blob_from_text(self, container_name, blob_name, text):
-        length = len(text.encode())
+        if isinstance(text, bytes):
+            length = len(text)
+        else:
+            length = len(text.encode())
         self.upload_blob(container_name, blob_name, text, length)
 
     def create_blob_from_file(self, container_name, blob_name, file_path, length=None):
         with open(file_path, 'rb') as data:
-            self.upload_blob(container_name, blob_name, data, length)
+            data = data.read()
+            self.upload_blob(container_name, blob_name, data, len(data))
 
     def delete_blob(self, container_name, blob_name, delete_snapshots="include"):
         blob_client = self.blob_client(container_name, blob_name)
@@ -526,13 +530,15 @@ class AzureClient(object):
         return self.compute_client.snapshots.get(self.resource_group,
                                                  snapshot_name)
 
-    def create_snapshot(self, snapshot_name, volume, params):
-        return self.compute_client.snapshots.begin_create_or_update(
+    def create_snapshot(self, snapshot_name, volume, tags):
+        snapshot = self.compute_client.snapshots.begin_create_or_update(
             self.resource_group,
             snapshot_name,
             volume,
-            params=params
         ).result()
+
+        self.update_snapshot_tags(snapshot.id, tags)
+        return snapshot
 
     def delete_snapshot(self, snapshot_id):
         url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
