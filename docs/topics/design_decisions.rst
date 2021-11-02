@@ -55,7 +55,7 @@ Resource identification, naming, and labeling
   do (at least for some resources, such as vmfirewalls within a private
   network). Overall, consistency was challenging to achieve with resource
   naming. Therefore, it was decided that CloudBridge would continue to support
-  resource renaming to the best extent possible and balance between the
+  resource renaming to the best extent possible and strike a balance between the
   use of the resource name property and resource tags. However, because of the
   inconsistency in rename functionality across providers, using the rename
   capabilities within CloudBridge would lead to cloud-dependent code (Related to
@@ -129,7 +129,7 @@ Make providers single zone
   such as the one detailed above. Ultimately, it led to an impasse with GCP,
   which tended to require the zone for almost every operation and some of our
   methods were not geared to do so. Therefore, by making the provider zone
-  specific, we have removed a considerable amount of complexity from both the
+  specific, we have removed a considerable amount of complexity from the
   code, with no significant impact on usability, since operations generally
   tend to be confined to the same zone. Multi-zone operations now require
   multiple cloud provider instances.

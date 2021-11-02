@@ -309,51 +309,44 @@ class AzureClient(object):
             try:
                 self._storage_account = \
                     self.get_storage_account(self.storage_account)
-            except HttpResponseError as cloud_error:
-                if isinstance(cloud_error, ResourceNotFoundError):
-                    storage_account_params = {
-                        'sku': {
-                            'name': 'Standard_LRS'
-                        },
-                        'kind': 'storage',
-                        'location': self.region_name,
-                    }
-                    try:
-                        self._storage_account = \
-                            self.create_storage_account(self.storage_account,
-                                                        storage_account_params)
-                    except HttpResponseError as cloud_error2:  # pragma: no cover
-                        if isinstance(cloud_error2, ClientAuthenticationError):
-                            mess = 'The following error was returned by ' \
-                                   'Azure:\n%s\n\nThis is likely because the' \
-                                   ' Role associated with the provided ' \
-                                   'credentials does not allow for Storage ' \
-                                   'Account creation.\nA Storage Account is ' \
-                                   'necessary in order to perform the ' \
-                                   'desired operation. You must either ' \
-                                   'provide an existing Storage Account name' \
-                                   ' as part of the configuration, or ' \
-                                   'elevate the associated Role.\nFor more ' \
-                                   'information on roles, see: https://docs.' \
-                                   'microsoft.com/en-us/azure/role-based-' \
-                                   'access-control/overview\n' % cloud_error2
-                            raise ProviderConnectionException(mess)
-
-                        elif isinstance(cloud_error2, ResourceExistsError):
-                            mess = 'The following error was ' \
-                                   'returned by Azure:\n%s\n\n' \
-                                   'Note that Storage Account names must be ' \
-                                   'unique across Azure (not just in your ' \
-                                   'subscription).\nFor more information ' \
-                                   'see https://docs.microsoft.com/en-us/' \
-                                   'azure/azure-resource-manager/resource-' \
-                                   'manager-storage-account-name-errors\n' \
-                                   % cloud_error2
-                            raise InvalidLabelException(mess)
-                        else:
-                            raise cloud_error2
-                else:
-                    raise cloud_error
+            except ResourceNotFoundError:
+                storage_account_params = {
+                    'sku': {
+                        'name': 'Standard_LRS'
+                    },
+                    'kind': 'storage',
+                    'location': self.region_name,
+                }
+                try:
+                    self._storage_account = \
+                        self.create_storage_account(self.storage_account,
+                                                    storage_account_params)
+                except ClientAuthenticationError as auth_err:
+                    mess = 'The following error was returned by ' \
+                           'Azure:\n%s\n\nThis is likely because the' \
+                           ' Role associated with the provided ' \
+                           'credentials does not allow for Storage ' \
+                           'Account creation.\nA Storage Account is ' \
+                           'necessary in order to perform the ' \
+                           'desired operation. You must either ' \
+                           'provide an existing Storage Account name' \
+                           ' as part of the configuration, or ' \
+                           'elevate the associated Role.\nFor more ' \
+                           'information on roles, see: https://docs.' \
+                           'microsoft.com/en-us/azure/role-based-' \
+                           'access-control/overview\n' % auth_err
+                    raise ProviderConnectionException(mess)
+                except ResourceExistsError as exists_err:
+                    mess = 'The following error was ' \
+                           'returned by Azure:\n%s\n\n' \
+                           'Note that Storage Account names must be ' \
+                           'unique across Azure (not just in your ' \
+                           'subscription).\nFor more information ' \
+                           'see https://docs.microsoft.com/en-us/' \
+                           'azure/azure-resource-manager/resource-' \
+                           'manager-storage-account-name-errors\n' \
+                               % exists_err
+                    raise InvalidLabelException(mess)
 
     def list_locations(self):
         return self.subscription_client.subscriptions. \

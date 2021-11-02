@@ -25,7 +25,9 @@ from cloudbridge.interfaces.exceptions import (DuplicateResourceException,
 from cloudbridge.interfaces.resources import (MachineImage, Network, Snapshot,
                                               TrafficDirection, VMFirewall,
                                               VMType, Volume)
-from msrestazure.azure_exceptions import CloudError
+from azure.core.exceptions import (ClientAuthenticationError,
+                                   HttpResponseError, ResourceExistsError,
+                                   ResourceNotFoundError)
 
 from azure.common import AzureException
 from azure.mgmt.compute.models import DiskCreateOption
@@ -72,7 +74,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         try:
             fws = self.provider.azure_client.get_vm_firewall(vm_firewall_id)
             return AzureVMFirewall(self.provider, fws)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -342,7 +344,7 @@ class AzureVolumeService(BaseVolumeService):
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -434,7 +436,7 @@ class AzureSnapshotService(BaseSnapshotService):
         try:
             snapshot = self.provider.azure_client.get_snapshot(snapshot_id)
             return AzureSnapshot(self.provider, snapshot)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -619,7 +621,7 @@ class AzureImageService(BaseImageService):
         try:
             image = self.provider.azure_client.get_image(image_id)
             return AzureMachineImage(self.provider, image)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -944,7 +946,7 @@ class AzureInstanceService(BaseInstanceService):
         try:
             vm = self.provider.azure_client.get_vm(instance_id)
             return AzureInstance(self.provider, vm)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -1091,7 +1093,7 @@ class AzureNetworkService(BaseNetworkService):
         try:
             network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -1148,11 +1150,8 @@ class AzureSubnetService(BaseSubnetService):
                     result_list.extend(self.provider.azure_client.list_subnets(
                         net.id
                     ))
-                except CloudError as cloud_error:
-                    if "NotFound" in cloud_error.error.error:
-                        log.exception(cloud_error)
-                    else:
-                        raise cloud_error
+                except ResourceNotFoundError as not_found_error:
+                    log.exception(not_found_error)
         subnets = [AzureSubnet(self.provider, subnet)
                    for subnet in result_list]
 
@@ -1171,7 +1170,7 @@ class AzureSubnetService(BaseSubnetService):
             azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
             return AzureSubnet(self.provider,
                                azure_subnet) if azure_subnet else None
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -1243,7 +1242,7 @@ class AzureRouterService(BaseRouterService):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
             return AzureRouter(self.provider, route)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -1335,7 +1334,7 @@ class AzureFloatingIPService(BaseFloatingIPService):
     def get(self, gateway, fip_id):
         try:
             az_ip = self.provider.azure_client.get_floating_ip(fip_id)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
