@@ -24,6 +24,7 @@ from azure.common import AzureException
 from azure.core.exceptions import HttpResponseError
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
+from azure.storage.blob._models import BlobProperties
 
 from . import helpers as azure_helpers
 from .subservices import (AzureBucketObjectSubService,
@@ -163,21 +164,25 @@ class AzureBucketObject(BaseBucketObject):
         super(AzureBucketObject, self).__init__(provider)
         self._container = container
         self._blob_client = blob_client
+        if isinstance(self._blob_client, BlobProperties):
+            self._blob_properties = blob_client
+        else:
+            self._blob_properties = self._blob_client.get_blob_properties()
 
     @property
     def id(self):
-        return self._blob_client.blob_name
+        return self._blob_properties.name
 
     @property
     def name(self):
-        return self._blob_client.blob_name
+        return self._blob_properties.name
 
     @property
     def size(self):
         """
         Get this object's size.
         """
-        return self._blob_client.get_blob_properties().content_length
+        return self._blob_properties.size
 
     @property
     def last_modified(self):
@@ -185,15 +190,14 @@ class AzureBucketObject(BaseBucketObject):
         """
         Get the date and time this object was last modified.
         """
-        return self._blob_client.get_blob_properties().last_modified. \
-            strftime("%Y-%m-%dT%H:%M:%S.%f")
+        return self._blob_properties.last_modified.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     def iter_content(self):
         """
         Returns this object's content as an
         iterable.
         """
-        return self._blob_client.download_blob.chunks()
+        return self._container._bucket.download_blob(self._blob_client).chunks()
 
     def upload(self, data):
         """
@@ -213,8 +217,10 @@ class AzureBucketObject(BaseBucketObject):
         Store the contents of the file pointed by the "path" variable.
         """
         try:
-            with open(path, "rb") as stream:
-                self._blob_client.upload_blob(stream, overwrite=True)
+            self._provider.azure_client.create_blob_from_file(
+                self._container.name, self._blob_client,
+                path
+            )
             return True
         except AzureException as azureEx:
             log.exception(azureEx)
@@ -227,7 +233,7 @@ class AzureBucketObject(BaseBucketObject):
         :rtype: bool
         :return: True if successful
         """
-        self._blob_client.delete_blob()
+        self._provider.azure_client.delete_blob(self._container.name, self.name)
 
     def generate_url(self, expires_in):
         """
@@ -278,7 +284,6 @@ class AzureBucket(BaseBucket):
     @property
     def objects(self):
         return self._object_container
-
 
 
 class AzureVolume(BaseVolume):

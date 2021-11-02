@@ -436,30 +436,41 @@ class AzureClient(object):
 
     def upload_blob(self, container_name, blob_name, data, length=None):
         blob_client = self.blob_client(container_name, blob_name)
-        blob_client.upload_blob(data=data, length=length)
+        blob_client.upload_blob(data=data, length=length, overwrite=True)
 
     def get_blob(self, container_name, blob_name):
         blob_client = self.blob_client(container_name, blob_name)
         return blob_client.get_blob_properties(container_name, blob_name)
 
     def create_blob_from_text(self, container_name, blob_name, text):
-        length = len(text.encode())
+        if isinstance(text, bytes):
+            length = len(text)
+        else:
+            length = len(text.encode())
         self.upload_blob(container_name, blob_name, text, length)
 
     def create_blob_from_file(self, container_name, blob_name, file_path, length=None):
         with open(file_path, 'rb') as data:
-            self.upload_blob(container_name, blob_name, data, length)
+            data = data.read()
+            self.upload_blob(container_name, blob_name, data, len(data))
 
     def delete_blob(self, container_name, blob_name, delete_snapshots="include"):
         blob_client = self.blob_client(container_name, blob_name)
         blob_client.delete_blob(delete_snapshots)
 
     def get_blob_url(self, container_name, blob_name, expiry_time):
-        expiry_date = datetime.datetime.utcnow() + datetime.timedelta(
+        now = datetime.datetime.utcnow()
+        expiry = now + datetime.timedelta(
             seconds=expiry_time)
+        blob_name = blob_name.name
+        container_name = container_name.name
+        delegation_key = self.blob_service.get_user_delegation_key(
+            key_start_time=now, key_expiry_time=expiry
+        )
         sas = generate_blob_sas(
             self.storage_account, container_name, blob_name,
-            permission=BlobSasPermissions(read=True), expiry=expiry_date
+            permission=BlobSasPermissions(read=True), expiry=expiry,
+            user_delegation_key=delegation_key
         )
         url = (
             f"https://{self.storage_account}.blob.core.windows.net/"
@@ -519,12 +530,15 @@ class AzureClient(object):
         return self.compute_client.snapshots.get(self.resource_group,
                                                  snapshot_name)
 
-    def create_snapshot(self, snapshot_name, params):
-        return self.compute_client.snapshots.begin_create_or_update(
+    def create_snapshot(self, snapshot_name, volume, tags):
+        snapshot = self.compute_client.snapshots.begin_create_or_update(
             self.resource_group,
             snapshot_name,
-            params
+            volume,
         ).result()
+
+        self.update_snapshot_tags(snapshot.id, tags)
+        return snapshot
 
     def delete_snapshot(self, snapshot_id):
         url_params = azure_helpers.parse_url(SNAPSHOT_RESOURCE_ID,
