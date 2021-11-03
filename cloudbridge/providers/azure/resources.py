@@ -2,6 +2,7 @@
 DataTypes used by this provider
 """
 import collections
+import io
 import logging
 
 import pysftp
@@ -21,10 +22,9 @@ from cloudbridge.interfaces.resources import (Instance, MachineImageState,
                                               TrafficDirection)
 
 from azure.common import AzureException
-from azure.core.exceptions import HttpResponseError
+from azure.core.exceptions import ResourceNotFoundError
 from azure.mgmt.devtestlabs.models import GalleryImageReference
 from azure.mgmt.network.models import NetworkSecurityGroup
-from azure.storage.blob._models import BlobProperties
 
 from . import helpers as azure_helpers
 from .subservices import (AzureBucketObjectSubService,
@@ -92,7 +92,7 @@ class AzureVMFirewall(BaseVMFirewall):
                 get_vm_firewall(self.id)
             if not self._vm_firewall.tags:
                 self._vm_firewall.tags = {}
-        except (HttpResponseError, ValueError) as cloud_error:
+        except (ResourceNotFoundError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The security group no longer exists and cannot be refreshed.
 
@@ -160,14 +160,14 @@ class AzureVMFirewallRule(BaseVMFirewallRule):
 
 
 class AzureBucketObject(BaseBucketObject):
-    def __init__(self, provider, container, blob_client):
+    def __init__(self, provider, container, blob_properties):
         super(AzureBucketObject, self).__init__(provider)
         self._container = container
-        self._blob_client = blob_client
-        if isinstance(self._blob_client, BlobProperties):
-            self._blob_properties = blob_client
-        else:
-            self._blob_properties = self._blob_client.get_blob_properties()
+        self._blob_properties = blob_properties
+
+    @property
+    def _blob_client(self):
+        return self._container._bucket.get_blob_client(self.name)
 
     @property
     def id(self):
@@ -195,9 +195,34 @@ class AzureBucketObject(BaseBucketObject):
     def iter_content(self):
         """
         Returns this object's content as an
-        iterable.
+        iterable stream.
         """
-        return self._container._bucket.download_blob(self._blob_client).chunks()
+
+        def iterable_to_stream(iterable):
+            class IterStream(io.RawIOBase):
+                def __init__(self):
+                    self.leftover = None
+
+                def readable(self):
+                    return True
+
+                def readinto(self, b):
+                    try:
+                        buffer_length = len(b)  # We're supposed to return at most this much
+                        chunk = self.leftover or next(iterable)
+                        output, self.leftover = chunk[:buffer_length], chunk[buffer_length:]
+                        b[:len(output)] = output
+                        return len(output)
+                    except StopIteration:
+                        return 0  # indicate EOF
+
+            return IterStream()
+
+        def blob_iterator():
+            for chunk in self._blob_client.download_blob().chunks():
+                yield chunk
+
+        return iterable_to_stream(blob_iterator())
 
     def upload(self, data):
         """
@@ -218,9 +243,7 @@ class AzureBucketObject(BaseBucketObject):
         """
         try:
             self._provider.azure_client.create_blob_from_file(
-                self._container.name, self._blob_client,
-                path
-            )
+                self._container.name, self.name, path)
             return True
         except AzureException as azureEx:
             log.exception(azureEx)
@@ -233,14 +256,14 @@ class AzureBucketObject(BaseBucketObject):
         :rtype: bool
         :return: True if successful
         """
-        self._provider.azure_client.delete_blob(self._container.name, self.name)
+        self._blob_client.delete_blob()
 
     def generate_url(self, expires_in):
         """
         Generate a URL to this object.
         """
         return self._provider.azure_client.get_blob_url(
-            self._container, self._blob_client, expires_in)
+            self._container, self.name, expires_in)
 
     def refresh(self):
         pass
@@ -446,7 +469,7 @@ class AzureVolume(BaseVolume):
             self._volume = self._provider.azure_client. \
                 get_disk(self.id)
             self._update_state()
-        except (HttpResponseError, ValueError) as cloud_error:
+        except (ResourceNotFoundError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The volume no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -542,7 +565,7 @@ class AzureSnapshot(BaseSnapshot):
             self._snapshot = self._provider.azure_client. \
                 get_snapshot(self.id)
             self._state = self._snapshot.provisioning_state
-        except (HttpResponseError, ValueError) as cloud_error:
+        except (ResourceNotFoundError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The snapshot no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -692,7 +715,7 @@ class AzureMachineImage(BaseMachineImage):
             try:
                 self._image = self._provider.azure_client.get_image(self.id)
                 self._state = self._image.provisioning_state
-            except HttpResponseError as cloud_error:
+            except ResourceNotFoundError as cloud_error:
                 log.exception(cloud_error.message)
                 # image no longer exists
                 self._state = "unknown"
@@ -767,7 +790,7 @@ class AzureNetwork(BaseNetwork):
             self._network = self._provider.azure_client.\
                 get_network(self.id)
             self._state = self._network.provisioning_state
-        except (HttpResponseError, ValueError) as cloud_error:
+        except (ResourceNotFoundError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The network no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -981,7 +1004,7 @@ class AzureSubnet(BaseSubnet):
             self._subnet = self._provider.azure_client. \
                 get_subnet(self.id)
             self._state = self._subnet.provisioning_state
-        except (HttpResponseError, ValueError) as cloud_error:
+        except (ResourceNotFoundError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The subnet no longer exists and cannot be refreshed.
             # set the state to unknown
@@ -1321,7 +1344,7 @@ class AzureInstance(BaseInstance):
             if not self._vm.tags:
                 self._vm.tags = {}
             self._update_state()
-        except (HttpResponseError, ValueError) as cloud_error:
+        except (ResourceNotFoundError, ValueError) as cloud_error:
             log.exception(cloud_error.message)
             # The volume no longer exists and cannot be refreshed.
             # set the state to unknown

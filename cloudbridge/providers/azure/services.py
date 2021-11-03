@@ -25,11 +25,8 @@ from cloudbridge.interfaces.exceptions import (DuplicateResourceException,
 from cloudbridge.interfaces.resources import (MachineImage, Network, Snapshot,
                                               TrafficDirection, VMFirewall,
                                               VMType, Volume)
-from azure.core.exceptions import (ClientAuthenticationError,
-                                   HttpResponseError, ResourceExistsError,
-                                   ResourceNotFoundError)
+from azure.core.exceptions import ResourceNotFoundError
 
-from azure.common import AzureException
 from azure.mgmt.compute.models import DiskCreateOption
 
 from .resources import (AzureBucket, AzureBucketObject, AzureFloatingIP,
@@ -237,7 +234,7 @@ class AzureKeyPairService(BaseKeyPairService):
             if key_pair:
                 return AzureKeyPair(self.provider, key_pair)
             return None
-        except AzureException as error:
+        except ResourceNotFoundError as error:
             log.debug("KeyPair %s was not found.", key_pair_id)
             log.debug(error)
             return None
@@ -506,11 +503,10 @@ class AzureBucketService(BaseBucketService):
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        try:
-            bucket = self.provider.azure_client.get_container(bucket_id)
+        bucket = self.provider.azure_client.get_container(bucket_id)
+        if bucket.exists():
             return AzureBucket(self.provider, bucket)
-        except AzureException as error:
-            log.exception(error)
+        else:
             return None
 
     @dispatch(event="provider.storage.buckets.list",
@@ -552,9 +548,9 @@ class AzureBucketObjectService(BaseBucketObjectService):
         """
         try:
             # pylint:disable=protected-access
-            obj = bucket._bucket.get_blob_client(object_id)
+            obj = bucket._bucket.get_blob_client(object_id).get_blob_properties()
             return AzureBucketObject(self.provider, bucket, obj)
-        except AzureException as azureEx:
+        except ResourceNotFoundError as azureEx:
             log.exception(azureEx)
             return None
 
@@ -582,7 +578,7 @@ class AzureBucketObjectService(BaseBucketObjectService):
     def create(self, bucket, name):
         blob_client = bucket._bucket.get_blob_client(name)
         blob_client.upload_blob('')
-        return AzureBucketObject(self.provider, bucket, blob_client)
+        return AzureBucketObject(self.provider, bucket, blob_client.get_blob_properties())
 
 
 class AzureComputeService(BaseComputeService):

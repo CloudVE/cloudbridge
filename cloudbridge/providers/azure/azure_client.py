@@ -455,7 +455,7 @@ class AzureClient(object):
         now = datetime.datetime.utcnow()
         expiry = now + datetime.timedelta(
             seconds=expiry_time)
-        blob_name = blob_name.name
+        blob_name = blob_name
         container_name = container_name.name
         delegation_key = self.blob_service.get_user_delegation_key(
             key_start_time=now, key_expiry_time=expiry
