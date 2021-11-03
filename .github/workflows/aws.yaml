@@ -1,0 +1,55 @@
+name: aws
+
+# Run this workflow every time the lint workflow successfully completes
+on:
+  workflow_run:
+    workflows: ["lint"]
+    types:
+      - completed
+
+jobs:
+  # Set the job key. The key is displayed as the job name
+  # when a job name is not provided
+  aws:
+    # Run only if lint step succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Set the type of machine to run on
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8']
+        cloud-provider: ['aws']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+           python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dir
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ matrix.python-version }}-${{ hashFiles('**/setup.py', '**/requirements.txt') }}
+
+      - name: Install required packages
+        run: pip install tox
+
+      - name: Run tox
+        run: tox -e py${{ matrix.python-version }}-${{ matrix.cloud-provider }}
+        env:
+          PYTHONUNBUFFERED: "True"
+          # aws
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+
+      - name: Coveralls
+        uses: AndreMiras/coveralls-python-action@develop
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          flag-name: run-${{ matrix.python-version }}-${{ matrix.cloud-provider }}
+          parallel: true
