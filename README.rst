@@ -9,9 +9,9 @@ Detailed documentation can be found at http://cloudbridge.cloudve.org.
 
 Build Status Tests
 ~~~~~~~~~~~~~~~~~~
-.. image:: https://github.com/CloudVE/cloudbridge/actions/workflows/lint.yaml/badge.svg
+.. image:: https://github.com/CloudVE/cloudbridge/actions/workflows/integration.yaml/badge.svg
    :target: https://github.com/CloudVE/cloudbridge/actions/
-   :alt: Linting
+   :alt: Integration Tests
 
 .. image:: https://codecov.io/gh/CloudVE/cloudbridge/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/CloudVE/cloudbridge
@@ -25,33 +25,33 @@ Build Status Tests
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
-.. |aws-py38| image:: https://github.com/CloudVE/cloudbridge/actions/workflows/aws.yaml/badge.svg
-              :target: https://github.com/CloudVE/cloudbridge/actions/
+.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1?use_travis_com=yes
+              :target: https://travis-ci.com/CloudVE/cloudbridge
 
-.. |azure-py38| image:: https://github.com/CloudVE/cloudbridge/actions/workflows/azure.yaml/badge.svg
-                :target: https://github.com/CloudVE/cloudbridge/actions/
+.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2?use_travis_com=yes
+                :target: https://travis-ci.com/CloudVE/cloudbridge
 
-.. |gcp-py38| image:: https://github.com/CloudVE/cloudbridge/actions/workflows/gcp.yaml/badge.svg
-              :target: https://github.com/CloudVE/cloudbridge/actions/
+.. |gcp-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3?use_travis_com=yes
+              :target: https://travis-ci.com/CloudVE/cloudbridge
 
-.. |mock-py38| image:: https://github.com/CloudVE/cloudbridge/actions/workflows/mock.yaml/badge.svg
-              :target: https://github.com/CloudVE/cloudbridge/actions/
+.. |mock-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4?use_travis_com=yes
+              :target: https://travis-ci.com/CloudVE/cloudbridge
 
-.. |os-py38| image:: https://github.com/CloudVE/cloudbridge/actions/workflows/openstack.yaml/badge.svg
-             :target: https://github.com/CloudVE/cloudbridge/actions/
+.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5?use_travis_com=yes
+             :target: https://travis-ci.com/CloudVE/cloudbridge
 
 +---------------------------+----------------+
-| **Provider/Environment**  | **Python 3.8** |
+| **Provider/Environment**  | **Python 3.6** |
 +---------------------------+----------------+
-| **Amazon Web Services**   | |aws-py38|     |
+| **Amazon Web Services**   | |aws-py36|     |
 +---------------------------+----------------+
-| **Google Cloud Platform** | |gcp-py38|     |
+| **Google Cloud Platform** | |gcp-py36|     |
 +---------------------------+----------------+
-| **Microsoft Azure**       | |azure-py38|   |
+| **Microsoft Azure**       | |azure-py36|   |
 +---------------------------+----------------+
-| **OpenStack**             | |os-py38|      |
+| **OpenStack**             | |os-py36|      |
 +---------------------------+----------------+
-| **Mock Provider**         | |mock-py38|    |
+| **Mock Provider**         | |mock-py36|    |
 +---------------------------+----------------+
 
 Installation

@@ -15,6 +15,16 @@ def get_version():
     return __version__
 
 
+def init_logging():
+    """
+    Initialize logging for testing.
+
+    Temporary workaround for build timeouts by enabling logging to
+    stdout so that Travis doesn't think the build has hung.
+    """
+    set_stream_logger(__name__, level=logging.DEBUG)
+
+
 class NullHandler(logging.Handler):
     """A null handler for the logger."""
 

@@ -1,0 +1,118 @@
+name: Integration tests
+
+# Run this workflow every time a new commit pushed to your repository
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  # Set the job key. The key is displayed as the job name
+  # when a job name is not provided
+  lint:
+    name: Lint code
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.8' ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+           python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dir
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ matrix.python-version }}-lint
+
+      - name: Install required packages
+        run: pip install tox
+
+      - name: Run tox
+        run: tox -e lint
+
+  integration:
+    # Name the Job
+    name: Per-cloud integration tests
+    needs: lint
+    # Set the type of machine to run on
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8']
+        cloud-provider: ['aws', 'azure', 'gcp', 'mock', 'openstack']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+           python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dir
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ matrix.python-version }}-${{ hashFiles('**/setup.py', '**/requirements.txt') }}
+
+      - name: Install required packages
+        run: pip install tox
+
+      - name: Run tox
+        run: tox -e py${{ matrix.python-version }}-${{ matrix.cloud-provider }}
+        env:
+          PYTHONUNBUFFERED: "True"
+          # aws
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          # azure
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_SECRET: ${{ secrets.AZURE_SECRET }}
+          AZURE_TENANT: ${{ secrets.AZURE_TENANT }}
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+          CB_IMAGE_AZURE: ${{ secrets.CB_IMAGE_AZURE }}
+          CB_VM_TYPE_AZURE: ${{ secrets.CB_VM_TYPE_AZURE }}
+          # gcp
+          GCP_SERVICE_CREDS_DICT: ${{ secrets.GCP_SERVICE_CREDS_DICT }}
+          CB_IMAGE_GCP: ${{ secrets.CB_IMAGE_GCP }}
+          # openstack
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+          OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+          OS_TENANT_NAME: ${{ secrets.OS_TENANT_NAME }}
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+          CB_IMAGE_OS: ${{ secrets.CB_IMAGE_OS }}
+          CB_PLACEMENT_OS: ${{ secrets.CB_PLACEMENT_OS }}
+
+      - name: Coveralls
+        uses: AndreMiras/coveralls-python-action@develop
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          flag-name: run-${{ matrix.python-version }}-${{ matrix.cloud-provider }}
+          parallel: true
+
+  finish:
+    needs: integration
+    runs-on: ubuntu-latest
+    steps:
+    - name: Coveralls Finished
+      uses: AndreMiras/coveralls-python-action@develop
+      with:
+        github-token: ${{ secrets.github_token }}
+        parallel-finished: true
