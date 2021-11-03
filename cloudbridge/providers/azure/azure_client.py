@@ -532,7 +532,8 @@ class AzureClient(object):
                 'creation_data': {
                     'create_option': 'Copy',
                     'source_uri': volume.id
-                }
+                },
+                'tags': tags
             }
         ).result()
 
