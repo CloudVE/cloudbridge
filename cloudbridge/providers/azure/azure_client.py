@@ -527,7 +527,13 @@ class AzureClient(object):
         snapshot = self.compute_client.snapshots.begin_create_or_update(
             self.resource_group,
             snapshot_name,
-            volume,
+            {
+                'location': volume.location,
+                'creation_data': {
+                    'create_option': 'Copy',
+                    'source_uri': volume.id
+                }
+            }
         ).result()
 
         self.update_snapshot_tags(snapshot.id, tags)
