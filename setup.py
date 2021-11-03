@@ -25,7 +25,7 @@ REQS_BASE = [
     'pyeventsystem<2'
 ]
 REQS_AWS = [
-    'boto3>=1.9.86,<1.17'
+    'boto3>=1.9.86,<1.20'
 ]
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead

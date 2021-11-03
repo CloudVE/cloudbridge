@@ -188,9 +188,23 @@ class AWSVMFirewallService(BaseVMFirewallService):
         network_id = network.id if isinstance(network, Network) else network
         obj = self.svc.create('create_security_group', GroupName=name,
                               Description=name,
-                              VpcId=network_id)
-        obj.label = label
-        obj.description = description
+                              VpcId=network_id,
+                              TagSpecifications=[
+                                  {
+                                      'ResourceType': 'security-group',
+                                      'Tags': [
+                                          {
+                                              'Key': 'Name',
+                                              'Value': label or ""
+                                          },
+                                          {
+                                              'Key': 'Description',
+                                              'Value': description or ""
+                                          },
+                                      ]
+                                  },
+                              ]
+                              )
         return obj
 
     @dispatch(event="provider.security.vm_firewalls.find",
@@ -366,12 +380,25 @@ class AWSVolumeService(BaseVolumeService):
 
         cb_vol = self.svc.create('create_volume', Size=size,
                                  AvailabilityZone=zone_name,
-                                 SnapshotId=snapshot_id)
+                                 SnapshotId=snapshot_id,
+                                 TagSpecifications=[
+                                     {
+                                         'ResourceType': 'volume',
+                                         'Tags': [
+                                             {
+                                                 'Key': 'Name',
+                                                 'Value': label or ""
+                                             },
+                                             {
+                                                 'Key': 'Description',
+                                                 'Value': description or ""
+                                             },
+                                         ]
+                                     },
+                                 ]
+                                 )
         # Wait until ready to tag instance
         cb_vol.wait_till_ready()
-        cb_vol.label = label
-        if description:
-            cb_vol.description = description
         return cb_vol
 
     @dispatch(event="provider.storage.volumes.delete",
@@ -424,12 +451,25 @@ class AWSSnapshotService(BaseSnapshotService):
         AWSSnapshot.assert_valid_resource_label(label)
         volume_id = volume.id if isinstance(volume, AWSVolume) else volume
 
-        cb_snap = self.svc.create('create_snapshot', VolumeId=volume_id)
+        cb_snap = self.svc.create('create_snapshot', VolumeId=volume_id,
+                                  TagSpecifications=[
+                                      {
+                                          'ResourceType': 'snapshot',
+                                          'Tags': [
+                                              {
+                                                  'Key': 'Name',
+                                                  'Value': label or ""
+                                              },
+                                              {
+                                                  'Key': 'Description',
+                                                  'Value': description or ""
+                                              },
+                                          ]
+                                      },
+                                  ]
+                                  )
         # Wait until ready to tag instance
         cb_snap.wait_till_ready()
-        cb_snap.label = label
-        if cb_snap.description:
-            cb_snap.description = description
         return cb_snap
 
     @dispatch(event="provider.storage.snapshots.delete",
@@ -773,23 +813,23 @@ class AWSInstanceService(BaseInstanceService):
             Placement=placement,
             BlockDeviceMappings=bdm,
             SubnetId=subnet_id,
-            IamInstanceProfile=kwargs.pop('iam_instance_profile', None)
+            IamInstanceProfile=kwargs.pop('iam_instance_profile', None),
+            TagSpecifications=[
+                {
+                    'ResourceType': 'instance',
+                    'Tags': [
+                        {
+                            'Key': 'Name',
+                            'Value': label or ""
+                        }
+                    ]
+                },
+            ]
         )
         if inst and len(inst) == 1:
             # Wait until the resource exists
             # pylint:disable=protected-access
             inst[0]._wait_till_exists()
-            # Tag the instance w/ the name
-            try:
-                inst[0].label = label
-            except Exception:
-                # It's possible for the label setter to fail, because EC2
-                # endpoints have a delay in syncing, and the instance may not
-                # yet be visible if a different endpoint is hit. To compensate,
-                # we retry in both the label setter, and raise here again just
-                # in case the label setter fails for any other reason.
-                inst[0].delete()
-                raise
             return inst[0]
         raise ValueError(
             'Expected a single object response, got a list: %s' % inst)
@@ -985,12 +1025,20 @@ class AWSNetworkService(BaseNetworkService):
               priority=BaseNetworkService.STANDARD_EVENT_PRIORITY)
     def create(self, label, cidr_block):
         AWSNetwork.assert_valid_resource_label(label)
-
-        cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block)
+        cb_net = self.svc.create('create_vpc', CidrBlock=cidr_block,
+                                 TagSpecifications=[
+                                     {
+                                         'ResourceType': 'vpc',
+                                         'Tags': [
+                                             {
+                                                 'Key': 'Name',
+                                                 'Value': label or ""
+                                             }
+                                         ]
+                                     }
+                                 ])
         # Wait until ready to tag instance
         cb_net.wait_till_ready()
-        if label:
-            cb_net.label = label
         self.provider.ec2_conn.meta.client.modify_vpc_attribute(
             VpcId=cb_net.id, EnableDnsHostnames={'Value': True})
         return cb_net
@@ -1079,9 +1127,19 @@ class AWSSubnetService(BaseSubnetService):
         subnet = self.svc.create('create_subnet',
                                  VpcId=network_id,
                                  CidrBlock=cidr_block,
-                                 AvailabilityZone=zone_name)
-        if label:
-            subnet.label = label
+                                 AvailabilityZone=zone_name,
+                                 TagSpecifications=[
+                                     {
+                                         'ResourceType': 'subnet',
+                                         'Tags': [
+                                             {
+                                                 'Key': 'Name',
+                                                 'Value': label or ""
+                                             }
+                                         ]
+                                     },
+                                 ]
+                                 )
         return subnet
 
     @dispatch(event="provider.networking.subnets.delete",
@@ -1228,9 +1286,19 @@ class AWSRouterService(BaseRouterService):
     def create(self, label, network):
         network_id = network.id if isinstance(network, AWSNetwork) else network
 
-        cb_router = self.svc.create('create_route_table', VpcId=network_id)
-        if label:
-            cb_router.label = label
+        cb_router = self.svc.create('create_route_table', VpcId=network_id,
+                                    TagSpecifications=[
+                                        {
+                                            'ResourceType': 'route-table',
+                                            'Tags': [
+                                                {
+                                                    'Key': 'Name',
+                                                    'Value': label or ""
+                                                }
+                                            ]
+                                        },
+                                    ]
+                                    )
         return cb_router
 
     @dispatch(event="provider.networking.routers.delete",
