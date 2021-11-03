@@ -32,14 +32,14 @@ REQS_AWS = [
 # of using the azure umbrella package to speed up installation.
 REQS_AZURE = [
     'msrestazure==0.6.4',
-    'azure-identity==1.6.1',
+    'azure-identity==1.7.0',
     'azure-common==1.1.27',
     'azure-mgmt-devtestlabs==9.0.0',
     'azure-mgmt-resource==19.0.0',
-    'azure-mgmt-compute==23.0.0',
-    'azure-mgmt-network==19.0.0',
+    'azure-mgmt-compute==23.1.0',
+    'azure-mgmt-network==19.2.0',
     'azure-mgmt-storage==19.0.0',
-    'azure-storage-blob==12.8.1',
+    'azure-storage-blob==12.9.0',
     'azure-cosmosdb-table==1.0.6',
     'pysftp==0.2.9'
 ]
