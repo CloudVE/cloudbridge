@@ -2,63 +2,39 @@ import base64
 import logging
 import uuid
 
-from azure.common import AzureException
-from azure.mgmt.compute.models import DiskCreateOption
-
-from msrestazure.azure_exceptions import CloudError
-
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
-from cloudbridge.base.resources import ClientPagedResultList
-from cloudbridge.base.resources import ServerPagedResultList
-from cloudbridge.base.services import BaseBucketObjectService
-from cloudbridge.base.services import BaseBucketService
-from cloudbridge.base.services import BaseComputeService
-from cloudbridge.base.services import BaseFloatingIPService
-from cloudbridge.base.services import BaseGatewayService
-from cloudbridge.base.services import BaseImageService
-from cloudbridge.base.services import BaseInstanceService
-from cloudbridge.base.services import BaseKeyPairService
-from cloudbridge.base.services import BaseNetworkService
-from cloudbridge.base.services import BaseNetworkingService
-from cloudbridge.base.services import BaseRegionService
-from cloudbridge.base.services import BaseRouterService
-from cloudbridge.base.services import BaseSecurityService
-from cloudbridge.base.services import BaseSnapshotService
-from cloudbridge.base.services import BaseStorageService
-from cloudbridge.base.services import BaseSubnetService
-from cloudbridge.base.services import BaseVMFirewallRuleService
-from cloudbridge.base.services import BaseVMFirewallService
-from cloudbridge.base.services import BaseVMTypeService
-from cloudbridge.base.services import BaseVolumeService
-from cloudbridge.interfaces.exceptions import DuplicateResourceException
-from cloudbridge.interfaces.exceptions import InvalidParamException
-from cloudbridge.interfaces.exceptions import InvalidValueException
-from cloudbridge.interfaces.resources import MachineImage
-from cloudbridge.interfaces.resources import Network
-from cloudbridge.interfaces.resources import Snapshot
-from cloudbridge.interfaces.resources import TrafficDirection
-from cloudbridge.interfaces.resources import VMFirewall
-from cloudbridge.interfaces.resources import VMType
-from cloudbridge.interfaces.resources import Volume
+from cloudbridge.base.resources import (ClientPagedResultList,
+                                        ServerPagedResultList)
+from cloudbridge.base.services import (BaseBucketObjectService,
+                                       BaseBucketService, BaseComputeService,
+                                       BaseFloatingIPService,
+                                       BaseGatewayService, BaseImageService,
+                                       BaseInstanceService, BaseKeyPairService,
+                                       BaseNetworkingService,
+                                       BaseNetworkService, BaseRegionService,
+                                       BaseRouterService, BaseSecurityService,
+                                       BaseSnapshotService, BaseStorageService,
+                                       BaseSubnetService,
+                                       BaseVMFirewallRuleService,
+                                       BaseVMFirewallService,
+                                       BaseVMTypeService, BaseVolumeService)
+from cloudbridge.interfaces.exceptions import (DuplicateResourceException,
+                                               InvalidParamException,
+                                               InvalidValueException)
+from cloudbridge.interfaces.resources import (MachineImage, Network, Snapshot,
+                                              TrafficDirection, VMFirewall,
+                                              VMType, Volume)
+from azure.core.exceptions import ResourceNotFoundError
 
-from .resources import AzureBucket
-from .resources import AzureBucketObject
-from .resources import AzureFloatingIP
-from .resources import AzureInstance
-from .resources import AzureInternetGateway
-from .resources import AzureKeyPair
-from .resources import AzureLaunchConfig
-from .resources import AzureMachineImage
-from .resources import AzureNetwork
-from .resources import AzureRegion
-from .resources import AzureRouter
-from .resources import AzureSnapshot
-from .resources import AzureSubnet
-from .resources import AzureVMFirewall
-from .resources import AzureVMFirewallRule
-from .resources import AzureVMType
-from .resources import AzureVolume
+from azure.mgmt.compute.models import DiskCreateOption
+
+from .resources import (AzureBucket, AzureBucketObject, AzureFloatingIP,
+                        AzureInstance, AzureInternetGateway, AzureKeyPair,
+                        AzureLaunchConfig, AzureMachineImage, AzureNetwork,
+                        AzureRegion, AzureRouter, AzureSnapshot, AzureSubnet,
+                        AzureVMFirewall, AzureVMFirewallRule, AzureVMType,
+                        AzureVolume)
 
 log = logging.getLogger(__name__)
 
@@ -95,7 +71,7 @@ class AzureVMFirewallService(BaseVMFirewallService):
         try:
             fws = self.provider.azure_client.get_vm_firewall(vm_firewall_id)
             return AzureVMFirewall(self.provider, fws)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -258,7 +234,7 @@ class AzureKeyPairService(BaseKeyPairService):
             if key_pair:
                 return AzureKeyPair(self.provider, key_pair)
             return None
-        except AzureException as error:
+        except ResourceNotFoundError as error:
             log.debug("KeyPair %s was not found.", key_pair_id)
             log.debug(error)
             return None
@@ -365,7 +341,7 @@ class AzureVolumeService(BaseVolumeService):
         try:
             volume = self.provider.azure_client.get_disk(volume_id)
             return AzureVolume(self.provider, volume)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -457,7 +433,7 @@ class AzureSnapshotService(BaseSnapshotService):
         try:
             snapshot = self.provider.azure_client.get_snapshot(snapshot_id)
             return AzureSnapshot(self.provider, snapshot)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -499,18 +475,13 @@ class AzureSnapshotService(BaseSnapshotService):
         volume = (self.provider.storage.volumes.get(volume)
                   if isinstance(volume, str) else volume)
 
-        params = {
-            'location': self.provider.azure_client.region_name,
-            'creation_data': {
-                'create_option': DiskCreateOption.copy,
-                'source_uri': volume.resource_id
-            },
-            'disk_size_gb': volume.size,
-            'tags': tags
-        }
+        # We need to pass the Disk Object to create the snapshot
+        volume = volume._volume
 
-        azure_snap = self.provider.azure_client.create_snapshot(snapshot_name,
-                                                                params)
+        azure_snap = self.provider.azure_client.create_snapshot(
+            snapshot_name, volume, tags
+        )
+
         return AzureSnapshot(self.provider, azure_snap)
 
     @dispatch(event="provider.storage.snapshots.delete",
@@ -532,11 +503,10 @@ class AzureBucketService(BaseBucketService):
         Returns a bucket given its ID. Returns ``None`` if the bucket
         does not exist.
         """
-        try:
-            bucket = self.provider.azure_client.get_container(bucket_id)
+        bucket = self.provider.azure_client.get_container(bucket_id)
+        if bucket.exists():
             return AzureBucket(self.provider, bucket)
-        except AzureException as error:
-            log.exception(error)
+        else:
             return None
 
     @dispatch(event="provider.storage.buckets.list",
@@ -544,7 +514,7 @@ class AzureBucketService(BaseBucketService):
     def list(self, limit=None, marker=None):
         buckets = [AzureBucket(self.provider, bucket)
                    for bucket
-                   in self.provider.azure_client.list_containers()[0]]
+                   in self.provider.azure_client.list_containers()]
         return ClientPagedResultList(self.provider, buckets,
                                      limit=limit, marker=marker)
 
@@ -577,10 +547,10 @@ class AzureBucketObjectService(BaseBucketObjectService):
         Retrieve a given object from this bucket.
         """
         try:
-            obj = self.provider.azure_client.get_blob(bucket.name,
-                                                      object_id)
+            # pylint:disable=protected-access
+            obj = bucket._bucket.get_blob_client(object_id).get_blob_properties()
             return AzureBucketObject(self.provider, bucket, obj)
-        except AzureException as azureEx:
+        except ResourceNotFoundError as azureEx:
             log.exception(azureEx)
             return None
 
@@ -593,23 +563,22 @@ class AzureBucketObjectService(BaseBucketObjectService):
         """
         objects = [AzureBucketObject(self.provider, bucket, obj)
                    for obj in
-                   self.provider.azure_client.list_blobs(
-                       bucket.name, prefix=prefix)]
+                   bucket._bucket.list_blobs(name_starts_with=prefix)]
         return ClientPagedResultList(self.provider, objects,
                                      limit=limit, marker=marker)
 
     def find(self, bucket, **kwargs):
         obj_list = [AzureBucketObject(self.provider, bucket, obj)
                     for obj in
-                    self.provider.azure_client.list_blobs(bucket.name)]
+                    bucket._bucket.list_blobs()]
         filters = ['name']
         matches = cb_helpers.generic_find(filters, kwargs, obj_list)
         return ClientPagedResultList(self.provider, list(matches))
 
     def create(self, bucket, name):
-        self.provider.azure_client.create_blob_from_text(
-            bucket.name, name, '')
-        return self.get(bucket, name)
+        blob_client = bucket._bucket.get_blob_client(name)
+        blob_client.upload_blob('')
+        return AzureBucketObject(self.provider, bucket, blob_client.get_blob_properties())
 
 
 class AzureComputeService(BaseComputeService):
@@ -648,7 +617,7 @@ class AzureImageService(BaseImageService):
         try:
             image = self.provider.azure_client.get_image(image_id)
             return AzureMachineImage(self.provider, image)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -973,7 +942,7 @@ class AzureInstanceService(BaseInstanceService):
         try:
             vm = self.provider.azure_client.get_vm(instance_id)
             return AzureInstance(self.provider, vm)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -1120,7 +1089,7 @@ class AzureNetworkService(BaseNetworkService):
         try:
             network = self.provider.azure_client.get_network(network_id)
             return AzureNetwork(self.provider, network)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -1177,11 +1146,8 @@ class AzureSubnetService(BaseSubnetService):
                     result_list.extend(self.provider.azure_client.list_subnets(
                         net.id
                     ))
-                except CloudError as cloud_error:
-                    if "NotFound" in cloud_error.error.error:
-                        log.exception(cloud_error)
-                    else:
-                        raise cloud_error
+                except ResourceNotFoundError as not_found_error:
+                    log.exception(not_found_error)
         subnets = [AzureSubnet(self.provider, subnet)
                    for subnet in result_list]
 
@@ -1200,7 +1166,7 @@ class AzureSubnetService(BaseSubnetService):
             azure_subnet = self.provider.azure_client.get_subnet(subnet_id)
             return AzureSubnet(self.provider,
                                azure_subnet) if azure_subnet else None
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -1272,7 +1238,7 @@ class AzureRouterService(BaseRouterService):
         try:
             route = self.provider.azure_client.get_route_table(router_id)
             return AzureRouter(self.provider, route)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None
@@ -1364,7 +1330,7 @@ class AzureFloatingIPService(BaseFloatingIPService):
     def get(self, gateway, fip_id):
         try:
             az_ip = self.provider.azure_client.get_floating_ip(fip_id)
-        except (CloudError, InvalidValueException) as cloud_error:
+        except (ResourceNotFoundError, InvalidValueException) as cloud_error:
             # Azure raises the cloud error if the resource not available
             log.exception(cloud_error)
             return None

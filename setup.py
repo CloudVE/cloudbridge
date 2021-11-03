@@ -6,8 +6,7 @@ import ast
 import os
 import re
 
-from setuptools import find_packages
-from setuptools import setup
+from setuptools import find_packages, setup
 
 # Cannot use "from cloudbridge import get_version" because that would try to
 # import the six package which may not be installed yet.
@@ -32,16 +31,16 @@ REQS_AWS = [
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
 REQS_AZURE = [
-    'msrest>=0.5.4,<0.6',
-    'msrestazure==0.5.0',
-    'azure-common==1.1.14',
-    'azure-mgmt-devtestlabs==2.2.0',
-    'azure-mgmt-resource==2.0.0',
-    'azure-mgmt-compute==4.0.1',
-    'azure-mgmt-network>=2.0.1,<=2.1',
-    'azure-mgmt-storage==2.0.0',
-    'azure-storage-blob==1.3.1',
-    'azure-cosmosdb-table==1.0.4',
+    'msrestazure==0.6.4',
+    'azure-identity==1.7.0',
+    'azure-common==1.1.27',
+    'azure-mgmt-devtestlabs==9.0.0',
+    'azure-mgmt-resource==19.0.0',
+    'azure-mgmt-compute==23.1.0',
+    'azure-mgmt-network==19.2.0',
+    'azure-mgmt-storage==19.0.0',
+    'azure-storage-blob==12.9.0',
+    'azure-cosmosdb-table==1.0.6',
     'pysftp==0.2.9'
 ]
 REQS_GCP = [

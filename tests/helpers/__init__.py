@@ -105,7 +105,7 @@ TEST_DATA_CONFIG = {
         "image":
             cb_helpers.get_env('CB_IMAGE_AZURE',
                                'Canonical:UbuntuServer:16.04.0-LTS:latest'),
-        "vm_type": cb_helpers.get_env('CB_VM_TYPE_AZURE', 'Basic_A2'),
+        "vm_type": cb_helpers.get_env('CB_VM_TYPE_AZURE', 'Standard_A2_v2'),
         "placement": cb_helpers.get_env('CB_PLACEMENT_AZURE', 'eastus'),
         "placement_cfg_key": "azure_zone_name"
     }
