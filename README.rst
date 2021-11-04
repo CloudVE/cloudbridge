@@ -25,6 +25,10 @@ Build Status Tests
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
+.. image:: https://img.shields.io/pypi/dm/cloudbridge
+   :target: https://pypistats.org/packages/cloudbridge
+   :alt: Download stats
+
 .. |aws-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_aws.json
               :target: https://github.com/CloudVE/cloudbridge/actions/
 
