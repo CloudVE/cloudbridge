@@ -70,6 +70,7 @@ jobs:
         run: pip install tox
 
       - name: Run tox
+        id: tox
         run: tox -e py${{ matrix.python-version }}-${{ matrix.cloud-provider }}
         env:
           PYTHONUNBUFFERED: "True"
@@ -100,7 +101,19 @@ jobs:
           CB_IMAGE_OS: ${{ secrets.CB_IMAGE_OS }}
           CB_PLACEMENT_OS: ${{ secrets.CB_PLACEMENT_OS }}
 
+      - name: Create Build Status Badge
+        if: ${{ always() }}
+        uses: schneegans/dynamic-badges-action@v1.1.0
+        with:
+          auth: ${{ secrets.BUILD_STATUS_GIST_SECRET }}
+          gistID: ${{ secrets.BUILD_STATUS_GIST_ID }}
+          filename: cloudbridge_py${{ matrix.python-version }}_${{ matrix.cloud-provider }}.json
+          label: ${{ matrix.cloud-provider }}
+          message: ${{ fromJSON('["passing", "failing"]')[steps.tox.outcome != 'success'] }}
+          color: ${{ fromJSON('["green", "red"]')[steps.tox.outcome != 'success'] }}
+
       - name: Coveralls
+        if: ${{ steps.tox.outcome == 'success' }}
         uses: AndreMiras/coveralls-python-action@develop
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
