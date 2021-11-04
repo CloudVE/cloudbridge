@@ -1011,8 +1011,8 @@ class AWSNetwork(BaseNetwork):
                     wait=tenacity.wait_fixed(5),
                     reraise=True)
     def _wait_for_vpc(self):
-        self._provider.ec2_conn.meta.client.get_waiter('vpc_available').wait(
-            VpcIds=[self.id])
+        self._vpc.wait_until_exists()
+        self._vpc.wait_until_available()
 
     def wait_till_ready(self, timeout=None, interval=None):
         self._wait_for_vpc()
