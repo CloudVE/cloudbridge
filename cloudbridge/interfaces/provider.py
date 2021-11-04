@@ -67,7 +67,7 @@ class CloudProvider(object):
 
         :rtype: :class:`.MiddlewareManager`
         :return:  An object of class MiddlewareManager, which can be used to
-        add or remove middleware from cloudbridge.
+                  add or remove middleware from cloudbridge.
         """
         pass
 

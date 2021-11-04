@@ -16,5 +16,6 @@ Introductions to all the key parts of CloudBridge you'll need to know:
     Using block storage <block_storage.rst>
     Using object storage <object_storage.rst>
     Resource types and mapping <resource_types_and_mapping.rst>
+    Using the event system <event_system.rst>
     Troubleshooting <troubleshooting.rst>
     FAQ <faq.rst>

@@ -4,7 +4,7 @@ Services
 .. contents:: :local:
 
 CloudService
----------------
+------------
 .. autoclass:: cloudbridge.interfaces.services.CloudService
     :members:
 
@@ -29,7 +29,7 @@ SnapshotService
     :members:
 
 StorageService
------------------
+--------------
 .. autoclass:: cloudbridge.interfaces.services.StorageService
     :members:
 
@@ -44,32 +44,32 @@ NetworkingService
     :members:
 
 NetworkService
------------------
+--------------
 .. autoclass:: cloudbridge.interfaces.services.NetworkService
     :members:
 
 SubnetService
------------------
+-------------
 .. autoclass:: cloudbridge.interfaces.services.SubnetService
     :members:
 
 FloatingIPService
 -----------------
-.. autoclass:: cloudbridge.interfaces.resources.FloatingIPSubService
+.. autoclass:: cloudbridge.interfaces.subservices.FloatingIPSubService
     :members:
 
 RouterService
------------------
+-------------
 .. autoclass:: cloudbridge.interfaces.services.RouterService
     :members:
 
 GatewayService
------------------
-.. autoclass:: cloudbridge.interfaces.resources.GatewaySubService
+--------------
+.. autoclass:: cloudbridge.interfaces.subservices.GatewaySubService
     :members:
 
 BucketService
----------------
+-------------
 .. autoclass:: cloudbridge.interfaces.services.BucketService
     :members:
 
@@ -84,7 +84,7 @@ KeyPairService
     :members:
 
 VMFirewallService
---------------------
+-----------------
 .. autoclass:: cloudbridge.interfaces.services.VMFirewallService
     :members:
 
@@ -99,16 +99,16 @@ RegionService
     :members:
 
 DnsService
--------------
+----------
 .. autoclass:: cloudbridge.interfaces.services.DnsService
     :members:
 
 DnsZoneService
--------------
+--------------
 .. autoclass:: cloudbridge.interfaces.services.DnsZoneService
     :members:
 
 DnsRecordService
--------------
+----------------
 .. autoclass:: cloudbridge.interfaces.services.DnsRecordService
     :members:
