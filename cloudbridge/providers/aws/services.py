@@ -6,8 +6,6 @@ import uuid
 
 from botocore.exceptions import ClientError
 
-import tenacity
-
 import cloudbridge.base.helpers as cb_helpers
 from cloudbridge.base.middleware import dispatch
 from cloudbridge.base.resources import ClientPagedResultList
@@ -1335,19 +1333,19 @@ class AWSGatewayService(BaseGatewayService):
         if gtw:
             return gtw[0]  # There can be only one gtw attached to a VPC
         # Gateway does not exist so create one and attach to the supplied net
-        cb_gateway = self.svc.create('create_internet_gateway')
-
-        @tenacity.retry(stop=tenacity.stop_after_attempt(5),
-                        retry=tenacity.retry_if_exception_type(ClientError),
-                        wait=tenacity.wait_fixed(5),
-                        reraise=True)
-        def _set_tag(gateway):
-            gateway._gateway.create_tags(
-                Tags=[{'Key': 'Name',
-                       'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
-                       }])
-
-        _set_tag(cb_gateway)
+        cb_gateway = self.svc.create('create_internet_gateway',
+                                     TagSpecifications=[
+                                         {
+                                             'ResourceType': 'internet-gateway',
+                                             'Tags': [
+                                                 {
+                                                     'Key': 'Name',
+                                                     'Value': AWSInternetGateway.CB_DEFAULT_INET_GATEWAY_NAME
+                                                 }
+                                             ]
+                                         }
+                                     ]
+                                     )
         cb_gateway._gateway.attach_to_vpc(VpcId=network_id)
         return cb_gateway
 
