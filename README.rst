@@ -25,33 +25,33 @@ Build Status Tests
    :target: http://cloudbridge.readthedocs.org/en/latest/?badge=latest
    :alt: Documentation Status
 
-.. |aws-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/1?use_travis_com=yes
-              :target: https://travis-ci.com/CloudVE/cloudbridge
+.. |aws-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_aws.json
+              :target: https://github.com/CloudVE/cloudbridge/actions/
 
-.. |azure-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/2?use_travis_com=yes
-                :target: https://travis-ci.com/CloudVE/cloudbridge
+.. |azure-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_azure.json
+                :target: https://github.com/CloudVE/cloudbridge/actions/
 
-.. |gcp-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/3?use_travis_com=yes
-              :target: https://travis-ci.com/CloudVE/cloudbridge
+.. |gcp-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_gcp.json
+              :target: https://github.com/CloudVE/cloudbridge/actions/
 
-.. |mock-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/4?use_travis_com=yes
-              :target: https://travis-ci.com/CloudVE/cloudbridge
+.. |mock-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_mock.json
+              :target: https://github.com/CloudVE/cloudbridge/actions/
 
-.. |os-py36| image:: https://travis-matrix-badges.herokuapp.com/repos/CloudVE/cloudbridge/branches/master/5?use_travis_com=yes
-             :target: https://travis-ci.com/CloudVE/cloudbridge
+.. |os-py38| image:: https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/nuwang/d354f151eb8c9752da13e6dec012fb07/raw/cloudbridge_py3.8_openstack.json
+             :target: https://github.com/CloudVE/cloudbridge/actions/
 
 +---------------------------+----------------+
-| **Provider/Environment**  | **Python 3.6** |
+| **Provider/Environment**  | **Python 3.8** |
 +---------------------------+----------------+
-| **Amazon Web Services**   | |aws-py36|     |
+| **Amazon Web Services**   | |aws-py38|     |
 +---------------------------+----------------+
-| **Google Cloud Platform** | |gcp-py36|     |
+| **Google Cloud Platform** | |gcp-py38|     |
 +---------------------------+----------------+
-| **Microsoft Azure**       | |azure-py36|   |
+| **Microsoft Azure**       | |azure-py38|   |
 +---------------------------+----------------+
-| **OpenStack**             | |os-py36|      |
+| **OpenStack**             | |os-py38|      |
 +---------------------------+----------------+
-| **Mock Provider**         | |mock-py36|    |
+| **Mock Provider**         | |mock-py38|    |
 +---------------------------+----------------+
 
 Installation
