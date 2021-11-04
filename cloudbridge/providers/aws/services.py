@@ -35,6 +35,7 @@ from cloudbridge.base.services import BaseVMFirewallRuleService
 from cloudbridge.base.services import BaseVMFirewallService
 from cloudbridge.base.services import BaseVMTypeService
 from cloudbridge.base.services import BaseVolumeService
+from cloudbridge.interfaces import TestMockHelperMixin
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.exceptions import \
     InvalidConfigurationException
@@ -205,6 +206,10 @@ class AWSVMFirewallService(BaseVMFirewallService):
                                   },
                               ]
                               )
+        # workaround bug in moto security groups which doesn't yet support TagSpecifications
+        if isinstance(self.provider, TestMockHelperMixin):
+            obj.label = label
+            obj.description = description
         return obj
 
     @dispatch(event="provider.security.vm_firewalls.find",
