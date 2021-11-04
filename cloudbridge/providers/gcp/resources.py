@@ -1,15 +1,12 @@
 """
 DataTypes used by this provider
 """
-import base64
-import calendar
 import hashlib
 import inspect
 import io
 import logging
 import math
 import re
-import time
 import uuid
 from collections import namedtuple
 
@@ -1982,18 +1979,10 @@ class GCPBucketObject(BaseBucketObject):
         """
         Generates a signed URL accessible to everyone.
         """
-        expiration = calendar.timegm(time.gmtime()) + expires_in
-        signed_signature = self._provider.sign_blob(
-            'GET\n\n\n%d\n/%s/%s' %
-            (expiration, self._obj['bucket'], self.name))
-        encoded_signature = base64.b64encode(signed_signature).decode("utf-8")
-        url_encoded_signature = (encoded_signature.replace('+', '%2B')
-                                                  .replace('/', '%2F'))
-        return ('https://storage.googleapis.com/%s/%s?GoogleAccessId=%s'
-                '&Expires=%d&Signature=%s' % (self._obj['bucket'], self.name,
-                                              self._provider.client_id,
-                                              expiration,
-                                              url_encoded_signature))
+        # pylint:disable=protected-access
+        return helpers.generate_signed_url(
+            self._provider._credentials, self._obj['bucket'], self.name,
+            expiration=expires_in)
 
     def refresh(self):
         # pylint:disable=protected-access
