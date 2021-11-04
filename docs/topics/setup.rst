@@ -212,7 +212,7 @@ OpenStack
 +-------------------------+--------------------------------------------------------------+
 | os_storage_url          | Storage endpoint URL, if applicable                          |
 +-------------------------+--------------------------------------------------------------+
-| os_project_domain_id    | Project domain id for authentication.                      |
+| os_project_domain_id    | Project domain id for authentication.                        |
 +-------------------------+--------------------------------------------------------------+
 | os_project_domain_name  | Project domain name for authentication.                      |
 +-------------------------+--------------------------------------------------------------+
