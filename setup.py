@@ -25,33 +25,33 @@ REQS_BASE = [
     'pyeventsystem<2'
 ]
 REQS_AWS = [
-    'boto3>=1.9.86,<1.20'
+    'boto3>=1.9.86,<2.0.0'
 ]
 # Install azure>=3.0.0 package to find which of the azure libraries listed
 # below are compatible with each other. List individual libraries instead
 # of using the azure umbrella package to speed up installation.
 REQS_AZURE = [
-    'msrestazure==0.6.4',
-    'azure-identity==1.7.0',
-    'azure-common==1.1.27',
-    'azure-mgmt-devtestlabs==9.0.0',
-    'azure-mgmt-resource==19.0.0',
-    'azure-mgmt-compute==23.1.0',
-    'azure-mgmt-network==19.2.0',
-    'azure-mgmt-storage==19.0.0',
-    'azure-storage-blob==12.9.0',
-    'azure-cosmosdb-table==1.0.6',
-    'pysftp==0.2.9'
+    'msrestazure<1.0.0',
+    'azure-identity<2.0.0',
+    'azure-common<2.0.0',
+    'azure-mgmt-devtestlabs<10.0.0',
+    'azure-mgmt-resource<20.0.0',
+    'azure-mgmt-compute<24.0.0',
+    'azure-mgmt-network<20.0.0',
+    'azure-mgmt-storage<20.0.0',
+    'azure-storage-blob<13.0.0',
+    'azure-cosmosdb-table<2.0.0',
+    'pysftp<1.0.0'
 ]
 REQS_GCP = [
-    'google-api-python-client>=2.0,<2.22.0'
+    'google-api-python-client>=2.0,<3.0.0'
 ]
 REQS_OPENSTACK = [
-    'openstacksdk>=0.12.0,<0.60',
-    'python-novaclient>=7.0.0,<17.7',
-    'python-swiftclient>=3.2.0,<3.13',
-    'python-neutronclient>=6.0.0,<7.7',
-    'python-keystoneclient>=3.13.0,<4.4'
+    'openstacksdk>=0.12.0,<1.0.0',
+    'python-novaclient>=7.0.0,<18.0',
+    'python-swiftclient>=3.2.0,<4.0',
+    'python-neutronclient>=6.0.0,<8.0',
+    'python-keystoneclient>=3.13.0,<5.0'
 ]
 REQS_SIMPLE = REQS_BASE + REQS_AWS + REQS_GCP + REQS_OPENSTACK
 REQS_AZURE = REQS_SIMPLE + REQS_AZURE
