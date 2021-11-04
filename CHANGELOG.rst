@@ -1,3 +1,17 @@
+2.2.0 - November 5, 2021 (sha f3fb8e18781cd3ede4509ef75a69e7c2a420a167)
+---------------------------------------------------------------------
+
+* This is a maintenance release with no backward incompatible changes.
+* Azure dependencies updated to latest version and associated fixes #274, #277, #278, #279, #281, #282
+  (thanks to @FabioRosado)
+* AWS, GCP and OpenStack dependencies updated to latest versions and associated fixes.
+* AWS resources use TagSpecification support, removing extra requests for initial tagging.
+* Fixed wrong logging object in cloud provider #272 (thanks to @MosheFriedland)
+* Switched to github actions from travis
+* Patch discovery.build calls in GCP provider to use google's improved httplib2 #263 (thanks to @selshowk)
+* Added feature to start and stop aws instance #271 (thanks to @abhi005)
+* Miscellaneous doc and maintenance fixes.
+
 2.1.0 - December 1, 2020 (sha a5c3af8ebc5be3ed44db34ebba097848f17305fb)
 ---------------------------------------------------------------------
 
