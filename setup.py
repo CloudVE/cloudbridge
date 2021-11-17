@@ -53,7 +53,7 @@ REQS_OPENSTACK = [
     'python-neutronclient>=6.0.0,<8.0',
     'python-keystoneclient>=3.13.0,<5.0'
 ]
-REQS_FULL = REQS_BASE + REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
+REQS_FULL = REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
