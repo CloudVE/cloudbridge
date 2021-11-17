@@ -64,9 +64,7 @@ Install the latest release from PyPi:
 
 .. code-block:: shell
 
-  pip install cloudbridge[aws,gcp,azure,openstack]
-
-You can remove the cloud providers not using from the dependencies.
+  pip install cloudbridge[full]
 
 For other installation options, see the `installation page`_ in
 the documentation.
