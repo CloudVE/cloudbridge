@@ -53,9 +53,7 @@ REQS_OPENSTACK = [
     'python-neutronclient>=6.0.0,<8.0',
     'python-keystoneclient>=3.13.0,<5.0'
 ]
-REQS_SIMPLE = REQS_BASE + REQS_AWS + REQS_GCP + REQS_OPENSTACK
-REQS_AZURE = REQS_SIMPLE + REQS_AZURE
-REQS_FULL = REQS_SIMPLE + REQS_AZURE
+REQS_FULL = REQS_BASE + REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
@@ -76,10 +74,13 @@ setup(
     author_email='help@genome.edu.au',
     url='http://cloudbridge.cloudve.org/',
     setup_requires=['nose>=1.0'],
-    install_requires=REQS_SIMPLE,
+    install_requires=REQS_BASE,
     extras_require={
         ':python_version<"3.3"': ['ipaddress'],
         'azure': REQS_AZURE,
+        'gcp': REQS_GCP,
+        'aws': REQS_AWS,
+        'openstack': REQS_OPENSTACK,
         'full': REQS_FULL,
         'dev': REQS_DEV
     },
