@@ -27,6 +27,15 @@ The development version of the library can be installed directly from the
 
     $ pip install --upgrade git+https://github.com/CloudVE/cloudbridge.git
 
+Single Provider Installation
+-----------------------------
+If you only require to integrate with one to two providers, you can install
+the particular providers only as the following.
+
+    $ pip install cloudbridge[aws,gcp]
+
+The available options are aws, azure, gcp and openstack.
+
 Developer installation
 ----------------------
 To install additional libraries required by CloudBridge contributors, such as
