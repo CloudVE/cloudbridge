@@ -1978,8 +1978,13 @@ class GCPBucketObject(BaseBucketObject):
     def generate_url(self, expires_in, write):
         """
         Generates a signed URL accessible to everyone.
+
+        Note that if the user asks for write permissions, we need
+        to set the `http_method` as PUT so the user can keep updating
+        the files with the same URL.
+
         """
-        http_method = "POST" if write else "GET"
+        http_method = "PUT" if write else "GET"
 
         # pylint:disable=protected-access
         return helpers.generate_signed_url(
