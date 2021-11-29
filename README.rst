@@ -64,7 +64,7 @@ Install the latest release from PyPi:
 
 .. code-block:: shell
 
-  pip install cloudbridge
+  pip install cloudbridge[full]
 
 For other installation options, see the `installation page`_ in
 the documentation.
