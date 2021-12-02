@@ -451,7 +451,7 @@ class AzureClient(object):
         blob_client = self.blob_client(container_name, blob_name)
         blob_client.delete_blob(delete_snapshots)
 
-    def get_blob_url(self, container_name, blob_name, expiry_time, write):
+    def get_blob_url(self, container_name, blob_name, expiry_time, writable):
         now = datetime.datetime.utcnow()
         expiry = now + datetime.timedelta(
             seconds=expiry_time)
@@ -462,7 +462,7 @@ class AzureClient(object):
         )
         sas = generate_blob_sas(
             self.storage_account, container_name, blob_name,
-            permission=BlobSasPermissions(read=True, write=write), expiry=expiry,
+            permission=BlobSasPermissions(read=True, write=writable), expiry=expiry,
             user_delegation_key=delegation_key
         )
         url = (

@@ -2204,7 +2204,7 @@ class BucketObject(CloudResource):
         pass
 
     @abstractmethod
-    def generate_url(self, expires_in, write=False):
+    def generate_url(self, expires_in, writable=False):
         """
         Generate a signed URL to this object.
 
@@ -2214,8 +2214,8 @@ class BucketObject(CloudResource):
 
         :type expires_in: ``int``
         :param expires_in: Time to live of the generated URL in seconds.
-        :type write: ``bool``
-        :param write: Write permission for this signed URL. Users with the URL
+        :type writable: ``bool``
+        :param writable: Write permission for this signed URL. Users with the URL
             will be able to upload to this object, but they will NOT be able to
             read from it.
 

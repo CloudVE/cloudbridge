@@ -12,6 +12,8 @@ from cloudbridge.interfaces.exceptions import DuplicateResourceException
 from cloudbridge.interfaces.provider import TestMockHelperMixin
 from cloudbridge.interfaces.resources import Bucket
 from cloudbridge.interfaces.resources import BucketObject
+from cloudbridge.providers.aws.provider import AWSCloudProvider
+from cloudbridge.providers.gcp import GCPCloudProvider
 
 from tests import helpers
 from tests.helpers import ProviderTestBase
@@ -204,16 +206,22 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
 
             with cb_helpers.cleanup_action(lambda: obj.delete()):
                 content = b"Hello World. Generate a url."
-                obj.upload(content)
-                target_stream = BytesIO()
-                obj.save_content(target_stream)
 
-                url = obj.generate_url(100, write=True)
+                url = obj.generate_url(100, writable=True)
                 if isinstance(self.provider, TestMockHelperMixin):
                     raise self.skipTest(
                         "Skipping rest of test - mock providers can't"
                         " access generated url")
-                self.assertEqual(requests.post(url).content, content)
+                elif isinstance(self.provider, GCPCloudProvider):
+                    requests.put(url, data=content)
+                elif isinstance(self.provider, AWSCloudProvider):
+                    requests.put(url['url'], data=url['fields'], files={"file": (obj_name, content)})
+                else:
+                    requests.post(url, data=content)
+                
+                obj = test_bucket.objects.get(obj_name)
+                obj_content = [content for content in obj.iter_content()]
+                self.assertEqual(obj_content[0], content)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_from_file(self):

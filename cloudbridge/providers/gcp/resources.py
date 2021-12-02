@@ -1975,7 +1975,7 @@ class GCPBucketObject(BaseBucketObject):
              .delete(bucket=self._obj['bucket'], object=self.name)
              .execute())
 
-    def generate_url(self, expires_in, write):
+    def generate_url(self, expires_in, writable):
         """
         Generates a signed URL accessible to everyone.
 
@@ -1984,7 +1984,7 @@ class GCPBucketObject(BaseBucketObject):
         the files with the same URL.
 
         """
-        http_method = "PUT" if write else "GET"
+        http_method = "PUT" if writable else "GET"
 
         # pylint:disable=protected-access
         return helpers.generate_signed_url(
