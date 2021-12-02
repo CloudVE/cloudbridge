@@ -68,3 +68,56 @@ Once a provider is obtained, you can access the container as usual:
     bucket = provider.storage.buckets.get(container)
     obj = bucket.objects.create('my_object.txt')
     obj.upload_from_file(source)
+
+
+Generating signed URLs
+----------------------
+
+Signed URLs are a great way to allow users who do not have credentials for
+the cloud provider of your choice, to interact with an object within a
+storage bucket.
+
+You can generate signed URLs with ``GET`` permissions to allow a user to
+get an object. 
+
+.. code-block:: python
+ 
+    provider = CloudProviderFactory().create_provider(
+        ProviderList.AWS,
+        {'aws_access_key': 'ACCESS_KEY',
+         'aws_secret_key': 'SECRET_KEY',
+         'aws_session_token': 'MY_SESSION_TOKEN'}) 
+
+    bucket = provider.storage.buckets.get("my-bucket")
+    obj = bucket.objects.get("my-file.txt")
+
+    url = obj.generate_url(expires_in=7200)
+
+You can also generate a signed URL with `PUT``permissions to allow users 
+to upload files to your storage bucket.
+
+.. code-block:: python
+ 
+    provider = CloudProviderFactory().create_provider(
+        ProviderList.AWS,
+        {'aws_access_key': 'ACCESS_KEY',
+         'aws_secret_key': 'SECRET_KEY',
+         'aws_session_token': 'MY_SESSION_TOKEN'}) 
+
+    bucket = provider.storage.buckets.get("my-bucket")
+    obj = bucket.objects.create("my-file.txt")
+    url = obj.generate_url(expires_in=7200, writable=True)
+
+
+With your signed URL, you or someone on your team can upload a file like this
+
+.. code-block:: python
+
+    import requests
+
+    content = b"Hello world!"
+    # Example for AWS
+    requests.put(url["url"], data=url["fields"], files={"file": ("my-file.txt", content)})
+
+    # Example for GCP/Azure
+    requests.put(url, data=content)
