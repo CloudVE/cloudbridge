@@ -212,7 +212,7 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                         " access generated url")
                 else:
                     requests.put(url, data=content)
-                
+
                 obj = test_bucket.objects.get(obj_name)
                 obj_content = [content for content in obj.iter_content()]
                 self.assertEqual(obj_content[0], content)
