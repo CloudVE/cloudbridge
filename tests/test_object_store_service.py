@@ -194,6 +194,30 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 self.assertEqual(requests.get(url).content, content)
 
     @helpers.skipIfNoService(['storage.buckets'])
+    def test_generate_url_write_permissions(self):
+        name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
+        test_bucket = self.provider.storage.buckets.create(name)
+
+        with cb_helpers.cleanup_action(lambda: test_bucket.delete()):
+            obj_name = "hello_upload_download.txt"
+            obj = test_bucket.objects.create(obj_name)
+
+            with cb_helpers.cleanup_action(lambda: obj.delete()):
+                content = b"Hello World. Generate a url."
+
+                url = obj.generate_url(100, writable=True)
+                if isinstance(self.provider, TestMockHelperMixin):
+                    raise self.skipTest(
+                        "Skipping rest of test - mock providers can't"
+                        " access generated url")
+                else:
+                    requests.put(url, data=content)
+                
+                obj = test_bucket.objects.get(obj_name)
+                obj_content = [content for content in obj.iter_content()]
+                self.assertEqual(obj_content[0], content)
+
+    @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_from_file(self):
         name = "cbtestbucketobjs-{0}".format(helpers.get_uuid())
         test_bucket = self.provider.storage.buckets.create(name)

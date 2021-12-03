@@ -1316,7 +1316,8 @@ class OpenStackBucketObject(BaseBucketObject):
                 result = result and del_res['success']
         return result
 
-    def generate_url(self, expires_in):
+    def generate_url(self, expires_in, writable=False):
+        http_method = "POST" if writable else "GET"
         # Set a temp url key on the object (http://bit.ly/2NBiXGD)
         temp_url_key = "cloudbridge-tmp-url-key"
         self._provider.swift.post_account(
@@ -1325,7 +1326,7 @@ class OpenStackBucketObject(BaseBucketObject):
         access_point = "{0}://{1}".format(base_url.scheme, base_url.netloc)
         url_path = "/".join([base_url.path, self.cbcontainer.name, self.name])
         return urljoin(access_point, generate_temp_url(url_path, expires_in,
-                                                       temp_url_key, 'GET'))
+                                                       temp_url_key, http_method))
 
     def refresh(self):
         self._obj = self.cbcontainer.objects.get(self.id)._obj

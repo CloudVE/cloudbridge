@@ -258,12 +258,12 @@ class AzureBucketObject(BaseBucketObject):
         """
         self._blob_client.delete_blob()
 
-    def generate_url(self, expires_in):
+    def generate_url(self, expires_in, writable=False):
         """
         Generate a URL to this object.
         """
         return self._provider.azure_client.get_blob_url(
-            self._container, self.name, expires_in)
+            self._container, self.name, expires_in, writable)
 
     def refresh(self):
         pass
