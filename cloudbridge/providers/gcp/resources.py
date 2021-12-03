@@ -1975,7 +1975,7 @@ class GCPBucketObject(BaseBucketObject):
              .delete(bucket=self._obj['bucket'], object=self.name)
              .execute())
 
-    def generate_url(self, expires_in, writable):
+    def generate_url(self, expires_in, writable=False):
         """
         Generates a signed URL accessible to everyone.
 

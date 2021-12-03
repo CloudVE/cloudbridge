@@ -1316,7 +1316,7 @@ class OpenStackBucketObject(BaseBucketObject):
                 result = result and del_res['success']
         return result
 
-    def generate_url(self, expires_in, writable):
+    def generate_url(self, expires_in, writable=False):
         http_method = "POST" if writable else "GET"
         # Set a temp url key on the object (http://bit.ly/2NBiXGD)
         temp_url_key = "cloudbridge-tmp-url-key"
