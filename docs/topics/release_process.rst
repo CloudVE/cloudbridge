@@ -33,13 +33,13 @@ Release Process
    # remove stale files or wheel might package them
    rm -r build dist
    python setup.py sdist bdist_wheel
-   twine upload -r pypi dist/cloudbridge-1.0.0*
+   twine upload -r pypi dist/cloudbridge-3.0.0*
 
 6. Tag release and make a GitHub release.
 
 .. code-block:: bash
 
-   git tag -a v2.0.0 -m "Release 2.0.0"
+   git tag -a v3.0.0 -m "Release 3.0.0"
    git push
    git push --tags
 

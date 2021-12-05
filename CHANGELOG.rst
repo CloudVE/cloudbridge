@@ -1,3 +1,13 @@
+3.0.0 - December 3, 2021 (sha 327e330bed78b8b70c9ff9d256513d71bc27545f)
+---------------------------------------------------------------------
+
+* This is a major release due to packaging changes, although there are no backward incompatible interface changes.
+* The cloudbridge package no longer installs any providers by default, and you must use `pip install cloudbridge[full]`
+  instead of `pip install cloudbridge` to obtain previous behaviour. This is to allow greater control over what
+  providers are installed. To install only specific providers, use `pip install cloudbridge[aws,gcp]` etc. #292
+  (thanks to @RyanSiu1995)
+* Allow users to create signed urls with write permissions #292 (thanks to @FabioRosado)
+
 2.2.0 - November 5, 2021 (sha f3fb8e18781cd3ede4509ef75a69e7c2a420a167)
 ---------------------------------------------------------------------
 
