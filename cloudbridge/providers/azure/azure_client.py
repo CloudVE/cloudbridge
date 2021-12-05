@@ -465,11 +465,7 @@ class AzureClient(object):
             permission=BlobSasPermissions(read=True, write=writable), expiry=expiry,
             user_delegation_key=delegation_key
         )
-        url = (
-            f"https://{self.storage_account}.blob.core.windows.net/"
-            f"{container_name}/{blob_name}?{sas}"
-        )
-
+        url = f"https://{self.storage_account}.blob.core.windows.net/{container_name}/{blob_name}?{sas}"
         return url
 
     def create_empty_disk(self, disk_name, params):

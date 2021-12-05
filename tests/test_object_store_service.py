@@ -6,7 +6,6 @@ from io import BytesIO
 from unittest import skip
 
 import requests
-import tenacity
 
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
@@ -211,16 +210,17 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     raise self.skipTest(
                         "Skipping rest of test - mock providers can't"
                         " access generated url")
-                else:
-                    requests.put(url, data=content)
 
-                for attempt in tenacity.Retrying(stop=tenacity.stop_after_attempt(3),
-                                                 wait=tenacity.wait_fixed(5)):
-                    with attempt:
-                        obj = test_bucket.objects.get(obj_name)
-                        target_stream = BytesIO()
-                        obj.save_content(target_stream)
-                        self.assertEqual(target_stream.getvalue(), content)
+                # Only Azure requires the x-ms-blob-type header to be present, but there's no harm
+                # in sending this in for all providers.
+                headers = {'x-ms-blob-type': 'BlockBlob'}
+                response = requests.put(url, headers=headers, data=content)
+                response.raise_for_status()
+
+                obj = test_bucket.objects.get(obj_name)
+                target_stream = BytesIO()
+                obj.save_content(target_stream)
+                self.assertEqual(target_stream.getvalue(), content)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_from_file(self):
