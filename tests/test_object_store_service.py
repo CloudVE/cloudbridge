@@ -210,12 +210,17 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                     raise self.skipTest(
                         "Skipping rest of test - mock providers can't"
                         " access generated url")
-                else:
-                    requests.put(url, data=content)
+
+                # Only Azure requires the x-ms-blob-type header to be present, but there's no harm
+                # in sending this in for all providers.
+                headers = {'x-ms-blob-type': 'BlockBlob'}
+                response = requests.put(url, headers=headers, data=content)
+                response.raise_for_status()
 
                 obj = test_bucket.objects.get(obj_name)
-                obj_content = [content for content in obj.iter_content()]
-                self.assertEqual(obj_content[0], content)
+                target_stream = BytesIO()
+                obj.save_content(target_stream)
+                self.assertEqual(target_stream.getvalue(), content)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_from_file(self):

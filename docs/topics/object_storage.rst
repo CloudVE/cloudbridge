@@ -116,8 +116,7 @@ With your signed URL, you or someone on your team can upload a file like this
     import requests
 
     content = b"Hello world!"
-    # Example for AWS
-    requests.put(url["url"], data=url["fields"], files={"file": ("my-file.txt", content)})
-
-    # Example for GCP/Azure
+    # Only Azure requires the x-ms-blob-type header to be present, but there's no harm
+    # in sending this in for all providers.
+    headers = {'x-ms-blob-type': 'BlockBlob'}
     requests.put(url, data=content)
