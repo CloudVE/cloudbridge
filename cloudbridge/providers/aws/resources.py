@@ -872,12 +872,8 @@ class AWSBucketObject(BaseBucketObject):
         self._obj.delete()
 
     def generate_url(self, expires_in, writable=False):
-        if writable:
-            return self._provider.s3_conn.meta.client.generate_presigned_post(
-                self._obj.bucket_name, self.id, ExpiresIn=expires_in
-            )
         return self._provider.s3_conn.meta.client.generate_presigned_url(
-            'get_object',
+            'put_object' if writable else 'get_object',
             Params={'Bucket': self._obj.bucket_name, 'Key': self.id},
             ExpiresIn=expires_in)
 
