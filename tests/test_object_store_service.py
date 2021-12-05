@@ -6,6 +6,7 @@ from io import BytesIO
 from unittest import skip
 
 import requests
+import tenacity
 
 from cloudbridge.base import helpers as cb_helpers
 from cloudbridge.interfaces.exceptions import DuplicateResourceException
@@ -213,9 +214,13 @@ class CloudObjectStoreServiceTestCase(ProviderTestBase):
                 else:
                     requests.put(url, data=content)
 
-                obj = test_bucket.objects.get(obj_name)
-                obj_content = [content for content in obj.iter_content()]
-                self.assertEqual(obj_content[0], content)
+                for attempt in tenacity.Retrying(stop=tenacity.stop_after_attempt(3),
+                                                 wait=tenacity.wait_fixed(5)):
+                    with attempt:
+                        obj = test_bucket.objects.get(obj_name)
+                        target_stream = BytesIO()
+                        obj.save_content(target_stream)
+                        self.assertEqual(target_stream.getvalue(), content)
 
     @helpers.skipIfNoService(['storage.buckets'])
     def test_upload_download_bucket_content_from_file(self):
