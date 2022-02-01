@@ -1,0 +1,28 @@
+name: Build Image
+on: [push, workflow_dispatch]
+jobs:
+  test:
+    name: Build image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9']
+        extra: [full, openstack, aws, gcp, azure]
+    steps:
+      - uses: actions/checkout@v2
+      - run: docker build . -t almahmoud/cloudbridge:${{matrix.python}}-${{matrix.extra}} --build-arg EXTRA=${{matrix.extra}} --build-arg PYTHON=${{matrix.python}}
+      - name: Login to docker hub
+        uses: actions-hub/docker/login@master
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Push to docker hub
+        uses: actions-hub/docker@master
+        with:
+          args: push almahmoud/cloudbridge:${{matrix.python}}-${{matrix.extra}}
+      - run: docker build . -t almahmoud/cloudbridge:dev-${{matrix.python}}-${{matrix.extra}} -f Dockerfile.dev --build-arg EXTRA=${{matrix.extra}} --build-arg PYTHON=${{matrix.python}}
+      - name: Push to docker hub
+        uses: actions-hub/docker@master
+        with:
+          args: push almahmoud/cloudbridge:dev-${{matrix.python}}-${{matrix.extra}}
