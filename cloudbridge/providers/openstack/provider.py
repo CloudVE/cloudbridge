@@ -18,6 +18,8 @@ from swiftclient import client as swift_client
 from cloudbridge.base import BaseCloudProvider
 from cloudbridge.base.helpers import get_env
 
+from cloudbridge.interfaces.exceptions import ProviderConnectionException
+
 from .services import OpenStackComputeService
 from .services import OpenStackDnsService
 from .services import OpenStackNetworkingService
@@ -34,6 +36,10 @@ class OpenStackCloudProvider(BaseCloudProvider):
         super(OpenStackCloudProvider, self).__init__(config)
 
         # Initialize cloud connection fields
+        self.app_cred_id = self._get_config_value(
+            'os_application_credential_id', get_env('OS_APPLICATION_CREDENTIAL_ID'))
+        self.app_cred_secret = self._get_config_value(
+            'os_application_credential_secret', get_env('OS_APPLICATION_CREDENTIAL_SECRET'))
         self.username = self._get_config_value(
             'os_username', get_env('OS_USERNAME'))
         self.password = self._get_config_value(
@@ -112,13 +118,24 @@ class OpenStackCloudProvider(BaseCloudProvider):
 
         if self._keystone_version == 3:
             from keystoneauth1.identity import v3
-            auth = v3.Password(auth_url=self.auth_url,
-                               username=self.username,
-                               password=self.password,
-                               user_domain_name=self.user_domain_name,
-                               project_domain_id=self.project_domain_id,
-                               project_domain_name=self.project_domain_name,
-                               project_name=self.project_name)
+            if self.username and self.password:
+                auth = v3.Password(auth_url=self.auth_url,
+                                   username=self.username,
+                                   password=self.password,
+                                   user_domain_name=self.user_domain_name,
+                                   project_domain_id=self.project_domain_id,
+                                   project_domain_name=self.project_domain_name,
+                                   project_name=self.project_name)
+            elif self.app_cred_id and self.app_cred_secret:
+                auth = v3.ApplicationCredential(auth_url=self.auth_url,
+                                                application_credential_id=self.app_cred_id,
+                                                application_credential_secret=self.app_cred_secret,
+                                                user_domain_name=self.user_domain_name,
+                                                project_domain_id=self.project_domain_id,
+                                                project_domain_name=self.project_domain_name,
+                                                project_name=self.project_name)
+            else raise ProviderConnectionException("No valid credentials were found. You must supply either \
+            'os_username' and 'os_password', or 'os_application_credential_id' and 'os_application_credential_secret'")
             self._cached_keystone_session = session.Session(auth=auth)
         else:
             from keystoneauth1.identity import v2
