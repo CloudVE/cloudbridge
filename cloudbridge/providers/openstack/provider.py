@@ -134,8 +134,10 @@ class OpenStackCloudProvider(BaseCloudProvider):
                                                 project_domain_id=self.project_domain_id,
                                                 project_domain_name=self.project_domain_name,
                                                 project_name=self.project_name)
-            else raise ProviderConnectionException("No valid credentials were found. You must supply either \
-            'os_username' and 'os_password', or 'os_application_credential_id' and 'os_application_credential_secret'")
+            else:
+                raise ProviderConnectionException("""No valid credentials were found. You must supply either
+                                                     'os_username' and 'os_password', or 'os_application_credential_id'
+                                                     and 'os_application_credential_secret'""")
             self._cached_keystone_session = session.Session(auth=auth)
         else:
             from keystoneauth1.identity import v2
