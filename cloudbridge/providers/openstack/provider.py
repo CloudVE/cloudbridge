@@ -129,11 +129,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             elif self.app_cred_id and self.app_cred_secret:
                 auth = v3.ApplicationCredential(auth_url=self.auth_url,
                                                 application_credential_id=self.app_cred_id,
-                                                application_credential_secret=self.app_cred_secret,
-                                                user_domain_name=self.user_domain_name,
-                                                project_domain_id=self.project_domain_id,
-                                                project_domain_name=self.project_domain_name,
-                                                project_name=self.project_name)
+                                                application_credential_secret=self.app_cred_secret)
             else:
                 raise ProviderConnectionException("""No valid credentials were found. You must supply either
                                                      'os_username' and 'os_password', or 'os_application_credential_id'
