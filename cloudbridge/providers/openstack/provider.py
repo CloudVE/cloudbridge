@@ -148,12 +148,7 @@ class OpenStackCloudProvider(BaseCloudProvider):
             region_name=self.region_name,
             user_agent='cloudbridge',
             auth_url=self.auth_url,
-            project_name=self.project_name,
-            username=self.username,
-            password=self.password,
-            user_domain_name=self.user_domain_name,
-            project_domain_id=self.project_domain_id,
-            project_domain_name=self.project_domain_name
+            session=self._keystone_session,
         )
 
     @property
