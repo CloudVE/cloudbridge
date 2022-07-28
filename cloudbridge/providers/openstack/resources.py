@@ -361,6 +361,13 @@ class OpenStackInstance(BaseInstance):
             self._os_instance.flavor.get('id'))
         return OpenStackVMType(self._provider, flavor)
 
+    @property
+    def create_time(self):
+        """
+        Get the instance creation time
+        """
+        return self._os_instance.created
+
     def reboot(self):
         """
         Reboot this instance (using the cloud middleware API).

@@ -1125,6 +1125,13 @@ class AzureInstance(BaseInstance):
         return self._provider.compute.vm_types.find(
             name=self.vm_type_id)[0]
 
+    @property
+    def create_time(self):
+        """
+        Get the instance creation time
+        """
+        return self._vm.time_created.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
     def reboot(self):
         """
         Reboot this instance (using the cloud middleware API).

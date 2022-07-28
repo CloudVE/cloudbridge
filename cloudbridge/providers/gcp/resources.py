@@ -883,6 +883,13 @@ class GCPInstance(BaseInstance):
         return GCPVMType(self._provider, parsed_uri.get_resource())
 
     @property
+    def create_time(self):
+        """
+        Get the instance creation time
+        """
+        return self._gcp_instance.get("creationTimestamp")
+
+    @property
     def subnet_id(self):
         """
         Get the zone for this instance.

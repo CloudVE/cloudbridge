@@ -301,6 +301,13 @@ class AWSInstance(BaseInstance):
         return self._provider.compute.vm_types.find(
             name=self._ec2_instance.instance_type)[0]
 
+    @property
+    def create_time(self):
+        """
+        Get the instance creation time
+        """
+        return self._ec2_instance.launch_time
+
     def reboot(self):
         self._ec2_instance.reboot()
 

@@ -562,6 +562,17 @@ class Instance(ObjectLifeCycleMixin, LabeledCloudResource):
         """
         pass
 
+    @abstractproperty
+    def create_time(self):
+        """
+        Get the creation data and time for this instance.
+
+        :rtype: ``DateTime``
+        :return: Creation time for this instance as returned by the cloud
+                 middleware.
+        """
+        pass
+
     @abstractmethod
     def reboot(self):
         """

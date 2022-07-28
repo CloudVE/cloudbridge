@@ -168,6 +168,9 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertEqual(len(find_zone), 1,
                              "Instance's placement zone could not be "
                              " found in zones list")
+            self.assertIsNotNone(
+                test_instance.create_time,
+                "Instance must have it's creation time")
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
                               'compute.vm_types'])
