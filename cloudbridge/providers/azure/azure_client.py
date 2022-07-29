@@ -742,6 +742,13 @@ class AzureClient(object):
         return self.compute_client.virtual_machines.begin_restart(
             self.resource_group, vm_name).wait()
 
+    def stop_vm(self, vm_id):
+        url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
+                                             vm_id)
+        vm_name = url_params.get(VM_NAME, "")
+        self.compute_client.virtual_machines. \
+            begin_power_off(self.resource_group, vm_name).wait()
+
     def delete_vm(self, vm_id):
         url_params = azure_helpers.parse_url(VM_RESOURCE_ID,
                                              vm_id)

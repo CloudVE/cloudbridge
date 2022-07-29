@@ -1131,6 +1131,12 @@ class AzureInstance(BaseInstance):
         """
         self._provider.azure_client.restart_vm(self.id)
 
+    def stop(self):
+        """
+        Stop this instance (using the cloud middleware API).
+        """
+        self._provider.azure_client.stop_vm(self.id)
+
     @property
     def image_id(self):
         """
