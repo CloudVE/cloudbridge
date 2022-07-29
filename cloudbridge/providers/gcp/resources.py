@@ -9,6 +9,7 @@ import math
 import re
 import uuid
 from collections import namedtuple
+from datetime import datetime
 
 import googleapiclient
 
@@ -887,7 +888,7 @@ class GCPInstance(BaseInstance):
         """
         Get the instance creation time
         """
-        return self._gcp_instance.get("creationTimestamp")
+        return datetime.fromisoformat(self._gcp_instance.get("creationTimestamp"))
 
     @property
     def subnet_id(self):
