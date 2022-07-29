@@ -1,3 +1,4 @@
+import datetime
 import ipaddress
 
 import six
@@ -168,6 +169,12 @@ class CloudComputeServiceTestCase(ProviderTestBase):
             self.assertEqual(len(find_zone), 1,
                              "Instance's placement zone could not be "
                              " found in zones list")
+            self.assertIsNotNone(
+                test_instance.create_time,
+                "Instance must have its creation time")
+            self.assertIsInstance(
+                test_instance.create_time,
+                datetime.datetime)
 
     @helpers.skipIfNoService(['compute.instances', 'compute.images',
                               'compute.vm_types'])

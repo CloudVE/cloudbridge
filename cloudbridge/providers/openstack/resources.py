@@ -14,6 +14,8 @@ except ImportError:  # python 2
     from urlparse import urlparse
     from urlparse import urljoin
 
+from datetime import datetime
+
 from keystoneclient.v3.regions import Region
 
 import novaclient.exceptions as novaex
@@ -360,6 +362,13 @@ class OpenStackInstance(BaseInstance):
         flavor = self._provider.nova.flavors.get(
             self._os_instance.flavor.get('id'))
         return OpenStackVMType(self._provider, flavor)
+
+    @property
+    def create_time(self):
+        """
+        Get the instance creation time
+        """
+        return datetime.strptime(self._os_instance.created, '%Y-%m-%dT%H:%M:%SZ')
 
     def reboot(self):
         """
