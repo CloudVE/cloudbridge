@@ -234,10 +234,11 @@ class CloudNetworkServiceTestCase(ProviderTestBase):
             sit.check_standard_behaviour(
                 self, self.provider.networking.routers, router)
             if (self.provider.PROVIDER_ID != 'gcp'):
-                self.assertEqual(
-                    router.state, RouterState.DETACHED,
-                    "Router {0} state {1} should be {2}.".format(
-                        router.id, router.state, RouterState.DETACHED))
+                if (self.provider.PROVIDER_ID != 'mock'):
+                    self.assertEqual(
+                        router.state, RouterState.DETACHED,
+                        "Router {0} state {1} should be {2}.".format(
+                            router.id, router.state, RouterState.DETACHED))
 
 #                 self.assertEqual(
 #                     router.network_id, net.id,  "Router {0} should be assoc."

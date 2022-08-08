@@ -1,4 +1,4 @@
 # needed by moto
 sshpubkeys
-git+https://github.com/CloudVE/moto@fix_unknown_instance_type
+git+https://github.com/CloudVE/moto@resync_instance_types
 -e ".[dev]"
