@@ -36,7 +36,7 @@ REQS_AZURE = [
     'azure-common<2.0.0',
     'azure-mgmt-devtestlabs<10.0.0',
     'azure-mgmt-resource<22.0.0',
-    'azure-mgmt-compute<28.0.0',
+    'azure-mgmt-compute>=27.2.0,<28.0.0',
     'azure-mgmt-network<22.0.0',
     'azure-mgmt-storage<21.0.0',
     'azure-storage-blob<13.0.0',
