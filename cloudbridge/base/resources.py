@@ -112,8 +112,8 @@ class BaseCloudResource(CloudResource):
 
     def to_json(self):
         # Get all attributes but filter methods and private/magic ones
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        js = {k: v for (k, v) in attr if not k.startswith('_')}
         return js
 
     def __repr__(self):
@@ -672,8 +672,8 @@ class BaseRegion(BaseCloudResource, Region):
                 self.id == other.id)
 
     def to_json(self):
-        attr = inspect.getmembers(self, lambda a: not(inspect.isroutine(a)))
-        js = {k: v for(k, v) in attr if not k.startswith('_')}
+        attr = inspect.getmembers(self, lambda a: not (inspect.isroutine(a)))
+        js = {k: v for (k, v) in attr if not k.startswith('_')}
         js['zones'] = [z.id for z in self.zones]
         return js
 
