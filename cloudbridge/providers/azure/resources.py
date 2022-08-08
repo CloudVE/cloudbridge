@@ -1130,7 +1130,7 @@ class AzureInstance(BaseInstance):
         """
         Get the instance creation time
         """
-        return self._vm.time_created
+        return self._vm.system_data.created_at
 
     def reboot(self):
         """
