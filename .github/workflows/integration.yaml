@@ -98,6 +98,8 @@ jobs:
           OS_USERNAME: ${{ secrets.OS_USERNAME }}
           OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
           OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+          OS_APPLICATION_CREDENTIAL_ID: ${{ secrets.OS_APPLICATION_CREDENTIAL_ID }}
+          OS_APPLICATION_CREDENTIAL_SECRET: ${{ secrets.OS_APPLICATION_CREDENTIAL_SECRET }}
           CB_IMAGE_OS: ${{ secrets.CB_IMAGE_OS }}
           CB_PLACEMENT_OS: ${{ secrets.CB_PLACEMENT_OS }}
 

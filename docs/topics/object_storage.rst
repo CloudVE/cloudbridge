@@ -93,7 +93,7 @@ get an object.
 
     url = obj.generate_url(expires_in=7200)
 
-You can also generate a signed URL with `PUT``permissions to allow users 
+You can also generate a signed URL with `PUT` permissions to allow users
 to upload files to your storage bucket.
 
 .. code-block:: python
