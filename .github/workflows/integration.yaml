@@ -77,6 +77,7 @@ jobs:
           # aws
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
           AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          CB_VM_TYPE_AWS: ${{ secrets.CB_VM_TYPE_AWS }}
           # azure
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -89,6 +90,7 @@ jobs:
           # gcp
           GCP_SERVICE_CREDS_DICT: ${{ secrets.GCP_SERVICE_CREDS_DICT }}
           CB_IMAGE_GCP: ${{ secrets.CB_IMAGE_GCP }}
+          CB_VM_TYPE_GCP: ${{ secrets.CB_VM_TYPE_GCP }}
           # openstack
           OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
           OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
@@ -101,6 +103,7 @@ jobs:
           OS_APPLICATION_CREDENTIAL_ID: ${{ secrets.OS_APPLICATION_CREDENTIAL_ID }}
           OS_APPLICATION_CREDENTIAL_SECRET: ${{ secrets.OS_APPLICATION_CREDENTIAL_SECRET }}
           CB_IMAGE_OS: ${{ secrets.CB_IMAGE_OS }}
+          CB_VM_TYPE_OS: ${{ secrets.CB_VM_TYPE_OS }}
           CB_PLACEMENT_OS: ${{ secrets.CB_PLACEMENT_OS }}
 
       - name: Create Build Status Badge
