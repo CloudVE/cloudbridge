@@ -107,7 +107,7 @@ jobs:
           CB_PLACEMENT_OS: ${{ secrets.CB_PLACEMENT_OS }}
 
       - name: Create Build Status Badge
-        if: ${{ always() }}
+        if: github.ref == 'refs/heads/master'
         uses: schneegans/dynamic-badges-action@v1.1.0
         with:
           auth: ${{ secrets.BUILD_STATUS_GIST_SECRET }}
