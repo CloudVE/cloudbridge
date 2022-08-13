@@ -1177,7 +1177,7 @@ class OpenStackRouterService(BaseRouterService):
         if not router:
             log.debug("Router %s was not found.", router_id)
             return None
-        elif self.provider.service_zone_name(self) \
+        elif router.availability_zones and self.provider.service_zone_name(self) \
                 not in router.availability_zones:
             log.debug("Router %s was found in availability zone '%s' while the"
                       " OpenStack provider is in zone '%s'",
@@ -1192,7 +1192,8 @@ class OpenStackRouterService(BaseRouterService):
     def list(self, limit=None, marker=None):
         routers = self.provider.os_conn.list_routers()
         os_routers = [OpenStackRouter(self.provider, r) for r in routers
-                      if self.provider.service_zone_name(self)
+                      if not r.availability_zones or
+                      self.provider.service_zone_name(self)
                       in r.availability_zones]
         return ClientPagedResultList(self.provider, os_routers, limit=limit,
                                      marker=marker)
