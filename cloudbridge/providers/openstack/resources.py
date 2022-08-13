@@ -18,7 +18,7 @@ from datetime import datetime
 
 from keystoneclient.v3.regions import Region
 
-import novaclient.exceptions as novaex
+import keystoneclient.exceptions as keystoneex
 
 import swiftclient
 from swiftclient.service import SwiftService
@@ -541,7 +541,7 @@ class OpenStackRegion(BaseRegion):
                 # pylint:disable=protected-access
                 region_nova = self._provider._connect_nova_region(self.name)
                 zones = region_nova.availability_zones.list(detailed=False)
-            except novaex.EndpointNotFound:
+            except keystoneex.EndpointNotFound:
                 # This region may not have a compute endpoint. If so just
                 # return an empty list
                 zones = []
