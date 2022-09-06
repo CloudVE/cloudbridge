@@ -1248,7 +1248,7 @@ class OpenStackGatewayService(BaseGatewayService):
         log.debug("OpenStack listing of all current internet gateways")
         igl = [OpenStackInternetGateway(self._provider, n)
                for n in self._provider.networking.networks
-               if n.external and self._check_fip_connectivity(network, n)]
+               if n.external and not n.shared]
         return ClientPagedResultList(self._provider, igl, limit=limit,
                                      marker=marker)
 
