@@ -1249,7 +1249,7 @@ class OpenStackGatewayService(BaseGatewayService):
         external_nets = (n for n in self._provider.networking.networks
                          if n.external)
         for net in external_nets:
-            if self._check_fip_connectivity(network, net):
+            if not net.shared:
                 return OpenStackInternetGateway(self._provider, net)
         return None
 
