@@ -828,6 +828,10 @@ class OpenStackNetwork(BaseNetwork):
         return self._network.get('router:external', False)
 
     @property
+    def shared(self):
+        return self._network.get('shared', False)
+
+    @property
     def state(self):
         self.refresh()
         return OpenStackNetwork._NETWORK_STATE_MAP.get(
