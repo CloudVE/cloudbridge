@@ -18,7 +18,7 @@ Latest stable release
 ---------------------
 The latest release of CloudBridge can be installed from PyPI::
 
-    pip install cloudbridge
+    pip install cloudbridge[full]
 
 Latest unreleased dev version
 -----------------------------

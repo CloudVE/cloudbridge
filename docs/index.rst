@@ -42,7 +42,7 @@ Installation
 The latest release can always be installed form PyPI. For other installation
 options, see the `installation page <topics/install.html>`_::
 
-    pip install cloudbridge
+    pip install cloudbridge[full]
 
 Documentation
 -------------
