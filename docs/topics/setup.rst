@@ -106,6 +106,9 @@ AWS
 | ec2_validate_certs  | Whether to use SSL certificate verification. Default is      |
 |                     | ``False``.                                                   |
 +---------------------+--------------------------------------------------------------+
+| ec2_retries_value   | The number of retries to configure boto ec2 client with      |
+|                     | Default is ``4``.                                            |
++---------------------+--------------------------------------------------------------+
 | s3_endpoint_url     | Host connection endpoint. Default is ``s3.amazonaws.com``.   |
 +---------------------+--------------------------------------------------------------+
 | s3_is_secure        | True to use an SSL connection. Default is ``True``.          |
