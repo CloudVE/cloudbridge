@@ -523,7 +523,7 @@ class OpenStackRegion(BaseRegion):
 
     @property
     def id(self):
-        return (self._os_region.id if type(self._os_region) == Region else
+        return (self._os_region.id if type(self._os_region) is Region else
                 self._os_region)
 
     @property
