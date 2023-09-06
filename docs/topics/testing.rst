@@ -77,8 +77,8 @@ Alternatively you can run the mock tests through tox.
 ``tox -e "py27-mock"``
 
 .. _design goals: https://github.com/CloudVE/cloudbridge/
-   blob/master/README.rst
+   blob/main/README.rst
 .. _tox: https://tox.readthedocs.org/en/latest/
-.. _ProviderList: https://github.com/CloudVE/cloudbridge/blob/master/
+.. _ProviderList: https://github.com/CloudVE/cloudbridge/blob/main/
    cloudbridge/cloud/factory.py#L15
 .. _moto: https://github.com/spulec/moto
