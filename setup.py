@@ -57,7 +57,7 @@ REQS_FULL = REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
     'tox>=2.1.1',
-    'nose',
+    'pytest',
     'moto>=3.1.18',
     'sphinx>=1.3.1',
     'pydevd',
@@ -73,7 +73,6 @@ setup(
     author='Galaxy and GVL Projects',
     author_email='help@genome.edu.au',
     url='http://cloudbridge.cloudve.org/',
-    setup_requires=['nose>=1.0'],
     install_requires=REQS_BASE,
     extras_require={
         ':python_version<"3.3"': ['ipaddress'],
