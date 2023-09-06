@@ -56,7 +56,7 @@ REQS_OPENSTACK = [
 REQS_FULL = REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
 # httpretty is required with/for moto 1.0.0 or AWS tests fail
 REQS_DEV = ([
-    'tox>=2.1.1',
+    'tox>=4.0.0',
     'pytest',
     'moto>=3.1.18',
     'sphinx>=1.3.1',
