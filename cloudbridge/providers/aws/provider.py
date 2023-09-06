@@ -41,7 +41,11 @@ class AWSCloudProvider(BaseCloudProvider):
         self.ec2_cfg = {
             'use_ssl': self._get_config_value('ec2_is_secure', True),
             'verify': self._get_config_value('ec2_validate_certs', True),
-            'endpoint_url': self._get_config_value('ec2_endpoint_url')
+            'endpoint_url': self._get_config_value('ec2_endpoint_url'),
+            'config': Config(
+                retries={
+                    'max_attempts': self._get_config_value('ec2_retries_value', 4),
+                    'mode': 'standard'})
         }
         self.s3_cfg = {
             'use_ssl': self._get_config_value('s3_is_secure', True),
