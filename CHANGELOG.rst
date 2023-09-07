@@ -1,3 +1,15 @@
+3.2.0 - September 06, 2023 (sha dd7ccbba9457232880da755ca66f8ae9d2e7dce4)
+---------------------------------------------------------------------
+
+* Use external non-shared network for gateway by @almahmoud in https://github.com/CloudVE/cloudbridge/pull/307
+* Install cloudbridge full in examples by @nuwang in https://github.com/CloudVE/cloudbridge/pull/310
+* Add new `ec2_retries_value` config for  `AWSCloudProvider` by @MosheFriedland in https://github.com/CloudVE/cloudbridge/pull/313
+* Add packaging action by @nuwang in https://github.com/CloudVE/cloudbridge/pull/314
+* Fix linting error in resource comparison by @nuwang in https://github.com/CloudVE/cloudbridge/pull/315
+* Fix tox syntax and branch references by @nuwang in https://github.com/CloudVE/cloudbridge/pull/316
+* Switch to pytest by @nuwang in https://github.com/CloudVE/cloudbridge/pull/317
+* Update tox syntax and pin min tox version by @nuwang in https://github.com/CloudVE/cloudbridge/pull/318
+
 3.1.0 - August 19, 2022 (sha 28067e22377a60423e7fcf4f995ce224307b8b09)
 ---------------------------------------------------------------------
 
