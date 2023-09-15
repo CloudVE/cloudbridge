@@ -13,7 +13,7 @@ Build Status Tests
    :target: https://github.com/CloudVE/cloudbridge/actions/
    :alt: Integration Tests
 
-.. image:: https://codecov.io/gh/CloudVE/cloudbridge/branch/main/graph/badge.svg
+.. image:: https://codecov.io/gh/CloudVE/cloudbridge/graph/badge.svg?token=w0LAfAIVdd 
    :target: https://codecov.io/gh/CloudVE/cloudbridge
    :alt: Code Coverage
 
