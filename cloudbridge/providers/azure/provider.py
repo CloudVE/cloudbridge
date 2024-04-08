@@ -49,7 +49,7 @@ class AzureCloudProvider(BaseCloudProvider):
                                             'cloudbridge'))
         self.network_resource_group = self._get_config_value(
             'azure_network_resource_group', get_env('AZURE_NETWORK_RESOURCE_GROUP',
-                                            self.resource_group))
+                                                    self.resource_group))
         # Storage account name is limited to a max length of 24 alphanum chars
         # and unique across all of Azure. Thus, a uuid is used to generate a
         # unique name for the Storage Account based on the resource group,
