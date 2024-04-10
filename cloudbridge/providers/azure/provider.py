@@ -47,8 +47,8 @@ class AzureCloudProvider(BaseCloudProvider):
         self.resource_group = self._get_config_value(
             'azure_resource_group', get_env('AZURE_RESOURCE_GROUP',
                                             'cloudbridge'))
-        self.network_resource_group = self._get_config_value(
-            'azure_network_resource_group', get_env('AZURE_NETWORK_RESOURCE_GROUP',
+        self.networking_resource_group = self._get_config_value(
+            'azure_networking_resource_group', get_env('AZURE_NETWORKING_RESOURCE_GROUP',
                                                     self.resource_group))
         # Storage account name is limited to a max length of 24 alphanum chars
         # and unique across all of Azure. Thus, a uuid is used to generate a
@@ -131,7 +131,7 @@ class AzureCloudProvider(BaseCloudProvider):
                 'azure_tenant': self.tenant,
                 'azure_region_name': self.region_name,
                 'azure_resource_group': self.resource_group,
-                'azure_network_resource_group': self.network_resource_group,
+                'azure_networking_resource_group': self.networking_resource_group,
                 'azure_storage_account': self.storage_account,
                 'azure_public_key_storage_table_name':
                     self.public_key_storage_table_name,
@@ -187,9 +187,9 @@ class AzureCloudProvider(BaseCloudProvider):
         if not, use the self.resource_group
         """
         try:
-            self._azure_client.get_resource_group(self.network_resource_group)
+            self._azure_client.get_resource_group(self.networking_resource_group)
         except CloudError as cloud_error:
             if cloud_error.error.error == "ResourceGroupNotFound":
-                self.network_resource_group = self.resource_group
+                self.networking_resource_group = self.resource_group
             else:
                 raise cloud_error
