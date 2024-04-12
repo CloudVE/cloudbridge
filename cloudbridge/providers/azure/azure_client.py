@@ -625,7 +625,7 @@ class AzureClient(object):
 
     def create_network(self, name, params):
         return self.network_management_client.virtual_networks. \
-            begin_create_or_update(self.netowrk_resource_group, name, parameters=params).result()
+            begin_create_or_update(self.networking_resource_group, name, parameters=params).result()
 
     def delete_network(self, network_id):
         url_params = azure_helpers.parse_url(NETWORK_RESOURCE_ID, network_id)
