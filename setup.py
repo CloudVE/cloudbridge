@@ -58,7 +58,7 @@ REQS_FULL = REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
 REQS_DEV = ([
     'tox>=4.0.0',
     'pytest',
-    'moto>=3.1.18',
+    'moto[ec2,s3]>=5.0.0',
     'sphinx>=1.3.1',
     'pydevd',
     'flake8>=3.3.0',
