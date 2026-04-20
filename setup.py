@@ -35,10 +35,10 @@ REQS_AZURE = [
     'azure-identity<2.0.0',
     'azure-common<2.0.0',
     'azure-mgmt-devtestlabs<10.0.0',
-    'azure-mgmt-resource<22.0.0',
-    'azure-mgmt-compute>=27.2.0,<28.0.0',
-    'azure-mgmt-network<22.0.0',
-    'azure-mgmt-storage<21.0.0',
+    'azure-mgmt-resource<24.0.0',
+    'azure-mgmt-compute>=27.2.0,<31.0.0',
+    'azure-mgmt-network<26.0.0',
+    'azure-mgmt-storage<22.0.0',
     'azure-storage-blob<13.0.0',
     'azure-cosmosdb-table<2.0.0',
     'pysftp<1.0.0'
@@ -47,10 +47,10 @@ REQS_GCP = [
     'google-api-python-client>=2.0,<3.0.0'
 ]
 REQS_OPENSTACK = [
-    'openstacksdk>=0.12.0,<1.0.0',
+    'openstacksdk>=0.12.0,<4.0.0',
     'python-novaclient>=7.0.0,<19.0',
     'python-swiftclient>=3.2.0,<5.0',
-    'python-neutronclient>=6.0.0,<9.0',
+    'python-neutronclient>=6.0.0,<12.0',
     'python-keystoneclient>=3.13.0,<6.0'
 ]
 REQS_FULL = REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
@@ -58,7 +58,7 @@ REQS_FULL = REQS_AWS + REQS_GCP + REQS_OPENSTACK + REQS_AZURE
 REQS_DEV = ([
     'tox>=4.0.0',
     'pytest',
-    'moto>=3.1.18',
+    'moto[ec2,s3]>=5.0.0',
     'sphinx>=1.3.1',
     'pydevd',
     'flake8>=3.3.0',

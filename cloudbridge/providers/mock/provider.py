@@ -6,9 +6,7 @@
     boto being hijacked, which will cause AWS to malfunction.
     See notes below.
 """
-from moto import mock_ec2
-from moto import mock_route53
-from moto import mock_s3
+from moto import mock_aws
 
 from ..aws import AWSCloudProvider
 from ...interfaces.provider import TestMockHelperMixin
@@ -32,17 +30,11 @@ class MockAWSCloudProvider(AWSCloudProvider, TestMockHelperMixin):
         """
         Let Moto take over all socket communications
         """
-        self.ec2mock = mock_ec2()
-        self.ec2mock.start()
-        self.s3mock = mock_s3()
-        self.s3mock.start()
-        self.route53mock = mock_route53()
-        self.route53mock.start()
+        self.mock_aws = mock_aws()
+        self.mock_aws.start()
 
     def tearDownMock(self):
         """
         Stop Moto intercepting all socket communications
         """
-        self.s3mock.stop()
-        self.ec2mock.stop()
-        self.route53mock.stop()
+        self.mock_aws.stop()
